@@ -12,5 +12,6 @@ implement_error! {
         UnsupportedSignatureScheme = "Signature scheme is not supported by this configuration.",
         IncompatibleMlsVersion = "Operation on incompatible MLS versions.",
         IncompatibleCiphersuite = "Operation on incompatible cipher suites.",
+        LibraryError = "Library error",
     }
 }

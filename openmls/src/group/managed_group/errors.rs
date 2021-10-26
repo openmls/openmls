@@ -3,14 +3,11 @@
 //! `WelcomeError`, `ApplyCommitError`, `DecryptionError`, and
 //! `CreateCommitError`.
 
-use crate::codec::CodecError;
 use crate::config::ConfigError;
 use crate::credentials::CredentialError;
 use crate::error::ErrorString;
 use crate::framing::MlsCiphertextError;
-use crate::group::{ApplyCommitError, CreateCommitError, ExporterError, GroupError};
-
-use crate::key_store::KeyStoreError;
+use crate::group::{ApplyCommitError, CreateCommitError, ExporterError, MlsGroupError};
 
 implement_error! {
     pub enum ManagedGroupError {
@@ -18,15 +15,14 @@ implement_error! {
             NoMatchingCredentialBundle = "Couldn't find a `CredentialBundle` in the `KeyStore` that matches the one in my leaf.",
             NoMatchingKeyPackageBundle = "Couldn't find a `KeyPackageBundle` in the `KeyStore` that matches the given `KeyPackage` hash.",
             PoisonedCredentialBundle = "Tried to access a poisoned `CredentialBundle`. See [`PoisonError`](`std::sync::PoisonError`) for details.",
+            KeyStoreError = "Error performing key store operation.",
         }
         Complex {
             LibraryError(ErrorString) =
                 "An internal library error occurred. Additional detail is provided.",
-            Codec(CodecError) =
-                "See [`CodecError`](`crate::codec::CodecError`) for details",
             Config(ConfigError) =
                 "See [`ConfigError`](`crate::config::ConfigError`) for details",
-            Group(GroupError) =
+            Group(MlsGroupError) =
                 "See [`GroupError`](`crate::group::GroupError`) for details",
             CreateCommit(CreateCommitError) =
                 "See [`CreateCommitError`](`crate::group::CreateCommitError`) for details",
@@ -38,7 +34,6 @@ implement_error! {
                 "See [`ExporterError`](`crate::group::ExporterError`) for details",
             EmptyInput(EmptyInputError) =
                 "Empty input. Additional detail is provided.",
-            KeyStoreError(KeyStoreError) = "See [`KeyStoreError`](`crate::key_store::KeyStoreError`) for details",
             InvalidMessage(InvalidMessageError) = "The message could not be processed.",
             CredentialError(CredentialError) = "See [`CredentialError`](`crate::credentials::CredentialError`) for details",
         }
@@ -69,17 +64,21 @@ implement_error! {
         Simple {
             MembershipTagMismatch =
                 "A Proposal with an invalid membership tag was received.",
+            UnknownSender =
+                "Could not retrieve credential for the given sender.",
             InvalidProposal =
                 "The given proposal is invalid.",
             CommitWithInvalidProposals =
                 "A commit contained an invalid proposal.",
+            InvalidApplicationMessage =
+                "The application message is invalid.",
         }
         Complex {
             InvalidCiphertext(MlsCiphertextError) =
                 "An invalid ciphertext was provided. The error returns the associated data of the ciphertext.",
             CommitError(ApplyCommitError) =
                 "See [`ApplyCommitError`](`crate::group::ApplyCommitError`) for details",
-            GroupError(GroupError) =
+            GroupError(MlsGroupError) =
                 "See [`GroupError`](`crate::group::GroupError`) for details",
         }
     }

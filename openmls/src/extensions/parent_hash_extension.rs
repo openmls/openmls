@@ -18,56 +18,26 @@
 //! parent_hash matches the hash of the leaf's parent node when represented as a
 //! ParentNode struct.
 
-use super::{
-    Deserialize, Extension, ExtensionError, ExtensionStruct, ExtensionType, ParentHashError,
-    Serialize,
-};
-use crate::codec::{decode_vec, encode_vec, Cursor, VecSize};
+use tls_codec::{Size, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize};
 
-#[derive(PartialEq, Clone, Debug, Default, Serialize, Deserialize)]
+use super::{Deserialize, Serialize};
+
+#[derive(
+    PartialEq, Clone, Debug, Default, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
 pub struct ParentHashExtension {
-    parent_hash: Vec<u8>,
+    parent_hash: TlsByteVecU8,
 }
 
 impl ParentHashExtension {
     pub fn new(hash: &[u8]) -> Self {
         ParentHashExtension {
-            parent_hash: hash.to_vec(),
+            parent_hash: hash.into(),
         }
     }
 
     /// Get a reference to the parent hash value.
     pub(crate) fn parent_hash(&self) -> &[u8] {
-        &self.parent_hash
-    }
-}
-
-#[typetag::serde]
-impl Extension for ParentHashExtension {
-    fn extension_type(&self) -> ExtensionType {
-        ExtensionType::ParentHash
-    }
-
-    /// Build a new ParentHashExtension from a byte slice.
-    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ExtensionError>
-    where
-        Self: Sized,
-    {
-        let cursor = &mut Cursor::new(bytes);
-        match decode_vec(VecSize::VecU8, cursor) {
-            Ok(parent_hash) => Ok(Self { parent_hash }),
-            Err(_) => Err(ExtensionError::ParentHash(ParentHashError::Invalid)),
-        }
-    }
-
-    fn to_extension_struct(&self) -> ExtensionStruct {
-        let mut extension_data: Vec<u8> = vec![];
-        encode_vec(VecSize::VecU8, &mut extension_data, &self.parent_hash).unwrap();
-        let extension_type = ExtensionType::ParentHash;
-        ExtensionStruct::new(extension_type, extension_data)
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
+        self.parent_hash.as_slice()
     }
 }

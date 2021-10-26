@@ -1,0 +1,23 @@
+[package]
+name = "interop_client"
+version = "0.1.0"
+authors = ["Konrad Kohbrok <konrad.kohbrok@datashrine.de>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+openmls = { path = "../openmls", features = ["test-utils"]}
+tonic = "0.3"
+prost = "0.6"
+tokio = { version = "0.2", features = ["macros",  "net"] }
+clap = "3.0.0-beta.4"
+serde = { version = "^1.0", features = ["derive"] }
+serde_json = "^1.0"
+tls_codec = { version = "0.1", features = ["derive", "serde_serialize"] }
+pretty_env_logger = "0.4"
+openmls_rust_crypto = { path = "../openmls_rust_crypto" }
+openmls_traits = { version = "0.1", path = "../traits" }
+
+[build-dependencies]
+tonic-build = "0.3"

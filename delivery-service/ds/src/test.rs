@@ -1,5 +1,9 @@
 use super::*;
 use actix_web::{dev::Body, http::StatusCode, test, web, web::Bytes, App};
+use openmls::group::create_commit::Proposals;
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::types::SignatureScheme;
+use tls_codec::{TlsByteVecU8, TlsVecU16};
 
 #[actix_rt::test]
 async fn test_list_clients() {
@@ -22,36 +26,41 @@ async fn test_list_clients() {
     let response_body = response.response_mut().take_body();
     let response_body = response_body.as_ref().unwrap();
 
-    let expected = Vec::<ClientInfo>::new();
+    let expected = TlsVecU32::<ClientInfo>::new(vec![]);
     let response_body = match response_body {
         Body::Bytes(b) => {
-            Vec::<ClientInfo>::decode(&mut Cursor::new(b.as_ref())).expect("Invalid client list")
+            TlsVecU32::<ClientInfo>::tls_deserialize(&mut b.as_ref()).expect("Invalid client list")
         }
         _ => panic!("Unexpected server response."),
     };
-    assert_eq!(response_body, expected);
+    assert_eq!(
+        response_body.tls_serialize_detached().unwrap(),
+        expected.tls_serialize_detached().unwrap()
+    );
 
     // Add a client.
     let client_name = "Client1";
     let ciphersuite = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let crypto = &OpenMlsRustCrypto::default();
     let credential_bundle = CredentialBundle::new(
         client_name.as_bytes().to_vec(),
         CredentialType::Basic,
         SignatureScheme::from(ciphersuite),
+        crypto,
     )
     .unwrap();
     let client_id = credential_bundle.credential().identity().to_vec();
     let client_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, vec![]).unwrap();
+        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, crypto, vec![]).unwrap();
     let client_key_package = vec![(
-        client_key_package_bundle.key_package().hash(),
+        client_key_package_bundle.key_package().hash(crypto),
         client_key_package_bundle.key_package().clone(),
     )];
     let client_data = ClientInfo::new(client_name.to_string(), client_key_package.clone());
     let req = test::TestRequest::post()
         .uri("/clients/register")
         .set_payload(Bytes::copy_from_slice(
-            &client_data.encode_detached().unwrap(),
+            &client_data.tls_serialize_detached().unwrap(),
         ))
         .to_request();
 
@@ -67,14 +76,17 @@ async fn test_list_clients() {
     let response_body = response.response_mut().take_body();
     let response_body = response_body.as_ref().unwrap();
 
-    let expected = vec![client_data];
+    let expected = TlsVecU32::<ClientInfo>::new(vec![client_data]);
     let response_body = match response_body {
         Body::Bytes(b) => {
-            Vec::<ClientInfo>::decode(&mut Cursor::new(b.as_ref())).expect("Invalid client list")
+            TlsVecU32::<ClientInfo>::tls_deserialize(&mut b.as_ref()).expect("Invalid client list")
         }
         _ => panic!("Unexpected server response."),
     };
-    assert_eq!(response_body, expected);
+    assert_eq!(
+        response_body.tls_serialize_detached().unwrap(),
+        expected.tls_serialize_detached().unwrap()
+    );
 
     // Get Client1 key packages.
     let path =
@@ -86,20 +98,26 @@ async fn test_list_clients() {
 
     let response_body = response.response_mut().take_body();
     let response_body = response_body.as_ref().unwrap();
-    let key_packages = match response_body {
+    let mut key_packages: Vec<(TlsByteVecU8, KeyPackage)> = match response_body {
         Body::Bytes(b) => {
-            ClientKeyPackages::decode(&mut Cursor::new(b.as_ref()))
+            ClientKeyPackages::tls_deserialize(&mut b.as_ref())
                 .expect("Invalid key package response")
                 .0
         }
         _ => panic!("Unexpected server response."),
-    };
+    }
+    .into();
+    let key_packages: Vec<(Vec<u8>, KeyPackage)> = key_packages
+        .drain(..)
+        .map(|(e1, e2)| (e1.into(), e2))
+        .collect();
 
     assert_eq!(client_key_package, key_packages);
 }
 
 #[actix_rt::test]
 async fn test_group() {
+    let crypto = &OpenMlsRustCrypto::default();
     let data = web::Data::new(Mutex::new(DsData::default()));
     let mut app = test::init_service(
         App::new()
@@ -124,14 +142,15 @@ async fn test_group() {
             client_name.as_bytes().to_vec(),
             CredentialType::Basic,
             SignatureScheme::from(ciphersuite),
+            crypto,
         )
         .unwrap();
         let client_key_package =
-            KeyPackageBundle::new(&[ciphersuite], &credential_bundle, vec![]).unwrap();
+            KeyPackageBundle::new(&[ciphersuite], &credential_bundle, crypto, vec![]).unwrap();
         let client_data = ClientInfo::new(
             client_name.to_string(),
             vec![(
-                client_key_package.key_package().hash(),
+                client_key_package.key_package().hash(crypto),
                 client_key_package.key_package().clone(),
             )],
         );
@@ -141,7 +160,7 @@ async fn test_group() {
         let req = test::TestRequest::post()
             .uri("/clients/register")
             .set_payload(Bytes::copy_from_slice(
-                &client_data.encode_detached().unwrap(),
+                &client_data.tls_serialize_detached().unwrap(),
             ))
             .to_request();
         let response = test::call_service(&mut app, req).await;
@@ -151,12 +170,14 @@ async fn test_group() {
     // Client1 creates MyFirstGroup
     let group_id = b"MyFirstGroup";
     let group_aad = b"MyFirstGroup AAD";
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
     let group_ciphersuite = key_package_bundles[0].key_package().ciphersuite_name();
     let mut group = MlsGroup::new(
         group_id,
         group_ciphersuite,
+        crypto,
         key_package_bundles.remove(0),
-        GroupConfig::default(),
+        MlsGroupConfig::default(),
         None, /* Initial PSK */
         None, /* MLS version */
     )
@@ -176,7 +197,7 @@ async fn test_group() {
     let response_body = response_body.as_ref().unwrap();
     let mut client2_key_packages = match response_body {
         Body::Bytes(b) => {
-            ClientKeyPackages::decode(&mut Cursor::new(b.as_ref()))
+            ClientKeyPackages::tls_deserialize(&mut b.as_ref())
                 .expect("Invalid key package response")
                 .0
         }
@@ -191,30 +212,38 @@ async fn test_group() {
 
     // With the key package we can build a proposal.
     let client2_add_proposal = group
-        .create_add_proposal(group_aad, &credentials[0], client2_key_package)
+        .create_add_proposal(
+            framing_parameters,
+            &credentials[0],
+            client2_key_package,
+            crypto,
+        )
         .unwrap();
-    let epoch_proposals_ref = vec![&client2_add_proposal];
+    let proposals_by_reference = &[&client2_add_proposal];
     let (commit, welcome_msg, _kpb) = group
         .create_commit(
-            group_aad,
+            framing_parameters,
             &credentials[0],
-            &epoch_proposals_ref,
-            &[],
+            Proposals {
+                proposals_by_reference,
+                proposals_by_value: &[],
+            },
             false,
             None,
+            crypto,
         )
         .expect("Error creating commit");
     let welcome_msg = welcome_msg.expect("Welcome message wasn't created by create_commit.");
     let epoch_proposals = &[&client2_add_proposal];
     group
-        .apply_commit(&commit, epoch_proposals, &[], None)
+        .apply_commit(&commit, epoch_proposals, &[], None, crypto)
         .expect("error applying commit");
 
     // Send welcome message for Client2
     let req = test::TestRequest::post()
         .uri("/send/welcome")
         .set_payload(Bytes::copy_from_slice(
-            &welcome_msg.encode_detached().unwrap(),
+            &welcome_msg.tls_serialize_detached().unwrap(),
         ))
         .to_request();
     let response = test::call_service(&mut app, req).await;
@@ -229,9 +258,9 @@ async fn test_group() {
     let response_body = response.response_mut().take_body();
     let response_body = response_body.as_ref().unwrap();
     let mut messages: Vec<Message> = match response_body {
-        Body::Bytes(b) => {
-            decode_vec(VecSize::VecU16, &mut Cursor::new(b.as_ref())).expect("Invalid message list")
-        }
+        Body::Bytes(b) => TlsVecU16::<Message>::tls_deserialize(&mut b.as_ref())
+            .expect("Invalid message list")
+            .into(),
         _ => panic!("Unexpected server response."),
     };
 
@@ -251,6 +280,7 @@ async fn test_group() {
         Some(group.tree().public_key_tree_copy()), // delivered out of band
         key_package_bundles.remove(0),
         None, /* PSK fetcher */
+        crypto,
     )
     .expect("Error creating group from Welcome");
 
@@ -262,14 +292,16 @@ async fn test_group() {
     // === Client2 sends a message to the group ===
     let client2_message = b"Thanks for adding me Client1.";
     let mls_ciphertext = group_on_client2
-        .create_application_message(&[], &client2_message[..], &credentials[1], 0)
+        .create_application_message(&[], &client2_message[..], &credentials[1], 0, crypto)
         .unwrap();
 
     // Send mls_ciphertext to the group
-    let msg = GroupMessage::new(MlsMessage::Ciphertext(mls_ciphertext), &client_ids);
+    let msg = GroupMessage::new(DsMlsMessage::Ciphertext(mls_ciphertext), &client_ids);
     let req = test::TestRequest::post()
         .uri("/send/message")
-        .set_payload(Bytes::copy_from_slice(&msg.encode_detached().unwrap()))
+        .set_payload(Bytes::copy_from_slice(
+            &msg.tls_serialize_detached().unwrap(),
+        ))
         .to_request();
     let response = test::call_service(&mut app, req).await;
     assert_eq!(response.status(), StatusCode::OK);
@@ -283,9 +315,9 @@ async fn test_group() {
     let response_body = response.response_mut().take_body();
     let response_body = response_body.as_ref().unwrap();
     let mut messages: Vec<Message> = match response_body {
-        Body::Bytes(b) => {
-            decode_vec(VecSize::VecU16, &mut Cursor::new(b.as_ref())).expect("Invalid message list")
-        }
+        Body::Bytes(b) => TlsVecU16::<Message>::tls_deserialize(&mut b.as_ref())
+            .expect("Invalid message list")
+            .into(),
         _ => panic!("Unexpected server response."),
     };
 
@@ -295,7 +327,7 @@ async fn test_group() {
         .expect("Didn't get an MLS application message from the server.");
     let mls_ciphertext = match messages.remove(mls_ciphertext) {
         Message::MlsMessage(m) => match m {
-            MlsMessage::Ciphertext(m) => m,
+            DsMlsMessage::Ciphertext(m) => m,
             _ => panic!("This is not an MlsCiphertext but an MlsPlaintext (or something else)."),
         },
         _ => panic!("This is not an MLS message."),
@@ -304,7 +336,7 @@ async fn test_group() {
 
     // Decrypt the message on Client1
     let mls_plaintext = group
-        .decrypt(&mls_ciphertext)
+        .decrypt(&mls_ciphertext, crypto)
         .expect("Error decrypting MlsCiphertext");
     assert_eq!(
         client2_message,

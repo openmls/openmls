@@ -27,13 +27,12 @@ mod utils;
 #[macro_use]
 pub mod error;
 
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 #[macro_use]
-pub mod test_util;
 pub mod binary_tree;
+pub mod test_utils;
 
 pub mod ciphersuite;
-mod codec;
 pub mod config;
 mod credentials;
 mod extensions;
@@ -42,9 +41,9 @@ pub mod group;
 mod key_packages;
 pub mod key_store;
 pub mod messages;
-#[cfg(any(feature = "expose-test-vectors", test))]
+#[cfg(any(feature = "test-utils", test))]
 pub mod schedule;
-#[cfg(not(any(feature = "expose-test-vectors", test)))]
+#[cfg(not(any(feature = "test-utils", test)))]
 mod schedule;
 pub mod tree;
 

@@ -43,13 +43,42 @@ jobs:
       - name: Apple Silicon Build
         if: matrix.os == 'macos-latest'
         run: |
-          cargo build --target aarch64-apple-darwin --tests --verbose --features rust-crypto
-          cargo build --release --target aarch64-apple-darwin --tests --verbose --features rust-crypto
+          cargo build --target aarch64-apple-darwin --tests --verbose
+          cargo build --release --target aarch64-apple-darwin --tests --verbose
       - name: iOS build
         if: matrix.os == 'macos-latest'
         run: |
-          cargo build --target aarch64-apple-ios --tests --verbose --features rust-crypto
-          cargo build --release --target aarch64-apple-ios --tests --verbose --features rust-crypto
+          cargo build --target aarch64-apple-ios --tests --verbose
+          cargo build --release --target aarch64-apple-ios --tests --verbose
+  cross-build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          # 32-bit Linux
+          - target: i686-unknown-linux-gnu
+            rust: stable
+            deps: sudo apt update && sudo apt install gcc-multilib
+          # wasm
+          - target: wasm32-unknown-unknown
+            rust: stable
+          # ARM64 Android
+          - target: aarch64-linux-android
+            rust: stable
+          # ARM64 iOS
+          - target: aarch64-apple-ios
+            rust: stable
+    steps:
+      - uses: actions/checkout@v1
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          target: ${{ matrix.target }}
+          profile: minimal
+          override: true
+      - run: ${{ matrix.deps }}
+      - run: cargo build --target ${{ matrix.target }}
+      - run: cargo build --target ${{ matrix.target }} --release
   checks:
     runs-on: ubuntu-latest
     steps:
@@ -66,6 +95,6 @@ jobs:
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features --manifest-path openmls/Cargo.toml
+          args: --manifest-path openmls/Cargo.toml
       - name: Cargo fmt
         run: cargo fmt -- --check

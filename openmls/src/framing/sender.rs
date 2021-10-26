@@ -1,3 +1,5 @@
+//! # The sender of a message
+//!
 //! Section  9. Message Framing
 //!
 //! ```text
@@ -25,8 +27,11 @@
 
 use super::*;
 use std::convert::TryFrom;
+use tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize};
 
-#[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(
+    PartialEq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
 #[repr(u8)]
 pub enum SenderType {
     Member = 1,
@@ -46,7 +51,9 @@ impl TryFrom<u8> for SenderType {
     }
 }
 
-#[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(
+    PartialEq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
 pub struct Sender {
     pub(crate) sender_type: SenderType,
     pub(crate) sender: LeafIndex,

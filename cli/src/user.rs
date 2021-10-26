@@ -1,7 +1,8 @@
 use std::{cell::RefCell, collections::HashMap};
 
-use ds_lib::{ClientKeyPackages, GroupMessage, Message};
-use openmls::prelude::*;
+use ds_lib::{ClientKeyPackages, DsMlsMessage, GroupMessage, Message};
+use openmls::{group::create_commit::Proposals, prelude::*};
+use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use super::{backend::Backend, conversation::Conversation, identity::Identity};
 
@@ -31,20 +32,23 @@ pub struct Group {
 pub struct User {
     pub(crate) username: String,
     pub(crate) contacts: HashMap<Vec<u8>, Contact>,
-    pub(crate) groups: HashMap<Vec<u8>, Group>,
+    pub(crate) groups: RefCell<HashMap<Vec<u8>, Group>>,
     pub(crate) identity: RefCell<Identity>,
     backend: Backend,
+    crypto: OpenMlsRustCrypto,
 }
 
 impl User {
     /// Create a new user with the given name and a fresh set of credentials.
     pub fn new(username: String) -> Self {
+        let crypto = OpenMlsRustCrypto::default();
         let out = Self {
             username: username.clone(),
-            groups: HashMap::new(),
+            groups: RefCell::new(HashMap::new()),
             contacts: HashMap::new(),
-            identity: RefCell::new(Identity::new(CIPHERSUITE, username.as_bytes())),
+            identity: RefCell::new(Identity::new(CIPHERSUITE, &crypto, username.as_bytes())),
             backend: Backend::default(),
+            crypto,
         };
 
         match out.backend.register_client(&out) {
@@ -58,7 +62,7 @@ impl User {
     /// Get the key packages fo this user.
     pub fn key_packages(&self) -> Vec<(Vec<u8>, KeyPackage)> {
         vec![(
-            self.identity.borrow().kpb.key_package().hash(),
+            self.identity.borrow().kpb.key_package().hash(&self.crypto),
             self.identity.borrow().kpb.key_package().clone(),
         )]
     }
@@ -80,7 +84,8 @@ impl User {
 
     /// Send an application message to the group.
     pub fn send_msg(&self, msg: &str, group: String) -> Result<(), String> {
-        let group = match self.groups.get(group.as_bytes()) {
+        let groups = self.groups.borrow();
+        let group = match groups.get(group.as_bytes()) {
             Some(g) => g,
             None => return Err("Unknown group".to_string()),
         };
@@ -90,6 +95,7 @@ impl User {
             msg.as_bytes(),
             &self.identity.borrow().credential,
             PADDING_SIZE,
+            &self.crypto,
         ) {
             Ok(m) => m,
             Err(e) => return Err(format!("{}", e)),
@@ -97,7 +103,7 @@ impl User {
 
         // Send mls_ciphertext to the group
         let msg = GroupMessage::new(
-            MlsMessage::Ciphertext(mls_ciphertext),
+            DsMlsMessage::Ciphertext(mls_ciphertext),
             &self.recipients(group),
         );
         log::debug!(" >>> send: {:?}", msg);
@@ -110,12 +116,11 @@ impl User {
     /// * update the contacts with all other clients known to the server
     pub fn update(&mut self, group_name: Option<String>) -> Result<Vec<String>, String> {
         log::debug!("Updating {} ...", self.username);
-        let messages = self.backend.recv_msgs(&self)?;
 
         let mut messages_out = Vec::new();
 
         // Go through the list of messages and process or store them.
-        for message in messages {
+        for message in self.backend.recv_msgs(self)?.drain(..) {
             match message {
                 Message::Welcome(welcome) => {
                     // Join the group. (Later we should ask the user to
@@ -123,19 +128,20 @@ impl User {
                     self.join_group(welcome)?;
                 }
                 Message::MlsMessage(message) => {
+                    let mut groups = self.groups.borrow_mut();
+                    let mut group = match groups.get(message.group_id()) {
+                        Some(g) => g.mls_group.borrow_mut(),
+                        None => {
+                            log::error!(
+                                "Error getting group {:?} for a message. Dropping message.",
+                                message.group_id()
+                            );
+                            continue;
+                        }
+                    };
                     let msg = match message {
-                        MlsMessage::Ciphertext(ctxt) => {
-                            let mut group = match self.groups.get(&ctxt.group_id.as_slice()) {
-                                Some(g) => g.mls_group.borrow_mut(),
-                                None => {
-                                    log::error!(
-                                        "Error getting group {:?} for a message. Dropping message.",
-                                        ctxt.group_id
-                                    );
-                                    continue;
-                                }
-                            };
-                            match group.decrypt(&ctxt) {
+                        DsMlsMessage::Ciphertext(ctxt) => {
+                            match group.decrypt(&ctxt, &self.crypto) {
                                 Ok(msg) => msg,
                                 Err(e) => {
                                     log::error!(
@@ -146,9 +152,19 @@ impl User {
                                 }
                             }
                         }
-                        MlsMessage::Plaintext(msg) => msg,
+                        DsMlsMessage::Plaintext(msg) => match group.verify(msg, &self.crypto) {
+                            Ok(msg) => msg,
+                            Err(e) => {
+                                log::error!(
+                                    "Error verifying MlsPlaintext: {:?} -  Dropping message.",
+                                    e
+                                );
+                                continue;
+                            }
+                        },
                     };
-                    let group = match self.groups.get_mut(&msg.group_id().as_slice()) {
+                    drop(group);
+                    let group = match groups.get_mut(&msg.group_id().to_vec()) {
                         Some(g) => g,
                         None => {
                             log::error!(
@@ -161,7 +177,7 @@ impl User {
                     match msg.content() {
                         MlsPlaintextContentType::Application(application_message) => {
                             let application_message =
-                                String::from_utf8(application_message.to_vec()).unwrap();
+                                String::from_utf8(application_message.as_slice().to_vec()).unwrap();
                             if group_name.is_none()
                                 || group_name.clone().unwrap() == group.group_name
                             {
@@ -183,6 +199,7 @@ impl User {
                                     .collect::<Vec<&MlsPlaintext>>()),
                                 &[], // TODO: store key packages.
                                 None,
+                                &self.crypto,
                             ) {
                                 Ok(_) => (),
                                 Err(e) => {
@@ -199,9 +216,8 @@ impl User {
         }
         log::trace!("done with messages ...");
 
-        let mut clients = self.backend.list_clients()?;
-        clients.drain(..).for_each(|c| {
-            if &c.id != self.identity.borrow().credential.credential().identity()
+        for c in self.backend.list_clients()?.drain(..) {
+            if c.id != self.identity.borrow().credential.credential().identity()
                 && self
                     .contacts
                     .insert(
@@ -216,7 +232,7 @@ impl User {
             {
                 log::trace!("Updated client {}", "");
             }
-        });
+        }
         log::trace!("done with clients ...");
 
         Ok(messages_out)
@@ -228,11 +244,12 @@ impl User {
         let group_id = name.as_bytes();
         let mut group_aad = group_id.to_vec();
         group_aad.extend(b" AAD");
-        let kpb = self.identity.borrow_mut().update();
-        let config = GroupConfig::default();
+        let kpb = self.identity.borrow_mut().update(&self.crypto);
+        let config = MlsGroupConfig::default();
         let mls_group = MlsGroup::new(
             group_id,
             CIPHERSUITE,
+            &self.crypto,
             kpb,
             config,
             None, /* Initial PSK */
@@ -248,7 +265,12 @@ impl User {
             group_aad,
             pending_proposals: Vec::new(),
         };
-        if self.groups.insert(group_id.to_vec(), group).is_some() {
+        if self
+            .groups
+            .borrow_mut()
+            .insert(group_id.to_vec(), group)
+            .is_some()
+        {
             panic!("Group '{}' existed already", name);
         }
     }
@@ -271,27 +293,40 @@ impl User {
 
         // Build a proposal with this key package and do the MLS bits.
         let group_id = group.as_bytes();
-        let group = match self.groups.get_mut(group_id) {
+        let mut groups = self.groups.borrow_mut();
+        let group = match groups.get_mut(group_id) {
             Some(g) => g,
             None => return Err(format!("No group with name {} known.", group)),
         };
         let credentials = &self.identity.borrow().credential;
+        // Framing parameters
+        let framing_parameters = FramingParameters::new(&group.group_aad, WireFormat::MlsPlaintext);
         let add_proposal = group
             .mls_group
             .borrow()
-            .create_add_proposal(&group.group_aad, credentials, key_package)
+            .create_add_proposal(framing_parameters, credentials, key_package, &self.crypto)
             .expect("Could not create proposal.");
         let proposals = vec![&add_proposal];
         let (commit, welcome_msg, _kpb) = group
             .mls_group
             .borrow()
-            .create_commit(&group.group_aad, credentials, &proposals, &[], false, None)
+            .create_commit(
+                framing_parameters,
+                credentials,
+                Proposals {
+                    proposals_by_reference: &proposals,
+                    proposals_by_value: &[],
+                },
+                false,
+                None,
+                &self.crypto,
+            )
             .expect("Error creating commit");
         let welcome_msg = welcome_msg.expect("Welcome message wasn't created by create_commit.");
         group
             .mls_group
             .borrow_mut()
-            .apply_commit(&commit, &[&add_proposal], &[], None)
+            .apply_commit(&commit, &[&add_proposal], &[], None, &self.crypto)
             .expect("error applying commit");
 
         // Send Welcome to the client.
@@ -302,31 +337,40 @@ impl User {
 
         // Send proposal to the group.
         log::trace!("Sending proposal");
-        let group = self.groups.get(group_id).unwrap(); // XXX: not cool.
+        let group = groups.get_mut(group_id).unwrap(); // XXX: not cool.
         let group_recipients = self.recipients(group);
-        let msg = GroupMessage::new(MlsMessage::Plaintext(add_proposal), &group_recipients);
+        // TODO: the outgoing messages should use `MlsMessage` instead.
+        let msg = GroupMessage::new(
+            DsMlsMessage::Plaintext(VerifiableMlsPlaintext::from_plaintext(add_proposal, None)),
+            &group_recipients,
+        );
         self.backend.send_msg(&msg)?;
 
         // Send commit to the group.
         log::trace!("Sending commit");
-        let msg = GroupMessage::new(MlsMessage::Plaintext(commit), &group_recipients);
+        let msg = GroupMessage::new(
+            DsMlsMessage::Plaintext(VerifiableMlsPlaintext::from_plaintext(commit, None)),
+            &group_recipients,
+        );
         self.backend.send_msg(&msg)?;
 
         // Update the group state
-        let group = self.groups.get_mut(group_id).unwrap();
         group.members.push(contact.id.clone());
 
         Ok(())
     }
 
     /// Join a group with the provided welcome message.
-    fn join_group(&mut self, welcome: Welcome) -> Result<(), String> {
+    fn join_group(&self, welcome: Welcome) -> Result<(), String> {
         log::debug!("{} joining group ...", self.username);
 
-        let kpb = self.identity.borrow_mut().update();
+        let kpb = self.identity.borrow_mut().update(&self.crypto);
         let mls_group = match MlsGroup::new_from_welcome(
-            welcome, None, /* no public tree here, has to be in the extension */
-            kpb, None, /* PSK fetcher */
+            welcome,
+            None, /* no public tree here, has to be in the extension */
+            kpb,
+            None, /* PSK fetcher */
+            &self.crypto,
         ) {
             Ok(g) => g,
             Err(e) => {
@@ -338,9 +382,9 @@ impl User {
 
         let group_id = mls_group.group_id();
         // XXX: Add application layer protocol for name etc.
-        let group_name = String::from_utf8(group_id.as_slice()).unwrap();
+        let group_name = String::from_utf8(group_id.to_vec()).unwrap();
         let group_aad = group_name.clone() + " AAD";
-        let group_id = group_id.as_slice();
+        let group_id = group_id.to_vec();
 
         // FIXME
         let tree = mls_group.tree();
@@ -366,7 +410,7 @@ impl User {
 
         log::trace!("   {}", group_name);
 
-        match self.groups.insert(group_id, group) {
+        match self.groups.borrow_mut().insert(group_id, group) {
             Some(old) => Err(format!("Overrode the group {:?}", old.group_name)),
             None => Ok(()),
         }

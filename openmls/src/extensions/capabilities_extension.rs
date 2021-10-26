@@ -14,29 +14,27 @@
 //! } Capabilities;
 //! ```
 
-use std::convert::TryFrom;
+use std::io::Read;
 
-use super::{
-    CapabilitiesExtensionError, Deserialize, Extension, ExtensionError, ExtensionStruct,
-    ExtensionType, Serialize,
-};
-use crate::codec::{decode_vec, encode_vec, Cursor, VecSize};
+use tls_codec::{Size, TlsSerialize, TlsSize, TlsVecU8};
+
+use super::{CapabilitiesExtensionError, Deserialize, ExtensionType, Serialize};
+use crate::ciphersuite::CiphersuiteName;
 use crate::config::{Config, ProtocolVersion};
-use crate::{ciphersuite::CiphersuiteName, codec::Codec};
 
-#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, TlsSize, TlsSerialize)]
 pub struct CapabilitiesExtension {
-    versions: Vec<ProtocolVersion>,
-    ciphersuites: Vec<CiphersuiteName>,
-    extensions: Vec<ExtensionType>,
+    versions: TlsVecU8<ProtocolVersion>,
+    ciphersuites: TlsVecU8<CiphersuiteName>,
+    extensions: TlsVecU8<ExtensionType>,
 }
 
 impl Default for CapabilitiesExtension {
     fn default() -> Self {
         CapabilitiesExtension {
-            versions: Config::supported_versions().to_vec(),
-            ciphersuites: Config::supported_ciphersuite_names().to_vec(),
-            extensions: Config::supported_extensions().to_vec(),
+            versions: Config::supported_versions().into(),
+            ciphersuites: Config::supported_ciphersuite_names().into(),
+            extensions: Config::supported_extensions().into(),
         }
     }
 }
@@ -52,61 +50,48 @@ impl CapabilitiesExtension {
     ) -> Self {
         Self {
             versions: match versions {
-                Some(v) => v.to_vec(),
-                None => Config::supported_versions().to_vec(),
+                Some(v) => v.into(),
+                None => Config::supported_versions().into(),
             },
             ciphersuites: match ciphersuites {
-                Some(c) => c.to_vec(),
-                None => Config::supported_ciphersuite_names().to_vec(),
+                Some(c) => c.into(),
+                None => Config::supported_ciphersuite_names().into(),
             },
             extensions: match extensions {
-                Some(e) => e.to_vec(),
-                None => Config::supported_extensions().to_vec(),
+                Some(e) => e.into(),
+                None => Config::supported_extensions().into(),
             },
         }
     }
     /// Get a reference to the list of versions in this extension.
     pub fn versions(&self) -> &[ProtocolVersion] {
-        &self.versions
+        self.versions.as_slice()
     }
     /// Get a reference to the list of cipher suites in this extension.
     pub fn ciphersuites(&self) -> &[CiphersuiteName] {
-        &self.ciphersuites
+        self.ciphersuites.as_slice()
     }
     /// Get a reference to the list of supported extensions.
     pub fn extensions(&self) -> &[ExtensionType] {
-        &self.extensions
+        self.extensions.as_slice()
     }
 }
 
-#[typetag::serde]
-impl Extension for CapabilitiesExtension {
-    fn extension_type(&self) -> ExtensionType {
-        ExtensionType::Capabilities
-    }
-
-    /// Build a new CapabilitiesExtension from a byte slice.
-    /// Checks that we can work with these capabilities and returns an
-    /// `ExtensionError` if not.
-    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ExtensionError>
-    where
-        Self: Sized,
-    {
-        let cursor = &mut Cursor::new(bytes);
-
-        let version_numbers: Vec<u8> = decode_vec(VecSize::VecU8, cursor)?;
-        let mut versions = Vec::new();
-        for &version_number in version_numbers.iter() {
-            versions.push(ProtocolVersion::try_from(version_number)?)
-        }
+// We deserialize manually in order to perform some checks on the values.
+impl tls_codec::Deserialize for CapabilitiesExtension {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
+        let versions = TlsVecU8::<ProtocolVersion>::tls_deserialize(bytes)?;
         // There must be at least one version we support.
         if versions.is_empty() {
-            let e = ExtensionError::Capabilities(CapabilitiesExtensionError::EmptyVersionsField);
+            let e = tls_codec::Error::DecodingError(format!(
+                "{:?}",
+                CapabilitiesExtensionError::EmptyVersionsField
+            ));
             log::error!("Error reading capabilities extension form bytes: {:?}", e);
             return Err(e);
         }
 
-        let ciphersuites: Vec<CiphersuiteName> = decode_vec(VecSize::VecU8, cursor)?;
+        let ciphersuites = TlsVecU8::<CiphersuiteName>::tls_deserialize(bytes)?;
         // There must be at least one ciphersuite we support.
         let mut supported_suite = false;
         for suite in ciphersuites.iter() {
@@ -116,47 +101,15 @@ impl Extension for CapabilitiesExtension {
             }
         }
         if !supported_suite {
-            return Err(ExtensionError::Capabilities(
-                super::CapabilitiesExtensionError::UnsupportedCiphersuite,
-            ));
+            return Err(tls_codec::Error::DecodingError(format!(
+                "{:?}",
+                CapabilitiesExtensionError::UnsupportedCiphersuite,
+            )));
         }
 
-        let extensions = decode_vec(VecSize::VecU8, cursor)?;
+        let extensions = TlsVecU8::tls_deserialize(bytes)?;
 
         Ok(Self {
-            versions,
-            ciphersuites,
-            extensions,
-        })
-    }
-
-    fn to_extension_struct(&self) -> ExtensionStruct {
-        let mut extension_data: Vec<u8> = vec![];
-        encode_vec(VecSize::VecU8, &mut extension_data, &self.versions).unwrap();
-        encode_vec(VecSize::VecU8, &mut extension_data, &self.ciphersuites).unwrap();
-        encode_vec(VecSize::VecU8, &mut extension_data, &self.extensions).unwrap();
-        let extension_type = ExtensionType::Capabilities;
-        ExtensionStruct::new(extension_type, extension_data)
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-impl Codec for CapabilitiesExtension {
-    fn encode(&self, mut buffer: &mut Vec<u8>) -> Result<(), crate::codec::CodecError> {
-        encode_vec(VecSize::VecU8, &mut buffer, &self.versions)?;
-        encode_vec(VecSize::VecU8, &mut buffer, &self.ciphersuites)?;
-        encode_vec(VecSize::VecU8, &mut buffer, &self.extensions)?;
-        Ok(())
-    }
-
-    fn decode(cursor: &mut Cursor) -> Result<Self, crate::codec::CodecError> {
-        let versions: Vec<ProtocolVersion> = decode_vec(VecSize::VecU8, cursor)?;
-        let ciphersuites: Vec<CiphersuiteName> = decode_vec(VecSize::VecU8, cursor)?;
-        let extensions = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(CapabilitiesExtension {
             versions,
             ciphersuites,
             extensions,

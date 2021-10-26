@@ -32,9 +32,10 @@
 
 use super::*;
 use crate::group::{GroupEpoch, GroupId};
-use crate::utils::randombytes;
+use openmls_traits::{random::OpenMlsRand, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
+use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU8, TlsVecU16};
 
 /// Type of PSK.
 /// ```text
@@ -46,7 +47,9 @@ use std::convert::TryFrom;
 ///   (255)
 /// } PSKType;
 /// ```
-#[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Clone, Copy, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
 #[repr(u8)]
 pub enum PskType {
     External = 1,
@@ -67,19 +70,23 @@ impl TryFrom<u8> for PskType {
 }
 
 /// External PSK.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
 pub struct ExternalPsk {
-    psk_id: Vec<u8>,
+    psk_id: TlsByteVecU8,
 }
 
 impl ExternalPsk {
     /// Create a new `ExternalPsk` from a PSK ID
     pub fn new(psk_id: Vec<u8>) -> Self {
-        Self { psk_id }
+        Self {
+            psk_id: psk_id.into(),
+        }
     }
     /// Return the PSK ID
     pub fn psk_id(&self) -> &[u8] {
-        &self.psk_id
+        self.psk_id.as_slice()
     }
 }
 
@@ -93,11 +100,21 @@ pub struct ExternalPskBundle {
 
 impl ExternalPskBundle {
     /// Create a new bundle
-    pub fn new(ciphersuite: &Ciphersuite, secret: Secret, psk_id: Vec<u8>) -> Self {
+    pub fn new(
+        ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
+        secret: Secret,
+        psk_id: Vec<u8>,
+    ) -> Self {
         Self {
             secret,
-            nonce: randombytes(ciphersuite.hash_length()),
-            external_psk: ExternalPsk { psk_id },
+            nonce: backend
+                .rand()
+                .random_vec(ciphersuite.hash_length())
+                .unwrap(),
+            external_psk: ExternalPsk {
+                psk_id: psk_id.into(),
+            },
         }
     }
     /// Return the `PreSharedKeyID`
@@ -105,7 +122,7 @@ impl ExternalPskBundle {
         PreSharedKeyId {
             psk_type: PskType::External,
             psk: Psk::External(self.external_psk.clone()),
-            psk_nonce: self.nonce.clone(),
+            psk_nonce: self.nonce.clone().into(),
         }
     }
     /// Return the secret
@@ -114,7 +131,9 @@ impl ExternalPskBundle {
     }
 }
 /// ReInit PSK.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
 pub struct ReinitPsk {
     pub(crate) psk_group_id: GroupId,
     pub(crate) psk_epoch: GroupEpoch,
@@ -132,7 +151,9 @@ impl ReinitPsk {
 }
 
 /// Branch PSK
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
 pub struct BranchPsk {
     pub(crate) psk_group_id: GroupId,
     pub(crate) psk_epoch: GroupEpoch,
@@ -181,7 +202,7 @@ pub enum Psk {
 pub struct PreSharedKeyId {
     pub(crate) psk_type: PskType,
     pub(crate) psk: Psk,
-    pub(crate) psk_nonce: Vec<u8>,
+    pub(crate) psk_nonce: TlsByteVecU8,
 }
 
 impl PreSharedKeyId {
@@ -190,7 +211,7 @@ impl PreSharedKeyId {
         Self {
             psk_type,
             psk,
-            psk_nonce,
+            psk_nonce: psk_nonce.into(),
         }
     }
     /// Return the type of the PSK
@@ -203,7 +224,7 @@ impl PreSharedKeyId {
     }
     /// Return the PSK nonce
     pub fn psk_nonce(&self) -> &[u8] {
-        &self.psk_nonce
+        self.psk_nonce.as_slice()
     }
 }
 
@@ -211,14 +232,15 @@ impl PreSharedKeyId {
 /// struct {
 ///     PreSharedKeyID psks<0..2^16-1>;
 /// } PreSharedKeys;
+#[derive(TlsDeserialize, TlsSerialize, TlsSize)]
 pub struct PreSharedKeys {
-    pub(crate) psks: Vec<PreSharedKeyId>,
+    pub(crate) psks: TlsVecU16<PreSharedKeyId>,
 }
 
 impl PreSharedKeys {
     /// Return the `PreSharedKeyID`s
-    pub fn psks(&self) -> &Vec<PreSharedKeyId> {
-        &self.psks
+    pub fn psks(&self) -> &[PreSharedKeyId] {
+        self.psks.as_slice()
     }
 }
 
@@ -228,6 +250,7 @@ impl PreSharedKeys {
 ///     uint16 index;
 ///     uint16 count;
 /// } PSKLabel;
+#[derive(TlsSerialize, TlsSize)]
 pub(crate) struct PskLabel<'a> {
     pub(crate) id: &'a PreSharedKeyId,
     pub(crate) index: u16,
@@ -251,6 +274,7 @@ impl PskSecret {
     /// Create a new `PskSecret` from PSK IDs and PSKs
     pub fn new(
         ciphersuite: &'static Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
         psk_ids: &[PreSharedKeyId],
         psks: &[Secret],
     ) -> Result<Self, PskSecretError> {
@@ -264,14 +288,20 @@ impl PskSecret {
         let mls_version = ProtocolVersion::default();
         for (index, psk) in psks.iter().enumerate() {
             let zero_secret = Secret::zero(ciphersuite, mls_version);
-            let psk_input = zero_secret.hkdf_extract(psk);
+            let psk_input = zero_secret.hkdf_extract(backend, psk);
             let psk_label = PskLabel::new(&psk_ids[index], index as u16, psks.len() as u16)
-                .encode_detached()
-                // It is safe to unwrap here, because the struct contains no vectors
-                .unwrap();
+                .tls_serialize_detached()
+                .map_err(|_| PskSecretError::EncodingError)?;
 
-            let psk_secret =
-                psk_input.kdf_expand_label("derived psk", &psk_label, ciphersuite.hash_length());
+            // FIXME: remove unwrap
+            let psk_secret = psk_input
+                .kdf_expand_label(
+                    backend,
+                    "derived psk",
+                    &psk_label,
+                    ciphersuite.hash_length(),
+                )
+                .unwrap();
             secret.extend_from_slice(psk_secret.as_slice());
         }
         Ok(Self {
@@ -284,26 +314,29 @@ impl PskSecret {
         &self.secret
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
-    pub(crate) fn random(ciphersuite: &'static Ciphersuite) -> Self {
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn random(
+        ciphersuite: &'static Ciphersuite,
+        rng: &impl OpenMlsCryptoProvider,
+    ) -> Self {
         Self {
-            secret: Secret::random(ciphersuite, None /* MLS version */),
+            secret: Secret::random(ciphersuite, rng, None /* MLS version */),
         }
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn clone(&self) -> Self {
         Self {
             secret: self.secret.clone(),
         }
     }
 
-    #[cfg(any(feature = "expose-test-vectors", test))]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn from_slice(b: &[u8]) -> Self {
         Self { secret: b.into() }
     }

@@ -1,23 +1,24 @@
 //! Test decryption key index computation in larger trees.
-use openmls::prelude::*;
+use openmls::{
+    prelude::*,
+    test_utils::test_framework::{ActionType, CodecUse, ManagedTestSetup},
+};
 
 #[macro_use]
 mod utils;
-
-use utils::managed_utils::*;
 
 ctest_ciphersuites!(decryption_key_index_computation, test(ciphersuite_name: CiphersuiteName) {
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
     // Some basic setup functions for the managed group.
-    let handshake_message_format = HandshakeMessageFormat::Plaintext;
+    let handshake_message_format = WireFormat::MlsPlaintext;
     let update_policy = UpdatePolicy::default();
     let callbacks = ManagedGroupCallbacks::default();
     let managed_group_config =
         ManagedGroupConfig::new(handshake_message_format, update_policy, 10, 0, false, callbacks);
     let number_of_clients = 20;
-    let setup = ManagedTestSetup::new(managed_group_config, number_of_clients);
+    let setup = ManagedTestSetup::new(managed_group_config, number_of_clients, CodecUse::StructMessages);
     // Create a basic group with more than 4 members to create a tree with intermediate nodes.
     let group_id = setup.create_random_group(10, ciphersuite).unwrap();
     let mut groups = setup.groups.borrow_mut();
@@ -36,7 +37,7 @@ ctest_ciphersuites!(decryption_key_index_computation, test(ciphersuite_name: Cip
         .unwrap()
         .clone();
     setup
-        .remove_clients_by_index(ActionType::Commit, group, &remover_id, &[2])
+        .remove_clients_by_index(ActionType::Commit, group, remover_id, &[2])
         .unwrap();
 
     // Then we have the member at index 7 remove the one at index 3. This
@@ -52,7 +53,7 @@ ctest_ciphersuites!(decryption_key_index_computation, test(ciphersuite_name: Cip
         .unwrap()
         .clone();
     setup
-        .remove_clients_by_index(ActionType::Commit, group, &remover_id, &[3])
+        .remove_clients_by_index(ActionType::Commit, group, remover_id, &[3])
         .unwrap();
 
     // Since the decryption failure doesn't cause a panic, but only an error

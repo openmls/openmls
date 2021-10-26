@@ -6,6 +6,7 @@
 //! * which extensions are supported
 
 use openmls::prelude::*;
+use tls_codec::Serialize;
 
 #[test]
 fn protocol_version() {
@@ -13,11 +14,11 @@ fn protocol_version() {
     let default_version = ProtocolVersion::default();
 
     // The encoding of the protocol version is the version as u8.
-    let mls10_encoded = mls10_version.encode_detached().unwrap();
+    let mls10_encoded = mls10_version.tls_serialize_detached().unwrap();
     assert_eq!(1, mls10_encoded.len());
     assert_eq!(mls10_encoded[0], mls10_version as u8);
 
-    let default_encoded = default_version.encode_detached().unwrap();
+    let default_encoded = default_version.tls_serialize_detached().unwrap();
     assert_eq!(1, default_encoded.len());
     assert_eq!(default_encoded[0], default_version as u8);
 

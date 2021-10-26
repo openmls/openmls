@@ -1,12 +1,12 @@
 use reqwest::{self, blocking::Client, StatusCode};
 use url::Url;
 
-use openmls::prelude::*;
+use tls_codec::Serialize;
 
 // TODO: return objects not bytes.
 
-pub fn post(url: &Url, msg: &impl Codec) -> Result<Vec<u8>, String> {
-    let serialized_msg = msg.encode_detached().unwrap();
+pub fn post(url: &Url, msg: &impl Serialize) -> Result<Vec<u8>, String> {
+    let serialized_msg = msg.tls_serialize_detached().unwrap();
     log::debug!("Post {:?}", url);
     log::trace!("Payload: {:?}", serialized_msg);
     let client = Client::new();

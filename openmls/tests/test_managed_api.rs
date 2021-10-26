@@ -1,13 +1,14 @@
-use openmls::prelude::*;
+use openmls::{
+    prelude::*,
+    test_utils::test_framework::{ActionType, CodecUse, ManagedTestSetup},
+};
 
 mod utils;
-
-use utils::managed_utils::*;
 
 #[test]
 fn test_managed_api() {
     // Some basic setup functions for the managed group.
-    let handshake_message_format = HandshakeMessageFormat::Plaintext;
+    let handshake_message_format = WireFormat::MlsPlaintext;
     let update_policy = UpdatePolicy::default();
     let callbacks = ManagedGroupCallbacks::default();
     let managed_group_config = ManagedGroupConfig::new(
@@ -19,7 +20,11 @@ fn test_managed_api() {
         callbacks,
     );
     let number_of_clients = 20;
-    let setup = ManagedTestSetup::new(managed_group_config, number_of_clients);
+    let setup = ManagedTestSetup::new(
+        managed_group_config,
+        number_of_clients,
+        CodecUse::SerializedMessages,
+    );
 
     for ciphersuite in Config::supported_ciphersuites() {
         let group_id = setup.create_random_group(3, ciphersuite).unwrap();

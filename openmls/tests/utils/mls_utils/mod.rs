@@ -6,10 +6,13 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use evercrypt::prelude::*;
+use ::rand::rngs::OsRng;
+use ::rand::RngCore;
+use openmls::group::create_commit::Proposals;
 use openmls::prelude::*;
-use rand::rngs::OsRng;
-use rand::RngCore;
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::types::SignatureScheme;
+use openmls_traits::OpenMlsCryptoProvider;
 
 /// Configuration of a client meant to be used in a test setup.
 #[derive(Clone)]
@@ -23,7 +26,7 @@ pub(crate) struct TestClientConfig {
 /// Configuration of a group meant to be used in a test setup.
 pub(crate) struct TestGroupConfig {
     pub(crate) ciphersuite: CiphersuiteName,
-    pub(crate) config: GroupConfig,
+    pub(crate) config: MlsGroupConfig,
     pub(crate) members: Vec<TestClientConfig>,
 }
 
@@ -45,11 +48,12 @@ impl TestClient {
     pub(crate) fn find_key_package_bundle(
         &self,
         key_package: &KeyPackage,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Option<KeyPackageBundle> {
         let mut key_package_bundles = self.key_package_bundles.borrow_mut();
         key_package_bundles
             .iter()
-            .position(|x| x.key_package().hash() == key_package.hash())
+            .position(|x| x.key_package().hash(backend) == key_package.hash(backend))
             .map(|index| key_package_bundles.remove(index))
     }
 }
@@ -67,6 +71,7 @@ const KEY_PACKAGE_COUNT: usize = 10;
 
 /// The setup function creates a set of groups and clients.
 pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
+    let crypto = OpenMlsRustCrypto::default();
     let mut test_clients: HashMap<&'static str, RefCell<TestClient>> = HashMap::new();
     let mut key_store: HashMap<(&'static str, CiphersuiteName), Vec<KeyPackage>> = HashMap::new();
     // Initialize the clients for which we have configurations.
@@ -82,19 +87,27 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 client.name.as_bytes().to_vec(),
                 CredentialType::Basic,
                 SignatureScheme::from(ciphersuite),
+                &crypto,
             )
             .unwrap();
             // Create a number of key packages.
             let mut key_packages = Vec::new();
             for _ in 0..KEY_PACKAGE_COUNT {
-                let capabilities_extension =
-                    Box::new(CapabilitiesExtension::new(None, Some(&[ciphersuite]), None));
-                let lifetime_extension = Box::new(LifetimeExtension::new(60));
-                let mandatory_extensions: Vec<Box<dyn Extension>> =
+                let capabilities_extension = Extension::Capabilities(CapabilitiesExtension::new(
+                    None,
+                    Some(&[ciphersuite]),
+                    None,
+                ));
+                let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+                let mandatory_extensions: Vec<Extension> =
                     vec![capabilities_extension, lifetime_extension];
-                let key_package_bundle: KeyPackageBundle =
-                    KeyPackageBundle::new(&[ciphersuite], &credential_bundle, mandatory_extensions)
-                        .unwrap();
+                let key_package_bundle: KeyPackageBundle = KeyPackageBundle::new(
+                    &[ciphersuite],
+                    &credential_bundle,
+                    &crypto,
+                    mandatory_extensions,
+                )
+                .unwrap();
                 key_packages.push(key_package_bundle.key_package().clone());
                 key_package_bundles.push(key_package_bundle);
             }
@@ -130,7 +143,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             .unwrap();
         // Figure out which KeyPackageBundle that key package corresponds to.
         let initial_key_package_bundle = initial_group_member
-            .find_key_package_bundle(&initial_key_package)
+            .find_key_package_bundle(&initial_key_package, &crypto)
             .unwrap();
         // Get the credential bundle corresponding to the ciphersuite.
         let initial_credential_bundle = initial_group_member
@@ -141,6 +154,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
         let mls_group = MlsGroup::new(
             &group_id.to_be_bytes(),
             group_config.ciphersuite,
+            &crypto,
             initial_key_package_bundle,
             group_config.config,
             None, /* Initial PSK */
@@ -149,6 +163,8 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
         .unwrap();
         let mut proposal_list = Vec::new();
         let group_aad = b"";
+        // Framing parameters
+        let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
         initial_group_member
             .group_states
             .borrow_mut()
@@ -175,9 +191,10 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 // KeyPackage.
                 let add_proposal = mls_group
                     .create_add_proposal(
-                        group_aad,
+                        framing_parameters,
                         initial_credential_bundle,
                         next_member_key_package,
+                        &crypto,
                     )
                     .unwrap();
                 proposal_list.push(add_proposal);
@@ -186,12 +203,17 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             // proposals.
             let (commit_mls_plaintext, welcome_option, key_package_bundle_option) = mls_group
                 .create_commit(
-                    group_aad,
-                    &initial_credential_bundle,
-                    &(proposal_list.iter().collect::<Vec<&MlsPlaintext>>()),
-                    &[],
+                    framing_parameters,
+                    initial_credential_bundle,
+                    Proposals {
+                        proposals_by_reference: &(proposal_list
+                            .iter()
+                            .collect::<Vec<&MlsPlaintext>>()),
+                        proposals_by_value: &[],
+                    },
                     true, /* Set this to true to populate the tree a little bit. */
                     None, /* PSKs are not supported here */
+                    &crypto,
                 )
                 .unwrap();
             let welcome = welcome_option.unwrap();
@@ -203,6 +225,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 &(proposal_list.iter().collect::<Vec<&MlsPlaintext>>()),
                 &[key_package_bundle],
                 None,
+                &crypto,
             ) {
                 Ok(_) => (),
                 Err(err) => panic!("Error applying Commit: {:?}", err),
@@ -223,14 +246,16 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                             .key_package_bundles
                             .borrow()
                             .iter()
-                            .any(|y| y.key_package().hash() == x.key_package_hash)
+                            .any(|y| y.key_package().hash(&crypto) == x.key_package_hash.as_slice())
                     })
                     .unwrap();
                 let kpb_position = new_group_member
                     .key_package_bundles
                     .borrow()
                     .iter()
-                    .position(|y| y.key_package().hash() == member_secret.key_package_hash)
+                    .position(|y| {
+                        y.key_package().hash(&crypto) == member_secret.key_package_hash.as_slice()
+                    })
                     .unwrap();
                 let key_package_bundle = new_group_member
                     .key_package_bundles
@@ -243,6 +268,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     Some(mls_group.tree().public_key_tree_copy()),
                     key_package_bundle,
                     None, /* PSKs not supported here */
+                    &crypto,
                 ) {
                     Ok(group) => group,
                     Err(err) => panic!("Error creating new group from Welcome: {:?}", err),
@@ -265,8 +291,11 @@ pub fn random_usize() -> usize {
     OsRng.next_u64() as usize
 }
 
+/// No crypto randomness!
 pub fn randombytes(n: usize) -> Vec<u8> {
-    random_vec(n)
+    let mut out = vec![0u8; n];
+    OsRng.fill_bytes(&mut out);
+    out
 }
 
 #[test]
@@ -285,7 +314,7 @@ fn test_setup() {
         name: "TestClientConfigB",
         ciphersuites: vec![CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519],
     };
-    let group_config = GroupConfig::default();
+    let group_config = MlsGroupConfig::default();
     let test_group_config = TestGroupConfig {
         ciphersuite: CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         config: group_config,

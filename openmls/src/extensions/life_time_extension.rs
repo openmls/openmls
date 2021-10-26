@@ -18,18 +18,17 @@
 //! uint64 not_before;
 //! uint64 not_after;
 //! ```
-use super::{
-    Deserialize, Extension, ExtensionError, ExtensionStruct, ExtensionType, LifetimeExtensionError,
-    Serialize,
-};
-use crate::codec::{Codec, Cursor};
+use tls_codec::{Size, TlsSerialize, TlsSize};
+
+use super::{Deserialize, LifetimeExtensionError, Serialize};
 use crate::config::Config;
 
+use std::io::Read;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// The lifetime extension holds a not before and a not after time measured in
 /// seconds since the Unix epoch (1970-01-01T00:00:00Z).
-#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub struct LifetimeExtension {
     not_before: u64,
     not_after: u64,
@@ -69,56 +68,26 @@ impl Default for LifetimeExtension {
     }
 }
 
-#[typetag::serde]
-impl Extension for LifetimeExtension {
-    fn extension_type(&self) -> ExtensionType {
-        ExtensionType::Lifetime
-    }
-
-    /// Build a new LifetimeExtension from a byte slice.
-    fn new_from_bytes(bytes: &[u8]) -> Result<Self, ExtensionError>
-    where
-        Self: Sized,
-    {
-        let mut cursor = Cursor::new(bytes);
-        let not_before = u64::decode(&mut cursor)?;
-        let not_after = u64::decode(&mut cursor)?;
+// Deserialize manually in order to do additional validity checks.
+impl tls_codec::Deserialize for LifetimeExtension {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
+        let not_before = u64::tls_deserialize(bytes)?;
+        let not_after = u64::tls_deserialize(bytes)?;
         let out = Self {
             not_before,
             not_after,
         };
         if !out.is_valid() {
-            return Err(ExtensionError::Lifetime(LifetimeExtensionError::Invalid));
+            log::trace!(
+                "Lifetime expired!\n\tnot before: {:?} - not_after: {:?}",
+                not_before,
+                not_after
+            );
+            return Err(tls_codec::Error::DecodingError(format!(
+                "{:?}",
+                LifetimeExtensionError::Invalid
+            )));
         }
         Ok(out)
-    }
-
-    fn to_extension_struct(&self) -> ExtensionStruct {
-        let mut extension_data: Vec<u8> = vec![];
-        self.not_before.encode(&mut extension_data).unwrap();
-        self.not_after.encode(&mut extension_data).unwrap();
-        let extension_type = ExtensionType::Lifetime;
-        ExtensionStruct::new(extension_type, extension_data)
-    }
-
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-impl Codec for LifetimeExtension {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), crate::codec::CodecError> {
-        self.not_before.encode(buffer).unwrap();
-        self.not_after.encode(buffer).unwrap();
-        Ok(())
-    }
-
-    fn decode(mut cursor: &mut Cursor) -> Result<Self, crate::codec::CodecError> {
-        let not_before = u64::decode(&mut cursor)?;
-        let not_after = u64::decode(&mut cursor)?;
-        Ok(Self {
-            not_before,
-            not_after,
-        })
     }
 }

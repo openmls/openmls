@@ -1,15 +1,15 @@
 //! Prelude for OpenMLS.
 //! Include this to get access to all the public functions of OpenMLS.
 
-pub use crate::group::GroupConfig;
 pub use crate::group::MlsGroup;
+pub use crate::group::MlsGroupConfig;
 pub use crate::group::{
-    GroupEvent, HandshakeMessageFormat, InvalidMessageError, ManagedGroup, ManagedGroupCallbacks,
-    ManagedGroupConfig, ManagedGroupError, MlsMessage, Removal, UpdatePolicy,
+    GroupEvent, InvalidMessageError, ManagedGroup, ManagedGroupCallbacks, ManagedGroupConfig,
+    ManagedGroupError, MlsMessageOut, Removal, UpdatePolicy, WireFormat,
 };
 // Errors
 pub use crate::error::ErrorString;
-pub use crate::group::errors::{ApplyCommitError, CreateCommitError, GroupError, WelcomeError};
+pub use crate::group::errors::{ApplyCommitError, CreateCommitError, MlsGroupError, WelcomeError};
 
 // Indexes
 pub use crate::tree::index::LeafIndex;
@@ -18,7 +18,6 @@ pub use crate::tree::index::LeafIndex;
 pub use crate::schedule::psk::ExternalPskBundle;
 
 pub use crate::ciphersuite::*;
-pub use crate::codec::*;
 pub use crate::config::*;
 pub use crate::credentials::*;
 pub use crate::extensions::*;
@@ -40,3 +39,8 @@ pub use crate::utils::*;
 // Things we need for fuzzing (but not otherwise)
 #[cfg(fuzzing)]
 pub use crate::messages::proposals::Proposal;
+
+// TLS codec traits
+pub use tls_codec::{
+    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size as TlsSizeTrait,
+};

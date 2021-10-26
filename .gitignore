@@ -1,8 +1,8 @@
-/target
+**/target
 delivery-service/ds/target
 **/*.rs.bk
 .DS_Store
 .vscode
-Cargo.lock
+**/Cargo.lock
 *.code-workspace
 /test_vectors/

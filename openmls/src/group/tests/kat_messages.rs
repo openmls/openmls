@@ -6,17 +6,19 @@
 
 use crate::{
     ciphersuite::signable::Signable,
-    group::GroupEpoch,
-    messages::{Commit, GroupInfo, GroupSecrets, PublicGroupState},
+    group::{create_commit::Proposals, GroupEpoch, WireFormat},
+    messages::{public_group_state::VerifiablePublicGroupState, Commit, GroupInfo, GroupSecrets},
     messages::{ConfirmationTag, GroupInfoPayload},
     node::Node,
     prelude::*,
-    test_util::*,
+    test_utils::*,
     utils::*,
 };
-use evercrypt::prelude::random_vec;
 
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::{random::OpenMlsRand, types::SignatureScheme, OpenMlsCryptoProvider};
 use serde::{self, Deserialize, Serialize};
+use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize, TlsSliceU32, TlsVecU32};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct MessagesTestVector {
@@ -48,24 +50,28 @@ pub struct MessagesTestVector {
 }
 
 pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVector {
+    let crypto = OpenMlsRustCrypto::default();
     let ciphersuite_name = ciphersuite.name();
     let credential_bundle = CredentialBundle::new(
         b"OpenMLS rocks".to_vec(),
         CredentialType::Basic,
         SignatureScheme::from(ciphersuite_name),
+        &crypto,
     )
     .unwrap();
     let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new()).unwrap();
+        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, &crypto, Vec::new())
+            .unwrap();
     let capabilities = CapabilitiesExtension::default();
     let lifetime = LifetimeExtension::default();
 
     // Let's create a group
-    let group_id = GroupId::random();
-    let config = GroupConfig::default();
+    let group_id = GroupId::random(&crypto);
+    let config = MlsGroupConfig::default();
     let mut group = MlsGroup::new(
-        &group_id.as_slice(),
+        group_id.as_slice(),
         ciphersuite_name,
+        &crypto,
         key_package_bundle,
         config,
         None,
@@ -79,21 +85,31 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     let group_info = GroupInfoPayload::new(
         group_id.clone(),
         GroupEpoch(0),
-        random_vec(ciphersuite.hash_length()),
-        random_vec(ciphersuite.hash_length()),
-        vec![Box::new(RatchetTreeExtension::new(ratchet_tree.clone()))],
+        crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
+        crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
+        vec![Extension::RatchetTree(RatchetTreeExtension::new(
+            ratchet_tree.clone(),
+        ))],
         ConfirmationTag(Mac {
-            mac_value: random_vec(ciphersuite.hash_length()),
+            mac_value: crypto
+                .rand()
+                .random_vec(ciphersuite.hash_length())
+                .unwrap()
+                .into(),
         }),
         LeafIndex::from(random_u32()),
     );
-    let group_info = group_info.sign(&&credential_bundle).unwrap();
-    let group_secrets = GroupSecrets::random_encoded(ciphersuite, ProtocolVersion::default());
-    let public_group_state = group.export_public_group_state(&credential_bundle).unwrap();
+    let group_info = group_info.sign(&crypto, &credential_bundle).unwrap();
+    let group_secrets =
+        GroupSecrets::random_encoded(ciphersuite, &crypto, ProtocolVersion::default());
+    let public_group_state = group
+        .export_public_group_state(&crypto, &credential_bundle)
+        .unwrap();
 
     // Create some proposals
     let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new()).unwrap();
+        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, &crypto, Vec::new())
+            .unwrap();
     let key_package = key_package_bundle.key_package();
 
     let add_proposal = AddProposal {
@@ -108,39 +124,51 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
 
     let psk_id = PreSharedKeyId::new(
         PskType::External,
-        Psk::External(ExternalPsk::new(random_vec(ciphersuite.hash_length()))),
-        random_vec(ciphersuite.hash_length()),
+        Psk::External(ExternalPsk::new(
+            crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
+        )),
+        crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
     );
 
-    let psk_proposal = PreSharedKeyProposal { psk: psk_id };
+    let psk_proposal = PreSharedKeyProposal::new(psk_id);
     let reinit_proposal = ReInitProposal {
         group_id,
         version: ProtocolVersion::Mls10,
         ciphersuite: ciphersuite_name,
-        extensions: vec![Box::new(RatchetTreeExtension::new(ratchet_tree.clone()))],
+        extensions: vec![Extension::RatchetTree(RatchetTreeExtension::new(
+            ratchet_tree.clone(),
+        ))]
+        .into(),
     };
     // We don't support external init proposals yet.
-    let external_init_proposal: Vec<u8> = vec![];
+    let external_init_proposal = tls_codec::TlsByteVecU16::new(Vec::new());
     // We don't support app ack proposals yet.
-    let app_ack_proposal: Vec<u8> = vec![];
+    let app_ack_proposal = tls_codec::TlsByteVecU32::new(Vec::new());
     let joiner_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, Vec::new()).unwrap();
+        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, &crypto, Vec::new())
+            .unwrap();
+
+    let framing_parameters = FramingParameters::new(b"aad", WireFormat::MlsCiphertext);
 
     let add_proposal_pt = group
         .create_add_proposal(
-            b"aad",
+            framing_parameters,
             &credential_bundle,
             joiner_key_package_bundle.key_package().clone(),
+            &crypto,
         )
         .unwrap();
     let (commit_pt, welcome_option, _option_kpb) = group
         .create_commit(
-            b"aad",
+            framing_parameters,
             &credential_bundle,
-            &[&add_proposal_pt],
-            &[],
+            Proposals {
+                proposals_by_reference: &[&add_proposal_pt],
+                proposals_by_value: &[],
+            },
             true,
             None,
+            &crypto,
         )
         .unwrap();
     let commit = if let MlsPlaintextContentType::Commit(commit) = commit_pt.content() {
@@ -150,9 +178,15 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     };
     let welcome = welcome_option.unwrap();
     let mls_ciphertext_application = group
-        .create_application_message(b"aad", b"msg", &credential_bundle, random_u8() as usize)
+        .create_application_message(
+            b"aad",
+            b"msg",
+            &credential_bundle,
+            random_u8() as usize,
+            &crypto,
+        )
         .unwrap();
-    let mls_plaintext_application = group.decrypt(&mls_ciphertext_application).unwrap();
+    let mls_plaintext_application = group.decrypt(&mls_ciphertext_application, &crypto).unwrap();
 
     let encryption_target = match random_u32() % 3 {
         0 => commit_pt.clone(),
@@ -162,37 +196,39 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     };
 
     let mls_ciphertext = group
-        .encrypt(encryption_target, random_u8() as usize)
+        .encrypt(encryption_target, random_u8() as usize, &crypto)
         .unwrap();
 
     MessagesTestVector {
-        key_package: bytes_to_hex(&key_package.encode_detached().unwrap()), // serialized KeyPackage,
-        capabilities: bytes_to_hex(&capabilities.encode_detached().unwrap()), // serialized Capabilities,
-        lifetime: bytes_to_hex(&lifetime.encode_detached().unwrap()), // serialized {uint64 not_before; uint64 not_after;},
-        ratchet_tree: bytes_to_hex(&ratchet_tree.encode_detached().unwrap()), /* serialized optional<Node> ratchet_tree<1..2^32-1>; */
+        key_package: bytes_to_hex(&key_package.tls_serialize_detached().unwrap()), // serialized KeyPackage,
+        capabilities: bytes_to_hex(&capabilities.tls_serialize_detached().unwrap()), // serialized Capabilities,
+        lifetime: bytes_to_hex(&lifetime.tls_serialize_detached().unwrap()), // serialized {uint64 not_before; uint64 not_after;},
+        ratchet_tree: bytes_to_hex(&TlsSliceU32(&ratchet_tree).tls_serialize_detached().unwrap()), /* serialized optional<Node> ratchet_tree<1..2^32-1>; */
 
-        group_info: bytes_to_hex(&group_info.encode_detached().unwrap()), /* serialized GroupInfo */
+        group_info: bytes_to_hex(&group_info.tls_serialize_detached().unwrap()), /* serialized GroupInfo */
         group_secrets: bytes_to_hex(&group_secrets.unwrap()), /* serialized GroupSecrets */
-        welcome: bytes_to_hex(&welcome.encode_detached().unwrap()), /* serialized Welcome */
+        welcome: bytes_to_hex(&welcome.tls_serialize_detached().unwrap()), /* serialized Welcome */
 
-        public_group_state: bytes_to_hex(&public_group_state.encode_detached().unwrap()), /* serialized PublicGroupState */
+        public_group_state: bytes_to_hex(&public_group_state.tls_serialize_detached().unwrap()), /* serialized PublicGroupState */
 
-        add_proposal: bytes_to_hex(&add_proposal.encode_detached().unwrap()), /* serialized Add */
-        update_proposal: bytes_to_hex(&update_proposal.encode_detached().unwrap()), /* serialized Update */
-        remove_proposal: bytes_to_hex(&remove_proposal.encode_detached().unwrap()), /* serialized Remove */
-        pre_shared_key_proposal: bytes_to_hex(&psk_proposal.encode_detached().unwrap()), /* serialized PreSharedKey */
-        re_init_proposal: bytes_to_hex(&reinit_proposal.encode_detached().unwrap()), /* serialized ReInit */
-        external_init_proposal: bytes_to_hex(&external_init_proposal.encode_detached().unwrap()), /* serialized ExternalInit */
-        app_ack_proposal: bytes_to_hex(&app_ack_proposal.encode_detached().unwrap()), /* serialized AppAck */
+        add_proposal: bytes_to_hex(&add_proposal.tls_serialize_detached().unwrap()), /* serialized Add */
+        update_proposal: bytes_to_hex(&update_proposal.tls_serialize_detached().unwrap()), /* serialized Update */
+        remove_proposal: bytes_to_hex(&remove_proposal.tls_serialize_detached().unwrap()), /* serialized Remove */
+        pre_shared_key_proposal: bytes_to_hex(&psk_proposal.tls_serialize_detached().unwrap()), /* serialized PreSharedKey */
+        re_init_proposal: bytes_to_hex(&reinit_proposal.tls_serialize_detached().unwrap()), /* serialized ReInit */
+        external_init_proposal: bytes_to_hex(
+            &external_init_proposal.tls_serialize_detached().unwrap(),
+        ), /* serialized ExternalInit */
+        app_ack_proposal: bytes_to_hex(&app_ack_proposal.tls_serialize_detached().unwrap()), /* serialized AppAck */
 
-        commit: bytes_to_hex(&commit.encode_detached().unwrap()), /* serialized Commit */
+        commit: bytes_to_hex(&commit.tls_serialize_detached().unwrap()), /* serialized Commit */
 
         mls_plaintext_application: bytes_to_hex(
-            &mls_plaintext_application.encode_detached().unwrap(),
+            &mls_plaintext_application.tls_serialize_detached().unwrap(),
         ), /* serialized MLSPlaintext(ApplicationData) */
-        mls_plaintext_proposal: bytes_to_hex(&add_proposal_pt.encode_detached().unwrap()), /* serialized MLSPlaintext(Proposal(*)) */
-        mls_plaintext_commit: bytes_to_hex(&commit_pt.encode_detached().unwrap()), /* serialized MLSPlaintext(Commit) */
-        mls_ciphertext: bytes_to_hex(&mls_ciphertext.encode_detached().unwrap()), /* serialized MLSCiphertext */
+        mls_plaintext_proposal: bytes_to_hex(&add_proposal_pt.tls_serialize_detached().unwrap()), /* serialized MLSPlaintext(Proposal(*)) */
+        mls_plaintext_commit: bytes_to_hex(&commit_pt.tls_serialize_detached().unwrap()), /* serialized MLSPlaintext(Commit) */
+        mls_ciphertext: bytes_to_hex(&mls_ciphertext.tls_serialize_detached().unwrap()), /* serialized MLSCiphertext */
     }
 }
 
@@ -213,12 +249,13 @@ fn write_test_vectors() {
 
 pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorError> {
     // KeyPackage
-    let tv_key_package = &hex_to_bytes(&tv.key_package);
-    let my_key_package = KeyPackage::decode_detached(&tv_key_package)
+    let tv_key_package = hex_to_bytes(&tv.key_package);
+    let mut tv_key_package_slice = tv_key_package.as_slice();
+    let my_key_package = KeyPackage::tls_deserialize(&mut tv_key_package_slice)
         .unwrap()
-        .encode_detached()
+        .tls_serialize_detached()
         .unwrap();
-    if tv_key_package != &my_key_package {
+    if tv_key_package != my_key_package {
         log::error!("  KeyPackage encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_key_package);
         log::debug!("    Expected: {:x?}", tv_key_package);
@@ -229,12 +266,13 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // Capabilities
-    let tv_capabilities = &hex_to_bytes(&tv.capabilities);
-    let my_capabilities = CapabilitiesExtension::decode_detached(&tv_capabilities)
+    log::debug!("Capabilities tv: {}", tv.capabilities);
+    let tv_capabilities = hex_to_bytes(&tv.capabilities);
+    let my_capabilities = CapabilitiesExtension::tls_deserialize(&mut tv_capabilities.as_slice())
         .unwrap()
-        .encode_detached()
+        .tls_serialize_detached()
         .unwrap();
-    if tv_capabilities != &my_capabilities {
+    if tv_capabilities != my_capabilities {
         log::error!("  Capabilities encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_capabilities);
         log::debug!("    Expected: {:x?}", tv_capabilities);
@@ -245,12 +283,12 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // Lifetime
-    let tv_lifetime = &hex_to_bytes(&tv.lifetime);
-    let my_lifetime = LifetimeExtension::decode_detached(&tv_lifetime)
+    let tv_lifetime = hex_to_bytes(&tv.lifetime);
+    let my_lifetime = LifetimeExtension::tls_deserialize(&mut tv_lifetime.as_slice())
         .unwrap()
-        .encode_detached()
+        .tls_serialize_detached()
         .unwrap();
-    if tv_lifetime != &my_lifetime {
+    if tv_lifetime != my_lifetime {
         log::error!("  Lifetime encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_lifetime);
         log::debug!("    Expected: {:x?}", tv_lifetime);
@@ -261,11 +299,12 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // RatchetTree
-    let tv_ratchet_tree = &hex_to_bytes(&tv.ratchet_tree);
-    let mut cursor = Cursor::new(tv_ratchet_tree);
-    let dec_ratchet_tree: Vec<Option<Node>> = decode_vec(VecSize::VecU32, &mut cursor).unwrap();
-    let my_ratchet_tree = dec_ratchet_tree.encode_detached().unwrap();
-    if tv_ratchet_tree != &my_ratchet_tree {
+    log::trace!("  Serialized ratchet tree: {}", tv.ratchet_tree);
+    let tv_ratchet_tree = hex_to_bytes(&tv.ratchet_tree);
+    let dec_ratchet_tree =
+        TlsVecU32::<Option<Node>>::tls_deserialize(&mut tv_ratchet_tree.as_slice()).unwrap();
+    let my_ratchet_tree = dec_ratchet_tree.tls_serialize_detached().unwrap();
+    if tv_ratchet_tree != my_ratchet_tree {
         log::error!("  RatchetTree encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_ratchet_tree);
         log::debug!("    Expected: {:x?}", tv_ratchet_tree);
@@ -276,12 +315,12 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // GroupInfo
-    let tv_group_info = &hex_to_bytes(&tv.group_info);
-    let my_group_info = GroupInfo::decode_detached(&tv_group_info)
+    let tv_group_info = hex_to_bytes(&tv.group_info);
+    let my_group_info = GroupInfo::tls_deserialize(&mut tv_group_info.as_slice())
         .unwrap()
-        .encode_detached()
+        .tls_serialize_detached()
         .unwrap();
-    if tv_group_info != &my_group_info {
+    if tv_group_info != my_group_info {
         log::error!("  GroupInfo encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_group_info);
         log::debug!("    Expected: {:x?}", tv_group_info);
@@ -292,12 +331,11 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // GroupSecrets
-    let tv_group_secrets = &hex_to_bytes(&tv.group_secrets);
-    let gs = GroupSecrets::decode_detached(&tv_group_secrets).unwrap();
+    let tv_group_secrets = hex_to_bytes(&tv.group_secrets);
+    let gs = GroupSecrets::tls_deserialize(&mut tv_group_secrets.as_slice()).unwrap();
     let my_group_secrets =
-        GroupSecrets::new_encoded(&gs.joiner_secret, gs.path_secret.as_ref(), gs.psks.as_ref())
-            .unwrap();
-    if tv_group_secrets != &my_group_secrets {
+        GroupSecrets::new_encoded(&gs.joiner_secret, gs.path_secret.as_ref(), &gs.psks).unwrap();
+    if tv_group_secrets != my_group_secrets {
         log::error!("  GroupSecrets encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_group_secrets);
         log::debug!("    Expected: {:x?}", tv_group_secrets);
@@ -308,12 +346,12 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // Welcome
-    let tv_welcome = &hex_to_bytes(&tv.welcome);
-    let my_welcome = Welcome::decode_detached(&tv_welcome)
+    let tv_welcome = hex_to_bytes(&tv.welcome);
+    let my_welcome = Welcome::tls_deserialize(&mut tv_welcome.as_slice())
         .unwrap()
-        .encode_detached()
+        .tls_serialize_detached()
         .unwrap();
-    if tv_welcome != &my_welcome {
+    if tv_welcome != my_welcome {
         log::error!("  Welcome encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_welcome);
         log::debug!("    Expected: {:x?}", tv_welcome);
@@ -324,12 +362,13 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // PublicGroupState
-    let tv_public_group_state = &hex_to_bytes(&tv.public_group_state);
-    let my_public_group_state = PublicGroupState::decode_detached(&tv_public_group_state)
-        .unwrap()
-        .encode_detached()
-        .unwrap();
-    if tv_public_group_state != &my_public_group_state {
+    let tv_public_group_state = hex_to_bytes(&tv.public_group_state);
+    let my_public_group_state =
+        VerifiablePublicGroupState::tls_deserialize(&mut tv_public_group_state.as_slice())
+            .unwrap()
+            .tls_serialize_detached()
+            .unwrap();
+    if tv_public_group_state != my_public_group_state {
         log::error!("  PublicGroupState encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_public_group_state);
         log::debug!("    Expected: {:x?}", tv_public_group_state);
@@ -340,12 +379,12 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // AddProposal
-    let tv_add_proposal = &hex_to_bytes(&tv.add_proposal);
-    let my_add_proposal = AddProposal::decode_detached(&tv_add_proposal)
+    let tv_add_proposal = hex_to_bytes(&tv.add_proposal);
+    let my_add_proposal = AddProposal::tls_deserialize(&mut tv_add_proposal.as_slice())
         .unwrap()
-        .encode_detached()
+        .tls_serialize_detached()
         .unwrap();
-    if tv_add_proposal != &my_add_proposal {
+    if tv_add_proposal != my_add_proposal {
         log::error!("  AddProposal encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_add_proposal);
         log::debug!("    Expected: {:x?}", tv_add_proposal);
@@ -357,12 +396,12 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
 
     //update_proposal: String,         /* serialized Update */
     // UpdateProposal
-    let tv_update_proposal = &hex_to_bytes(&tv.update_proposal);
-    let my_update_proposal = UpdateProposal::decode_detached(&tv_update_proposal)
+    let tv_update_proposal = hex_to_bytes(&tv.update_proposal);
+    let my_update_proposal = UpdateProposal::tls_deserialize(&mut tv_update_proposal.as_slice())
         .unwrap()
-        .encode_detached()
+        .tls_serialize_detached()
         .unwrap();
-    if tv_update_proposal != &my_update_proposal {
+    if tv_update_proposal != my_update_proposal {
         log::error!("  UpdateProposal encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_update_proposal);
         log::debug!("    Expected: {:x?}", tv_update_proposal);
@@ -373,12 +412,12 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
     //remove_proposal: String,         /* serialized Remove */
     // RemoveProposal
-    let tv_remove_proposal = &hex_to_bytes(&tv.remove_proposal);
-    let my_remove_proposal = RemoveProposal::decode_detached(&tv_remove_proposal)
+    let tv_remove_proposal = hex_to_bytes(&tv.remove_proposal);
+    let my_remove_proposal = RemoveProposal::tls_deserialize(&mut tv_remove_proposal.as_slice())
         .unwrap()
-        .encode_detached()
+        .tls_serialize_detached()
         .unwrap();
-    if tv_remove_proposal != &my_remove_proposal {
+    if tv_remove_proposal != my_remove_proposal {
         log::error!("  RemoveProposal encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_remove_proposal);
         log::debug!("    Expected: {:x?}", tv_remove_proposal);
@@ -389,13 +428,13 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // PreSharedKeyProposal
-    let tv_pre_shared_key_proposal = &hex_to_bytes(&tv.pre_shared_key_proposal);
+    let tv_pre_shared_key_proposal = hex_to_bytes(&tv.pre_shared_key_proposal);
     let my_pre_shared_key_proposal =
-        PreSharedKeyProposal::decode_detached(&tv_pre_shared_key_proposal)
+        PreSharedKeyProposal::tls_deserialize(&mut tv_pre_shared_key_proposal.as_slice())
             .unwrap()
-            .encode_detached()
+            .tls_serialize_detached()
             .unwrap();
-    if tv_pre_shared_key_proposal != &my_pre_shared_key_proposal {
+    if tv_pre_shared_key_proposal != my_pre_shared_key_proposal {
         log::error!("  PreSharedKeyProposal encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_pre_shared_key_proposal);
         log::debug!("    Expected: {:x?}", tv_pre_shared_key_proposal);
@@ -408,12 +447,12 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     // Re-Init, External Init and App-Ack Proposals go here...
 
     // Commit
-    let tv_commit = &hex_to_bytes(&tv.commit);
-    let my_commit = Commit::decode_detached(&tv_commit)
+    let tv_commit = hex_to_bytes(&tv.commit);
+    let my_commit = Commit::tls_deserialize(&mut tv_commit.as_slice())
         .unwrap()
-        .encode_detached()
+        .tls_serialize_detached()
         .unwrap();
-    if tv_commit != &my_commit {
+    if tv_commit != my_commit {
         log::error!("  Commit encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_commit);
         log::debug!("    Expected: {:x?}", tv_commit);
@@ -424,12 +463,13 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // MlsPlaintextApplication
-    let tv_mls_plaintext_application = &hex_to_bytes(&tv.mls_plaintext_application);
-    let my_mls_plaintext_application = MlsPlaintext::decode_detached(&tv_mls_plaintext_application)
-        .unwrap()
-        .encode_detached()
-        .unwrap();
-    if tv_mls_plaintext_application != &my_mls_plaintext_application {
+    let tv_mls_plaintext_application = hex_to_bytes(&tv.mls_plaintext_application);
+    let my_mls_plaintext_application =
+        VerifiableMlsPlaintext::tls_deserialize(&mut tv_mls_plaintext_application.as_slice())
+            .unwrap()
+            .tls_serialize_detached()
+            .unwrap();
+    if tv_mls_plaintext_application != my_mls_plaintext_application {
         log::error!("  MlsPlaintextApplication encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_mls_plaintext_application);
         log::debug!("    Expected: {:x?}", tv_mls_plaintext_application);
@@ -440,12 +480,13 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // MlsPlaintext(Proposal)
-    let tv_mls_plaintext_proposal = &hex_to_bytes(&tv.mls_plaintext_proposal);
-    let my_mls_plaintext_proposal = MlsPlaintext::decode_detached(&tv_mls_plaintext_proposal)
-        .unwrap()
-        .encode_detached()
-        .unwrap();
-    if tv_mls_plaintext_proposal != &my_mls_plaintext_proposal {
+    let tv_mls_plaintext_proposal = hex_to_bytes(&tv.mls_plaintext_proposal);
+    let my_mls_plaintext_proposal =
+        VerifiableMlsPlaintext::tls_deserialize(&mut tv_mls_plaintext_proposal.as_slice())
+            .unwrap()
+            .tls_serialize_detached()
+            .unwrap();
+    if tv_mls_plaintext_proposal != my_mls_plaintext_proposal {
         log::error!("  MlsPlaintext(Proposal) encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_mls_plaintext_proposal);
         log::debug!("    Expected: {:x?}", tv_mls_plaintext_proposal);
@@ -456,12 +497,13 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // MlsPlaintext(Commit)
-    let tv_mls_plaintext_commit = &hex_to_bytes(&tv.mls_plaintext_commit);
-    let my_mls_plaintext_commit = MlsPlaintext::decode_detached(&tv_mls_plaintext_commit)
-        .unwrap()
-        .encode_detached()
-        .unwrap();
-    if tv_mls_plaintext_commit != &my_mls_plaintext_commit {
+    let tv_mls_plaintext_commit = hex_to_bytes(&tv.mls_plaintext_commit);
+    let my_mls_plaintext_commit =
+        VerifiableMlsPlaintext::tls_deserialize(&mut tv_mls_plaintext_commit.as_slice())
+            .unwrap()
+            .tls_serialize_detached()
+            .unwrap();
+    if tv_mls_plaintext_commit != my_mls_plaintext_commit {
         log::error!("  MlsPlaintext(Commit) encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_mls_plaintext_commit);
         log::debug!("    Expected: {:x?}", tv_mls_plaintext_commit);
@@ -472,12 +514,12 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // MlsCiphertext
-    let tv_mls_ciphertext = &hex_to_bytes(&tv.mls_ciphertext);
-    let my_mls_ciphertext = MlsCiphertext::decode_detached(&tv_mls_ciphertext)
+    let tv_mls_ciphertext = hex_to_bytes(&tv.mls_ciphertext);
+    let my_mls_ciphertext = MlsCiphertext::tls_deserialize(&mut tv_mls_ciphertext.as_slice())
         .unwrap()
-        .encode_detached()
+        .tls_serialize_detached()
         .unwrap();
-    if tv_mls_ciphertext != &my_mls_ciphertext {
+    if tv_mls_ciphertext != my_mls_ciphertext {
         log::error!("  MlsCiphertext encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_mls_ciphertext);
         log::debug!("    Expected: {:x?}", tv_mls_ciphertext);

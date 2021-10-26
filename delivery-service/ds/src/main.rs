@@ -38,6 +38,7 @@ use futures_util::StreamExt;
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 use std::sync::Mutex;
+use tls_codec::{Deserialize, Serialize, TlsSliceU16, TlsVecU32};
 
 use ds_lib::*;
 use openmls::prelude::*;
@@ -48,9 +49,9 @@ mod test;
 /// The DS state.
 /// It holds a list of clients and their information.
 #[derive(Default, Debug)]
-pub struct DsData {
+pub struct DsData<'a> {
     // (ClientIdentity, ClientInfo)
-    clients: HashMap<Vec<u8>, ClientInfo>,
+    clients: HashMap<Vec<u8>, ClientInfo<'a>>,
 
     // (group_id, epoch)
     groups: HashMap<Vec<u8>, u64>,
@@ -81,12 +82,12 @@ macro_rules! unwrap_data {
 /// An HTTP conflict (409) is returned if a client with this name exists
 /// already.
 #[post("/clients/register")]
-async fn register_client(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Responder {
+async fn register_client(mut body: Payload, data: web::Data<Mutex<DsData<'_>>>) -> impl Responder {
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
         bytes.extend_from_slice(&unwrap_item!(item));
     }
-    let info = match ClientInfo::decode(&mut Cursor::new(&bytes)) {
+    let info = match ClientInfo::tls_deserialize(&mut &bytes[..]) {
         Ok(i) => i,
         Err(_) => {
             log::error!("Invalid payload for /clients/register\n{:?}", bytes);
@@ -107,14 +108,20 @@ async fn register_client(mut body: Payload, data: web::Data<Mutex<DsData>>) -> i
 
 /// Returns a list of clients with their names and IDs.
 #[get("/clients/list")]
-async fn list_clients(_req: HttpRequest, data: web::Data<Mutex<DsData>>) -> impl Responder {
+async fn list_clients(_req: HttpRequest, data: web::Data<Mutex<DsData<'_>>>) -> impl Responder {
     log::debug!("Listing clients");
     let data = unwrap_data!(data.lock());
 
     // XXX: we could encode while iterating to be less wasteful.
-    let clients: Vec<ClientInfo> = data.deref().clients.values().cloned().collect();
+    let clients: TlsVecU32<ClientInfo> = data
+        .deref()
+        .clients
+        .values()
+        .cloned()
+        .collect::<Vec<ClientInfo>>()
+        .into();
     let mut out_bytes = Vec::new();
-    if clients.encode(&mut out_bytes).is_err() {
+    if clients.tls_serialize(&mut out_bytes).is_err() {
         return actix_web::HttpResponse::InternalServerError().finish();
     };
     actix_web::HttpResponse::Ok().body(Body::from_slice(&out_bytes))
@@ -122,7 +129,7 @@ async fn list_clients(_req: HttpRequest, data: web::Data<Mutex<DsData>>) -> impl
 
 /// Resets the server state.
 #[get("/reset")]
-async fn reset(_req: HttpRequest, data: web::Data<Mutex<DsData>>) -> impl Responder {
+async fn reset(_req: HttpRequest, data: web::Data<Mutex<DsData<'_>>>) -> impl Responder {
     log::debug!("Resetting server");
     let mut data = unwrap_data!(data.lock());
     let data = data.deref_mut();
@@ -137,7 +144,7 @@ async fn reset(_req: HttpRequest, data: web::Data<Mutex<DsData>>) -> impl Respon
 #[get("/clients/key_packages/{id}")]
 async fn get_key_packages(
     web::Path(id): web::Path<String>,
-    data: web::Data<Mutex<DsData>>,
+    data: web::Data<Mutex<DsData<'_>>>,
 ) -> impl Responder {
     let data = unwrap_data!(data.lock());
 
@@ -153,19 +160,19 @@ async fn get_key_packages(
     };
     actix_web::HttpResponse::Ok().body(Body::from_slice(&unwrap_data!(client
         .key_packages
-        .encode_detached())))
+        .tls_serialize_detached())))
 }
 
 /// Send a welcome message to a client.
 /// This takes a serialised `Welcome` message and stores the message for all
 /// clients in the welcome message.
 #[post("/send/welcome")]
-async fn send_welcome(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Responder {
+async fn send_welcome(mut body: Payload, data: web::Data<Mutex<DsData<'_>>>) -> impl Responder {
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
         bytes.extend_from_slice(&unwrap_item!(item));
     }
-    let welcome_msg = unwrap_data!(Welcome::decode(&mut Cursor::new(&bytes)));
+    let welcome_msg = unwrap_data!(Welcome::tls_deserialize(&mut &bytes[..]));
     log::debug!("Storing welcome message: {:?}", welcome_msg);
 
     let mut data = unwrap_data!(data.lock());
@@ -189,12 +196,12 @@ async fn send_welcome(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl
 /// handshake message this DS has seen, a 409 is returned and the message is not
 /// processed.
 #[post("/send/message")]
-async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Responder {
+async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData<'_>>>) -> impl Responder {
     let mut bytes = web::BytesMut::new();
     while let Some(item) = body.next().await {
         bytes.extend_from_slice(&unwrap_item!(item));
     }
-    let group_msg = unwrap_data!(GroupMessage::decode(&mut Cursor::new(&bytes)));
+    let group_msg = unwrap_data!(GroupMessage::tls_deserialize(&mut &bytes[..]));
     log::debug!("Storing group message: {:?}", group_msg);
 
     let mut data = unwrap_data!(data.lock());
@@ -207,18 +214,18 @@ async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Res
     if group_msg.msg.is_handshake_message() {
         let epoch = group_msg.epoch();
         let group_id = group_msg.group_id();
-        if let Some(&group_epoch) = data.groups.get(&group_id) {
+        if let Some(&group_epoch) = data.groups.get(group_id) {
             if group_epoch > epoch {
                 return actix_web::HttpResponse::Conflict().finish();
             }
             // Update server state to the latest epoch.
-            let old_value = data.groups.insert(group_id, epoch);
+            let old_value = data.groups.insert(group_id.to_vec(), epoch);
             if old_value.is_none() {
                 return actix_web::HttpResponse::InternalServerError().finish();
             }
         } else {
             // We haven't seen this group_id yet. Store it.
-            let old_value = data.groups.insert(group_id, epoch);
+            let old_value = data.groups.insert(group_id.to_vec(), epoch);
             if old_value.is_some() {
                 return actix_web::HttpResponse::InternalServerError().finish();
             }
@@ -226,7 +233,7 @@ async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Res
     }
 
     for recipient in group_msg.recipients.iter() {
-        let client = match data.clients.get_mut(recipient) {
+        let client = match data.clients.get_mut(recipient.as_slice()) {
             Some(client) => client,
             None => return actix_web::HttpResponse::NotFound().finish(),
         };
@@ -242,7 +249,7 @@ async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Res
 #[get("/recv/{id}")]
 async fn msg_recv(
     web::Path(id): web::Path<String>,
-    data: web::Data<Mutex<DsData>>,
+    data: web::Data<Mutex<DsData<'_>>>,
 ) -> impl Responder {
     let mut data = unwrap_data!(data.lock());
     let data = data.deref_mut();
@@ -267,12 +274,10 @@ async fn msg_recv(
     let mut msgs: Vec<Message> = client.msgs.drain(..).map(Message::MlsMessage).collect();
     out.append(&mut msgs);
 
-    let mut out_bytes = Vec::new();
-    if encode_vec(VecSize::VecU16, &mut out_bytes, &out).is_err() {
-        return actix_web::HttpResponse::InternalServerError().finish();
-    };
-
-    actix_web::HttpResponse::Ok().body(Body::from_slice(&out_bytes))
+    match TlsSliceU16(&out).tls_serialize_detached() {
+        Ok(out) => actix_web::HttpResponse::Ok().body(Body::from_slice(&out)),
+        Err(_) => actix_web::HttpResponse::InternalServerError().finish(),
+    }
 }
 
 // === Main function driving the DS ===

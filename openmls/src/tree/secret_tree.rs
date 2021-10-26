@@ -1,5 +1,6 @@
+use tls_codec::{Serialize, Size, TlsSerialize, TlsSize};
+
 use crate::ciphersuite::*;
-use crate::codec::*;
 use crate::framing::*;
 use crate::schedule::*;
 use crate::tree::{index::*, sender_ratchet::*, treemath::*};
@@ -32,7 +33,7 @@ impl From<&ContentType> for SecretType {
 
 impl From<&MlsPlaintext> for SecretType {
     fn from(mls_plaintext: &MlsPlaintext) -> SecretType {
-        SecretType::from(&mls_plaintext.content_type)
+        SecretType::from(mls_plaintext.content_type())
     }
 }
 
@@ -43,6 +44,7 @@ pub(crate) fn derive_tree_secret(
     node: u32,
     generation: u32,
     length: usize,
+    backend: &impl OpenMlsCryptoProvider,
 ) -> Secret {
     log::debug!(
         "Derive tree secret with label \"{}\" for node {} in generation {} of length {}",
@@ -54,17 +56,20 @@ pub(crate) fn derive_tree_secret(
     let tree_context = TreeContext { node, generation };
     log_crypto!(trace, "Input secret {:x?}", secret.as_slice());
     log_crypto!(trace, "Tree context {:?}", tree_context);
-    let serialized_tree_context = tree_context.encode_detached().unwrap();
-    secret.kdf_expand_label(label, &serialized_tree_context, length)
+    // FIXME: remove unwraps
+    let serialized_tree_context = tree_context.tls_serialize_detached().unwrap();
+    secret
+        .kdf_expand_label(backend, label, &serialized_tree_context, length)
+        .unwrap()
 }
 
-#[derive(Debug)]
+#[derive(Debug, TlsSerialize, TlsSize)]
 pub struct TreeContext {
     pub(crate) node: u32,
     pub(crate) generation: u32,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsSize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct SecretTreeNode {
     pub(crate) secret: Secret,
@@ -117,6 +122,7 @@ impl SecretTree {
     fn initialize_sender_ratchets(
         &mut self,
         ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
         index: LeafIndex,
     ) -> Result<(), SecretTreeError> {
         log::trace!(
@@ -161,7 +167,7 @@ impl SecretTree {
         empty_nodes.reverse();
         // Find empty nodes
         for n in empty_nodes {
-            self.derive_down(ciphersuite, n);
+            self.derive_down(ciphersuite, backend, n);
         }
         // Calculate node secret and initialize SenderRatchets
         let node_secret = &self.nodes[index_in_tree.as_usize()]
@@ -174,6 +180,7 @@ impl SecretTree {
             index_in_tree.as_u32(),
             0,
             ciphersuite.hash_length(),
+            backend,
         );
         let handshake_sender_ratchet = SenderRatchet::new(index, &handshake_ratchet_secret);
         self.handshake_sender_ratchets[index.as_usize()] = Some(handshake_sender_ratchet);
@@ -183,6 +190,7 @@ impl SecretTree {
             index_in_tree.as_u32(),
             0,
             ciphersuite.hash_length(),
+            backend,
         );
         let application_sender_ratchet = SenderRatchet::new(index, &application_ratchet_secret);
         self.application_sender_ratchets[index.as_usize()] = Some(application_sender_ratchet);
@@ -197,6 +205,7 @@ impl SecretTree {
     pub(crate) fn secret_for_decryption(
         &mut self,
         ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
         index: LeafIndex,
         secret_type: SecretType,
         generation: u32,
@@ -213,10 +222,10 @@ impl SecretTree {
             return Err(SecretTreeError::IndexOutOfBounds);
         }
         if self.ratchet_opt(index, secret_type)?.is_none() {
-            self.initialize_sender_ratchets(ciphersuite, index)?;
+            self.initialize_sender_ratchets(ciphersuite, backend, index)?;
         }
         let sender_ratchet = self.ratchet_mut(index, secret_type);
-        sender_ratchet.secret_for_decryption(ciphersuite, generation)
+        sender_ratchet.secret_for_decryption(ciphersuite, backend, generation)
     }
 
     /// Return the next RatchetSecrets that should be used for encryption and
@@ -224,15 +233,16 @@ impl SecretTree {
     pub(crate) fn secret_for_encryption(
         &mut self,
         ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
         index: LeafIndex,
         secret_type: SecretType,
     ) -> Result<(u32, RatchetSecrets), SecretTreeError> {
         if self.ratchet_opt(index, secret_type)?.is_none() {
-            self.initialize_sender_ratchets(ciphersuite, index)
+            self.initialize_sender_ratchets(ciphersuite, backend, index)
                 .expect("Index out of bounds");
         }
         let sender_ratchet = self.ratchet_mut(index, secret_type);
-        Ok(sender_ratchet.secret_for_encryption(ciphersuite))
+        Ok(sender_ratchet.secret_for_encryption(ciphersuite, backend))
     }
 
     /// Returns a mutable reference to a specific SenderRatchet. The
@@ -267,7 +277,12 @@ impl SecretTree {
 
     /// Derives the secrets for the child leaves in a SecretTree and blanks the
     /// parent leaf.
-    fn derive_down(&mut self, ciphersuite: &Ciphersuite, index_in_tree: NodeIndex) {
+    fn derive_down(
+        &mut self,
+        ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
+        index_in_tree: NodeIndex,
+    ) {
         log::debug!(
             "Deriving tree secret for node {} with {}",
             index_in_tree.as_u32(),
@@ -283,10 +298,22 @@ impl SecretTree {
             left(index_in_tree).expect("derive_down: Error while computing left child.");
         let right_index = right(index_in_tree, self.size)
             .expect("derive_down: Error while computing right child.");
-        let left_secret =
-            derive_tree_secret(&node_secret, "tree", left_index.as_u32(), 0, hash_len);
-        let right_secret =
-            derive_tree_secret(&node_secret, "tree", right_index.as_u32(), 0, hash_len);
+        let left_secret = derive_tree_secret(
+            node_secret,
+            "tree",
+            left_index.as_u32(),
+            0,
+            hash_len,
+            backend,
+        );
+        let right_secret = derive_tree_secret(
+            node_secret,
+            "tree",
+            right_index.as_u32(),
+            0,
+            hash_len,
+            backend,
+        );
         log_crypto!(
             trace,
             "Left node ({}) secret: {:x?}",

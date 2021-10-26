@@ -1,301 +1,221 @@
+use tls_codec::{Deserialize, Serialize, Size, TlsByteVecU16, TlsByteVecU32};
+
 use super::*;
-use std::convert::TryFrom;
+use std::io::{Read, Write};
 
-impl Codec for MlsPlaintext {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.group_id.encode(buffer)?;
-        self.epoch.encode(buffer)?;
-        self.sender.encode(buffer)?;
-        encode_vec(VecSize::VecU32, buffer, &self.authenticated_data)?;
-        self.content_type.encode(buffer)?;
-        self.content.encode(buffer)?;
-        self.signature.encode(buffer)?;
-        self.confirmation_tag.encode(buffer)?;
-        self.membership_tag.encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        log_content!(debug, "Decoding MlsPlaintext {:x?}", cursor.raw());
-        let group_id = GroupId::decode(cursor)?;
-        let epoch = GroupEpoch::decode(cursor)?;
-        let sender = Sender::decode(cursor)?;
-        let authenticated_data = decode_vec(VecSize::VecU32, cursor)?;
-        let content_type = ContentType::decode(cursor)?;
-        let content = MlsPlaintextContentType::decode(content_type, cursor)?;
-        let signature = Signature::decode(cursor)?;
-        let confirmation_tag = Option::<ConfirmationTag>::decode(cursor)?;
-        let membership_tag = Option::<MembershipTag>::decode(cursor)?;
+impl<'a> tls_codec::Deserialize for VerifiableMlsPlaintext<'a> {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
+        let wire_format = WireFormat::tls_deserialize(bytes)?;
+        let group_id = GroupId::tls_deserialize(bytes)?;
+        let epoch = GroupEpoch::tls_deserialize(bytes)?;
+        let sender = Sender::tls_deserialize(bytes)?;
+        let authenticated_data = TlsByteVecU32::tls_deserialize(bytes)?;
+        let content_type = ContentType::tls_deserialize(bytes)?;
+        let payload = MlsPlaintextContentType::deserialize(content_type, bytes)?;
+        let signature = Signature::tls_deserialize(bytes)?;
+        let confirmation_tag = Option::<ConfirmationTag>::tls_deserialize(bytes)?;
+        let membership_tag = Option::<MembershipTag>::tls_deserialize(bytes)?;
 
-        Ok(MlsPlaintext {
-            group_id,
-            epoch,
-            sender,
-            authenticated_data,
-            content_type,
-            content,
+        let verifiable = VerifiableMlsPlaintext::new(
+            MlsPlaintextTbs::new(
+                wire_format,
+                group_id,
+                epoch,
+                sender,
+                authenticated_data,
+                Payload {
+                    payload,
+                    content_type,
+                },
+            ),
             signature,
             confirmation_tag,
             membership_tag,
-        })
+        );
+
+        Ok(verifiable)
     }
 }
 
-impl Codec for MlsCiphertext {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.group_id.encode(buffer)?;
-        self.epoch.encode(buffer)?;
-        self.content_type.encode(buffer)?;
-        encode_vec(VecSize::VecU32, buffer, &self.authenticated_data)?;
-        encode_vec(VecSize::VecU8, buffer, &self.encrypted_sender_data)?;
-        encode_vec(VecSize::VecU32, buffer, &self.ciphertext)?;
-        Ok(())
-    }
-
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        log::debug!("Decoding MlsCiphertext {:x?}", cursor.raw());
-        let group_id = GroupId::decode(cursor)?;
-        let epoch = GroupEpoch::decode(cursor)?;
-        let content_type = ContentType::decode(cursor)?;
-        let authenticated_data = decode_vec(VecSize::VecU32, cursor)?;
-        let encrypted_sender_data = decode_vec(VecSize::VecU8, cursor)?;
-        let ciphertext = decode_vec(VecSize::VecU32, cursor)?;
-        Ok(MlsCiphertext {
-            group_id,
-            epoch,
-            content_type,
-            authenticated_data,
-            encrypted_sender_data,
-            ciphertext,
-        })
+impl<'a> tls_codec::Size for VerifiableMlsPlaintext<'a> {
+    #[inline]
+    fn tls_serialized_len(&self) -> usize {
+        self.tbs.wire_format.tls_serialized_len()
+            + self.tbs.group_id.tls_serialized_len()
+            + self.tbs.epoch.tls_serialized_len()
+            + self.tbs.sender.tls_serialized_len()
+            + self.tbs.authenticated_data.tls_serialized_len()
+            + self.tbs.content_type.tls_serialized_len()
+            + self.tbs.payload.tls_serialized_len()
+            + self.signature.tls_serialized_len()
+            + self.confirmation_tag.tls_serialized_len()
+            + self.membership_tag.tls_serialized_len()
     }
 }
 
-impl Codec for ContentType {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        (*self as u8).encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        ContentType::try_from(u8::decode(cursor)?)
+impl<'a> tls_codec::Serialize for VerifiableMlsPlaintext<'a> {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        let mut written = self.tbs.wire_format.tls_serialize(writer)?;
+        written += self.tbs.group_id.tls_serialize(writer)?;
+        written += self.tbs.epoch.tls_serialize(writer)?;
+        written += self.tbs.sender.tls_serialize(writer)?;
+        written += self.tbs.authenticated_data.tls_serialize(writer)?;
+        written += self.tbs.content_type.tls_serialize(writer)?;
+        written += self.tbs.payload.tls_serialize(writer)?;
+        written += self.signature.tls_serialize(writer)?;
+        written += self.confirmation_tag.tls_serialize(writer)?;
+        self.membership_tag
+            .tls_serialize(writer)
+            .map(|l| l + written)
     }
 }
 
-impl Codec for MlsPlaintextContentType {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+impl tls_codec::Size for MlsPlaintextContentType {
+    #[inline]
+    fn tls_serialized_len(&self) -> usize {
         match self {
             MlsPlaintextContentType::Application(application_data) => {
-                encode_vec(VecSize::VecU32, buffer, application_data)?;
+                application_data.tls_serialized_len()
+            }
+            MlsPlaintextContentType::Proposal(proposal) => proposal.tls_serialized_len(),
+            MlsPlaintextContentType::Commit(commit) => commit.tls_serialized_len(),
+        }
+    }
+}
+
+impl tls_codec::Serialize for MlsPlaintextContentType {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        match self {
+            MlsPlaintextContentType::Application(application_data) => {
+                let written = application_data.tls_serialize(writer)?;
+                debug_assert_eq!(written, application_data.tls_serialized_len());
+                Ok(written)
             }
             MlsPlaintextContentType::Proposal(proposal) => {
-                proposal.encode(buffer)?;
+                let written = proposal.tls_serialize(writer)?;
+                debug_assert_eq!(written, proposal.tls_serialized_len());
+                Ok(written)
             }
             MlsPlaintextContentType::Commit(commit) => {
-                commit.encode(buffer)?;
+                let written = commit.tls_serialize(writer)?;
+                debug_assert_eq!(written, commit.tls_serialized_len());
+                Ok(written)
             }
         }
-        Ok(())
     }
 }
 
 impl MlsPlaintextContentType {
-    fn decode(content_type: ContentType, cursor: &mut Cursor) -> Result<Self, CodecError> {
+    fn deserialize<R: Read>(
+        content_type: ContentType,
+        bytes: &mut R,
+    ) -> Result<Self, tls_codec::Error> {
         match content_type {
             ContentType::Application => {
-                let application_data = decode_vec(VecSize::VecU32, cursor)?;
+                let application_data = TlsByteVecU32::tls_deserialize(bytes)?;
                 Ok(MlsPlaintextContentType::Application(application_data))
             }
             ContentType::Proposal => {
-                let proposal = Proposal::decode(cursor)?;
+                let proposal = Proposal::tls_deserialize(bytes)?;
                 Ok(MlsPlaintextContentType::Proposal(proposal))
             }
             ContentType::Commit => {
-                let commit = Commit::decode(cursor)?;
+                let commit = Commit::tls_deserialize(bytes)?;
                 Ok(MlsPlaintextContentType::Commit(commit))
             }
         }
     }
 }
 
-impl Codec for Mac {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        encode_vec(VecSize::VecU8, buffer, &self.mac_value)?;
-        Ok(())
-    }
+// This might get refactored with the TLS codec refactoring, just suppressing the warning for now
+#[allow(clippy::too_many_arguments)]
+pub(super) fn serialize_plaintext_tbs<'a, W: Write>(
+    serialized_context: impl Into<Option<&'a [u8]>>,
+    wire_format: WireFormat,
+    group_id: &GroupId,
+    epoch: &GroupEpoch,
+    sender: &Sender,
+    authenticated_data: &TlsByteVecU32,
+    content_type: &ContentType,
+    payload: &MlsPlaintextContentType,
+    buffer: &mut W,
+) -> Result<usize, tls_codec::Error> {
+    let mut written = if let Some(serialized_context) = serialized_context.into() {
+        buffer.write(serialized_context)?
+    } else {
+        0
+    };
+    written += wire_format.tls_serialize(buffer)?;
+    written += group_id.tls_serialize(buffer)?;
+    written += epoch.tls_serialize(buffer)?;
+    written += sender.tls_serialize(buffer)?;
+    written += authenticated_data.tls_serialize(buffer)?;
+    written += content_type.tls_serialize(buffer)?;
+    payload.tls_serialize(buffer).map(|l| l + written)
+}
 
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let mac_value = decode_vec(VecSize::VecU8, cursor)?;
-        Ok(Self { mac_value })
+impl<'a> tls_codec::Size for MlsPlaintextTbs<'a> {
+    #[inline]
+    fn tls_serialized_len(&self) -> usize {
+        let context_len = if let Some(serialized_context) = self.serialized_context {
+            serialized_context.len()
+        } else {
+            0
+        };
+        context_len
+            + self.wire_format.tls_serialized_len()
+            + self.group_id.tls_serialized_len()
+            + self.epoch.tls_serialized_len()
+            + self.sender.tls_serialized_len()
+            + self.authenticated_data.tls_serialized_len()
+            + self.content_type.tls_serialized_len()
+            + self.payload.tls_serialized_len()
     }
 }
 
-impl Codec for MembershipTag {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.0.encode(buffer)?;
-        Ok(())
-    }
-
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let mac = Mac::decode(cursor)?;
-        Ok(Self(mac))
-    }
-}
-
-impl<'a> Codec for MlsPlaintextTbs<'a> {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        if let Some(ref serialized_context) = self.serialized_context_option {
-            buffer.extend_from_slice(serialized_context);
-        }
-        self.group_id.encode(buffer)?;
-        self.epoch.encode(buffer)?;
-        self.sender.encode(buffer)?;
-        encode_vec(VecSize::VecU32, buffer, &self.authenticated_data)?;
-        self.content_type.encode(buffer)?;
-        self.payload.encode(buffer)?;
-        Ok(())
-    }
-}
-
-impl Codec for MlsSenderData {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.sender.encode(buffer)?;
-        self.generation.encode(buffer)?;
-        self.reuse_guard.encode(buffer)?;
-        Ok(())
-    }
-
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let sender = LeafIndex::from(u32::decode(cursor)?);
-        let generation = u32::decode(cursor)?;
-        let reuse_guard = ReuseGuard::decode(cursor)?;
-
-        Ok(MlsSenderData {
-            sender,
-            generation,
-            reuse_guard,
-        })
-    }
-}
-
-impl Codec for MlsSenderDataAad {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.group_id.encode(buffer)?;
-        self.epoch.encode(buffer)?;
-        self.content_type.encode(buffer)?;
-        Ok(())
-    }
-
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let group_id = GroupId::decode(cursor)?;
-        let epoch = GroupEpoch::decode(cursor)?;
-        let content_type = ContentType::decode(cursor)?;
-        Ok(Self {
-            group_id,
-            epoch,
-            content_type,
-        })
+impl<'a> tls_codec::Serialize for MlsPlaintextTbs<'a> {
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        serialize_plaintext_tbs(
+            self.serialized_context,
+            self.wire_format,
+            &self.group_id,
+            &self.epoch,
+            &self.sender,
+            &self.authenticated_data,
+            &self.content_type,
+            &self.payload,
+            writer,
+        )
     }
 }
 
 impl MlsCiphertextContent {
-    pub(crate) fn decode(
+    pub(crate) fn deserialize<R: Read>(
         content_type: ContentType,
-        cursor: &mut Cursor,
-    ) -> Result<Self, CodecError> {
-        log_content!(debug, "Decoding MlsCiphertextContent {:x?}", cursor.raw());
+        bytes: &mut R,
+    ) -> Result<Self, tls_codec::Error> {
         let content = match content_type {
             ContentType::Application => {
-                let application_data = decode_vec(VecSize::VecU32, cursor)?;
+                let application_data = TlsByteVecU32::tls_deserialize(bytes)?;
                 MlsPlaintextContentType::Application(application_data)
             }
             ContentType::Proposal => {
-                let proposal = Proposal::decode(cursor)?;
+                let proposal = Proposal::tls_deserialize(bytes)?;
                 MlsPlaintextContentType::Proposal(proposal)
             }
             ContentType::Commit => {
-                let commit = Commit::decode(cursor)?;
+                let commit = Commit::tls_deserialize(bytes)?;
                 MlsPlaintextContentType::Commit(commit)
             }
         };
-        let signature = Signature::decode(cursor)?;
-        let confirmation_tag = Option::<ConfirmationTag>::decode(cursor)?;
-        let padding = decode_vec(VecSize::VecU16, cursor)?;
+        let signature = Signature::tls_deserialize(bytes)?;
+        let confirmation_tag = Option::<ConfirmationTag>::tls_deserialize(bytes)?;
+        let padding = TlsByteVecU16::tls_deserialize(bytes)?;
         Ok(MlsCiphertextContent {
             content,
             signature,
             confirmation_tag,
             padding,
-        })
-    }
-}
-
-impl Codec for MlsCiphertextContentAad {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.group_id.encode(buffer)?;
-        self.epoch.encode(buffer)?;
-        self.content_type.encode(buffer)?;
-        encode_vec(VecSize::VecU32, buffer, &self.authenticated_data)?;
-        Ok(())
-    }
-
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let group_id = GroupId::decode(cursor)?;
-        let epoch = GroupEpoch::decode(cursor)?;
-        let content_type = ContentType::decode(cursor)?;
-        let authenticated_data = decode_vec(VecSize::VecU32, cursor)?;
-        Ok(MlsCiphertextContentAad {
-            group_id,
-            epoch,
-            content_type,
-            authenticated_data,
-        })
-    }
-}
-
-impl<'a> Codec for MlsPlaintextCommitContent<'a> {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.group_id.encode(buffer)?;
-        self.epoch.encode(buffer)?;
-        self.sender.encode(buffer)?;
-        encode_vec(VecSize::VecU32, buffer, self.authenticated_data)?;
-        self.content_type.encode(buffer)?;
-        self.commit.encode(buffer)?;
-        self.signature.encode(buffer)?;
-        Ok(())
-    }
-}
-
-impl<'a> Codec for MlsPlaintextCommitAuthData<'a> {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.confirmation_tag.encode(buffer)?;
-        Ok(())
-    }
-}
-
-impl Codec for SenderType {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        (*self as u8).encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        match SenderType::try_from(u8::decode(cursor)?) {
-            Ok(sender_type) => Ok(sender_type),
-            Err(_) => Err(CodecError::DecodingError),
-        }
-    }
-}
-
-impl Codec for Sender {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.sender_type.encode(buffer)?;
-        self.sender.encode(buffer)?;
-        Ok(())
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let sender_type = SenderType::decode(cursor)?;
-        let sender = LeafIndex::from(u32::decode(cursor)?);
-        Ok(Sender {
-            sender_type,
-            sender,
         })
     }
 }

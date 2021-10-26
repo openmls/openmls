@@ -5,17 +5,21 @@
 //!
 //! Clients are represented by the `ClientInfo` struct.
 
-use openmls::prelude::*;
+use openmls::{framing::VerifiableMlsPlaintext, prelude::*};
+use tls_codec::{
+    Size, TlsByteSliceU16, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8, TlsDeserialize,
+    TlsSerialize, TlsSize, TlsVecU32,
+};
 
 /// Information about a client.
 /// To register a new client create a new `ClientInfo` and send it to
 /// `/clients/register`.
-#[derive(Debug, Default, Clone, PartialEq)]
-pub struct ClientInfo {
+#[derive(Debug, Default, Clone)]
+pub struct ClientInfo<'a> {
     pub client_name: String,
     pub key_packages: ClientKeyPackages,
     pub id: Vec<u8>,
-    pub msgs: Vec<MlsMessage>,
+    pub msgs: Vec<DsMlsMessage<'a>>,
     pub welcome_queue: Vec<Welcome>,
 }
 
@@ -23,17 +27,23 @@ pub struct ClientInfo {
 /// This is a tuple struct holding a vector of `(Vec<u8>, KeyPackage)` tuples,
 /// where the first value is the key package hash (output of `KeyPackage::hash`)
 /// and the second value is the corresponding key package.
-#[derive(Debug, Default, Clone, PartialEq)]
-pub struct ClientKeyPackages(pub Vec<(Vec<u8>, KeyPackage)>);
+#[derive(Debug, Default, Clone, PartialEq, TlsSerialize, TlsDeserialize, TlsSize)]
+pub struct ClientKeyPackages(pub TlsVecU32<(TlsByteVecU8, KeyPackage)>);
 
-impl ClientInfo {
+impl<'a> ClientInfo<'a> {
     /// Create a new `ClientInfo` struct for a given client name and vector of
     /// key packages with corresponding hashes.
-    pub fn new(client_name: String, key_packages: Vec<(Vec<u8>, KeyPackage)>) -> Self {
+    pub fn new(client_name: String, mut key_packages: Vec<(Vec<u8>, KeyPackage)>) -> Self {
         Self {
             client_name,
             id: key_packages[0].1.credential().identity().to_vec(),
-            key_packages: ClientKeyPackages(key_packages),
+            key_packages: ClientKeyPackages(
+                key_packages
+                    .drain(..)
+                    .map(|(e1, e2)| (e1.into(), e2))
+                    .collect::<Vec<(TlsByteVecU8, KeyPackage)>>()
+                    .into(),
+            ),
             msgs: Vec::new(),
             welcome_queue: Vec::new(),
         }
@@ -46,20 +56,57 @@ impl ClientInfo {
     }
 }
 
+/// Unified message type similar to the one in the managed group.
+/// But this version only operates on [`VerifiableMlsPlaintext`].
+#[derive(Debug, Clone)]
+pub enum DsMlsMessage<'a> {
+    /// An OpenMLS `MlsPlaintext`.
+    Plaintext(VerifiableMlsPlaintext<'a>),
+
+    /// An OpenMLS `MlsCiphertext`.
+    Ciphertext(MlsCiphertext),
+}
+
+impl<'a> DsMlsMessage<'a> {
+    /// Get the group id.
+    pub fn group_id(&self) -> &[u8] {
+        match self {
+            DsMlsMessage::Plaintext(p) => p.payload().group_id(),
+            DsMlsMessage::Ciphertext(c) => c.group_id().as_slice(),
+        }
+    }
+
+    /// Get the epoch as plain u64.
+    pub fn epoch(&self) -> u64 {
+        match self {
+            DsMlsMessage::Ciphertext(m) => m.epoch().0,
+            DsMlsMessage::Plaintext(m) => m.payload().epoch().0,
+        }
+    }
+
+    /// Returns `true` if this is a handshake message and `false` otherwise.
+    pub fn is_handshake_message(&self) -> bool {
+        match self {
+            DsMlsMessage::Ciphertext(m) => m.is_handshake_message(),
+            DsMlsMessage::Plaintext(m) => m.payload().is_handshake_message(),
+        }
+    }
+}
+
 /// The DS returns a list of messages on `/recv/{name}`, which is a
 /// `Vec<Message>`. A `Message` is either an `MLSMessage` or a `Welcome` message
 /// (see OpenMLS) for details.
-#[derive(Debug, Clone, PartialEq)]
-pub enum Message {
+#[derive(Debug)]
+pub enum Message<'a> {
     /// An `MLSMessage` is either an OpenMLS `MlsCiphertext` or `MlsPlaintext`.
-    MlsMessage(MlsMessage),
+    MlsMessage(DsMlsMessage<'a>),
 
     /// An OpenMLS `Welcome` message.
     Welcome(Welcome),
 }
 
 /// Enum defining encodings for the different message types/
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, TlsSerialize, TlsDeserialize, TlsSize)]
 #[repr(u8)]
 pub enum MessageType {
     /// An MlsCiphertext message.
@@ -76,23 +123,27 @@ pub enum MessageType {
 /// This is an `MLSMessage` plus the list of recipients as a vector of client
 /// names.
 #[derive(Debug)]
-pub struct GroupMessage {
-    pub msg: MlsMessage,
-    pub recipients: Vec<Vec<u8>>,
+pub struct GroupMessage<'a> {
+    pub msg: DsMlsMessage<'a>,
+    pub recipients: TlsVecU32<TlsByteVecU32>,
 }
 
-impl GroupMessage {
-    /// Create a new `GroupMessage` taking an `MLSMessage` and slice of
+impl<'a> GroupMessage<'a> {
+    /// Create a new `GroupMessage` taking an `DsMlsMessage` and slice of
     /// recipient names.
-    pub fn new(msg: MlsMessage, recipients: &[Vec<u8>]) -> Self {
+    pub fn new(msg: DsMlsMessage<'a>, recipients: &[Vec<u8>]) -> Self {
         Self {
             msg,
-            recipients: recipients.to_vec(),
+            recipients: recipients
+                .iter()
+                .map(|r| r.clone().into())
+                .collect::<Vec<TlsByteVecU32>>()
+                .into(),
         }
     }
 
-    /// Get the group ID as plain byte vector.
-    pub fn group_id(&self) -> Vec<u8> {
+    /// Get the group ID as plain byte slice.
+    pub fn group_id(&self) -> &[u8] {
         self.msg.group_id()
     }
 
@@ -107,105 +158,130 @@ impl GroupMessage {
     }
 }
 
-impl Codec for ClientKeyPackages {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.0.encode(buffer)
-    }
-
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let key_packages = Vec::<(Vec<u8>, KeyPackage)>::decode(cursor)?;
-        Ok(ClientKeyPackages(key_packages))
+impl<'a> tls_codec::Size for ClientInfo<'a> {
+    fn tls_serialized_len(&self) -> usize {
+        TlsByteSliceU16(self.client_name.as_bytes()).tls_serialized_len()
+            + self.key_packages.tls_serialized_len()
     }
 }
 
-impl Codec for ClientInfo {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        self.client_name.encode(buffer)?;
-        self.key_packages.encode(buffer)
+impl<'a> tls_codec::Serialize for ClientInfo<'a> {
+    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        let written = TlsByteSliceU16(self.client_name.as_bytes()).tls_serialize(writer)?;
+        self.key_packages.tls_serialize(writer).map(|l| l + written)
     }
+}
 
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let client_name = String::decode(cursor)?;
-        let key_packages = Vec::<(Vec<u8>, KeyPackage)>::decode(cursor)?;
+impl<'a> tls_codec::Deserialize for ClientInfo<'a> {
+    fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
+        let client_name =
+            String::from_utf8_lossy(TlsByteVecU16::tls_deserialize(bytes)?.as_slice()).into();
+        let mut key_packages: Vec<(TlsByteVecU8, KeyPackage)> =
+            TlsVecU32::<(TlsByteVecU8, KeyPackage)>::tls_deserialize(bytes)?.into();
+        let key_packages = key_packages
+            .drain(..)
+            .map(|(e1, e2)| (e1.into(), e2))
+            .collect();
         Ok(Self::new(client_name, key_packages))
     }
 }
 
-impl Codec for MessageType {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        (*self as u8).encode(buffer)
-    }
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let value = u8::decode(cursor)?;
-        match value {
-            0 => Ok(Self::MlsCiphertext),
-            1 => Ok(Self::MlsPlaintext),
-            2 => Ok(Self::Welcome),
-            _ => Err(CodecError::DecodingError),
-        }
+impl<'a> tls_codec::Size for Message<'a> {
+    fn tls_serialized_len(&self) -> usize {
+        MessageType::MlsCiphertext.tls_serialized_len()
+            + match self {
+                Message::MlsMessage(mm) => match mm {
+                    DsMlsMessage::Plaintext(p) => p.tls_serialized_len(),
+                    DsMlsMessage::Ciphertext(c) => c.tls_serialized_len(),
+                },
+                Message::Welcome(w) => w.tls_serialized_len(),
+            }
     }
 }
 
-impl Codec for Message {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
+impl<'a> tls_codec::Serialize for Message<'a> {
+    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        let written;
         match self {
             Message::MlsMessage(m) => match m {
-                MlsMessage::Ciphertext(m) => {
-                    MessageType::MlsCiphertext.encode(buffer)?;
-                    m.encode(buffer)?;
+                DsMlsMessage::Ciphertext(m) => {
+                    written = MessageType::MlsCiphertext.tls_serialize(writer)?;
+                    m.tls_serialize(writer)
                 }
-                MlsMessage::Plaintext(m) => {
-                    MessageType::MlsPlaintext.encode(buffer)?;
-                    m.encode(buffer)?;
+                DsMlsMessage::Plaintext(m) => {
+                    written = MessageType::MlsPlaintext.tls_serialize(writer)?;
+                    m.tls_serialize(writer)
                 }
             },
             Message::Welcome(m) => {
-                MessageType::Welcome.encode(buffer)?;
-                m.encode(buffer)?;
+                written = MessageType::Welcome.tls_serialize(writer)?;
+                m.tls_serialize(writer)
             }
         }
-        Ok(())
-    }
-
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let msg_type = MessageType::decode(cursor)?;
-        let msg = match msg_type {
-            MessageType::MlsCiphertext => {
-                Message::MlsMessage(MlsMessage::Ciphertext(MlsCiphertext::decode(cursor)?))
-            }
-            MessageType::MlsPlaintext => {
-                Message::MlsMessage(MlsMessage::Plaintext(MlsPlaintext::decode(cursor)?))
-            }
-            MessageType::Welcome => Message::Welcome(Welcome::decode(cursor)?),
-        };
-        Ok(msg)
+        .map(|l| l + written)
     }
 }
 
-impl Codec for GroupMessage {
-    fn encode(&self, buffer: &mut Vec<u8>) -> Result<(), CodecError> {
-        match &self.msg {
-            MlsMessage::Ciphertext(m) => {
-                MessageType::MlsCiphertext.encode(buffer)?;
-                m.encode(buffer)?;
-            }
-            MlsMessage::Plaintext(m) => {
-                MessageType::MlsPlaintext.encode(buffer)?;
-                m.encode(buffer)?;
-            }
-        }
-        self.recipients.encode(buffer)
+impl<'a> tls_codec::Deserialize for Message<'a> {
+    fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
+        let msg_type = MessageType::tls_deserialize(bytes)?;
+        Ok(match msg_type {
+            MessageType::MlsCiphertext => Message::MlsMessage(DsMlsMessage::Ciphertext(
+                MlsCiphertext::tls_deserialize(bytes)?,
+            )),
+            MessageType::MlsPlaintext => Message::MlsMessage(DsMlsMessage::Plaintext(
+                VerifiableMlsPlaintext::tls_deserialize(bytes)?,
+            )),
+            MessageType::Welcome => Message::Welcome(Welcome::tls_deserialize(bytes)?),
+        })
     }
+}
 
-    fn decode(cursor: &mut Cursor) -> Result<Self, CodecError> {
-        let msg_type = MessageType::decode(cursor)?;
+impl<'a> tls_codec::Size for GroupMessage<'a> {
+    fn tls_serialized_len(&self) -> usize {
+        MessageType::MlsCiphertext.tls_serialized_len()
+            + match &self.msg {
+                DsMlsMessage::Plaintext(p) => p.tls_serialized_len(),
+                DsMlsMessage::Ciphertext(c) => c.tls_serialized_len(),
+            }
+            + self.recipients.tls_serialized_len()
+    }
+}
+
+impl<'a> tls_codec::Serialize for GroupMessage<'a> {
+    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        let mut written = 0;
+        written += match &self.msg {
+            DsMlsMessage::Ciphertext(m) => {
+                MessageType::MlsCiphertext.tls_serialize(writer)? + m.tls_serialize(writer)?
+            }
+            DsMlsMessage::Plaintext(m) => {
+                MessageType::MlsPlaintext.tls_serialize(writer)? + m.tls_serialize(writer)?
+            }
+        };
+        self.recipients.tls_serialize(writer).map(|l| l + written)
+    }
+}
+
+impl<'a> tls_codec::Deserialize for GroupMessage<'a> {
+    fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
+        let msg_type = MessageType::tls_deserialize(bytes)?;
         let msg = match msg_type {
-            MessageType::MlsCiphertext => MlsMessage::Ciphertext(MlsCiphertext::decode(cursor)?),
-            MessageType::MlsPlaintext => MlsMessage::Plaintext(MlsPlaintext::decode(cursor)?),
-            _ => return Err(CodecError::DecodingError),
+            MessageType::MlsCiphertext => {
+                DsMlsMessage::Ciphertext(MlsCiphertext::tls_deserialize(bytes)?)
+            }
+            MessageType::MlsPlaintext => {
+                DsMlsMessage::Plaintext(VerifiableMlsPlaintext::tls_deserialize(bytes)?)
+            }
+            _ => {
+                return Err(tls_codec::Error::DecodingError(format!(
+                    "Invalid message type {:?}",
+                    msg_type
+                )))
+            }
         };
 
-        let recipients = Vec::<Vec<u8>>::decode(cursor)?;
+        let recipients = TlsVecU32::<TlsByteVecU32>::tls_deserialize(bytes)?;
         Ok(Self { msg, recipients })
     }
 }

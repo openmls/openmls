@@ -1,7 +1,32 @@
-use crate::ciphersuite::signable::{Signable, Verifiable};
+//! # MlsPlaintext
+//!
+//! An MlsPlaintext is a framing structure for MLS messages. It can contain
+//! Proposals, Commits and application messages.
+//!
+//! There are two different of ways of constructing an [`MlsPlaintext`].
+//!
+//! An [`MlsPlaintext`] must always contain a valid signature.
+//!
+//! ## Sending an MlsPlaintext
+//! When creating an MlsPlaintext for sending it can be created through a
+//! [`MlsPlaintext::new_proposal()`], [`MlsPlaintext::new_commit()`], and
+//! [`MlsPlaintext::new_application`].
+//! These plaintexts are signed. Note that proposals and application messages
+//! might need to get a membership tag and commits must get a confirmation tag
+//! in addition.
+//!
+//! ## Receiving an MlsPlaintext
+//! It is not possible to receive an [`MlsPlaintext`] object. Instead, a
+//! [`VerifiableMlsPlaintext`] must be received, which gets transformed into an
+//! [`MlsPlaintext`] by calling `verify` on it. This ensures that all [`MlsPlaintext`]
+//! objects contain a valid signature.
+
+use crate::ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct};
 
 use super::*;
+use openmls_traits::OpenMlsCryptoProvider;
 use std::convert::TryFrom;
+use tls_codec::{Serialize, Size, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize};
 
 /// `MLSPlaintext` is a framing structure for MLS messages. It can contain
 /// Proposals, Commits and application messages.
@@ -27,95 +52,200 @@ use std::convert::TryFrom;
 ///             Commit commit;
 ///     }
 ///
-/// opaque signature<0..2^16-1>;
-/// optional<MAC> confirmation_tag;
-/// optional<MAC> membership_tag;
-/// ```
+///     opaque signature<0..2^16-1>;
+///     optional<MAC> confirmation_tag;
+///     optional<MAC> membership_tag;
 /// } MLSPlaintext;
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+/// ```
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub struct MlsPlaintext {
-    pub(crate) group_id: GroupId,
-    pub(crate) epoch: GroupEpoch,
-    pub(crate) sender: Sender,
-    pub(crate) authenticated_data: Vec<u8>,
+    wire_format: WireFormat,
+    group_id: GroupId,
+    epoch: GroupEpoch,
+    sender: Sender,
+    authenticated_data: TlsByteVecU32,
+    content_type: ContentType,
+    content: MlsPlaintextContentType,
+    signature: Signature,
+    confirmation_tag: Option<ConfirmationTag>,
+    membership_tag: Option<MembershipTag>,
+}
+
+pub(crate) struct Payload {
+    pub(crate) payload: MlsPlaintextContentType,
     pub(crate) content_type: ContentType,
-    pub(crate) content: MlsPlaintextContentType,
-    pub(crate) signature: Signature,
-    pub(crate) confirmation_tag: Option<ConfirmationTag>,
-    pub(crate) membership_tag: Option<MembershipTag>,
+}
+
+// This block only has pub(super) getters.
+impl MlsPlaintext {
+    pub(super) fn signature(&self) -> &Signature {
+        &self.signature
+    }
+
+    pub(super) fn wire_format(&self) -> WireFormat {
+        self.wire_format
+    }
+
+    #[cfg(test)]
+    pub(super) fn membership_tag(&self) -> &Option<MembershipTag> {
+        &self.membership_tag
+    }
+
+    #[cfg(test)]
+    pub(super) fn unset_confirmation_tag(&mut self) {
+        self.confirmation_tag = None;
+    }
+
+    #[cfg(test)]
+    pub(super) fn unset_membership_tag(&mut self) {
+        self.membership_tag = None;
+    }
+
+    #[cfg(test)]
+    pub(super) fn set_content(&mut self, content: MlsPlaintextContentType) {
+        self.content = content;
+    }
+
+    #[cfg(test)]
+    pub(super) fn set_signature(&mut self, signature: Signature) {
+        self.signature = signature;
+    }
+
+    #[cfg(test)]
+    pub(super) fn set_membership_tag_test(&mut self, tag: MembershipTag) {
+        self.membership_tag = Some(tag);
+    }
+
+    #[cfg(test)]
+    pub(super) fn set_wire_format(&mut self, wire_format: WireFormat) {
+        self.wire_format = wire_format;
+    }
 }
 
 impl MlsPlaintext {
-    /// This constructor builds a new `MlsPlaintext` from the parameters
-    /// provided. It is only used internally.
-    pub(crate) fn new_from_member(
+    /// Convenience function for creating an `MlsPlaintext`.
+    #[inline]
+    fn new(
+        framing_parameters: FramingParameters,
         sender_index: LeafIndex,
-        authenticated_data: &[u8],
-        content: MlsPlaintextContentType,
+        payload: Payload,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, MlsPlaintextError> {
-        let sender = Sender::member(sender_index);
+        let serialized_context = context.tls_serialize_detached()?;
+        let mls_plaintext = MlsPlaintextTbs::new(
+            framing_parameters.wire_format(),
+            context.group_id().clone(),
+            context.epoch(),
+            Sender::member(sender_index),
+            framing_parameters.aad().into(),
+            payload,
+        )
+        .with_context(serialized_context.as_slice());
+        Ok(mls_plaintext.sign(backend, credential_bundle)?)
+    }
 
-        let mut mls_plaintext = MlsPlaintext {
-            group_id: context.group_id().clone(),
-            epoch: context.epoch(),
-            sender,
-            authenticated_data: authenticated_data.to_vec(),
-            content_type: ContentType::from(&content),
-            content,
-            signature: Signature::new_empty(),
-            confirmation_tag: None,
-            membership_tag: None,
-        };
-
-        let serialized_context = context.serialized();
-        mls_plaintext.sign_from_member(credential_bundle, serialized_context)?;
+    /// Create message with membership tag
+    #[inline]
+    fn new_with_membership_tag(
+        framing_parameters: FramingParameters,
+        sender_index: LeafIndex,
+        payload: Payload,
+        credential_bundle: &CredentialBundle,
+        context: &GroupContext,
+        membership_key: &MembershipKey,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Self, MlsPlaintextError> {
+        let mut mls_plaintext = Self::new(
+            framing_parameters,
+            sender_index,
+            payload,
+            credential_bundle,
+            context,
+            backend,
+        )?;
+        mls_plaintext.set_membership_tag(
+            backend,
+            &context.tls_serialize_detached()?,
+            membership_key,
+        )?;
         Ok(mls_plaintext)
     }
 
     /// This constructor builds an `MlsPlaintext` containing a Proposal.
     /// The sender type is always `SenderType::Member`.
-    pub fn new_from_proposal_member(
+    pub fn new_proposal(
+        framing_parameters: FramingParameters,
         sender_index: LeafIndex,
-        authenticated_data: &[u8],
         proposal: Proposal,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         membership_key: &MembershipKey,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, MlsPlaintextError> {
-        let content = MlsPlaintextContentType::Proposal(proposal);
-        let mut mls_plaintext = Self::new_from_member(
+        Self::new_with_membership_tag(
+            framing_parameters,
             sender_index,
-            authenticated_data,
-            content,
+            Payload {
+                payload: MlsPlaintextContentType::Proposal(proposal),
+                content_type: ContentType::Proposal,
+            },
             credential_bundle,
             context,
-        )?;
-        mls_plaintext.add_membership_tag(context.serialized(), membership_key)?;
-        Ok(mls_plaintext)
+            membership_key,
+            backend,
+        )
+    }
+
+    /// This constructor builds an `MlsPlaintext` containing a Commit.
+    /// The sender type is always `SenderType::Member`.
+    pub fn new_commit(
+        framing_parameters: FramingParameters,
+        sender_index: LeafIndex,
+        commit: Commit,
+        credential_bundle: &CredentialBundle,
+        context: &GroupContext,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Self, MlsPlaintextError> {
+        Self::new(
+            framing_parameters,
+            sender_index,
+            Payload {
+                payload: MlsPlaintextContentType::Commit(commit),
+                content_type: ContentType::Commit,
+            },
+            credential_bundle,
+            context,
+            backend,
+        )
     }
 
     /// This constructor builds an `MlsPlaintext` containing an application
     /// message. The sender type is always `SenderType::Member`.
-    pub fn new_from_application(
+    pub fn new_application(
         sender_index: LeafIndex,
         authenticated_data: &[u8],
         application_message: &[u8],
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         membership_key: &MembershipKey,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, MlsPlaintextError> {
-        let content = MlsPlaintextContentType::Application(application_message.to_vec());
-        let mut mls_plaintext = Self::new_from_member(
+        let framing_parameters =
+            FramingParameters::new(authenticated_data, WireFormat::MlsCiphertext);
+        Self::new_with_membership_tag(
+            framing_parameters,
             sender_index,
-            authenticated_data,
-            content,
+            Payload {
+                payload: MlsPlaintextContentType::Application(application_message.into()),
+                content_type: ContentType::Application,
+            },
             credential_bundle,
             context,
-        )?;
-        mls_plaintext.add_membership_tag(context.serialized(), membership_key)?;
-        Ok(mls_plaintext)
+            membership_key,
+            backend,
+        )
     }
 
     /// Returns a reference to the `content` field.
@@ -123,131 +253,74 @@ impl MlsPlaintext {
         &self.content
     }
 
+    /// Get the content type of this message.
+    pub(crate) fn content_type(&self) -> &ContentType {
+        &self.content_type
+    }
+
+    /// Get the sender of this message.
+    pub fn sender(&self) -> &Sender {
+        &self.sender
+    }
+
     /// Get the sender leaf index of this message.
-    pub fn sender(&self) -> LeafIndex {
+    pub fn sender_index(&self) -> LeafIndex {
         self.sender.to_leaf_index()
-    }
-
-    /// Sign this `MlsPlaintext`. This populates the
-    /// `signature` field. The signature is produced from
-    /// the private key contained in the credential bundle.
-    ///
-    /// This should be used when signing messages from external parties.
-    pub fn sign_from_external(
-        &mut self,
-        credential_bundle: &CredentialBundle,
-    ) -> Result<(), MlsPlaintextError> {
-        let tbs_payload = MlsPlaintextTbsPayload::new_from_mls_plaintext(&self, None);
-        self.signature = tbs_payload.sign(credential_bundle)?;
-        Ok(())
-    }
-
-    /// Sign this `MlsPlaintext` and add a membership tag. This populates the
-    /// `signature` and `membership_tag` fields. The signature is produced from
-    /// the private key contained in the credential bundle, and the
-    /// membership_tag is produced using the the membership secret.
-    ///
-    /// This should be used to sign messages from group members.
-    pub fn sign_from_member(
-        &mut self,
-        credential_bundle: &CredentialBundle,
-        serialized_context: &[u8],
-    ) -> Result<(), MlsPlaintextError> {
-        let tbs_payload = MlsPlaintextTbs::new_from(&self, Some(serialized_context));
-        self.signature = tbs_payload.sign(credential_bundle)?;
-        Ok(())
     }
 
     /// Adds a membership tag to this `MlsPlaintext`. The membership_tag is
     /// produced using the the membership secret.
     ///
     /// This should be used after signing messages from group members.
-    pub fn add_membership_tag(
+    pub(crate) fn set_membership_tag(
         &mut self,
+        backend: &impl OpenMlsCryptoProvider,
         serialized_context: &[u8],
         membership_key: &MembershipKey,
     ) -> Result<(), MlsPlaintextError> {
-        let tbs_payload = MlsPlaintextTbs::new_from(&self, Some(serialized_context));
-
+        let tbs_payload = encode_tbs(self, serialized_context)?;
         let tbm_payload =
             MlsPlaintextTbmPayload::new(&tbs_payload, &self.signature, &self.confirmation_tag)?;
-        let membership_tag = membership_key.tag(tbm_payload)?;
+        let membership_tag = membership_key.tag(backend, tbm_payload)?;
 
         self.membership_tag = Some(membership_tag);
         Ok(())
     }
 
-    /// Verify the signature of an `MlsPlaintext` sent from an external party.
-    /// Returns `Ok(())` if successful or `VerificationError` otherwise.
-    pub fn verify_signature(
-        &self,
-        serialized_context: &[u8],
-        credential: &Credential,
-    ) -> Result<(), VerificationError> {
-        let tbs_payload = MlsPlaintextTbs::new_from(&self, Some(serialized_context));
-        tbs_payload.verify(credential)?;
-        Ok(())
+    /// Remove the membership tag for testing.
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn remove_membership_tag(&mut self) {
+        self.membership_tag = None;
     }
 
-    /// Verify the membership tag of an `MlsPlaintext` sent from member.
+    /// Verify the membership tag of an `MlsPlaintext` sent from a group member.
     /// Returns `Ok(())` if successful or `VerificationError` otherwise.
+    /// Note that the signature must have been verified before.
     // TODO #133: Include this in the validation
-    pub fn verify_membership_tag(
+    pub fn verify_membership(
         &self,
-        ciphersuite: &'static Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
         serialized_context: &[u8],
         membership_key: &MembershipKey,
     ) -> Result<(), MlsPlaintextError> {
-        log::debug!("Verifying membership tag {}.", ciphersuite);
+        log::debug!("Verifying membership tag.");
         log_crypto!(trace, "  Membership key: {:x?}", membership_key);
         log_crypto!(trace, "  Serialized context: {:x?}", serialized_context);
-        let tbs_payload = MlsPlaintextTbs::new_from(&self, Some(serialized_context));
+        let tbs_payload = encode_tbs(self, serialized_context)?;
         let tbm_payload =
             MlsPlaintextTbmPayload::new(&tbs_payload, &self.signature, &self.confirmation_tag)?;
-        let expected_membership_tag = &membership_key.tag(tbm_payload)?;
-
-        // Verify the membership tag
-        if let Some(membership_tag) = &self.membership_tag {
-            if membership_tag != expected_membership_tag {
-                Err(VerificationError::InvalidMembershipTag.into())
-            } else {
-                Ok(())
-            }
-        } else {
-            Err(VerificationError::MissingMembershipTag.into())
-        }
-    }
-
-    /// Verify the signature and the membership tag of an `MlsPlaintext` sent
-    /// from a group member. Returns `Ok(())` if successful or
-    /// `VerificationError` otherwise.
-    // TODO #133: Include this in the validation
-    pub fn verify_from_member(
-        &self,
-        serialized_context: &[u8],
-        credential: &Credential,
-        membership_key: &MembershipKey,
-    ) -> Result<(), MlsPlaintextError> {
-        // Verify the signature first
-        let tbs_payload = MlsPlaintextTbs::new_from(&self, Some(serialized_context));
-        let signature_result = tbs_payload.verify(credential);
-
-        let tbm_payload =
-            MlsPlaintextTbmPayload::new(&tbs_payload, &self.signature, &self.confirmation_tag)?;
-        let expected_membership_tag = &membership_key.tag(tbm_payload)?;
+        let expected_membership_tag = &membership_key.tag(backend, tbm_payload)?;
 
         // Verify the membership tag
         if let Some(membership_tag) = &self.membership_tag {
             // TODO #133: make this a constant-time comparison
             if membership_tag != expected_membership_tag {
-                Err(VerificationError::InvalidMembershipTag.into())
-            } else {
-                // If the tags are equal we just return the signature result
-                signature_result.map_err(|e| e.into())
+                return Err(VerificationError::InvalidMembershipTag.into());
             }
         } else {
-            Err(VerificationError::MissingMembershipTag.into())
+            return Err(VerificationError::MissingMembershipTag.into());
         }
+        Ok(())
     }
 
     /// Tries to extract an application messages from an `MlsPlaintext`. Returns
@@ -255,7 +328,7 @@ impl MlsPlaintext {
     /// contained something other than an application message.
     pub fn as_application_message(&self) -> Result<&[u8], MlsPlaintextError> {
         match &self.content {
-            MlsPlaintextContentType::Application(message) => Ok(message),
+            MlsPlaintextContentType::Application(message) => Ok(message.as_slice()),
             _ => Err(MlsPlaintextError::NotAnApplicationMessage),
         }
     }
@@ -279,11 +352,39 @@ impl MlsPlaintext {
     pub fn epoch(&self) -> &GroupEpoch {
         &self.epoch
     }
+
+    /// Set the confirmation tag.
+    pub(crate) fn set_confirmation_tag(&mut self, tag: ConfirmationTag) {
+        self.confirmation_tag = Some(tag)
+    }
+
+    pub(crate) fn confirmation_tag(&self) -> Option<&ConfirmationTag> {
+        self.confirmation_tag.as_ref()
+    }
+
+    /// The the authenticated data of this MlsPlaintext as byte slice.
+    pub fn authenticated_data(&self) -> &[u8] {
+        self.authenticated_data.as_slice()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn invalidate_signature(&mut self) {
+        let mut modified_signature = self.signature().as_slice().to_vec();
+        modified_signature[0] ^= 0xFF;
+        self.signature.modify(&modified_signature);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_sender(&mut self, sender: Sender) {
+        self.sender = sender
+    }
 }
 
 // === Helper structs ===
 
-#[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(
+    PartialEq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
 #[repr(u8)]
 pub enum ContentType {
     Application = 1,
@@ -292,13 +393,16 @@ pub enum ContentType {
 }
 
 impl TryFrom<u8> for ContentType {
-    type Error = CodecError;
-    fn try_from(value: u8) -> Result<Self, CodecError> {
+    type Error = tls_codec::Error;
+    fn try_from(value: u8) -> Result<Self, tls_codec::Error> {
         match value {
             1 => Ok(ContentType::Application),
             2 => Ok(ContentType::Proposal),
             3 => Ok(ContentType::Commit),
-            _ => Err(CodecError::DecodingError),
+            _ => Err(tls_codec::Error::DecodingError(format!(
+                "{} is not a valid content type",
+                value
+            ))),
         }
     }
 }
@@ -325,7 +429,7 @@ impl ContentType {
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum MlsPlaintextContentType {
-    Application(Vec<u8>),
+    Application(TlsByteVecU32),
     Proposal(Proposal),
     Commit(Commit),
 }
@@ -341,119 +445,284 @@ pub enum MlsPlaintextContentType {
 /// ```
 #[derive(Debug)]
 pub(crate) struct MlsPlaintextTbmPayload<'a> {
-    tbs_payload: Vec<u8>,
-    pub(crate) signature: &'a Signature,
-    pub(crate) confirmation_tag: &'a Option<ConfirmationTag>,
+    tbs_payload: &'a [u8],
+    signature: &'a Signature,
+    confirmation_tag: &'a Option<ConfirmationTag>,
 }
 
 impl<'a> MlsPlaintextTbmPayload<'a> {
     pub(crate) fn new(
-        tbs_payload: &MlsPlaintextTbs,
+        tbs_payload: &'a [u8],
         signature: &'a Signature,
         confirmation_tag: &'a Option<ConfirmationTag>,
     ) -> Result<Self, MlsPlaintextError> {
         Ok(Self {
-            tbs_payload: tbs_payload.encode_detached()?,
+            tbs_payload,
             signature,
             confirmation_tag,
         })
     }
-    pub(crate) fn into_bytes(self) -> Result<Vec<u8>, CodecError> {
-        let mut buffer = self.tbs_payload;
-        buffer.extend(self.signature.encode_detached()?.iter());
-        buffer.extend(self.confirmation_tag.encode_detached()?.iter());
+    pub(crate) fn into_bytes(self) -> Result<Vec<u8>, tls_codec::Error> {
+        let mut buffer = self.tbs_payload.to_vec();
+        self.signature.tls_serialize(&mut buffer)?;
+        self.confirmation_tag.tls_serialize(&mut buffer)?;
         Ok(buffer)
     }
 }
 
 /// Wrapper around a `Mac` used for type safety.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
 pub struct MembershipTag(pub(crate) Mac);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MlsPlaintextTbs<'a> {
-    pub(crate) serialized_context_option: Option<&'a [u8]>,
-    pub(crate) group_id: &'a GroupId,
-    pub(crate) epoch: &'a GroupEpoch,
-    pub(crate) sender: &'a Sender,
-    pub(crate) authenticated_data: &'a [u8],
-    pub(crate) content_type: &'a ContentType,
-    pub(crate) payload: &'a MlsPlaintextContentType,
-    // We store the signature here as well in order to implement Verifiable.
-    signature: &'a Signature,
+    pub(super) serialized_context: Option<&'a [u8]>,
+    pub(super) wire_format: WireFormat,
+    pub(super) group_id: GroupId,
+    pub(super) epoch: GroupEpoch,
+    pub(super) sender: Sender,
+    pub(super) authenticated_data: TlsByteVecU32,
+    pub(super) content_type: ContentType,
+    pub(super) payload: MlsPlaintextContentType,
+}
+
+fn encode_tbs<'a>(
+    plaintext: &MlsPlaintext,
+    serialized_context: impl Into<Option<&'a [u8]>>,
+) -> Result<Vec<u8>, tls_codec::Error> {
+    let mut out = Vec::new();
+    codec::serialize_plaintext_tbs(
+        serialized_context,
+        plaintext.wire_format,
+        &plaintext.group_id,
+        &plaintext.epoch,
+        &plaintext.sender,
+        &plaintext.authenticated_data,
+        &plaintext.content_type,
+        &plaintext.content,
+        &mut out,
+    )?;
+    Ok(out)
+}
+
+#[derive(Debug, Clone)]
+pub struct VerifiableMlsPlaintext<'a> {
+    pub(super) tbs: MlsPlaintextTbs<'a>,
+    pub(super) signature: Signature,
+    pub(super) confirmation_tag: Option<ConfirmationTag>,
+    pub(super) membership_tag: Option<MembershipTag>,
+}
+
+impl<'a> VerifiableMlsPlaintext<'a> {
+    /// Create a new [`VerifiableMlsPlaintext`] from a [`MlsPlaintextTbs`] and
+    /// a [`Signature`].
+    pub fn new(
+        tbs: MlsPlaintextTbs<'a>,
+        signature: Signature,
+        confirmation_tag: impl Into<Option<ConfirmationTag>>,
+        membership_tag: impl Into<Option<MembershipTag>>,
+    ) -> Self {
+        Self {
+            tbs,
+            signature,
+            confirmation_tag: confirmation_tag.into(),
+            membership_tag: membership_tag.into(),
+        }
+    }
+
+    /// Create a [`VerifiableMlsPlaintext`] from an [`MlsPlaintext`] and the
+    /// serialized context.
+    pub fn from_plaintext(
+        mls_plaintext: MlsPlaintext,
+        serialized_context: impl Into<Option<&'a [u8]>>,
+    ) -> Self {
+        let signature = mls_plaintext.signature.clone();
+        let membership_tag = mls_plaintext.membership_tag.clone();
+        let confirmation_tag = mls_plaintext.confirmation_tag.clone();
+
+        match serialized_context.into() {
+            Some(context) => Self {
+                tbs: MlsPlaintextTbs::from_plaintext(mls_plaintext).with_context(context),
+                signature,
+                confirmation_tag,
+                membership_tag,
+            },
+            None => Self {
+                tbs: MlsPlaintextTbs::from_plaintext(mls_plaintext),
+                signature,
+                confirmation_tag,
+                membership_tag,
+            },
+        }
+    }
+
+    /// Get the sender index as [`LeafIndex`].
+    pub(crate) fn sender_index(&self) -> LeafIndex {
+        self.tbs.sender.sender
+    }
+
+    /// Get the group id as [`GroupId`].
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn group_id(&self) -> &GroupId {
+        &self.tbs.group_id
+    }
+
+    /// Set the serialized context before verifying the signature.
+    pub fn set_context(mut self, serialized_context: &'a [u8]) -> Self {
+        self.tbs.serialized_context = Some(serialized_context);
+        self
+    }
+
+    /// Get the underlying MlsPlaintext data of the tbs object.
+    pub fn payload(&self) -> &MlsPlaintextTbs<'a> {
+        &self.tbs
+    }
+
+    /// Get the wire format.
+    pub fn wire_format(&self) -> WireFormat {
+        self.tbs.wire_format
+    }
 }
 
 impl<'a> Signable for MlsPlaintextTbs<'a> {
-    type SignedOutput = Signature;
+    type SignedOutput = MlsPlaintext;
 
-    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
-        self.encode_detached()
+    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
+        self.tls_serialize_detached()
     }
 }
 
 impl<'a> MlsPlaintextTbs<'a> {
-    pub fn new_from(
-        mls_plaintext: &'a MlsPlaintext,
-        serialized_context_option: Option<&'a [u8]>,
+    /// Create an MlsPlaintextTbs from an existing values.
+    /// Note that if you would like to add a serialized context, you
+    /// should subsequently call [`with_context`].
+    pub(crate) fn new(
+        wire_format: WireFormat,
+        group_id: GroupId,
+        epoch: GroupEpoch,
+        sender: Sender,
+        authenticated_data: TlsByteVecU32,
+        payload: Payload,
     ) -> Self {
         MlsPlaintextTbs {
-            serialized_context_option,
-            group_id: &mls_plaintext.group_id,
-            epoch: &mls_plaintext.epoch,
-            sender: &mls_plaintext.sender,
-            authenticated_data: &mls_plaintext.authenticated_data,
-            content_type: &mls_plaintext.content_type,
-            payload: &mls_plaintext.content,
-            signature: &mls_plaintext.signature,
+            serialized_context: None,
+            wire_format,
+            group_id,
+            epoch,
+            sender,
+            authenticated_data,
+            content_type: payload.content_type,
+            payload: payload.payload,
         }
+    }
+    /// Adds a serialized context to MlsPlaintextTbs.
+    /// This consumes the original struct and can be used as a builder function.
+    pub(crate) fn with_context(mut self, serialized_context: &'a [u8]) -> Self {
+        self.serialized_context = Some(serialized_context);
+        self
+    }
+
+    /// Create a new signable MlsPlaintext from an existing MlsPlaintext.
+    /// This consumes the existing plaintext.
+    /// To get the `MlsPlaintext` back use `sign`.
+    fn from_plaintext(mls_plaintext: MlsPlaintext) -> Self {
+        MlsPlaintextTbs {
+            wire_format: mls_plaintext.wire_format,
+            serialized_context: None,
+            group_id: mls_plaintext.group_id,
+            epoch: mls_plaintext.epoch,
+            sender: mls_plaintext.sender,
+            authenticated_data: mls_plaintext.authenticated_data,
+            content_type: mls_plaintext.content_type,
+            payload: mls_plaintext.content,
+        }
+    }
+
+    /// Get the group id as byte slice.
+    pub fn group_id(&self) -> &[u8] {
+        self.group_id.as_slice()
+    }
+
+    /// Get the epoch.
+    pub fn epoch(&self) -> GroupEpoch {
+        self.epoch
+    }
+
+    /// Returns `true` if this is a handshake message and `false` otherwise.
+    pub fn is_handshake_message(&self) -> bool {
+        self.content_type.is_handshake_message()
     }
 }
 
-// Usually Verifiable and Signable shouldn't be implemented on the same struct.
-// In this case however we don't have the serialized context in the MlsPlaintext
-// (the object that should actually implement Verifiable).
-impl<'a> Verifiable for MlsPlaintextTbs<'a> {
-    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
-        self.encode_detached()
+impl<'a> Verifiable for VerifiableMlsPlaintext<'a> {
+    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
+        self.tbs.tls_serialize_detached()
     }
 
     fn signature(&self) -> &Signature {
-        self.signature
+        &self.signature
     }
 }
 
-pub(crate) struct MlsPlaintextTbsPayload {
-    payload: Vec<u8>,
-}
+mod private_mod {
+    pub struct Seal;
 
-impl<'a> MlsPlaintextTbsPayload {
-    pub(crate) fn new_from_mls_plaintext(
-        mls_plaintext: &MlsPlaintext,
-        serialized_context_option: Option<&'a [u8]>,
-    ) -> Self {
-        let tbs = MlsPlaintextTbs::new_from(mls_plaintext, serialized_context_option);
-        Self {
-            payload: tbs.encode_detached().unwrap(),
+    impl Default for Seal {
+        fn default() -> Self {
+            Seal {}
         }
     }
 }
 
-impl Signable for MlsPlaintextTbsPayload {
-    type SignedOutput = Signature;
+impl<'a> VerifiedStruct<VerifiableMlsPlaintext<'a>> for MlsPlaintext {
+    fn from_verifiable(v: VerifiableMlsPlaintext<'a>, _seal: Self::SealingType) -> Self {
+        Self {
+            wire_format: v.tbs.wire_format,
+            group_id: v.tbs.group_id,
+            epoch: v.tbs.epoch,
+            sender: v.tbs.sender,
+            authenticated_data: v.tbs.authenticated_data,
+            content_type: v.tbs.content_type,
+            content: v.tbs.payload,
+            signature: v.signature,
+            confirmation_tag: v.confirmation_tag,
+            membership_tag: v.membership_tag,
+        }
+    }
 
-    fn unsigned_payload(&self) -> Result<Vec<u8>, CodecError> {
-        Ok(self.payload.clone())
+    type SealingType = private_mod::Seal;
+}
+
+impl<'a> SignedStruct<MlsPlaintextTbs<'a>> for MlsPlaintext {
+    fn from_payload(tbs: MlsPlaintextTbs<'a>, signature: Signature) -> Self {
+        Self {
+            wire_format: tbs.wire_format,
+            group_id: tbs.group_id,
+            epoch: tbs.epoch,
+            sender: tbs.sender,
+            authenticated_data: tbs.authenticated_data,
+            content_type: tbs.content_type,
+            content: tbs.payload,
+            signature,
+            // Tags must always be added after the signature
+            confirmation_tag: None,
+            membership_tag: None,
+        }
     }
 }
 
+#[derive(TlsSerialize, TlsSize)]
 pub(crate) struct MlsPlaintextCommitContent<'a> {
-    pub(crate) group_id: &'a GroupId,
-    pub(crate) epoch: GroupEpoch,
-    pub(crate) sender: &'a Sender,
-    pub(crate) authenticated_data: &'a [u8],
-    pub(crate) content_type: ContentType,
-    pub(crate) commit: &'a Commit,
-    pub(crate) signature: &'a Signature,
+    pub(super) wire_format: WireFormat,
+    pub(super) group_id: &'a GroupId,
+    pub(super) epoch: GroupEpoch,
+    pub(super) sender: &'a Sender,
+    pub(super) authenticated_data: &'a TlsByteVecU32,
+    pub(super) content_type: ContentType,
+    pub(super) commit: &'a Commit,
+    pub(super) signature: &'a Signature,
 }
 
 impl<'a> TryFrom<&'a MlsPlaintext> for MlsPlaintextCommitContent<'a> {
@@ -465,6 +734,7 @@ impl<'a> TryFrom<&'a MlsPlaintext> for MlsPlaintextCommitContent<'a> {
             _ => return Err("MlsPlaintext needs to contain a Commit."),
         };
         Ok(MlsPlaintextCommitContent {
+            wire_format: mls_plaintext.wire_format,
             group_id: &mls_plaintext.group_id,
             epoch: mls_plaintext.epoch,
             sender: &mls_plaintext.sender,
@@ -476,6 +746,7 @@ impl<'a> TryFrom<&'a MlsPlaintext> for MlsPlaintextCommitContent<'a> {
     }
 }
 
+#[derive(TlsSerialize, TlsSize)]
 pub(crate) struct MlsPlaintextCommitAuthData<'a> {
     pub(crate) confirmation_tag: Option<&'a ConfirmationTag>,
 }

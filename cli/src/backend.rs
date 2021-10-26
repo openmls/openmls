@@ -1,3 +1,4 @@
+use tls_codec::{Deserialize, TlsVecU16, TlsVecU32};
 use url::Url;
 
 use super::{
@@ -28,11 +29,11 @@ impl Backend {
     /// server.
     pub fn list_clients(&self) -> Result<Vec<ClientInfo>, String> {
         let mut url = self.ds_url.clone();
-        url.set_path(&"/clients/list");
+        url.set_path("/clients/list");
 
         let response = get(&url)?;
-        match Vec::<ClientInfo>::decode(&mut Cursor::new(&response)) {
-            Ok(clients) => Ok(clients),
+        match TlsVecU32::<ClientInfo>::tls_deserialize(&mut response.as_slice()) {
+            Ok(clients) => Ok(clients.into()),
             Err(e) => Err(format!("Error decoding server response: {:?}", e)),
         }
     }
@@ -45,7 +46,7 @@ impl Backend {
         url.set_path(&path);
 
         let response = get(&url)?;
-        match ClientKeyPackages::decode(&mut Cursor::new(&response)) {
+        match ClientKeyPackages::tls_deserialize(&mut response.as_slice()) {
             Ok(ckp) => Ok(ckp),
             Err(e) => Err(format!("Error decoding server response: {:?}", e)),
         }
@@ -79,8 +80,8 @@ impl Backend {
         url.set_path(&path);
 
         let response = get(&url)?;
-        match decode_vec(VecSize::VecU16, &mut Cursor::new(response.as_ref())) {
-            Ok(r) => Ok(r),
+        match TlsVecU16::<Message>::tls_deserialize(&mut response.as_slice()) {
+            Ok(r) => Ok(r.into()),
             Err(e) => Err(format!("Invalid message list: {:?}", e)),
         }
     }
