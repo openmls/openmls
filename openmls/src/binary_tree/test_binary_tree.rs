@@ -1,20 +1,20 @@
 use crate::binary_tree::NodeIndex;
 
-use super::array_representation::*;
+use super::*;
 
 #[test]
 fn test_tree_creation() {
     // Test tree creation: Wrong number of nodes.
     let mut nodes = vec![0, 0];
     assert_eq!(
-        ABinaryTree::new(&nodes).expect_err("No error when creating a non-full binary tree."),
-        ABinaryTreeError::InvalidNumberOfNodes
+        MlsBinaryTree::new(&nodes).expect_err("No error when creating a non-full binary tree."),
+        MlsBinaryTreeError::InvalidNumberOfNodes
     );
     nodes.push(0);
 
     // Test tree creation: Positive case.
-    let tree1 = ABinaryTree::new(&nodes).expect("Error when creating tree from nodes.");
-    let mut tree2 = ABinaryTree::new(&[0]).expect("Error when creating a one-node binary tree.");
+    let tree1 = MlsBinaryTree::new(&nodes).expect("Error when creating tree from nodes.");
+    let mut tree2 = MlsBinaryTree::new(&[0]).expect("Error when creating a one-node binary tree.");
     tree2
         .add_leaf(0)
         .expect("error when adding nodes to small enough tree");
@@ -32,8 +32,8 @@ fn test_tree_creation() {
         nodes.set_len(len);
 
         assert_eq!(
-            ABinaryTree::new(&nodes).expect_err("No error while creating too large tree."),
-            ABinaryTreeError::OutOfRange
+            MlsBinaryTree::new(&nodes).expect_err("No error while creating too large tree."),
+            MlsBinaryTreeError::OutOfRange
         )
     }
 }
@@ -41,7 +41,7 @@ fn test_tree_creation() {
 #[test]
 fn test_node_addition() {
     // Test node addition: Positive case.
-    let mut tree = ABinaryTree::new(&[0]).expect("Error when creating a one-node binary tree.");
+    let mut tree = MlsBinaryTree::new(&[0]).expect("Error when creating a one-node binary tree.");
     tree.add_leaf(0)
         .expect("error when adding nodes to small enough tree");
 
@@ -53,8 +53,8 @@ fn test_node_addition() {
         nodes.set_len(len + 1);
 
         assert_eq!(
-            ABinaryTree::new(&nodes).expect_err("Error while creating large tree."),
-            ABinaryTreeError::OutOfRange
+            MlsBinaryTree::new(&nodes).expect_err("Error while creating large tree."),
+            MlsBinaryTreeError::OutOfRange
         )
     }
 }
@@ -62,36 +62,36 @@ fn test_node_addition() {
 #[test]
 fn test_node_removal() {
     // Test node removal: Positive case.
-    let mut tree = ABinaryTree::new(&[0, 1, 2]).expect("Error when creating a tree.");
+    let mut tree = MlsBinaryTree::new(&[0, 1, 2]).expect("Error when creating a tree.");
     tree.remove()
         .expect("error when adding nodes to small enough tree");
     assert_eq!(
         tree,
-        ABinaryTree::new(&[0]).expect("Error when creating tree from nodes.")
+        MlsBinaryTree::new(&[0]).expect("Error when creating tree from nodes.")
     );
 
     // Test node removal: Too few nodes.
     let nodes = vec![0];
-    let mut tree = ABinaryTree::new(&nodes).expect("Error while creating tree.");
+    let mut tree = MlsBinaryTree::new(&nodes).expect("Error while creating tree.");
 
     assert_eq!(
         tree.remove()
             .expect_err("No error when trying to remove nodes from too small tree."),
-        ABinaryTreeError::NotEnoughNodes
+        MlsBinaryTreeError::NotEnoughNodes
     )
 }
 
 #[test]
 fn test_node_access() {
     // Test node access: Positive case.
-    let tree = ABinaryTree::new(&[0, 1, 2]).expect("Error when creating a tree.");
+    let tree = MlsBinaryTree::new(&[0, 1, 2]).expect("Error when creating a tree.");
     assert_eq!(tree.node(1).expect("Error when accessing node."), &1);
 
     // Test node access: Out of range.
     assert_eq!(tree.node(3), None);
 
     // Test mutable node access: Positive case.
-    let mut tree = ABinaryTree::new(&[0, 1, 2]).expect("Error when creating a tree.");
+    let mut tree = MlsBinaryTree::new(&[0, 1, 2]).expect("Error when creating a tree.");
     *tree
         .node_mut(1)
         .expect("Error when accessing node mutably.") = 5;
@@ -101,13 +101,13 @@ fn test_node_access() {
 #[test]
 fn test_direct_path() {
     let mut tree =
-        ABinaryTree::new(&[0, 1, 2, 3, 4, 5, 6, 7, 8]).expect("Error when creating a tree.");
+        MlsBinaryTree::new(&[0, 1, 2, 3, 4, 5, 6, 7, 8]).expect("Error when creating a tree.");
 
     // Test direct path: Out of bounds.
     assert_eq!(
         tree.direct_path(10)
             .expect_err("No error when computing direct path out of bounds."),
-        ABinaryTreeError::OutOfBounds
+        MlsBinaryTreeError::OutOfBounds
     );
 
     // Test direct path: Positive case.
@@ -139,7 +139,7 @@ fn test_direct_path() {
     assert_eq!(direct_path, vec![9, 7]);
 
     // Test for a very small tree.
-    let tree = ABinaryTree::new(&[1]).expect("Error when creating a tree.");
+    let tree = MlsBinaryTree::new(&[1]).expect("Error when creating a tree.");
 
     let direct_path = tree
         .direct_path(0)
@@ -150,13 +150,13 @@ fn test_direct_path() {
 #[test]
 fn test_copath() {
     let mut tree =
-        ABinaryTree::new(&[0, 1, 2, 3, 4, 5, 6, 7, 8]).expect("Error when creating a tree.");
+        MlsBinaryTree::new(&[0, 1, 2, 3, 4, 5, 6, 7, 8]).expect("Error when creating a tree.");
 
     // Test copath: Out of bounds.
     assert_eq!(
         tree.copath(10)
             .expect_err("No error when computing copath out of bounds."),
-        ABinaryTreeError::OutOfBounds
+        MlsBinaryTreeError::OutOfBounds
     );
 
     // Test direct path: Positive case.
@@ -178,7 +178,7 @@ fn test_copath() {
     assert_eq!(copath, vec![10, 3]);
 
     // Test for a very small tree.
-    let tree = ABinaryTree::new(&[1]).expect("Error when creating a tree.");
+    let tree = MlsBinaryTree::new(&[1]).expect("Error when creating a tree.");
 
     let copath = tree.copath(0).expect("Error when computing copath.");
     assert_eq!(copath, Vec::<u32>::new());
@@ -187,18 +187,18 @@ fn test_copath() {
 #[test]
 fn test_lowest_common_ancestor() {
     let mut tree =
-        ABinaryTree::new(&[0, 1, 2, 3, 4, 5, 6, 7, 8]).expect("Error when creating a tree.");
+        MlsBinaryTree::new(&[0, 1, 2, 3, 4, 5, 6, 7, 8]).expect("Error when creating a tree.");
 
     // Test lowest common ancestor: Out of bounds.
     assert_eq!(
         tree.lowest_common_ancestor(10, 0)
             .expect_err("No error when computing lowest common ancestor out of bounds."),
-        ABinaryTreeError::OutOfBounds
+        MlsBinaryTreeError::OutOfBounds
     );
     assert_eq!(
         tree.lowest_common_ancestor(0, 10)
             .expect_err("No error when computing lowest common ancestor out of bounds."),
-        ABinaryTreeError::OutOfBounds
+        MlsBinaryTreeError::OutOfBounds
     );
 
     // Test direct path: Positive case.
@@ -230,7 +230,7 @@ fn test_lowest_common_ancestor() {
     assert_eq!(lowest_common_ancestor, 7);
 
     // Test for a very small tree.
-    let tree = ABinaryTree::new(&[1]).expect("Error when creating a tree.");
+    let tree = MlsBinaryTree::new(&[1]).expect("Error when creating a tree.");
 
     let lowest_common_ancestor = tree
         .lowest_common_ancestor(0, 0)
