@@ -27,7 +27,11 @@ use crate::group::MlsMessageIn;
 /// https://github.com/rust-lang/rust/issues/46379, which would otherwise create
 /// a lot of unused code warnings.
 use crate::{node::Node, prelude::*};
-use rand::{rngs::OsRng, RngCore};
+use ::rand::{rngs::OsRng, RngCore};
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::key_store::OpenMlsKeyStore;
+use openmls_traits::types::SignatureScheme;
+use openmls_traits::OpenMlsCryptoProvider;
 use std::{cell::RefCell, collections::HashMap};
 
 pub mod client;
@@ -128,23 +132,27 @@ impl ManagedTestSetup {
         for i in 0..number_of_clients {
             let identity = i.to_be_bytes().to_vec();
             // For now, everyone supports all ciphersuites.
-            let _ciphersuites = Config::supported_ciphersuite_names();
-            let key_store = KeyStore::default();
+            let crypto = OpenMlsRustCrypto::default();
             let mut credentials = HashMap::new();
             for ciphersuite in Config::supported_ciphersuite_names() {
-                let credential = key_store
-                    .generate_credential_bundle(
-                        identity.clone(),
-                        CredentialType::Basic,
-                        SignatureScheme::from(*ciphersuite),
-                    )
+                let cb = CredentialBundle::new(
+                    identity.clone(),
+                    CredentialType::Basic,
+                    SignatureScheme::from(*ciphersuite),
+                    &crypto,
+                )
+                .unwrap();
+                let credential = cb.credential().clone();
+                crypto
+                    .key_store()
+                    .store(cb.credential().signature_key(), &cb)
                     .unwrap();
                 credentials.insert(*ciphersuite, credential);
             }
             let client = Client {
                 identity: identity.clone(),
                 credentials,
-                key_store,
+                crypto,
                 groups: RefCell::new(HashMap::new()),
             };
             clients.insert(identity, RefCell::new(client));
@@ -170,10 +178,9 @@ impl ManagedTestSetup {
         ciphersuite: &Ciphersuite,
     ) -> Result<KeyPackage, SetupError> {
         let key_package = client.get_fresh_key_package(&[ciphersuite.name()])?;
-        println!("Storing key package with hash: {:?}", key_package.hash());
         self.waiting_for_welcome
             .borrow_mut()
-            .insert(key_package.hash(), client.identity.clone());
+            .insert(key_package.hash(&client.crypto), client.identity.clone());
         Ok(key_package)
     }
 
@@ -198,10 +205,6 @@ impl ManagedTestSetup {
         if self.use_codec == CodecUse::SerializedMessages {}
         let clients = self.clients.borrow();
         for egs in welcome.secrets() {
-            println!(
-                "Trying to get key package with hash: {:?}",
-                egs.key_package_hash
-            );
             let client_id = self
                 .waiting_for_welcome
                 .borrow_mut()
@@ -238,10 +241,8 @@ impl ManagedTestSetup {
             CodecUse::StructMessages => MlsMessageIn::from(message.clone()),
         };
         let clients = self.clients.borrow();
-        println!("Distributing and processing messages...");
         // Distribute message to all members.
-        for (index, member_id) in &group.members {
-            println!("Index: {:?}, Id: {:?}", index, member_id);
+        for (_index, member_id) in &group.members {
             let member = clients.get(member_id).unwrap().borrow();
             member.receive_messages_for_group(&message)?;
         }
@@ -254,12 +255,8 @@ impl ManagedTestSetup {
             .iter()
             .map(|(index, cred)| (*index, cred.identity().to_vec()))
             .collect();
-        println!("Members still in the group:");
-        for (index, member_id) in &group.members {
-            println!("Index: {:?}, Id: {:?}", index, member_id);
-        }
         group.public_tree = sender_group.export_ratchet_tree();
-        group.exporter_secret = sender_group.export_secret("test", &[], 32)?;
+        group.exporter_secret = sender_group.export_secret(&sender.crypto, "test", &[], 32)?;
         Ok(())
     }
 
@@ -278,11 +275,13 @@ impl ManagedTestSetup {
             if let Some(group_state) = group_states.get_mut(&group.group_id) {
                 assert_eq!(group_state.export_ratchet_tree(), group.public_tree);
                 assert_eq!(
-                    group_state.export_secret("test", &[], 32).unwrap(),
+                    group_state
+                        .export_secret(&m.crypto, "test", &[], 32)
+                        .unwrap(),
                     group.exporter_secret
                 );
                 let message = group_state
-                    .create_message(&m.key_store, "Hello World!".as_bytes())
+                    .create_message(&m.crypto, "Hello World!".as_bytes())
                     .expect("Error composing message while checking group states.");
                 messages.push((m_id.clone(), message));
             };
@@ -353,7 +352,7 @@ impl ManagedTestSetup {
         let creator_groups = group_creator.groups.borrow();
         let group = creator_groups.get(&group_id).unwrap();
         let public_tree = group.export_ratchet_tree();
-        let exporter_secret = group.export_secret("test", &[], 32)?;
+        let exporter_secret = group.export_secret(&group_creator.crypto, "test", &[], 32)?;
         let member_ids = vec![(0, group_creator_id)];
         let group = Group {
             group_id: group_id.clone(),
@@ -381,7 +380,6 @@ impl ManagedTestSetup {
 
         // Get new members to add to the group.
         let mut new_members = self.random_new_members_for_group(group, target_group_size - 1)?;
-        println!("Number of random new members: {:?}", new_members.len());
 
         // Add new members bit by bit.
         while !new_members.is_empty() {
@@ -489,7 +487,7 @@ impl ManagedTestSetup {
             return Err(SetupError::ClientNotInGroup);
         }
         let (messages, welcome_option) =
-            remover.remove_members(action_type, &group.group_id, target_indices)?;
+            remover.remove_members(action_type, &group.group_id, &target_indices)?;
         for message in &messages {
             self.distribute_to_members(remover_id, group, message)?;
         }
@@ -584,7 +582,6 @@ impl ManagedTestSetup {
                             leaf_index = new_leaf_index;
                             identity = new_identity;
                         }
-                        println!("Index: {:?}, Identity: {:?}", leaf_index, identity,);
                         target_member_ids.push(identity);
                     }
                     self.remove_clients(action_type, group, &member_id, target_member_ids)?

@@ -1,3 +1,5 @@
+use openmls_traits::OpenMlsCryptoProvider;
+
 use crate::{
     ciphersuite::Signature,
     credentials::{Credential, CredentialBundle, CredentialError},
@@ -48,13 +50,14 @@ pub trait Signable: Sized {
     /// Returns a `Signature`.
     fn sign(
         self,
+        backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
     ) -> Result<Self::SignedOutput, CredentialError>
     where
         Self::SignedOutput: SignedStruct<Self>,
     {
         let payload = self.unsigned_payload()?;
-        let signature = credential_bundle.sign(&payload)?;
+        let signature = credential_bundle.sign(backend, &payload)?;
         Ok(Self::SignedOutput::from_payload(self, signature))
     }
 }
@@ -81,12 +84,16 @@ pub trait Verifiable: Sized {
     ///
     /// Returns `Ok(Self::VerifiedOutput)` if the signature is valid and
     /// `CredentialError::InvalidSignature` otherwise.
-    fn verify<T>(self, credential: &Credential) -> Result<T, CredentialError>
+    fn verify<T>(
+        self,
+        backend: &impl OpenMlsCryptoProvider,
+        credential: &Credential,
+    ) -> Result<T, CredentialError>
     where
         T: VerifiedStruct<Self>,
     {
         let payload = self.unsigned_payload()?;
-        credential.verify(&payload, self.signature())?;
+        credential.verify(backend, &payload, self.signature())?;
         Ok(T::from_verifiable(self, T::SealingType::default()))
     }
 
@@ -96,8 +103,12 @@ pub trait Verifiable: Sized {
     ///
     /// Returns `Ok(())` if the signature is valid and
     /// `CredentialError::InvalidSignature` otherwise.
-    fn verify_no_out(&self, credential: &Credential) -> Result<(), CredentialError> {
+    fn verify_no_out(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        credential: &Credential,
+    ) -> Result<(), CredentialError> {
         let payload = self.unsigned_payload()?;
-        credential.verify(&payload, self.signature())
+        credential.verify(backend, &payload, self.signature())
     }
 }

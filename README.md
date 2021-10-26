@@ -4,6 +4,7 @@
 [![Deploy Docs](https://github.com/openmls/openmls/workflows/Deploy%20Docs/badge.svg)](https://openmls.github.io/openmls/openmls/index.html)
 [![codecov](https://codecov.io/gh/openmls/openmls/branch/main/graph/badge.svg?token=5SDRDRTZI0)](https://codecov.io/gh/openmls/openmls)
 [![OpenMLS List][list-image]][list-link]
+[![Docs][docs-main-badge]][docs-main-link]
 ![Rust Version][rustc-image]
 
 A WIP Rust implementation of [Messaging Layer Security](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md) based on draft 9+.
@@ -32,25 +33,6 @@ There are two different cryptography backends supported right now.
 ##### Rust Crypto
 
 This is the default cryptographic backend, using the following rust crates: [hkdf], [sha2], [p256], [p384], [x25519-dalek-ng], [ed25519-dalek] [chacha20poly1305], [aes-gcm].
-
-
-##### Evercrypt
-
-[EverCrypt] provides a formally verified cryptographic backend through the [EverCrypt Rust bindings] to OpenMLS.
-The default features have to disabled and the `evercrypt-backend` feature must be enabled.
-
-```
-cargo build --features="evercrypt-backend" --no-default-features
-```
-
-Note that using this provider restricts OpenMLS usage to the following platforms right now
-* Linux x64
-* Linux Arm64
-* MacOS x64
-* Windows x64
-
-⚠️ Note that using this feature tests don't work out of the box.
-You need to change the `openmls` dev-dependency in the `Cargo.toml` to use the evercrypt backend as well.
 
 ## Development
 
@@ -103,7 +85,8 @@ OpenMLS adheres to the [Contributor Covenant](https://www.contributor-covenant.o
 [list-image]: https://img.shields.io/badge/mailing-list-blue.svg
 [list-link]: https://groups.google.com/u/0/g/openmls-dev
 [rustc-image]: https://img.shields.io/badge/rustc-1.50+-blue.svg
-
+[docs-main-badge]: https://img.shields.io/badge/docs-main-blue.svg
+[docs-main-link]: https://openmls.tech/openmls/openmls/index.html
 [hkdf]: https://docs.rs/hkdf/
 [sha2]: https://docs.rs/sha2
 [p256]: https://docs.rs/p256
@@ -112,5 +95,5 @@ OpenMLS adheres to the [Contributor Covenant](https://www.contributor-covenant.o
 [ed25519-dalek]: https://docs.rs/ed25519-dalek
 [chacha20poly1305]: https://docs.rs/chacha20poly1305
 [aes-gcm]: https://docs.rs/aes-gcm
-[Evercrypt]: https://github.com/project-everest/hacl-star/
-[EverCrypt Rust bindings]: https://crates.io/crates/evercrypt
+[evercrypt]: https://github.com/project-everest/hacl-star/
+[evercrypt rust bindings]: https://crates.io/crates/evercrypt

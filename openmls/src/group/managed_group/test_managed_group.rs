@@ -1,3 +1,6 @@
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMlsCryptoProvider};
+
 use crate::{
     prelude::*,
     test_utils::test_framework::{
@@ -5,32 +8,65 @@ use crate::{
     },
 };
 
+fn generate_credential_bundle(
+    key_store: &impl OpenMlsCryptoProvider,
+    identity: Vec<u8>,
+    credential_type: CredentialType,
+    signature_scheme: SignatureScheme,
+) -> Result<Credential, CredentialError> {
+    let cb = CredentialBundle::new(identity, credential_type, signature_scheme, key_store)?;
+    let credential = cb.credential().clone();
+    key_store
+        .key_store()
+        .store(credential.signature_key(), &cb)
+        .unwrap();
+    Ok(credential)
+}
+
+fn generate_key_package_bundle(
+    key_store: &impl OpenMlsCryptoProvider,
+    ciphersuites: &[CiphersuiteName],
+    credential: &Credential,
+    extensions: Vec<Extension>,
+) -> Result<KeyPackage, KeyPackageError> {
+    let credential_bundle = key_store
+        .key_store()
+        .read(credential.signature_key())
+        .unwrap();
+    let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, key_store, extensions)?;
+    let kp = kpb.key_package().clone();
+    key_store
+        .key_store()
+        .store(&kp.hash(key_store), &kpb)
+        .unwrap();
+    Ok(kp)
+}
+
 #[test]
 fn test_managed_group_persistence() {
+    let crypto = OpenMlsRustCrypto::default();
     let ciphersuite = &Config::supported_ciphersuites()[0];
     let group_id = GroupId::from_slice(b"Test Group");
 
-    let key_store = KeyStore::default();
-
     // Generate credential bundles
-    let alice_credential = key_store
-        .generate_credential_bundle(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
+    let alice_credential = generate_credential_bundle(
+        &crypto,
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+    )
+    .unwrap();
 
     // Generate KeyPackages
-    let alice_key_package = key_store
-        .generate_key_package_bundle(&[ciphersuite.name()], &alice_credential, vec![])
-        .unwrap();
+    let alice_key_package =
+        generate_key_package_bundle(&crypto, &[ciphersuite.name()], &alice_credential, vec![])
+            .unwrap();
 
     // Define the managed group configuration
     let update_policy = UpdatePolicy::default();
     let callbacks = ManagedGroupCallbacks::default();
     let managed_group_config = ManagedGroupConfig::new(
-        HandshakeMessageFormat::Plaintext,
+        WireFormat::MlsPlaintext,
         update_policy,
         0,     // padding_size
         0,     // number_of_resumption_secrets
@@ -41,10 +77,10 @@ fn test_managed_group_persistence() {
     // === Alice creates a group ===
 
     let alice_group = ManagedGroup::new(
-        &key_store,
+        &crypto,
         &managed_group_config,
         group_id,
-        &alice_key_package.hash(),
+        &alice_key_package.hash(&crypto),
     )
     .unwrap();
 
@@ -62,11 +98,11 @@ fn test_managed_group_persistence() {
     assert_eq!(
         (
             alice_group.export_ratchet_tree(),
-            alice_group.export_secret("test", &[], 32)
+            alice_group.export_secret(&crypto, "test", &[], 32)
         ),
         (
             alice_group_deserialized.export_ratchet_tree(),
-            alice_group_deserialized.export_secret("test", &[], 32)
+            alice_group_deserialized.export_secret(&crypto, "test", &[], 32)
         )
     );
 }
@@ -75,55 +111,54 @@ fn test_managed_group_persistence() {
 // issues a RemoveProposal and another members issues the next Commit.
 #[test]
 fn remover() {
+    let crypto = &OpenMlsRustCrypto::default();
     let ciphersuite = &Config::supported_ciphersuites()[0];
     let group_id = GroupId::from_slice(b"Test Group");
 
-    let key_store = KeyStore::default();
-
     // Generate credential bundles
-    let alice_credential = key_store
-        .generate_credential_bundle(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
+    let alice_credential = generate_credential_bundle(
+        crypto,
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+    )
+    .unwrap();
 
-    let bob_credential = key_store
-        .generate_credential_bundle(
-            "Bob".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
+    let bob_credential = generate_credential_bundle(
+        crypto,
+        "Bob".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+    )
+    .unwrap();
 
-    let charlie_credential = key_store
-        .generate_credential_bundle(
-            "Charly".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .unwrap();
+    let charlie_credential = generate_credential_bundle(
+        crypto,
+        "Charly".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+    )
+    .unwrap();
 
     // Generate KeyPackages
-    let alice_key_package = key_store
-        .generate_key_package_bundle(&[ciphersuite.name()], &alice_credential, vec![])
-        .unwrap();
+    let alice_key_package =
+        generate_key_package_bundle(crypto, &[ciphersuite.name()], &alice_credential, vec![])
+            .unwrap();
 
-    let bob_key_package = key_store
-        .generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, vec![])
-        .unwrap();
+    let bob_key_package =
+        generate_key_package_bundle(crypto, &[ciphersuite.name()], &bob_credential, vec![])
+            .unwrap();
 
-    let charlie_key_package = key_store
-        .generate_key_package_bundle(&[ciphersuite.name()], &charlie_credential, vec![])
-        .unwrap();
+    let charlie_key_package =
+        generate_key_package_bundle(crypto, &[ciphersuite.name()], &charlie_credential, vec![])
+            .unwrap();
 
     // Define the managed group configuration
 
     let update_policy = UpdatePolicy::default();
     let callbacks = ManagedGroupCallbacks::default();
     let mut managed_group_config = ManagedGroupConfig::new(
-        HandshakeMessageFormat::Ciphertext,
+        WireFormat::MlsCiphertext,
         update_policy,
         0,     // padding_size
         0,     // number_of_resumption_secrets
@@ -133,25 +168,25 @@ fn remover() {
 
     // === Alice creates a group ===
     let mut alice_group = ManagedGroup::new(
-        &key_store,
+        crypto,
         &managed_group_config,
         group_id,
-        &alice_key_package.hash(),
+        &alice_key_package.hash(crypto),
     )
     .unwrap();
 
     // === Alice adds Bob ===
-    let (queued_message, welcome) = match alice_group.add_members(&key_store, &[bob_key_package]) {
+    let (queued_message, welcome) = match alice_group.add_members(crypto, &[bob_key_package]) {
         Ok((qm, welcome)) => (qm, welcome),
         Err(e) => panic!("Could not add member to group: {:?}", e),
     };
 
     alice_group
-        .process_message(queued_message.into())
+        .process_message(queued_message.into(), crypto)
         .expect("Process message error");
 
     let mut bob_group = ManagedGroup::new_from_welcome(
-        &key_store,
+        crypto,
         &managed_group_config,
         welcome,
         Some(alice_group.export_ratchet_tree()),
@@ -159,23 +194,22 @@ fn remover() {
     .expect("Error creating group from Welcome");
 
     // === Bob adds Charlie ===
-    let (queued_messages, welcome) = match bob_group.add_members(&key_store, &[charlie_key_package])
-    {
+    let (queued_messages, welcome) = match bob_group.add_members(crypto, &[charlie_key_package]) {
         Ok((qm, welcome)) => (qm, welcome),
         Err(e) => panic!("Could not add member to group: {:?}", e),
     };
 
     alice_group
-        .process_message(queued_messages.clone().into())
+        .process_message(queued_messages.clone().into(), crypto)
         .expect("The group is no longer active");
     bob_group
-        .process_message(queued_messages.into())
+        .process_message(queued_messages.into(), crypto)
         .expect("The group is no longer active");
 
     let charlie_callbacks = ManagedGroupCallbacks::default();
     managed_group_config.set_callbacks(&charlie_callbacks);
     let mut charlie_group = ManagedGroup::new_from_welcome(
-        &key_store,
+        crypto,
         &managed_group_config,
         welcome,
         Some(bob_group.export_ratchet_tree()),
@@ -185,19 +219,19 @@ fn remover() {
     // === Alice removes Bob & Charlie commits ===
 
     let queued_messages = alice_group
-        .propose_remove_member(&key_store, 1)
+        .propose_remove_member(crypto, 1)
         .expect("Could not propose removal");
 
     charlie_group
-        .process_message(queued_messages.into())
+        .process_message(queued_messages.into(), crypto)
         .expect("Could not process messages");
 
     let (queued_messages, _welcome) = charlie_group
-        .process_pending_proposals(&key_store)
+        .process_pending_proposals(crypto)
         .expect("Could not commit proposal");
 
     let events = charlie_group
-        .process_message(queued_messages.into())
+        .process_message(queued_messages.into(), crypto)
         .expect("Could not process messages");
 
     match events.first().expect("Expected an event to be returned") {
@@ -215,15 +249,17 @@ fn remover() {
 }
 
 ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
+
+    let crypto = &OpenMlsRustCrypto::default();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
     let group_id = GroupId::from_slice(b"Test Group");
 
-    let key_store = KeyStore::default();
+
 
     // Generate credential bundles
-    let alice_credential = key_store
-        .generate_credential_bundle(
+    let alice_credential = generate_credential_bundle(
+            crypto,
             "Alice".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
@@ -231,15 +267,19 @@ ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
         .unwrap();
 
     // Generate KeyPackages
-    let alice_key_package = key_store
-        .generate_key_package_bundle(&[ciphersuite.name()], &alice_credential, vec![])
+    let alice_key_package = generate_key_package_bundle(
+            crypto,
+            &[ciphersuite.name()],
+            &alice_credential,
+            vec![],
+        )
         .unwrap();
 
     // Define the managed group configuration
     let update_policy = UpdatePolicy::default();
     let callbacks = ManagedGroupCallbacks::default();
     let managed_group_config = ManagedGroupConfig::new(
-        HandshakeMessageFormat::Plaintext,
+        WireFormat::MlsPlaintext,
         update_policy,
         0, // padding_size
         0, // number_of_resumption_secrets
@@ -249,27 +289,29 @@ ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
 
     // === Alice creates a group ===
     let alice_group = ManagedGroup::new(
-        &key_store,
+
+
+        crypto,
         &managed_group_config,
         group_id,
-        &alice_key_package.hash(),
+        &alice_key_package.hash(crypto),
     )
     .unwrap();
 
     assert!(
         alice_group
-            .export_secret("test1", &[], ciphersuite.hash_length())
+            .export_secret(crypto, "test1", &[], ciphersuite.hash_length())
             .unwrap()
             != alice_group
-            .export_secret("test2", &[], ciphersuite.hash_length())
+            .export_secret(crypto, "test2", &[], ciphersuite.hash_length())
             .unwrap()
     );
     assert!(
         alice_group
-            .export_secret("test", &[0u8], ciphersuite.hash_length())
+            .export_secret(crypto, "test", &[0u8], ciphersuite.hash_length())
             .unwrap()
             != alice_group
-                .export_secret("test", &[1u8], ciphersuite.hash_length())
+                .export_secret(crypto, "test", &[1u8], ciphersuite.hash_length())
                 .unwrap()
     )
 });
@@ -281,7 +323,7 @@ fn test_invalid_plaintext() {
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
     // Some basic setup functions for the managed group.
-    let handshake_message_format = HandshakeMessageFormat::Plaintext;
+    let handshake_message_format = WireFormat::MlsPlaintext;
     let update_policy = UpdatePolicy::default();
     let callbacks = ManagedGroupCallbacks::default();
     let managed_group_config = ManagedGroupConfig::new(

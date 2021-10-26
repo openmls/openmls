@@ -26,3 +26,23 @@ pub use sender::*;
 
 #[cfg(test)]
 mod test_framing;
+
+/// This struct is used to group common framing parameters
+/// in order to reduce the number of arguments in function calls.
+#[derive(Clone, Copy)]
+pub struct FramingParameters<'a> {
+    aad: &'a [u8],
+    wire_format: WireFormat,
+}
+
+impl<'a> FramingParameters<'a> {
+    pub fn new(aad: &'a [u8], wire_format: WireFormat) -> Self {
+        Self { aad, wire_format }
+    }
+    pub fn aad(&self) -> &'a [u8] {
+        self.aad
+    }
+    pub fn wire_format(&self) -> WireFormat {
+        self.wire_format
+    }
+}

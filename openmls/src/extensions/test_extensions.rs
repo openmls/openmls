@@ -2,11 +2,12 @@
 //! Some basic unit tests for extensions
 //! Proper testing is done through the public APIs.
 
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 use super::*;
 
-use crate::prelude::*;
+use crate::{group::create_commit::Proposals, prelude::*};
 
 #[test]
 fn capabilities() {
@@ -78,34 +79,47 @@ fn lifetime() {
 // This tests the ratchet tree extension to deliver the public ratcheting tree
 // in-band
 ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteName) {
+    let crypto = &OpenMlsRustCrypto::default();
+
     log::info!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
     // Basic group setup.
     let group_aad = b"Alice's test group";
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
 
     // Define credential bundles
     let alice_credential_bundle = CredentialBundle::new(
         "Alice".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
+        crypto,
     )
     .unwrap();
     let bob_credential_bundle = CredentialBundle::new(
         "Bob".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
+        crypto,
     )
     .unwrap();
 
     // Generate KeyPackages
     let alice_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new())
-            .unwrap();
+        KeyPackageBundle::new(&[ciphersuite.name()],
+            &alice_credential_bundle,
+            crypto,
+            Vec::new(),
+        )
+        .unwrap();
 
     let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
-            .unwrap();
+        KeyPackageBundle::new(&[ciphersuite.name()],
+            &bob_credential_bundle,
+            crypto,
+            Vec::new(),
+        )
+        .unwrap();
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let config = MlsGroupConfig {
@@ -118,6 +132,7 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     let mut alice_group = MlsGroup::new(
         &group_id,
         ciphersuite.name(),
+        crypto,
         alice_key_package_bundle,
         config,
         None, /* Initial PSK */
@@ -127,22 +142,25 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group
-        .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+        .create_add_proposal(framing_parameters, &alice_credential_bundle, bob_key_package.clone(), crypto)
         .expect("Could not create proposal.");
-    let epoch_proposals = &[&bob_add_proposal];
+    let proposals_by_reference = &[&bob_add_proposal];
     let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
         .create_commit(
-            group_aad,
+            framing_parameters,
             &alice_credential_bundle,
-            epoch_proposals,
-            &[],
+            Proposals {
+                proposals_by_reference,
+                proposals_by_value: &[],
+            },
             false,
             None,
+            crypto,
         )
         .expect("Error creating commit");
 
     alice_group
-        .apply_commit(&mls_plaintext_commit, epoch_proposals, &[], None)
+        .apply_commit(&mls_plaintext_commit, proposals_by_reference, &[], None, crypto)
         .expect("error applying commit");
 
     let bob_group = match MlsGroup::new_from_welcome(
@@ -150,6 +168,7 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         None,
         bob_key_package_bundle,
         None,
+        crypto,
     ) {
         Ok(g) => g,
         Err(e) => panic!("Could not join group with ratchet tree extension {}", e),
@@ -169,11 +188,11 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
 
     // Generate KeyPackages
     let alice_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new())
+        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, crypto, Vec::new())
             .unwrap();
 
     let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
+        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, crypto, Vec::new())
             .unwrap();
     let bob_key_package = bob_key_package_bundle.key_package();
 
@@ -186,6 +205,7 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     let mut alice_group = MlsGroup::new(
         &group_id,
         ciphersuite.name(),
+        crypto,
         alice_key_package_bundle,
         config,
         None, /* Initial PSK */
@@ -195,22 +215,25 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group
-        .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+        .create_add_proposal(framing_parameters, &alice_credential_bundle, bob_key_package.clone(), crypto)
         .expect("Could not create proposal.");
-    let epoch_proposals = &[&bob_add_proposal];
+    let proposals_by_reference = &[&bob_add_proposal];
     let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
         .create_commit(
-            group_aad,
+            framing_parameters,
             &alice_credential_bundle,
-            epoch_proposals,
-            &[],
+            Proposals {
+                proposals_by_reference,
+                proposals_by_value: &[],
+            },
             false,
             None,
+            crypto,
         )
         .expect("Error creating commit");
 
     alice_group
-        .apply_commit(&mls_plaintext_commit, epoch_proposals, &[], None)
+        .apply_commit(&mls_plaintext_commit, proposals_by_reference, &[], None, crypto)
         .expect("error applying commit");
 
     let error = MlsGroup::new_from_welcome(
@@ -218,6 +241,7 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         None,
         bob_key_package_bundle,
         None,
+        crypto,
     )
     .err();
 

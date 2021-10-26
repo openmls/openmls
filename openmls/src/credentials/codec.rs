@@ -1,5 +1,6 @@
 use std::io::Read;
 
+use openmls_traits::types::SignatureScheme;
 use tls_codec::TlsByteVecU16;
 
 use super::*;

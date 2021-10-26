@@ -3,7 +3,7 @@ use crate::{
     credentials::CredentialBundle,
     messages::{
         proposals::{ExternalInitProposal, Proposal},
-        PublicGroupState,
+        public_group_state::{PublicGroupState, VerifiablePublicGroupState},
     },
     node::Node,
     prelude::{plaintext::MlsPlaintext, KeyPackageBundle},
@@ -26,13 +26,14 @@ pub type ExternalInitResult = Result<
 
 impl MlsGroup {
     pub(crate) fn new_from_external_init_internal(
+        framing_parameters: FramingParameters,
         nodes_option: Option<Vec<Option<Node>>>,
         psk_fetcher_option: Option<PskFetcher>,
-        aad: &[u8],
         credential_bundle: &CredentialBundle,
         proposals_by_reference: &[MlsPlaintext],
         proposals_by_value: &[Proposal],
         verifiable_public_group_state: VerifiablePublicGroupState,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> ExternalInitResult {
         let ciphersuite = Config::ciphersuite(verifiable_public_group_state.payload().ciphersuite)?;
 
@@ -48,6 +49,7 @@ impl MlsGroup {
                 .extensions
                 .as_slice(),
             None,
+            backend,
         )?;
 
         // Verify the public group state using the credential of the signer.
@@ -60,7 +62,7 @@ impl MlsGroup {
             .ok_or(ExternalInitError::UnknownSigner)?
             .credential();
         let pgs: PublicGroupState = verifiable_public_group_state
-            .verify(pgs_signer_credential)
+            .verify(backend, pgs_signer_credential)
             .map_err(|_| ExternalInitError::InvalidPublicGroupState)?;
 
         let (init_secret, kem_output) = InitSecret::from_public_group_state(&pgs)?;
@@ -68,7 +70,7 @@ impl MlsGroup {
         let external_init_proposal = Proposal::ExternalInit(ExternalInitProposal::from(kem_output));
 
         let key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite.name()], credential_bundle, vec![])?;
+            KeyPackageBundle::new(&[ciphersuite.name()], credential_bundle, backend, vec![])?;
 
         let add_proposal = Proposal::Add(AddProposal {
             key_package: key_package_bundle.key_package().clone(),
@@ -90,7 +92,7 @@ impl MlsGroup {
             pgs.extensions.as_slice(),
         );
 
-        let epoch_secrets = EpochSecrets::with_init_secret(init_secret);
+        let epoch_secrets = EpochSecrets::with_init_secret(backend, init_secret);
         let secret_tree = SecretTree::new(epoch_secrets.encryption_secret(), tree.leaf_count());
 
         let group = MlsGroup {
@@ -104,14 +106,19 @@ impl MlsGroup {
             mls_version: ciphersuite.version(),
         };
 
+        let proposals = Proposals {
+            proposals_by_reference: &pbr_references,
+            proposals_by_value: &pbv_references,
+        };
+
         // Immediately create the commit to add ourselves to the group.
         let (mls_plaintext, option_welcome, option_kpb) = group.create_commit(
-            aad,
+            framing_parameters,
             credential_bundle,
-            &pbr_references,
-            &pbv_references,
+            proposals,
             true, // force self-update
             psk_fetcher_option,
+            backend,
         )?;
 
         Ok((group, mls_plaintext, option_welcome, option_kpb))

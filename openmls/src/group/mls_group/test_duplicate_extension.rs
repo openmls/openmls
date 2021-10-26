@@ -1,12 +1,13 @@
 //! # Ratchet tree extensions unit test
-
 use super::*;
 
 use crate::{messages::GroupSecrets, prelude::*, schedule::KeySchedule};
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::Deserialize;
 
 // This tests the ratchet tree extension to test if the duplicate detection works
 ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: CiphersuiteName) {
+    let crypto = OpenMlsRustCrypto::default();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
@@ -18,22 +19,24 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
         "Alice".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
+        &crypto,
     )
     .unwrap();
     let bob_credential_bundle = CredentialBundle::new(
         "Bob".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
+        &crypto,
     )
     .unwrap();
 
     // Generate KeyPackages
     let alice_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new())
+        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, &crypto, Vec::new())
             .unwrap();
 
     let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
+        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, &crypto, Vec::new())
             .unwrap();
     let bob_key_package = bob_key_package_bundle.key_package();
 
@@ -43,9 +46,12 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
     };
 
     let group_id = [5, 6, 7, 8];
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+
     let mut alice_group = MlsGroup::new(
         &group_id,
         ciphersuite.name(),
+        &crypto,
         alice_key_package_bundle,
         config,
         None, /* Initial PSK */
@@ -55,22 +61,30 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group
-        .create_add_proposal(group_aad, &alice_credential_bundle, bob_key_package.clone())
+        .create_add_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            bob_key_package.clone(),
+            &crypto,
+        )
         .expect("Could not create proposal.");
     let epoch_proposals = &[&bob_add_proposal];
     let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
         .create_commit(
-            group_aad,
+            framing_parameters,
             &alice_credential_bundle,
-            epoch_proposals,
-            &[],
+            Proposals {
+                proposals_by_reference: epoch_proposals,
+                proposals_by_value: &[],
+            },
             false,
             None,
+            &crypto,
         )
         .expect("Error creating commit");
 
     alice_group
-        .apply_commit(&mls_plaintext_commit, epoch_proposals, &[], None)
+        .apply_commit(&mls_plaintext_commit, epoch_proposals, &[], None, &crypto)
         .expect("error applying commit");
 
     let mut welcome = welcome_bundle_alice_bob_option.expect("Expected a Welcome message");
@@ -81,6 +95,7 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
     let egs = MlsGroup::find_key_package_from_welcome_secrets(
         bob_key_package_bundle.key_package(),
         welcome.secrets(),
+        &crypto,
     ).expect("JoinerSecret not found");
 
     let group_secrets_bytes = ciphersuite.hpke_open(
@@ -93,26 +108,20 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
     let joiner_secret = group_secrets.joiner_secret;
 
     // Create key schedule
-    let presharedkeys = PreSharedKeys {
-        psks: match group_secrets.psks {
-            Some(psks) => psks.psks,
-            None => vec![].into(),
-        },
-    };
-
     let key_schedule = KeySchedule::init(
         ciphersuite,
+        &crypto,
         joiner_secret,
-        psk_output(ciphersuite, None, &presharedkeys).expect("Could not extract PSKs"),
+        psk_output(ciphersuite, &crypto, None, &group_secrets.psks).expect("Could not extract PSKs"),
     );
 
     // Derive welcome key & noce from the key schedule
     let (welcome_key, welcome_nonce) = key_schedule
-        .welcome().expect("Expected a WelcomeSecret")
-        .derive_welcome_key_nonce();
+        .welcome(&crypto).expect("Expected a WelcomeSecret")
+        .derive_welcome_key_nonce(&crypto);
 
     let group_info_bytes = welcome_key
-        .aead_open(welcome.encrypted_group_info(), &[], &welcome_nonce)
+        .aead_open(&crypto, welcome.encrypted_group_info(), &[], &welcome_nonce)
         .map_err(|_| WelcomeError::GroupInfoDecryptionFailure).expect("Could not decrypt GroupInfo");
     let mut group_info = GroupInfo::tls_deserialize(&mut group_info_bytes.as_slice()).expect("Could not decode GroupInfo");
 
@@ -122,10 +131,10 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
     group_info.set_extensions(duplicate_extensions);
 
     // Put everything back together
-    let group_info = group_info.re_sign(&bob_credential_bundle).expect("Error re-signing GroupInfo");
+    let group_info = group_info.re_sign(&bob_credential_bundle, &crypto).expect("Error re-signing GroupInfo");
 
     let encrypted_group_info = welcome_key
-        .aead_seal(&group_info.tls_serialize_detached().expect("Could not encode GroupInfo"), &[], &welcome_nonce)
+        .aead_seal(&crypto, &group_info.tls_serialize_detached().expect("Could not encode GroupInfo"), &[], &welcome_nonce)
         .unwrap();
 
     welcome.set_encrypted_group_info(encrypted_group_info);
@@ -136,6 +145,7 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
         None,
         bob_key_package_bundle,
         None,
+        &crypto,
     )
     .err();
 

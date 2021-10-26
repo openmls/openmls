@@ -1,3 +1,5 @@
+use openmls_rust_crypto::OpenMlsRustCrypto;
+
 use crate::{
     group::ManagedGroupConfig,
     test_utils::test_framework::{ActionType, CodecUse, ManagedTestSetup},
@@ -8,6 +10,7 @@ use crate::{
 /// works as intended.
 #[test]
 fn test_exclusion_list() {
+    let crypto = OpenMlsRustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         // Number of nodes in the tree
         const NODES: usize = 31;
@@ -28,10 +31,12 @@ fn test_exclusion_list() {
                 vec![i as u8],
                 CredentialType::Basic,
                 ciphersuite.signature_scheme(),
+                &crypto,
             )
             .unwrap();
             let key_package_bundle =
-                KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, vec![]).unwrap();
+                KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, &crypto, vec![])
+                    .unwrap();
 
             // We build a leaf node from the key packages
             let leaf_node = Node {
@@ -51,7 +56,8 @@ fn test_exclusion_list() {
         // The first key package bundle is used for the tree holder
         let key_package_bundle = key_package_bundles.remove(0);
 
-        let tree = RatchetTree::new_from_nodes(key_package_bundle, &nodes).unwrap();
+        let tree =
+            RatchetTree::new_with_key_package_bundle(&crypto, key_package_bundle, &nodes).unwrap();
 
         let root = treemath::root(LeafIndex::from(NODES / 2));
 
@@ -87,6 +93,7 @@ fn test_exclusion_list() {
 /// parent hashes
 #[test]
 fn test_original_child_resolution() {
+    let crypto = OpenMlsRustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         // Number of leaf nodes in the tree
         const NODES: usize = 10;
@@ -105,10 +112,12 @@ fn test_original_child_resolution() {
                 vec![i as u8],
                 CredentialType::Basic,
                 ciphersuite.signature_scheme(),
+                &crypto,
             )
             .unwrap();
             let key_package_bundle =
-                KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, vec![]).unwrap();
+                KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, &crypto, vec![])
+                    .unwrap();
 
             // We build a leaf node from the key packages
             let leaf_node = Node {
@@ -131,7 +140,8 @@ fn test_original_child_resolution() {
         // The first key package bundle is used for the tree holder
         let key_package_bundle = key_package_bundles.remove(0);
 
-        let mut tree = RatchetTree::new_from_nodes(key_package_bundle, &nodes).unwrap();
+        let mut tree =
+            RatchetTree::new_with_key_package_bundle(&crypto, key_package_bundle, &nodes).unwrap();
 
         // Left child index
         let left_child_index = treemath::left(root_index).unwrap();
@@ -151,7 +161,11 @@ fn test_original_child_resolution() {
 
         // Add unmerged leaves to root node
         let (_private_key, public_key) = ciphersuite
-            .derive_hpke_keypair(&Secret::random(ciphersuite, None /* MLS version */))
+            .derive_hpke_keypair(&Secret::random(
+                ciphersuite,
+                &crypto,
+                None, /* MLS version */
+            ))
             .into_keys();
         let new_root_node = Node {
             node_type: NodeType::Parent,

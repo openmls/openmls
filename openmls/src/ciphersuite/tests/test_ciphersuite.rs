@@ -1,4 +1,5 @@
 //! Unit tests for the ciphersuites.
+use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use crate::ciphersuite::*;
 use crate::config::Config;
@@ -6,12 +7,13 @@ use crate::config::Config;
 // Spot test to make sure hpke seal/open work.
 #[test]
 fn test_hpke_seal_open() {
+    let crypto = OpenMlsRustCrypto::default();
     // Test through ciphersuites.
     for ciphersuite in Config::supported_ciphersuites() {
         println!("Test {:?}", ciphersuite.name());
         println!("Ciphersuite {:?}", ciphersuite);
         let plaintext = &[1, 2, 3];
-        let kp = ciphersuite.derive_hpke_keypair(&Secret::random(ciphersuite, None));
+        let kp = ciphersuite.derive_hpke_keypair(&Secret::random(ciphersuite, &crypto, None));
         let ciphertext = ciphersuite.hpke_seal(kp.public_key(), &[], &[], plaintext);
         let decrypted_payload = ciphersuite
             .hpke_open(&ciphertext, kp.private_key(), &[], &[])
@@ -47,16 +49,20 @@ fn test_hpke_seal_open() {
 
 #[test]
 fn test_sign_verify() {
+    let crypto = &OpenMlsRustCrypto::default();
+
     for ciphersuite in Config::supported_ciphersuites() {
-        let keypair = ciphersuite.signature_scheme().new_keypair().unwrap();
+        let keypair = SignatureKeypair::new(ciphersuite.signature_scheme(), crypto).unwrap();
         let payload = &[1, 2, 3];
-        let signature = keypair.sign(payload).unwrap();
-        assert!(keypair.verify(&signature, payload).is_ok());
+        let signature = keypair.sign(crypto, payload).unwrap();
+        assert!(keypair.verify(crypto, &signature, payload).is_ok());
     }
 }
 
 #[test]
 fn supported_ciphersuites() {
+    let crypto = &OpenMlsRustCrypto::default();
+
     const SUPPORTED_CIPHERSUITE_NAMES: &[CiphersuiteName] = &[
         CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
@@ -74,7 +80,7 @@ fn supported_ciphersuites() {
         let ciphersuite = Ciphersuite::new(*ciphersuite_name)
             .expect("Could not instantiate a Ciphersuite object.");
         // Create signature keypair
-        let _signature_keypair = SignatureKeypair::new(ciphersuite.signature_scheme())
+        let _signature_keypair = SignatureKeypair::new(ciphersuite.signature_scheme(), crypto)
             .expect("Could not create signature keypair.");
     }
 
@@ -83,24 +89,29 @@ fn supported_ciphersuites() {
         let _ciphersuite = Ciphersuite::new(*ciphersuite_name)
             .expect_err("Could instantiate a Ciphersuite object with an unsupported ciphersuite.");
         // Create signature keypair
-        let _signature_keypair = SignatureKeypair::new(SignatureScheme::from(*ciphersuite_name))
-            .expect_err("Could create signature keypair with unsupported ciphersuite.");
+        let _signature_keypair =
+            SignatureKeypair::new(SignatureScheme::from(*ciphersuite_name), crypto)
+                .expect_err("Could create signature keypair with unsupported ciphersuite.");
     }
 }
 
 #[test]
 fn test_signatures() {
+    let crypto = &OpenMlsRustCrypto::default();
+
     for ciphersuite in Config::supported_ciphersuites() {
         // Test that valid signatures are properly verified.
         let payload = vec![0u8];
         let signature_scheme =
             SignatureScheme::try_from(ciphersuite.name()).expect("error deriving signature scheme");
-        let keypair =
-            SignatureKeypair::new(signature_scheme).expect("error generating signature keypair");
-        let mut signature = keypair.sign(&payload).expect("error creating signature");
+        let keypair = SignatureKeypair::new(signature_scheme, crypto)
+            .expect("error generating signature keypair");
+        let mut signature = keypair
+            .sign(crypto, &payload)
+            .expect("error creating signature");
         println!("Done signing payload\n");
         keypair
-            .verify(&signature, &payload)
+            .verify(crypto, &signature, &payload)
             .expect("error verifying signature");
         println!("Done verifying payload\n");
 
@@ -113,7 +124,7 @@ fn test_signatures() {
 
         assert_eq!(
             keypair
-                .verify(&signature, &payload)
+                .verify(crypto, &signature, &payload)
                 .expect_err("error verifying signature"),
             CryptoError::InvalidSignature
         );

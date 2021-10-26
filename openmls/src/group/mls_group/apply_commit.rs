@@ -12,11 +12,17 @@ impl MlsGroup {
         proposals_by_reference: &[&MlsPlaintext],
         own_key_packages: &[KeyPackageBundle],
         psk_fetcher_option: Option<PskFetcher>,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<(), ApplyCommitError> {
         let ciphersuite = self.ciphersuite();
 
         // Verify epoch
         if mls_plaintext.epoch() != &self.group_context.epoch {
+            log::error!(
+                "Epoch mismatch. Got {:?}, expected {:?}",
+                mls_plaintext.epoch(),
+                self.group_context.epoch
+            );
             return Err(ApplyCommitError::EpochMismatch);
         }
 
@@ -34,6 +40,7 @@ impl MlsGroup {
         // of the proposals by reference locally
         let proposal_queue = match ProposalQueue::from_committed_proposals(
             ciphersuite,
+            backend,
             commit.proposals.as_slice(),
             proposals_by_reference,
             *mls_plaintext.sender(),
@@ -73,7 +80,7 @@ impl MlsGroup {
         // FIXME: #424 this is a copy of the nodes in the tree to reset the original state.
         let original_nodes = provisional_tree.nodes.clone();
         let apply_proposals_values =
-            match provisional_tree.apply_proposals(proposal_queue, own_key_packages) {
+            match provisional_tree.apply_proposals(backend, proposal_queue, own_key_packages) {
                 Ok(res) => res,
                 Err(_) => return Err(ApplyCommitError::OwnKeyNotFound),
             };
@@ -94,7 +101,7 @@ impl MlsGroup {
             // Note that the signature must have been verified already.
             // TODO #106: Support external members
             let kp = &path.leaf_key_package;
-            if kp.verify().is_err() {
+            if kp.verify(backend).is_err() {
                 return Err(ApplyCommitError::PathKeyPackageVerificationFailure);
             }
             let serialized_context = self.group_context.tls_serialize_detached()?;
@@ -109,12 +116,13 @@ impl MlsGroup {
                 // We can unwrap here, because we know there was a path and thus
                 // a new commit secret must have been set.
                 provisional_tree
-                    .replace_private_tree(own_kpb, &serialized_context)
+                    .replace_private_tree(backend, own_kpb, &serialized_context)
                     .unwrap()
             } else {
                 // Collect the new leaves' indexes so we can filter them out in the resolution
                 // later.
                 provisional_tree.update_path(
+                    backend,
                     sender,
                     &path,
                     &serialized_context,
@@ -139,13 +147,13 @@ impl MlsGroup {
                 .into_keys();
             let init_secret =
                 InitSecret::from_kem_output(ciphersuite, &external_priv, &kem_output)?;
-            JoinerSecret::new(commit_secret, &init_secret)
+            JoinerSecret::new(backend, commit_secret, &init_secret)
         } else {
             let init_secret = self
                 .epoch_secrets
                 .init_secret()
                 .ok_or(ApplyCommitError::InitSecretNotFound)?;
-            JoinerSecret::new(commit_secret, init_secret)
+            JoinerSecret::new(backend, commit_secret, init_secret)
         };
 
         // Create provisional group state
@@ -154,6 +162,7 @@ impl MlsGroup {
 
         let confirmed_transcript_hash = update_confirmed_transcript_hash(
             ciphersuite,
+            backend,
             // It is ok to use `unwrap()` here, because we know the MlsPlaintext contains a Commit
             &MlsPlaintextCommitContent::try_from(mls_plaintext).unwrap(),
             &self.interim_transcript_hash,
@@ -165,7 +174,7 @@ impl MlsGroup {
         let provisional_group_context = GroupContext::new(
             self.group_context.group_id.clone(),
             provisional_epoch,
-            provisional_tree.tree_hash(),
+            provisional_tree.tree_hash(backend),
             confirmed_transcript_hash.clone(),
             &extensions,
         );
@@ -173,15 +182,17 @@ impl MlsGroup {
         // Create key schedule
         let mut key_schedule = KeySchedule::init(
             ciphersuite,
+            backend,
             joiner_secret,
             psk_output(
                 ciphersuite,
+                backend,
                 psk_fetcher_option,
                 &apply_proposals_values.presharedkeys,
             )?,
         );
-        key_schedule.add_context(&provisional_group_context)?;
-        let provisional_epoch_secrets = key_schedule.epoch_secrets(true)?;
+        key_schedule.add_context(backend, &provisional_group_context)?;
+        let provisional_epoch_secrets = key_schedule.epoch_secrets(backend, true)?;
 
         let mls_plaintext_commit_auth_data = MlsPlaintextCommitAuthData::try_from(mls_plaintext)
             .map_err(|_| {
@@ -191,6 +202,7 @@ impl MlsGroup {
 
         let interim_transcript_hash = update_interim_transcript_hash(
             ciphersuite,
+            backend,
             &mls_plaintext_commit_auth_data,
             &confirmed_transcript_hash,
         )?;
@@ -198,7 +210,7 @@ impl MlsGroup {
         // Verify confirmation tag
         let own_confirmation_tag = provisional_epoch_secrets
             .confirmation_key()
-            .tag(&confirmed_transcript_hash);
+            .tag(backend, &confirmed_transcript_hash);
         if &own_confirmation_tag != received_confirmation_tag {
             // FIXME: reset nodes. This should get fixed with the tree rewrite.
             provisional_tree.nodes = original_nodes;
@@ -211,7 +223,7 @@ impl MlsGroup {
         // Verify KeyPackage extensions
         if let Some(path) = &commit.path {
             if !is_own_commit {
-                let parent_hash = provisional_tree.set_parent_hashes(sender);
+                let parent_hash = provisional_tree.set_parent_hashes(backend, sender);
                 if let Some(received_parent_hash) = path
                     .leaf_key_package
                     .extension_with_type(ExtensionType::ParentHash)

@@ -1,12 +1,9 @@
-use crate::ciphersuite::*;
-use crate::config::ProtocolVersion;
-use crate::extensions::Extension;
-use crate::framing::*;
-use crate::group::GroupId;
-use crate::key_packages::*;
-use crate::schedule::psk::*;
-use crate::tree::index::*;
+use crate::{
+    ciphersuite::*, config::ProtocolVersion, extensions::Extension, framing::*, group::GroupId,
+    key_packages::*, schedule::psk::*, tree::index::*,
+};
 
+use openmls_traits::OpenMlsCryptoProvider;
 use serde::{Deserialize, Serialize};
 use std::collections::{hash_map::Entry, HashMap, HashSet};
 use std::convert::TryFrom;
@@ -166,10 +163,11 @@ pub struct ProposalReference {
 impl ProposalReference {
     pub(crate) fn from_proposal(
         ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
         proposal: &Proposal,
     ) -> Result<Self, tls_codec::Error> {
         let encoded = proposal.tls_serialize_detached()?;
-        let value = ciphersuite.hash(&encoded).into();
+        let value = ciphersuite.hash(backend, &encoded).into();
         Ok(Self { value })
     }
 }
@@ -188,6 +186,7 @@ impl<'a> QueuedProposal<'a> {
     /// Creates a new `QueuedProposal` from an `MlsPlaintext`
     pub(crate) fn from_mls_plaintext(
         ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
         mls_plaintext: &'a MlsPlaintext,
     ) -> Result<Self, QueuedProposalError> {
         debug_assert!(mls_plaintext.content_type() == &ContentType::Proposal);
@@ -195,7 +194,7 @@ impl<'a> QueuedProposal<'a> {
             MlsPlaintextContentType::Proposal(p) => p,
             _ => return Err(QueuedProposalError::WrongContentType),
         };
-        let proposal_reference = ProposalReference::from_proposal(ciphersuite, proposal)?;
+        let proposal_reference = ProposalReference::from_proposal(ciphersuite, backend, proposal)?;
         Ok(Self {
             proposal,
             proposal_reference,
@@ -206,10 +205,11 @@ impl<'a> QueuedProposal<'a> {
     /// Creates a new `QueuedProposal` from a `Proposal` and `Sender`
     pub(crate) fn from_proposal_and_sender(
         ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
         proposal: &'a Proposal,
         sender: Sender,
     ) -> Result<Self, QueuedProposalError> {
-        let proposal_reference = ProposalReference::from_proposal(ciphersuite, proposal)?;
+        let proposal_reference = ProposalReference::from_proposal(ciphersuite, backend, proposal)?;
         Ok(Self {
             proposal,
             proposal_reference,
@@ -251,6 +251,7 @@ impl<'a> ProposalQueue<'a> {
     /// don't need filtering
     pub(crate) fn from_proposals_by_reference(
         ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
         proposals: &'a [&MlsPlaintext],
     ) -> Self {
         let mut proposal_queue = ProposalQueue::default();
@@ -258,7 +259,7 @@ impl<'a> ProposalQueue<'a> {
             // It is safe to unwrap here, because we checked that only proposals can end up
             // here.
             let queued_proposal =
-                QueuedProposal::from_mls_plaintext(ciphersuite, mls_plaintext).unwrap();
+                QueuedProposal::from_mls_plaintext(ciphersuite, backend, mls_plaintext).unwrap();
             proposal_queue.add(queued_proposal);
         }
         proposal_queue
@@ -267,6 +268,7 @@ impl<'a> ProposalQueue<'a> {
     /// don't need filtering
     pub(crate) fn from_committed_proposals(
         ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
         committed_proposals: &'a [ProposalOrRef],
         proposals_by_reference: &[&'a MlsPlaintext],
         sender: Sender,
@@ -276,7 +278,8 @@ impl<'a> ProposalQueue<'a> {
         let mut proposals_by_reference_queue: HashMap<ProposalReference, QueuedProposal> =
             HashMap::new();
         for mls_plaintext in proposals_by_reference {
-            let queued_proposal = QueuedProposal::from_mls_plaintext(ciphersuite, mls_plaintext)?;
+            let queued_proposal =
+                QueuedProposal::from_mls_plaintext(ciphersuite, backend, mls_plaintext)?;
             proposals_by_reference_queue
                 .insert(queued_proposal.proposal_reference(), queued_proposal);
         }
@@ -287,9 +290,12 @@ impl<'a> ProposalQueue<'a> {
         // Iterate over the committed proposals and insert the proposals in the queue
         for proposal_or_ref in committed_proposals.iter() {
             let queued_proposal = match proposal_or_ref {
-                ProposalOrRef::Proposal(proposal) => {
-                    QueuedProposal::from_proposal_and_sender(ciphersuite, proposal, sender)?
-                }
+                ProposalOrRef::Proposal(proposal) => QueuedProposal::from_proposal_and_sender(
+                    ciphersuite,
+                    backend,
+                    proposal,
+                    sender,
+                )?,
                 ProposalOrRef::Reference(proposal_reference) => {
                     match proposals_by_reference_queue.get(proposal_reference) {
                         Some(queued_proposal) => queued_proposal.clone(),
@@ -328,6 +334,7 @@ impl<'a> ProposalQueue<'a> {
     /// own node were included
     pub(crate) fn filter_proposals(
         ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
         proposals_by_reference: &'a [&MlsPlaintext],
         proposals_by_value: &'a [&Proposal],
         own_index_option: Option<LeafIndex>,
@@ -367,13 +374,15 @@ impl<'a> ProposalQueue<'a> {
         // We checked earlier that only proposals can end up here
         let mut queued_proposal_list = proposals_by_reference
             .iter()
-            .map(|&mls_plaintext| QueuedProposal::from_mls_plaintext(ciphersuite, mls_plaintext))
+            .map(|&mls_plaintext| {
+                QueuedProposal::from_mls_plaintext(ciphersuite, backend, mls_plaintext)
+            })
             .collect::<Result<Vec<QueuedProposal>, _>>()?;
 
         queued_proposal_list.extend(
             proposals_by_value
                 .iter()
-                .map(|&p| QueuedProposal::from_proposal_and_sender(ciphersuite, p, sender))
+                .map(|&p| QueuedProposal::from_proposal_and_sender(ciphersuite, backend, p, sender))
                 .collect::<Result<Vec<QueuedProposal>, _>>()?
                 .into_iter(),
         );
