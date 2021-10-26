@@ -348,7 +348,7 @@ fn test_invalid_plaintext() {
     );
 
     // Tamper with the message such that sender lookup fails
-    let mut msg_invalid_sender = mls_message.clone();
+    let mut msg_invalid_sender = mls_message;
     match &mut msg_invalid_sender {
         MlsMessageOut::Plaintext(pt) => pt.set_sender(Sender {
             sender_type: pt.sender().sender_type,
