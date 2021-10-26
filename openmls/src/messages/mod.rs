@@ -6,7 +6,7 @@ use crate::schedule::psk::PreSharedKeys;
 use crate::schedule::JoinerSecret;
 use crate::tree::{index::*, *};
 
-use openmls_traits::{OpenMlsCryptoProvider, types::HpkeCiphertext};
+use openmls_traits::{types::HpkeCiphertext, OpenMlsCryptoProvider};
 
 use serde::{Deserialize, Serialize};
 
