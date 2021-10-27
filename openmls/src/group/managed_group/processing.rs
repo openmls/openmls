@@ -126,7 +126,7 @@ impl ManagedGroup {
                         self.pending_proposals.clear();
                         self.own_kpbs.clear();
                     }
-                    Err(stage_commit_error) => match stage_commit_error.into() {
+                    Err(stage_commit_error) => match stage_commit_error {
                         MlsGroupError::StageCommitError(StageCommitError::SelfRemoved) => {
                             // Prepare events
                             events.append(&mut self.prepare_events(

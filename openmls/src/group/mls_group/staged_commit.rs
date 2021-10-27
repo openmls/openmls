@@ -9,8 +9,8 @@ impl MlsGroup {
     ///  - Calculates the path secrets
     ///  - Initializes the key schedule for epoch rollover
     ///  - Verifies the confirmation tag/membership tag
-    /// Returns a [`StagedCommit`] that can be inspected and later merged
-    /// into the group state with [`merge_commit()`]
+    /// Returns a [StagedCommit] that can be inspected and later merged
+    /// into the group state with [merge_commit()]
     pub fn stage_commit(
         &mut self,
         mls_plaintext: &MlsPlaintext,
@@ -18,7 +18,7 @@ impl MlsGroup {
         own_key_packages: &[KeyPackageBundle],
         psk_fetcher_option: Option<PskFetcher>,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<StagedCommit, (impl Into<MlsGroupError> + Debug + PartialEq)> {
+    ) -> Result<StagedCommit, MlsGroupError> {
         let ciphersuite = self.ciphersuite();
 
         // Verify epoch
@@ -28,13 +28,13 @@ impl MlsGroup {
                 mls_plaintext.epoch(),
                 self.group_context.epoch
             );
-            return Err(StageCommitError::EpochMismatch);
+            return Err(StageCommitError::EpochMismatch.into());
         }
 
         // Extract Commit & Confirmation Tag from MlsPlaintext
         let commit = match mls_plaintext.content() {
             MlsPlaintextContentType::Commit(commit) => commit,
-            _ => return Err(StageCommitError::WrongPlaintextContentType),
+            _ => return Err(StageCommitError::WrongPlaintextContentType.into()),
         };
 
         let received_confirmation_tag = mls_plaintext
@@ -51,7 +51,7 @@ impl MlsGroup {
             *mls_plaintext.sender(),
         ) {
             Ok(proposal_queue) => proposal_queue,
-            Err(_) => return Err(StageCommitError::MissingProposal),
+            Err(_) => return Err(StageCommitError::MissingProposal.into()),
         };
 
         // Create provisional tree and apply proposals
@@ -61,12 +61,12 @@ impl MlsGroup {
         let apply_proposals_values =
             match provisional_tree.apply_proposals(backend, proposal_queue, own_key_packages) {
                 Ok(res) => res,
-                Err(_) => return Err(StageCommitError::OwnKeyNotFound),
+                Err(_) => return Err(StageCommitError::OwnKeyNotFound.into()),
             };
 
         // Check if we were removed from the group
         if apply_proposals_values.self_removed {
-            return Err(StageCommitError::SelfRemoved);
+            return Err(StageCommitError::SelfRemoved.into());
         }
 
         // Determine if Commit is own Commit
@@ -81,7 +81,7 @@ impl MlsGroup {
             // TODO #106: Support external members
             let kp = &path.leaf_key_package;
             if kp.verify(backend).is_err() {
-                return Err(StageCommitError::PathKeyPackageVerificationFailure);
+                return Err(StageCommitError::PathKeyPackageVerificationFailure.into());
             }
             let serialized_context = self.group_context.tls_serialize_detached()?;
 
@@ -90,7 +90,7 @@ impl MlsGroup {
                 // clone out the one that we need.
                 let own_kpb = match own_key_packages.iter().find(|kpb| kpb.key_package() == kp) {
                     Some(kpb) => kpb,
-                    None => return Err(StageCommitError::MissingOwnKeyPackage),
+                    None => return Err(StageCommitError::MissingOwnKeyPackage.into()),
                 };
                 // We can unwrap here, because we know there was a path and thus
                 // a new commit secret must have been set.
@@ -110,7 +110,7 @@ impl MlsGroup {
             }
         } else {
             if apply_proposals_values.path_required {
-                return Err(StageCommitError::RequiredPathNotFound);
+                return Err(StageCommitError::RequiredPathNotFound.into());
             }
             &zero_commit_secret
         };
@@ -184,7 +184,7 @@ impl MlsGroup {
             log::error!("Confirmation tag mismatch");
             log_crypto!(trace, "  Got:      {:x?}", received_confirmation_tag);
             log_crypto!(trace, "  Expected: {:x?}", own_confirmation_tag);
-            return Err(StageCommitError::ConfirmationTagMismatch);
+            return Err(StageCommitError::ConfirmationTagMismatch.into());
         }
 
         // Verify KeyPackage extensions
@@ -198,13 +198,13 @@ impl MlsGroup {
                     let parent_hash_extension =
                         match received_parent_hash.as_parent_hash_extension() {
                             Ok(phe) => phe,
-                            Err(_) => return Err(StageCommitError::NoParentHashExtension),
+                            Err(_) => return Err(StageCommitError::NoParentHashExtension.into()),
                         };
                     if parent_hash != parent_hash_extension.parent_hash() {
-                        return Err(StageCommitError::ParentHashMismatch);
+                        return Err(StageCommitError::ParentHashMismatch.into());
                     }
                 } else {
-                    return Err(StageCommitError::NoParentHashExtension);
+                    return Err(StageCommitError::NoParentHashExtension.into());
                 }
             }
         }

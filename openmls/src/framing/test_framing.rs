@@ -654,8 +654,7 @@ fn confirmation_tag_presence() {
 
         let err = group_alice
             .stage_commit(&commit, &[&bob_add_proposal], &[], None, crypto)
-            .expect_err("No error despite missing confirmation tag.")
-            .into();
+            .expect_err("No error despite missing confirmation tag.");
 
         assert_eq!(
             err,
@@ -791,7 +790,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
     commit.unset_confirmation_tag();
     let error = group_alice
         .stage_commit(&commit, &[&bob_add_proposal], &[], None, crypto)
-        .expect_err("staging commit should have yielded an error.").into();
+        .expect_err("Staging commit should have yielded an error.");
     assert_eq!(
         error,
         MlsGroupError::StageCommitError(StageCommitError::ConfirmationTagMissing));
@@ -805,7 +804,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
     let serialized_group_before = serde_json::to_string(&group_alice).unwrap();
     let error = group_alice
         .stage_commit(&commit, &[&bob_add_proposal], &[], None, crypto)
-        .expect_err("staging commit should have yielded an error.").into();
+        .expect_err("Staging commit should have yielded an error.");
     assert_eq!(
         error,
         MlsGroupError::StageCommitError(StageCommitError::ConfirmationTagMismatch));

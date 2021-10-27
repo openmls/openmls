@@ -877,7 +877,6 @@ fn group_operations() {
                     /* PSK fetcher */ &crypto,
                 )
                 .unwrap_err()
-                .into()
                 == MlsGroupError::StageCommitError(StageCommitError::SelfRemoved)
         );
         let staged_commit = group_charlie

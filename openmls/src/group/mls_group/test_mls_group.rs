@@ -380,9 +380,7 @@ fn test_update_path() {
             &crypto,
         );
         assert_eq!(
-            staged_commit_res
-                .expect_err("Successful processing of a broken commit.")
-                .into(),
+            staged_commit_res.expect_err("Successful processing of a broken commit."),
             MlsGroupError::StageCommitError(StageCommitError::DecryptionFailure(
                 TreeError::PathSecretDecryptionError(CryptoError::HpkeDecryptionError)
             ))
