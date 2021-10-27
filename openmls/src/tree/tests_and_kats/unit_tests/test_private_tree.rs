@@ -1,7 +1,7 @@
 //! Unit test for PrivateTree
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{random::OpenMlsRand, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, OpenMlsCryptoProvider};
 
 use super::test_util::*;
 use crate::{
@@ -49,9 +49,22 @@ fn test_private_tree(
     let info = b"PrivateTree Test Info";
     let aad = b"PrivateTree Test AAD";
 
-    let c = ciphersuite.hpke_seal(public_key, info, aad, &data);
-    let m = ciphersuite
-        .hpke_open(&c, private_key, info, aad)
+    let c = crypto.crypto().hpke_seal(
+        ciphersuite.hpke_config(),
+        public_key.as_slice(),
+        info,
+        aad,
+        &data,
+    );
+    let m = crypto
+        .crypto()
+        .hpke_open(
+            ciphersuite.hpke_config(),
+            &c,
+            private_key.as_slice(),
+            info,
+            aad,
+        )
         .expect("Error decrypting valid Secret in PrivateTree test.");
     assert_eq!(m, data);
 }
