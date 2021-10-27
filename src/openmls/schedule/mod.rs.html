@@ -1076,6 +1076,12 @@
 <span id="1076">1076</span>
 <span id="1077">1077</span>
 <span id="1078">1078</span>
+<span id="1079">1079</span>
+<span id="1080">1080</span>
+<span id="1081">1081</span>
+<span id="1082">1082</span>
+<span id="1083">1083</span>
+<span id="1084">1084</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module represents the key schedule as introduced in Section 8 of the</span>
 <span class="doccomment">//! MLS specification. The key schedule evolves in epochs, where in each epoch</span>
 <span class="doccomment">//! new key material is injected.</span>
@@ -1197,11 +1203,13 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree::secret_tree::SecretTree</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ciphersuite::Mac</span>, <span class="ident">group::GroupContext</span>, <span class="ident">prelude::MembershipTag</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">ciphersuite</span>::{<span class="ident">AeadKey</span>, <span class="ident">AeadNonce</span>, <span class="ident">Ciphersuite</span>, <span class="ident">HpkeKeyPair</span>, <span class="ident">Secret</span>},
+    <span class="ident">ciphersuite</span>::{<span class="ident">AeadKey</span>, <span class="ident">AeadNonce</span>, <span class="ident">Ciphersuite</span>, <span class="ident">Secret</span>},
     <span class="ident">config::ProtocolVersion</span>,
     <span class="ident">messages::ConfirmationTag</span>,
 };
 
+<span class="kw">use</span> <span class="ident">openmls_traits::crypto::OpenMlsCrypto</span>;
+<span class="kw">use</span> <span class="ident">openmls_traits::types::HpkeKeyPair</span>;
 <span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::cell::RefCell</span>;
@@ -1757,8 +1765,12 @@
     }
 
     <span class="doccomment">/// Derive the external keypair for External Commits</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">derive_external_keypair</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">HpkeKeyPair</span> {
-        <span class="ident">ciphersuite</span>.<span class="ident">derive_hpke_keypair</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>)
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">derive_external_keypair</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">crypto</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCrypto</span>,
+        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">HpkeKeyPair</span> {
+        <span class="ident">ciphersuite</span>.<span class="ident">derive_hpke_keypair</span>(<span class="ident">crypto</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>)
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>

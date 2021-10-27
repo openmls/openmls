@@ -417,9 +417,8 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::test_utils</span>::{<span class="ident">read</span>, <span class="ident">write</span>};
 
-<span class="kw">use</span> <span class="ident">hpke::HpkeKeyPair</span>;
 <span class="kw">use</span> <span class="ident">openmls_rust_crypto::OpenMlsRustCrypto</span>;
-<span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">random::OpenMlsRand</span>, <span class="ident">OpenMlsCryptoProvider</span>};
+<span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">random::OpenMlsRand</span>, <span class="ident">types::HpkeKeyPair</span>, <span class="ident">OpenMlsCryptoProvider</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="self">self</span>, <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::CommitSecret</span>;
@@ -505,7 +504,7 @@
     <span class="comment">// Calculate external HPKE key pair</span>
     <span class="kw">let</span> <span class="ident">external_key_pair</span> <span class="op">=</span> <span class="ident">epoch_secrets</span>
         .<span class="ident">external_secret</span>()
-        .<span class="ident">derive_external_keypair</span>(<span class="ident">ciphersuite</span>);
+        .<span class="ident">derive_external_keypair</span>(<span class="ident">crypto</span>.<span class="ident">crypto</span>(), <span class="ident">ciphersuite</span>);
 
     (
         <span class="ident">confirmed_transcript_hash</span>,
@@ -526,6 +525,8 @@
     <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">KeyScheduleTestVector</span> {
     <span class="kw">use</span> <span class="ident">tls_codec::Serialize</span>;
+
+    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite::HpkePublicKey</span>;
     <span class="kw">let</span> <span class="ident">crypto</span> <span class="op">=</span> <span class="ident">OpenMlsRustCrypto::default</span>();
 
     <span class="comment">// Set up setting.</span>
@@ -568,8 +569,7 @@
             <span class="ident">membership_key</span>: <span class="ident">bytes_to_hex</span>(<span class="ident">epoch_secrets</span>.<span class="ident">membership_key</span>().<span class="ident">as_slice</span>()),
             <span class="ident">resumption_secret</span>: <span class="ident">bytes_to_hex</span>(<span class="ident">epoch_secrets</span>.<span class="ident">resumption_secret</span>().<span class="ident">as_slice</span>()),
             <span class="ident">external_pub</span>: <span class="ident">bytes_to_hex</span>(
-                <span class="kw-2">&amp;</span><span class="ident">external_key_pair</span>
-                    .<span class="ident">public_key</span>()
+                <span class="kw-2">&amp;</span><span class="ident">HpkePublicKey::from</span>(<span class="ident">external_key_pair</span>.<span class="ident">public</span>)
                     .<span class="ident">tls_serialize_detached</span>()
                     .<span class="ident">unwrap</span>(),
             ),
@@ -621,6 +621,8 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">run_test_vector</span>(<span class="ident">test_vector</span>: <span class="ident">KeyScheduleTestVector</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">KsTestVectorError</span><span class="op">&gt;</span> {
     <span class="kw">use</span> <span class="ident">tls_codec::Serialize</span>;
+
+    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite::HpkePublicKey</span>;
 
     <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span>
         <span class="ident">CiphersuiteName::try_from</span>(<span class="ident">test_vector</span>.<span class="ident">cipher_suite</span>).<span class="ident">expect</span>(<span class="string">&quot;Invalid ciphersuite&quot;</span>);
@@ -772,18 +774,16 @@
         <span class="comment">// Calculate external HPKE key pair</span>
         <span class="kw">let</span> <span class="ident">external_key_pair</span> <span class="op">=</span> <span class="ident">epoch_secrets</span>
             .<span class="ident">external_secret</span>()
-            .<span class="ident">derive_external_keypair</span>(<span class="ident">ciphersuite</span>);
+            .<span class="ident">derive_external_keypair</span>(<span class="ident">crypto</span>.<span class="ident">crypto</span>(), <span class="ident">ciphersuite</span>);
         <span class="kw">if</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">epoch</span>.<span class="ident">external_pub</span>)
-            <span class="op">!</span><span class="op">=</span> <span class="ident">external_key_pair</span>
-                .<span class="ident">public_key</span>()
+            <span class="op">!</span><span class="op">=</span> <span class="ident">HpkePublicKey::from</span>(<span class="ident">external_key_pair</span>.<span class="ident">public</span>.<span class="ident">clone</span>())
                 .<span class="ident">tls_serialize_detached</span>()
                 .<span class="ident">unwrap</span>()
         {
             <span class="macro">log::error!</span>(<span class="string">&quot;  External public key mismatch&quot;</span>);
             <span class="macro">log::debug!</span>(
                 <span class="string">&quot;    Computed: {:x?}&quot;</span>,
-                <span class="ident">external_key_pair</span>
-                    .<span class="ident">public_key</span>()
+                <span class="ident">HpkePublicKey::from</span>(<span class="ident">external_key_pair</span>.<span class="ident">public</span>)
                     .<span class="ident">tls_serialize_detached</span>()
                     .<span class="ident">unwrap</span>()
             );

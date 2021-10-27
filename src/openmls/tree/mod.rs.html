@@ -922,6 +922,19 @@
 <span id="922">922</span>
 <span id="923">923</span>
 <span id="924">924</span>
+<span id="925">925</span>
+<span id="926">926</span>
+<span id="927">927</span>
+<span id="928">928</span>
+<span id="929">929</span>
+<span id="930">930</span>
+<span id="931">931</span>
+<span id="932">932</span>
+<span id="933">933</span>
+<span id="934">934</span>
+<span id="935">935</span>
+<span id="936">936</span>
+<span id="937">937</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite::signable::Signable</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config</span>::{<span class="ident">Config</span>, <span class="ident">ProtocolVersion</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credentials</span>::<span class="kw-2">*</span>;
@@ -945,6 +958,8 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">hashes</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">index</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">node</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">openmls_traits::crypto::OpenMlsCrypto</span>;
+<span class="kw">use</span> <span class="ident">openmls_traits::types::HpkeCiphertext</span>;
 <span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 <span class="kw">use</span> <span class="ident">private_tree::PrivateTree</span>;
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Size</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsVecU32</span>};
@@ -1281,9 +1296,13 @@
         );
 
         <span class="comment">// Decrypt the secret and derive path secrets</span>
-        <span class="kw">let</span> <span class="ident">secret_bytes</span> <span class="op">=</span>
-            <span class="self">self</span>.<span class="ident">ciphersuite</span>
-                .<span class="ident">hpke_open</span>(<span class="ident">hpke_ciphertext</span>, <span class="ident">private_key</span>, <span class="ident">group_context</span>, <span class="kw-2">&amp;</span>[])<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">secret_bytes</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ciphersuite</span>.<span class="ident">hpke_open</span>(
+            <span class="ident">backend</span>.<span class="ident">crypto</span>(),
+            <span class="ident">hpke_ciphertext</span>,
+            <span class="ident">private_key</span>,
+            <span class="ident">group_context</span>,
+            <span class="kw-2">&amp;</span>[],
+        )<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">path_secret</span> <span class="op">=</span>
             <span class="ident">Secret::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">secret_bytes</span>, <span class="ident">ProtocolVersion::default</span>(), <span class="self">self</span>.<span class="ident">ciphersuite</span>).<span class="ident">into</span>();
         <span class="comment">// Derive new path secrets and generate keypairs</span>
@@ -1440,7 +1459,12 @@
         <span class="self">self</span>.<span class="ident">set_parent_hashes</span>(<span class="ident">backend</span>, <span class="ident">own_index</span>);
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">new_leaves_indexes</span>) <span class="op">=</span> <span class="ident">new_leaves_indexes_option</span> {
             <span class="kw">let</span> <span class="ident">update_path_nodes</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">encrypt_to_copath</span>(<span class="ident">new_public_keys</span>, <span class="ident">group_context</span>, <span class="ident">new_leaves_indexes</span>)
+                .<span class="ident">encrypt_to_copath</span>(
+                    <span class="ident">backend</span>.<span class="ident">crypto</span>(),
+                    <span class="ident">new_public_keys</span>,
+                    <span class="ident">group_context</span>,
+                    <span class="ident">new_leaves_indexes</span>,
+                )
                 .<span class="ident">unwrap</span>();
             <span class="prelude-val">Some</span>(<span class="ident">update_path_nodes</span>)
         } <span class="kw">else</span> {
@@ -1451,6 +1475,7 @@
     <span class="doccomment">/// Encrypt the path secrets to the co path and return the update path.</span>
     <span class="kw">fn</span> <span class="ident">encrypt_to_copath</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">crypto</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCrypto</span>,
         <span class="ident">public_keys</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HpkePublicKey</span><span class="op">&gt;</span>,
         <span class="ident">group_context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">new_leaves_indexes</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LeafIndex</span><span class="op">&gt;</span>,
@@ -1481,6 +1506,7 @@
                 .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">index</span><span class="op">|</span> {
                     <span class="kw">let</span> <span class="ident">pk</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">nodes</span>[<span class="ident">index</span>].<span class="ident">public_hpke_key</span>().<span class="ident">unwrap</span>();
                     <span class="self">self</span>.<span class="ident">ciphersuite</span>.<span class="ident">hpke_seal_secret</span>(
+                        <span class="ident">crypto</span>,
                         <span class="ident">pk</span>,
                         <span class="ident">group_context</span>,
                         <span class="kw-2">&amp;</span>[],
