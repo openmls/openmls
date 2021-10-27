@@ -879,9 +879,7 @@ fn managed_group_ratchet_tree_extension() {
             )
             .unwrap();
 
-            let managed_group_config = ManagedGroupConfig::builder()
-                .wire_format(wire_format)
-                .build();
+            let managed_group_config = ManagedGroupConfig::test_default();
 
             // === Alice creates a group ===
             let mut alice_group = ManagedGroup::new(

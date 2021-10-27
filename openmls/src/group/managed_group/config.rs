@@ -49,7 +49,7 @@ impl ManagedGroupConfig {
         self.number_of_resumption_secrets
     }
 
-    /// Get the [`ManagedGroupConfig`] boolean flage that indicates whether ratchet_tree_extension should be used.
+    /// Get the [`ManagedGroupConfig`] boolean flag that indicates whether ratchet_tree_extension should be used.
     pub fn use_ratchet_tree_extension(&self) -> bool {
         self.use_ratchet_tree_extension
     }
@@ -60,12 +60,12 @@ impl ManagedGroupConfig {
     }
 
     /// Sets the callbacks
-    /// XXX: This will disappear once the new validation API is done
+    /// TODO #133: This will disappear once the new validation API is done
     pub fn set_callbacks(&mut self, callbacks: &ManagedGroupCallbacks) {
         self.callbacks = *callbacks;
     }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "test-utils", test))]
     pub fn test_default() -> Self {
         Self::builder()
             .wire_format(WireFormat::MlsPlaintext)

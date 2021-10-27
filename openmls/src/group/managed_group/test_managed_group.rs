@@ -63,9 +63,7 @@ fn test_managed_group_persistence() {
             .unwrap();
 
     // Define the managed group configuration
-    let managed_group_config = ManagedGroupConfig::builder()
-        .wire_format(WireFormat::MlsPlaintext)
-        .build();
+    let managed_group_config = ManagedGroupConfig::test_default();
 
     // === Alice creates a group ===
 
