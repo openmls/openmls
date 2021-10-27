@@ -1,4 +1,4 @@
-//! Cipher suite and algorithm definitions and conversions.
+//! Ciphersuite and algorithm definitions and conversions.
 
 use openmls_traits::types::{HpkeAeadType, HpkeKdfType, HpkeKemType};
 
@@ -6,7 +6,7 @@ use super::*;
 
 pub(crate) use std::convert::TryFrom;
 
-/// MLS cipher suites.
+/// MLS ciphersuites.
 #[allow(non_camel_case_types)]
 #[allow(clippy::upper_case_acronyms)]
 #[derive(
