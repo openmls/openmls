@@ -1,5 +1,5 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{types::HpkeCiphertext, OpenMlsCryptoProvider};
 use tls_codec::Serialize;
 
 use crate::{
@@ -61,6 +61,13 @@ fn test_mls_group_persistence() {
     assert_eq!(alice_group, alice_group_deserialized);
 }
 
+/// This function flips the last byte of the ciphertext.
+pub fn flip_last_byte(ctxt: &mut HpkeCiphertext) {
+    let mut last_bits = ctxt.ciphertext.pop().unwrap();
+    last_bits ^= 0xff;
+    ctxt.ciphertext.push(last_bits);
+}
+
 #[test]
 fn test_failed_groupinfo_decryption() {
     let crypto = OpenMlsRustCrypto::default();
@@ -90,13 +97,14 @@ fn test_failed_groupinfo_decryption() {
             let welcome_nonce = AeadNonce::random(&crypto);
 
             // Generate receiver key pair.
-            let receiver_key_pair =
-                ciphersuite.derive_hpke_keypair(&Secret::random(ciphersuite, &crypto, None));
+            let receiver_key_pair = ciphersuite
+                .derive_hpke_keypair(crypto.crypto(), &Secret::random(ciphersuite, &crypto, None));
             let hpke_info = b"group info welcome test info";
             let hpke_aad = b"group info welcome test aad";
             let hpke_input = b"these should be the group secrets";
             let mut encrypted_group_secrets = ciphersuite.hpke_seal(
-                receiver_key_pair.public_key(),
+                crypto.crypto(),
+                &receiver_key_pair.public.into(),
                 hpke_info,
                 hpke_aad,
                 hpke_input,
@@ -122,7 +130,7 @@ fn test_failed_groupinfo_decryption() {
             .unwrap();
 
             // Mess with the ciphertext by flipping the last byte.
-            encrypted_group_secrets.flip_last_byte();
+            flip_last_byte(&mut encrypted_group_secrets);
 
             let broken_secrets = vec![EncryptedGroupSecrets {
                 key_package_hash: key_package_bundle.key_package.hash(&crypto).into(),
@@ -322,7 +330,7 @@ fn test_update_path() {
             let mut new_eps = Vec::new();
             for c in node.encrypted_path_secret.iter() {
                 let mut c_copy = c.clone();
-                c_copy.flip_last_byte();
+                flip_last_byte(&mut c_copy);
                 new_eps.push(c_copy);
             }
             let node = UpdatePathNode {

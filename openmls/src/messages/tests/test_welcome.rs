@@ -48,8 +48,10 @@ macro_rules! test_welcome_msg {
             let welcome_nonce = AeadNonce::random(&crypto);
 
             // Generate receiver key pair.
-            let receiver_key_pair =
-                $ciphersuite.derive_hpke_keypair(&Secret::random($ciphersuite, &crypto, None));
+            let receiver_key_pair = $ciphersuite.derive_hpke_keypair(
+                crypto.crypto(),
+                &Secret::random($ciphersuite, &crypto, None),
+            );
             let hpke_info = b"group info welcome test info";
             let hpke_aad = b"group info welcome test aad";
             let hpke_input = b"these should be the group secrets";
@@ -57,7 +59,8 @@ macro_rules! test_welcome_msg {
             let secrets = vec![EncryptedGroupSecrets {
                 key_package_hash: key_package_hash.clone().into(),
                 encrypted_group_secrets: $ciphersuite.hpke_seal(
-                    receiver_key_pair.public_key(),
+                    crypto.crypto(),
+                    &receiver_key_pair.public.into(),
                     hpke_info,
                     hpke_aad,
                     hpke_input,
@@ -97,8 +100,9 @@ macro_rules! test_welcome_msg {
                 );
                 let ptxt = $ciphersuite
                     .hpke_open(
+                        crypto.crypto(),
                         &secret.encrypted_group_secrets,
-                        receiver_key_pair.private_key(),
+                        &receiver_key_pair.private.clone().into(),
                         hpke_info,
                         hpke_aad,
                     )

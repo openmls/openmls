@@ -4,14 +4,13 @@
 //! the `MlsPlaintext` and as described in the [`OpenMLS Wiki`].
 //!
 //! [`OpenMLS Wiki`]: https://github.com/openmls/openmls/wiki/Signable
-use hpke::HpkePublicKey;
 use openmls_traits::OpenMlsCryptoProvider;
 use tls_codec::{Serialize, Size, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
 use crate::{
     ciphersuite::{
         signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
-        CiphersuiteName, Signature,
+        CiphersuiteName, HpkePublicKey, Signature,
     },
     extensions::Extension,
     group::{GroupEpoch, GroupId, MlsGroup},
@@ -145,11 +144,11 @@ impl PublicGroupStateTbs {
     /// of the group.
     pub(crate) fn new(backend: &impl OpenMlsCryptoProvider, mls_group: &MlsGroup) -> Self {
         let ciphersuite = mls_group.ciphersuite();
-        let (_external_priv, external_pub) = mls_group
+        let external_pub = mls_group
             .epoch_secrets()
             .external_secret()
-            .derive_external_keypair(ciphersuite)
-            .into_keys();
+            .derive_external_keypair(backend.crypto(), ciphersuite)
+            .public;
 
         let group_id = mls_group.group_id().clone();
         let epoch = mls_group.context().epoch();
@@ -163,7 +162,7 @@ impl PublicGroupStateTbs {
             tree_hash,
             interim_transcript_hash,
             extensions,
-            external_pub,
+            external_pub: external_pub.into(),
             ciphersuite: ciphersuite.name(),
             signer_index: mls_group.tree().own_node_index(),
         }

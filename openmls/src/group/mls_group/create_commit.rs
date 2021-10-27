@@ -205,8 +205,13 @@ impl MlsGroup {
                          group_secrets_bytes,
                          key_package_hash,
                      }| {
-                        let encrypted_group_secrets =
-                            ciphersuite.hpke_seal(public_key, &[], &[], group_secrets_bytes);
+                        let encrypted_group_secrets = ciphersuite.hpke_seal(
+                            backend.crypto(),
+                            public_key,
+                            &[],
+                            &[],
+                            group_secrets_bytes,
+                        );
                         EncryptedGroupSecrets {
                             key_package_hash: key_package_hash.clone().into(),
                             encrypted_group_secrets,

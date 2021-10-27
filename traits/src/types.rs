@@ -4,7 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{Size, TlsByteVecU16, TlsDeserialize, TlsSerialize, TlsSize};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[repr(u16)]
@@ -133,3 +133,82 @@ impl std::fmt::Display for CryptoError {
 }
 
 impl std::error::Error for CryptoError {}
+
+// === HPKE === //
+
+/// Convenience tuple struct for an HPKE configuration.
+pub struct HpkeConfig(pub HpkeKemType, pub HpkeKdfType, pub HpkeAeadType);
+
+/// KEM Types for HPKE
+#[derive(PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
+#[repr(u16)]
+pub enum HpkeKemType {
+    /// DH KEM on P256
+    DhKemP256 = 0x0010,
+
+    /// DH KEM on P384
+    DhKemP384 = 0x0011,
+
+    /// DH KEM on P521
+    DhKemP521 = 0x0012,
+
+    /// DH KEM on x25519
+    DhKem25519 = 0x0020,
+
+    /// DH KEM on x448
+    DhKem448 = 0x0021,
+}
+
+/// KDF Types for HPKE
+#[derive(PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
+#[repr(u16)]
+pub enum HpkeKdfType {
+    /// HKDF SHA 256
+    HkdfSha256 = 0x0001,
+
+    /// HKDF SHA 384
+    HkdfSha384 = 0x0002,
+
+    /// HKDF SHA 512
+    HkdfSha512 = 0x0003,
+}
+
+/// AEAD Types for HPKE.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[repr(u16)]
+pub enum HpkeAeadType {
+    /// AES GCM 128
+    AesGcm128 = 0x0001,
+
+    /// AES GCM 256
+    AesGcm256 = 0x0002,
+
+    /// ChaCha20 Poly1305
+    ChaCha20Poly1305 = 0x0003,
+
+    /// Export-only
+    Export = 0xFFFF,
+}
+
+/// 7.7. Update Paths
+///
+/// ```text
+/// struct {
+///     opaque kem_output<0..2^16-1>;
+///     opaque ciphertext<0..2^16-1>;
+/// } HPKECiphertext;
+/// ```
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
+pub struct HpkeCiphertext {
+    pub kem_output: TlsByteVecU16,
+    pub ciphertext: TlsByteVecU16,
+}
+
+/// Helper holding a (private, public) key pair as byte vectors.
+#[derive(Debug, Clone)]
+pub struct HpkeKeyPair {
+    pub private: Vec<u8>,
+    pub public: Vec<u8>,
+}

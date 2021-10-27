@@ -18,9 +18,8 @@ use crate::{
 #[cfg(test)]
 use crate::test_utils::{read, write};
 
-use hpke::HpkeKeyPair;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{random::OpenMlsRand, OpenMlsCryptoProvider};
+use openmls_traits::{random::OpenMlsRand, types::HpkeKeyPair, OpenMlsCryptoProvider};
 use serde::{self, Deserialize, Serialize};
 
 use super::CommitSecret;
@@ -106,7 +105,7 @@ fn generate(
     // Calculate external HPKE key pair
     let external_key_pair = epoch_secrets
         .external_secret()
-        .derive_external_keypair(ciphersuite);
+        .derive_external_keypair(crypto.crypto(), ciphersuite);
 
     (
         confirmed_transcript_hash,
@@ -127,6 +126,8 @@ pub fn generate_test_vector(
     ciphersuite: &'static Ciphersuite,
 ) -> KeyScheduleTestVector {
     use tls_codec::Serialize;
+
+    use crate::ciphersuite::HpkePublicKey;
     let crypto = OpenMlsRustCrypto::default();
 
     // Set up setting.
@@ -169,8 +170,7 @@ pub fn generate_test_vector(
             membership_key: bytes_to_hex(epoch_secrets.membership_key().as_slice()),
             resumption_secret: bytes_to_hex(epoch_secrets.resumption_secret().as_slice()),
             external_pub: bytes_to_hex(
-                &external_key_pair
-                    .public_key()
+                &HpkePublicKey::from(external_key_pair.public)
                     .tls_serialize_detached()
                     .unwrap(),
             ),
@@ -222,6 +222,8 @@ fn read_test_vectors() {
 #[cfg(any(feature = "test-utils", test))]
 pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestVectorError> {
     use tls_codec::Serialize;
+
+    use crate::ciphersuite::HpkePublicKey;
 
     let ciphersuite =
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
@@ -373,18 +375,16 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
         // Calculate external HPKE key pair
         let external_key_pair = epoch_secrets
             .external_secret()
-            .derive_external_keypair(ciphersuite);
+            .derive_external_keypair(crypto.crypto(), ciphersuite);
         if hex_to_bytes(&epoch.external_pub)
-            != external_key_pair
-                .public_key()
+            != HpkePublicKey::from(external_key_pair.public.clone())
                 .tls_serialize_detached()
                 .unwrap()
         {
             log::error!("  External public key mismatch");
             log::debug!(
                 "    Computed: {:x?}",
-                external_key_pair
-                    .public_key()
+                HpkePublicKey::from(external_key_pair.public)
                     .tls_serialize_detached()
                     .unwrap()
             );

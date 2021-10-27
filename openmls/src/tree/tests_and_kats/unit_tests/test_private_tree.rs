@@ -49,9 +49,9 @@ fn test_private_tree(
     let info = b"PrivateTree Test Info";
     let aad = b"PrivateTree Test AAD";
 
-    let c = ciphersuite.hpke_seal(public_key, info, aad, &data);
+    let c = ciphersuite.hpke_seal(crypto.crypto(), public_key, info, aad, &data);
     let m = ciphersuite
-        .hpke_open(&c, private_key, info, aad)
+        .hpke_open(crypto.crypto(), &c, private_key, info, aad)
         .expect("Error decrypting valid Secret in PrivateTree test.");
     assert_eq!(m, data);
 }
