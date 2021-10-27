@@ -235,9 +235,10 @@ async fn test_group() {
         .expect("Error creating commit");
     let welcome_msg = welcome_msg.expect("Welcome message wasn't created by create_commit.");
     let epoch_proposals = &[&client2_add_proposal];
-    group
-        .apply_commit(&commit, epoch_proposals, &[], None, crypto)
+    let staged_commit = group
+        .stage_commit(&commit, epoch_proposals, &[], None, crypto)
         .expect("error applying commit");
+    group.merge_commit(staged_commit);
 
     // Send welcome message for Client2
     let req = test::TestRequest::post()
