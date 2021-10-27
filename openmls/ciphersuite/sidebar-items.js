@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["CiphersuiteName",""]],"mod":[["signable",""]],"struct":[["AeadKey",""],["AeadNonce",""],["Ciphersuite",""],["HpkePublicKey",""],["ReuseGuard",""],["Secret","A struct to contain secrets. This is to provide better visibility into where and how secrets are used and to avoid passing secrets in their raw representation."],["Signature",""],["SignatureKeypair",""],["SignaturePrivateKey",""],["SignaturePublicKey",""]]});
+initSidebarItems({"enum":[["CiphersuiteName","MLS ciphersuites."]],"mod":[["signable",""]],"struct":[["Ciphersuite",""]]});

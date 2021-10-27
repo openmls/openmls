@@ -1770,7 +1770,7 @@
         <span class="ident">crypto</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCrypto</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">HpkeKeyPair</span> {
-        <span class="ident">ciphersuite</span>.<span class="ident">derive_hpke_keypair</span>(<span class="ident">crypto</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>)
+        <span class="ident">crypto</span>.<span class="ident">derive_hpke_keypair</span>(<span class="ident">ciphersuite</span>.<span class="ident">hpke_config</span>(), <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">as_slice</span>())
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
