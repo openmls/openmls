@@ -21,7 +21,7 @@ use openmls_traits::random::OpenMlsRand;
 use openmls_traits::OpenMlsCryptoProvider;
 pub(crate) use serde::{Deserialize, Serialize};
 
-pub use errors::{ApplyCommitError, CreateCommitError, ExporterError, MlsGroupError, WelcomeError};
+pub use errors::{CreateCommitError, ExporterError, MlsGroupError, StageCommitError, WelcomeError};
 pub use group_context::*;
 pub use managed_group::*;
 pub use mls_group::*;

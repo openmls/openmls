@@ -83,9 +83,10 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
         )
         .expect("Error creating commit");
 
-    alice_group
-        .apply_commit(&mls_plaintext_commit, epoch_proposals, &[], None, &crypto)
-        .expect("error applying commit");
+    let staged_commit = alice_group
+        .stage_commit(&mls_plaintext_commit, epoch_proposals, &[], None, &crypto)
+        .expect("error staging commit");
+    alice_group.merge_commit(staged_commit);
 
     let mut welcome = welcome_bundle_alice_bob_option.expect("Expected a Welcome message");
 
