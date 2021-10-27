@@ -389,8 +389,8 @@ fn test_update_path() {
         );
         assert_eq!(
             staged_commit_res.expect_err("Successful processing of a broken commit."),
-            MlsGroupError::TreeError(TreeError::PathSecretDecryptionError(
-                CryptoError::HpkeDecryptionError
+            MlsGroupError::StageCommitError(StageCommitError::DecryptionFailure(
+                TreeError::PathSecretDecryptionError(CryptoError::HpkeDecryptionError)
             ))
         );
     }

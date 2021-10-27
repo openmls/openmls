@@ -100,13 +100,17 @@ impl MlsGroup {
             } else {
                 // Collect the new leaves' indexes so we can filter them out in the resolution
                 // later.
-                provisional_tree.update_path(
-                    backend,
-                    sender,
-                    &path,
-                    &serialized_context,
-                    apply_proposals_values.exclusion_list(),
-                )?
+                provisional_tree
+                    .update_path(
+                        backend,
+                        sender,
+                        &path,
+                        &serialized_context,
+                        apply_proposals_values.exclusion_list(),
+                    )
+                    .map_err(|e| {
+                        MlsGroupError::StageCommitError(StageCommitError::DecryptionFailure(e))
+                    })?
             }
         } else {
             if apply_proposals_values.path_required {
