@@ -13,10 +13,18 @@ fn test_hpke_seal_open() {
         println!("Test {:?}", ciphersuite.name());
         println!("Ciphersuite {:?}", ciphersuite);
         let plaintext = &[1, 2, 3];
-        let kp = ciphersuite.derive_hpke_keypair(&Secret::random(ciphersuite, &crypto, None));
-        let ciphertext = ciphersuite.hpke_seal(kp.public_key(), &[], &[], plaintext);
+        let kp = ciphersuite
+            .derive_hpke_keypair(crypto.crypto(), &Secret::random(ciphersuite, &crypto, None));
+        let ciphertext =
+            ciphersuite.hpke_seal(crypto.crypto(), &kp.public.into(), &[], &[], plaintext);
         let decrypted_payload = ciphersuite
-            .hpke_open(&ciphertext, kp.private_key(), &[], &[])
+            .hpke_open(
+                crypto.crypto(),
+                &ciphertext,
+                &kp.private.clone().into(),
+                &[],
+                &[],
+            )
             .expect("Unexpected error while decrypting a valid ciphertext.");
         assert_eq!(decrypted_payload, plaintext);
 
@@ -34,13 +42,25 @@ fn test_hpke_seal_open() {
         };
         assert_eq!(
             ciphersuite
-                .hpke_open(&broken_ciphertext1, kp.private_key(), &[], &[])
+                .hpke_open(
+                    crypto.crypto(),
+                    &broken_ciphertext1,
+                    &kp.private.clone().into(),
+                    &[],
+                    &[]
+                )
                 .expect_err("Erroneously correct ciphertext decryption of broken ciphertext."),
             CryptoError::HpkeDecryptionError
         );
         assert_eq!(
             ciphersuite
-                .hpke_open(&broken_ciphertext2, kp.private_key(), &[], &[])
+                .hpke_open(
+                    crypto.crypto(),
+                    &broken_ciphertext2,
+                    &kp.private.into(),
+                    &[],
+                    &[]
+                )
                 .expect_err("Erroneously correct ciphertext decryption of broken ciphertext."),
             CryptoError::HpkeDecryptionError
         );

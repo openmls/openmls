@@ -42,6 +42,7 @@ impl MlsGroup {
         }
 
         let group_secrets_bytes = ciphersuite.hpke_open(
+            backend.crypto(),
             &egs.encrypted_group_secrets,
             key_package_bundle.private_key(),
             &[],

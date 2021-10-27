@@ -23,5 +23,5 @@ fn test_insert_retrieve() {
     path_keys.add(private_keys, &path[1001..2001]);
 
     // Get out the key [6, 6, 6]
-    assert_eq!(&[6, 6, 6], path_keys.get(path[1000]).unwrap().as_slice());
+    assert_eq!(vec![6, 6, 6], path_keys.get(path[1000]).unwrap().value);
 }

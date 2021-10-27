@@ -4,7 +4,9 @@
 //! See `codec.rs` and `ciphersuites.rs` for internals.
 
 use ::tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize};
-use hpke::prelude::*;
+use openmls_traits::types::{
+    HpkeAeadType, HpkeCiphertext, HpkeConfig, HpkeKdfType, HpkeKemType, HpkeKeyPair,
+};
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     random::OpenMlsRand,
@@ -18,9 +20,6 @@ pub(crate) use serde::{
 };
 use std::hash::Hash;
 use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8};
-
-// re-export for other parts of the library when we can use it
-pub(crate) use hpke::{HpkeKeyPair, HpkePrivateKey, HpkePublicKey};
 
 mod ciphersuites;
 mod codec;
@@ -92,30 +91,103 @@ impl From<CiphersuiteName> for SignatureScheme {
     }
 }
 
-/// 7.7. Update Paths
-///
-/// ```text
-/// struct {
-///     opaque kem_output<0..2^16-1>;
-///     opaque ciphertext<0..2^16-1>;
-/// } HPKECiphertext;
-/// ```
-#[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-)]
-pub struct HpkeCiphertext {
-    kem_output: TlsByteVecU16,
-    ciphertext: TlsByteVecU16,
+#[derive(Debug, PartialEq, Clone, Default, Serialize, Deserialize)]
+pub struct HpkePublicKey {
+    pub(crate) value: Vec<u8>,
+}
+
+impl From<Vec<u8>> for HpkePublicKey {
+    fn from(value: Vec<u8>) -> Self {
+        Self { value }
+    }
+}
+
+impl tls_codec::Size for HpkePublicKey {
+    #[inline(always)]
+    fn tls_serialized_len(&self) -> usize {
+        tls_codec::TlsByteSliceU16(self.value.as_slice()).tls_serialized_len()
+    }
+}
+
+impl tls_codec::Serialize for HpkePublicKey {
+    #[inline(always)]
+    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        tls_codec::TlsByteSliceU16(self.value.as_slice()).tls_serialize(writer)
+    }
+}
+
+impl tls_codec::Deserialize for HpkePublicKey {
+    #[inline(always)]
+    fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
+        Ok(Self {
+            value: tls_codec::TlsByteVecU16::tls_deserialize(bytes)?.into(),
+        })
+    }
+}
+
+impl tls_codec::Size for &HpkePublicKey {
+    #[inline(always)]
+    fn tls_serialized_len(&self) -> usize {
+        tls_codec::TlsByteSliceU16(self.value.as_slice()).tls_serialized_len()
+    }
+}
+
+impl tls_codec::Serialize for &HpkePublicKey {
+    #[inline(always)]
+    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        tls_codec::TlsByteSliceU16(self.value.as_slice()).tls_serialize(writer)
+    }
+}
+
+impl tls_codec::Deserialize for &HpkePublicKey {
+    #[inline(always)]
+    fn tls_deserialize<R: std::io::Read>(_: &mut R) -> Result<Self, tls_codec::Error> {
+        Err(tls_codec::Error::DecodingError(
+            "Error trying to deserialize a reference.".to_string(),
+        ))
+    }
+}
+
+impl PartialEq for HpkePrivateKey {
+    fn eq(&self, other: &Self) -> bool {
+        if self.value.len() != other.value.len() {
+            return false;
+        }
+
+        let mut different_bits = 0u8;
+        for (&byte_a, &byte_b) in self.value.iter().zip(other.value.iter()) {
+            different_bits |= byte_a ^ byte_b;
+        }
+        (1u8 & ((different_bits.wrapping_sub(1)).wrapping_shr(8)).wrapping_sub(1)) == 0
+    }
+}
+
+impl std::fmt::Debug for HpkePrivateKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        f.debug_struct("HpkePrivateKey")
+            .field("value", &"***")
+            .finish()
+    }
+}
+
+impl From<Vec<u8>> for HpkePrivateKey {
+    fn from(value: Vec<u8>) -> Self {
+        Self { value }
+    }
 }
 
 #[cfg(test)]
-impl HpkeCiphertext {
-    /// This function flips the last byte of the ciphertext.
-    pub fn flip_last_byte(&mut self) {
-        let mut last_bits = self.ciphertext.pop().unwrap();
-        last_bits ^= 0xff;
-        self.ciphertext.push(last_bits);
+impl HpkePrivateKey {
+    /// Create a new HPKE private key.
+    /// Consumes the private key bytes.
+    pub fn new(b: Vec<u8>) -> Self {
+        Self { value: b }
     }
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub(crate) struct HpkePrivateKey {
+    pub(crate) value: Vec<u8>,
 }
 
 /// `KdfLabel` is later serialized and used in the `label` field of
@@ -518,9 +590,11 @@ pub struct SignatureKeypair {
 pub struct Ciphersuite {
     name: CiphersuiteName,
     signature_scheme: SignatureScheme,
-    hpke: Hpke,
     hash: HashType,
     aead: AeadType,
+    hpke_kem: HpkeKemType,
+    hpke_kdf: HpkeKdfType,
+    hpke_aead: HpkeAeadType,
 }
 
 impl std::fmt::Display for Ciphersuite {
@@ -580,17 +654,15 @@ impl Ciphersuite {
         if !Config::supported_ciphersuite_names().contains(&name) {
             return Err(ConfigError::UnsupportedCiphersuite);
         }
-        let signature_scheme = SignatureScheme::from(name);
-        let hpke_kem = kem_from_suite(&name)?;
-        let hpke_kdf = hpke_kdf_from_suite(&name);
-        let hpke_aead = hpke_aead_from_suite(&name);
 
         Ok(Ciphersuite {
             name,
-            signature_scheme,
-            hpke: Hpke::new(Mode::Base, hpke_kem, hpke_kdf, hpke_aead),
+            signature_scheme: SignatureScheme::from(name),
             hash: hash_from_suite(&name),
             aead: aead_from_suite(&name),
+            hpke_kem: kem_from_suite(&name)?,
+            hpke_kdf: hpke_kdf_from_suite(&name),
+            hpke_aead: hpke_aead_from_suite(&name),
         })
     }
 
@@ -645,59 +717,65 @@ impl Ciphersuite {
     /// HPKE single-shot encryption of `ptxt` to `pk_r`, using `info` and `aad`.
     pub(crate) fn hpke_seal(
         &self,
+        crypto: &impl OpenMlsCrypto,
         pk_r: &HpkePublicKey,
         info: &[u8],
         aad: &[u8],
         ptxt: &[u8],
     ) -> HpkeCiphertext {
-        let (kem_output, ciphertext) = self
-            .hpke
-            .seal(pk_r, info, aad, ptxt, None, None, None)
-            .unwrap();
-        HpkeCiphertext {
-            kem_output: kem_output.into(),
-            ciphertext: ciphertext.into(),
-        }
+        crypto.hpke_seal(
+            HpkeConfig(self.hpke_kem, self.hpke_kdf, self.hpke_aead),
+            pk_r.value.as_slice(),
+            info,
+            aad,
+            ptxt,
+        )
     }
 
     /// HPKE single-shot encryption specifically to seal a Secret `secret` to
     /// `pk_r`, using `info` and `aad`.
     pub(crate) fn hpke_seal_secret(
         &self,
+        crypto: &impl OpenMlsCrypto,
         pk_r: &HpkePublicKey,
         info: &[u8],
         aad: &[u8],
         secret: &Secret,
     ) -> HpkeCiphertext {
-        self.hpke_seal(pk_r, info, aad, &secret.value)
+        self.hpke_seal(crypto, pk_r, info, aad, &secret.value)
     }
 
     /// HPKE single-shot decryption of `input` with `sk_r`, using `info` and
     /// `aad`.
     pub(crate) fn hpke_open(
         &self,
+        crypto: &impl OpenMlsCrypto,
         input: &HpkeCiphertext,
         sk_r: &HpkePrivateKey,
         info: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
-        self.hpke
-            .open(
-                input.kem_output.as_slice(),
-                sk_r,
+        crypto
+            .hpke_open(
+                HpkeConfig(self.hpke_kem, self.hpke_kdf, self.hpke_aead),
+                input,
+                sk_r.value.as_slice(),
                 info,
                 aad,
-                input.ciphertext.as_slice(),
-                None,
-                None,
-                None,
             )
             .map_err(|_| CryptoError::HpkeDecryptionError)
     }
 
     /// Derive a new HPKE keypair from a given Secret.
-    pub(crate) fn derive_hpke_keypair(&self, ikm: &Secret) -> HpkeKeyPair {
-        self.hpke.derive_key_pair(&ikm.value).unwrap()
+    pub(crate) fn derive_hpke_keypair(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        ikm: &Secret,
+    ) -> HpkeKeyPair {
+        crypto.derive_hpke_keypair(
+            HpkeConfig(self.hpke_kem, self.hpke_kdf, self.hpke_aead),
+            &ikm.value,
+        )
     }
 }
 

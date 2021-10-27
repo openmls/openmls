@@ -1,4 +1,5 @@
 use log::error;
+use openmls_traits::types::HpkeKeyPair;
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsCryptoProvider;
 use tls_codec::{Serialize as TlsSerializeTrait, TlsSize, TlsVecU32};
@@ -308,14 +309,14 @@ impl KeyPackageBundlePayload {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Self {
         let leaf_node_secret = derive_leaf_node_secret(&leaf_secret, backend);
-        let (private_key, public_key) = key_package
+        let key_pair = key_package
             .ciphersuite()
-            .derive_hpke_keypair(&leaf_node_secret)
-            .into_keys();
-        let key_package_payload = KeyPackagePayload::from_key_package(key_package, public_key);
+            .derive_hpke_keypair(backend.crypto(), &leaf_node_secret);
+        let key_package_payload =
+            KeyPackagePayload::from_key_package(key_package, key_pair.public.into());
         Self {
             key_package_payload,
-            private_key,
+            private_key: key_pair.private.into(),
             leaf_secret,
         }
     }
@@ -508,17 +509,16 @@ impl KeyPackageBundle {
         {
             extensions.push(Extension::LifeTime(LifetimeExtension::default()));
         }
-        let (private_key, public_key) = key_pair.into_keys();
         let key_package = KeyPackage::new(
             ciphersuites[0],
             backend,
-            public_key,
+            key_pair.public.into(),
             credential_bundle,
             extensions,
         )?;
         Ok(KeyPackageBundle {
             key_package,
-            private_key,
+            private_key: key_pair.private.into(),
             leaf_secret,
         })
     }
@@ -554,7 +554,7 @@ impl KeyPackageBundle {
 
         let ciphersuite = Config::ciphersuite(ciphersuites[0]).unwrap();
         let leaf_node_secret = derive_leaf_node_secret(&leaf_secret, backend);
-        let keypair = ciphersuite.derive_hpke_keypair(&leaf_node_secret);
+        let keypair = ciphersuite.derive_hpke_keypair(backend.crypto(), &leaf_node_secret);
         Self::new_with_keypair(
             ciphersuites,
             backend,

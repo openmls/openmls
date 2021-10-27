@@ -99,6 +99,7 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
     ).expect("JoinerSecret not found");
 
     let group_secrets_bytes = ciphersuite.hpke_open(
+        crypto.crypto(),
         &egs.encrypted_group_secrets,
         bob_key_package_bundle.private_key(),
         &[],
