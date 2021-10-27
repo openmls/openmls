@@ -2,6 +2,15 @@ use super::*;
 use core::fmt::Debug;
 
 impl MlsGroup {
+    /// Stages a commit message.
+    /// This function does the following:
+    ///  - Applies the proposals covered by the commit to the tree
+    ///  - Applies the (optional) update path to the tree
+    ///  - Calculates the path secrets
+    ///  - Initializes the key schedule for epoch rollover
+    ///  - Verifies the confirmation tag/membership tag
+    /// Returns a [`StagedCommit`] that can be inspected and later merged
+    /// into the group state with [`merge_commit()`]
     pub fn stage_commit(
         &mut self,
         mls_plaintext: &MlsPlaintext,
@@ -215,6 +224,7 @@ impl MlsGroup {
         })
     }
 
+    /// Merges a [`StagedCommit`] into the group state.
     pub fn merge_commit(&mut self, staged_commit: StagedCommit) {
         self.group_context = staged_commit.group_context;
         self.epoch_secrets = staged_commit.epoch_secrets;
@@ -222,12 +232,16 @@ impl MlsGroup {
         self.secret_tree = staged_commit.secret_tree;
     }
 
+    /// This is temporary and will disappear when #424 is addressed.
+    /// This is just here for completeness but won't be used anywhere.
+    /// Rolls back the public tree nodes in case a Commit contained undesired proposals.
     pub fn cancel_commit(&mut self, staged_commit: StagedCommit) {
         let mut tree = self.tree.borrow_mut();
         tree.nodes = staged_commit.original_nodes;
     }
 }
 
+/// Contains the changes from a commit to the group state.
 #[derive(Debug)]
 pub struct StagedCommit {
     group_context: GroupContext,
