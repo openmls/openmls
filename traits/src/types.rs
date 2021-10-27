@@ -38,6 +38,13 @@ impl AeadType {
             AeadType::ChaCha20Poly1305 => 32,
         }
     }
+
+    /// Get the nonce size of the [`AeadType`] in bytes.
+    pub const fn nonce_size(&self) -> usize {
+        match self {
+            AeadType::Aes128Gcm | AeadType::Aes256Gcm | AeadType::ChaCha20Poly1305 => 12,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

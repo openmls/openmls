@@ -1,3 +1,4 @@
+use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::ciphersuite::signable::Signable;
@@ -205,9 +206,9 @@ impl MlsGroup {
                          group_secrets_bytes,
                          key_package_hash,
                      }| {
-                        let encrypted_group_secrets = ciphersuite.hpke_seal(
-                            backend.crypto(),
-                            public_key,
+                        let encrypted_group_secrets = backend.crypto().hpke_seal(
+                            ciphersuite.hpke_config(),
+                            public_key.as_slice(),
                             &[],
                             &[],
                             group_secrets_bytes,

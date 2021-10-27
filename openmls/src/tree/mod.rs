@@ -359,13 +359,16 @@ impl RatchetTree {
         );
 
         // Decrypt the secret and derive path secrets
-        let secret_bytes = self.ciphersuite.hpke_open(
-            backend.crypto(),
-            hpke_ciphertext,
-            private_key,
-            group_context,
-            &[],
-        )?;
+        let secret_bytes = backend
+            .crypto()
+            .hpke_open(
+                self.ciphersuite.hpke_config(),
+                hpke_ciphertext,
+                private_key.as_slice(),
+                group_context,
+                &[],
+            )
+            .map_err(|_| CryptoError::HpkeDecryptionError)?;
         let path_secret =
             Secret::from_slice(&secret_bytes, ProtocolVersion::default(), self.ciphersuite).into();
         // Derive new path secrets and generate keypairs
@@ -568,12 +571,12 @@ impl RatchetTree {
                 .iter()
                 .map(|&index| {
                     let pk = self.nodes[index].public_hpke_key().unwrap();
-                    self.ciphersuite.hpke_seal_secret(
-                        crypto,
-                        pk,
+                    crypto.hpke_seal(
+                        self.ciphersuite.hpke_config(),
+                        pk.as_slice(),
                         group_context,
                         &[],
-                        &path_secret.path_secret,
+                        path_secret.path_secret.as_slice(),
                     )
                 })
                 .collect();

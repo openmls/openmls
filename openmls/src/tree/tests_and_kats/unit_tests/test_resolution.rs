@@ -158,10 +158,11 @@ fn test_original_child_resolution() {
         );
 
         // Add unmerged leaves to root node
-        let public_key = ciphersuite
+        let public_key = crypto
+            .crypto()
             .derive_hpke_keypair(
-                crypto.crypto(),
-                &Secret::random(ciphersuite, &crypto, None /* MLS version */),
+                ciphersuite.hpke_config(),
+                Secret::random(ciphersuite, &crypto, None).as_slice(),
             )
             .public
             .into();
