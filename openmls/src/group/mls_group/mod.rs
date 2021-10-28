@@ -1,9 +1,9 @@
 use log::{debug, trace};
 use psk::{PreSharedKeys, PskSecret};
 
-mod apply_commit;
 pub mod create_commit;
 mod new_from_welcome;
+pub mod staged_commit;
 #[cfg(test)]
 mod test_duplicate_extension;
 #[cfg(test)]
@@ -274,24 +274,6 @@ impl MlsGroup {
             psk_fetcher_option,
             backend,
         )
-    }
-
-    // Apply a Commit message
-    pub fn apply_commit(
-        &mut self,
-        mls_plaintext: &MlsPlaintext,
-        proposals: &[&MlsPlaintext],
-        own_key_packages: &[KeyPackageBundle],
-        psk_fetcher_option: Option<PskFetcher>,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<(), MlsGroupError> {
-        Ok(self.apply_commit_internal(
-            mls_plaintext,
-            proposals,
-            own_key_packages,
-            psk_fetcher_option,
-            backend,
-        )?)
     }
 
     // Create application message

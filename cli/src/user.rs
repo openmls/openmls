@@ -191,7 +191,7 @@ impl User {
                             group.pending_proposals.push(msg);
                         }
                         MlsPlaintextContentType::Commit(_commit) => {
-                            match group.mls_group.borrow_mut().apply_commit(
+                            match group.mls_group.borrow_mut().stage_commit(
                                 &msg,
                                 &(group
                                     .pending_proposals
@@ -201,7 +201,9 @@ impl User {
                                 None,
                                 &self.crypto,
                             ) {
-                                Ok(_) => (),
+                                Ok(staged_commit) => {
+                                    group.mls_group.borrow_mut().merge_commit(staged_commit);
+                                }
                                 Err(e) => {
                                     let s = format!("Error applying commit: {:?}", e);
                                     log::error!("{}", s);
@@ -323,11 +325,12 @@ impl User {
             )
             .expect("Error creating commit");
         let welcome_msg = welcome_msg.expect("Welcome message wasn't created by create_commit.");
-        group
+        let staged_commit = group
             .mls_group
             .borrow_mut()
-            .apply_commit(&commit, &[&add_proposal], &[], None, &self.crypto)
+            .stage_commit(&commit, &[&add_proposal], &[], None, &self.crypto)
             .expect("error applying commit");
+        group.mls_group.borrow_mut().merge_commit(staged_commit);
 
         // Send Welcome to the client.
         log::trace!("Sending welcome");

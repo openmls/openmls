@@ -220,16 +220,17 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             let key_package_bundle = key_package_bundle_option.unwrap();
             // Apply the commit to the initial group member's group state using
             // the key package bundle returned by the create_commit earlier.
-            match mls_group.apply_commit(
-                &commit_mls_plaintext,
-                &(proposal_list.iter().collect::<Vec<&MlsPlaintext>>()),
-                &[key_package_bundle],
-                None,
-                &crypto,
-            ) {
-                Ok(_) => (),
-                Err(err) => panic!("Error applying Commit: {:?}", err),
-            }
+            let staged_commit = mls_group
+                .stage_commit(
+                    &commit_mls_plaintext,
+                    &(proposal_list.iter().collect::<Vec<&MlsPlaintext>>()),
+                    &[key_package_bundle],
+                    None,
+                    &crypto,
+                )
+                .expect("Error applying Commit");
+            mls_group.merge_commit(staged_commit);
+
             // Distribute the Welcome message to the other members.
             for client_id in 1..group_config.members.len() {
                 let new_group_member = test_clients

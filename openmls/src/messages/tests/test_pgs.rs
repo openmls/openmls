@@ -94,15 +94,16 @@ fn test_pgs() {
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
 
-        group_alice
-            .apply_commit(
+        let staged_commit = group_alice
+            .stage_commit(
                 &commit,
                 &[&bob_add_proposal],
                 &[kpb_option.expect("No KeyPackageBundle")],
                 None,
                 &crypto,
             )
-            .expect("Could not apply Commit");
+            .expect("Could not stage Commit");
+        group_alice.merge_commit(staged_commit);
 
         let pgs = group_alice
             .export_public_group_state(&crypto, &alice_credential_bundle)

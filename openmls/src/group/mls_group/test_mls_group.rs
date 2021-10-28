@@ -268,9 +268,10 @@ fn test_update_path() {
             mls_plaintext_commit.confirmation_tag()
         );
 
-        alice_group
-            .apply_commit(&mls_plaintext_commit, epoch_proposals, &[], None, &crypto)
-            .expect("error applying commit");
+        let staged_commit = alice_group
+            .stage_commit(&mls_plaintext_commit, epoch_proposals, &[], None, &crypto)
+            .expect("error staging commit");
+        alice_group.merge_commit(staged_commit);
         let ratchet_tree = alice_group.tree().public_key_tree_copy();
 
         let group_bob = MlsGroup::new_from_welcome(
@@ -381,17 +382,16 @@ fn test_update_path() {
             )
             .expect("Could not add membership key");
 
+        let staged_commit_res = alice_group.stage_commit(
+            &broken_plaintext,
+            &[&update_proposal_bob],
+            &[],
+            None,
+            &crypto,
+        );
         assert_eq!(
-            alice_group
-                .apply_commit(
-                    &broken_plaintext,
-                    &[&update_proposal_bob],
-                    &[],
-                    None,
-                    &crypto
-                )
-                .expect_err("Successful processing of a broken commit."),
-            MlsGroupError::ApplyCommitError(ApplyCommitError::DecryptionFailure(
+            staged_commit_res.expect_err("Successful processing of a broken commit."),
+            MlsGroupError::StageCommitError(StageCommitError::DecryptionFailure(
                 TreeError::PathSecretDecryptionError(CryptoError::HpkeDecryptionError)
             ))
         );
@@ -520,16 +520,17 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         )
         .expect("Error creating commit");
 
-    log::info!(" >>> Applying commit ...");
-    alice_group
-        .apply_commit(
+    log::info!(" >>> Staging & merging commit ...");
+    let staged_commit = alice_group
+        .stage_commit(
             &mls_plaintext_commit,
             epoch_proposals,
             &[],
             Some(psk_fetcher),
             &crypto,
         )
-        .expect("error applying commit");
+        .expect("error staging commit");
+    alice_group.merge_commit(staged_commit);
     let ratchet_tree = alice_group.tree().public_key_tree_copy();
 
     let group_bob = MlsGroup::new_from_welcome(

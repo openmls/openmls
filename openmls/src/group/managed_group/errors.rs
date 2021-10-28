@@ -1,13 +1,13 @@
 //! # MLS Managed Group errors
 //!
-//! `WelcomeError`, `ApplyCommitError`, `DecryptionError`, and
+//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and
 //! `CreateCommitError`.
 
 use crate::config::ConfigError;
 use crate::credentials::CredentialError;
 use crate::error::ErrorString;
 use crate::framing::MlsCiphertextError;
-use crate::group::{ApplyCommitError, CreateCommitError, ExporterError, MlsGroupError};
+use crate::group::{CreateCommitError, ExporterError, MlsGroupError, StageCommitError};
 
 implement_error! {
     pub enum ManagedGroupError {
@@ -78,8 +78,8 @@ implement_error! {
         Complex {
             InvalidCiphertext(MlsCiphertextError) =
                 "An invalid ciphertext was provided. The error returns the associated data of the ciphertext.",
-            CommitError(ApplyCommitError) =
-                "See [`ApplyCommitError`](`crate::group::ApplyCommitError`) for details",
+            CommitError(StageCommitError) =
+                "See [`StageCommitError`](`crate::group::StageCommitError`) for details",
             GroupError(MlsGroupError) =
                 "See [`GroupError`](`crate::group::GroupError`) for details",
         }

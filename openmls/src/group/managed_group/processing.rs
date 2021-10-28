@@ -1,3 +1,5 @@
+use crate::prelude::ErrorString;
+
 use super::*;
 
 impl ManagedGroup {
@@ -83,7 +85,7 @@ impl ManagedGroup {
                         InvalidMessageError::CommitWithInvalidProposals,
                     ));
                 }
-                // If all proposals were valid, we continue with applying the Commit
+                // If all proposals were valid, we continue with staging the Commit
                 // message
                 let proposals = &self
                     .pending_proposals
@@ -92,11 +94,12 @@ impl ManagedGroup {
                 // TODO #141
                 match self
                     .group
-                    .apply_commit(&plaintext, proposals, &self.own_kpbs, None, backend)
+                    .stage_commit(&plaintext, proposals, &self.own_kpbs, None, backend)
                 {
-                    Ok(()) => {
-                        // Since the Commit was applied without errors, we can collect
+                    Ok(staged_commit) => {
+                        // Since the Commit was applied without errors, we can merge it and collect
                         // all proposals from the Commit and generate events
+                        self.group.merge_commit(staged_commit);
                         events.append(&mut self.prepare_events(
                             self.ciphersuite(),
                             backend,
@@ -123,8 +126,8 @@ impl ManagedGroup {
                         self.pending_proposals.clear();
                         self.own_kpbs.clear();
                     }
-                    Err(apply_commit_error) => match apply_commit_error {
-                        MlsGroupError::ApplyCommitError(ApplyCommitError::SelfRemoved) => {
+                    Err(stage_commit_error) => match stage_commit_error {
+                        MlsGroupError::StageCommitError(StageCommitError::SelfRemoved) => {
                             // Prepare events
                             events.append(&mut self.prepare_events(
                                 self.ciphersuite(),
@@ -136,14 +139,14 @@ impl ManagedGroup {
                             // The group is no longer active
                             self.active = false;
                         }
-                        MlsGroupError::ApplyCommitError(e) => {
+                        MlsGroupError::StageCommitError(e) => {
                             return Err(ManagedGroupError::InvalidMessage(
                                 InvalidMessageError::CommitError(e),
                             ))
                         }
                         _ => {
                             let error_string =
-                                "apply_commit() did not return an ApplyCommitError.".to_string();
+                                "stage_commit() did not return an StageCommitError.".to_string();
                             events.push(GroupEvent::Error(ErrorEvent::new(
                                 ManagedGroupError::LibraryError(ErrorString::from(error_string)),
                             )));
