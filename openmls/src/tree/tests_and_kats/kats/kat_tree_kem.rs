@@ -31,7 +31,7 @@ use crate::{
     tree::{treemath::*, CiphersuiteName, HashSet, LeafIndex, NodeIndex, RatchetTree, UpdatePath},
 };
 use crate::{
-    group::{ManagedGroupCallbacks, MlsMessageOut},
+    group::MlsMessageOut,
     prelude::MlsPlaintextContentType,
     test_utils::{
         bytes_to_hex,
@@ -308,8 +308,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
 
     use crate::{
         extensions::RatchetTreeExtension,
-        group::{ManagedGroupConfigBuilder, WireFormat},
-        prelude::KeyPackageBundle,
+        prelude::{KeyPackageBundle, ManagedGroupConfig},
         test_utils::test_framework::CodecUse,
     };
 
@@ -320,11 +319,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         panic!("test vector can only be generated with two or more members")
     }
     // Set up a group with `n_leaves` members.
-    let callbacks = ManagedGroupCallbacks::default();
-    let managed_group_config = ManagedGroupConfigBuilder::new()
-        .wire_format(WireFormat::MlsPlaintext)
-        .callbacks(callbacks)
-        .build();
+    let managed_group_config = ManagedGroupConfig::test_default();
 
     let setup = ManagedTestSetup::new(
         managed_group_config,

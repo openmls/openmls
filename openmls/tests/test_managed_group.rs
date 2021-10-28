@@ -744,11 +744,7 @@ fn test_empty_input_errors() {
             .unwrap();
 
     // Define the managed group configuration
-    let callbacks = ManagedGroupCallbacks::default();
-    let managed_group_config = ManagedGroupConfig::builder()
-        .wire_format(WireFormat::MlsPlaintext)
-        .callbacks(callbacks)
-        .build();
+    let managed_group_config = ManagedGroupConfig::test_default();
 
     // === Alice creates a group ===
     let mut alice_group = ManagedGroup::new(
