@@ -59,14 +59,14 @@ impl PrivateTree {
         // let leaf_secret = key_package_bundle.leaf_secret();
         // let ciphersuite = key_package_bundle.key_package.ciphersuite();
         let leaf_node_secret = derive_leaf_node_secret(leaf_secret, backend);
-        let keypair = leaf_secret
-            .ciphersuite()
-            .derive_hpke_keypair(&leaf_node_secret);
-        let (private_key, _) = keypair.into_keys();
+        let keypair = backend.crypto().derive_hpke_keypair(
+            leaf_secret.ciphersuite().hpke_config(),
+            leaf_node_secret.as_slice(),
+        );
 
         Self {
             leaf_index,
-            hpke_private_key: Some(private_key),
+            hpke_private_key: Some(keypair.private.into()),
             path_keys: PathKeys::default(),
             commit_secret: None,
             path_secrets: Vec::default(),
@@ -243,10 +243,11 @@ impl PrivateTree {
                 .path_secret
                 .kdf_expand_label(backend, "node", &[], hash_len)
                 .unwrap();
-            let keypair = ciphersuite.derive_hpke_keypair(&node_secret);
-            let (private_key, public_key) = keypair.into_keys();
-            public_keys.push(public_key);
-            private_keys.push(private_key);
+            let keypair = backend
+                .crypto()
+                .derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice());
+            public_keys.push(keypair.public.into());
+            private_keys.push(keypair.private.into());
         }
 
         // Store private keys.

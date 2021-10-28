@@ -119,11 +119,13 @@ use crate::tree::index::LeafIndex;
 use crate::tree::secret_tree::SecretTree;
 use crate::{ciphersuite::Mac, group::GroupContext, prelude::MembershipTag};
 use crate::{
-    ciphersuite::{AeadKey, AeadNonce, Ciphersuite, HpkeKeyPair, Secret},
+    ciphersuite::{AeadKey, AeadNonce, Ciphersuite, Secret},
     config::ProtocolVersion,
     messages::ConfirmationTag,
 };
 
+use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::types::HpkeKeyPair;
 use openmls_traits::OpenMlsCryptoProvider;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
@@ -679,8 +681,12 @@ impl ExternalSecret {
     }
 
     /// Derive the external keypair for External Commits
-    pub(crate) fn derive_external_keypair(&self, ciphersuite: &Ciphersuite) -> HpkeKeyPair {
-        ciphersuite.derive_hpke_keypair(&self.secret)
+    pub(crate) fn derive_external_keypair(
+        &self,
+        crypto: &impl OpenMlsCrypto,
+        ciphersuite: &Ciphersuite,
+    ) -> HpkeKeyPair {
+        crypto.derive_hpke_keypair(ciphersuite.hpke_config(), self.secret.as_slice())
     }
 
     #[cfg(any(feature = "test-utils", test))]
