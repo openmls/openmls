@@ -552,14 +552,6 @@
 <span id="552">552</span>
 <span id="553">553</span>
 <span id="554">554</span>
-<span id="555">555</span>
-<span id="556">556</span>
-<span id="557">557</span>
-<span id="558">558</span>
-<span id="559">559</span>
-<span id="560">560</span>
-<span id="561">561</span>
-<span id="562">562</span>
 </pre><pre class="rust"><code><span class="doccomment">//! TreeKEM test vectors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! See https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md</span>
@@ -593,7 +585,7 @@
     <span class="ident">tree</span>::{<span class="ident">treemath</span>::<span class="kw-2">*</span>, <span class="ident">CiphersuiteName</span>, <span class="ident">HashSet</span>, <span class="ident">LeafIndex</span>, <span class="ident">NodeIndex</span>, <span class="ident">RatchetTree</span>, <span class="ident">UpdatePath</span>},
 };
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">group</span>::{<span class="ident">ManagedGroupCallbacks</span>, <span class="ident">ManagedGroupConfig</span>, <span class="ident">MlsMessageOut</span>, <span class="ident">UpdatePolicy</span>},
+    <span class="ident">group::MlsMessageOut</span>,
     <span class="ident">prelude::MlsPlaintextContentType</span>,
     <span class="ident">test_utils</span>::{
         <span class="ident">bytes_to_hex</span>,
@@ -869,7 +861,8 @@
     <span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">key_store::OpenMlsKeyStore</span>, <span class="ident">OpenMlsCryptoProvider</span>};
 
     <span class="kw">use</span> <span class="kw">crate</span>::{
-        <span class="ident">extensions::RatchetTreeExtension</span>, <span class="ident">group::WireFormat</span>, <span class="ident">prelude::KeyPackageBundle</span>,
+        <span class="ident">extensions::RatchetTreeExtension</span>,
+        <span class="ident">prelude</span>::{<span class="ident">KeyPackageBundle</span>, <span class="ident">ManagedGroupConfig</span>},
         <span class="ident">test_utils::test_framework::CodecUse</span>,
     };
 
@@ -880,17 +873,8 @@
         <span class="macro">panic!</span>(<span class="string">&quot;test vector can only be generated with two or more members&quot;</span>)
     }
     <span class="comment">// Set up a group with `n_leaves` members.</span>
-    <span class="kw">let</span> <span class="ident">handshake_message_format</span> <span class="op">=</span> <span class="ident">WireFormat::MlsPlaintext</span>;
-    <span class="kw">let</span> <span class="ident">update_policy</span> <span class="op">=</span> <span class="ident">UpdatePolicy::default</span>();
-    <span class="kw">let</span> <span class="ident">callbacks</span> <span class="op">=</span> <span class="ident">ManagedGroupCallbacks::default</span>();
-    <span class="kw">let</span> <span class="ident">managed_group_config</span> <span class="op">=</span> <span class="ident">ManagedGroupConfig::new</span>(
-        <span class="ident">handshake_message_format</span>,
-        <span class="ident">update_policy</span>,
-        <span class="number">0</span>,
-        <span class="number">0</span>,
-        <span class="bool-val">false</span>, <span class="comment">// use_ratchet_tree_extension</span>
-        <span class="ident">callbacks</span>,
-    );
+    <span class="kw">let</span> <span class="ident">managed_group_config</span> <span class="op">=</span> <span class="ident">ManagedGroupConfig::test_default</span>();
+
     <span class="kw">let</span> <span class="ident">setup</span> <span class="op">=</span> <span class="ident">ManagedTestSetup::new</span>(
         <span class="ident">managed_group_config</span>,
         <span class="ident">n_leaves</span> <span class="kw">as</span> <span class="ident">usize</span>,
