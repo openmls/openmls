@@ -8,17 +8,9 @@ mod utils;
 #[test]
 fn test_managed_api() {
     // Some basic setup functions for the managed group.
-    let handshake_message_format = WireFormat::MlsPlaintext;
-    let update_policy = UpdatePolicy::default();
-    let callbacks = ManagedGroupCallbacks::default();
-    let managed_group_config = ManagedGroupConfig::new(
-        handshake_message_format,
-        update_policy,
-        0,
-        0,
-        false, // use_ratchet_tree_extension
-        callbacks,
-    );
+    let managed_group_config = ManagedGroupConfig::builder()
+        .wire_format(WireFormat::MlsPlaintext)
+        .build();
     let number_of_clients = 20;
     let setup = ManagedTestSetup::new(
         managed_group_config,

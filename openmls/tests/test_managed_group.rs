@@ -102,9 +102,7 @@ fn auto_save(managed_group: &ManagedGroup) {
 fn managed_group_operations() {
     let crypto = OpenMlsRustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
-        for handshake_message_format in
-            vec![WireFormat::MlsPlaintext, WireFormat::MlsCiphertext].into_iter()
-        {
+        for wire_format in vec![WireFormat::MlsPlaintext, WireFormat::MlsCiphertext].into_iter() {
             let group_id = GroupId::from_slice(b"Test Group");
 
             // Generate credential bundles
@@ -151,19 +149,14 @@ fn managed_group_operations() {
 
             // Define the managed group configuration
 
-            let update_policy = UpdatePolicy::default();
             let callbacks = ManagedGroupCallbacks::new()
                 .with_validate_add(validate_add)
                 .with_validate_remove(validate_remove)
                 .with_auto_save(auto_save);
-            let managed_group_config = ManagedGroupConfig::new(
-                handshake_message_format,
-                update_policy,
-                0,
-                0,
-                false, // use_ratchet_tree_extension
-                callbacks,
-            );
+            let managed_group_config = ManagedGroupConfig::builder()
+                .wire_format(wire_format)
+                .callbacks(callbacks)
+                .build();
 
             // === Alice creates a group ===
             let mut alice_group = ManagedGroup::new(
@@ -751,16 +744,7 @@ fn test_empty_input_errors() {
             .unwrap();
 
     // Define the managed group configuration
-    let update_policy = UpdatePolicy::default();
-    let callbacks = ManagedGroupCallbacks::default();
-    let managed_group_config = ManagedGroupConfig::new(
-        WireFormat::MlsPlaintext,
-        update_policy,
-        0,
-        0,
-        false, // use_ratchet_tree_extension
-        callbacks,
-    );
+    let managed_group_config = ManagedGroupConfig::test_default();
 
     // === Alice creates a group ===
     let mut alice_group = ManagedGroup::new(
@@ -790,14 +774,8 @@ fn test_empty_input_errors() {
 fn managed_group_ratchet_tree_extension() {
     let crypto = OpenMlsRustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
-        for handshake_message_format in
-            vec![WireFormat::MlsPlaintext, WireFormat::MlsCiphertext].into_iter()
-        {
+        for wire_format in vec![WireFormat::MlsPlaintext, WireFormat::MlsCiphertext].into_iter() {
             let group_id = GroupId::from_slice(b"Test Group");
-
-            // Define the managed group configuration
-
-            let update_policy = UpdatePolicy::default();
 
             // === Positive case: using the ratchet tree extension ===
 
@@ -835,14 +813,10 @@ fn managed_group_ratchet_tree_extension() {
             )
             .unwrap();
 
-            let managed_group_config = ManagedGroupConfig::new(
-                handshake_message_format,
-                update_policy.clone(),
-                0,
-                0,
-                true, // use_ratchet_tree_extension
-                ManagedGroupCallbacks::default(),
-            );
+            let managed_group_config = ManagedGroupConfig::builder()
+                .wire_format(wire_format)
+                .use_ratchet_tree_extension(true)
+                .build();
 
             // === Alice creates a group ===
             let mut alice_group = ManagedGroup::new(
@@ -901,14 +875,7 @@ fn managed_group_ratchet_tree_extension() {
             )
             .unwrap();
 
-            let managed_group_config = ManagedGroupConfig::new(
-                handshake_message_format,
-                update_policy,
-                0,
-                0,
-                false, // use_ratchet_tree_extension
-                ManagedGroupCallbacks::default(),
-            );
+            let managed_group_config = ManagedGroupConfig::test_default();
 
             // === Alice creates a group ===
             let mut alice_group = ManagedGroup::new(

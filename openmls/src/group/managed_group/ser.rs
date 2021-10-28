@@ -16,8 +16,9 @@ pub struct SerializedManagedGroup {
 }
 
 impl SerializedManagedGroup {
-    pub(crate) fn into_managed_group(self, callbacks: &ManagedGroupCallbacks) -> ManagedGroup {
-        let mut managed_group = ManagedGroup {
+    pub(crate) fn into_managed_group(mut self, callbacks: &ManagedGroupCallbacks) -> ManagedGroup {
+        self.managed_group_config.set_callbacks(callbacks);
+        ManagedGroup {
             managed_group_config: self.managed_group_config,
             group: self.group,
             pending_proposals: self.pending_proposals,
@@ -25,9 +26,7 @@ impl SerializedManagedGroup {
             aad: self.aad,
             resumption_secret_store: self.resumption_secret_store,
             active: self.active,
-        };
-        managed_group.managed_group_config.set_callbacks(callbacks);
-        managed_group
+        }
     }
 }
 
