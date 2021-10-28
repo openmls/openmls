@@ -12,11 +12,10 @@ ctest_ciphersuites!(decryption_key_index_computation, test(ciphersuite_name: Cip
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
     // Some basic setup functions for the managed group.
-    let handshake_message_format = WireFormat::MlsPlaintext;
-    let update_policy = UpdatePolicy::default();
-    let callbacks = ManagedGroupCallbacks::default();
     let managed_group_config =
-        ManagedGroupConfig::new(handshake_message_format, update_policy, 10, 0, false, callbacks);
+        ManagedGroupConfig::builder()
+        .wire_format(WireFormat::MlsPlaintext)
+        .padding_size(10).build();
     let number_of_clients = 20;
     let setup = ManagedTestSetup::new(managed_group_config, number_of_clients, CodecUse::StructMessages);
     // Create a basic group with more than 4 members to create a tree with intermediate nodes.

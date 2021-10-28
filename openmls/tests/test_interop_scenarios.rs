@@ -12,17 +12,10 @@ mod utils;
 // using BasicCredentials. We can change the test setup once #134 is fixed.
 
 fn default_managed_group_config() -> ManagedGroupConfig {
-    let handshake_message_format = WireFormat::MlsPlaintext;
-    let update_policy = UpdatePolicy::default();
-    let callbacks = ManagedGroupCallbacks::default();
-    ManagedGroupConfig::new(
-        handshake_message_format,
-        update_policy,
-        10,
-        0,
-        false, // use_ratchet_tree_extension
-        callbacks,
-    )
+    ManagedGroupConfig::builder()
+        .wire_format(WireFormat::MlsPlaintext)
+        .padding_size(10)
+        .build()
 }
 
 // # 1:1 join

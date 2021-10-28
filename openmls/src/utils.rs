@@ -230,7 +230,7 @@ pub fn _print_tree(tree: &RatchetTree, message: &str) {
                 NodeType::Leaf => {
                     print!("\tL");
                     let key_bytes = if let Some(kp) = &node.key_package {
-                        kp.hpke_init_key().value.as_slice()
+                        kp.hpke_init_key().as_slice()
                     } else {
                         &[]
                     };
@@ -254,7 +254,7 @@ pub fn _print_tree(tree: &RatchetTree, message: &str) {
                         print!("\tP");
                     }
                     let key_bytes = if let Some(n) = &node.node {
-                        n.public_key().value.as_slice()
+                        n.public_key().as_slice()
                     } else {
                         &[]
                     };

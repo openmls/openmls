@@ -1,5 +1,6 @@
 //! Unit tests for the ciphersuites.
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::types::HpkeCiphertext;
 
 use crate::ciphersuite::*;
 use crate::config::Config;
@@ -13,15 +14,20 @@ fn test_hpke_seal_open() {
         println!("Test {:?}", ciphersuite.name());
         println!("Ciphersuite {:?}", ciphersuite);
         let plaintext = &[1, 2, 3];
-        let kp = ciphersuite
-            .derive_hpke_keypair(crypto.crypto(), &Secret::random(ciphersuite, &crypto, None));
+        let kp = crypto.crypto().derive_hpke_keypair(
+            ciphersuite.hpke_config(),
+            Secret::random(ciphersuite, &crypto, None).as_slice(),
+        );
         let ciphertext =
-            ciphersuite.hpke_seal(crypto.crypto(), &kp.public.into(), &[], &[], plaintext);
-        let decrypted_payload = ciphersuite
+            crypto
+                .crypto()
+                .hpke_seal(ciphersuite.hpke_config(), &kp.public, &[], &[], plaintext);
+        let decrypted_payload = crypto
+            .crypto()
             .hpke_open(
-                crypto.crypto(),
+                ciphersuite.hpke_config(),
                 &ciphertext,
-                &kp.private.clone().into(),
+                &kp.private,
                 &[],
                 &[],
             )
@@ -41,26 +47,30 @@ fn test_hpke_seal_open() {
             ciphertext: broken_ciphertext,
         };
         assert_eq!(
-            ciphersuite
+            crypto
+                .crypto()
                 .hpke_open(
-                    crypto.crypto(),
+                    ciphersuite.hpke_config(),
                     &broken_ciphertext1,
-                    &kp.private.clone().into(),
+                    &kp.private,
                     &[],
                     &[]
                 )
+                .map_err(|_| CryptoError::HpkeDecryptionError)
                 .expect_err("Erroneously correct ciphertext decryption of broken ciphertext."),
             CryptoError::HpkeDecryptionError
         );
         assert_eq!(
-            ciphersuite
+            crypto
+                .crypto()
                 .hpke_open(
-                    crypto.crypto(),
+                    ciphersuite.hpke_config(),
                     &broken_ciphertext2,
-                    &kp.private.into(),
+                    &kp.private,
                     &[],
                     &[]
                 )
+                .map_err(|_| CryptoError::HpkeDecryptionError)
                 .expect_err("Erroneously correct ciphertext decryption of broken ciphertext."),
             CryptoError::HpkeDecryptionError
         );
@@ -138,7 +148,7 @@ fn test_signatures() {
         // Tamper with signature such that verification fails. We choose a byte
         // somewhere in the middle to make the verification fail, not the DER
         // decoding (in the case of ECDSA signatures).
-        let mut modified_signature = signature.value.as_slice().to_vec();
+        let mut modified_signature = signature.as_slice().to_vec();
         modified_signature[20] ^= 0xFF;
         signature.modify(&modified_signature);
 

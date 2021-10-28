@@ -63,16 +63,7 @@ fn test_managed_group_persistence() {
             .unwrap();
 
     // Define the managed group configuration
-    let update_policy = UpdatePolicy::default();
-    let callbacks = ManagedGroupCallbacks::default();
-    let managed_group_config = ManagedGroupConfig::new(
-        WireFormat::MlsPlaintext,
-        update_policy,
-        0,     // padding_size
-        0,     // number_of_resumption_secrets
-        false, // use_ratchet_tree_extension
-        callbacks,
-    );
+    let managed_group_config = ManagedGroupConfig::test_default();
 
     // === Alice creates a group ===
 
@@ -154,17 +145,7 @@ fn remover() {
             .unwrap();
 
     // Define the managed group configuration
-
-    let update_policy = UpdatePolicy::default();
-    let callbacks = ManagedGroupCallbacks::default();
-    let mut managed_group_config = ManagedGroupConfig::new(
-        WireFormat::MlsCiphertext,
-        update_policy,
-        0,     // padding_size
-        0,     // number_of_resumption_secrets
-        false, // use_ratchet_tree_extension
-        callbacks,
-    );
+    let mut managed_group_config = ManagedGroupConfig::default();
 
     // === Alice creates a group ===
     let mut alice_group = ManagedGroup::new(
@@ -276,16 +257,7 @@ ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
         .unwrap();
 
     // Define the managed group configuration
-    let update_policy = UpdatePolicy::default();
-    let callbacks = ManagedGroupCallbacks::default();
-    let managed_group_config = ManagedGroupConfig::new(
-        WireFormat::MlsPlaintext,
-        update_policy,
-        0, // padding_size
-        0, // number_of_resumption_secrets
-        false, // use_ratchet_tree_extension
-        callbacks,
-    );
+    let managed_group_config = ManagedGroupConfig::builder().wire_format(WireFormat::MlsPlaintext).build();
 
     // === Alice creates a group ===
     let alice_group = ManagedGroup::new(
@@ -323,17 +295,11 @@ fn test_invalid_plaintext() {
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
     // Some basic setup functions for the managed group.
-    let handshake_message_format = WireFormat::MlsPlaintext;
-    let update_policy = UpdatePolicy::default();
-    let callbacks = ManagedGroupCallbacks::default();
-    let managed_group_config = ManagedGroupConfig::new(
-        handshake_message_format,
-        update_policy,
-        10,
-        0,
-        false,
-        callbacks,
-    );
+    let managed_group_config = ManagedGroupConfig::builder()
+        .wire_format(WireFormat::MlsPlaintext)
+        .padding_size(10)
+        .build();
+
     let number_of_clients = 20;
     let setup = ManagedTestSetup::new(
         managed_group_config,

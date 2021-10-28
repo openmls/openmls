@@ -10,7 +10,7 @@ use crate::{
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
 use tls_codec::{Deserialize, Serialize};
 
 macro_rules! test_welcome_msg {
@@ -48,9 +48,9 @@ macro_rules! test_welcome_msg {
             let welcome_nonce = AeadNonce::random(&crypto);
 
             // Generate receiver key pair.
-            let receiver_key_pair = $ciphersuite.derive_hpke_keypair(
-                crypto.crypto(),
-                &Secret::random($ciphersuite, &crypto, None),
+            let receiver_key_pair = crypto.crypto().derive_hpke_keypair(
+                $ciphersuite.hpke_config(),
+                Secret::random($ciphersuite, &crypto, None).as_slice(),
             );
             let hpke_info = b"group info welcome test info";
             let hpke_aad = b"group info welcome test aad";
@@ -58,9 +58,9 @@ macro_rules! test_welcome_msg {
             let key_package_hash = vec![0, 0, 0, 0];
             let secrets = vec![EncryptedGroupSecrets {
                 key_package_hash: key_package_hash.clone().into(),
-                encrypted_group_secrets: $ciphersuite.hpke_seal(
-                    crypto.crypto(),
-                    &receiver_key_pair.public.into(),
+                encrypted_group_secrets: crypto.crypto().hpke_seal(
+                    $ciphersuite.hpke_config(),
+                    receiver_key_pair.public.as_slice(),
                     hpke_info,
                     hpke_aad,
                     hpke_input,
@@ -98,11 +98,12 @@ macro_rules! test_welcome_msg {
                     key_package_hash.as_slice(),
                     secret.key_package_hash.as_slice()
                 );
-                let ptxt = $ciphersuite
+                let ptxt = crypto
+                    .crypto()
                     .hpke_open(
-                        crypto.crypto(),
+                        $ciphersuite.hpke_config(),
                         &secret.encrypted_group_secrets,
-                        &receiver_key_pair.private.clone().into(),
+                        &receiver_key_pair.private,
                         hpke_info,
                         hpke_aad,
                     )

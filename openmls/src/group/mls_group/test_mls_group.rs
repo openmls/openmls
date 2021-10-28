@@ -1,5 +1,5 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::HpkeCiphertext, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext, OpenMlsCryptoProvider};
 use tls_codec::Serialize;
 
 use crate::{
@@ -97,14 +97,16 @@ fn test_failed_groupinfo_decryption() {
             let welcome_nonce = AeadNonce::random(&crypto);
 
             // Generate receiver key pair.
-            let receiver_key_pair = ciphersuite
-                .derive_hpke_keypair(crypto.crypto(), &Secret::random(ciphersuite, &crypto, None));
+            let receiver_key_pair = crypto.crypto().derive_hpke_keypair(
+                ciphersuite.hpke_config(),
+                Secret::random(ciphersuite, &crypto, None).as_slice(),
+            );
             let hpke_info = b"group info welcome test info";
             let hpke_aad = b"group info welcome test aad";
             let hpke_input = b"these should be the group secrets";
-            let mut encrypted_group_secrets = ciphersuite.hpke_seal(
-                crypto.crypto(),
-                &receiver_key_pair.public.into(),
+            let mut encrypted_group_secrets = crypto.crypto().hpke_seal(
+                ciphersuite.hpke_config(),
+                receiver_key_pair.public.as_slice(),
                 hpke_info,
                 hpke_aad,
                 hpke_input,

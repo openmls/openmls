@@ -1,4 +1,5 @@
 use log::error;
+use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::HpkeKeyPair;
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsCryptoProvider;
@@ -309,9 +310,10 @@ impl KeyPackageBundlePayload {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Self {
         let leaf_node_secret = derive_leaf_node_secret(&leaf_secret, backend);
-        let key_pair = key_package
-            .ciphersuite()
-            .derive_hpke_keypair(backend.crypto(), &leaf_node_secret);
+        let key_pair = backend.crypto().derive_hpke_keypair(
+            key_package.ciphersuite().hpke_config(),
+            leaf_node_secret.as_slice(),
+        );
         let key_package_payload =
             KeyPackagePayload::from_key_package(key_package, key_pair.public.into());
         Self {
@@ -554,7 +556,9 @@ impl KeyPackageBundle {
 
         let ciphersuite = Config::ciphersuite(ciphersuites[0]).unwrap();
         let leaf_node_secret = derive_leaf_node_secret(&leaf_secret, backend);
-        let keypair = ciphersuite.derive_hpke_keypair(backend.crypto(), &leaf_node_secret);
+        let keypair = backend
+            .crypto()
+            .derive_hpke_keypair(ciphersuite.hpke_config(), leaf_node_secret.as_slice());
         Self::new_with_keypair(
             ciphersuites,
             backend,
