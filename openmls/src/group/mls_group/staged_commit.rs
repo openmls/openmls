@@ -1,19 +1,24 @@
-use crate::extensions::*;
-use crate::framing::*;
-use crate::group::mls_group::*;
-use crate::group::*;
-use crate::key_packages::*;
-use crate::schedule::CommitSecret;
+use super::*;
+use core::fmt::Debug;
 
 impl MlsGroup {
-    pub(crate) fn apply_commit_internal(
+    /// Stages a commit message.
+    /// This function does the following:
+    ///  - Applies the proposals covered by the commit to the tree
+    ///  - Applies the (optional) update path to the tree
+    ///  - Calculates the path secrets
+    ///  - Initializes the key schedule for epoch rollover
+    ///  - Verifies the confirmation tag/membership tag
+    /// Returns a [StagedCommit] that can be inspected and later merged
+    /// into the group state with [merge_commit()]
+    pub fn stage_commit(
         &mut self,
         mls_plaintext: &MlsPlaintext,
         proposals_by_reference: &[&MlsPlaintext],
         own_key_packages: &[KeyPackageBundle],
         psk_fetcher_option: Option<PskFetcher>,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<(), ApplyCommitError> {
+    ) -> Result<StagedCommit, MlsGroupError> {
         let ciphersuite = self.ciphersuite();
 
         // Verify epoch
@@ -23,18 +28,18 @@ impl MlsGroup {
                 mls_plaintext.epoch(),
                 self.group_context.epoch
             );
-            return Err(ApplyCommitError::EpochMismatch);
+            return Err(StageCommitError::EpochMismatch.into());
         }
 
         // Extract Commit & Confirmation Tag from MlsPlaintext
         let commit = match mls_plaintext.content() {
             MlsPlaintextContentType::Commit(commit) => commit,
-            _ => return Err(ApplyCommitError::WrongPlaintextContentType),
+            _ => return Err(StageCommitError::WrongPlaintextContentType.into()),
         };
 
         let received_confirmation_tag = mls_plaintext
             .confirmation_tag()
-            .ok_or(ApplyCommitError::ConfirmationTagMissing)?;
+            .ok_or(StageCommitError::ConfirmationTagMissing)?;
 
         // Build a queue with all proposals from the Commit and check that we have all
         // of the proposals by reference locally
@@ -46,7 +51,7 @@ impl MlsGroup {
             *mls_plaintext.sender(),
         ) {
             Ok(proposal_queue) => proposal_queue,
-            Err(_) => return Err(ApplyCommitError::MissingProposal),
+            Err(_) => return Err(StageCommitError::MissingProposal.into()),
         };
 
         // Create provisional tree and apply proposals
@@ -56,12 +61,12 @@ impl MlsGroup {
         let apply_proposals_values =
             match provisional_tree.apply_proposals(backend, proposal_queue, own_key_packages) {
                 Ok(res) => res,
-                Err(_) => return Err(ApplyCommitError::OwnKeyNotFound),
+                Err(_) => return Err(StageCommitError::OwnKeyNotFound.into()),
             };
 
         // Check if we were removed from the group
         if apply_proposals_values.self_removed {
-            return Err(ApplyCommitError::SelfRemoved);
+            return Err(StageCommitError::SelfRemoved.into());
         }
 
         // Determine if Commit is own Commit
@@ -76,7 +81,7 @@ impl MlsGroup {
             // TODO #106: Support external members
             let kp = &path.leaf_key_package;
             if kp.verify(backend).is_err() {
-                return Err(ApplyCommitError::PathKeyPackageVerificationFailure);
+                return Err(StageCommitError::PathKeyPackageVerificationFailure.into());
             }
             let serialized_context = self.group_context.tls_serialize_detached()?;
 
@@ -85,7 +90,7 @@ impl MlsGroup {
                 // clone out the one that we need.
                 let own_kpb = match own_key_packages.iter().find(|kpb| kpb.key_package() == kp) {
                     Some(kpb) => kpb,
-                    None => return Err(ApplyCommitError::MissingOwnKeyPackage),
+                    None => return Err(StageCommitError::MissingOwnKeyPackage.into()),
                 };
                 // We can unwrap here, because we know there was a path and thus
                 // a new commit secret must have been set.
@@ -95,17 +100,21 @@ impl MlsGroup {
             } else {
                 // Collect the new leaves' indexes so we can filter them out in the resolution
                 // later.
-                provisional_tree.update_path(
-                    backend,
-                    sender,
-                    &path,
-                    &serialized_context,
-                    apply_proposals_values.exclusion_list(),
-                )?
+                provisional_tree
+                    .update_path(
+                        backend,
+                        sender,
+                        &path,
+                        &serialized_context,
+                        apply_proposals_values.exclusion_list(),
+                    )
+                    .map_err(|e| {
+                        MlsGroupError::StageCommitError(StageCommitError::DecryptionFailure(e))
+                    })?
             }
         } else {
             if apply_proposals_values.path_required {
-                return Err(ApplyCommitError::RequiredPathNotFound);
+                return Err(StageCommitError::RequiredPathNotFound.into());
             }
             &zero_commit_secret
         };
@@ -115,7 +124,7 @@ impl MlsGroup {
             commit_secret,
             self.epoch_secrets
                 .init_secret()
-                .ok_or(ApplyCommitError::InitSecretNotFound)?,
+                .ok_or(StageCommitError::InitSecretNotFound)?,
         );
 
         // Create provisional group state
@@ -159,7 +168,7 @@ impl MlsGroup {
         let mls_plaintext_commit_auth_data = MlsPlaintextCommitAuthData::try_from(mls_plaintext)
             .map_err(|_| {
                 log::error!("Confirmation tag is missing in commit. This should be unreachable because we verified the tag before.");
-                ApplyCommitError::ConfirmationTagMissing
+                StageCommitError::ConfirmationTagMissing
             })?;
 
         let interim_transcript_hash = update_interim_transcript_hash(
@@ -179,7 +188,7 @@ impl MlsGroup {
             log::error!("Confirmation tag mismatch");
             log_crypto!(trace, "  Got:      {:x?}", received_confirmation_tag);
             log_crypto!(trace, "  Expected: {:x?}", own_confirmation_tag);
-            return Err(ApplyCommitError::ConfirmationTagMismatch);
+            return Err(StageCommitError::ConfirmationTagMismatch.into());
         }
 
         // Verify KeyPackage extensions
@@ -193,13 +202,13 @@ impl MlsGroup {
                     let parent_hash_extension =
                         match received_parent_hash.as_parent_hash_extension() {
                             Ok(phe) => phe,
-                            Err(_) => return Err(ApplyCommitError::NoParentHashExtension),
+                            Err(_) => return Err(StageCommitError::NoParentHashExtension.into()),
                         };
                     if parent_hash != parent_hash_extension.parent_hash() {
-                        return Err(ApplyCommitError::ParentHashMismatch);
+                        return Err(StageCommitError::ParentHashMismatch.into());
                     }
                 } else {
-                    return Err(ApplyCommitError::NoParentHashExtension);
+                    return Err(StageCommitError::NoParentHashExtension.into());
                 }
             }
         }
@@ -210,11 +219,38 @@ impl MlsGroup {
             .encryption_secret()
             .create_secret_tree(provisional_tree.leaf_count());
 
-        // Apply provisional tree and state to group
-        self.group_context = provisional_group_context;
-        self.epoch_secrets = provisional_epoch_secrets;
-        self.interim_transcript_hash = interim_transcript_hash;
-        self.secret_tree = RefCell::new(secret_tree);
-        Ok(())
+        Ok(StagedCommit {
+            group_context: provisional_group_context,
+            epoch_secrets: provisional_epoch_secrets,
+            interim_transcript_hash,
+            secret_tree: RefCell::new(secret_tree),
+            original_nodes,
+        })
     }
+
+    /// Merges a [`StagedCommit`] into the group state.
+    pub fn merge_commit(&mut self, staged_commit: StagedCommit) {
+        self.group_context = staged_commit.group_context;
+        self.epoch_secrets = staged_commit.epoch_secrets;
+        self.interim_transcript_hash = staged_commit.interim_transcript_hash;
+        self.secret_tree = staged_commit.secret_tree;
+    }
+
+    /// This is temporary and will disappear when #424 is addressed.
+    /// This is just here for completeness but won't be used anywhere.
+    /// Rolls back the public tree nodes in case a Commit contained undesired proposals.
+    pub fn cancel_commit(&mut self, staged_commit: StagedCommit) {
+        let mut tree = self.tree.borrow_mut();
+        tree.nodes = staged_commit.original_nodes;
+    }
+}
+
+/// Contains the changes from a commit to the group state.
+#[derive(Debug)]
+pub struct StagedCommit {
+    group_context: GroupContext,
+    epoch_secrets: EpochSecrets,
+    interim_transcript_hash: Vec<u8>,
+    secret_tree: RefCell<SecretTree>,
+    original_nodes: Vec<Node>,
 }

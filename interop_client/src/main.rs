@@ -977,16 +977,17 @@ impl MlsClient for MlsClientImpl {
             proposals_by_reference.push(proposal);
         }
 
-        interop_group
+        let staged_commit = interop_group
             .group
-            .apply_commit(
+            .stage_commit(
                 &commit,
                 &proposals_by_reference,
                 &interop_group.own_kpbs,
                 None,
                 &self.crypto_provider,
             )
-            .map_err(|e| into_status(e))?;
+            .map_err(|e| into_status(e.into()))?;
+        interop_group.group.merge_commit(staged_commit);
 
         Ok(Response::new(HandleCommitResponse {
             state_id: handle_commit_request.state_id,

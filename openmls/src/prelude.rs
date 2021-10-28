@@ -9,7 +9,7 @@ pub use crate::group::{
 };
 // Errors
 pub use crate::error::ErrorString;
-pub use crate::group::errors::{ApplyCommitError, CreateCommitError, MlsGroupError, WelcomeError};
+pub use crate::group::errors::{CreateCommitError, MlsGroupError, StageCommitError, WelcomeError};
 
 // Indexes
 pub use crate::tree::index::LeafIndex;

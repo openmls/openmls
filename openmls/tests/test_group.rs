@@ -141,10 +141,10 @@ fn create_commit_optional_path() {
         assert!(!commit.has_path() && kpb_option.is_none());
 
         // Alice applies the Commit without the forced self-update
-        match group_alice.apply_commit(&mls_plaintext_commit, epoch_proposals, &[], None, &crypto) {
-            Ok(_) => {}
-            Err(e) => panic!("Error applying commit: {:?}", e),
-        };
+        let staged_commit = group_alice
+            .stage_commit(&mls_plaintext_commit, epoch_proposals, &[], None, &crypto)
+            .expect("Error staging commit");
+        group_alice.merge_commit(staged_commit);
         let ratchet_tree = group_alice.tree().public_key_tree_copy();
 
         // Bob creates group from Welcome
@@ -197,15 +197,16 @@ fn create_commit_optional_path() {
         assert!(commit.has_path() && kpb_option.is_some());
 
         // Apply UpdateProposal
-        group_alice
-            .apply_commit(
+        let staged_commit = group_alice
+            .stage_commit(
                 &commit_mls_plaintext,
                 proposals,
                 &[kpb_option.unwrap()],
                 None, /* PSK fetcher */
                 &crypto,
             )
-            .expect("Error applying commit");
+            .expect("Error staging commit");
+        group_alice.merge_commit(staged_commit);
     }
 }
 
@@ -397,15 +398,16 @@ fn group_operations() {
         // Check that the function returned a Welcome message
         assert!(welcome_bundle_alice_bob_option.is_some());
 
-        group_alice
-            .apply_commit(
+        let staged_commit = group_alice
+            .stage_commit(
                 &mls_plaintext_commit,
                 epoch_proposals,
                 &[],
                 None, /* PSK fetcher */
                 &crypto,
             )
-            .expect("error applying commit");
+            .expect("Error staging commit");
+        group_alice.merge_commit(staged_commit);
         let ratchet_tree = group_alice.tree().public_key_tree_copy();
 
         let mut group_bob = match MlsGroup::new_from_welcome(
@@ -480,8 +482,8 @@ fn group_operations() {
         // Check there is no Welcome message
         assert!(welcome_option.is_none());
 
-        group_alice
-            .apply_commit(
+        let staged_commit = group_alice
+            .stage_commit(
                 &mls_plaintext_commit,
                 &[&update_proposal_bob],
                 &[],
@@ -489,8 +491,9 @@ fn group_operations() {
                 &crypto,
             )
             .expect("Error applying commit (Alice)");
-        group_bob
-            .apply_commit(
+        group_alice.merge_commit(staged_commit);
+        let staged_commit = group_bob
+            .stage_commit(
                 &mls_plaintext_commit,
                 &[&update_proposal_bob],
                 &[kpb_option.unwrap()],
@@ -498,6 +501,7 @@ fn group_operations() {
                 &crypto,
             )
             .expect("Error applying commit (Bob)");
+        group_bob.merge_commit(staged_commit);
 
         // Make sure that both groups have the same public tree
         if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
@@ -540,8 +544,8 @@ fn group_operations() {
         // Check that there is a new KeyPackageBundle
         assert!(kpb_option.is_some());
 
-        group_alice
-            .apply_commit(
+        let staged_commit = group_alice
+            .stage_commit(
                 &mls_plaintext_commit,
                 &[&update_proposal_alice],
                 &[kpb_option.unwrap()],
@@ -549,8 +553,9 @@ fn group_operations() {
                 &crypto,
             )
             .expect("Error applying commit (Alice)");
-        group_bob
-            .apply_commit(
+        group_alice.merge_commit(staged_commit);
+        let staged_commit = group_bob
+            .stage_commit(
                 &mls_plaintext_commit,
                 &[&update_proposal_alice],
                 &[],
@@ -558,6 +563,7 @@ fn group_operations() {
                 &crypto,
             )
             .expect("Error applying commit (Bob)");
+        group_bob.merge_commit(staged_commit);
 
         // Make sure that both groups have the same public tree
         if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
@@ -600,8 +606,8 @@ fn group_operations() {
         // Check that there is a new KeyPackageBundle
         assert!(kpb_option.is_some());
 
-        group_alice
-            .apply_commit(
+        let staged_commit = group_alice
+            .stage_commit(
                 &mls_plaintext_commit,
                 &[&update_proposal_bob],
                 &[kpb_option.unwrap()],
@@ -609,8 +615,9 @@ fn group_operations() {
                 /* PSK fetcher */ &crypto,
             )
             .expect("Error applying commit (Alice)");
-        group_bob
-            .apply_commit(
+        group_alice.merge_commit(staged_commit);
+        let staged_commit = group_bob
+            .stage_commit(
                 &mls_plaintext_commit,
                 &[&update_proposal_bob],
                 &[bob_update_key_package_bundle],
@@ -618,6 +625,7 @@ fn group_operations() {
                 /* PSK fetcher */ &crypto,
             )
             .expect("Error applying commit (Bob)");
+        group_bob.merge_commit(staged_commit);
 
         // Make sure that both groups have the same public tree
         if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
@@ -674,8 +682,8 @@ fn group_operations() {
         // Make sure the is a Welcome message for Charlie
         assert!(welcome_for_charlie_option.is_some());
 
-        group_alice
-            .apply_commit(
+        let staged_commit = group_alice
+            .stage_commit(
                 &mls_plaintext_commit,
                 &[&add_charlie_proposal_bob],
                 &[],
@@ -683,8 +691,9 @@ fn group_operations() {
                 /* PSK fetcher */ &crypto,
             )
             .expect("Error applying commit (Alice)");
-        group_bob
-            .apply_commit(
+        group_alice.merge_commit(staged_commit);
+        let staged_commit = group_bob
+            .stage_commit(
                 &mls_plaintext_commit,
                 &[&add_charlie_proposal_bob],
                 &[],
@@ -692,6 +701,7 @@ fn group_operations() {
                 /* PSK fetcher */ &crypto,
             )
             .expect("Error applying commit (Bob)");
+        group_bob.merge_commit(staged_commit);
 
         let ratchet_tree = group_alice.tree().public_key_tree_copy();
         let mut group_charlie = match MlsGroup::new_from_welcome(
@@ -779,8 +789,8 @@ fn group_operations() {
         // Check that there is a new KeyPackageBundle
         assert!(kpb_option.is_some());
 
-        group_alice
-            .apply_commit(
+        let staged_commit = group_alice
+            .stage_commit(
                 &mls_plaintext_commit,
                 &[&update_proposal_charlie],
                 &[],
@@ -788,8 +798,9 @@ fn group_operations() {
                 /* PSK fetcher */ &crypto,
             )
             .expect("Error applying commit (Alice)");
-        group_bob
-            .apply_commit(
+        group_alice.merge_commit(staged_commit);
+        let staged_commit = group_bob
+            .stage_commit(
                 &mls_plaintext_commit,
                 &[&update_proposal_charlie],
                 &[],
@@ -797,8 +808,9 @@ fn group_operations() {
                 /* PSK fetcher */ &crypto,
             )
             .expect("Error applying commit (Bob)");
-        group_charlie
-            .apply_commit(
+        group_bob.merge_commit(staged_commit);
+        let staged_commit = group_charlie
+            .stage_commit(
                 &mls_plaintext_commit,
                 &[&update_proposal_charlie],
                 &[kpb_option.unwrap()],
@@ -806,6 +818,7 @@ fn group_operations() {
                 /* PSK fetcher */ &crypto,
             )
             .expect("Error applying commit (Charlie)");
+        group_charlie.merge_commit(staged_commit);
 
         // Make sure that all groups have the same public tree
         if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
@@ -844,8 +857,8 @@ fn group_operations() {
         // Check that there is a new KeyPackageBundle
         assert!(kpb_option.is_some());
 
-        group_alice
-            .apply_commit(
+        let staged_commit = group_alice
+            .stage_commit(
                 &mls_plaintext_commit,
                 &[&remove_bob_proposal_charlie],
                 &[],
@@ -853,9 +866,10 @@ fn group_operations() {
                 /* PSK fetcher */ &crypto,
             )
             .expect("Error applying commit (Alice)");
+        group_alice.merge_commit(staged_commit);
         assert!(
             group_bob
-                .apply_commit(
+                .stage_commit(
                     &mls_plaintext_commit,
                     &[&remove_bob_proposal_charlie],
                     &[],
@@ -863,10 +877,10 @@ fn group_operations() {
                     /* PSK fetcher */ &crypto,
                 )
                 .unwrap_err()
-                == MlsGroupError::ApplyCommitError(ApplyCommitError::SelfRemoved)
+                == MlsGroupError::StageCommitError(StageCommitError::SelfRemoved)
         );
-        group_charlie
-            .apply_commit(
+        let staged_commit = group_charlie
+            .stage_commit(
                 &mls_plaintext_commit,
                 &[&remove_bob_proposal_charlie],
                 &[kpb_option.unwrap()],
@@ -874,6 +888,7 @@ fn group_operations() {
                 /* PSK fetcher */ &crypto,
             )
             .expect("Error applying commit (Charlie)");
+        group_charlie.merge_commit(staged_commit);
 
         // Make sure that all groups have the same public tree
         if group_alice.tree().public_key_tree() == group_bob.tree().public_key_tree() {

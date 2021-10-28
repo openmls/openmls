@@ -381,15 +381,16 @@ fn test_welcome_message_encoding() {
             )
             .unwrap();
         // Alice applies the commit
-        assert!(group_state
-            .apply_commit(
+        let staged_commit = group_state
+            .stage_commit(
                 &commit,
                 proposals,
                 &[key_package_bundle_option.unwrap()],
                 None,
-                &crypto
+                &crypto,
             )
-            .is_ok());
+            .expect("Could not stage the commit");
+        group_state.merge_commit(staged_commit);
 
         // Welcome messages
 

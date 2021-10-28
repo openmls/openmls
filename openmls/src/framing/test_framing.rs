@@ -407,9 +407,10 @@ fn unknown_sender() {
             )
             .expect("Error creating Commit");
 
-        group_alice
-            .apply_commit(&commit, &[&bob_add_proposal], &[], None, crypto)
-            .expect("Could not apply Commit");
+        let staged_commit = group_alice
+            .stage_commit(&commit, &[&bob_add_proposal], &[], None, crypto)
+            .expect("Could not stage Commit");
+        group_alice.merge_commit(staged_commit);
 
         // Alice adds Charlie
 
@@ -436,9 +437,10 @@ fn unknown_sender() {
             )
             .expect("Error creating Commit");
 
-        group_alice
-            .apply_commit(&commit, &[&charlie_add_proposal], &[], None, crypto)
-            .expect("Could not apply Commit");
+        let staged_commit = group_alice
+            .stage_commit(&commit, &[&charlie_add_proposal], &[], None, crypto)
+            .expect("Could not stage Commit");
+        group_alice.merge_commit(staged_commit);
 
         let mut group_charlie = MlsGroup::new_from_welcome(
             welcome_option.unwrap(),
@@ -475,18 +477,20 @@ fn unknown_sender() {
         _print_tree(&group_alice.tree(), "Alice tree");
         _print_tree(&group_charlie.tree(), "Charlie tree");
 
-        group_charlie
-            .apply_commit(&commit, &[&bob_remove_proposal], &[], None, crypto)
-            .expect("Charlie: Could not apply Commit");
-        group_alice
-            .apply_commit(
+        let staged_commit = group_charlie
+            .stage_commit(&commit, &[&bob_remove_proposal], &[], None, crypto)
+            .expect("Charlie: Could not stage Commit");
+        group_charlie.merge_commit(staged_commit);
+        let staged_commit = group_alice
+            .stage_commit(
                 &commit,
                 &[&bob_remove_proposal],
                 &[kpb_option.unwrap()],
                 None,
                 crypto,
             )
-            .expect("Alice: Could not apply Commit");
+            .expect("Alice: Could not stage Commit");
+        group_alice.merge_commit(staged_commit);
 
         _print_tree(&group_alice.tree(), "Alice tree");
         _print_tree(&group_charlie.tree(), "Charlie tree");
@@ -649,12 +653,12 @@ fn confirmation_tag_presence() {
         commit.unset_confirmation_tag();
 
         let err = group_alice
-            .apply_commit(&commit, &[&bob_add_proposal], &[], None, crypto)
+            .stage_commit(&commit, &[&bob_add_proposal], &[], None, crypto)
             .expect_err("No error despite missing confirmation tag.");
 
         assert_eq!(
             err,
-            MlsGroupError::ApplyCommitError(ApplyCommitError::ConfirmationTagMissing)
+            MlsGroupError::StageCommitError(StageCommitError::ConfirmationTagMissing)
         );
     }
 }
@@ -785,12 +789,11 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
     let good_confirmation_tag = commit.confirmation_tag().cloned();
     commit.unset_confirmation_tag();
     let error = group_alice
-        .apply_commit(&commit, &[&bob_add_proposal], &[], None, crypto)
-        .err()
-        .expect("Applying commit should have yielded an error.");
+        .stage_commit(&commit, &[&bob_add_proposal], &[], None, crypto)
+        .expect_err("Staging commit should have yielded an error.");
     assert_eq!(
         error,
-        MlsGroupError::ApplyCommitError(ApplyCommitError::ConfirmationTagMissing));
+        MlsGroupError::StageCommitError(StageCommitError::ConfirmationTagMissing));
 
     // Tamper with confirmation tag.
     let mut modified_confirmation_tag = good_confirmation_tag
@@ -800,22 +803,21 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
     commit.set_confirmation_tag(modified_confirmation_tag);
     let serialized_group_before = serde_json::to_string(&group_alice).unwrap();
     let error = group_alice
-        .apply_commit(&commit, &[&bob_add_proposal], &[], None, crypto)
-        .err()
-        .expect("Applying commit should have yielded an error.");
+        .stage_commit(&commit, &[&bob_add_proposal], &[], None, crypto)
+        .expect_err("Staging commit should have yielded an error.");
     assert_eq!(
         error,
-        MlsGroupError::ApplyCommitError(ApplyCommitError::ConfirmationTagMismatch));
+        MlsGroupError::StageCommitError(StageCommitError::ConfirmationTagMismatch));
     let serialized_group_after = serde_json::to_string(&group_alice).unwrap();
     assert_eq!(serialized_group_before, serialized_group_after);
 
-    // Fix commit again and apply it.
+    // Fix commit again and stage it.
     commit.set_confirmation_tag(good_confirmation_tag.unwrap());
     let encoded_commit = commit.tls_serialize_detached().unwrap();
     let input_commit = VerifiableMlsPlaintext::tls_deserialize(&mut encoded_commit.as_slice()).unwrap();
     let decoded_commit = group_alice.verify(input_commit, crypto).expect("Error verifying commit");
     assert_eq!(original_encoded_commit, decoded_commit.tls_serialize_detached().unwrap());
     group_alice
-        .apply_commit(&decoded_commit, &[&bob_add_proposal], &[], None, crypto)
-        .expect("Alice: Error applying commit.");
+        .stage_commit(&decoded_commit, &[&bob_add_proposal], &[], None, crypto)
+        .expect("Alice: Error staging commit.");
 });
