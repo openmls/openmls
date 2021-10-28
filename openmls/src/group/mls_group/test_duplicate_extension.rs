@@ -3,6 +3,7 @@ use super::*;
 
 use crate::{messages::GroupSecrets, prelude::*, schedule::KeySchedule};
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::crypto::OpenMlsCrypto;
 use tls_codec::Deserialize;
 
 // This tests the ratchet tree extension to test if the duplicate detection works
@@ -99,13 +100,15 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
         &crypto,
     ).expect("JoinerSecret not found");
 
-    let group_secrets_bytes = ciphersuite.hpke_open(
-        crypto.crypto(),
-        &egs.encrypted_group_secrets,
-        bob_key_package_bundle.private_key(),
-        &[],
-        &[],
-    ).expect("Could not decrypt group secrets");
+    let group_secrets_bytes = crypto
+        .crypto()
+        .hpke_open(
+            ciphersuite.hpke_config(),
+            &egs.encrypted_group_secrets,
+            bob_key_package_bundle.private_key().as_slice(),
+            &[],
+            &[],
+        ).expect("Could not decrypt group secrets");
     let group_secrets = GroupSecrets::tls_deserialize(&mut group_secrets_bytes.as_slice()).expect("Could not decode GroupSecrets").config(ciphersuite, ProtocolVersion::default());
     let joiner_secret = group_secrets.joiner_secret;
 

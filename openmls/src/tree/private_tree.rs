@@ -59,9 +59,10 @@ impl PrivateTree {
         // let leaf_secret = key_package_bundle.leaf_secret();
         // let ciphersuite = key_package_bundle.key_package.ciphersuite();
         let leaf_node_secret = derive_leaf_node_secret(leaf_secret, backend);
-        let keypair = leaf_secret
-            .ciphersuite()
-            .derive_hpke_keypair(backend.crypto(), &leaf_node_secret);
+        let keypair = backend.crypto().derive_hpke_keypair(
+            leaf_secret.ciphersuite().hpke_config(),
+            leaf_node_secret.as_slice(),
+        );
 
         Self {
             leaf_index,
@@ -242,7 +243,9 @@ impl PrivateTree {
                 .path_secret
                 .kdf_expand_label(backend, "node", &[], hash_len)
                 .unwrap();
-            let keypair = ciphersuite.derive_hpke_keypair(backend.crypto(), &node_secret);
+            let keypair = backend
+                .crypto()
+                .derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice());
             public_keys.push(keypair.public.into());
             private_keys.push(keypair.private.into());
         }

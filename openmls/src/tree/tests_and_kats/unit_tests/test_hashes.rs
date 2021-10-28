@@ -50,10 +50,11 @@ fn test_parent_hash() {
         for index in 0..tree.tree_size().as_usize() {
             // Filter out leaf nodes
             if NodeIndex::from(index).is_parent() {
-                let public_key = ciphersuite
+                let public_key = crypto
+                    .crypto()
                     .derive_hpke_keypair(
-                        crypto.crypto(),
-                        &Secret::random(ciphersuite, &crypto, None /* MLS version */),
+                        ciphersuite.hpke_config(),
+                        Secret::random(ciphersuite, &crypto, None).as_slice(),
                     )
                     .public
                     .into();
