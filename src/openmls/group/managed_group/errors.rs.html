@@ -85,14 +85,14 @@
 <span id="85">85</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS Managed Group errors</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! `WelcomeError`, `ApplyCommitError`, `DecryptionError`, and</span>
+<span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
 <span class="doccomment">//! `CreateCommitError`.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config::ConfigError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credentials::CredentialError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ErrorString</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::framing::MlsCiphertextError</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group</span>::{<span class="ident">ApplyCommitError</span>, <span class="ident">CreateCommitError</span>, <span class="ident">ExporterError</span>, <span class="ident">MlsGroupError</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group</span>::{<span class="ident">CreateCommitError</span>, <span class="ident">ExporterError</span>, <span class="ident">MlsGroupError</span>, <span class="ident">StageCommitError</span>};
 
 <span class="macro">implement_error!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ManagedGroupError</span> {
@@ -161,8 +161,8 @@
         <span class="ident">Complex</span> {
             <span class="ident">InvalidCiphertext</span>(<span class="ident">MlsCiphertextError</span>) <span class="op">=</span>
                 <span class="string">&quot;An invalid ciphertext was provided. The error returns the associated data of the ciphertext.&quot;</span>,
-            <span class="ident">CommitError</span>(<span class="ident">ApplyCommitError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`ApplyCommitError`](`crate::group::ApplyCommitError`) for details&quot;</span>,
+            <span class="ident">CommitError</span>(<span class="ident">StageCommitError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`StageCommitError`](`crate::group::StageCommitError`) for details&quot;</span>,
             <span class="ident">GroupError</span>(<span class="ident">MlsGroupError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`GroupError`](`crate::group::GroupError`) for details&quot;</span>,
         }

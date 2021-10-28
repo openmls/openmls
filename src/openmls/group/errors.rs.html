@@ -173,7 +173,7 @@
 <span id="173">173</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS Group errors</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! `WelcomeError`, `ApplyCommitError`, `DecryptionError`, and</span>
+<span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
 <span class="doccomment">//! `CreateCommitError`.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite::CryptoError</span>;
@@ -198,8 +198,8 @@
                 <span class="string">&quot;See [`MlsPlaintextError`](`crate::framing::errors::MlsPlaintextError`) for details.&quot;</span>,
             <span class="ident">WelcomeError</span>(<span class="ident">WelcomeError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`WelcomeError`](`WelcomeError`) for details.&quot;</span>,
-            <span class="ident">ApplyCommitError</span>(<span class="ident">ApplyCommitError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`ApplyCommitError`](`ApplyCommitError`) for details.&quot;</span>,
+            <span class="ident">StageCommitError</span>(<span class="ident">StageCommitError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`StageCommitError`](`StageCommitError`) for details.&quot;</span>,
             <span class="ident">CreateCommitError</span>(<span class="ident">CreateCommitError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`CreateCommitError`](`CreateCommitError`) for details.&quot;</span>,
             <span class="ident">ConfigError</span>(<span class="ident">ConfigError</span>) <span class="op">=</span>
@@ -270,14 +270,14 @@
 }
 
 <span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ApplyCommitError</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">StageCommitError</span> {
         <span class="ident">Simple</span> {
             <span class="ident">EpochMismatch</span> <span class="op">=</span>
-                <span class="string">&quot;Couldn&#39;t apply Commit. The epoch of the group context and MlsPlaintext didn&#39;t match.&quot;</span>,
+                <span class="string">&quot;Couldn&#39;t stage Commit. The epoch of the group context and MlsPlaintext didn&#39;t match.&quot;</span>,
             <span class="ident">WrongPlaintextContentType</span> <span class="op">=</span>
-                <span class="string">&quot;apply_commit_internal was called with an MlsPlaintext that is not a Commit.&quot;</span>,
+                <span class="string">&quot;stage_commit was called with an MlsPlaintext that is not a Commit.&quot;</span>,
             <span class="ident">SelfRemoved</span> <span class="op">=</span>
-                <span class="string">&quot;Tried to apply a commit to a group we are not a part of.&quot;</span>,
+                <span class="string">&quot;Tried to stage a commit to a group we are not a part of.&quot;</span>,
             <span class="ident">PathKeyPackageVerificationFailure</span> <span class="op">=</span>
                 <span class="string">&quot;Unable to verify the key package signature.&quot;</span>,
             <span class="ident">NoParentHashExtension</span> <span class="op">=</span>
@@ -295,9 +295,9 @@
             <span class="ident">MissingProposal</span> <span class="op">=</span>
                 <span class="string">&quot;The proposal queue is missing a proposal for the commit.&quot;</span>,
             <span class="ident">OwnKeyNotFound</span> <span class="op">=</span>
-                  <span class="string">&quot;Missing own key to apply proposal.&quot;</span>,
+                <span class="string">&quot;Missing own key to apply proposal.&quot;</span>,
             <span class="ident">InitSecretNotFound</span> <span class="op">=</span>
-                  <span class="string">&quot;Missing init secret to apply proposal.&quot;</span>,
+                <span class="string">&quot;Missing init secret to apply proposal.&quot;</span>,
         }
         <span class="ident">Complex</span> {
             <span class="ident">PlaintextSignatureFailure</span>(<span class="ident">VerificationError</span>) <span class="op">=</span>
@@ -305,7 +305,7 @@
             <span class="ident">DecryptionFailure</span>(<span class="ident">TreeError</span>) <span class="op">=</span>
                 <span class="string">&quot;A matching EncryptedPathSecret failed to decrypt.&quot;</span>,
             <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span>
-                <span class="string">&quot;Tls (de)serialization occurred.&quot;</span>,
+                <span class="string">&quot;Tls (de)serialization error occurred.&quot;</span>,
             <span class="ident">KeyScheduleError</span>(<span class="ident">KeyScheduleError</span>) <span class="op">=</span>
                 <span class="string">&quot;An error occurred in the key schedule.&quot;</span>,
             <span class="ident">PskError</span>(<span class="ident">PskError</span>) <span class="op">=</span>

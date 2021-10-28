@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["StagedCommit","Contains the changes from a commit to the group state."]]});

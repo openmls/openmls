@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["ApplyCommitError",""],["CreateCommitError",""],["ExporterError",""],["MlsGroupError",""],["PskError",""],["WelcomeError",""]]});
+initSidebarItems({"enum":[["CreateCommitError",""],["ExporterError",""],["MlsGroupError",""],["PskError",""],["StageCommitError",""],["WelcomeError",""]]});
