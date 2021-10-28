@@ -1,8 +1,10 @@
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::{types::HpkeCiphertext, OpenMlsCryptoProvider};
 use tls_codec::Serialize;
 
 use crate::{
     ciphersuite::{signable::Signable, AeadNonce},
-    group::GroupEpoch,
+    group::{create_commit::Proposals, GroupEpoch},
     messages::{Commit, ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload},
     prelude::*,
     schedule::psk::*,
@@ -11,6 +13,7 @@ use crate::{
 
 #[test]
 fn test_mls_group_persistence() {
+    let crypto = OpenMlsRustCrypto::default();
     let ciphersuite = &Config::supported_ciphersuites()[0];
 
     // Define credential bundles
@@ -18,18 +21,25 @@ fn test_mls_group_persistence() {
         "Alice".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
+        &crypto,
     )
     .unwrap();
 
     // Generate KeyPackages
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new()).unwrap();
+    let alice_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &alice_credential_bundle,
+        &crypto,
+        Vec::new(),
+    )
+    .unwrap();
 
     // Alice creates a group
     let group_id = [1, 2, 3, 4];
     let alice_group = MlsGroup::new(
         &group_id,
         ciphersuite.name(),
+        &crypto,
         alice_key_package_bundle,
         MlsGroupConfig::default(),
         None, /* Initial PSK */
@@ -51,12 +61,20 @@ fn test_mls_group_persistence() {
     assert_eq!(alice_group, alice_group_deserialized);
 }
 
+/// This function flips the last byte of the ciphertext.
+pub fn flip_last_byte(ctxt: &mut HpkeCiphertext) {
+    let mut last_bits = ctxt.ciphertext.pop().unwrap();
+    last_bits ^= 0xff;
+    ctxt.ciphertext.push(last_bits);
+}
+
 #[test]
 fn test_failed_groupinfo_decryption() {
+    let crypto = OpenMlsRustCrypto::default();
     for version in Config::supported_versions() {
         for ciphersuite in Config::supported_ciphersuites() {
             let epoch = GroupEpoch(123);
-            let group_id = GroupId::random(ciphersuite);
+            let group_id = GroupId::random(&crypto);
             let tree_hash = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
             let confirmed_transcript_hash = vec![1, 1, 1];
             let extensions = Vec::new();
@@ -75,17 +93,18 @@ fn test_failed_groupinfo_decryption() {
             );
 
             // Generate key and nonce for the symmetric cipher.
-            let welcome_key = AeadKey::random(ciphersuite);
-            let welcome_nonce = AeadNonce::random(ciphersuite);
+            let welcome_key = AeadKey::random(ciphersuite, crypto.rand());
+            let welcome_nonce = AeadNonce::random(&crypto);
 
             // Generate receiver key pair.
-            let receiver_key_pair =
-                ciphersuite.derive_hpke_keypair(&Secret::random(ciphersuite, None));
+            let receiver_key_pair = ciphersuite
+                .derive_hpke_keypair(crypto.crypto(), &Secret::random(ciphersuite, &crypto, None));
             let hpke_info = b"group info welcome test info";
             let hpke_aad = b"group info welcome test aad";
             let hpke_input = b"these should be the group secrets";
             let mut encrypted_group_secrets = ciphersuite.hpke_seal(
-                receiver_key_pair.public_key(),
+                crypto.crypto(),
+                &receiver_key_pair.public.into(),
                 hpke_info,
                 hpke_aad,
                 hpke_input,
@@ -95,27 +114,33 @@ fn test_failed_groupinfo_decryption() {
                 "Alice".into(),
                 CredentialType::Basic,
                 ciphersuite.signature_scheme(),
+                &crypto,
             )
             .unwrap();
             let group_info = group_info
-                .sign(&alice_credential_bundle)
+                .sign(&crypto, &alice_credential_bundle)
                 .expect("Error signing group info");
 
-            let key_package_bundle =
-                KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, vec![])
-                    .unwrap();
+            let key_package_bundle = KeyPackageBundle::new(
+                &[ciphersuite.name()],
+                &alice_credential_bundle,
+                &crypto,
+                vec![],
+            )
+            .unwrap();
 
             // Mess with the ciphertext by flipping the last byte.
-            encrypted_group_secrets.flip_last_byte();
+            flip_last_byte(&mut encrypted_group_secrets);
 
             let broken_secrets = vec![EncryptedGroupSecrets {
-                key_package_hash: key_package_bundle.key_package.hash().into(),
+                key_package_hash: key_package_bundle.key_package.hash(&crypto).into(),
                 encrypted_group_secrets,
             }];
 
             // Encrypt the group info.
             let encrypted_group_info = welcome_key
                 .aead_seal(
+                    &crypto,
                     &group_info.tls_serialize_detached().unwrap(),
                     &[],
                     &welcome_nonce,
@@ -130,9 +155,14 @@ fn test_failed_groupinfo_decryption() {
                 encrypted_group_info.clone(),
             );
 
-            let error =
-                MlsGroup::new_from_welcome_internal(broken_welcome, None, key_package_bundle, None)
-                    .expect_err("Creation of MLS group from a broken Welcome was successful.");
+            let error = MlsGroup::new_from_welcome_internal(
+                broken_welcome,
+                None,
+                key_package_bundle,
+                None,
+                &crypto,
+            )
+            .expect_err("Creation of MLS group from a broken Welcome was successful.");
 
             assert_eq!(
                 error,
@@ -146,6 +176,7 @@ fn test_failed_groupinfo_decryption() {
 /// Test what happens if the KEM ciphertext for the receiver in the UpdatePath
 /// is broken.
 fn test_update_path() {
+    let crypto = OpenMlsRustCrypto::default();
     for ciphersuite in Config::supported_ciphersuites() {
         // Basic group setup.
         let group_aad = b"Alice's test group";
@@ -156,23 +187,33 @@ fn test_update_path() {
             "Alice".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
+            &crypto,
         )
         .unwrap();
         let bob_credential_bundle = CredentialBundle::new(
             "Bob".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
+            &crypto,
         )
         .unwrap();
 
         // Generate KeyPackages
-        let alice_key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new())
-                .unwrap();
+        let alice_key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &alice_credential_bundle,
+            &crypto,
+            Vec::new(),
+        )
+        .unwrap();
 
-        let bob_key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
-                .unwrap();
+        let bob_key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &bob_credential_bundle,
+            &crypto,
+            Vec::new(),
+        )
+        .unwrap();
         let bob_key_package = bob_key_package_bundle.key_package();
 
         // === Alice creates a group ===
@@ -180,6 +221,7 @@ fn test_update_path() {
         let mut alice_group = MlsGroup::new(
             &group_id,
             ciphersuite.name(),
+            &crypto,
             alice_key_package_bundle,
             MlsGroupConfig::default(),
             None, /* Initial PSK */
@@ -193,6 +235,7 @@ fn test_update_path() {
                 framing_parameters,
                 &alice_credential_bundle,
                 bob_key_package.clone(),
+                &crypto,
             )
             .expect("Could not create proposal.");
         let epoch_proposals = &[&bob_add_proposal];
@@ -200,10 +243,13 @@ fn test_update_path() {
             .create_commit(
                 framing_parameters,
                 &alice_credential_bundle,
-                epoch_proposals,
-                &[],
+                Proposals {
+                    proposals_by_reference: epoch_proposals,
+                    proposals_by_value: &[],
+                },
                 false,
                 None,
+                &crypto,
             )
             .expect("Error creating commit");
 
@@ -221,7 +267,7 @@ fn test_update_path() {
         );
 
         alice_group
-            .apply_commit(&mls_plaintext_commit, epoch_proposals, &[], None)
+            .apply_commit(&mls_plaintext_commit, epoch_proposals, &[], None, &crypto)
             .expect("error applying commit");
         let ratchet_tree = alice_group.tree().public_key_tree_copy();
 
@@ -230,29 +276,38 @@ fn test_update_path() {
             Some(ratchet_tree),
             bob_key_package_bundle,
             None,
+            &crypto,
         )
         .unwrap();
 
         // === Bob updates and commits ===
-        let bob_update_key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
-                .unwrap();
+        let bob_update_key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &bob_credential_bundle,
+            &crypto,
+            Vec::new(),
+        )
+        .unwrap();
 
         let update_proposal_bob = group_bob
             .create_update_proposal(
                 framing_parameters,
                 &bob_credential_bundle,
                 bob_update_key_package_bundle.key_package().clone(),
+                &crypto,
             )
             .expect("Could not create proposal.");
         let (mls_plaintext_commit, _welcome_option, _kpb_option) = group_bob
             .create_commit(
                 framing_parameters,
                 &bob_credential_bundle,
-                &[&update_proposal_bob],
-                &[],
+                Proposals {
+                    proposals_by_reference: &[&update_proposal_bob],
+                    proposals_by_value: &[],
+                },
                 false, /* force self update */
                 None,
+                &crypto,
             )
             .unwrap();
 
@@ -274,7 +329,7 @@ fn test_update_path() {
             let mut new_eps = Vec::new();
             for c in node.encrypted_path_secret.iter() {
                 let mut c_copy = c.clone();
-                c_copy.flip_last_byte();
+                flip_last_byte(&mut c_copy);
                 new_eps.push(c_copy);
             }
             let node = UpdatePathNode {
@@ -301,6 +356,7 @@ fn test_update_path() {
             broken_commit,
             &bob_credential_bundle,
             group_bob.context(),
+            &crypto,
         )
         .expect("Could not create plaintext.");
 
@@ -316,12 +372,22 @@ fn test_update_path() {
             &group_bob.group_context.tls_serialize_detached().unwrap() as &[u8];
 
         broken_plaintext
-            .set_membership_tag(serialized_context, group_bob.epoch_secrets.membership_key())
+            .set_membership_tag(
+                &crypto,
+                serialized_context,
+                group_bob.epoch_secrets.membership_key(),
+            )
             .expect("Could not add membership key");
 
         assert_eq!(
             alice_group
-                .apply_commit(&broken_plaintext, &[&update_proposal_bob], &[], None)
+                .apply_commit(
+                    &broken_plaintext,
+                    &[&update_proposal_bob],
+                    &[],
+                    None,
+                    &crypto
+                )
                 .expect_err("Successful processing of a broken commit."),
             MlsGroupError::ApplyCommitError(ApplyCommitError::DecryptionFailure(
                 TreeError::PathSecretDecryptionError(CryptoError::HpkeDecryptionError)
@@ -332,6 +398,7 @@ fn test_update_path() {
 
 // Test several scenarios when PSKs are used in a group
 ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
+    let crypto = OpenMlsRustCrypto::default();
     fn psk_fetcher(psks: &PreSharedKeys, ciphersuite: &'static Ciphersuite) -> Option<Vec<Secret>> {
         let psk_id = vec![1u8, 2, 3];
         let secret = Secret::from_slice(&[6, 6, 6], ProtocolVersion::Mls10, ciphersuite);
@@ -363,22 +430,26 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         "Alice".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
+
+        &crypto,
     )
     .unwrap();
     let bob_credential_bundle = CredentialBundle::new(
         "Bob".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
+
+        &crypto,
     )
     .unwrap();
 
     // Generate KeyPackages
     let alice_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, Vec::new())
+        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle,  &crypto, Vec::new())
             .unwrap();
 
     let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
+        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle,  &crypto, Vec::new())
             .unwrap();
     let bob_key_package = bob_key_package_bundle.key_package();
 
@@ -386,20 +457,25 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
     let group_id = [1, 2, 3, 4];
     let psk_id = vec![1u8, 2, 3];
 
+    let secret = Secret::random(ciphersuite,  &crypto, None /* MLS version */);
     let external_psk_bundle = ExternalPskBundle::new(
         ciphersuite,
-        Secret::random(ciphersuite, None /* MLS version */),
+        &crypto,
+        secret,
         psk_id,
     );
     let preshared_key_id = external_psk_bundle.to_presharedkey_id();
     let initial_psk = PskSecret::new(
         ciphersuite,
+        &crypto,
         &[preshared_key_id.clone()],
         &[external_psk_bundle.secret().clone()],
     ).expect("Could not create PskSecret");
     let mut alice_group = MlsGroup::new(
         &group_id,
         ciphersuite.name(),
+
+        &crypto,
         alice_key_package_bundle,
         MlsGroupConfig::default(),
         Some(initial_psk),
@@ -413,7 +489,8 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         .create_presharedkey_proposal(
             framing_parameters,
             &alice_credential_bundle,
-            preshared_key_id
+            preshared_key_id,
+            &crypto,
         ).expect("Could not create PSK proposal");
 
     // === Alice adds Bob ===
@@ -421,7 +498,8 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         .create_add_proposal(
             framing_parameters,
             &alice_credential_bundle,
-            bob_key_package.clone()
+            bob_key_package.clone(),
+            &crypto,
         ).expect("Could not create proposal");
     let epoch_proposals = &[&bob_add_proposal, &psk_proposal];
     log::info!(" >>> Creating commit ...");
@@ -429,10 +507,14 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         .create_commit(
             framing_parameters,
             &alice_credential_bundle,
-            epoch_proposals,
-            &[],
+            Proposals {
+                proposals_by_reference: epoch_proposals,
+                proposals_by_value: &[],
+            },
             false,
             Some(psk_fetcher),
+
+            &crypto,
         )
         .expect("Error creating commit");
 
@@ -443,6 +525,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
             epoch_proposals,
             &[],
             Some(psk_fetcher),
+            &crypto,
         )
         .expect("error applying commit");
     let ratchet_tree = alice_group.tree().public_key_tree_copy();
@@ -452,12 +535,13 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         Some(ratchet_tree),
         bob_key_package_bundle,
         Some(psk_fetcher),
+        &crypto,
     )
     .expect("Could not create new group from Welcome");
 
     // === Bob updates and commits ===
     let bob_update_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, Vec::new())
+        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle,  &crypto, Vec::new())
             .unwrap();
 
     let update_proposal_bob = group_bob
@@ -465,16 +549,21 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
            framing_parameters,
             &bob_credential_bundle,
             bob_update_key_package_bundle.key_package().clone(),
+            &crypto,
         )
         .expect("Could not create proposal.");
     let (_mls_plaintext_commit, _welcome_option, _kpb_option) = group_bob
         .create_commit(
             framing_parameters,
             &bob_credential_bundle,
-            &[&update_proposal_bob],
-            &[],
+            Proposals {
+                proposals_by_reference: &[&update_proposal_bob],
+                proposals_by_value: &[],
+            },
             false, /* force self update */
             None,
+
+            &crypto,
         )
         .unwrap();
 

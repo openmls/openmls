@@ -5,6 +5,7 @@ extern crate rand;
 
 use criterion::Criterion;
 use openmls::prelude::*;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 
 fn criterion_kp_bundle(c: &mut Criterion) {
     for ciphersuite in Config::supported_ciphersuites() {
@@ -16,17 +17,21 @@ fn criterion_kp_bundle(c: &mut Criterion) {
             move |b| {
                 b.iter_with_setup(
                     || {
+                        let crypto = &OpenMlsRustCrypto::default();
                         CredentialBundle::new(
                             vec![1, 2, 3],
                             CredentialType::Basic,
                             ciphersuite.signature_scheme(),
+                            crypto,
                         )
                         .unwrap()
                     },
                     |credential_bundle: CredentialBundle| {
+                        let crypto = &OpenMlsRustCrypto::default();
                         KeyPackageBundle::new(
                             &[ciphersuite.name()],
                             &credential_bundle,
+                            crypto,
                             Vec::new(),
                         )
                         .unwrap();

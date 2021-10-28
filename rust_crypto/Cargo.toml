@@ -1,0 +1,18 @@
+[package]
+name = "rust_crypto"
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+openmls_traits = { version = "0.1", path = "../traits" }
+sha2 = { version = "0.9" }
+aes-gcm = { version = "0.9" }
+chacha20poly1305 = { version = "0.9" }
+hmac = { version = "0.11" }
+ed25519-dalek = { version = "1.0" }
+rand-07 = {version = "0.7", package = "rand" } # only needed because of ed25519-dalek
+p256 = { version = "0.9" }
+hkdf = { version = "0.11" }
+rand = "0.8"
+rand_chacha = { version = "0.3" }
+hpke = { version = "0.0.11", package = "hpke-rs", default-features = false, features = ["hazmat", "serialization", "rust-crypto"] }

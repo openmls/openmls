@@ -1,3 +1,5 @@
+use openmls_traits::types::{HpkeAeadType, HpkeKdfType, HpkeKemType};
+
 use super::*;
 
 pub(crate) use std::convert::TryFrom;
@@ -27,47 +29,50 @@ impl TryFrom<u16> for CiphersuiteName {
     }
 }
 
+#[inline(always)]
 pub(crate) fn kem_from_suite(
     ciphersuite_name: &CiphersuiteName,
-) -> Result<HpkeKemMode, ConfigError> {
+) -> Result<HpkeKemType, ConfigError> {
     match ciphersuite_name {
         CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 => {
-            Ok(HpkeKemMode::DhKem25519)
+            Ok(HpkeKemType::DhKem25519)
         }
-        CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 => Ok(HpkeKemMode::DhKemP256),
+        CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 => Ok(HpkeKemType::DhKemP256),
         CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
-            Ok(HpkeKemMode::DhKem25519)
+            Ok(HpkeKemType::DhKem25519)
         }
         _ => Err(ConfigError::UnsupportedCiphersuite),
     }
 }
 
-pub(crate) fn hpke_kdf_from_suite(ciphersuite_name: &CiphersuiteName) -> HpkeKdfMode {
+#[inline(always)]
+pub(crate) fn hpke_kdf_from_suite(ciphersuite_name: &CiphersuiteName) -> HpkeKdfType {
     match ciphersuite_name {
         CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
         | CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256
         | CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
-            HpkeKdfMode::HkdfSha256
+            HpkeKdfType::HkdfSha256
         }
         CiphersuiteName::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448
         | CiphersuiteName::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521
         | CiphersuiteName::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
-            HpkeKdfMode::HkdfSha512
+            HpkeKdfType::HkdfSha512
         }
     }
 }
 
-pub(crate) fn hpke_aead_from_suite(ciphersuite_name: &CiphersuiteName) -> HpkeAeadMode {
+#[inline(always)]
+pub(crate) fn hpke_aead_from_suite(ciphersuite_name: &CiphersuiteName) -> HpkeAeadType {
     match ciphersuite_name {
-        CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 => HpkeAeadMode::AesGcm128,
-        CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 => HpkeAeadMode::AesGcm128,
+        CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 => HpkeAeadType::AesGcm128,
+        CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 => HpkeAeadType::AesGcm128,
         CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
-            HpkeAeadMode::ChaCha20Poly1305
+            HpkeAeadType::ChaCha20Poly1305
         }
-        CiphersuiteName::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448 => HpkeAeadMode::AesGcm256,
-        CiphersuiteName::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521 => HpkeAeadMode::AesGcm256,
+        CiphersuiteName::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448 => HpkeAeadType::AesGcm256,
+        CiphersuiteName::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521 => HpkeAeadType::AesGcm256,
         CiphersuiteName::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
-            HpkeAeadMode::ChaCha20Poly1305
+            HpkeAeadType::ChaCha20Poly1305
         }
     }
 }

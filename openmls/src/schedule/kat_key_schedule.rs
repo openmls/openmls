@@ -18,7 +18,8 @@ use crate::{
 #[cfg(test)]
 use crate::test_utils::{read, write};
 
-use hpke::HpkeKeyPair;
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::{random::OpenMlsRand, types::HpkeKeyPair, OpenMlsCryptoProvider};
 use serde::{self, Deserialize, Serialize};
 
 use super::CommitSecret;
@@ -74,15 +75,20 @@ fn generate(
     GroupContext,
     HpkeKeyPair,
 ) {
-    let tree_hash = ciphersuite.randombytes(ciphersuite.hash_length());
-    let commit_secret = CommitSecret::random(ciphersuite);
-    let psk_secret = PskSecret::random(ciphersuite);
-    let joiner_secret = JoinerSecret::new(&commit_secret, init_secret);
-    let mut key_schedule =
-        KeySchedule::init(ciphersuite, joiner_secret.clone(), Some(psk_secret.clone()));
-    let welcome_secret = key_schedule.welcome().unwrap();
+    let crypto = OpenMlsRustCrypto::default();
+    let tree_hash = crypto.rand().random_vec(ciphersuite.hash_length()).unwrap();
+    let commit_secret = CommitSecret::random(ciphersuite, &crypto);
+    let psk_secret = PskSecret::random(ciphersuite, &crypto);
+    let joiner_secret = JoinerSecret::new(&crypto, &commit_secret, init_secret);
+    let mut key_schedule = KeySchedule::init(
+        ciphersuite,
+        &crypto,
+        joiner_secret.clone(),
+        Some(psk_secret.clone()),
+    );
+    let welcome_secret = key_schedule.welcome(&crypto).unwrap();
 
-    let confirmed_transcript_hash = ciphersuite.randombytes(ciphersuite.hash_length());
+    let confirmed_transcript_hash = crypto.rand().random_vec(ciphersuite.hash_length()).unwrap();
 
     let group_context = GroupContext::new(
         GroupId::from_slice(group_id),
@@ -93,13 +99,13 @@ fn generate(
     )
     .unwrap();
 
-    key_schedule.add_context(&group_context).unwrap();
-    let epoch_secrets = key_schedule.epoch_secrets(true).unwrap();
+    key_schedule.add_context(&crypto, &group_context).unwrap();
+    let epoch_secrets = key_schedule.epoch_secrets(&crypto, true).unwrap();
 
     // Calculate external HPKE key pair
     let external_key_pair = epoch_secrets
         .external_secret()
-        .derive_external_keypair(ciphersuite);
+        .derive_external_keypair(crypto.crypto(), ciphersuite);
 
     (
         confirmed_transcript_hash,
@@ -121,10 +127,13 @@ pub fn generate_test_vector(
 ) -> KeyScheduleTestVector {
     use tls_codec::Serialize;
 
+    use crate::ciphersuite::HpkePublicKey;
+    let crypto = OpenMlsRustCrypto::default();
+
     // Set up setting.
-    let mut init_secret = InitSecret::random(ciphersuite, ProtocolVersion::default());
+    let mut init_secret = InitSecret::random(ciphersuite, &crypto, ProtocolVersion::default());
     let initial_init_secret = init_secret.clone();
-    let group_id = ciphersuite.randombytes(16);
+    let group_id = crypto.rand().random_vec(16).unwrap();
 
     let mut epochs = Vec::new();
 
@@ -161,8 +170,7 @@ pub fn generate_test_vector(
             membership_key: bytes_to_hex(epoch_secrets.membership_key().as_slice()),
             resumption_secret: bytes_to_hex(epoch_secrets.resumption_secret().as_slice()),
             external_pub: bytes_to_hex(
-                &external_key_pair
-                    .public_key()
+                &HpkePublicKey::from(external_key_pair.public)
                     .tls_serialize_detached()
                     .unwrap(),
             ),
@@ -215,6 +223,8 @@ fn read_test_vectors() {
 pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestVectorError> {
     use tls_codec::Serialize;
 
+    use crate::ciphersuite::HpkePublicKey;
+
     let ciphersuite =
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
     let ciphersuite = match Config::ciphersuite(ciphersuite) {
@@ -227,6 +237,7 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
             return Ok(());
         }
     };
+    let crypto = OpenMlsRustCrypto::default();
     log::debug!("Testing test vector for ciphersuite {:?}", ciphersuite);
     log::trace!("  {:?}", test_vector);
 
@@ -246,7 +257,7 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
         log::trace!("    CommitSecret from tve {:?}", epoch.commit_secret);
         let psk = hex_to_bytes(&epoch.psk_secret);
 
-        let joiner_secret = JoinerSecret::new(&commit_secret, &init_secret);
+        let joiner_secret = JoinerSecret::new(&crypto, &commit_secret, &init_secret);
         if hex_to_bytes(&epoch.joiner_secret) != joiner_secret.as_slice() {
             if cfg!(test) {
                 panic!("Joiner secret mismatch");
@@ -256,10 +267,11 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
 
         let mut key_schedule = KeySchedule::init(
             ciphersuite,
+            &crypto,
             joiner_secret.clone(),
             Some(PskSecret::from_slice(&psk)),
         );
-        let welcome_secret = key_schedule.welcome().unwrap();
+        let welcome_secret = key_schedule.welcome(&crypto).unwrap();
 
         if hex_to_bytes(&epoch.welcome_secret) != welcome_secret.as_slice() {
             if cfg!(test) {
@@ -291,9 +303,9 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
             return Err(KsTestVectorError::GroupContextMismatch);
         }
 
-        key_schedule.add_context(&group_context).unwrap();
+        key_schedule.add_context(&crypto, &group_context).unwrap();
 
-        let epoch_secrets = key_schedule.epoch_secrets(true).unwrap();
+        let epoch_secrets = key_schedule.epoch_secrets(&crypto, true).unwrap();
 
         init_secret = epoch_secrets.init_secret().unwrap().clone();
         if hex_to_bytes(&epoch.init_secret) != init_secret.as_slice() {
@@ -363,18 +375,16 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
         // Calculate external HPKE key pair
         let external_key_pair = epoch_secrets
             .external_secret()
-            .derive_external_keypair(ciphersuite);
+            .derive_external_keypair(crypto.crypto(), ciphersuite);
         if hex_to_bytes(&epoch.external_pub)
-            != external_key_pair
-                .public_key()
+            != HpkePublicKey::from(external_key_pair.public.clone())
                 .tls_serialize_detached()
                 .unwrap()
         {
             log::error!("  External public key mismatch");
             log::debug!(
                 "    Computed: {:x?}",
-                external_key_pair
-                    .public_key()
+                HpkePublicKey::from(external_key_pair.public)
                     .tls_serialize_detached()
                     .unwrap()
             );

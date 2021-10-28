@@ -6,6 +6,7 @@ impl ManagedGroup {
     pub fn parse_message(
         &mut self,
         message: InboundMessage,
+        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<UnverifiedMessage, ManagedGroupError> {
         /*
         High level checks:
@@ -33,7 +34,7 @@ impl ManagedGroup {
             InboundMessage::Ciphertext(ciphertext) => {
                 let aad = ciphertext.authenticated_data.clone().into_vec();
 
-                let plaintext = self.group.decrypt(&ciphertext)?;
+                let plaintext = self.group.decrypt(&ciphertext, backend)?;
                 (plaintext, aad)
             }
             // If it is a plaintext message we return it with an empty AAD

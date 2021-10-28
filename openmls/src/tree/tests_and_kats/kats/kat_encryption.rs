@@ -94,6 +94,7 @@ use crate::{
 };
 
 use itertools::izip;
+use openmls_rust_crypto::OpenMlsRustCrypto;
 use serde::{self, Deserialize, Serialize};
 use std::convert::TryFrom;
 
@@ -130,20 +131,32 @@ pub struct EncryptionTestVector {
 }
 
 #[cfg(any(feature = "test-utils", test))]
-fn group(ciphersuite: &Ciphersuite) -> (MlsGroup, CredentialBundle) {
+fn group(
+    ciphersuite: &Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+) -> (MlsGroup, CredentialBundle) {
+    use openmls_traits::types::SignatureScheme;
+
     let credential_bundle = CredentialBundle::new(
         "Kreator".into(),
         CredentialType::Basic,
         SignatureScheme::from(ciphersuite.name()),
+        backend,
     )
     .unwrap();
-    let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new()).unwrap();
+    let key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &credential_bundle,
+        backend,
+        Vec::new(),
+    )
+    .unwrap();
     let group_id = [1, 2, 3, 4];
     (
         MlsGroup::new(
             &group_id,
             ciphersuite.name(),
+            backend,
             key_package_bundle,
             MlsGroupConfig::default(),
             None, /* Initial PSK */
@@ -155,18 +168,31 @@ fn group(ciphersuite: &Ciphersuite) -> (MlsGroup, CredentialBundle) {
 }
 
 #[cfg(any(feature = "test-utils", test))]
-fn receiver_group(ciphersuite: &Ciphersuite, group_id: &GroupId) -> MlsGroup {
+fn receiver_group(
+    ciphersuite: &Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+    group_id: &GroupId,
+) -> MlsGroup {
+    use openmls_traits::types::SignatureScheme;
+
     let credential_bundle = CredentialBundle::new(
         "Receiver".into(),
         CredentialType::Basic,
         SignatureScheme::from(ciphersuite.name()),
+        backend,
     )
     .unwrap();
-    let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, Vec::new()).unwrap();
+    let key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &credential_bundle,
+        backend,
+        Vec::new(),
+    )
+    .unwrap();
     MlsGroup::new(
         group_id.as_slice(),
         ciphersuite.name(),
+        backend,
         key_package_bundle,
         MlsGroupConfig::default(),
         None, /* Initial PSK */
@@ -181,6 +207,7 @@ fn build_handshake_messages(
     leaf: LeafIndex,
     group: &mut MlsGroup,
     credential_bundle: &CredentialBundle,
+    backend: &impl OpenMlsCryptoProvider,
 ) -> (Vec<u8>, Vec<u8>) {
     use tls_codec::Serialize;
 
@@ -188,6 +215,7 @@ fn build_handshake_messages(
     group.context_mut().set_epoch(epoch);
     let membership_key = MembershipKey::from_secret(Secret::random(
         group.ciphersuite(),
+        backend,
         None, /* MLS version */
     ));
     let framing_parameters = FramingParameters::new(&[1, 2, 3, 4], WireFormat::MlsCiphertext);
@@ -198,16 +226,20 @@ fn build_handshake_messages(
         credential_bundle,
         group.context(),
         &membership_key,
+        backend,
     )
     .unwrap();
     plaintext.remove_membership_tag();
     let ciphertext = MlsCiphertext::try_from_plaintext(
         &plaintext,
         group.ciphersuite(),
+        backend,
         group.context(),
         leaf,
-        group.epoch_secrets(),
-        &mut group.secret_tree_mut(),
+        Secrets {
+            epoch_secrets: group.epoch_secrets(),
+            secret_tree: &mut group.secret_tree_mut(),
+        },
         0,
     )
     .expect("Could not create MlsCiphertext");
@@ -222,6 +254,7 @@ fn build_application_messages(
     leaf: LeafIndex,
     group: &mut MlsGroup,
     credential_bundle: &CredentialBundle,
+    backend: &impl OpenMlsCryptoProvider,
 ) -> (Vec<u8>, Vec<u8>) {
     use tls_codec::Serialize;
 
@@ -229,6 +262,7 @@ fn build_application_messages(
     group.context_mut().set_epoch(epoch);
     let membership_key = MembershipKey::from_secret(Secret::random(
         group.ciphersuite(),
+        backend,
         None, /* MLS version */
     ));
     let mut plaintext = MlsPlaintext::new_application(
@@ -238,16 +272,20 @@ fn build_application_messages(
         credential_bundle,
         group.context(),
         &membership_key,
+        backend,
     )
     .unwrap();
     plaintext.remove_membership_tag();
     let ciphertext = match MlsCiphertext::try_from_plaintext(
         &plaintext,
         group.ciphersuite(),
+        backend,
         group.context(),
         leaf,
-        group.epoch_secrets(),
-        &mut group.secret_tree_mut(),
+        Secrets {
+            epoch_secrets: group.epoch_secrets(),
+            secret_tree: &mut group.secret_tree_mut(),
+        },
         0,
     ) {
         Ok(c) => c,
@@ -265,30 +303,33 @@ pub fn generate_test_vector(
     n_leaves: u32,
     ciphersuite: &'static Ciphersuite,
 ) -> EncryptionTestVector {
+    use openmls_traits::random::OpenMlsRand;
+
     let ciphersuite_name = ciphersuite.name();
-    let epoch_secret = ciphersuite.randombytes(ciphersuite.hash_length());
+    let crypto = OpenMlsRustCrypto::default();
+    let epoch_secret = crypto.rand().random_vec(ciphersuite.hash_length()).unwrap();
     let encryption_secret =
         EncryptionSecret::from_slice(&epoch_secret[..], ProtocolVersion::default(), ciphersuite);
     let encryption_secret_group =
         EncryptionSecret::from_slice(&epoch_secret[..], ProtocolVersion::default(), ciphersuite);
     let encryption_secret_bytes = encryption_secret.as_slice().to_vec();
-    let sender_data_secret = SenderDataSecret::random(ciphersuite);
+    let sender_data_secret = SenderDataSecret::random(ciphersuite, &crypto);
     let sender_data_secret_bytes = sender_data_secret.as_slice();
     let mut secret_tree = SecretTree::new(encryption_secret, LeafIndex::from(n_leaves));
     let group_secret_tree = SecretTree::new(encryption_secret_group, LeafIndex::from(n_leaves));
 
     // Create sender_data_key/secret
-    let ciphertext = ciphersuite.randombytes(77);
-    let sender_data_key = sender_data_secret.derive_aead_key(&ciphertext);
+    let ciphertext = crypto.rand().random_vec(77).unwrap();
+    let sender_data_key = sender_data_secret.derive_aead_key(&crypto, &ciphertext);
     // Derive initial nonce from the key schedule using the ciphertext.
-    let sender_data_nonce = sender_data_secret.derive_aead_nonce(ciphersuite, &ciphertext);
+    let sender_data_nonce = sender_data_secret.derive_aead_nonce(ciphersuite, &crypto, &ciphertext);
     let sender_data_info = SenderDataInfo {
         ciphertext: bytes_to_hex(&ciphertext),
         key: bytes_to_hex(sender_data_key.as_slice()),
         nonce: bytes_to_hex(sender_data_nonce.as_slice()),
     };
 
-    let (mut group, credential_bundle) = group(ciphersuite);
+    let (mut group, credential_bundle) = group(ciphersuite, &crypto);
     *group.epoch_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
         sender_data_secret_bytes,
         ProtocolVersion::default(),
@@ -304,12 +345,18 @@ pub fn generate_test_vector(
         for generation in 0..n_generations {
             // Application
             let (application_secret_key, application_secret_nonce) = secret_tree
-                .secret_for_decryption(ciphersuite, leaf, SecretType::ApplicationSecret, generation)
+                .secret_for_decryption(
+                    ciphersuite,
+                    &crypto,
+                    leaf,
+                    SecretType::ApplicationSecret,
+                    generation,
+                )
                 .expect("Error getting decryption secret");
             let application_key_string = bytes_to_hex(application_secret_key.as_slice());
             let application_nonce_string = bytes_to_hex(application_secret_nonce.as_slice());
             let (application_plaintext, application_ciphertext) =
-                build_application_messages(leaf, &mut group, &credential_bundle);
+                build_application_messages(leaf, &mut group, &credential_bundle, &crypto);
             println!("Sender Group: {:?}", group);
             application.push(RatchetStep {
                 key: application_key_string,
@@ -320,13 +367,19 @@ pub fn generate_test_vector(
 
             // Handshake
             let (handshake_secret_key, handshake_secret_nonce) = secret_tree
-                .secret_for_decryption(ciphersuite, leaf, SecretType::HandshakeSecret, generation)
+                .secret_for_decryption(
+                    ciphersuite,
+                    &crypto,
+                    leaf,
+                    SecretType::HandshakeSecret,
+                    generation,
+                )
                 .expect("Error getting decryption secret");
             let handshake_key_string = bytes_to_hex(handshake_secret_key.as_slice());
             let handshake_nonce_string = bytes_to_hex(handshake_secret_nonce.as_slice());
 
             let (handshake_plaintext, handshake_ciphertext) =
-                build_handshake_messages(leaf, &mut group, &credential_bundle);
+                build_handshake_messages(leaf, &mut group, &credential_bundle, &crypto);
 
             handshake.push(RatchetStep {
                 key: handshake_key_string,
@@ -371,6 +424,7 @@ fn write_test_vectors() {
 pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestVectorError> {
     use tls_codec::{Deserialize, Serialize};
 
+    let crypto = OpenMlsRustCrypto::default();
     let n_leaves = test_vector.n_leaves;
     if n_leaves != test_vector.leaves.len() as u32 {
         return Err(EncTestVectorError::LeafNumberMismatch);
@@ -404,10 +458,13 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
         ciphersuite,
     );
 
-    let sender_data_key =
-        sender_data_secret.derive_aead_key(&hex_to_bytes(&test_vector.sender_data_info.ciphertext));
+    let sender_data_key = sender_data_secret.derive_aead_key(
+        &crypto,
+        &hex_to_bytes(&test_vector.sender_data_info.ciphertext),
+    );
     let sender_data_nonce = sender_data_secret.derive_aead_nonce(
         ciphersuite,
+        &crypto,
         &hex_to_bytes(&test_vector.sender_data_info.ciphertext),
     );
     if hex_to_bytes(&test_vector.sender_data_info.key) != sender_data_key.as_slice() {
@@ -446,6 +503,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
             let (application_secret_key, application_secret_nonce) = secret_tree
                 .secret_for_decryption(
                     ciphersuite,
+                    &crypto,
                     leaf_index,
                     SecretType::ApplicationSecret,
                     generation,
@@ -481,7 +539,8 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
             let mls_ciphertext_application =
                 MlsCiphertext::tls_deserialize(&mut ctxt_bytes.as_slice())
                     .expect("Error parsing MlsCiphertext");
-            let mut group = receiver_group(ciphersuite, &mls_ciphertext_application.group_id);
+            let mut group =
+                receiver_group(ciphersuite, &crypto, &mls_ciphertext_application.group_id);
             *group.epoch_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
                 hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
                 ProtocolVersion::default(),
@@ -494,7 +553,12 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
 
             // Decrypt and check application message
             let mls_plaintext_application = mls_ciphertext_application
-                .to_plaintext(ciphersuite, group.epoch_secrets(), &mut secret_tree)
+                .to_plaintext(
+                    ciphersuite,
+                    &crypto,
+                    group.epoch_secrets(),
+                    &mut secret_tree,
+                )
                 .expect("Error decrypting MlsCiphertext");
             if hex_to_bytes(&application.plaintext)
                 != mls_plaintext_application
@@ -511,6 +575,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
             let (handshake_secret_key, handshake_secret_nonce) = secret_tree
                 .secret_for_decryption(
                     ciphersuite,
+                    &crypto,
                     leaf_index,
                     SecretType::HandshakeSecret,
                     generation,
@@ -542,7 +607,12 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
 
             // Decrypt and check message
             let mls_plaintext_handshake = mls_ciphertext_handshake
-                .to_plaintext(ciphersuite, group.epoch_secrets(), &mut secret_tree)
+                .to_plaintext(
+                    ciphersuite,
+                    &crypto,
+                    group.epoch_secrets(),
+                    &mut secret_tree,
+                )
                 .expect("Error decrypting MlsCiphertext");
             if hex_to_bytes(&handshake.plaintext)
                 != mls_plaintext_handshake
@@ -559,6 +629,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
             let (handshake_secret_key, handshake_secret_nonce) = secret_tree
                 .secret_for_decryption(
                     ciphersuite,
+                    &crypto,
                     leaf_index,
                     SecretType::HandshakeSecret,
                     generation,
@@ -576,7 +647,8 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
             let mls_ciphertext_handshake =
                 MlsCiphertext::tls_deserialize(&mut handshake_bytes.as_slice())
                     .expect("Error parsing MLSCiphertext");
-            let mut group = receiver_group(ciphersuite, &mls_ciphertext_handshake.group_id);
+            let mut group =
+                receiver_group(ciphersuite, &crypto, &mls_ciphertext_handshake.group_id);
             *group.epoch_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
                 &hex_to_bytes(&test_vector.sender_data_secret),
                 ProtocolVersion::default(),
@@ -585,7 +657,12 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
 
             // Decrypt and check message
             let mls_plaintext_handshake = mls_ciphertext_handshake
-                .to_plaintext(ciphersuite, group.epoch_secrets(), &mut secret_tree)
+                .to_plaintext(
+                    ciphersuite,
+                    &crypto,
+                    group.epoch_secrets(),
+                    &mut secret_tree,
+                )
                 .expect("Error decrypting MLSCiphertext");
             if hex_to_bytes(&handshake.plaintext)
                 != mls_plaintext_handshake
