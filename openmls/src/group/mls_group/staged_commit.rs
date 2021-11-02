@@ -1,3 +1,4 @@
+use super::proposals::{ProposalStore, StagedProposal, StagedProposalQueue};
 use super::*;
 use core::fmt::Debug;
 
@@ -14,7 +15,7 @@ impl MlsGroup {
     pub fn stage_commit(
         &mut self,
         mls_plaintext: &MlsPlaintext,
-        proposals_by_reference: &[&MlsPlaintext],
+        proposal_store: &ProposalStore,
         own_key_packages: &[KeyPackageBundle],
         psk_fetcher_option: Option<PskFetcher>,
         backend: &impl OpenMlsCryptoProvider,
@@ -43,11 +44,11 @@ impl MlsGroup {
 
         // Build a queue with all proposals from the Commit and check that we have all
         // of the proposals by reference locally
-        let proposal_queue = match ProposalQueue::from_committed_proposals(
+        let proposal_queue = match StagedProposalQueue::from_committed_proposals(
             ciphersuite,
             backend,
-            commit.proposals.as_slice(),
-            proposals_by_reference,
+            commit.proposals.as_slice().to_vec(),
+            proposal_store,
             *mls_plaintext.sender(),
         ) {
             Ok(proposal_queue) => proposal_queue,
@@ -58,11 +59,14 @@ impl MlsGroup {
         let mut provisional_tree = self.tree.borrow_mut();
         // FIXME: #424 this is a copy of the nodes in the tree to reset the original state.
         let original_nodes = provisional_tree.nodes.clone();
-        let apply_proposals_values =
-            match provisional_tree.apply_proposals(backend, proposal_queue, own_key_packages) {
-                Ok(res) => res,
-                Err(_) => return Err(StageCommitError::OwnKeyNotFound.into()),
-            };
+        let apply_proposals_values = match provisional_tree.apply_staged_proposals(
+            backend,
+            &proposal_queue,
+            own_key_packages,
+        ) {
+            Ok(res) => res,
+            Err(_) => return Err(StageCommitError::OwnKeyNotFound.into()),
+        };
 
         // Check if we were removed from the group
         if apply_proposals_values.self_removed {
@@ -220,6 +224,7 @@ impl MlsGroup {
             .create_secret_tree(provisional_tree.leaf_count());
 
         Ok(StagedCommit {
+            staged_proposal_queue: proposal_queue,
             group_context: provisional_group_context,
             epoch_secrets: provisional_epoch_secrets,
             interim_transcript_hash,
@@ -248,9 +253,29 @@ impl MlsGroup {
 /// Contains the changes from a commit to the group state.
 #[derive(Debug)]
 pub struct StagedCommit {
+    staged_proposal_queue: StagedProposalQueue,
     group_context: GroupContext,
     epoch_secrets: EpochSecrets,
     interim_transcript_hash: Vec<u8>,
     secret_tree: RefCell<SecretTree>,
     original_nodes: Vec<Node>,
+}
+
+impl StagedCommit {
+    pub fn adds(&self) -> impl Iterator<Item = &StagedProposal> {
+        self.staged_proposal_queue
+            .filtered_by_type(ProposalType::Add)
+    }
+    pub fn removes(&self) -> impl Iterator<Item = &StagedProposal> {
+        self.staged_proposal_queue
+            .filtered_by_type(ProposalType::Remove)
+    }
+    pub fn updates(&self) -> impl Iterator<Item = &StagedProposal> {
+        self.staged_proposal_queue
+            .filtered_by_type(ProposalType::Update)
+    }
+    pub fn psks(&self) -> impl Iterator<Item = &StagedProposal> {
+        self.staged_proposal_queue
+            .filtered_by_type(ProposalType::Presharedkey)
+    }
 }

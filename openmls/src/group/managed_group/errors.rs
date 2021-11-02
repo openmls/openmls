@@ -62,8 +62,10 @@ implement_error! {
 implement_error! {
     pub enum InvalidMessageError {
         Simple {
+            MissingMembershipTag =
+                "A message without a membership tag received.",
             MembershipTagMismatch =
-                "A Proposal with an invalid membership tag was received.",
+                "A message with an invalid membership tag was received.",
             UnknownSender =
                 "Could not retrieve credential for the given sender.",
             InvalidProposal =

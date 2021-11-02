@@ -381,10 +381,15 @@ fn test_welcome_message_encoding() {
             )
             .unwrap();
         // Alice applies the commit
+        let mut proposal_store = ProposalStore::new();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(group_state.ciphersuite(), &crypto, add)
+                .expect("Could not create staged proposal."),
+        );
         let staged_commit = group_state
             .stage_commit(
                 &commit,
-                proposals,
+                &proposal_store,
                 &[key_package_bundle_option.unwrap()],
                 None,
                 &crypto,

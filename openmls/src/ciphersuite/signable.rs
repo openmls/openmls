@@ -5,6 +5,8 @@ use crate::{
     credentials::{Credential, CredentialBundle, CredentialError},
 };
 
+use super::SignaturePublicKey;
+
 /// This trait must be implemented by all structs that contain a self-signature.
 pub trait SignedStruct<T> {
     /// Build a signed struct version from the payload struct.
@@ -94,6 +96,25 @@ pub trait Verifiable: Sized {
     {
         let payload = self.unsigned_payload()?;
         credential.verify(backend, &payload, self.signature())?;
+        Ok(T::from_verifiable(self, T::SealingType::default()))
+    }
+
+    /// Verifies the payload against the given `SignatureKey`.
+    /// The signature is fetched via the [`Verifiable::signature()`] function and
+    /// the payload via [`Verifiable::unsigned_payload()`].
+    ///
+    /// Returns `Ok(Self::VerifiedOutput)` if the signature is valid and
+    /// `CredentialError::InvalidSignature` otherwise.
+    fn verify_with_key<T>(
+        self,
+        backend: &impl OpenMlsCryptoProvider,
+        signature_public_key: &SignaturePublicKey,
+    ) -> Result<T, CredentialError>
+    where
+        T: VerifiedStruct<Self>,
+    {
+        let payload = self.unsigned_payload()?;
+        signature_public_key.verify(backend, self.signature(), &payload)?;
         Ok(T::from_verifiable(self, T::SealingType::default()))
     }
 

@@ -3,6 +3,7 @@ use psk::{PreSharedKeys, PskSecret};
 
 pub mod create_commit;
 mod new_from_welcome;
+pub mod proposals;
 pub mod staged_commit;
 #[cfg(test)]
 mod test_duplicate_extension;

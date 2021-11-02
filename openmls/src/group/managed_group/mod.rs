@@ -47,6 +47,8 @@ use ser::*;
 
 use tls_codec::Serialize;
 
+use super::proposals::ProposalStore;
+
 /// A `ManagedGroup` represents an [MlsGroup] with
 /// an easier, high-level API designed to be used in production. The API exposes
 /// high level functions to manage a group by adding/removing members, get the
@@ -85,6 +87,8 @@ pub struct ManagedGroup {
     // A queue of incoming proposals from the DS for a given epoch. New proposals are added to the
     // queue through `process_messages()`. The queue is emptied after every epoch change.
     pending_proposals: Vec<MlsPlaintext>,
+    // A [ProposalStore] that stores proposals within one epoch. The store is emptied after every epoch change.
+    proposal_store: ProposalStore,
     // Own `KeyPackageBundle`s that were created for update proposals or commits. The vector is
     // emptied after every epoch change.
     own_kpbs: Vec<KeyPackageBundle>,

@@ -1,4 +1,6 @@
 use mls_group::create_commit::Proposals;
+use mls_group::proposals::ProposalStore;
+use mls_group::proposals::StagedProposal;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
@@ -407,8 +409,14 @@ fn unknown_sender() {
             )
             .expect("Error creating Commit");
 
+        let mut proposal_store = ProposalStore::new();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, crypto, bob_add_proposal)
+                .expect("Could not create staged proposal."),
+        );
+
         let staged_commit = group_alice
-            .stage_commit(&commit, &[&bob_add_proposal], &[], None, crypto)
+            .stage_commit(&commit, &proposal_store, &[], None, crypto)
             .expect("Could not stage Commit");
         group_alice.merge_commit(staged_commit);
 
@@ -437,8 +445,14 @@ fn unknown_sender() {
             )
             .expect("Error creating Commit");
 
+        proposal_store.empty();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, crypto, charlie_add_proposal)
+                .expect("Could not create staged proposal."),
+        );
+
         let staged_commit = group_alice
-            .stage_commit(&commit, &[&charlie_add_proposal], &[], None, crypto)
+            .stage_commit(&commit, &proposal_store, &[], None, crypto)
             .expect("Could not stage Commit");
         group_alice.merge_commit(staged_commit);
 
@@ -477,14 +491,20 @@ fn unknown_sender() {
         _print_tree(&group_alice.tree(), "Alice tree");
         _print_tree(&group_charlie.tree(), "Charlie tree");
 
+        proposal_store.empty();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, crypto, bob_remove_proposal)
+                .expect("Could not create staged proposal."),
+        );
+
         let staged_commit = group_charlie
-            .stage_commit(&commit, &[&bob_remove_proposal], &[], None, crypto)
+            .stage_commit(&commit, &proposal_store, &[], None, crypto)
             .expect("Charlie: Could not stage Commit");
         group_charlie.merge_commit(staged_commit);
         let staged_commit = group_alice
             .stage_commit(
                 &commit,
-                &[&bob_remove_proposal],
+                &proposal_store,
                 &[kpb_option.unwrap()],
                 None,
                 crypto,
@@ -504,7 +524,7 @@ fn unknown_sender() {
             &[],
             &[1, 2, 3],
             &alice_credential_bundle,
-            &group_alice.context(),
+            group_alice.context(),
             &MembershipKey::from_secret(Secret::random(ciphersuite, crypto, None)),
             crypto,
         )
@@ -538,7 +558,7 @@ fn unknown_sender() {
             &[],
             &[1, 2, 3],
             &alice_credential_bundle,
-            &group_alice.context(),
+            group_alice.context(),
             &MembershipKey::from_secret(Secret::random(ciphersuite, crypto, None)),
             crypto,
         )
@@ -652,8 +672,14 @@ fn confirmation_tag_presence() {
 
         commit.unset_confirmation_tag();
 
+        let mut proposal_store = ProposalStore::new();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, crypto, bob_add_proposal)
+                .expect("Could not create staged proposal."),
+        );
+
         let err = group_alice
-            .stage_commit(&commit, &[&bob_add_proposal], &[], None, crypto)
+            .stage_commit(&commit, &proposal_store, &[], None, crypto)
             .expect_err("No error despite missing confirmation tag.");
 
         assert_eq!(
@@ -788,8 +814,15 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
     // Remove confirmation tag.
     let good_confirmation_tag = commit.confirmation_tag().cloned();
     commit.unset_confirmation_tag();
+
+    let mut proposal_store = ProposalStore::new();
+    proposal_store.add(
+        StagedProposal::from_mls_plaintext(ciphersuite, crypto, bob_add_proposal.clone())
+            .expect("Could not create staged proposal."),
+    );
+
     let error = group_alice
-        .stage_commit(&commit, &[&bob_add_proposal], &[], None, crypto)
+        .stage_commit(&commit, &proposal_store, &[], None, crypto)
         .expect_err("Staging commit should have yielded an error.");
     assert_eq!(
         error,
@@ -802,8 +835,15 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
     modified_confirmation_tag.0.mac_value[0] ^= 0xFF;
     commit.set_confirmation_tag(modified_confirmation_tag);
     let serialized_group_before = serde_json::to_string(&group_alice).unwrap();
+
+    proposal_store.empty();
+    proposal_store.add(
+        StagedProposal::from_mls_plaintext(ciphersuite, crypto, bob_add_proposal.clone())
+            .expect("Could not create staged proposal."),
+    );
+
     let error = group_alice
-        .stage_commit(&commit, &[&bob_add_proposal], &[], None, crypto)
+        .stage_commit(&commit, &proposal_store, &[], None, crypto)
         .expect_err("Staging commit should have yielded an error.");
     assert_eq!(
         error,
@@ -817,7 +857,14 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
     let input_commit = VerifiableMlsPlaintext::tls_deserialize(&mut encoded_commit.as_slice()).unwrap();
     let decoded_commit = group_alice.verify(input_commit, crypto).expect("Error verifying commit");
     assert_eq!(original_encoded_commit, decoded_commit.tls_serialize_detached().unwrap());
+
+    proposal_store.empty();
+    proposal_store.add(
+        StagedProposal::from_mls_plaintext(ciphersuite, crypto, bob_add_proposal)
+            .expect("Could not create staged proposal."),
+    );
+
     group_alice
-        .stage_commit(&decoded_commit, &[&bob_add_proposal], &[], None, crypto)
+        .stage_commit(&decoded_commit, &proposal_store, &[], None, crypto)
         .expect("Alice: Error staging commit.");
 });

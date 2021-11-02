@@ -268,6 +268,11 @@ impl MlsPlaintext {
         self.sender.to_leaf_index()
     }
 
+    /// Returns `true` if the `membership_tag` fiel is present and `false otherwise.
+    pub fn has_membership_tag(&self) -> bool {
+        self.membership_tag.is_some()
+    }
+
     /// Adds a membership tag to this `MlsPlaintext`. The membership_tag is
     /// produced using the the membership secret.
     ///

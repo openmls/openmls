@@ -4,6 +4,7 @@
 pub use crate::group::MlsGroup;
 pub use crate::group::MlsGroupConfig;
 pub use crate::group::{
+    proposals::{ProposalStore, StagedProposal},
     GroupEvent, InvalidMessageError, ManagedGroup, ManagedGroupCallbacks, ManagedGroupConfig,
     ManagedGroupError, MlsMessageOut, Removal, UpdatePolicy, WireFormat,
 };

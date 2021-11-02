@@ -1,3 +1,5 @@
+use mls_group::proposals::StagedProposal;
+
 use crate::prelude::ErrorString;
 
 use super::*;
@@ -66,7 +68,11 @@ impl ManagedGroup {
                 // policy and then appended to the internal `pending_proposal` list.
                 // TODO #133: Semantic validation of proposals
                 if self.validate_proposal(proposal, plaintext.sender_index(), &indexed_members) {
-                    self.pending_proposals.push(plaintext);
+                    self.pending_proposals.push(plaintext.clone());
+                    let staged_proposal =
+                        StagedProposal::from_mls_plaintext(self.ciphersuite(), backend, plaintext)
+                            .map_err(|_| InvalidMessageError::InvalidProposal)?;
+                    self.proposal_store.add(staged_proposal);
                 } else {
                     // The proposal was invalid
                     return Err(ManagedGroupError::InvalidMessage(
@@ -87,15 +93,14 @@ impl ManagedGroup {
                 }
                 // If all proposals were valid, we continue with staging the Commit
                 // message
-                let proposals = &self
-                    .pending_proposals
-                    .iter()
-                    .collect::<Vec<&MlsPlaintext>>();
                 // TODO #141
-                match self
-                    .group
-                    .stage_commit(&plaintext, proposals, &self.own_kpbs, None, backend)
-                {
+                match self.group.stage_commit(
+                    &plaintext,
+                    &self.proposal_store,
+                    &self.own_kpbs,
+                    None,
+                    backend,
+                ) {
                     Ok(staged_commit) => {
                         // Since the Commit was applied without errors, we can merge it and collect
                         // all proposals from the Commit and generate events
