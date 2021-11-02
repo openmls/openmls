@@ -1,5 +1,8 @@
 //! This module defines the binary tree implementation used by OpenMLS.
 
+/// FIXME: Allowing dead code until there's an actual consumer for the binary
+/// tree API.
+#[allow(dead_code)]
 pub(crate) mod array_representation;
 
 #[allow(dead_code)]

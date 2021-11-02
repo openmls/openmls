@@ -1,6 +1,18 @@
-use crate::binary_tree::NodeIndex;
+use crate::binary_tree::{MlsBinaryTree, MlsBinaryTreeError, NodeIndex};
 
-use super::*;
+use super::array_representation::Addressable;
+
+impl Addressable for u32 {
+    type Address = Self;
+
+    fn address(&self) -> Self::Address {
+        *self
+    }
+
+    fn default_address() -> Self::Address {
+        0
+    }
+}
 
 #[test]
 fn test_tree_creation() {
@@ -10,13 +22,13 @@ fn test_tree_creation() {
         MlsBinaryTree::new(&nodes).expect_err("No error when creating a non-full binary tree."),
         MlsBinaryTreeError::InvalidNumberOfNodes
     );
-    nodes.push(0);
+    nodes.push(2);
 
     // Test tree creation: Positive case.
     let tree1 = MlsBinaryTree::new(&nodes).expect("Error when creating tree from nodes.");
     let mut tree2 = MlsBinaryTree::new(&[0]).expect("Error when creating a one-node binary tree.");
     tree2
-        .add_leaf(0)
+        .add_leaf(2)
         .expect("error when adding nodes to small enough tree");
     assert_eq!(tree1, tree2);
 
@@ -42,7 +54,7 @@ fn test_tree_creation() {
 fn test_node_addition() {
     // Test node addition: Positive case.
     let mut tree = MlsBinaryTree::new(&[0]).expect("Error when creating a one-node binary tree.");
-    tree.add_leaf(0)
+    tree.add_leaf(2)
         .expect("error when adding nodes to small enough tree");
 
     // Test node addition: Exceeding max number of nodes.
@@ -114,29 +126,37 @@ fn test_direct_path() {
     let direct_path = tree
         .direct_path(0)
         .expect("Error when computing direct path.");
-    assert_eq!(direct_path, vec![1, 3, 7]);
+    let test_vec = vec![1, 3, 7];
+    let test_vec_ref: Vec<&u32> = test_vec.iter().map(|node| node).collect();
+    assert_eq!(direct_path, test_vec_ref);
 
     let direct_path = tree
         .direct_path(6)
         .expect("Error when computing direct path.");
-    assert_eq!(direct_path, vec![5, 3, 7]);
+    let test_vec = vec![5, 3, 7];
+    let test_vec_ref: Vec<&u32> = test_vec.iter().map(|node| node).collect();
+    assert_eq!(direct_path, test_vec_ref);
 
     let direct_path = tree
         .direct_path(8)
         .expect("Error when computing direct path.");
-    assert_eq!(direct_path, vec![7]);
+    let test_vec = vec![7];
+    let test_vec_ref: Vec<&u32> = test_vec.iter().map(|node| node).collect();
+    assert_eq!(direct_path, test_vec_ref);
 
     let direct_path = tree
         .direct_path(7)
         .expect("Error when computing direct path.");
-    assert_eq!(direct_path, Vec::<u32>::new());
+    assert_eq!(direct_path, Vec::<&u32>::new());
 
     tree.add_leaf(10).expect("error when adding nodes");
 
     let direct_path = tree
         .direct_path(8)
         .expect("Error when computing direct path.");
-    assert_eq!(direct_path, vec![9, 7]);
+    let test_vec = vec![0, 7];
+    let test_vec_ref: Vec<&u32> = test_vec.iter().map(|node| node).collect();
+    assert_eq!(direct_path, test_vec_ref);
 
     // Test for a very small tree.
     let tree = MlsBinaryTree::new(&[1]).expect("Error when creating a tree.");
@@ -144,12 +164,12 @@ fn test_direct_path() {
     let direct_path = tree
         .direct_path(0)
         .expect("Error when computing direct path.");
-    assert_eq!(direct_path, Vec::<u32>::new());
+    assert_eq!(direct_path, Vec::<&u32>::new());
 }
 
 #[test]
 fn test_copath() {
-    let mut tree =
+    let tree =
         MlsBinaryTree::new(&[0, 1, 2, 3, 4, 5, 6, 7, 8]).expect("Error when creating a tree.");
 
     // Test copath: Out of bounds.
@@ -161,27 +181,36 @@ fn test_copath() {
 
     // Test direct path: Positive case.
     let copath = tree.copath(0).expect("Error when computing copath.");
-    assert_eq!(copath, vec![2, 5, 8]);
+    let test_vec = vec![2, 5, 8];
+    let test_vec_ref: Vec<&u32> = test_vec.iter().map(|node| node).collect();
+    assert_eq!(copath, test_vec_ref);
 
     let copath = tree.copath(6).expect("Error when computing copath.");
-    assert_eq!(copath, vec![4, 1, 8]);
+    let test_vec = vec![4, 1, 8];
+    let test_vec_ref: Vec<&u32> = test_vec.iter().map(|node| node).collect();
+    assert_eq!(copath, test_vec_ref);
 
     let copath = tree.copath(8).expect("Error when computing copath.");
-    assert_eq!(copath, vec![3]);
+    let test_vec = vec![3];
+    let test_vec_ref: Vec<&u32> = test_vec.iter().map(|node| node).collect();
+    assert_eq!(copath, test_vec_ref);
 
     let copath = tree.copath(7).expect("Error when computing copath.");
-    assert_eq!(copath, Vec::<u32>::new());
+    assert_eq!(copath, Vec::<&u32>::new());
 
+    let mut tree = tree.clone();
     tree.add_leaf(10).expect("error when adding nodes");
 
     let copath = tree.copath(8).expect("Error when computing copath.");
-    assert_eq!(copath, vec![10, 3]);
+    let test_vec = vec![10, 3];
+    let test_vec_ref: Vec<&u32> = test_vec.iter().map(|node| node).collect();
+    assert_eq!(copath, test_vec_ref);
 
     // Test for a very small tree.
     let tree = MlsBinaryTree::new(&[1]).expect("Error when creating a tree.");
 
     let copath = tree.copath(0).expect("Error when computing copath.");
-    assert_eq!(copath, Vec::<u32>::new());
+    assert_eq!(copath, Vec::<&u32>::new());
 }
 
 #[test]
@@ -191,49 +220,49 @@ fn test_lowest_common_ancestor() {
 
     // Test lowest common ancestor: Out of bounds.
     assert_eq!(
-        tree.lowest_common_ancestor(10, 0)
+        tree.lowest_common_ancestor(&10, &0)
             .expect_err("No error when computing lowest common ancestor out of bounds."),
         MlsBinaryTreeError::OutOfBounds
     );
     assert_eq!(
-        tree.lowest_common_ancestor(0, 10)
+        tree.lowest_common_ancestor(&0, &10)
             .expect_err("No error when computing lowest common ancestor out of bounds."),
         MlsBinaryTreeError::OutOfBounds
     );
 
     // Test direct path: Positive case.
     let lowest_common_ancestor = tree
-        .lowest_common_ancestor(0, 2)
+        .lowest_common_ancestor(&0, &2)
         .expect("Error when computing lowest common ancestor.");
-    assert_eq!(lowest_common_ancestor, 1);
+    assert_eq!(lowest_common_ancestor, &1u32);
 
     let lowest_common_ancestor = tree
-        .lowest_common_ancestor(0, 1)
+        .lowest_common_ancestor(&0, &1)
         .expect("Error when computing lowest common ancestor.");
-    assert_eq!(lowest_common_ancestor, 1);
+    assert_eq!(lowest_common_ancestor, &1u32);
 
     let lowest_common_ancestor = tree
-        .lowest_common_ancestor(8, 4)
+        .lowest_common_ancestor(&8, &4)
         .expect("Error when computing lowest common ancestor.");
-    assert_eq!(lowest_common_ancestor, 7);
+    assert_eq!(lowest_common_ancestor, &7u32);
 
     let lowest_common_ancestor = tree
-        .lowest_common_ancestor(4, 1)
+        .lowest_common_ancestor(&4, &1)
         .expect("Error when computing lowest common ancestor.");
-    assert_eq!(lowest_common_ancestor, 3);
+    assert_eq!(lowest_common_ancestor, &3u32);
 
     tree.add_leaf(10).expect("error when adding nodes");
 
     let lowest_common_ancestor = tree
-        .lowest_common_ancestor(10, 4)
+        .lowest_common_ancestor(&10, &4)
         .expect("Error when computing lowest common ancestor.");
-    assert_eq!(lowest_common_ancestor, 7);
+    assert_eq!(lowest_common_ancestor, &7u32);
 
     // Test for a very small tree.
     let tree = MlsBinaryTree::new(&[1]).expect("Error when creating a tree.");
 
     let lowest_common_ancestor = tree
-        .lowest_common_ancestor(0, 0)
+        .lowest_common_ancestor(&1, &1)
         .expect("Error when computing lowest common ancestor.");
-    assert_eq!(lowest_common_ancestor, 0);
+    assert_eq!(lowest_common_ancestor, &1u32);
 }
