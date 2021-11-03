@@ -117,42 +117,42 @@ fn test_direct_path() {
 
     // Test direct path: Out of bounds.
     assert_eq!(
-        tree.direct_path(10)
+        tree.direct_path(&10)
             .expect_err("No error when computing direct path out of bounds."),
         MlsBinaryTreeError::OutOfBounds
     );
 
     // Test direct path: Positive case.
     let direct_path = tree
-        .direct_path(0)
+        .direct_path(&0)
         .expect("Error when computing direct path.");
     let test_vec = vec![1, 3, 7];
     let test_vec_ref: Vec<&u32> = test_vec.iter().map(|node| node).collect();
     assert_eq!(direct_path, test_vec_ref);
 
     let direct_path = tree
-        .direct_path(6)
+        .direct_path(&6)
         .expect("Error when computing direct path.");
     let test_vec = vec![5, 3, 7];
     let test_vec_ref: Vec<&u32> = test_vec.iter().map(|node| node).collect();
     assert_eq!(direct_path, test_vec_ref);
 
     let direct_path = tree
-        .direct_path(8)
+        .direct_path(&8)
         .expect("Error when computing direct path.");
     let test_vec = vec![7];
     let test_vec_ref: Vec<&u32> = test_vec.iter().map(|node| node).collect();
     assert_eq!(direct_path, test_vec_ref);
 
     let direct_path = tree
-        .direct_path(7)
+        .direct_path(&7)
         .expect("Error when computing direct path.");
     assert_eq!(direct_path, Vec::<&u32>::new());
 
     tree.add_leaf(10).expect("error when adding nodes");
 
     let direct_path = tree
-        .direct_path(8)
+        .direct_path(&8)
         .expect("Error when computing direct path.");
     let test_vec = vec![0, 7];
     let test_vec_ref: Vec<&u32> = test_vec.iter().map(|node| node).collect();
@@ -162,7 +162,7 @@ fn test_direct_path() {
     let tree = MlsBinaryTree::new(&[1]).expect("Error when creating a tree.");
 
     let direct_path = tree
-        .direct_path(0)
+        .direct_path(&1)
         .expect("Error when computing direct path.");
     assert_eq!(direct_path, Vec::<&u32>::new());
 }
@@ -174,34 +174,34 @@ fn test_copath() {
 
     // Test copath: Out of bounds.
     assert_eq!(
-        tree.copath(10)
+        tree.copath(&10)
             .expect_err("No error when computing copath out of bounds."),
         MlsBinaryTreeError::OutOfBounds
     );
 
     // Test direct path: Positive case.
-    let copath = tree.copath(0).expect("Error when computing copath.");
+    let copath = tree.copath(&0).expect("Error when computing copath.");
     let test_vec = vec![2, 5, 8];
     let test_vec_ref: Vec<&u32> = test_vec.iter().map(|node| node).collect();
     assert_eq!(copath, test_vec_ref);
 
-    let copath = tree.copath(6).expect("Error when computing copath.");
+    let copath = tree.copath(&6).expect("Error when computing copath.");
     let test_vec = vec![4, 1, 8];
     let test_vec_ref: Vec<&u32> = test_vec.iter().map(|node| node).collect();
     assert_eq!(copath, test_vec_ref);
 
-    let copath = tree.copath(8).expect("Error when computing copath.");
+    let copath = tree.copath(&8).expect("Error when computing copath.");
     let test_vec = vec![3];
     let test_vec_ref: Vec<&u32> = test_vec.iter().map(|node| node).collect();
     assert_eq!(copath, test_vec_ref);
 
-    let copath = tree.copath(7).expect("Error when computing copath.");
+    let copath = tree.copath(&7).expect("Error when computing copath.");
     assert_eq!(copath, Vec::<&u32>::new());
 
     let mut tree = tree.clone();
     tree.add_leaf(10).expect("error when adding nodes");
 
-    let copath = tree.copath(8).expect("Error when computing copath.");
+    let copath = tree.copath(&8).expect("Error when computing copath.");
     let test_vec = vec![10, 3];
     let test_vec_ref: Vec<&u32> = test_vec.iter().map(|node| node).collect();
     assert_eq!(copath, test_vec_ref);
@@ -209,7 +209,7 @@ fn test_copath() {
     // Test for a very small tree.
     let tree = MlsBinaryTree::new(&[1]).expect("Error when creating a tree.");
 
-    let copath = tree.copath(0).expect("Error when computing copath.");
+    let copath = tree.copath(&1).expect("Error when computing copath.");
     assert_eq!(copath, Vec::<&u32>::new());
 }
 

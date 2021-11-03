@@ -26,6 +26,6 @@ pub(crate) type TreeSize = NodeIndex;
 
 /// We use this type alias as a convenience, so we can later swap out the tree
 /// representation with a feature-flag.
-pub(crate) type MlsBinaryTree<Node: Default> = ABinaryTree<Node>;
+pub(crate) type MlsBinaryTree<Node> = ABinaryTree<Node>;
 
 pub(crate) type MlsBinaryTreeError = ABinaryTreeError;

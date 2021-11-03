@@ -145,7 +145,8 @@ impl<T: Default + Clone + Addressable> ABinaryTree<T> {
     /// node and return the vector of indices of the nodes on the direct path,
     /// where the indexing corresponds to the array representation of the
     /// underlying binary tree.
-    pub(crate) fn direct_path(&self, node_index: NodeIndex) -> Result<Vec<&T>, ABinaryTreeError> {
+    pub(crate) fn direct_path(&self, node: &T) -> Result<Vec<&T>, ABinaryTreeError> {
+        let node_index = self.index(node).ok_or(ABinaryTreeError::OutOfBounds)?;
         let direct_path =
             direct_path(node_index, self.size()).map_err(|_| ABinaryTreeError::OutOfBounds)?;
         let mut direct_path_nodes = Vec::new();
@@ -159,7 +160,8 @@ impl<T: Default + Clone + Addressable> ABinaryTree<T> {
     /// node and return the vector of indices of the nodes on the copath, where
     /// the indexing corresponds to the array representation of the underlying
     /// binary tree.
-    pub(crate) fn copath(&self, node_index: NodeIndex) -> Result<Vec<&T>, ABinaryTreeError> {
+    pub(crate) fn copath(&self, node: &T) -> Result<Vec<&T>, ABinaryTreeError> {
+        let node_index = self.index(node).ok_or(ABinaryTreeError::OutOfBounds)?;
         let copath = copath(node_index, self.size()).map_err(|_| ABinaryTreeError::OutOfBounds)?;
         let mut copath_nodes = Vec::new();
         for node_index in copath {
