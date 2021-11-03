@@ -5,19 +5,15 @@ use super::array_representation::Addressable;
 impl Addressable for u32 {
     type Address = Self;
 
-    fn address(&self) -> Self::Address {
-        *self
-    }
-
-    fn default_address() -> Self::Address {
-        0
+    fn address(&self) -> Option<Self::Address> {
+        Some(*self)
     }
 }
 
 #[test]
 fn test_tree_creation() {
     // Test tree creation: Wrong number of nodes.
-    let mut nodes = vec![0, 0];
+    let mut nodes = vec![1, 0];
     assert_eq!(
         MlsBinaryTree::new(&nodes).expect_err("No error when creating a non-full binary tree."),
         MlsBinaryTreeError::InvalidNumberOfNodes
@@ -26,7 +22,7 @@ fn test_tree_creation() {
 
     // Test tree creation: Positive case.
     let tree1 = MlsBinaryTree::new(&nodes).expect("Error when creating tree from nodes.");
-    let mut tree2 = MlsBinaryTree::new(&[0]).expect("Error when creating a one-node binary tree.");
+    let mut tree2 = MlsBinaryTree::new(&[1]).expect("Error when creating a one-node binary tree.");
     tree2
         .add_leaf(2)
         .expect("error when adding nodes to small enough tree");

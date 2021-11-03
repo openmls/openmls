@@ -13,11 +13,9 @@ use super::TreeSize;
 pub trait Addressable {
     type Address: PartialEq + Eq + Hash;
 
-    /// Return the address of this node.
-    fn address(&self) -> Self::Address;
-
-    /// Return the address associated with the default node.
-    fn default_address() -> Self::Address;
+    /// Returns the address of this node. If it's the default node, return `None`
+    /// instead.
+    fn address(&self) -> Option<Self::Address>;
 }
 
 #[derive(Clone, Debug)]
@@ -29,11 +27,6 @@ pub(crate) struct ABinaryTree<T: Default + Clone + Addressable> {
 }
 
 impl<T: Default + Clone + Addressable> ABinaryTree<T> {
-    /// Check if a given index is still within the tree.
-    pub(crate) fn node_in_tree(&self, node_index: NodeIndex) -> Result<(), ABinaryTreeError> {
-        node_in_tree(node_index, self.size()).map_err(|_| ABinaryTreeError::OutOfBounds)
-    }
-
     /// Create a tree from the given vector of nodes. The nodes are ordered in
     /// the array-representation. Throws a `InvalidNumberOfNodes` error if the
     /// number of nodes does not allow the creation of a full, left-balanced
@@ -47,10 +40,12 @@ impl<T: Default + Clone + Addressable> ABinaryTree<T> {
         } else {
             let mut node_map = HashMap::new();
             for (i, node) in nodes.iter().enumerate() {
-                if node_map.contains_key(&node.address()) {
-                    return Err(ABinaryTreeError::AddressCollision);
-                } else if node.address() != T::default_address() {
-                    node_map.insert(node.address(), i as u32);
+                if let Some(address) = node.address() {
+                    if node_map.contains_key(&address) {
+                        return Err(ABinaryTreeError::AddressCollision);
+                    } else {
+                        node_map.insert(address, i as u32);
+                    }
                 }
             }
             Ok(ABinaryTree {
@@ -86,32 +81,36 @@ impl<T: Default + Clone + Addressable> ABinaryTree<T> {
         self.nodes.get_mut(node_index as usize)
     }
 
-    /// Adds the given node as a new leaf to right side of the tree. To keep
-    /// the tree full, a parent node is added using the `Default` constructor.
+    /// Adds the given node as a new leaf to right side of the tree. To keep the
+    /// tree full, a parent node is added using the `Default` constructor.
     /// Returns an `OutOfRange` error if the number of nodes exceeds the range
-    /// of `NodeIndex`.
+    /// of `NodeIndex`, an `AddressCollision` error if a node with the same
+    /// address already exists in the tree and an `InvalidNode` error if the
+    /// node does not have an address.
     pub(crate) fn add_leaf(&mut self, node: T) -> Result<(), ABinaryTreeError> {
         // Prevent the tree from becoming too large.
         if self.nodes.len() > NodeIndex::max_value() as usize - 2 {
             Err(ABinaryTreeError::OutOfRange)
-        } else if node.address() == T::default_address() {
-            return Err(ABinaryTreeError::InvalidNode);
-        } else if self.node_map.contains_key(&node.address()) {
-            return Err(ABinaryTreeError::AddressCollision);
         } else {
-            self.node_map
-                .insert(node.address(), (self.nodes.len() + 1) as u32);
-            self.nodes.push(T::default());
-            self.nodes.push(node);
-            Ok(())
+            // Make sure that the input node has an address.
+            let address = node.address().ok_or(ABinaryTreeError::InvalidNode)?;
+            // Check if a node with this address already exists in the tree.
+            if self.node_map.contains_key(&address) {
+                return Err(ABinaryTreeError::AddressCollision);
+            } else {
+                self.node_map.insert(address, (self.nodes.len() + 1) as u32);
+                self.nodes.push(T::default());
+                self.nodes.push(node);
+                Ok(())
+            }
         }
     }
 
     /// Helper function to remove a node from the tree and the map.
     fn remove_node(&mut self) -> Result<(), ABinaryTreeError> {
         let node = self.nodes.pop().ok_or(ABinaryTreeError::NotEnoughNodes)?;
-        if node.address() != T::default_address() {
-            self.node_map.remove(&node.address());
+        if let Some(address) = node.address() {
+            self.node_map.remove(&address);
         }
         Ok(())
     }
@@ -191,8 +190,6 @@ impl<T: Default + Clone + Addressable> ABinaryTree<T> {
     ) -> Result<&T, ABinaryTreeError> {
         let node_index_1 = self.index(node_1).ok_or(ABinaryTreeError::OutOfBounds)?;
         let node_index_2 = self.index(node_2).ok_or(ABinaryTreeError::OutOfBounds)?;
-        self.node_in_tree(node_index_1)?;
-        self.node_in_tree(node_index_2)?;
         let lowest_common_ancestor = lowest_common_ancestor(node_index_1, node_index_2);
         self.node(lowest_common_ancestor)
             .ok_or(ABinaryTreeError::OutOfBounds)
