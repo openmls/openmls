@@ -8,3 +8,6 @@ run from the command line.
 
 While the code should compile using `cargo build`, the CLI client is neither
 very robust nor under active development.
+
+After running the client from the command line (e.g. using `cargo run`). Type
+`help` for basic usage.
