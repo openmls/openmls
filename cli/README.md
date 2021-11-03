@@ -1,6 +1,6 @@
 # OpenMLS Proof-Of-Concept CLI Client
 
-This directory contains source code for a proof-of-concept implementation of
+This directory contains source code for a proof-of-concept implementation of a
 messaging client using OpenMLS. The client requires a running instance of our
 proof-of-concept delivery service, which can be found
 [here](https://github.com/openmls/openmls/tree/main/delivery-service) and can be
