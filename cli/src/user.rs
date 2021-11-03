@@ -191,7 +191,8 @@ impl User {
                             group.pending_proposals.push(msg);
                         }
                         MlsPlaintextContentType::Commit(_commit) => {
-                            match group.mls_group.borrow_mut().stage_commit(
+                            let mut mls_group = group.mls_group.borrow_mut();
+                            match mls_group.stage_commit(
                                 &msg,
                                 &(group
                                     .pending_proposals
@@ -202,7 +203,7 @@ impl User {
                                 &self.crypto,
                             ) {
                                 Ok(staged_commit) => {
-                                    group.mls_group.borrow_mut().merge_commit(staged_commit);
+                                    mls_group.merge_commit(staged_commit);
                                 }
                                 Err(e) => {
                                     let s = format!("Error applying commit: {:?}", e);
