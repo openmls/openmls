@@ -44,29 +44,22 @@ impl MlsGroup {
 
         // Build a queue with all proposals from the Commit and check that we have all
         // of the proposals by reference locally
-        let proposal_queue = match StagedProposalQueue::from_committed_proposals(
+        let proposal_queue = StagedProposalQueue::from_committed_proposals(
             ciphersuite,
             backend,
             commit.proposals.as_slice().to_vec(),
             proposal_store,
             *mls_plaintext.sender(),
-        ) {
-            Ok(proposal_queue) => proposal_queue,
-            Err(_) => return Err(StageCommitError::MissingProposal.into()),
-        };
+        )
+        .map_err(|_| StageCommitError::MissingProposal)?;
 
         // Create provisional tree and apply proposals
         let mut provisional_tree = self.tree.borrow_mut();
         // FIXME: #424 this is a copy of the nodes in the tree to reset the original state.
         let original_nodes = provisional_tree.nodes.clone();
-        let apply_proposals_values = match provisional_tree.apply_staged_proposals(
-            backend,
-            &proposal_queue,
-            own_key_packages,
-        ) {
-            Ok(res) => res,
-            Err(_) => return Err(StageCommitError::OwnKeyNotFound.into()),
-        };
+        let apply_proposals_values = provisional_tree
+            .apply_staged_proposals(backend, &proposal_queue, own_key_packages)
+            .map_err(|_| StageCommitError::OwnKeyNotFound)?;
 
         // Check if we were removed from the group
         if apply_proposals_values.self_removed {
@@ -92,10 +85,10 @@ impl MlsGroup {
             if is_own_commit {
                 // Find the right KeyPackageBundle among the pending bundles and
                 // clone out the one that we need.
-                let own_kpb = match own_key_packages.iter().find(|kpb| kpb.key_package() == kp) {
-                    Some(kpb) => kpb,
-                    None => return Err(StageCommitError::MissingOwnKeyPackage.into()),
-                };
+                let own_kpb = own_key_packages
+                    .iter()
+                    .find(|kpb| kpb.key_package() == kp)
+                    .ok_or(StageCommitError::MissingOwnKeyPackage)?;
                 // We can unwrap here, because we know there was a path and thus
                 // a new commit secret must have been set.
                 provisional_tree
