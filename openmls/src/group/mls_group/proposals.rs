@@ -71,7 +71,6 @@ impl StagedProposal {
         backend: &impl OpenMlsCryptoProvider,
         mls_plaintext: MlsPlaintext,
     ) -> Result<Self, StagedProposalError> {
-        debug_assert!(mls_plaintext.content_type() == &ContentType::Proposal);
         let proposal = match mls_plaintext.content() {
             MlsPlaintextContentType::Proposal(p) => p,
             _ => return Err(StagedProposalError::WrongContentType),
@@ -103,7 +102,7 @@ impl StagedProposal {
     pub(crate) fn proposal(&self) -> &Proposal {
         &self.proposal
     }
-    /// Returns the `ProposalReference` as a reference
+    /// Returns the `ProposalReference`.
     pub(crate) fn proposal_reference(&self) -> ProposalReference {
         self.proposal_reference.clone()
     }
