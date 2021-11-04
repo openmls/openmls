@@ -37,7 +37,7 @@ impl ManagedGroup {
 
         // Check the type of message we received
         let mut membership_tag_required = false;
-        let (plaintext, aad) = match message {
+        let (plaintext, aad_option) = match message {
             // If it is a ciphertext we decrypt it and return the plaintext message.
             // Attempting to decrypt it will also check the bounds of the epoch.
             InboundMessage::Ciphertext(ciphertext) => {
@@ -45,7 +45,7 @@ impl ManagedGroup {
 
                 let plaintext = self.group.decrypt(&ciphertext, backend)?;
 
-                (plaintext, aad)
+                (plaintext, Some(aad))
             }
             // If it is a plaintext message we return it with an empty AAD
             // after we check that the membership tag is present and valid
@@ -53,7 +53,7 @@ impl ManagedGroup {
                 // We expect a membership tag for plaintext messages
                 // TODO #106: Membership tag is not expected for external senders
                 membership_tag_required = true;
-                (plaintext, vec![])
+                (plaintext, None)
             }
         };
 
@@ -108,7 +108,7 @@ impl ManagedGroup {
         Ok(UnverifiedMessage {
             plaintext,
             credential,
-            aad,
+            aad_option,
         })
     }
 
@@ -223,12 +223,12 @@ impl InboundMessage {
 pub struct UnverifiedMessage {
     plaintext: MlsPlaintext,
     credential: Credential,
-    aad: Vec<u8>,
+    aad_option: Option<Vec<u8>>,
 }
 
 impl UnverifiedMessage {
-    pub fn aad(&self) -> &[u8] {
-        &self.aad
+    pub fn aad(&self) -> &Option<Vec<u8>> {
+        &self.aad_option
     }
     pub fn credential(&self) -> &Credential {
         &self.credential
