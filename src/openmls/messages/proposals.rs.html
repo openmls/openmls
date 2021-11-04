@@ -576,6 +576,8 @@
 <span id="576">576</span>
 <span id="577">577</span>
 <span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite</span>::<span class="kw-2">*</span>, <span class="ident">config::ProtocolVersion</span>, <span class="ident">extensions::Extension</span>, <span class="ident">framing</span>::<span class="kw-2">*</span>, <span class="ident">group::GroupId</span>,
     <span class="ident">key_packages</span>::<span class="kw-2">*</span>, <span class="ident">schedule::psk</span>::<span class="kw-2">*</span>, <span class="ident">tree::index</span>::<span class="kw-2">*</span>,
@@ -636,7 +638,9 @@
 <span class="doccomment">/// Type of Proposal, either by value or by reference</span>
 <span class="doccomment">/// We only implement the values (1, 2), other values are not valid</span>
 <span class="doccomment">/// and will yield `ProposalOrRefTypeError::UnknownValue` when decoded.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>,
+)]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u8</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProposalOrRefType</span> {
     <span class="ident">Proposal</span> <span class="op">=</span> <span class="number">1</span>,

@@ -481,6 +481,9 @@
 <span id="481">481</span>
 <span id="482">482</span>
 <span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">application</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">callbacks</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
@@ -495,6 +498,7 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">test_managed_group</span>;
 <span class="kw">mod</span> <span class="ident">updates</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">validation</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credentials::CredentialBundle</span>;
 <span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">key_store::OpenMlsKeyStore</span>, <span class="ident">OpenMlsCryptoProvider</span>};
@@ -527,7 +531,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">resumption::ResumptionSecretStore</span>;
 <span class="kw">use</span> <span class="ident">ser</span>::<span class="kw-2">*</span>;
 
-<span class="kw">use</span> <span class="ident">tls_codec::Serialize</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::proposals::ProposalStore</span>;
 
 <span class="doccomment">/// A `ManagedGroup` represents an [MlsGroup] with</span>
 <span class="doccomment">/// an easier, high-level API designed to be used in production. The API exposes</span>
@@ -567,6 +571,8 @@
     <span class="comment">// A queue of incoming proposals from the DS for a given epoch. New proposals are added to the</span>
     <span class="comment">// queue through `process_messages()`. The queue is emptied after every epoch change.</span>
     <span class="ident">pending_proposals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span><span class="op">&gt;</span>,
+    <span class="comment">// A [ProposalStore] that stores proposals within one epoch. The store is emptied after every epoch change.</span>
+    <span class="ident">proposal_store</span>: <span class="ident">ProposalStore</span>,
     <span class="comment">// Own `KeyPackageBundle`s that were created for update proposals or commits. The vector is</span>
     <span class="comment">// emptied after every epoch change.</span>
     <span class="ident">own_kpbs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>,
@@ -887,16 +893,16 @@
 
 <span class="doccomment">/// Unified message type for input to the managed API</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsMessageIn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsMessageIn</span> {
     <span class="doccomment">/// An OpenMLS `MlsPlaintext`.</span>
-    <span class="ident">Plaintext</span>(<span class="ident">VerifiableMlsPlaintext</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>),
+    <span class="ident">Plaintext</span>(<span class="ident">VerifiableMlsPlaintext</span>),
 
     <span class="doccomment">/// An OpenMLS `MlsCiphertext`.</span>
     <span class="ident">Ciphertext</span>(<span class="ident">MlsCiphertext</span>),
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">MlsMessageIn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+<span class="kw">impl</span> <span class="ident">MlsMessageIn</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">MlsMessageIn::Ciphertext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">group_id</span>().<span class="ident">as_slice</span>(),
@@ -954,7 +960,7 @@
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">MlsMessageOut</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MlsMessageIn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">MlsMessageOut</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MlsMessageIn</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">message</span>: <span class="ident">MlsMessageOut</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="kw">match</span> <span class="ident">message</span> {
             <span class="ident">MlsMessageOut::Plaintext</span>(<span class="ident">pt</span>) <span class="op">=</span><span class="op">&gt;</span> {

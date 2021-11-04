@@ -94,6 +94,8 @@
 <span id="94">94</span>
 <span id="95">95</span>
 <span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
 <span class="kw">impl</span> <span class="ident">ManagedGroup</span> {
@@ -140,6 +142,7 @@
             <span class="ident">managed_group_config</span>: <span class="ident">managed_group_config</span>.<span class="ident">clone</span>(),
             <span class="ident">group</span>,
             <span class="ident">pending_proposals</span>: <span class="macro">vec!</span>[],
+            <span class="ident">proposal_store</span>: <span class="ident">ProposalStore::new</span>(),
             <span class="ident">own_kpbs</span>: <span class="macro">vec!</span>[],
             <span class="ident">aad</span>: <span class="macro">vec!</span>[],
             <span class="ident">resumption_secret_store</span>,
@@ -178,6 +181,7 @@
             <span class="ident">managed_group_config</span>: <span class="ident">managed_group_config</span>.<span class="ident">clone</span>(),
             <span class="ident">group</span>,
             <span class="ident">pending_proposals</span>: <span class="macro">vec!</span>[],
+            <span class="ident">proposal_store</span>: <span class="ident">ProposalStore::new</span>(),
             <span class="ident">own_kpbs</span>: <span class="macro">vec!</span>[],
             <span class="ident">aad</span>: <span class="macro">vec!</span>[],
             <span class="ident">resumption_secret_store</span>,

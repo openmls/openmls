@@ -333,14 +333,6 @@
 <span id="333">333</span>
 <span id="334">334</span>
 <span id="335">335</span>
-<span id="336">336</span>
-<span id="337">337</span>
-<span id="338">338</span>
-<span id="339">339</span>
-<span id="340">340</span>
-<span id="341">341</span>
-<span id="342">342</span>
-<span id="343">343</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Known Answer Tests for the transcript hashes</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! See https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md</span>
@@ -550,7 +542,7 @@
 
     <span class="comment">// Check membership and confirmation tags.</span>
     <span class="kw">let</span> <span class="ident">commit_bytes</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(<span class="kw-2">&amp;</span><span class="ident">test_vector</span>.<span class="ident">commit</span>);
-    <span class="kw">let</span> <span class="ident">commit</span> <span class="op">=</span> <span class="ident">VerifiableMlsPlaintext::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">commit_bytes</span>.<span class="ident">as_slice</span>())
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">commit</span> <span class="op">=</span> <span class="ident">VerifiableMlsPlaintext::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">commit_bytes</span>.<span class="ident">as_slice</span>())
         .<span class="ident">expect</span>(<span class="string">&quot;Error decoding commit&quot;</span>);
     <span class="kw">let</span> <span class="ident">context</span> <span class="op">=</span> <span class="ident">GroupContext::new</span>(
         <span class="ident">group_id</span>,
@@ -573,24 +565,16 @@
         }
         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TranscriptTestVectorError::GroupContextMismatch</span>);
     }
-    <span class="kw">let</span> <span class="ident">commit</span>: <span class="ident">MlsPlaintext</span> <span class="op">=</span> <span class="ident">commit</span>
-        .<span class="ident">set_context</span>(<span class="kw-2">&amp;</span><span class="ident">context</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>())
-        .<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">crypto</span>, <span class="kw-2">&amp;</span><span class="ident">credential</span>)
-        .<span class="ident">expect</span>(<span class="string">&quot;Invalid signature on MlsPlaintext commit&quot;</span>);
-
-    <span class="kw">if</span> <span class="ident">commit</span>
-        .<span class="ident">verify_membership</span>(
-            <span class="kw-2">&amp;</span><span class="ident">crypto</span>,
-            <span class="kw-2">&amp;</span><span class="ident">context</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>(),
-            <span class="kw-2">&amp;</span><span class="ident">membership_key</span>,
-        )
-        .<span class="ident">is_err</span>()
-    {
+    <span class="ident">commit</span>.<span class="ident">set_context</span>(<span class="ident">context</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>());
+    <span class="kw">if</span> <span class="ident">commit</span>.<span class="ident">verify_membership</span>(<span class="kw-2">&amp;</span><span class="ident">crypto</span>, <span class="kw-2">&amp;</span><span class="ident">membership_key</span>).<span class="ident">is_err</span>() {
         <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
             <span class="macro">panic!</span>(<span class="string">&quot;Invalid membership tag&quot;</span>);
         }
         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TranscriptTestVectorError::MembershipTagVerificationError</span>);
     }
+    <span class="kw">let</span> <span class="ident">commit</span>: <span class="ident">MlsPlaintext</span> <span class="op">=</span> <span class="ident">commit</span>
+        .<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">crypto</span>, <span class="kw-2">&amp;</span><span class="ident">credential</span>)
+        .<span class="ident">expect</span>(<span class="string">&quot;Invalid signature on MlsPlaintext commit&quot;</span>);
 
     <span class="comment">//let my_confirmation_tag = confirmation_key.tag(&amp;confirmed_transcript_hash_before);</span>
     <span class="kw">let</span> <span class="ident">confirmed_transcript_hash_after</span> <span class="op">=</span>

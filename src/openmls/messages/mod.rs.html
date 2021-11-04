@@ -386,6 +386,9 @@
 <span id="386">386</span>
 <span id="387">387</span>
 <span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite</span>::{<span class="ident">signable</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config::ProtocolVersion</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::extensions</span>::<span class="kw-2">*</span>;
@@ -394,7 +397,10 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schedule::JoinerSecret</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree</span>::{<span class="ident">index</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 
-<span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">types::HpkeCiphertext</span>, <span class="ident">OpenMlsCryptoProvider</span>};
+<span class="kw">use</span> <span class="ident">openmls_traits::types::HpkeCiphertext</span>;
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
+<span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 

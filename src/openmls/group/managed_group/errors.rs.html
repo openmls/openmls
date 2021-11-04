@@ -83,6 +83,10 @@
 <span id="83">83</span>
 <span id="84">84</span>
 <span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
+<span id="88">88</span>
+<span id="89">89</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS Managed Group errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -147,8 +151,10 @@
 <span class="macro">implement_error!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">InvalidMessageError</span> {
         <span class="ident">Simple</span> {
+            <span class="ident">MissingMembershipTag</span> <span class="op">=</span>
+                <span class="string">&quot;A message without a membership tag received.&quot;</span>,
             <span class="ident">MembershipTagMismatch</span> <span class="op">=</span>
-                <span class="string">&quot;A Proposal with an invalid membership tag was received.&quot;</span>,
+                <span class="string">&quot;A message with an invalid membership tag was received.&quot;</span>,
             <span class="ident">UnknownSender</span> <span class="op">=</span>
                 <span class="string">&quot;Could not retrieve credential for the given sender.&quot;</span>,
             <span class="ident">InvalidProposal</span> <span class="op">=</span>
@@ -157,6 +163,8 @@
                 <span class="string">&quot;A commit contained an invalid proposal.&quot;</span>,
             <span class="ident">InvalidApplicationMessage</span> <span class="op">=</span>
                 <span class="string">&quot;The application message is invalid.&quot;</span>,
+            <span class="ident">WrongEpoch</span> <span class="op">=</span> <span class="string">&quot;The epoch does not match the group&#39;s epoch.&quot;</span>,
+            <span class="ident">MissingConfirmationTag</span> <span class="op">=</span> <span class="string">&quot;The confirmation tag is missing in the Commit message.&quot;</span>,
         }
         <span class="ident">Complex</span> {
             <span class="ident">InvalidCiphertext</span>(<span class="ident">MlsCiphertextError</span>) <span class="op">=</span>

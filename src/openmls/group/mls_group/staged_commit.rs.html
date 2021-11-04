@@ -254,7 +254,26 @@
 <span id="254">254</span>
 <span id="255">255</span>
 <span id="256">256</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">super</span>::proposals</span>::{<span class="ident">ProposalStore</span>, <span class="ident">StagedProposal</span>, <span class="ident">StagedProposalQueue</span>};
+<span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">core::fmt::Debug</span>;
 
 <span class="kw">impl</span> <span class="ident">MlsGroup</span> {
@@ -270,7 +289,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">stage_commit</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">mls_plaintext</span>: <span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span>,
-        <span class="ident">proposals_by_reference</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span>],
+        <span class="ident">proposal_store</span>: <span class="kw-2">&amp;</span><span class="ident">ProposalStore</span>,
         <span class="ident">own_key_packages</span>: <span class="kw-2">&amp;</span>[<span class="ident">KeyPackageBundle</span>],
         <span class="ident">psk_fetcher_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PskFetcher</span><span class="op">&gt;</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
@@ -278,7 +297,7 @@
         <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ciphersuite</span>();
 
         <span class="comment">// Verify epoch</span>
-        <span class="kw">if</span> <span class="ident">mls_plaintext</span>.<span class="ident">epoch</span>() <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">epoch</span> {
+        <span class="kw">if</span> <span class="ident">mls_plaintext</span>.<span class="ident">epoch</span>() <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">epoch</span> {
             <span class="macro">log::error!</span>(
                 <span class="string">&quot;Epoch mismatch. Got {:?}, expected {:?}&quot;</span>,
                 <span class="ident">mls_plaintext</span>.<span class="ident">epoch</span>(),
@@ -299,26 +318,22 @@
 
         <span class="comment">// Build a queue with all proposals from the Commit and check that we have all</span>
         <span class="comment">// of the proposals by reference locally</span>
-        <span class="kw">let</span> <span class="ident">proposal_queue</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">ProposalQueue::from_committed_proposals</span>(
+        <span class="kw">let</span> <span class="ident">proposal_queue</span> <span class="op">=</span> <span class="ident">StagedProposalQueue::from_committed_proposals</span>(
             <span class="ident">ciphersuite</span>,
             <span class="ident">backend</span>,
-            <span class="ident">commit</span>.<span class="ident">proposals</span>.<span class="ident">as_slice</span>(),
-            <span class="ident">proposals_by_reference</span>,
+            <span class="ident">commit</span>.<span class="ident">proposals</span>.<span class="ident">as_slice</span>().<span class="ident">to_vec</span>(),
+            <span class="ident">proposal_store</span>,
             <span class="kw-2">*</span><span class="ident">mls_plaintext</span>.<span class="ident">sender</span>(),
-        ) {
-            <span class="prelude-val">Ok</span>(<span class="ident">proposal_queue</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">proposal_queue</span>,
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::MissingProposal</span>.<span class="ident">into</span>()),
-        };
+        )
+        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">StageCommitError::MissingProposal</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Create provisional tree and apply proposals</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">provisional_tree</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">borrow_mut</span>();
         <span class="comment">// FIXME: #424 this is a copy of the nodes in the tree to reset the original state.</span>
         <span class="kw">let</span> <span class="ident">original_nodes</span> <span class="op">=</span> <span class="ident">provisional_tree</span>.<span class="ident">nodes</span>.<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">apply_proposals_values</span> <span class="op">=</span>
-            <span class="kw">match</span> <span class="ident">provisional_tree</span>.<span class="ident">apply_proposals</span>(<span class="ident">backend</span>, <span class="ident">proposal_queue</span>, <span class="ident">own_key_packages</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">res</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">res</span>,
-                <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::OwnKeyNotFound</span>.<span class="ident">into</span>()),
-            };
+        <span class="kw">let</span> <span class="ident">apply_proposals_values</span> <span class="op">=</span> <span class="ident">provisional_tree</span>
+            .<span class="ident">apply_staged_proposals</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">proposal_queue</span>, <span class="ident">own_key_packages</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">StageCommitError::OwnKeyNotFound</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Check if we were removed from the group</span>
         <span class="kw">if</span> <span class="ident">apply_proposals_values</span>.<span class="ident">self_removed</span> {
@@ -344,10 +359,10 @@
             <span class="kw">if</span> <span class="ident">is_own_commit</span> {
                 <span class="comment">// Find the right KeyPackageBundle among the pending bundles and</span>
                 <span class="comment">// clone out the one that we need.</span>
-                <span class="kw">let</span> <span class="ident">own_kpb</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">own_key_packages</span>.<span class="ident">iter</span>().<span class="ident">find</span>(<span class="op">|</span><span class="ident">kpb</span><span class="op">|</span> <span class="ident">kpb</span>.<span class="ident">key_package</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">kp</span>) {
-                    <span class="prelude-val">Some</span>(<span class="ident">kpb</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">kpb</span>,
-                    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::MissingOwnKeyPackage</span>.<span class="ident">into</span>()),
-                };
+                <span class="kw">let</span> <span class="ident">own_kpb</span> <span class="op">=</span> <span class="ident">own_key_packages</span>
+                    .<span class="ident">iter</span>()
+                    .<span class="ident">find</span>(<span class="op">|</span><span class="ident">kpb</span><span class="op">|</span> <span class="ident">kpb</span>.<span class="ident">key_package</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">kp</span>)
+                    .<span class="ident">ok_or</span>(<span class="ident">StageCommitError::MissingOwnKeyPackage</span>)<span class="question-mark">?</span>;
                 <span class="comment">// We can unwrap here, because we know there was a path and thus</span>
                 <span class="comment">// a new commit secret must have been set.</span>
                 <span class="ident">provisional_tree</span>
@@ -476,6 +491,7 @@
             .<span class="ident">create_secret_tree</span>(<span class="ident">provisional_tree</span>.<span class="ident">leaf_count</span>());
 
         <span class="prelude-val">Ok</span>(<span class="ident">StagedCommit</span> {
+            <span class="ident">staged_proposal_queue</span>: <span class="ident">proposal_queue</span>,
             <span class="ident">group_context</span>: <span class="ident">provisional_group_context</span>,
             <span class="ident">epoch_secrets</span>: <span class="ident">provisional_epoch_secrets</span>,
             <span class="ident">interim_transcript_hash</span>,
@@ -504,11 +520,31 @@
 <span class="doccomment">/// Contains the changes from a commit to the group state.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">StagedCommit</span> {
+    <span class="ident">staged_proposal_queue</span>: <span class="ident">StagedProposalQueue</span>,
     <span class="ident">group_context</span>: <span class="ident">GroupContext</span>,
     <span class="ident">epoch_secrets</span>: <span class="ident">EpochSecrets</span>,
     <span class="ident">interim_transcript_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
     <span class="ident">secret_tree</span>: <span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">SecretTree</span><span class="op">&gt;</span>,
     <span class="ident">original_nodes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">StagedCommit</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">adds</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">StagedProposal</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">staged_proposal_queue</span>
+            .<span class="ident">filtered_by_type</span>(<span class="ident">ProposalType::Add</span>)
+    }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">removes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">StagedProposal</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">staged_proposal_queue</span>
+            .<span class="ident">filtered_by_type</span>(<span class="ident">ProposalType::Remove</span>)
+    }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">updates</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">StagedProposal</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">staged_proposal_queue</span>
+            .<span class="ident">filtered_by_type</span>(<span class="ident">ProposalType::Update</span>)
+    }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">psks</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">StagedProposal</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">staged_proposal_queue</span>
+            .<span class="ident">filtered_by_type</span>(<span class="ident">ProposalType::Presharedkey</span>)
+    }
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-search-index-js="../../../../search-index.js" data-search-js="../../../../search.js"></div>
