@@ -141,11 +141,21 @@ impl User {
                     };
                     let msg = match message {
                         DsMlsMessage::Ciphertext(ctxt) => {
-                            match group.decrypt(&ctxt, &self.crypto) {
+                            let verifiable_plaintext = match group.decrypt(&ctxt, &self.crypto) {
                                 Ok(msg) => msg,
                                 Err(e) => {
                                     log::error!(
                                         "Error decrypting MlsCiphertext: {:?} -  Dropping message.",
+                                        e
+                                    );
+                                    continue;
+                                }
+                            };
+                            match group.verify(verifiable_plaintext, &self.crypto) {
+                                Ok(msg) => msg,
+                                Err(e) => {
+                                    log::error!(
+                                        "Error verifying MlsPlaintext: {:?} -  Dropping message.",
                                         e
                                     );
                                     continue;
