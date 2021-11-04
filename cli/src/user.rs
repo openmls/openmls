@@ -203,7 +203,8 @@ impl User {
                                     .map_err(|e| format!("{}", e))?,
                                 )
                             }
-                            match group.mls_group.borrow_mut().stage_commit(
+                            let mut mls_group = group.mls_group.borrow_mut();
+                            match mls_group.stage_commit(
                                 &msg,
                                 &proposal_store,
                                 &[], // TODO: store key packages.
@@ -211,7 +212,7 @@ impl User {
                                 &self.crypto,
                             ) {
                                 Ok(staged_commit) => {
-                                    group.mls_group.borrow_mut().merge_commit(staged_commit);
+                                    mls_group.merge_commit(staged_commit);
                                 }
                                 Err(e) => {
                                     let s = format!("Error applying commit: {:?}", e);
@@ -256,7 +257,8 @@ impl User {
         let mut group_aad = group_id.to_vec();
         group_aad.extend(b" AAD");
         let kpb = self.identity.borrow_mut().update(&self.crypto);
-        let config = MlsGroupConfig::default();
+        let mut config = MlsGroupConfig::default();
+        config.add_ratchet_tree_extension = true;
         let mls_group = MlsGroup::new(
             group_id,
             CIPHERSUITE,
