@@ -136,7 +136,6 @@ impl Client {
             .get_mut(&group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
         let events = group_state.process_message(message.clone(), &self.crypto)?;
-        println!("Getting here 6.");
         for event in events {
             if let GroupEvent::Error(e) = event {
                 return Err(ClientError::ErrorEvent(e));
