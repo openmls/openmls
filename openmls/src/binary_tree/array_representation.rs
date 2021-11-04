@@ -26,12 +26,16 @@ pub(crate) struct ABinaryTree<T: Default + Clone + Addressable> {
     node_map: HashMap<T::Address, NodeIndex>,
 }
 
+/// FIXME: Early returns! Remove nestings if we return early anyway.
+
 impl<T: Default + Clone + Addressable> ABinaryTree<T> {
     /// Create a tree from the given vector of nodes. The nodes are ordered in
     /// the array-representation. Throws a `InvalidNumberOfNodes` error if the
     /// number of nodes does not allow the creation of a full, left-balanced
     /// binary tree and an `OutOfRange` error if the number of given nodes
     /// exceeds the range of `NodeIndex`.
+    /// FIXME: Make clear that trees can't be empty.
+    /// FIXME: Implement From that calls new, such that the vec is immediately dropped.
     pub(crate) fn new(nodes: &[T]) -> Result<Self, ABinaryTreeError> {
         if nodes.len() > NodeIndex::max_value() as usize {
             Err(ABinaryTreeError::OutOfRange)
@@ -59,6 +63,7 @@ impl<T: Default + Clone + Addressable> ABinaryTree<T> {
     /// `node_index`, where the indexing corresponds to the array representation
     /// of the underlying binary tree. Returns None if the index is outside of
     /// the tree.
+    /// FIXME: Make this private and change to node_by_index. Same for the mut variant.
     pub(crate) fn node(&self, node_index: NodeIndex) -> std::option::Option<&T> {
         self.nodes.get(node_index as usize)
     }
@@ -77,6 +82,7 @@ impl<T: Default + Clone + Addressable> ABinaryTree<T> {
     /// `node_index`, where the indexing corresponds to the array representation
     /// of the underlying binary tree. Returns an error if the index is outside
     /// of the tree.
+    /// FIXME: Consider that changing the node might change the address.
     pub(crate) fn node_mut(&mut self, node_index: NodeIndex) -> std::option::Option<&mut T> {
         self.nodes.get_mut(node_index as usize)
     }
@@ -111,6 +117,7 @@ impl<T: Default + Clone + Addressable> ABinaryTree<T> {
         let node = self.nodes.pop().ok_or(ABinaryTreeError::NotEnoughNodes)?;
         if let Some(address) = node.address() {
             self.node_map.remove(&address);
+            // FIXME: Add debug assert in case this returns something.
         }
         Ok(())
     }
@@ -127,6 +134,13 @@ impl<T: Default + Clone + Addressable> ABinaryTree<T> {
             Ok(())
         }
     }
+
+    /// FIXME: Add function that allows `blanking`, i.e. setting a node to
+    /// default.
+
+    /// FIXME: Replace nodes instead of returning a mutable reference.
+
+    /// FIXME: Instead of taking a node reference, instead take an address.
 
     /// Return the number of nodes in the tree.
     pub(crate) fn size(&self) -> NodeIndex {
@@ -172,6 +186,7 @@ impl<T: Default + Clone + Addressable> ABinaryTree<T> {
     /// Given a node, return the nodes index according to the array
     /// representation as defined in the MLS spec. If the node is not in the
     /// tree, return `None`.
+    /// FIXME: Find the node by address using the node_map.
     pub(crate) fn index(&self, node: &T) -> Option<NodeIndex> {
         self.nodes
             .iter()
