@@ -75,7 +75,7 @@ impl ManagedGroup {
             .credential()
             .clone();
 
-        // Verifiy the membership tag if needed
+        // Verify the membership tag if needed
         if membership_tag_required {
             if !plaintext.has_membership_tag() {
                 return Err(ManagedGroupError::InvalidMessage(
