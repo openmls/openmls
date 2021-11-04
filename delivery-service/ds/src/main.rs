@@ -49,9 +49,9 @@ mod test;
 /// The DS state.
 /// It holds a list of clients and their information.
 #[derive(Default, Debug)]
-pub struct DsData<'a> {
+pub struct DsData {
     // (ClientIdentity, ClientInfo)
-    clients: HashMap<Vec<u8>, ClientInfo<'a>>,
+    clients: HashMap<Vec<u8>, ClientInfo>,
 
     // (group_id, epoch)
     groups: HashMap<Vec<u8>, u64>,
