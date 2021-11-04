@@ -1,5 +1,4 @@
 use mls_group::{proposals::StagedProposal, staged_commit::StagedCommit};
-use tls_codec::Serialize;
 
 use super::*;
 
@@ -37,7 +36,7 @@ impl ManagedGroup {
 
         // Check the type of message we received
         let mut membership_tag_required = false;
-        let (plaintext, aad_option) = match message {
+        let (mut plaintext, aad_option) = match message {
             // If it is a ciphertext we decrypt it and return the plaintext message.
             // Attempting to decrypt it will also check the bounds of the epoch.
             InboundMessage::Ciphertext(ciphertext) => {
@@ -53,13 +52,14 @@ impl ManagedGroup {
                 // We expect a membership tag for plaintext messages
                 // TODO #106: Membership tag is not expected for external senders
                 membership_tag_required = true;
+
                 (plaintext, None)
             }
         };
 
         // Check that the sender is a valid member of the tree
         // The sender index must be within the tree and the corresponding leaf node must not be blank
-        let sender = plaintext.sender().to_leaf_index();
+        let sender = plaintext.sender_index();
         if sender > self.group.tree().leaf_count() || self.group.tree().nodes[sender].is_blank() {
             return Err(ManagedGroupError::InvalidMessage(
                 InvalidMessageError::UnknownSender,
@@ -75,11 +75,6 @@ impl ManagedGroup {
             .credential()
             .clone();
 
-        // Get the serialized group context for further verification
-        let serialized_context = self.group.context().tls_serialize_detached().map_err(|_| {
-            ManagedGroupError::LibraryError("Could not serialize group context".into())
-        })?;
-
         // Verifiy the membership tag if needed
         if membership_tag_required {
             if !plaintext.has_membership_tag() {
@@ -87,18 +82,11 @@ impl ManagedGroup {
                     InvalidMessageError::MissingMembershipTag,
                 ));
             }
-            plaintext
-                .verify_membership(
-                    backend,
-                    serialized_context.as_slice(),
-                    self.group.epoch_secrets().membership_key(),
-                )
-                .map_err(|_| {
-                    ManagedGroupError::InvalidMessage(InvalidMessageError::MembershipTagMismatch)
-                })?;
+            // This sets the context implicitly.
+            self.group.verify_membership_tag(backend, &mut plaintext)?;
         }
 
-        // Check that if the message is a commit the confirmation tag is present
+        // Check that if the message is a commit and the confirmation tag is present
         if plaintext.is_commit() && plaintext.confirmation_tag().is_none() {
             return Err(ManagedGroupError::InvalidMessage(
                 InvalidMessageError::MissingConfirmationTag,
@@ -142,20 +130,11 @@ impl ManagedGroup {
         // If a signature key is provided it will be used,
         // otherwise we take the key from the credential
 
-        let serialized_context = self.group.context().tls_serialize_detached().map_err(|_| {
-            ManagedGroupError::LibraryError("Could not serialize group context".into())
-        })?;
-
-        let verifiable_plaintext = VerifiableMlsPlaintext::from_plaintext(
-            message.plaintext,
-            Some(serialized_context.as_slice()),
-        );
-
         let plaintext: MlsPlaintext = match signature_key {
-            Some(signature_public_key) => {
-                verifiable_plaintext.verify_with_key(backend, &signature_public_key)?
-            }
-            None => verifiable_plaintext.verify(backend, &message.credential)?,
+            Some(signature_public_key) => message
+                .plaintext
+                .verify_with_key(backend, &signature_public_key)?,
+            None => message.plaintext.verify(backend, &message.credential)?,
         };
 
         Ok(match plaintext.content() {
@@ -204,7 +183,7 @@ impl ManagedGroup {
 
 /// Inbound message from the DS.
 pub enum InboundMessage {
-    Plaintext(MlsPlaintext),
+    Plaintext(VerifiableMlsPlaintext),
     Ciphertext(MlsCiphertext),
 }
 
@@ -221,7 +200,7 @@ impl InboundMessage {
 /// Use this to inspect the [Credential] of the message sender
 /// and the optional `aad` if the original message was an [MlsCiphertext].
 pub struct UnverifiedMessage {
-    plaintext: MlsPlaintext,
+    plaintext: VerifiableMlsPlaintext,
     credential: Credential,
     aad_option: Option<Vec<u8>>,
 }

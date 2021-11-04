@@ -241,11 +241,13 @@ impl ManagedTestSetup {
             CodecUse::StructMessages => MlsMessageIn::from(message.clone()),
         };
         let clients = self.clients.borrow();
+        println!("Getting here 5.");
         // Distribute message to all members.
         for (_index, member_id) in &group.members {
             let member = clients.get(member_id).unwrap().borrow();
             member.receive_messages_for_group(&message)?;
         }
+        println!("Getting here 6.");
         // Get the current tree and figure out who's still in the group.
         let sender = clients.get(sender_id).unwrap().borrow();
         let sender_groups = sender.groups.borrow();

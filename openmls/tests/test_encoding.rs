@@ -123,12 +123,13 @@ fn test_update_proposal_encoding() {
         let update_encoded = update
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
-        let update_decoded =
+        let mut update_decoded =
             match VerifiableMlsPlaintext::tls_deserialize(&mut update_encoded.as_slice()) {
                 Ok(a) => a,
                 Err(err) => panic!("Error decoding MPLSPlaintext Update: {:?}", err),
-            }
-            .set_context(&group_state.context().tls_serialize_detached().unwrap())
+            };
+        update_decoded.set_context(group_state.context().tls_serialize_detached().unwrap());
+        let update_decoded = update_decoded
             .verify(&crypto, credential_bundle.credential())
             .expect("Error verifying MlsPlaintext");
 
@@ -180,14 +181,13 @@ fn test_add_proposal_encoding() {
         let add_encoded = add
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
-        let add_decoded =
-            match VerifiableMlsPlaintext::tls_deserialize(&mut add_encoded.as_slice()) {
-                Ok(a) => a,
-                Err(err) => panic!("Error decoding MPLSPlaintext Add: {:?}", err),
-            }
-            .set_context(&group_state.context().tls_serialize_detached().unwrap())
-            .verify(&crypto, credential_bundle.credential())
-            .expect("Error verifying MlsPlaintext");
+        let add_decoded = match VerifiableMlsPlaintext::tls_deserialize(&mut add_encoded.as_slice())
+        {
+            Ok(a) => group_state
+                .verify(a, &crypto)
+                .expect("Error verifying MlsPlaintext"),
+            Err(err) => panic!("Error decoding MPLSPlaintext Add: {:?}", err),
+        };
 
         assert_eq!(add, add_decoded);
     }
@@ -222,12 +222,11 @@ fn test_remove_proposal_encoding() {
             .expect("Could not encode proposal.");
         let remove_decoded =
             match VerifiableMlsPlaintext::tls_deserialize(&mut remove_encoded.as_slice()) {
-                Ok(a) => a,
+                Ok(a) => group_state
+                    .verify(a, &crypto)
+                    .expect("Error verifying MlsPlaintext"),
                 Err(err) => panic!("Error decoding MPLSPlaintext Remove: {:?}", err),
-            }
-            .set_context(&group_state.context().tls_serialize_detached().unwrap())
-            .verify(&crypto, credential_bundle.credential())
-            .expect("Error verifying MlsPlaintext");
+            };
 
         assert_eq!(remove, remove_decoded);
     }
@@ -321,12 +320,11 @@ fn test_commit_encoding() {
         let commit_encoded = commit.tls_serialize_detached().unwrap();
         let commit_decoded =
             match VerifiableMlsPlaintext::tls_deserialize(&mut commit_encoded.as_slice()) {
-                Ok(a) => a,
+                Ok(a) => group_state
+                    .verify(a, &crypto)
+                    .expect("Error verifying MlsPlaintext"),
                 Err(err) => panic!("Error decoding MPLSPlaintext Commit: {:?}", err),
-            }
-            .set_context(&group_state.context().tls_serialize_detached().unwrap())
-            .verify(&crypto, alice_credential_bundle.credential())
-            .expect("Error verifying MlsPlaintext");
+            };
 
         assert_eq!(commit, commit_decoded);
     }

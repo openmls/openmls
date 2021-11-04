@@ -45,15 +45,15 @@ fn codec_plaintext() {
                 payload: MlsPlaintextContentType::Application(vec![4, 5, 6].into()),
             },
         )
-        .with_context(serialized_context.as_slice());
+        .with_context(serialized_context.clone());
         let orig: MlsPlaintext = signature_input
             .sign(&crypto, &credential_bundle)
             .expect("Signing failed.");
 
         let enc = orig.tls_serialize_detached().unwrap();
-        let copy = VerifiableMlsPlaintext::tls_deserialize(&mut enc.as_slice()).unwrap();
+        let mut copy = VerifiableMlsPlaintext::tls_deserialize(&mut enc.as_slice()).unwrap();
+        copy.set_context(serialized_context);
         let copy = copy
-            .set_context(&serialized_context)
             .verify(&crypto, credential_bundle.credential())
             .unwrap();
         assert_eq!(orig, copy);
@@ -99,7 +99,7 @@ fn codec_ciphertext() {
                 content_type: ContentType::Application,
             },
         )
-        .with_context(serialized_context.as_slice());
+        .with_context(serialized_context);
         let plaintext: MlsPlaintext = signature_input
             .sign(&crypto, &credential_bundle)
             .expect("Signing failed.");
@@ -181,7 +181,7 @@ fn wire_format_checks() {
                 payload: MlsPlaintextContentType::Application(vec![4, 5, 6].into()),
             },
         )
-        .with_context(serialized_context.as_slice());
+        .with_context(serialized_context);
         let mut plaintext: MlsPlaintext = signature_input
             .sign(&crypto, &credential_bundle)
             .expect("Signing failed.");
@@ -291,25 +291,31 @@ fn membership_tag() {
             crypto,
         )
         .unwrap();
+        let serialized_context: Vec<u8> = group_context.tls_serialize_detached().unwrap();
 
-        let serialized_context = &group_context.tls_serialize_detached().unwrap() as &[u8];
+        let verifiable_mls_plaintext = VerifiableMlsPlaintext::from_plaintext(
+            mls_plaintext.clone(),
+            serialized_context.clone(),
+        );
 
         println!(
             "Membership tag error: {:?}",
-            mls_plaintext.verify_membership(crypto, serialized_context, &membership_key)
+            verifiable_mls_plaintext.verify_membership(crypto, &membership_key)
         );
 
         // Verify signature & membership tag
-        assert!(mls_plaintext
-            .verify_membership(crypto, serialized_context, &membership_key)
+        assert!(verifiable_mls_plaintext
+            .verify_membership(crypto, &membership_key)
             .is_ok());
 
         // Change the content of the plaintext message
         mls_plaintext.set_content(MlsPlaintextContentType::Application(vec![7, 8, 9].into()));
+        let verifiable_mls_plaintext =
+            VerifiableMlsPlaintext::from_plaintext(mls_plaintext.clone(), serialized_context);
 
         // Expect the signature & membership tag verification to fail
-        assert!(mls_plaintext
-            .verify_membership(crypto, serialized_context, &membership_key)
+        assert!(verifiable_mls_plaintext
+            .verify_membership(crypto, &membership_key)
             .is_err());
     }
 }
@@ -544,7 +550,10 @@ fn unknown_sender() {
         )
         .expect("Encryption error");
 
-        let received_message = group_charlie.decrypt(&enc_message, crypto);
+        let received_message = group_charlie
+            .decrypt(&enc_message, crypto)
+            .expect("error decrypting message");
+        let received_message = group_charlie.verify(received_message, crypto);
         assert_eq!(
             received_message.unwrap_err(),
             MlsGroupError::MlsPlaintextError(MlsPlaintextError::UnknownSender)
@@ -690,181 +699,215 @@ fn confirmation_tag_presence() {
 }
 
 ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: CiphersuiteName) {
-    let crypto = &OpenMlsRustCrypto::default();
 
-    log::info!("Testing ciphersuite {:?}", ciphersuite_name);
-    let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
-    let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+        let crypto = &OpenMlsRustCrypto::default();
 
-    // Define credential bundles
-    let alice_credential_bundle = CredentialBundle::new(
-        "Alice".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        log::info!("Testing ciphersuite {:?}", ciphersuite_name);
+        let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
+        let group_aad = b"Alice's test group";
+        let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
 
-        crypto,
-    )
-    .unwrap();
-    let bob_credential_bundle = CredentialBundle::new(
-        "Bob".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_scheme(),
-
-        crypto,
-    )
-    .unwrap();
-
-    // Generate KeyPackages
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle,  crypto, Vec::new())
-            .unwrap();
-    let bob_key_package = bob_key_package_bundle.key_package();
-
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle,  crypto, Vec::new())
-            .unwrap();
-
-    // Alice creates a group
-    let group_id = [1, 2, 3, 4];
-    let mut group_alice = MlsGroup::new(
-        &group_id,
-        ciphersuite.name(),
-
-        crypto,
-        alice_key_package_bundle,
-        MlsGroupConfig::default(),
-        None, /* Initial PSK */
-        None, /* MLS version */
-    )
-    .unwrap();
-
-    // Alice adds Bob
-    let bob_add_proposal = group_alice
-        .create_add_proposal(
-            framing_parameters,
-            &alice_credential_bundle,
-            bob_key_package.clone(),
-            crypto,
-        ).expect("Could not create proposal.");
-
-    let (mut commit, _welcome, _kpb_option) = group_alice
-        .create_commit(
-            framing_parameters,
-            &alice_credential_bundle,
-            Proposals {
-                proposals_by_reference: &[&bob_add_proposal],
-                proposals_by_value: &[],
-            },
-            false,
-            None,
-
+        // Define credential bundles
+        let alice_credential_bundle = CredentialBundle::new(
+            "Alice".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
             crypto,
         )
-        .expect("Error creating Commit");
+        .unwrap();
+        let bob_credential_bundle = CredentialBundle::new(
+            "Bob".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+            crypto,
+        )
+        .unwrap();
 
-    let original_encoded_commit = commit.tls_serialize_detached().unwrap();
-    let input_commit = VerifiableMlsPlaintext::tls_deserialize(&mut original_encoded_commit.as_slice()).unwrap();
-    let decoded_commit = group_alice.verify(input_commit, crypto).expect("Error verifying valid commit message");
-    assert_eq!(decoded_commit.tls_serialize_detached().unwrap(), original_encoded_commit);
+        // Generate KeyPackages
+        let bob_key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &bob_credential_bundle,
+            crypto,
+            Vec::new(),
+        )
+        .unwrap();
+        let bob_key_package = bob_key_package_bundle.key_package();
 
-    // Remove membership tag.
-    let good_membership_tag = commit.membership_tag().clone();
-    commit.unset_membership_tag();
-    let membership_error = commit.verify_membership(
-        crypto,
-        &group_alice.context().tls_serialize_detached().unwrap(),
-        group_alice.epoch_secrets().membership_key())
-        .err()
-        .expect("Membership verification should have returned an error");
-    assert_eq!(
-        membership_error,
-        MlsPlaintextError::VerificationError(VerificationError::MissingMembershipTag));
+        let alice_key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &alice_credential_bundle,
+            crypto,
+            Vec::new(),
+        )
+        .unwrap();
 
-    // Tamper with membership tag.
-    let mut modified_membership_tag = good_membership_tag
-        .clone()
-        .expect("There should have been a membership tag.");
-    modified_membership_tag.0.mac_value[0] ^= 0xFF;
-    commit.set_membership_tag_test(modified_membership_tag);
-    let membership_error = commit.verify_membership(
-        crypto,
-        &group_alice.context().tls_serialize_detached().unwrap(),
-        group_alice.epoch_secrets().membership_key())
-        .err()
-        .expect("Membership verification should have returned an error");
-    assert_eq!(
-        membership_error,
-        MlsPlaintextError::VerificationError(VerificationError::InvalidMembershipTag));
+        // Alice creates a group
+        let group_id = [1, 2, 3, 4];
+        let mut group_alice = MlsGroup::new(
+            &group_id,
+            ciphersuite.name(),
+            crypto,
+            alice_key_package_bundle,
+            MlsGroupConfig::default(),
+            None, /* Initial PSK */
+            None, /* MLS version */
+        )
+        .unwrap();
 
-    // Tamper with signature.
-    let good_signature = commit.signature().clone();
-    commit.invalidate_signature();
-    let encoded_commit = commit.tls_serialize_detached().unwrap();
-    let input_commit = VerifiableMlsPlaintext::tls_deserialize(&mut encoded_commit.as_slice()).unwrap();
-    let decoded_commit = group_alice.verify(input_commit, crypto);
-    assert_eq!(
-        decoded_commit.err().expect("group.verify() should have returned an error"),
-        MlsGroupError::MlsPlaintextError(MlsPlaintextError::CredentialError(CredentialError::InvalidSignature)));
+        // Alice adds Bob
+        let bob_add_proposal = group_alice
+            .create_add_proposal(
+                framing_parameters,
+                &alice_credential_bundle,
+                bob_key_package.clone(),
+                crypto,
+            )
+            .expect("Could not create proposal.");
 
-    // Fix commit
-    commit.set_signature(good_signature);
-    commit.set_membership_tag_test(good_membership_tag.unwrap());
+        let (mut commit, _welcome, _kpb_option) = group_alice
+            .create_commit(
+                framing_parameters,
+                &alice_credential_bundle,
+                Proposals {
+                    proposals_by_reference: &[&bob_add_proposal],
+                    proposals_by_value: &[],
+                },
+                false,
+                None,
+                crypto,
+            )
+            .expect("Error creating Commit");
 
-    // Remove confirmation tag.
-    let good_confirmation_tag = commit.confirmation_tag().cloned();
-    commit.unset_confirmation_tag();
+        let original_encoded_commit = commit.tls_serialize_detached().unwrap();
+        let mut input_commit =
+            VerifiableMlsPlaintext::tls_deserialize(&mut original_encoded_commit.as_slice())
+                .unwrap();
+        let original_input_commit = input_commit.clone();
 
-    let mut proposal_store = ProposalStore::new();
-    proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, crypto, bob_add_proposal.clone())
-            .expect("Could not create staged proposal."),
-    );
+        // Remove membership tag.
+        let good_membership_tag = input_commit.membership_tag().clone();
+        input_commit.unset_membership_tag();
+        let membership_error = group_alice
+            .verify_membership_tag(crypto, &mut input_commit)
+            .err()
+            .expect("Membership verification should have returned an error");
 
-    let error = group_alice
-        .stage_commit(&commit, &proposal_store, &[], None, crypto)
-        .expect_err("Staging commit should have yielded an error.");
-    assert_eq!(
-        error,
-        MlsGroupError::StageCommitError(StageCommitError::ConfirmationTagMissing));
+        assert_eq!(
+            membership_error,
+            MlsGroupError::MlsPlaintextError(MlsPlaintextError::VerificationError(
+                VerificationError::MissingMembershipTag
+            ))
+        );
 
-    // Tamper with confirmation tag.
-    let mut modified_confirmation_tag = good_confirmation_tag
-        .clone()
-        .expect("There should have been a membership tag.");
-    modified_confirmation_tag.0.mac_value[0] ^= 0xFF;
-    commit.set_confirmation_tag(modified_confirmation_tag);
-    let serialized_group_before = serde_json::to_string(&group_alice).unwrap();
+        // Tamper with membership tag.
+        let mut modified_membership_tag = good_membership_tag
+            .clone()
+            .expect("There should have been a membership tag.");
+        modified_membership_tag.0.mac_value[0] ^= 0xFF;
+        input_commit.set_membership_tag_test(modified_membership_tag);
+        let membership_error = group_alice
+            .verify_membership_tag(crypto, &mut input_commit)
+            .err()
+            .expect("Membership verification should have returned an error");
 
-    proposal_store.empty();
-    proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, crypto, bob_add_proposal.clone())
-            .expect("Could not create staged proposal."),
-    );
+        assert_eq!(
+            membership_error,
+            MlsGroupError::MlsPlaintextError(MlsPlaintextError::VerificationError(
+                VerificationError::InvalidMembershipTag
+            ))
+        );
 
-    let error = group_alice
-        .stage_commit(&commit, &proposal_store, &[], None, crypto)
-        .expect_err("Staging commit should have yielded an error.");
-    assert_eq!(
-        error,
-        MlsGroupError::StageCommitError(StageCommitError::ConfirmationTagMismatch));
-    let serialized_group_after = serde_json::to_string(&group_alice).unwrap();
-    assert_eq!(serialized_group_before, serialized_group_after);
+        let decoded_commit = group_alice
+            .verify(original_input_commit, crypto)
+            .expect("Error verifying valid commit message");
+        assert_eq!(
+            decoded_commit.tls_serialize_detached().unwrap(),
+            original_encoded_commit
+        );
 
-    // Fix commit again and stage it.
-    commit.set_confirmation_tag(good_confirmation_tag.unwrap());
-    let encoded_commit = commit.tls_serialize_detached().unwrap();
-    let input_commit = VerifiableMlsPlaintext::tls_deserialize(&mut encoded_commit.as_slice()).unwrap();
-    let decoded_commit = group_alice.verify(input_commit, crypto).expect("Error verifying commit");
-    assert_eq!(original_encoded_commit, decoded_commit.tls_serialize_detached().unwrap());
+        // Tamper with signature.
+        let good_signature = commit.signature().clone();
+        commit.invalidate_signature();
+        let encoded_commit = commit.tls_serialize_detached().unwrap();
+        let input_commit =
+            VerifiableMlsPlaintext::tls_deserialize(&mut encoded_commit.as_slice()).unwrap();
+        let decoded_commit = group_alice.verify(input_commit, crypto);
+        assert_eq!(
+            decoded_commit
+                .err()
+                .expect("group.verify() should have returned an error"),
+            MlsGroupError::MlsPlaintextError(MlsPlaintextError::CredentialError(
+                CredentialError::InvalidSignature
+            ))
+        );
 
-    proposal_store.empty();
-    proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, crypto, bob_add_proposal)
-            .expect("Could not create staged proposal."),
-    );
+        // Fix commit
+        commit.set_signature(good_signature);
+        commit.set_membership_tag_test(good_membership_tag.unwrap());
 
-    group_alice
-        .stage_commit(&decoded_commit, &proposal_store, &[], None, crypto)
-        .expect("Alice: Error staging commit.");
-});
+        // Remove confirmation tag.
+        let good_confirmation_tag = commit.confirmation_tag().cloned();
+        commit.unset_confirmation_tag();
+
+        let mut proposal_store = ProposalStore::new();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, crypto, bob_add_proposal.clone())
+                .expect("Could not create staged proposal."),
+        );
+
+        let error = group_alice
+            .stage_commit(&commit, &proposal_store, &[], None, crypto)
+            .expect_err("Staging commit should have yielded an error.");
+        assert_eq!(
+            error,
+            MlsGroupError::StageCommitError(StageCommitError::ConfirmationTagMissing)
+        );
+
+        // Tamper with confirmation tag.
+        let mut modified_confirmation_tag = good_confirmation_tag
+            .clone()
+            .expect("There should have been a membership tag.");
+        modified_confirmation_tag.0.mac_value[0] ^= 0xFF;
+        commit.set_confirmation_tag(modified_confirmation_tag);
+        let serialized_group_before = serde_json::to_string(&group_alice).unwrap();
+
+        proposal_store.empty();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, crypto, bob_add_proposal.clone())
+                .expect("Could not create staged proposal."),
+        );
+
+        let error = group_alice
+            .stage_commit(&commit, &proposal_store, &[], None, crypto)
+            .expect_err("Staging commit should have yielded an error.");
+        assert_eq!(
+            error,
+            MlsGroupError::StageCommitError(StageCommitError::ConfirmationTagMismatch)
+        );
+        let serialized_group_after = serde_json::to_string(&group_alice).unwrap();
+        assert_eq!(serialized_group_before, serialized_group_after);
+
+        // Fix commit again and stage it.
+        commit.set_confirmation_tag(good_confirmation_tag.unwrap());
+        let encoded_commit = commit.tls_serialize_detached().unwrap();
+        let input_commit =
+            VerifiableMlsPlaintext::tls_deserialize(&mut encoded_commit.as_slice()).unwrap();
+        let decoded_commit = group_alice
+            .verify(input_commit, crypto)
+            .expect("Error verifying commit");
+        assert_eq!(
+            original_encoded_commit,
+            decoded_commit.tls_serialize_detached().unwrap()
+        );
+
+        proposal_store.empty();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, crypto, bob_add_proposal)
+                .expect("Could not create staged proposal."),
+        );
+
+        group_alice
+            .stage_commit(&decoded_commit, &proposal_store, &[], None, crypto)
+            .expect("Alice: Error staging commit.");
+    }
+);

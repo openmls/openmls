@@ -319,6 +319,7 @@ fn test_invalid_plaintext() {
         .clone();
 
     let clients = setup.clients.borrow();
+    println!("Getting here 1.");
     let client = clients.get(client_id).unwrap().borrow();
 
     let (mls_message, _welcome_option) = client
@@ -327,6 +328,7 @@ fn test_invalid_plaintext() {
 
     drop(client);
     drop(clients);
+    println!("Getting here 2.");
 
     // Tamper with the message such that signature verification fails
     let mut msg_invalid_signature = mls_message.clone();
@@ -339,11 +341,12 @@ fn test_invalid_plaintext() {
         .expect_err("No error when distributing message with invalid signature.");
 
     assert_eq!(
-        ClientError::ManagedGroupError(ManagedGroupError::CredentialError(
-            CredentialError::InvalidSignature
-        )),
+        ClientError::ManagedGroupError(ManagedGroupError::Group(MlsGroupError::MlsPlaintextError(
+            MlsPlaintextError::CredentialError(CredentialError::InvalidSignature)
+        ))),
         error
     );
+    println!("Getting here 3.");
 
     // Tamper with the message such that sender lookup fails
     let mut msg_invalid_sender = mls_message;
@@ -354,15 +357,16 @@ fn test_invalid_plaintext() {
         }),
         MlsMessageOut::Ciphertext(_) => panic!("This should be a plaintext!"),
     };
+    println!("Getting here 4.");
 
     let error = setup
         .distribute_to_members(client_id, group, &msg_invalid_sender)
         .expect_err("No error when distributing message with invalid signature.");
 
     assert_eq!(
-        ClientError::ManagedGroupError(ManagedGroupError::InvalidMessage(
-            InvalidMessageError::UnknownSender
-        )),
+        ClientError::ManagedGroupError(ManagedGroupError::Group(MlsGroupError::MlsPlaintextError(
+            MlsPlaintextError::UnknownSender
+        ))),
         error
-    )
+    );
 }

@@ -186,7 +186,12 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
             &crypto,
         )
         .unwrap();
-    let mls_plaintext_application = group.decrypt(&mls_ciphertext_application, &crypto).unwrap();
+    let verifiable_mls_plaintext_application =
+        group.decrypt(&mls_ciphertext_application, &crypto).unwrap();
+    // Sets the context implicitly.
+    let mls_plaintext_application = group
+        .verify(verifiable_mls_plaintext_application, &crypto)
+        .unwrap();
 
     let encryption_target = match random_u32() % 3 {
         0 => commit_pt.clone(),
@@ -233,7 +238,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
 }
 
 #[test]
-fn write_test_vectors() {
+fn write_test_vectors_msg() {
     let mut tests = Vec::new();
     const NUM_TESTS: usize = 100;
 

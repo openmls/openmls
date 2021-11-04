@@ -455,7 +455,9 @@ fn group_operations() {
             .create_application_message(&[], &message_alice, &alice_credential_bundle, 0, &crypto)
             .unwrap();
         let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_alice, &crypto) {
-            Ok(mls_plaintext) => mls_plaintext,
+            Ok(mls_plaintext) => group_bob
+                .verify(mls_plaintext, &crypto)
+                .expect("Error verifying plaintext"),
             Err(e) => panic!("Error decrypting MlsCiphertext: {:?}", e),
         };
         assert_eq!(
@@ -780,11 +782,15 @@ fn group_operations() {
             .unwrap();
         let mls_plaintext_alice =
             match group_alice.decrypt(&mls_ciphertext_charlie.clone(), &crypto) {
-                Ok(mls_plaintext) => mls_plaintext,
+                Ok(mls_plaintext) => group_alice
+                    .verify(mls_plaintext, &crypto)
+                    .expect("Error verifying plaintext"),
                 Err(e) => panic!("Error decrypting MlsCiphertext: {:?}", e),
             };
         let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_charlie, &crypto) {
-            Ok(mls_plaintext) => mls_plaintext,
+            Ok(mls_plaintext) => group_bob
+                .verify(mls_plaintext, &crypto)
+                .expect("Error verifying plaintext"),
             Err(e) => panic!("Error decrypting MlsCiphertext: {:?}", e),
         };
         assert_eq!(

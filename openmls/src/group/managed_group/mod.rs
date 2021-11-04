@@ -45,8 +45,6 @@ pub use events::*;
 pub(crate) use resumption::ResumptionSecretStore;
 use ser::*;
 
-use tls_codec::Serialize;
-
 use super::proposals::ProposalStore;
 
 /// A `ManagedGroup` represents an [MlsGroup] with
@@ -409,16 +407,16 @@ impl ManagedGroup {
 
 /// Unified message type for input to the managed API
 #[derive(Debug, Clone)]
-pub enum MlsMessageIn<'a> {
+pub enum MlsMessageIn {
     /// An OpenMLS `MlsPlaintext`.
-    Plaintext(VerifiableMlsPlaintext<'a>),
+    Plaintext(VerifiableMlsPlaintext),
 
     /// An OpenMLS `MlsCiphertext`.
     Ciphertext(MlsCiphertext),
 }
 
 #[cfg(any(feature = "test-utils", test))]
-impl<'a> MlsMessageIn<'a> {
+impl MlsMessageIn {
     pub fn group_id(&self) -> &[u8] {
         match self {
             MlsMessageIn::Ciphertext(m) => m.group_id().as_slice(),
@@ -476,7 +474,7 @@ impl MlsMessageOut {
 }
 
 #[cfg(any(feature = "test-utils", test))]
-impl<'a> From<MlsMessageOut> for MlsMessageIn<'a> {
+impl From<MlsMessageOut> for MlsMessageIn {
     fn from(message: MlsMessageOut) -> Self {
         match message {
             MlsMessageOut::Plaintext(pt) => {
