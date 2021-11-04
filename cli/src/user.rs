@@ -191,12 +191,21 @@ impl User {
                             group.pending_proposals.push(msg);
                         }
                         MlsPlaintextContentType::Commit(_commit) => {
+                            let mut proposal_store = ProposalStore::new();
+                            for proposal in &group.pending_proposals {
+                                proposal_store.add(
+                                    StagedProposal::from_mls_plaintext(
+                                        Config::ciphersuite(CIPHERSUITE)
+                                            .map_err(|e| format!("{}", e))?,
+                                        &self.crypto,
+                                        proposal.clone(),
+                                    )
+                                    .map_err(|e| format!("{}", e))?,
+                                )
+                            }
                             match group.mls_group.borrow_mut().stage_commit(
                                 &msg,
-                                &(group
-                                    .pending_proposals
-                                    .iter()
-                                    .collect::<Vec<&MlsPlaintext>>()),
+                                &proposal_store,
                                 &[], // TODO: store key packages.
                                 None,
                                 &self.crypto,
@@ -325,10 +334,19 @@ impl User {
             )
             .expect("Error creating commit");
         let welcome_msg = welcome_msg.expect("Welcome message wasn't created by create_commit.");
+        let mut proposal_store = ProposalStore::new();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(
+                Config::ciphersuite(CIPHERSUITE).map_err(|e| format!("{}", e))?,
+                &self.crypto,
+                add_proposal.clone(),
+            )
+            .map_err(|e| format!("{}", e))?,
+        );
         let staged_commit = group
             .mls_group
             .borrow_mut()
-            .stage_commit(&commit, &[&add_proposal], &[], None, &self.crypto)
+            .stage_commit(&commit, &proposal_store, &[], None, &self.crypto)
             .expect("error applying commit");
         group.mls_group.borrow_mut().merge_commit(staged_commit);
 
