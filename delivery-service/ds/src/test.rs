@@ -347,6 +347,9 @@ async fn test_group() {
     let mls_plaintext = group
         .decrypt(&mls_ciphertext, crypto)
         .expect("Error decrypting MlsCiphertext");
+    let mls_plaintext = group
+        .verify(mls_plaintext, crypto)
+        .expect("Error verifying plaintext");
     assert_eq!(
         client2_message,
         mls_plaintext.as_application_message().unwrap()
