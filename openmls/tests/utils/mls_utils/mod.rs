@@ -220,10 +220,23 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             let key_package_bundle = key_package_bundle_option.unwrap();
             // Apply the commit to the initial group member's group state using
             // the key package bundle returned by the create_commit earlier.
+            let mut proposal_store = ProposalStore::new();
+            for proposal in proposal_list {
+                proposal_store.add(
+                    StagedProposal::from_mls_plaintext(
+                        &Ciphersuite::new(group_config.ciphersuite)
+                            .expect("Could not create ciphersuite."),
+                        &crypto,
+                        proposal,
+                    )
+                    .expect("Could not create staged proposal."),
+                );
+            }
+
             let staged_commit = mls_group
                 .stage_commit(
                     &commit_mls_plaintext,
-                    &(proposal_list.iter().collect::<Vec<&MlsPlaintext>>()),
+                    &proposal_store,
                     &[key_package_bundle],
                     None,
                     &crypto,

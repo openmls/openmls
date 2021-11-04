@@ -58,7 +58,9 @@ impl TryFrom<u8> for ProposalType {
 /// Type of Proposal, either by value or by reference
 /// We only implement the values (1, 2), other values are not valid
 /// and will yield `ProposalOrRefTypeError::UnknownValue` when decoded.
-#[derive(PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize)]
+#[derive(
+    PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize, Serialize, Deserialize,
+)]
 #[repr(u8)]
 pub enum ProposalOrRefType {
     Proposal = 1,

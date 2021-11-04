@@ -62,8 +62,10 @@ implement_error! {
 implement_error! {
     pub enum InvalidMessageError {
         Simple {
+            MissingMembershipTag =
+                "A message without a membership tag received.",
             MembershipTagMismatch =
-                "A Proposal with an invalid membership tag was received.",
+                "A message with an invalid membership tag was received.",
             UnknownSender =
                 "Could not retrieve credential for the given sender.",
             InvalidProposal =
@@ -72,6 +74,8 @@ implement_error! {
                 "A commit contained an invalid proposal.",
             InvalidApplicationMessage =
                 "The application message is invalid.",
+            WrongEpoch = "The epoch does not match the group's epoch.",
+            MissingConfirmationTag = "The confirmation tag is missing in the Commit message.",
         }
         Complex {
             InvalidCiphertext(MlsCiphertextError) =
