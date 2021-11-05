@@ -2,6 +2,7 @@
 //! representation.
 
 use std::collections::HashMap;
+use std::convert::TryFrom;
 use std::hash::Hash;
 
 use super::treemath::*;
@@ -26,65 +27,87 @@ pub(crate) struct ABinaryTree<T: Default + Clone + Addressable> {
     node_map: HashMap<T::Address, NodeIndex>,
 }
 
-/// FIXME: Early returns! Remove nestings if we return early anyway.
+impl<T: Default + Clone + Addressable> TryFrom<Vec<T>> for ABinaryTree<T> {
+    type Error = ABinaryTreeError;
+
+    fn try_from(nodes: Vec<T>) -> Result<Self, Self::Error> {
+        Self::new(&nodes)
+    }
+}
 
 impl<T: Default + Clone + Addressable> ABinaryTree<T> {
-    /// Create a tree from the given vector of nodes. The nodes are ordered in
-    /// the array-representation. Throws a `InvalidNumberOfNodes` error if the
-    /// number of nodes does not allow the creation of a full, left-balanced
-    /// binary tree and an `OutOfRange` error if the number of given nodes
-    /// exceeds the range of `NodeIndex`.
-    /// FIXME: Make clear that trees can't be empty.
-    /// FIXME: Implement From that calls new, such that the vec is immediately dropped.
+    /// Create a tree from the given vector of nodes. The vector of nodes can't
+    /// be empty and has to yield a full, left-balanced binary tree. The nodes
+    /// in the tree are ordered in the array-representation. This function
+    /// throws a `InvalidNumberOfNodes` error if the number of nodes does not
+    /// allow the creation of a full, left-balanced binary tree and an
+    /// `OutOfRange` error if the number of given nodes exceeds the range of
+    /// `NodeIndex`.
     pub(crate) fn new(nodes: &[T]) -> Result<Self, ABinaryTreeError> {
         if nodes.len() > NodeIndex::max_value() as usize {
-            Err(ABinaryTreeError::OutOfRange)
+            return Err(ABinaryTreeError::OutOfRange);
         } else if nodes.len() % 2 != 1 {
-            Err(ABinaryTreeError::InvalidNumberOfNodes)
-        } else {
-            let mut node_map = HashMap::new();
-            for (i, node) in nodes.iter().enumerate() {
-                if let Some(address) = node.address() {
-                    if node_map.contains_key(&address) {
-                        return Err(ABinaryTreeError::AddressCollision);
-                    } else {
-                        node_map.insert(address, i as u32);
-                    }
-                }
-            }
-            Ok(ABinaryTree {
-                nodes: nodes.to_vec(),
-                node_map,
-            })
+            return Err(ABinaryTreeError::InvalidNumberOfNodes);
         }
+        let mut node_map = HashMap::new();
+        for (i, node) in nodes.iter().enumerate() {
+            if let Some(address) = node.address() {
+                if node_map.contains_key(&address) {
+                    return Err(ABinaryTreeError::AddressCollision);
+                }
+                node_map.insert(address, i as u32);
+            }
+        }
+        Ok(ABinaryTree {
+            nodes: nodes.to_vec(),
+            node_map,
+        })
     }
 
     /// Obtain a reference to the data contained in the `Node` at index
     /// `node_index`, where the indexing corresponds to the array representation
     /// of the underlying binary tree. Returns None if the index is outside of
     /// the tree.
-    /// FIXME: Make this private and change to node_by_index. Same for the mut variant.
-    pub(crate) fn node(&self, node_index: NodeIndex) -> std::option::Option<&T> {
+    fn node_by_index(&self, node_index: NodeIndex) -> std::option::Option<&T> {
         self.nodes.get(node_index as usize)
     }
 
     /// Obtain a reference to the data contained in the `Node` with `Address`
     /// `address`. Returns `None` if no node with the given address can be
     /// found.
-    pub(crate) fn node_by_address(&self, node_address: &T::Address) -> std::option::Option<&T> {
+    pub(crate) fn node(&self, node_address: &T::Address) -> std::option::Option<&T> {
         self.node_map
             .get(node_address)
             .map(|&node_index| self.nodes.get(node_index as usize))
             .flatten()
     }
 
-    /// Obtain a mutable reference to the data contained in the `Node` at index
-    /// `node_index`, where the indexing corresponds to the array representation
-    /// of the underlying binary tree. Returns an error if the index is outside
-    /// of the tree.
-    /// FIXME: Consider that changing the node might change the address.
-    pub(crate) fn node_mut(&mut self, node_index: NodeIndex) -> std::option::Option<&mut T> {
-        self.nodes.get_mut(node_index as usize)
+    /// Replaces the node with the given address with the given
+    /// `replacement_node`. Upon success, returns the replaced node. Returns an
+    /// error if the `node_address can't be found in the tree.`
+    pub(crate) fn replace(
+        &mut self,
+        node_address: &T::Address,
+        replacement_node: T,
+    ) -> Result<T, ABinaryTreeError> {
+        // Remove the old address from the map and retrieve the index.
+        let old_node_index = self
+            .node_map
+            .remove(node_address)
+            .ok_or(ABinaryTreeError::NodeNotFound)?;
+        // Double-check that the given index is actually inside the tree. This
+        // is explicitly to prevent swap_remove from panicking.
+        if old_node_index >= self.size() {
+            return Err(ABinaryTreeError::LibraryError);
+        }
+        // Insert the new address to the map
+        if let Some(new_address) = replacement_node.address() {
+            self.node_map.insert(new_address, old_node_index);
+        };
+        // Push the new node to the end of the vector, so we can do a
+        // `swap_remove`.
+        self.nodes.push(replacement_node);
+        Ok(self.nodes.swap_remove(old_node_index as usize))
     }
 
     /// Adds the given node as a new leaf to right side of the tree. To keep the
@@ -96,28 +119,25 @@ impl<T: Default + Clone + Addressable> ABinaryTree<T> {
     pub(crate) fn add_leaf(&mut self, node: T) -> Result<(), ABinaryTreeError> {
         // Prevent the tree from becoming too large.
         if self.nodes.len() > NodeIndex::max_value() as usize - 2 {
-            Err(ABinaryTreeError::OutOfRange)
-        } else {
-            // Make sure that the input node has an address.
-            let address = node.address().ok_or(ABinaryTreeError::InvalidNode)?;
-            // Check if a node with this address already exists in the tree.
-            if self.node_map.contains_key(&address) {
-                return Err(ABinaryTreeError::AddressCollision);
-            } else {
-                self.node_map.insert(address, (self.nodes.len() + 1) as u32);
-                self.nodes.push(T::default());
-                self.nodes.push(node);
-                Ok(())
-            }
+            return Err(ABinaryTreeError::OutOfRange);
+        } // Make sure that the input node has an address.
+        let address = node.address().ok_or(ABinaryTreeError::InvalidNode)?;
+        // Check if a node with this address already exists in the tree.
+        if self.node_map.contains_key(&address) {
+            return Err(ABinaryTreeError::AddressCollision);
         }
+        self.node_map.insert(address, (self.nodes.len() + 1) as u32);
+        self.nodes.push(T::default());
+        self.nodes.push(node);
+        Ok(())
     }
 
     /// Helper function to remove a node from the tree and the map.
     fn remove_node(&mut self) -> Result<(), ABinaryTreeError> {
         let node = self.nodes.pop().ok_or(ABinaryTreeError::NotEnoughNodes)?;
         if let Some(address) = node.address() {
-            self.node_map.remove(&address);
-            // FIXME: Add debug assert in case this returns something.
+            let removed_node = self.node_map.remove(&address);
+            debug_assert!(removed_node.is_some())
         }
         Ok(())
     }
@@ -127,20 +147,22 @@ impl<T: Default + Clone + Addressable> ABinaryTree<T> {
     pub(crate) fn remove(&mut self) -> Result<(), ABinaryTreeError> {
         // Check that there are enough nodes to remove.
         if self.nodes.len() < 2 {
-            Err(ABinaryTreeError::NotEnoughNodes)
-        } else {
-            self.remove_node()?;
-            self.remove_node()?;
-            Ok(())
+            return Err(ABinaryTreeError::NotEnoughNodes);
         }
+        self.remove_node()?;
+        self.remove_node()?;
+        Ok(())
     }
 
-    /// FIXME: Add function that allows `blanking`, i.e. setting a node to
-    /// default.
-
-    /// FIXME: Replace nodes instead of returning a mutable reference.
-
-    /// FIXME: Instead of taking a node reference, instead take an address.
+    /// Replace the node with the given `Address` with the `default` node and
+    /// return the replaced node. Returns an error if the given address doesn't
+    /// correspond to a node in the tree.
+    pub(crate) fn make_default(
+        &mut self,
+        node_address: &T::Address,
+    ) -> Result<T, ABinaryTreeError> {
+        self.replace(node_address, T::default())
+    }
 
     /// Return the number of nodes in the tree.
     pub(crate) fn size(&self) -> NodeIndex {
@@ -154,17 +176,18 @@ impl<T: Default + Clone + Addressable> ABinaryTree<T> {
         (self.size() + 1) / 2
     }
 
-    /// Compute the direct path from the node with the given index to the root
-    /// node and return the vector of indices of the nodes on the direct path,
-    /// where the indexing corresponds to the array representation of the
-    /// underlying binary tree.
-    pub(crate) fn direct_path(&self, node: &T) -> Result<Vec<&T>, ABinaryTreeError> {
-        let node_index = self.index(node).ok_or(ABinaryTreeError::OutOfBounds)?;
+    /// Compute the direct path from the node with the given `T::Address` to the
+    /// root node and return the vector of nodes on the direct path.
+    pub(crate) fn direct_path(&self, address: &T::Address) -> Result<Vec<&T>, ABinaryTreeError> {
+        let node_index = self.index(address).ok_or(ABinaryTreeError::NodeNotFound)?;
         let direct_path =
             direct_path(node_index, self.size()).map_err(|_| ABinaryTreeError::OutOfBounds)?;
         let mut direct_path_nodes = Vec::new();
         for node_index in direct_path {
-            direct_path_nodes.push(self.node(node_index).ok_or(ABinaryTreeError::OutOfBounds)?)
+            direct_path_nodes.push(
+                self.node_by_index(node_index)
+                    .ok_or(ABinaryTreeError::OutOfBounds)?,
+            )
         }
         Ok(direct_path_nodes)
     }
@@ -173,12 +196,15 @@ impl<T: Default + Clone + Addressable> ABinaryTree<T> {
     /// node and return the vector of indices of the nodes on the copath, where
     /// the indexing corresponds to the array representation of the underlying
     /// binary tree.
-    pub(crate) fn copath(&self, node: &T) -> Result<Vec<&T>, ABinaryTreeError> {
-        let node_index = self.index(node).ok_or(ABinaryTreeError::OutOfBounds)?;
+    pub(crate) fn copath(&self, address: &T::Address) -> Result<Vec<&T>, ABinaryTreeError> {
+        let node_index = self.index(address).ok_or(ABinaryTreeError::NodeNotFound)?;
         let copath = copath(node_index, self.size()).map_err(|_| ABinaryTreeError::OutOfBounds)?;
         let mut copath_nodes = Vec::new();
         for node_index in copath {
-            copath_nodes.push(self.node(node_index).ok_or(ABinaryTreeError::OutOfBounds)?)
+            copath_nodes.push(
+                self.node_by_index(node_index)
+                    .ok_or(ABinaryTreeError::OutOfBounds)?,
+            )
         }
         Ok(copath_nodes)
     }
@@ -186,12 +212,8 @@ impl<T: Default + Clone + Addressable> ABinaryTree<T> {
     /// Given a node, return the nodes index according to the array
     /// representation as defined in the MLS spec. If the node is not in the
     /// tree, return `None`.
-    /// FIXME: Find the node by address using the node_map.
-    pub(crate) fn index(&self, node: &T) -> Option<NodeIndex> {
-        self.nodes
-            .iter()
-            .position(|array_node| array_node.address() == node.address())
-            .map(|index| index as u32)
+    pub(crate) fn index(&self, address: &T::Address) -> Option<NodeIndex> {
+        self.node_map.get(address).copied()
     }
 
     /// Compute the lowest common ancestor of the nodes with the given indices,
@@ -200,13 +222,17 @@ impl<T: Default + Clone + Addressable> ABinaryTree<T> {
     /// indices is out of the bounds of the tree.
     pub(crate) fn lowest_common_ancestor(
         &self,
-        node_1: &T,
-        node_2: &T,
+        address_1: &T::Address,
+        address_2: &T::Address,
     ) -> Result<&T, ABinaryTreeError> {
-        let node_index_1 = self.index(node_1).ok_or(ABinaryTreeError::OutOfBounds)?;
-        let node_index_2 = self.index(node_2).ok_or(ABinaryTreeError::OutOfBounds)?;
+        let node_index_1 = self
+            .index(address_1)
+            .ok_or(ABinaryTreeError::NodeNotFound)?;
+        let node_index_2 = self
+            .index(address_2)
+            .ok_or(ABinaryTreeError::NodeNotFound)?;
         let lowest_common_ancestor = lowest_common_ancestor(node_index_1, node_index_2);
-        self.node(lowest_common_ancestor)
+        self.node_by_index(lowest_common_ancestor)
             .ok_or(ABinaryTreeError::OutOfBounds)
     }
 }
@@ -219,6 +245,8 @@ implement_error! {
         OutOfBounds = "The given index is outside of the tree.",
         AddressCollision = "Found two nodes with the same address.",
         InvalidNode = "Can't add the default node to the tree.",
+        NodeNotFound = "Can't find the node with the given address in the tree.",
+        LibraryError = "An inconsistency in the internal state of the tree was detected.",
     }
 }
 

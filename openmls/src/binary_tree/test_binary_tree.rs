@@ -93,17 +93,16 @@ fn test_node_removal() {
 fn test_node_access() {
     // Test node access: Positive case.
     let tree = MlsBinaryTree::new(&[0, 1, 2]).expect("Error when creating a tree.");
-    assert_eq!(tree.node(1).expect("Error when accessing node."), &1);
+    assert_eq!(tree.node(&1).expect("Error when accessing node."), &1);
 
-    // Test node access: Out of range.
-    assert_eq!(tree.node(3), None);
+    // Test node access: Not in the tree.
+    assert_eq!(tree.node(&3), None);
 
     // Test mutable node access: Positive case.
     let mut tree = MlsBinaryTree::new(&[0, 1, 2]).expect("Error when creating a tree.");
-    *tree
-        .node_mut(1)
-        .expect("Error when accessing node mutably.") = 5;
-    assert_eq!(tree.node(1).expect("Error when accessing node."), &5);
+    tree.replace(&1, 5)
+        .expect("Error when trying to replace node.");
+    assert_eq!(tree.node(&5).expect("Error when accessing node."), &5);
 }
 
 #[test]
@@ -115,7 +114,7 @@ fn test_direct_path() {
     assert_eq!(
         tree.direct_path(&10)
             .expect_err("No error when computing direct path out of bounds."),
-        MlsBinaryTreeError::OutOfBounds
+        MlsBinaryTreeError::NodeNotFound
     );
 
     // Test direct path: Positive case.
@@ -172,7 +171,7 @@ fn test_copath() {
     assert_eq!(
         tree.copath(&10)
             .expect_err("No error when computing copath out of bounds."),
-        MlsBinaryTreeError::OutOfBounds
+        MlsBinaryTreeError::NodeNotFound
     );
 
     // Test direct path: Positive case.
@@ -218,12 +217,12 @@ fn test_lowest_common_ancestor() {
     assert_eq!(
         tree.lowest_common_ancestor(&10, &0)
             .expect_err("No error when computing lowest common ancestor out of bounds."),
-        MlsBinaryTreeError::OutOfBounds
+        MlsBinaryTreeError::NodeNotFound
     );
     assert_eq!(
         tree.lowest_common_ancestor(&0, &10)
             .expect_err("No error when computing lowest common ancestor out of bounds."),
-        MlsBinaryTreeError::OutOfBounds
+        MlsBinaryTreeError::NodeNotFound
     );
 
     // Test direct path: Positive case.
