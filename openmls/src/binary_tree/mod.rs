@@ -1,4 +1,5 @@
 //! This module defines the binary tree implementation used by OpenMLS.
+use std::hash::Hash;
 
 /// FIXME: Allowing dead code until there's an actual consumer for the binary
 /// tree API.
@@ -18,14 +19,20 @@ pub mod kat_treemath;
 
 use array_representation::{ABinaryTree, ABinaryTreeError};
 
-/// The `NodeIndex` is used throughout this trait to index nodes as if the
-/// underlying binary tree was implementing the array representation.
-pub(crate) type NodeIndex = u32;
+/// This trait requires the implementer to provide each instance with an
+/// `Address`. The address MUST be unique per instance.
+pub trait Addressable {
+    type Address: PartialEq + Eq + Hash;
 
-pub(crate) type TreeSize = NodeIndex;
+    /// Returns the address of this node. If it's the default node, return `None`
+    /// instead.
+    fn address(&self) -> Option<Self::Address>;
+}
 
 /// We use this type alias as a convenience, so we can later swap out the tree
 /// representation with a feature-flag.
 pub(crate) type MlsBinaryTree<Node> = ABinaryTree<Node>;
 
 pub(crate) type MlsBinaryTreeError = ABinaryTreeError;
+
+pub(crate) type LeafIndex = u32;

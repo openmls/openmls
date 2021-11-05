@@ -3,21 +3,14 @@
 
 use std::collections::HashMap;
 use std::convert::TryFrom;
-use std::hash::Hash;
 
-use super::treemath::*;
-use super::NodeIndex;
-use super::TreeSize;
+use super::{treemath::*, Addressable};
 
-/// This trait requires the implementer to provide each instance with an
-/// `Address`. The address MUST be unique per instance.
-pub trait Addressable {
-    type Address: PartialEq + Eq + Hash;
+/// The `NodeIndex` is used throughout this trait to index nodes as if the
+/// underlying binary tree was implementing the array representation.
+pub(crate) type NodeIndex = u32;
 
-    /// Returns the address of this node. If it's the default node, return `None`
-    /// instead.
-    fn address(&self) -> Option<Self::Address>;
-}
+pub(crate) type TreeSize = NodeIndex;
 
 #[derive(Clone, Debug)]
 /// A representation of a full, left-balanced binary tree that uses a simple
@@ -79,6 +72,16 @@ impl<T: Default + Clone + Addressable> ABinaryTree<T> {
         self.node_map
             .get(node_address)
             .map(|&node_index| self.nodes.get(node_index as usize))
+            .flatten()
+    }
+
+    /// Obtain a mutable reference to the data contained in the `Node` with `Address`
+    /// `address`. Returns `None` if no node with the given address can be
+    /// found.
+    pub(crate) fn node_mut(&self, node_address: &T::Address) -> std::option::Option<&mut T> {
+        self.node_map
+            .get(node_address)
+            .map(|&node_index| self.nodes.get_mut(node_index as usize))
             .flatten()
     }
 
@@ -234,6 +237,19 @@ impl<T: Default + Clone + Addressable> ABinaryTree<T> {
         let lowest_common_ancestor = lowest_common_ancestor(node_index_1, node_index_2);
         self.node_by_index(lowest_common_ancestor)
             .ok_or(ABinaryTreeError::OutOfBounds)
+    }
+
+    /// Return a reference to the root node of the tree.
+    pub(crate) fn root(&self) -> Result<&T, ABinaryTreeError> {
+        Ok(self
+            .nodes
+            .get(root(self.size()))
+            .ok_or(ABinaryTreeError::LibraryError))
+    }
+
+    /// Return an iterator over all the nodes in the tree.
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &T> {
+        self.nodes.iter()
     }
 }
 
