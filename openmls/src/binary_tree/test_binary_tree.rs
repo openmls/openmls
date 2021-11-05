@@ -65,6 +65,27 @@ fn test_node_addition() {
             MlsBinaryTreeError::OutOfRange
         )
     }
+
+    // Test node collision
+    assert_eq!(
+        tree.add_leaf(2)
+            .expect_err("No error when adding duplicate node."),
+        MlsBinaryTreeError::AddressCollision
+    );
+}
+
+#[test]
+fn test_node_defaulting() {
+    let mut tree = MlsBinaryTree::new(&[1, 2, 3]).expect("Error when creating a tree.");
+    assert_eq!(
+        tree.make_default(&1)
+            .expect("error when making node default"),
+        1
+    );
+    assert_eq!(
+        tree,
+        MlsBinaryTree::new(&[0, 2, 3]).expect("Error when creating tree from nodes.")
+    );
 }
 
 #[test]
@@ -98,11 +119,21 @@ fn test_node_access() {
     // Test node access: Not in the tree.
     assert_eq!(tree.node(&3), None);
 
-    // Test mutable node access: Positive case.
+    // Test node replacement: Positive case.
     let mut tree = MlsBinaryTree::new(&[0, 1, 2]).expect("Error when creating a tree.");
     tree.replace(&1, 5)
         .expect("Error when trying to replace node.");
     assert_eq!(tree.node(&5).expect("Error when accessing node."), &5);
+    assert_eq!(
+        tree,
+        MlsBinaryTree::new(&[0, 5, 2]).expect("Error when creating tree from nodes.")
+    );
+
+    assert_eq!(
+        tree.replace(&1, 5)
+            .expect_err("No error when trying to replace non-existing node."),
+        MlsBinaryTreeError::NodeNotFound
+    );
 }
 
 #[test]
@@ -213,7 +244,7 @@ fn test_lowest_common_ancestor() {
     let mut tree =
         MlsBinaryTree::new(&[0, 1, 2, 3, 4, 5, 6, 7, 8]).expect("Error when creating a tree.");
 
-    // Test lowest common ancestor: Out of bounds.
+    // Test lowest common ancestor: Node not found.
     assert_eq!(
         tree.lowest_common_ancestor(&10, &0)
             .expect_err("No error when computing lowest common ancestor out of bounds."),
