@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - main
+      - konrad/treesync
   pull_request:
     branches:
       - main
+      - konrad/treesync
 
 env:
   CARGO_TERM_COLOR: always
