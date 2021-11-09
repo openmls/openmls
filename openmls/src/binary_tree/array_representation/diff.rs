@@ -196,6 +196,36 @@ impl<'a, T: Default + Clone + Addressable> AbDiff<'a, T> {
 
     // Functions needed for resolution computation:
 
+    /// Helper function computing the resolution of a node with the given index.
+    fn resolution(&self, node_index: NodeIndex) -> Result<Vec<T::Address>, ABinaryTreeDiffError> {
+        let node = self
+            .node_by_index(node_index)
+            .ok_or(ABinaryTreeDiffError::LibraryError)?;
+        if let Some(address) = node.address() {
+            return Ok(vec![address]);
+        }
+        let mut resolution = Vec::new();
+        let left_child_index = left(node_index)?;
+        let right_child_index = right(node_index, self.size())?;
+        resolution.append(&mut self.resolution(left_child_index)?);
+        resolution.append(&mut self.resolution(right_child_index)?);
+        Ok(resolution)
+    }
+
+    /// Compute the resolution of a given node.
+    pub(crate) fn sibling_resolution(
+        &self,
+        address: &T::Address,
+    ) -> Result<Vec<T::Address>, ABinaryTreeDiffError> {
+        // If sibling is not a blank, return its HpkePublicKey.
+        let node_index = self
+            .node_map
+            .get(address)
+            .ok_or(ABinaryTreeError::NodeNotFound)?;
+        let sibling_index = sibling(*node_index, self.size())?;
+        self.resolution(sibling_index)
+    }
+
     /// Returns a reference to the sibling of the node with the given address.
     /// Returns an error when the address points to the root node or to a node
     /// not in the tree.
@@ -244,6 +274,7 @@ implement_error! {
             PathLengthMismatch = "The given path index is not the same length as the direct path.",
             AddressCollision = "A node with the given address is already part of this diff.",
             NodeNotFound = "Can't find the node with the given address in the diff.",
+            HasNoSibling = "Can't compure sibling resolution of the root node, as it has no sibling.",
         }
         Complex {
             ABinaryTreeError(ABinaryTreeError) = "An Error occurred while accessing the underlying binary tree.",

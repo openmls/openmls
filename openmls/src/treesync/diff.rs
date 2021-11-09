@@ -91,23 +91,11 @@ impl<'a> TreeSyncDiff<'a> {
         Ok(())
     }
 
-    /// Compute the resolution of a given, non-blank node.
-    fn sibling_resolution(
-        &self,
-        address: &<TreeSyncNode as Addressable>::Address,
-    ) -> Result<Vec<&HpkePublicKey>, MlsBinaryTreeDiffError> {
-        // If sibling is not a blank, return its HpkePublicKey.
-        if let Some(sibling) = self.diff.sibling(address)?;
-        // TODO: Change sibling/child functions such that they accept a full
-        // node as input instead of an address or implement resolution function
-        // as part of the underlying ABinaryTreeDiff.
-        todo!()
-    }
-
     /// Set the parent hash of the nodes in the direct path of the leaf with the
     /// given index and set the resulting value in the leaf's
-    /// `ParentHashExtension`.
-    pub(crate) fn set_parent_hashes(
+    /// `ParentHashExtension`. This function requires that all nodes in the
+    /// direct path are non-blank.
+    fn set_parent_hashes(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         leaf_index: LeafIndex,
@@ -116,7 +104,7 @@ impl<'a> TreeSyncDiff<'a> {
         // during the update process.
         let mut original_child_resolutions: Vec<Vec<HpkePublicKey>> = Vec::new();
         for node in self.diff.direct_path(leaf_index)? {
-            // FIXME: Compute original child resolution.
+            let ocr = self.diff.sibling_resolution(node.address())
         }
         todo!()
     }
