@@ -11,6 +11,7 @@ steps:
   commands:
   - apt-get update -qq --yes && apt-get install -qq --yes clang
   - git submodule update --init --recursive
+  - cd openmls
   - cargo build --verbose
   - cargo build --release
   - cargo test --verbose
