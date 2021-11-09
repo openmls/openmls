@@ -1,6 +1,8 @@
-use crate::binary_tree::{MlsBinaryTree, MlsBinaryTreeError, NodeIndex};
+use crate::binary_tree::{MlsBinaryTree, MlsBinaryTreeError};
 
-use super::array_representation::Addressable;
+use super::array_representation::tree::NodeIndex;
+
+use super::Addressable;
 
 impl Addressable for u32 {
     type Address = Self;

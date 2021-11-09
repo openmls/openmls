@@ -6,18 +6,13 @@ use std::hash::Hash;
 #[allow(dead_code)]
 pub(crate) mod array_representation;
 
-#[allow(dead_code)]
-/// FIXME: There's some dead code in treemath that will be used in treesync in
-/// the future.
-pub(crate) mod treemath;
-
 #[cfg(test)]
 mod test_binary_tree;
 
-#[cfg(any(feature = "test-utils", test))]
-pub mod kat_treemath;
+use array_representation::diff::ABinaryTreeDiffError;
+use array_representation::tree::{ABinaryTree, ABinaryTreeError};
 
-use array_representation::{ABinaryTree, ABinaryTreeError};
+use self::array_representation::diff::{AbDiff, StagedAbDiff};
 
 /// This trait requires the implementer to provide each instance with an
 /// `Address`. The address MUST be unique per instance.
@@ -33,6 +28,10 @@ pub trait Addressable {
 /// representation with a feature-flag.
 pub(crate) type MlsBinaryTree<Node> = ABinaryTree<Node>;
 
+pub(crate) type MlsBinaryTreeDiff<'a, Node> = AbDiff<'a, Node>;
+pub(crate) type StagedMlsBinaryTreeDiff<Node> = StagedAbDiff<Node>;
+
 pub(crate) type MlsBinaryTreeError = ABinaryTreeError;
+pub(crate) type MlsBinaryTreeDiffError = ABinaryTreeDiffError;
 
 pub(crate) type LeafIndex = u32;

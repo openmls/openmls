@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-use super::array_representation::NodeIndex;
+use super::tree::NodeIndex;
 
 implement_error! {
     pub enum TreeMathError {
