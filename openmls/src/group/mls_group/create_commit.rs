@@ -1,39 +1,38 @@
-use openmls_traits::crypto::OpenMlsCrypto;
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
 
-use crate::ciphersuite::signable::Signable;
-use crate::config::Config;
-use crate::credentials::CredentialBundle;
-use crate::framing::*;
-use crate::group::mls_group::*;
-use crate::group::*;
-use crate::messages::*;
+use crate::{
+    ciphersuite::signable::Signable,
+    config::Config,
+    framing::*,
+    group::{mls_group::*, *},
+    messages::*,
+};
+
+use super::{
+    create_commit_params::CreateCommitParams,
+    proposals::{CreationProposalQueue, ProposalStore},
+};
 
 /// Wrapper for proposals by value and reference.
 pub struct Proposals<'a> {
-    pub proposals_by_reference: &'a [&'a MlsPlaintext],
+    pub proposals_by_reference: &'a ProposalStore,
     pub proposals_by_value: &'a [&'a Proposal],
 }
 
 impl MlsGroup {
-    pub(crate) fn create_commit_internal(
+    pub fn create_commit(
         &self,
-        framing_parameters: FramingParameters,
-        credential_bundle: &CredentialBundle,
-        proposals: Proposals,
-        force_self_update: bool,
-        psk_fetcher_option: Option<PskFetcher>,
+        params: CreateCommitParams,
         backend: &impl OpenMlsCryptoProvider,
     ) -> CreateCommitResult {
         let ciphersuite = self.ciphersuite();
-        let proposals_by_reference = proposals.proposals_by_reference;
-        let proposals_by_value = proposals.proposals_by_value;
+
         // Filter proposals
-        let (proposal_queue, contains_own_updates) = ProposalQueue::filter_proposals(
+        let (proposal_queue, contains_own_updates) = CreationProposalQueue::filter_proposals(
             ciphersuite,
             backend,
-            proposals_by_reference,
-            proposals_by_value,
+            params.proposal_store(),
+            params.inline_proposals(),
             self.tree().own_node_index(),
             self.tree().leaf_count(),
         )?;
@@ -55,20 +54,22 @@ impl MlsGroup {
         }
 
         let serialized_group_context = self.group_context.tls_serialize_detached()?;
-        let (path_option, kpb_option) =
-            if apply_proposals_values.path_required || contains_own_updates || force_self_update {
-                // If path is needed, compute path values
-                let (path, key_package_bundle) = provisional_tree.refresh_private_tree(
-                    credential_bundle,
-                    &serialized_group_context,
-                    apply_proposals_values.exclusion_list(),
-                    backend,
-                )?;
-                (Some(path), Some(key_package_bundle))
-            } else {
-                // If path is not needed, return empty commit secret
-                (None, None)
-            };
+        let (path_option, kpb_option) = if apply_proposals_values.path_required
+            || contains_own_updates
+            || params.force_self_update()
+        {
+            // If path is needed, compute path values
+            let (path, key_package_bundle) = provisional_tree.refresh_private_tree(
+                params.credential_bundle(),
+                &serialized_group_context,
+                apply_proposals_values.exclusion_list(),
+                backend,
+            )?;
+            (Some(path), Some(key_package_bundle))
+        } else {
+            // If path is not needed, return empty commit secret
+            (None, None)
+        };
 
         // Create commit message
         let commit = Commit {
@@ -82,10 +83,10 @@ impl MlsGroup {
 
         // Build MlsPlaintext
         let mut mls_plaintext = MlsPlaintext::new_commit(
-            framing_parameters,
+            *params.framing_parameters(),
             sender_index,
             commit,
-            credential_bundle,
+            params.credential_bundle(),
             &self.group_context,
             backend,
         )?;
@@ -141,7 +142,7 @@ impl MlsGroup {
             psk_output(
                 ciphersuite,
                 backend,
-                psk_fetcher_option,
+                *params.psk_fetcher_option(),
                 &apply_proposals_values.presharedkeys,
             )?,
         );
@@ -185,7 +186,7 @@ impl MlsGroup {
                 confirmation_tag,
                 sender_index,
             );
-            let group_info = group_info.sign(backend, credential_bundle)?;
+            let group_info = group_info.sign(backend, params.credential_bundle())?;
 
             // Encrypt GroupInfo object
             let (welcome_key, welcome_nonce) = welcome_secret.derive_welcome_key_nonce(backend);

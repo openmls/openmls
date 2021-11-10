@@ -8,7 +8,6 @@ use serde::{
 pub struct SerializedManagedGroup {
     managed_group_config: ManagedGroupConfig,
     group: MlsGroup,
-    pending_proposals: Vec<MlsPlaintext>,
     proposal_store: ProposalStore,
     own_kpbs: Vec<KeyPackageBundle>,
     aad: Vec<u8>,
@@ -22,7 +21,6 @@ impl SerializedManagedGroup {
         ManagedGroup {
             managed_group_config: self.managed_group_config,
             group: self.group,
-            pending_proposals: self.pending_proposals,
             proposal_store: self.proposal_store,
             own_kpbs: self.own_kpbs,
             aad: self.aad,
@@ -40,7 +38,6 @@ impl Serialize for ManagedGroup {
         let mut state = serializer.serialize_struct("SerializedManagedGroup", 6)?;
         state.serialize_field("managed_group_config", &self.managed_group_config)?;
         state.serialize_field("group", &self.group)?;
-        state.serialize_field("pending_proposals", &self.pending_proposals)?;
         state.serialize_field("proposal_store", &self.proposal_store)?;
         state.serialize_field("own_kpbs", &self.own_kpbs)?;
         state.serialize_field("aad", &self.aad)?;

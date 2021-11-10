@@ -7,7 +7,7 @@ use tls_codec::{Deserialize, Serialize};
 
 use super::*;
 
-use crate::{group::create_commit::Proposals, prelude::*};
+use crate::{group::create_commit_params::CreateCommitParams, prelude::*};
 
 #[test]
 fn capabilities() {
@@ -144,26 +144,24 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     let bob_add_proposal = alice_group
         .create_add_proposal(framing_parameters, &alice_credential_bundle, bob_key_package.clone(), crypto)
         .expect("Could not create proposal.");
-    let proposals_by_reference = &[&bob_add_proposal];
+
+    let proposal_store = ProposalStore::from_staged_proposal(
+        StagedProposal::from_mls_plaintext(ciphersuite, crypto, bob_add_proposal)
+            .expect("Could not create StagedProposal."),
+    );
+
+    let params = CreateCommitParams::builder()
+            .framing_parameters(framing_parameters)
+            .credential_bundle(&alice_credential_bundle)
+            .proposal_store(&proposal_store)
+            .force_self_update(false)
+            .build();
     let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
         .create_commit(
-            framing_parameters,
-            &alice_credential_bundle,
-            Proposals {
-                proposals_by_reference,
-                proposals_by_value: &[],
-            },
-            false,
-            None,
+            params,
             crypto,
         )
         .expect("Error creating commit");
-
-    let mut proposal_store = ProposalStore::new();
-    proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, crypto, bob_add_proposal)
-            .expect("Could not create staged proposal."),
-    );
 
     let staged_commit = alice_group
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, crypto)
@@ -224,26 +222,21 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     let bob_add_proposal = alice_group
         .create_add_proposal(framing_parameters, &alice_credential_bundle, bob_key_package.clone(), crypto)
         .expect("Could not create proposal.");
-    let proposals_by_reference = &[&bob_add_proposal];
-    let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
-        .create_commit(
-            framing_parameters,
-            &alice_credential_bundle,
-            Proposals {
-                proposals_by_reference,
-                proposals_by_value: &[],
-            },
-            false,
-            None,
-            crypto,
-        )
-        .expect("Error creating commit");
 
-    proposal_store.empty();
-    proposal_store.add(
+    let proposal_store = ProposalStore::from_staged_proposal(
         StagedProposal::from_mls_plaintext(ciphersuite, crypto, bob_add_proposal)
             .expect("Could not create staged proposal."),
     );
+
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .force_self_update(false)
+        .build();
+    let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
+        .create_commit(params, crypto)
+        .expect("Error creating commit");
 
     let staged_commit = alice_group
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, crypto)

@@ -1,4 +1,4 @@
-use mls_group::proposals::StagedProposal;
+use mls_group::{create_commit_params::CreateCommitParams, proposals::StagedProposal};
 
 use crate::prelude::ErrorString;
 
@@ -59,7 +59,6 @@ impl ManagedGroup {
                 // policy and then appended to the internal `pending_proposal` list.
                 // TODO #133: Semantic validation of proposals
                 if self.validate_proposal(proposal, plaintext.sender_index(), &indexed_members) {
-                    self.pending_proposals.push(plaintext.clone());
                     let staged_proposal =
                         StagedProposal::from_mls_plaintext(self.ciphersuite(), backend, plaintext)
                             .map_err(|_| InvalidMessageError::InvalidProposal)?;
@@ -93,16 +92,8 @@ impl ManagedGroup {
                     backend,
                 ) {
                     Ok(staged_commit) => {
-                        // Since the Commit was applied without errors, we can merge it and collect
-                        // all proposals from the Commit and generate events
+                        // Since the Commit was applied without errors, we can merge it
                         self.group.merge_commit(staged_commit);
-                        events.append(&mut self.prepare_events(
-                            self.ciphersuite(),
-                            backend,
-                            commit.proposals.as_slice(),
-                            plaintext.sender_index(),
-                            &indexed_members,
-                        ));
 
                         // If a Commit has an update path, it is additionally to be treated
                         // like a commited UpdateProposal.
@@ -119,19 +110,11 @@ impl ManagedGroup {
                             .add(self.group.context().epoch(), resumption_secret.clone());
                         // We don't need the pending proposals and key package bundles any
                         // longer
-                        self.pending_proposals.clear();
+                        self.proposal_store.empty();
                         self.own_kpbs.clear();
                     }
                     Err(stage_commit_error) => match stage_commit_error {
                         MlsGroupError::StageCommitError(StageCommitError::SelfRemoved) => {
-                            // Prepare events
-                            events.append(&mut self.prepare_events(
-                                self.ciphersuite(),
-                                backend,
-                                commit.proposals.as_slice(),
-                                plaintext.sender_index(),
-                                &indexed_members,
-                            ));
                             // The group is no longer active
                             self.active = false;
                         }
@@ -180,8 +163,6 @@ impl ManagedGroup {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
-        // Include pending proposals into Commit
-        let messages_to_commit: Vec<&MlsPlaintext> = self.pending_proposals.iter().collect();
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
@@ -191,17 +172,12 @@ impl ManagedGroup {
 
         // Create Commit over all pending proposals
         // TODO #141
-        let (commit, welcome_option, kpb_option) = self.group.create_commit(
-            self.framing_parameters(),
-            &credential_bundle,
-            Proposals {
-                proposals_by_reference: &messages_to_commit,
-                proposals_by_value: &[],
-            },
-            true,
-            None,
-            backend,
-        )?;
+        let params = CreateCommitParams::builder()
+            .framing_parameters(self.framing_parameters())
+            .credential_bundle(&credential_bundle)
+            .proposal_store(&self.proposal_store)
+            .build();
+        let (commit, welcome_option, kpb_option) = self.group.create_commit(params, backend)?;
 
         // If it was a full Commit, we have to save the KeyPackageBundle for later
         if let Some(kpb) = kpb_option {

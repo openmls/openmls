@@ -211,22 +211,11 @@ fn remover() {
         .process_pending_proposals(crypto)
         .expect("Could not commit proposal");
 
-    let events = charlie_group
+    let _events = charlie_group
         .process_message(queued_messages.into(), crypto)
         .expect("Could not process messages");
 
-    match events.first().expect("Expected an event to be returned") {
-        GroupEvent::MemberRemoved(member_removed_event) => match member_removed_event.removal() {
-            Removal::TheyWereRemovedBy(leaver, remover) => {
-                assert_eq!(remover.identity(), b"Alice");
-                assert_eq!(leaver.identity(), b"Bob");
-            }
-            _ => {
-                unreachable!("We should not be here")
-            }
-        },
-        _ => unreachable!("Expected a MemberRemoved event"),
-    }
+    // TODO #524: Check that Alice removed Bob
 }
 
 ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {

@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use ds_lib::{ClientKeyPackages, DsMlsMessage, GroupMessage, Message};
-use openmls::{group::create_commit::Proposals, prelude::*};
+use openmls::{group::create_commit_params::CreateCommitParams, prelude::*};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use super::{backend::Backend, conversation::Conversation, identity::Identity};
@@ -329,25 +329,7 @@ impl User {
             .borrow()
             .create_add_proposal(framing_parameters, credentials, key_package, &self.crypto)
             .expect("Could not create proposal.");
-        let proposals = vec![&add_proposal];
-        let (commit, welcome_msg, _kpb) = group
-            .mls_group
-            .borrow()
-            .create_commit(
-                framing_parameters,
-                credentials,
-                Proposals {
-                    proposals_by_reference: &proposals,
-                    proposals_by_value: &[],
-                },
-                false,
-                None,
-                &self.crypto,
-            )
-            .expect("Error creating commit");
-        let welcome_msg = welcome_msg.expect("Welcome message wasn't created by create_commit.");
-        let mut proposal_store = ProposalStore::new();
-        proposal_store.add(
+        let proposal_store = ProposalStore::from_staged_proposal(
             StagedProposal::from_mls_plaintext(
                 Config::ciphersuite(CIPHERSUITE).map_err(|e| format!("{}", e))?,
                 &self.crypto,
@@ -355,6 +337,19 @@ impl User {
             )
             .map_err(|e| format!("{}", e))?,
         );
+        let params = CreateCommitParams::builder()
+            .framing_parameters(framing_parameters)
+            .credential_bundle(credentials)
+            .proposal_store(&proposal_store)
+            .force_self_update(false)
+            .build();
+        let (commit, welcome_msg, _kpb) = group
+            .mls_group
+            .borrow()
+            .create_commit(params, &self.crypto)
+            .expect("Error creating commit");
+        let welcome_msg = welcome_msg.expect("Welcome message wasn't created by create_commit.");
+
         let staged_commit = group
             .mls_group
             .borrow_mut()

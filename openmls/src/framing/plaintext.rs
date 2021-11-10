@@ -243,6 +243,11 @@ impl MlsPlaintext {
         &self.content
     }
 
+    /// Returns the `content` field and consume the parent.
+    pub fn take_content(self) -> MlsPlaintextContentType {
+        self.content
+    }
+
     /// Get the content type of this message.
     pub(crate) fn content_type(&self) -> &ContentType {
         &self.content_type

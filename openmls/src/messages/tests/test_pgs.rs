@@ -6,7 +6,7 @@ use crate::{
     config::Config,
     credentials::{CredentialBundle, CredentialType},
     group::{
-        create_commit::Proposals,
+        create_commit_params::CreateCommitParams,
         proposals::{ProposalStore, StagedProposal},
         WireFormat,
     },
@@ -83,26 +83,21 @@ fn test_pgs() {
                 &crypto,
             )
             .expect("Could not create proposal.");
-        let (commit, _welcome_option, kpb_option) = match group_alice.create_commit(
-            framing_parameters,
-            &alice_credential_bundle,
-            Proposals {
-                proposals_by_reference: &[&bob_add_proposal],
-                proposals_by_value: &[],
-            },
-            true,
-            None,
-            &crypto,
-        ) {
+
+        let proposal_store = ProposalStore::from_staged_proposal(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
+                .expect("Could not create StagedProposal."),
+        );
+        let params = CreateCommitParams::builder()
+            .framing_parameters(framing_parameters)
+            .credential_bundle(&alice_credential_bundle)
+            .proposal_store(&proposal_store)
+            .build();
+        let (commit, _welcome_option, kpb_option) = match group_alice.create_commit(params, &crypto)
+        {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
-
-        let mut proposal_store = ProposalStore::new();
-        proposal_store.add(
-            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
-                .expect("Could not create staged proposal."),
-        );
 
         let staged_commit = group_alice
             .stage_commit(
