@@ -1,8 +1,13 @@
 use hpke::HpkePublicKey;
-use tls_codec::{TlsByteVecU8, TlsVecU32};
+use openmls_traits::OpenMlsCryptoProvider;
+use tls_codec::{
+    Deserialize, Serialize, Size, TlsByteVecU8, TlsSerialize, TlsSize, TlsSliceU32, TlsSliceU8,
+    TlsVecU32,
+};
 
 use crate::{
     binary_tree::{Addressable, LeafIndex},
+    ciphersuite::Ciphersuite,
     prelude::KeyPackage,
 };
 
@@ -30,7 +35,7 @@ impl TreeSyncNode {
 
     pub(crate) fn as_leaf_node_mut(&mut self) -> Result<&mut KeyPackage, TreeSyncNodeError> {
         match self {
-            TreeSyncNode::LeafNode(mut kp) => Ok(&mut kp),
+            TreeSyncNode::LeafNode(ref mut kp) => Ok(kp),
             TreeSyncNode::ParentNode(_) => Err(TreeSyncNodeError::AsLeafError),
         }
     }
@@ -38,7 +43,7 @@ impl TreeSyncNode {
     pub(crate) fn as_parent_node_mut(&mut self) -> Result<&mut Node, TreeSyncNodeError> {
         match self {
             TreeSyncNode::LeafNode(_) => Err(TreeSyncNodeError::AsLeafError),
-            TreeSyncNode::ParentNode(mut node) => Ok(&mut node),
+            TreeSyncNode::ParentNode(ref mut node) => Ok(node),
         }
     }
 }
@@ -76,12 +81,20 @@ impl Node {
 
     /// Set the parent hash value of this node. FIXME: Do we really need this
     /// function? Or can we set the parent hash when creating this node?
-    fn set_parent_hash(&mut self, parent_hash: Vec<u8>) {
-        self.parent_hash = parent_hash.into();
+    pub(super) fn set_parent_hash(
+        &mut self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+        parent_hash: &[u8],
+        original_child_resolution: &[Vec<u8>],
+    ) {
+        let parent_hash_input =
+            ParentHashInput::new(&self.public_key, &parent_hash, original_child_resolution);
+        self.parent_hash = parent_hash_input.hash(backend, ciphersuite).into()
     }
 
     /// Get the parent hash value of this node.
-    fn parent_hash(&self) -> &[u8] {
+    pub(crate) fn parent_hash(&self) -> &[u8] {
         self.parent_hash.as_slice()
     }
 
@@ -107,5 +120,51 @@ impl Addressable for TreeSyncNode {
             TreeSyncNode::ParentNode(node) => node.node_content().to_vec(),
         };
         Some(address)
+    }
+}
+
+#[derive(TlsSerialize, TlsSize)]
+pub(crate) struct ParentHashInput<'a> {
+    public_key: &'a HpkePublicKey,
+    parent_hash: TlsSliceU8<'a, u8>,
+    // FIXME: This should be a slice.
+    original_child_resolution: TlsVecU32<HpkePublicKey>,
+}
+
+impl<'a> ParentHashInput<'a> {
+    pub(crate) fn new(
+        public_key: &'a HpkePublicKey,
+        parent_hash: &'a [u8],
+        original_child_resolution: &'a [Vec<u8>],
+    ) -> Self {
+        let ocr: Vec<HpkePublicKey> = original_child_resolution
+            .iter()
+            // FIXME: Unwrapping here for now. Ideally, we'd use HpkePublicKey
+            // as address directly.
+            .map(|&bytes| HpkePublicKey::tls_deserialize(&mut bytes.as_slice()).unwrap())
+            .collect();
+        Self {
+            public_key,
+            parent_hash: TlsSliceU8(parent_hash),
+            original_child_resolution: ocr.into(),
+        }
+    }
+    pub(crate) fn hash(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+    ) -> Vec<u8> {
+        let payload = self.tls_serialize_detached().unwrap();
+        ciphersuite.hash(backend, &payload)
+    }
+}
+
+implement_error! {
+    pub enum ParentHashError {
+        EndedWithLeafNode = "The search for a valid child ended with a leaf node.",
+        AllChecksFailed = "All checks failed: Neither child has the right parent hash.",
+        InputNotParentNode = "The input node is not a parent node.",
+        NotAParentNode = "The node is not a parent node.",
+        EmptyParentNode = "The parent node was blank.",
     }
 }

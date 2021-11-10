@@ -1,12 +1,13 @@
 use hpke::HpkePublicKey;
 use openmls_traits::OpenMlsCryptoProvider;
 
-use super::node::{TreeSyncNode, TreeSyncNodeError};
+use super::node::{Node, TreeSyncNode, TreeSyncNodeError};
 
 use crate::{
     binary_tree::{
         Addressable, LeafIndex, MlsBinaryTreeDiff, MlsBinaryTreeDiffError, StagedMlsBinaryTreeDiff,
     },
+    ciphersuite::Ciphersuite,
     prelude::KeyPackage,
 };
 
@@ -78,14 +79,20 @@ impl<'a> TreeSyncDiff<'a> {
     fn update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
         leaf_index: LeafIndex,
         mut leaf_node: KeyPackage,
-        path: &[Option<TreeSyncNode>],
+        mut path: Vec<Node>,
     ) -> Result<(), TreeSyncDiffError> {
-        // Set the direct path.
-        self.diff.set_direct_path(leaf_index, Some(path))?;
         // Compute the parent hash.
-        let parent_hash = self.set_parent_hashes(backend, leaf_index)?;
+        let parent_hash = self.set_parent_hashes(backend, ciphersuite, &mut path, leaf_index)?;
+        let direct_path = path
+            .drain(..)
+            .map(|node| Some(TreeSyncNode::ParentNode(node)))
+            .collect();
+        // Set the direct path.
+        self.diff.set_direct_path(leaf_index, Some(direct_path))?;
+
         // FIXME: Update key package before replacing.
         // Replace the leaf.
         self.diff
@@ -93,62 +100,59 @@ impl<'a> TreeSyncDiff<'a> {
         Ok(())
     }
 
-    /// Set the parent hash of the nodes in the direct path of the leaf with the
-    /// given index and set the resulting value in the leaf's
-    /// `ParentHashExtension`. This function requires that all nodes in the
-    /// direct path are non-blank.
+    /// Set the parent hash of the given nodes assuming that they are the new
+    /// direct path of the leaf with the given index and return the parent hash
+    /// of the leaf node. This function requires that all nodes in the direct
+    /// path are non-blank.
     fn set_parent_hashes(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+        path: &mut [Node],
         leaf_index: LeafIndex,
-    ) -> Result<(), TreeSyncDiffError> {
-        // This serves as an intermediate place to store original child resolutions
-        // during the update process.
-        let mut original_child_resolutions: Vec<Vec<Vec<u8>>> = Vec::new();
-        let mut direct_path = self.diff.direct_path(leaf_index)?;
-        for node in &direct_path {
-            let address = node.address().ok_or(MlsBinaryTreeDiffError::NodeNotFound)?;
-            let ocr = self.diff.sibling_resolution(&address)?;
-            original_child_resolutions.push(ocr);
+    ) -> Result<Vec<u8>, TreeSyncDiffError> {
+        // If the path is empty, return a zero-length string.
+        if path.is_empty() {
+            return Ok(Vec::new());
         }
-        let direct_path_len = direct_path.len();
-        for _ in 0..direct_path_len {
-            let node_option = direct_path
-                .pop()
-                // This shouldn't be none as we're iterating as many times as
-                // the direct path has elements.
-                .ok_or(MlsBinaryTreeDiffError::LibraryError)?;
-            // TODO: Make this use `apply_to_direct_path` instead.
-            todo!();
-            //let node = node_option
-            //    .as_ref()
-            //    // This shouldn't be none, as we require nodes in the direct
-            //    // path to be non-blank.
-            //    .ok_or(MlsBinaryTreeDiffError::NodeNotFound)?
-            //    .as_parent_node_mut()?;
-            //let mut ocr = original_child_resolutions
-            //    .pop()
-            //    .ok_or(MlsBinaryTreeDiffError::LibraryError)?;
-            //let mut unmerged_leaf_pks = Vec::new();
-            //for leaf_index in node.unmerged_leaves() {
-            //    let leaf = self
-            //        .diff
-            //        .leaf(*leaf_index)
-            //        .ok_or(MlsBinaryTreeDiffError::NodeNotFound)?;
-            //    let leaf_node = leaf
-            //        .as_ref()
-            //        // If this happens, the tree/diff was invalid.
-            //        .ok_or(MlsBinaryTreeDiffError::LibraryError)?;
-            //    let key_package = leaf_node.as_leaf_node()?;
-            //    unmerged_leaf_pks.push(key_package.hpke_init_key().as_slice());
-            //}
-            //let filtered_ocr: Vec<Vec<u8>> = ocr
-            //    .drain(..)
-            //    .filter(|pk| !unmerged_leaf_pks.contains(&pk.as_slice()))
-            //    .collect();
-            //let node_hash =
+
+        // Get the resolutions of the copath nodes (i.e. the original child
+        // resolutions).
+        let mut copath_resolutions = self.diff.copath_resolutions(leaf_index)?;
+        // There should be as many copath resolutions as nodes in the direct
+        // path.
+        if path.len() != copath_resolutions.len() {
+            return Err(TreeSyncDiffError::PathLengthError);
         }
-        todo!()
+        // We go through the nodes in the direct path in reverse order and get
+        // the corresponding copath resolution for each node.
+        let mut previous_parent_hash = vec![];
+        for (path_node, resolution) in path
+            .iter_mut()
+            .rev()
+            .zip(copath_resolutions.iter_mut().rev())
+        {
+            // Filter out the node's unmerged leaves before hashing.
+            for leaf_index in path_node.unmerged_leaves() {
+                let leaf_option = self
+                    .diff
+                    .leaf(*leaf_index)
+                    .ok_or(MlsBinaryTreeDiffError::NodeNotFound)?;
+                // All unmerged leaves should be non-blank.
+                let leaf_node = leaf_option
+                    .as_ref()
+                    .ok_or(TreeSyncDiffError::LibraryError)?;
+                let leaf = leaf_node.as_leaf_node()?;
+                let pk = leaf.hpke_init_key().as_slice();
+                if let Some(position) = resolution.iter().position(|bytes| bytes == pk) {
+                    resolution.remove(position);
+                };
+            }
+            path_node.set_parent_hash(backend, ciphersuite, &previous_parent_hash, resolution);
+            previous_parent_hash = path_node.parent_hash().to_vec()
+        }
+        // The final hash is the one of the leaf's parent.
+        Ok(previous_parent_hash)
     }
 
     pub(crate) fn set_parent_hash(
@@ -181,6 +185,7 @@ implement_error! {
     pub enum TreeSyncDiffError {
         Simple {
             LibraryError = "An unrecoverable error has occurred.",
+            PathLengthError = "The given path does not have the length of the given leaf's direct path.",
         }
         Complex {
             TreeSyncNodeError(TreeSyncNodeError) = "We found a node with an unexpected type.",

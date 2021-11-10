@@ -4,7 +4,7 @@ use crate::binary_tree::{array_representation::treemath::sibling, Addressable, L
 
 use super::{
     tree::{to_node_index, ABinaryTree, ABinaryTreeError, NodeIndex, TreeSize},
-    treemath::{direct_path, left, right, TreeMathError},
+    treemath::{direct_path, left, right, root, TreeMathError},
 };
 
 pub(crate) struct StagedAbDiff<T: Default + Clone + Addressable> {
@@ -107,16 +107,18 @@ impl<'a, T: Default + Clone + Addressable> AbDiff<'a, T> {
     /// Returns a mutable reference to the node at index `node_index` or `None`
     /// if the node can neither be found in the tree nor in the diff.
     fn node_mut_by_index(&mut self, node_index: NodeIndex) -> Result<&mut T, ABinaryTreeDiffError> {
-        if let Some(node) = self.diff.get_mut(&node_index) {
+        if self.diff.contains_key(&node_index) {
+            let node = self
+                .diff
+                .get_mut(&node_index)
+                .ok_or(ABinaryTreeDiffError::NodeNotFound)?;
             Ok(node)
         } else if let Some(tree_node) = self.original_tree.node_by_index(node_index) {
-            // TODO: Fix.
-            //self.add_to_diff(node_index, tree_node.clone())?;
-            //drop(tree_node);
-            todo!()
-            //self.diff
-            //    .get_mut(&node_index)
-            //    .ok_or(ABinaryTreeDiffError::LibraryError)
+            self.add_to_diff(node_index, tree_node.clone())?;
+            drop(tree_node);
+            self.diff
+                .get_mut(&node_index)
+                .ok_or(ABinaryTreeDiffError::LibraryError)
         } else {
             Err(ABinaryTreeDiffError::OutOfBounds)
         }
@@ -146,7 +148,7 @@ impl<'a, T: Default + Clone + Addressable> AbDiff<'a, T> {
     pub(crate) fn set_direct_path(
         &mut self,
         leaf_index: LeafIndex,
-        path_option: Option<&[T]>,
+        path_option: Option<Vec<T>>,
     ) -> Result<(), ABinaryTreeDiffError> {
         let node_index = to_node_index(leaf_index);
         let direct_path =
@@ -220,8 +222,6 @@ impl<'a, T: Default + Clone + Addressable> AbDiff<'a, T> {
         Ok(direct_path)
     }
 
-    // Functions needed for resolution computation:
-
     /// Helper function computing the resolution of a node with the given index.
     fn resolution(&self, node_index: NodeIndex) -> Result<Vec<T::Address>, ABinaryTreeDiffError> {
         let node = self
@@ -238,18 +238,32 @@ impl<'a, T: Default + Clone + Addressable> AbDiff<'a, T> {
         Ok(resolution)
     }
 
-    /// Compute the resolution of a given node.
-    pub(crate) fn sibling_resolution(
+    /// Compute the resolution of the copath of the leaf node corresponding to
+    /// the given leaf index. This includes the neighbour of the given leaf.
+    pub(crate) fn copath_resolutions(
         &self,
-        address: &T::Address,
-    ) -> Result<Vec<T::Address>, ABinaryTreeDiffError> {
-        // If sibling is not a blank, return its HpkePublicKey.
-        let node_index = self
-            .node_map
-            .get(address)
-            .ok_or(ABinaryTreeError::NodeNotFound)?;
-        let sibling_index = sibling(*node_index, self.size())?;
-        self.resolution(sibling_index)
+        leaf_index: LeafIndex,
+    ) -> Result<Vec<Vec<T::Address>>, ABinaryTreeDiffError> {
+        let leaf_node_index = to_node_index(leaf_index);
+        let mut full_path = vec![leaf_node_index];
+        let mut direct_path = direct_path(leaf_node_index, self.size())?;
+        full_path.append(&mut direct_path);
+
+        let mut copath_resolutions = Vec::new();
+        for node_index in &full_path {
+            // If sibling is not a blank, return its HpkePublicKey.
+            let sibling_index = sibling(*node_index, self.size())?;
+            let resolution = self.resolution(sibling_index)?;
+            copath_resolutions.push(resolution);
+        }
+        Ok(copath_resolutions)
+    }
+
+    // Probably obsolete functions below
+
+    pub(crate) fn root(&self) -> Option<&T> {
+        let root_index = root(self.size());
+        self.node_by_index(root_index)
     }
 
     /// Returns a reference to the sibling of the node with the given address.

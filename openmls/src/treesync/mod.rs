@@ -19,7 +19,7 @@ impl Addressable for Option<TreeSyncNode> {
     type Address = Vec<u8>;
 
     fn address(&self) -> Option<Self::Address> {
-        self.map(|node| node.address()).flatten()
+        self.as_ref().map(|node| node.address()).flatten()
     }
 }
 
