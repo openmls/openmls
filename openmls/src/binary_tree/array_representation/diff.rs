@@ -88,12 +88,16 @@ impl<'a, T: Default + Clone + Addressable> AbDiff<'a, T> {
             .flatten()
     }
 
+    pub(crate) fn leaf(&self, leaf_index: LeafIndex) -> Option<&T> {
+        self.node_by_index(to_node_index(leaf_index))
+    }
+
     /// Returns a reference to the node at index `node_index` or `None` if the
     /// node can neither be found in the tree nor in the diff.
     fn node_by_index(&self, node_index: NodeIndex) -> Option<&T> {
-        if let Some(node) = self.original_tree.node_by_index(node_index) {
+        if let Some(node) = self.diff.get(&node_index) {
             Some(node)
-        } else if let Some(node) = self.diff.get(&node_index) {
+        } else if let Some(node) = self.original_tree.node_by_index(node_index) {
             Some(node)
         } else {
             None
@@ -102,13 +106,19 @@ impl<'a, T: Default + Clone + Addressable> AbDiff<'a, T> {
 
     /// Returns a mutable reference to the node at index `node_index` or `None`
     /// if the node can neither be found in the tree nor in the diff.
-    fn node_mut_by_index(&mut self, node_index: NodeIndex) -> Option<&mut T> {
-        if let Some(node) = self.original_tree.node_mut_by_index(node_index) {
-            Some(node)
-        } else if let Some(node) = self.diff.get_mut(&node_index) {
-            Some(node)
+    fn node_mut_by_index(&mut self, node_index: NodeIndex) -> Result<&mut T, ABinaryTreeDiffError> {
+        if let Some(node) = self.diff.get_mut(&node_index) {
+            Ok(node)
+        } else if let Some(tree_node) = self.original_tree.node_by_index(node_index) {
+            // TODO: Fix.
+            //self.add_to_diff(node_index, tree_node.clone())?;
+            //drop(tree_node);
+            todo!()
+            //self.diff
+            //    .get_mut(&node_index)
+            //    .ok_or(ABinaryTreeDiffError::LibraryError)
         } else {
-            None
+            Err(ABinaryTreeDiffError::OutOfBounds)
         }
     }
 
@@ -136,7 +146,7 @@ impl<'a, T: Default + Clone + Addressable> AbDiff<'a, T> {
     pub(crate) fn set_direct_path(
         &mut self,
         leaf_index: LeafIndex,
-        mut path_option: Option<&[T]>,
+        path_option: Option<&[T]>,
     ) -> Result<(), ABinaryTreeDiffError> {
         let node_index = to_node_index(leaf_index);
         let direct_path =
@@ -160,22 +170,38 @@ impl<'a, T: Default + Clone + Addressable> AbDiff<'a, T> {
         Ok(())
     }
 
-    pub(crate) fn direct_path_mut(
+    pub(crate) fn apply_to_direct_path<F, E>(
         &mut self,
         leaf_index: LeafIndex,
-    ) -> Result<Vec<&mut T>, ABinaryTreeDiffError> {
+        f: F,
+    ) -> Result<(), ABinaryTreeDiffError>
+    where
+        F: Fn(&mut T) -> Result<(), E>,
+    {
         let node_index = to_node_index(leaf_index);
         let direct_path_indices =
             direct_path(node_index, self.size()).map_err(|_| ABinaryTreeError::OutOfBounds)?;
-        let mut direct_path = Vec::new();
         for node_index in &direct_path_indices {
-            let node = self
-                .node_mut_by_index(*node_index)
-                .ok_or(ABinaryTreeDiffError::LibraryError)?;
-            direct_path.push(node);
+            let node = self.node_mut_by_index(*node_index)?;
+            f(node);
         }
-        Ok(direct_path)
+        Ok(())
     }
+
+    //pub(crate) fn direct_path_mut(
+    //    &mut self,
+    //    leaf_index: LeafIndex,
+    //) -> Result<Vec<&mut T>, ABinaryTreeDiffError> {
+    //    let node_index = to_node_index(leaf_index);
+    //    let direct_path_indices =
+    //        direct_path(node_index, self.size()).map_err(|_| ABinaryTreeError::OutOfBounds)?;
+    //    let mut direct_path = Vec::new();
+    //    for node_index in &direct_path_indices {
+    //        let node = self.node_mut_by_index(*node_index)?;
+    //        direct_path.push(node);
+    //    }
+    //    Ok(direct_path)
+    //}
 
     pub(crate) fn direct_path(
         &self,

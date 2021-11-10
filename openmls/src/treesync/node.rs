@@ -21,6 +21,13 @@ pub(crate) enum TreeSyncNode {
 }
 
 impl TreeSyncNode {
+    pub(crate) fn as_leaf_node(&self) -> Result<&KeyPackage, TreeSyncNodeError> {
+        match self {
+            TreeSyncNode::LeafNode(kp) => Ok(&kp),
+            TreeSyncNode::ParentNode(_) => Err(TreeSyncNodeError::AsLeafError),
+        }
+    }
+
     pub(crate) fn as_leaf_node_mut(&mut self) -> Result<&mut KeyPackage, TreeSyncNodeError> {
         match self {
             TreeSyncNode::LeafNode(mut kp) => Ok(&mut kp),
@@ -53,7 +60,7 @@ impl Node {
     }
 
     /// Get the list of unmerged leaves.
-    fn unmerged_leaves(&self) -> &[LeafIndex] {
+    pub(crate) fn unmerged_leaves(&self) -> &[LeafIndex] {
         self.unmerged_leaves.as_slice()
     }
 

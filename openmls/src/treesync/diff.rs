@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use hpke::HpkePublicKey;
 use openmls_traits::OpenMlsCryptoProvider;
 
@@ -49,14 +47,18 @@ impl<'a> TreeSyncDiff<'a> {
                 .add_leaf(Some(TreeSyncNode::LeafNode(leaf_node)))?
         };
         // Get vector with mutable references.
-        let direct_path = self.diff.direct_path_mut(leaf_index)?;
+        //let direct_path = self.diff.direct_path_mut(leaf_index)?;
         // Add new unmerged leaves entry to all nodes in direct path.
-        for node_option in direct_path {
-            if let Some(node) = node_option {
-                let pn = node.as_parent_node_mut()?;
-                pn.add_unmerged_leaf(leaf_index)
-            }
-        }
+        let add_unmerged_leaf =
+            |node_option: &mut Option<TreeSyncNode>| -> Result<(), TreeSyncDiffError> {
+                if let Some(node) = node_option {
+                    let pn = node.as_parent_node_mut()?;
+                    pn.add_unmerged_leaf(leaf_index);
+                }
+                Ok(())
+            };
+        self.diff
+            .apply_to_direct_path(leaf_index, add_unmerged_leaf)?;
         Ok(())
     }
 
@@ -79,7 +81,7 @@ impl<'a> TreeSyncDiff<'a> {
         leaf_index: LeafIndex,
         mut leaf_node: KeyPackage,
         path: &[Option<TreeSyncNode>],
-    ) -> Result<(), MlsBinaryTreeDiffError> {
+    ) -> Result<(), TreeSyncDiffError> {
         // Set the direct path.
         self.diff.set_direct_path(leaf_index, Some(path))?;
         // Compute the parent hash.
@@ -99,12 +101,52 @@ impl<'a> TreeSyncDiff<'a> {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         leaf_index: LeafIndex,
-    ) -> Result<(), MlsBinaryTreeDiffError> {
+    ) -> Result<(), TreeSyncDiffError> {
         // This serves as an intermediate place to store original child resolutions
         // during the update process.
-        let mut original_child_resolutions: Vec<Vec<HpkePublicKey>> = Vec::new();
-        for node in self.diff.direct_path(leaf_index)? {
-            let ocr = self.diff.sibling_resolution(node.address())
+        let mut original_child_resolutions: Vec<Vec<Vec<u8>>> = Vec::new();
+        let mut direct_path = self.diff.direct_path(leaf_index)?;
+        for node in &direct_path {
+            let address = node.address().ok_or(MlsBinaryTreeDiffError::NodeNotFound)?;
+            let ocr = self.diff.sibling_resolution(&address)?;
+            original_child_resolutions.push(ocr);
+        }
+        let direct_path_len = direct_path.len();
+        for _ in 0..direct_path_len {
+            let node_option = direct_path
+                .pop()
+                // This shouldn't be none as we're iterating as many times as
+                // the direct path has elements.
+                .ok_or(MlsBinaryTreeDiffError::LibraryError)?;
+            // TODO: Make this use `apply_to_direct_path` instead.
+            todo!();
+            //let node = node_option
+            //    .as_ref()
+            //    // This shouldn't be none, as we require nodes in the direct
+            //    // path to be non-blank.
+            //    .ok_or(MlsBinaryTreeDiffError::NodeNotFound)?
+            //    .as_parent_node_mut()?;
+            //let mut ocr = original_child_resolutions
+            //    .pop()
+            //    .ok_or(MlsBinaryTreeDiffError::LibraryError)?;
+            //let mut unmerged_leaf_pks = Vec::new();
+            //for leaf_index in node.unmerged_leaves() {
+            //    let leaf = self
+            //        .diff
+            //        .leaf(*leaf_index)
+            //        .ok_or(MlsBinaryTreeDiffError::NodeNotFound)?;
+            //    let leaf_node = leaf
+            //        .as_ref()
+            //        // If this happens, the tree/diff was invalid.
+            //        .ok_or(MlsBinaryTreeDiffError::LibraryError)?;
+            //    let key_package = leaf_node.as_leaf_node()?;
+            //    unmerged_leaf_pks.push(key_package.hpke_init_key().as_slice());
+            //}
+            //let filtered_ocr: Vec<Vec<u8>> = ocr
+            //    .drain(..)
+            //    .filter(|pk| !unmerged_leaf_pks.contains(&pk.as_slice()))
+            //    .collect();
+            //let node_hash =
         }
         todo!()
     }
