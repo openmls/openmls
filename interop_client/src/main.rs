@@ -631,9 +631,13 @@ impl MlsClient for MlsClientImpl {
 
         let message = MlsCiphertext::tls_deserialize(&mut unprotect_request.ciphertext.as_slice())
             .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-        let application_data = interop_group
+        let upt = interop_group
             .group
             .decrypt(&message, &self.crypto_provider)
+            .map_err(|e| into_status(e.into()))?;
+        let application_data = interop_group
+            .group
+            .verify(upt, &self.crypto_provider)
             .map_err(|e| into_status(e.into()))?
             .as_application_message()
             .map_err(|e| into_status(e.into()))?
@@ -823,9 +827,13 @@ impl MlsClient for MlsClientImpl {
                 WireFormat::MlsCiphertext => {
                     let ct = MlsCiphertext::tls_deserialize(&mut bytes.as_slice())
                         .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-                    interop_group
+                    let upt = interop_group
                         .group
                         .decrypt(&ct, &self.crypto_provider)
+                        .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?;
+                    interop_group
+                        .group
+                        .verify(upt, &self.crypto_provider)
                         .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
                 }
                 WireFormat::MlsPlaintext => {
@@ -849,9 +857,13 @@ impl MlsClient for MlsClientImpl {
                 WireFormat::MlsCiphertext => {
                     let ct = MlsCiphertext::tls_deserialize(&mut bytes.as_slice())
                         .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-                    interop_group
+                    let upt = interop_group
                         .group
                         .decrypt(&ct, &self.crypto_provider)
+                        .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?;
+                    interop_group
+                        .group
+                        .verify(upt, &self.crypto_provider)
                         .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
                 }
                 WireFormat::MlsPlaintext => {
@@ -935,9 +947,13 @@ impl MlsClient for MlsClientImpl {
                 let ct =
                     MlsCiphertext::tls_deserialize(&mut handle_commit_request.commit.as_slice())
                         .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-                interop_group
+                let upt = interop_group
                     .group
                     .decrypt(&ct, &self.crypto_provider)
+                    .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?;
+                interop_group
+                    .group
+                    .verify(upt, &self.crypto_provider)
                     .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
             }
             WireFormat::MlsPlaintext => {
@@ -957,9 +973,13 @@ impl MlsClient for MlsClientImpl {
                 WireFormat::MlsCiphertext => {
                     let ct = MlsCiphertext::tls_deserialize(&mut bytes.as_slice())
                         .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-                    interop_group
+                    let upt = interop_group
                         .group
                         .decrypt(&ct, &self.crypto_provider)
+                        .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?;
+                    interop_group
+                        .group
+                        .verify(upt, &self.crypto_provider)
                         .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
                 }
                 WireFormat::MlsPlaintext => {
@@ -972,21 +992,29 @@ impl MlsClient for MlsClientImpl {
             };
             proposal_plaintexts.push(pt);
         }
-        let mut proposals_by_reference = Vec::new();
+        let mut proposal_store = ProposalStore::new();
         for proposal in &proposal_plaintexts {
-            proposals_by_reference.push(proposal);
+            proposal_store.add(
+                StagedProposal::from_mls_plaintext(
+                    interop_group.group.ciphersuite(),
+                    &self.crypto_provider,
+                    proposal.clone(),
+                )
+                .map_err(|_| Status::aborted("couldn't process proposal"))?,
+            )
         }
 
-        interop_group
+        let staged_commit = interop_group
             .group
-            .apply_commit(
+            .stage_commit(
                 &commit,
-                &proposals_by_reference,
+                &proposal_store,
                 &interop_group.own_kpbs,
                 None,
                 &self.crypto_provider,
             )
-            .map_err(|e| into_status(e))?;
+            .map_err(|e| into_status(e.into()))?;
+        interop_group.group.merge_commit(staged_commit);
 
         Ok(Response::new(HandleCommitResponse {
             state_id: handle_commit_request.state_id,

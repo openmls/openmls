@@ -12,6 +12,7 @@ mod ser;
 #[cfg(test)]
 mod test_managed_group;
 mod updates;
+pub mod validation;
 
 use crate::credentials::CredentialBundle;
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
@@ -19,7 +20,6 @@ use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 use crate::{
     ciphersuite::signable::{Signable, Verifiable},
     credentials::Credential,
-    error::ErrorString,
     framing::*,
     group::{mls_group::create_commit::Proposals, *},
     key_packages::{KeyPackage, KeyPackageBundle},
@@ -45,7 +45,7 @@ pub use events::*;
 pub(crate) use resumption::ResumptionSecretStore;
 use ser::*;
 
-use tls_codec::Serialize;
+use super::proposals::ProposalStore;
 
 /// A `ManagedGroup` represents an [MlsGroup] with
 /// an easier, high-level API designed to be used in production. The API exposes
@@ -85,6 +85,8 @@ pub struct ManagedGroup {
     // A queue of incoming proposals from the DS for a given epoch. New proposals are added to the
     // queue through `process_messages()`. The queue is emptied after every epoch change.
     pending_proposals: Vec<MlsPlaintext>,
+    // A [ProposalStore] that stores proposals within one epoch. The store is emptied after every epoch change.
+    proposal_store: ProposalStore,
     // Own `KeyPackageBundle`s that were created for update proposals or commits. The vector is
     // emptied after every epoch change.
     own_kpbs: Vec<KeyPackageBundle>,
@@ -218,7 +220,7 @@ impl ManagedGroup {
         plaintext: MlsPlaintext,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsMessageOut, ManagedGroupError> {
-        let msg = match self.configuration().handshake_message_format {
+        let msg = match self.configuration().wire_format() {
             WireFormat::MlsPlaintext => MlsMessageOut::Plaintext(plaintext),
             WireFormat::MlsCiphertext => {
                 let ciphertext =
@@ -399,25 +401,22 @@ impl ManagedGroup {
 
     /// Group framing parameters
     fn framing_parameters(&self) -> FramingParameters {
-        FramingParameters::new(
-            &self.aad,
-            self.managed_group_config.handshake_message_format,
-        )
+        FramingParameters::new(&self.aad, self.managed_group_config.wire_format)
     }
 }
 
 /// Unified message type for input to the managed API
 #[derive(Debug, Clone)]
-pub enum MlsMessageIn<'a> {
+pub enum MlsMessageIn {
     /// An OpenMLS `MlsPlaintext`.
-    Plaintext(VerifiableMlsPlaintext<'a>),
+    Plaintext(VerifiableMlsPlaintext),
 
     /// An OpenMLS `MlsCiphertext`.
     Ciphertext(MlsCiphertext),
 }
 
 #[cfg(any(feature = "test-utils", test))]
-impl<'a> MlsMessageIn<'a> {
+impl MlsMessageIn {
     pub fn group_id(&self) -> &[u8] {
         match self {
             MlsMessageIn::Ciphertext(m) => m.group_id().as_slice(),
@@ -475,7 +474,7 @@ impl MlsMessageOut {
 }
 
 #[cfg(any(feature = "test-utils", test))]
-impl<'a> From<MlsMessageOut> for MlsMessageIn<'a> {
+impl From<MlsMessageOut> for MlsMessageIn {
     fn from(message: MlsMessageOut) -> Self {
         match message {
             MlsMessageOut::Plaintext(pt) => {

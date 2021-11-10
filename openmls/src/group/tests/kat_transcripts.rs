@@ -207,7 +207,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
 
     // Check membership and confirmation tags.
     let commit_bytes = hex_to_bytes(&test_vector.commit);
-    let commit = VerifiableMlsPlaintext::tls_deserialize(&mut commit_bytes.as_slice())
+    let mut commit = VerifiableMlsPlaintext::tls_deserialize(&mut commit_bytes.as_slice())
         .expect("Error decoding commit");
     let context = GroupContext::new(
         group_id,
@@ -230,24 +230,16 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
         }
         return Err(TranscriptTestVectorError::GroupContextMismatch);
     }
-    let commit: MlsPlaintext = commit
-        .set_context(&context.tls_serialize_detached().unwrap())
-        .verify(&crypto, &credential)
-        .expect("Invalid signature on MlsPlaintext commit");
-
-    if commit
-        .verify_membership(
-            &crypto,
-            &context.tls_serialize_detached().unwrap(),
-            &membership_key,
-        )
-        .is_err()
-    {
+    commit.set_context(context.tls_serialize_detached().unwrap());
+    if commit.verify_membership(&crypto, &membership_key).is_err() {
         if cfg!(test) {
             panic!("Invalid membership tag");
         }
         return Err(TranscriptTestVectorError::MembershipTagVerificationError);
     }
+    let commit: MlsPlaintext = commit
+        .verify(&crypto, &credential)
+        .expect("Invalid signature on MlsPlaintext commit");
 
     //let my_confirmation_tag = confirmation_key.tag(&confirmed_transcript_hash_before);
     let confirmed_transcript_hash_after =

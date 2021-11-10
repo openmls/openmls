@@ -5,7 +5,11 @@ use crate::{
     ciphersuite::signable::Verifiable,
     config::Config,
     credentials::{CredentialBundle, CredentialType},
-    group::{create_commit::Proposals, WireFormat},
+    group::{
+        create_commit::Proposals,
+        proposals::{ProposalStore, StagedProposal},
+        WireFormat,
+    },
     key_packages::KeyPackageBundle,
     messages::{
         public_group_state::{PublicGroupState, VerifiablePublicGroupState},
@@ -94,15 +98,22 @@ fn test_pgs() {
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
 
-        group_alice
-            .apply_commit(
+        let mut proposal_store = ProposalStore::new();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
+                .expect("Could not create staged proposal."),
+        );
+
+        let staged_commit = group_alice
+            .stage_commit(
                 &commit,
-                &[&bob_add_proposal],
+                &proposal_store,
                 &[kpb_option.expect("No KeyPackageBundle")],
                 None,
                 &crypto,
             )
-            .expect("Could not apply Commit");
+            .expect("Could not stage Commit");
+        group_alice.merge_commit(staged_commit);
 
         let pgs = group_alice
             .export_public_group_state(&crypto, &alice_credential_bundle)

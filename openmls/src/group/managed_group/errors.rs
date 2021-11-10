@@ -1,13 +1,13 @@
 //! # MLS Managed Group errors
 //!
-//! `WelcomeError`, `ApplyCommitError`, `DecryptionError`, and
+//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and
 //! `CreateCommitError`.
 
 use crate::config::ConfigError;
 use crate::credentials::CredentialError;
 use crate::error::ErrorString;
 use crate::framing::MlsCiphertextError;
-use crate::group::{ApplyCommitError, CreateCommitError, ExporterError, MlsGroupError};
+use crate::group::{CreateCommitError, ExporterError, MlsGroupError, StageCommitError};
 
 implement_error! {
     pub enum ManagedGroupError {
@@ -62,8 +62,10 @@ implement_error! {
 implement_error! {
     pub enum InvalidMessageError {
         Simple {
+            MissingMembershipTag =
+                "A message without a membership tag received.",
             MembershipTagMismatch =
-                "A Proposal with an invalid membership tag was received.",
+                "A message with an invalid membership tag was received.",
             UnknownSender =
                 "Could not retrieve credential for the given sender.",
             InvalidProposal =
@@ -72,12 +74,14 @@ implement_error! {
                 "A commit contained an invalid proposal.",
             InvalidApplicationMessage =
                 "The application message is invalid.",
+            WrongEpoch = "The epoch does not match the group's epoch.",
+            MissingConfirmationTag = "The confirmation tag is missing in the Commit message.",
         }
         Complex {
             InvalidCiphertext(MlsCiphertextError) =
                 "An invalid ciphertext was provided. The error returns the associated data of the ciphertext.",
-            CommitError(ApplyCommitError) =
-                "See [`ApplyCommitError`](`crate::group::ApplyCommitError`) for details",
+            CommitError(StageCommitError) =
+                "See [`StageCommitError`](`crate::group::StageCommitError`) for details",
             GroupError(MlsGroupError) =
                 "See [`GroupError`](`crate::group::GroupError`) for details",
         }

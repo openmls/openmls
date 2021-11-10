@@ -1,9 +1,10 @@
 use log::{debug, trace};
 use psk::{PreSharedKeys, PskSecret};
 
-mod apply_commit;
 pub mod create_commit;
 mod new_from_welcome;
+pub mod proposals;
+pub mod staged_commit;
 #[cfg(test)]
 mod test_duplicate_extension;
 #[cfg(test)]
@@ -276,24 +277,6 @@ impl MlsGroup {
         )
     }
 
-    // Apply a Commit message
-    pub fn apply_commit(
-        &mut self,
-        mls_plaintext: &MlsPlaintext,
-        proposals: &[&MlsPlaintext],
-        own_key_packages: &[KeyPackageBundle],
-        psk_fetcher_option: Option<PskFetcher>,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<(), MlsGroupError> {
-        Ok(self.apply_commit_internal(
-            mls_plaintext,
-            proposals,
-            own_key_packages,
-            psk_fetcher_option,
-            backend,
-        )?)
-    }
-
     // Create application message
     pub fn create_application_message(
         &mut self,
@@ -301,7 +284,6 @@ impl MlsGroup {
         msg: &[u8],
         credential_bundle: &CredentialBundle,
         padding_size: usize,
-
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsCiphertext, MlsGroupError> {
         let mls_plaintext = MlsPlaintext::new_application(
@@ -344,56 +326,55 @@ impl MlsGroup {
         &mut self,
         mls_ciphertext: &MlsCiphertext,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsPlaintext, MlsGroupError> {
-        let mls_plaintext = mls_ciphertext.to_plaintext(
+    ) -> Result<VerifiableMlsPlaintext, MlsGroupError> {
+        Ok(mls_ciphertext.to_plaintext(
             self.ciphersuite(),
             backend,
             &self.epoch_secrets,
             &mut self.secret_tree.borrow_mut(),
-        )?;
-        self.verify(mls_plaintext, backend)
+        )?)
     }
 
-    /// Verify a [`VerifiableMlsPlaintext`] and get the [`MlsPlaintext`].
+    /// Set the context of the [`VerifiableMlsPlaintext`] (if it has not been
+    /// set already), verify it and return the [`MlsPlaintext`].
     pub fn verify(
         &self,
-        verifiable: VerifiableMlsPlaintext,
+        mut verifiable: VerifiableMlsPlaintext,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsPlaintext, MlsGroupError> {
         // Verify the signature on the plaintext.
         let tree = self.tree();
 
-        let node = &tree.nodes[verifiable.sender_index()];
+        let node = &tree
+            .nodes
+            .get(NodeIndex::from(verifiable.sender_index()).as_usize())
+            .ok_or(MlsPlaintextError::UnknownSender)?;
         let credential = if let Some(kp) = node.key_package.as_ref() {
             kp.credential()
         } else {
             return Err(MlsPlaintextError::UnknownSender.into());
         };
-
-        let serialized_context = self.context().tls_serialize_detached()?;
+        // Set the context if it has not been set already.
+        if !verifiable.has_context() {
+            verifiable.set_context(self.context().tls_serialize_detached()?);
+        }
 
         // TODO: what about the tags?
         verifiable
-            .set_context(&serialized_context)
             .verify(backend, credential)
             .map_err(|e| MlsPlaintextError::from(e).into())
     }
 
-    /// Verify the membership tag an MlsPlaintext
+    /// Set the context of the `UnverifiedMlsPlaintext` and verify its
+    /// membership tag.
     pub fn verify_membership_tag(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-        mls_plaintext: &MlsPlaintext,
+        verifiable_mls_plaintext: &mut VerifiableMlsPlaintext,
     ) -> Result<(), MlsGroupError> {
-        let serialized_context = self.context().tls_serialize_detached()?;
-
-        mls_plaintext
-            .verify_membership(
-                backend,
-                &serialized_context,
-                self.epoch_secrets().membership_key(),
-            )
-            .map_err(|_| MlsPlaintextError::InvalidSignature.into())
+        verifiable_mls_plaintext.set_context(self.context().tls_serialize_detached()?);
+        Ok(verifiable_mls_plaintext
+            .verify_membership(backend, self.epoch_secrets().membership_key())?)
     }
 
     /// Exporter

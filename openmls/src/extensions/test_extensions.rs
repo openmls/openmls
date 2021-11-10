@@ -159,9 +159,16 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         )
         .expect("Error creating commit");
 
-    alice_group
-        .apply_commit(&mls_plaintext_commit, proposals_by_reference, &[], None, crypto)
-        .expect("error applying commit");
+    let mut proposal_store = ProposalStore::new();
+    proposal_store.add(
+        StagedProposal::from_mls_plaintext(ciphersuite, crypto, bob_add_proposal)
+            .expect("Could not create staged proposal."),
+    );
+
+    let staged_commit = alice_group
+        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, crypto)
+        .expect("error staging commit");
+    alice_group.merge_commit(staged_commit);
 
     let bob_group = match MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.unwrap(),
@@ -232,9 +239,16 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         )
         .expect("Error creating commit");
 
-    alice_group
-        .apply_commit(&mls_plaintext_commit, proposals_by_reference, &[], None, crypto)
-        .expect("error applying commit");
+    proposal_store.empty();
+    proposal_store.add(
+        StagedProposal::from_mls_plaintext(ciphersuite, crypto, bob_add_proposal)
+            .expect("Could not create staged proposal."),
+    );
+
+    let staged_commit = alice_group
+        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, crypto)
+        .expect("error staging commit");
+    alice_group.merge_commit(staged_commit);
 
     let error = MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.unwrap(),

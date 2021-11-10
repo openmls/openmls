@@ -31,7 +31,7 @@ use crate::{
     tree::{treemath::*, CiphersuiteName, HashSet, LeafIndex, NodeIndex, RatchetTree, UpdatePath},
 };
 use crate::{
-    group::{ManagedGroupCallbacks, ManagedGroupConfig, MlsMessageOut, UpdatePolicy},
+    group::MlsMessageOut,
     prelude::MlsPlaintextContentType,
     test_utils::{
         bytes_to_hex,
@@ -307,7 +307,8 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 
     use crate::{
-        extensions::RatchetTreeExtension, group::WireFormat, prelude::KeyPackageBundle,
+        extensions::RatchetTreeExtension,
+        prelude::{KeyPackageBundle, ManagedGroupConfig},
         test_utils::test_framework::CodecUse,
     };
 
@@ -318,17 +319,8 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         panic!("test vector can only be generated with two or more members")
     }
     // Set up a group with `n_leaves` members.
-    let handshake_message_format = WireFormat::MlsPlaintext;
-    let update_policy = UpdatePolicy::default();
-    let callbacks = ManagedGroupCallbacks::default();
-    let managed_group_config = ManagedGroupConfig::new(
-        handshake_message_format,
-        update_policy,
-        0,
-        0,
-        false, // use_ratchet_tree_extension
-        callbacks,
-    );
+    let managed_group_config = ManagedGroupConfig::test_default();
+
     let setup = ManagedTestSetup::new(
         managed_group_config,
         n_leaves as usize,

@@ -1,5 +1,5 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext, OpenMlsCryptoProvider};
 use tls_codec::Serialize;
 
 use crate::{
@@ -61,6 +61,13 @@ fn test_mls_group_persistence() {
     assert_eq!(alice_group, alice_group_deserialized);
 }
 
+/// This function flips the last byte of the ciphertext.
+pub fn flip_last_byte(ctxt: &mut HpkeCiphertext) {
+    let mut last_bits = ctxt.ciphertext.pop().unwrap();
+    last_bits ^= 0xff;
+    ctxt.ciphertext.push(last_bits);
+}
+
 #[test]
 fn test_failed_groupinfo_decryption() {
     let crypto = OpenMlsRustCrypto::default();
@@ -90,13 +97,16 @@ fn test_failed_groupinfo_decryption() {
             let welcome_nonce = AeadNonce::random(&crypto);
 
             // Generate receiver key pair.
-            let receiver_key_pair =
-                ciphersuite.derive_hpke_keypair(&Secret::random(ciphersuite, &crypto, None));
+            let receiver_key_pair = crypto.crypto().derive_hpke_keypair(
+                ciphersuite.hpke_config(),
+                Secret::random(ciphersuite, &crypto, None).as_slice(),
+            );
             let hpke_info = b"group info welcome test info";
             let hpke_aad = b"group info welcome test aad";
             let hpke_input = b"these should be the group secrets";
-            let mut encrypted_group_secrets = ciphersuite.hpke_seal(
-                receiver_key_pair.public_key(),
+            let mut encrypted_group_secrets = crypto.crypto().hpke_seal(
+                ciphersuite.hpke_config(),
+                receiver_key_pair.public.as_slice(),
                 hpke_info,
                 hpke_aad,
                 hpke_input,
@@ -122,7 +132,7 @@ fn test_failed_groupinfo_decryption() {
             .unwrap();
 
             // Mess with the ciphertext by flipping the last byte.
-            encrypted_group_secrets.flip_last_byte();
+            flip_last_byte(&mut encrypted_group_secrets);
 
             let broken_secrets = vec![EncryptedGroupSecrets {
                 key_package_hash: key_package_bundle.key_package.hash(&crypto).into(),
@@ -258,9 +268,16 @@ fn test_update_path() {
             mls_plaintext_commit.confirmation_tag()
         );
 
-        alice_group
-            .apply_commit(&mls_plaintext_commit, epoch_proposals, &[], None, &crypto)
-            .expect("error applying commit");
+        let mut proposal_store = ProposalStore::new();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
+                .expect("Could not create staged proposal."),
+        );
+
+        let staged_commit = alice_group
+            .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, &crypto)
+            .expect("error staging commit");
+        alice_group.merge_commit(staged_commit);
         let ratchet_tree = alice_group.tree().public_key_tree_copy();
 
         let group_bob = MlsGroup::new_from_welcome(
@@ -321,7 +338,7 @@ fn test_update_path() {
             let mut new_eps = Vec::new();
             for c in node.encrypted_path_secret.iter() {
                 let mut c_copy = c.clone();
-                c_copy.flip_last_byte();
+                flip_last_byte(&mut c_copy);
                 new_eps.push(c_copy);
             }
             let node = UpdatePathNode {
@@ -371,17 +388,17 @@ fn test_update_path() {
             )
             .expect("Could not add membership key");
 
+        let mut proposal_store = ProposalStore::new();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, update_proposal_bob)
+                .expect("Could not create staged proposal."),
+        );
+
+        let staged_commit_res =
+            alice_group.stage_commit(&broken_plaintext, &proposal_store, &[], None, &crypto);
         assert_eq!(
-            alice_group
-                .apply_commit(
-                    &broken_plaintext,
-                    &[&update_proposal_bob],
-                    &[],
-                    None,
-                    &crypto
-                )
-                .expect_err("Successful processing of a broken commit."),
-            MlsGroupError::ApplyCommitError(ApplyCommitError::DecryptionFailure(
+            staged_commit_res.expect_err("Successful processing of a broken commit."),
+            MlsGroupError::StageCommitError(StageCommitError::DecryptionFailure(
                 TreeError::PathSecretDecryptionError(CryptoError::HpkeDecryptionError)
             ))
         );
@@ -510,16 +527,27 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         )
         .expect("Error creating commit");
 
-    log::info!(" >>> Applying commit ...");
-    alice_group
-        .apply_commit(
+    log::info!(" >>> Staging & merging commit ...");
+
+    let mut proposal_store = ProposalStore::new();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
+                .expect("Could not create staged proposal."),
+        );
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, psk_proposal)
+                .expect("Could not create staged proposal."),
+        );
+    let staged_commit = alice_group
+        .stage_commit(
             &mls_plaintext_commit,
-            epoch_proposals,
+            &proposal_store,
             &[],
             Some(psk_fetcher),
             &crypto,
         )
-        .expect("error applying commit");
+        .expect("error staging commit");
+    alice_group.merge_commit(staged_commit);
     let ratchet_tree = alice_group.tree().public_key_tree_copy();
 
     let group_bob = MlsGroup::new_from_welcome(

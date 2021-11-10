@@ -4,12 +4,13 @@
 pub use crate::group::MlsGroup;
 pub use crate::group::MlsGroupConfig;
 pub use crate::group::{
+    proposals::{ProposalStore, StagedProposal},
     GroupEvent, InvalidMessageError, ManagedGroup, ManagedGroupCallbacks, ManagedGroupConfig,
     ManagedGroupError, MlsMessageOut, Removal, UpdatePolicy, WireFormat,
 };
 // Errors
 pub use crate::error::ErrorString;
-pub use crate::group::errors::{ApplyCommitError, CreateCommitError, MlsGroupError, WelcomeError};
+pub use crate::group::errors::{CreateCommitError, MlsGroupError, StageCommitError, WelcomeError};
 
 // Indexes
 pub use crate::tree::index::LeafIndex;

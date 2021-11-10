@@ -118,6 +118,7 @@ fn create_commit_optional_path() {
                 &crypto,
             )
             .expect("Could not create proposal.");
+
         let epoch_proposals = &[&bob_add_proposal];
         let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = match group_alice
             .create_commit(
@@ -141,10 +142,15 @@ fn create_commit_optional_path() {
         assert!(!commit.has_path() && kpb_option.is_none());
 
         // Alice applies the Commit without the forced self-update
-        match group_alice.apply_commit(&mls_plaintext_commit, epoch_proposals, &[], None, &crypto) {
-            Ok(_) => {}
-            Err(e) => panic!("Error applying commit: {:?}", e),
-        };
+        let mut proposal_store = ProposalStore::new();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
+                .expect("Could not create staged proposal."),
+        );
+        let staged_commit = group_alice
+            .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, &crypto)
+            .expect("Error staging commit");
+        group_alice.merge_commit(staged_commit);
         let ratchet_tree = group_alice.tree().public_key_tree_copy();
 
         // Bob creates group from Welcome
@@ -196,16 +202,23 @@ fn create_commit_optional_path() {
         };
         assert!(commit.has_path() && kpb_option.is_some());
 
+        proposal_store.empty();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, alice_update_proposal)
+                .expect("Could not create staged proposal."),
+        );
+
         // Apply UpdateProposal
-        group_alice
-            .apply_commit(
+        let staged_commit = group_alice
+            .stage_commit(
                 &commit_mls_plaintext,
-                proposals,
+                &proposal_store,
                 &[kpb_option.unwrap()],
                 None, /* PSK fetcher */
                 &crypto,
             )
-            .expect("Error applying commit");
+            .expect("Error staging commit");
+        group_alice.merge_commit(staged_commit);
     }
 }
 
@@ -397,15 +410,22 @@ fn group_operations() {
         // Check that the function returned a Welcome message
         assert!(welcome_bundle_alice_bob_option.is_some());
 
-        group_alice
-            .apply_commit(
+        let mut proposal_store = ProposalStore::new();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
+                .expect("Could not create staged proposal."),
+        );
+
+        let staged_commit = group_alice
+            .stage_commit(
                 &mls_plaintext_commit,
-                epoch_proposals,
+                &proposal_store,
                 &[],
                 None, /* PSK fetcher */
                 &crypto,
             )
-            .expect("error applying commit");
+            .expect("Error staging commit");
+        group_alice.merge_commit(staged_commit);
         let ratchet_tree = group_alice.tree().public_key_tree_copy();
 
         let mut group_bob = match MlsGroup::new_from_welcome(
@@ -435,7 +455,9 @@ fn group_operations() {
             .create_application_message(&[], &message_alice, &alice_credential_bundle, 0, &crypto)
             .unwrap();
         let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_alice, &crypto) {
-            Ok(mls_plaintext) => mls_plaintext,
+            Ok(mls_plaintext) => group_bob
+                .verify(mls_plaintext, &crypto)
+                .expect("Error verifying plaintext"),
             Err(e) => panic!("Error decrypting MlsCiphertext: {:?}", e),
         };
         assert_eq!(
@@ -480,24 +502,32 @@ fn group_operations() {
         // Check there is no Welcome message
         assert!(welcome_option.is_none());
 
-        group_alice
-            .apply_commit(
+        let mut proposal_store = ProposalStore::new();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, update_proposal_bob)
+                .expect("Could not create staged proposal."),
+        );
+
+        let staged_commit = group_alice
+            .stage_commit(
                 &mls_plaintext_commit,
-                &[&update_proposal_bob],
+                &proposal_store,
                 &[],
                 None, /* PSK fetcher */
                 &crypto,
             )
             .expect("Error applying commit (Alice)");
-        group_bob
-            .apply_commit(
+        group_alice.merge_commit(staged_commit);
+        let staged_commit = group_bob
+            .stage_commit(
                 &mls_plaintext_commit,
-                &[&update_proposal_bob],
+                &proposal_store,
                 &[kpb_option.unwrap()],
                 None, /* PSK fetcher */
                 &crypto,
             )
             .expect("Error applying commit (Bob)");
+        group_bob.merge_commit(staged_commit);
 
         // Make sure that both groups have the same public tree
         if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
@@ -540,24 +570,32 @@ fn group_operations() {
         // Check that there is a new KeyPackageBundle
         assert!(kpb_option.is_some());
 
-        group_alice
-            .apply_commit(
+        proposal_store.empty();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, update_proposal_alice)
+                .expect("Could not create staged proposal."),
+        );
+
+        let staged_commit = group_alice
+            .stage_commit(
                 &mls_plaintext_commit,
-                &[&update_proposal_alice],
+                &proposal_store,
                 &[kpb_option.unwrap()],
                 None, /* PSK fetcher */
                 &crypto,
             )
             .expect("Error applying commit (Alice)");
-        group_bob
-            .apply_commit(
+        group_alice.merge_commit(staged_commit);
+        let staged_commit = group_bob
+            .stage_commit(
                 &mls_plaintext_commit,
-                &[&update_proposal_alice],
+                &proposal_store,
                 &[],
                 None, /* PSK fetcher */
                 &crypto,
             )
             .expect("Error applying commit (Bob)");
+        group_bob.merge_commit(staged_commit);
 
         // Make sure that both groups have the same public tree
         if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
@@ -600,24 +638,32 @@ fn group_operations() {
         // Check that there is a new KeyPackageBundle
         assert!(kpb_option.is_some());
 
-        group_alice
-            .apply_commit(
+        proposal_store.empty();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, update_proposal_bob)
+                .expect("Could not create staged proposal."),
+        );
+
+        let staged_commit = group_alice
+            .stage_commit(
                 &mls_plaintext_commit,
-                &[&update_proposal_bob],
+                &proposal_store,
                 &[kpb_option.unwrap()],
                 None,
                 /* PSK fetcher */ &crypto,
             )
             .expect("Error applying commit (Alice)");
-        group_bob
-            .apply_commit(
+        group_alice.merge_commit(staged_commit);
+        let staged_commit = group_bob
+            .stage_commit(
                 &mls_plaintext_commit,
-                &[&update_proposal_bob],
+                &proposal_store,
                 &[bob_update_key_package_bundle],
                 None,
                 /* PSK fetcher */ &crypto,
             )
             .expect("Error applying commit (Bob)");
+        group_bob.merge_commit(staged_commit);
 
         // Make sure that both groups have the same public tree
         if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
@@ -674,24 +720,32 @@ fn group_operations() {
         // Make sure the is a Welcome message for Charlie
         assert!(welcome_for_charlie_option.is_some());
 
-        group_alice
-            .apply_commit(
+        proposal_store.empty();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, add_charlie_proposal_bob)
+                .expect("Could not create staged proposal."),
+        );
+
+        let staged_commit = group_alice
+            .stage_commit(
                 &mls_plaintext_commit,
-                &[&add_charlie_proposal_bob],
+                &proposal_store,
                 &[],
                 None,
                 /* PSK fetcher */ &crypto,
             )
             .expect("Error applying commit (Alice)");
-        group_bob
-            .apply_commit(
+        group_alice.merge_commit(staged_commit);
+        let staged_commit = group_bob
+            .stage_commit(
                 &mls_plaintext_commit,
-                &[&add_charlie_proposal_bob],
+                &proposal_store,
                 &[],
                 None,
                 /* PSK fetcher */ &crypto,
             )
             .expect("Error applying commit (Bob)");
+        group_bob.merge_commit(staged_commit);
 
         let ratchet_tree = group_alice.tree().public_key_tree_copy();
         let mut group_charlie = match MlsGroup::new_from_welcome(
@@ -728,11 +782,15 @@ fn group_operations() {
             .unwrap();
         let mls_plaintext_alice =
             match group_alice.decrypt(&mls_ciphertext_charlie.clone(), &crypto) {
-                Ok(mls_plaintext) => mls_plaintext,
+                Ok(mls_plaintext) => group_alice
+                    .verify(mls_plaintext, &crypto)
+                    .expect("Error verifying plaintext"),
                 Err(e) => panic!("Error decrypting MlsCiphertext: {:?}", e),
             };
         let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_charlie, &crypto) {
-            Ok(mls_plaintext) => mls_plaintext,
+            Ok(mls_plaintext) => group_bob
+                .verify(mls_plaintext, &crypto)
+                .expect("Error verifying plaintext"),
             Err(e) => panic!("Error decrypting MlsCiphertext: {:?}", e),
         };
         assert_eq!(
@@ -779,33 +837,42 @@ fn group_operations() {
         // Check that there is a new KeyPackageBundle
         assert!(kpb_option.is_some());
 
-        group_alice
-            .apply_commit(
+        proposal_store.empty();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, update_proposal_charlie)
+                .expect("Could not create staged proposal."),
+        );
+
+        let staged_commit = group_alice
+            .stage_commit(
                 &mls_plaintext_commit,
-                &[&update_proposal_charlie],
+                &proposal_store,
                 &[],
                 None,
                 /* PSK fetcher */ &crypto,
             )
             .expect("Error applying commit (Alice)");
-        group_bob
-            .apply_commit(
+        group_alice.merge_commit(staged_commit);
+        let staged_commit = group_bob
+            .stage_commit(
                 &mls_plaintext_commit,
-                &[&update_proposal_charlie],
+                &proposal_store,
                 &[],
                 None,
                 /* PSK fetcher */ &crypto,
             )
             .expect("Error applying commit (Bob)");
-        group_charlie
-            .apply_commit(
+        group_bob.merge_commit(staged_commit);
+        let staged_commit = group_charlie
+            .stage_commit(
                 &mls_plaintext_commit,
-                &[&update_proposal_charlie],
+                &proposal_store,
                 &[kpb_option.unwrap()],
                 None,
                 /* PSK fetcher */ &crypto,
             )
             .expect("Error applying commit (Charlie)");
+        group_charlie.merge_commit(staged_commit);
 
         // Make sure that all groups have the same public tree
         if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
@@ -844,36 +911,44 @@ fn group_operations() {
         // Check that there is a new KeyPackageBundle
         assert!(kpb_option.is_some());
 
-        group_alice
-            .apply_commit(
+        proposal_store.empty();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, remove_bob_proposal_charlie)
+                .expect("Could not create staged proposal."),
+        );
+
+        let staged_commit = group_alice
+            .stage_commit(
                 &mls_plaintext_commit,
-                &[&remove_bob_proposal_charlie],
+                &proposal_store,
                 &[],
                 None,
                 /* PSK fetcher */ &crypto,
             )
             .expect("Error applying commit (Alice)");
+        group_alice.merge_commit(staged_commit);
         assert!(
             group_bob
-                .apply_commit(
+                .stage_commit(
                     &mls_plaintext_commit,
-                    &[&remove_bob_proposal_charlie],
+                    &proposal_store,
                     &[],
                     None,
                     /* PSK fetcher */ &crypto,
                 )
                 .unwrap_err()
-                == MlsGroupError::ApplyCommitError(ApplyCommitError::SelfRemoved)
+                == MlsGroupError::StageCommitError(StageCommitError::SelfRemoved)
         );
-        group_charlie
-            .apply_commit(
+        let staged_commit = group_charlie
+            .stage_commit(
                 &mls_plaintext_commit,
-                &[&remove_bob_proposal_charlie],
+                &proposal_store,
                 &[kpb_option.unwrap()],
                 None,
                 /* PSK fetcher */ &crypto,
             )
             .expect("Error applying commit (Charlie)");
+        group_charlie.merge_commit(staged_commit);
 
         // Make sure that all groups have the same public tree
         if group_alice.tree().public_key_tree() == group_bob.tree().public_key_tree() {

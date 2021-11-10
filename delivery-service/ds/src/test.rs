@@ -234,10 +234,19 @@ async fn test_group() {
         )
         .expect("Error creating commit");
     let welcome_msg = welcome_msg.expect("Welcome message wasn't created by create_commit.");
-    let epoch_proposals = &[&client2_add_proposal];
-    group
-        .apply_commit(&commit, epoch_proposals, &[], None, crypto)
+    let mut proposal_store = ProposalStore::new();
+    proposal_store.add(
+        StagedProposal::from_mls_plaintext(
+            Config::ciphersuite(group_ciphersuite).expect("Unsupported ciphersuite."),
+            crypto,
+            client2_add_proposal,
+        )
+        .expect("Error creating staged proposal."),
+    );
+    let staged_commit = group
+        .stage_commit(&commit, &proposal_store, &[], None, crypto)
         .expect("error applying commit");
+    group.merge_commit(staged_commit);
 
     // Send welcome message for Client2
     let req = test::TestRequest::post()
@@ -338,6 +347,9 @@ async fn test_group() {
     let mls_plaintext = group
         .decrypt(&mls_ciphertext, crypto)
         .expect("Error decrypting MlsCiphertext");
+    let mls_plaintext = group
+        .verify(mls_plaintext, crypto)
+        .expect("Error verifying plaintext");
     assert_eq!(
         client2_message,
         mls_plaintext.as_application_message().unwrap()

@@ -5,12 +5,21 @@ use aes_gcm::{
     Aes128Gcm, Aes256Gcm, NewAead,
 };
 use chacha20poly1305::ChaCha20Poly1305;
+// See https://github.com/rust-analyzer/rust-analyzer/issues/7243
+// for the rust-analyzer issue with the following line.
 use ed25519_dalek::Signer as DalekSigner;
 use hkdf::Hkdf;
+use hpke::{
+    prelude::{HpkeAeadMode, HpkeKdfMode, HpkeKemMode},
+    Hpke,
+};
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     random::OpenMlsRand,
-    types::{AeadType, CryptoError, HashType, SignatureScheme},
+    types::{
+        self, AeadType, CryptoError, HashType, HpkeAeadType, HpkeCiphertext, HpkeConfig,
+        HpkeKdfType, HpkeKemType, HpkeKeyPair, SignatureScheme,
+    },
 };
 use p256::{
     ecdsa::{signature::Verifier, Signature, SigningKey, VerifyingKey},
@@ -29,6 +38,36 @@ impl Default for RustCrypto {
         Self {
             rng: RwLock::new(rand_chacha::ChaCha20Rng::from_entropy()),
         }
+    }
+}
+
+#[inline(always)]
+fn kem_mode(kem: HpkeKemType) -> HpkeKemMode {
+    match kem {
+        HpkeKemType::DhKemP256 => HpkeKemMode::DhKemP256,
+        HpkeKemType::DhKemP384 => HpkeKemMode::DhKemP384,
+        HpkeKemType::DhKemP521 => HpkeKemMode::DhKemP521,
+        HpkeKemType::DhKem25519 => HpkeKemMode::DhKem25519,
+        HpkeKemType::DhKem448 => HpkeKemMode::DhKem448,
+    }
+}
+
+#[inline(always)]
+fn kdf_mode(kdf: HpkeKdfType) -> HpkeKdfMode {
+    match kdf {
+        HpkeKdfType::HkdfSha256 => HpkeKdfMode::HkdfSha256,
+        HpkeKdfType::HkdfSha384 => HpkeKdfMode::HkdfSha384,
+        HpkeKdfType::HkdfSha512 => HpkeKdfMode::HkdfSha512,
+    }
+}
+
+#[inline(always)]
+fn aead_mode(aead: HpkeAeadType) -> HpkeAeadMode {
+    match aead {
+        HpkeAeadType::AesGcm128 => HpkeAeadMode::AesGcm128,
+        HpkeAeadType::AesGcm256 => HpkeAeadMode::AesGcm256,
+        HpkeAeadType::ChaCha20Poly1305 => HpkeAeadMode::ChaCha20Poly1305,
+        HpkeAeadType::Export => HpkeAeadMode::Export,
     }
 }
 
@@ -239,6 +278,71 @@ impl OpenMlsCrypto for RustCrypto {
                 Ok(signature.to_bytes().into())
             }
             _ => Err(CryptoError::UnsupportedSignatureScheme),
+        }
+    }
+
+    fn hpke_seal(
+        &self,
+        config: HpkeConfig,
+        pk_r: &[u8],
+        info: &[u8],
+        aad: &[u8],
+        ptxt: &[u8],
+    ) -> types::HpkeCiphertext {
+        let (kem_output, ciphertext) = Hpke::new(
+            hpke::Mode::Base,
+            kem_mode(config.0),
+            kdf_mode(config.1),
+            aead_mode(config.2),
+        )
+        .seal(&pk_r.into(), info, aad, ptxt, None, None, None)
+        .unwrap();
+        HpkeCiphertext {
+            kem_output: kem_output.into(),
+            ciphertext: ciphertext.into(),
+        }
+    }
+
+    fn hpke_open(
+        &self,
+        config: HpkeConfig,
+        input: &types::HpkeCiphertext,
+        sk_r: &[u8],
+        info: &[u8],
+        aad: &[u8],
+    ) -> Result<Vec<u8>, CryptoError> {
+        Hpke::new(
+            hpke::Mode::Base,
+            kem_mode(config.0),
+            kdf_mode(config.1),
+            aead_mode(config.2),
+        )
+        .open(
+            input.kem_output.as_slice(),
+            &sk_r.into(),
+            info,
+            aad,
+            input.ciphertext.as_slice(),
+            None,
+            None,
+            None,
+        )
+        .map_err(|_| CryptoError::HpkeDecryptionError)
+    }
+
+    fn derive_hpke_keypair(&self, config: HpkeConfig, ikm: &[u8]) -> types::HpkeKeyPair {
+        let kp = Hpke::new(
+            hpke::Mode::Base,
+            kem_mode(config.0),
+            kdf_mode(config.1),
+            aead_mode(config.2),
+        )
+        .derive_key_pair(ikm)
+        .unwrap()
+        .into_keys();
+        HpkeKeyPair {
+            private: kp.0.as_slice().into(),
+            public: kp.1.as_slice().into(),
         }
     }
 }

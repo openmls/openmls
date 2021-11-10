@@ -304,8 +304,8 @@ impl MlsCiphertext {
     }
 
     /// Returns the `epoch` in the `MlsCiphertext`.
-    pub fn epoch(&self) -> &GroupEpoch {
-        &self.epoch
+    pub fn epoch(&self) -> GroupEpoch {
+        self.epoch
     }
 
     #[cfg(test)]

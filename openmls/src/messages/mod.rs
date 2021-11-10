@@ -5,6 +5,10 @@ use crate::group::*;
 use crate::schedule::psk::PreSharedKeys;
 use crate::schedule::JoinerSecret;
 use crate::tree::{index::*, *};
+
+use openmls_traits::types::HpkeCiphertext;
+
+#[cfg(any(feature = "test-utils", test))]
 use openmls_traits::OpenMlsCryptoProvider;
 
 use serde::{Deserialize, Serialize};

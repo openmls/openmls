@@ -1,6 +1,6 @@
 //! # MLS Group errors
 //!
-//! `WelcomeError`, `ApplyCommitError`, `DecryptionError`, and
+//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and
 //! `CreateCommitError`.
 
 use crate::ciphersuite::CryptoError;
@@ -25,8 +25,8 @@ implement_error! {
                 "See [`MlsPlaintextError`](`crate::framing::errors::MlsPlaintextError`) for details.",
             WelcomeError(WelcomeError) =
                 "See [`WelcomeError`](`WelcomeError`) for details.",
-            ApplyCommitError(ApplyCommitError) =
-                "See [`ApplyCommitError`](`ApplyCommitError`) for details.",
+            StageCommitError(StageCommitError) =
+                "See [`StageCommitError`](`StageCommitError`) for details.",
             CreateCommitError(CreateCommitError) =
                 "See [`CreateCommitError`](`CreateCommitError`) for details.",
             ConfigError(ConfigError) =
@@ -97,14 +97,14 @@ implement_error! {
 }
 
 implement_error! {
-    pub enum ApplyCommitError {
+    pub enum StageCommitError {
         Simple {
             EpochMismatch =
-                "Couldn't apply Commit. The epoch of the group context and MlsPlaintext didn't match.",
+                "Couldn't stage Commit. The epoch of the group context and MlsPlaintext didn't match.",
             WrongPlaintextContentType =
-                "apply_commit_internal was called with an MlsPlaintext that is not a Commit.",
+                "stage_commit was called with an MlsPlaintext that is not a Commit.",
             SelfRemoved =
-                "Tried to apply a commit to a group we are not a part of.",
+                "Tried to stage a commit to a group we are not a part of.",
             PathKeyPackageVerificationFailure =
                 "Unable to verify the key package signature.",
             NoParentHashExtension =
@@ -122,9 +122,9 @@ implement_error! {
             MissingProposal =
                 "The proposal queue is missing a proposal for the commit.",
             OwnKeyNotFound =
-                  "Missing own key to apply proposal.",
+                "Missing own key to apply proposal.",
             InitSecretNotFound =
-                  "Missing init secret to apply proposal.",
+                "Missing init secret to apply proposal.",
         }
         Complex {
             PlaintextSignatureFailure(VerificationError) =
@@ -132,7 +132,7 @@ implement_error! {
             DecryptionFailure(TreeError) =
                 "A matching EncryptedPathSecret failed to decrypt.",
             CodecError(TlsCodecError) =
-                "Tls (de)serialization occurred.",
+                "Tls (de)serialization error occurred.",
             KeyScheduleError(KeyScheduleError) =
                 "An error occurred in the key schedule.",
             PskError(PskError) =
