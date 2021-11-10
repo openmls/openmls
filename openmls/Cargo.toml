@@ -2,7 +2,7 @@
 name = "openmls"
 version = "0.3.0"
 authors = ["OpenMLS Authors"]
-edition = "2018"
+edition = "2021"
 description = "This is a WIP Rust implementation of the Messaging Layer Security (MLS) protocol based on draft 9+."
 license = "MIT"
 documentation = "https://openmls.github.io/openmls/"
@@ -14,19 +14,21 @@ openmls_traits = { version = "0.1", path = "../traits" }
 uuid = { version = "0.8", features = ["v4"] }
 rand = "0.8"
 getrandom = "0.2"
-openmls_rust_crypto = { path = "../openmls_rust_crypto", optional = true }
-evercrypt_backend = { path = "../evercrypt_backend", optional = true }
 lazy_static = "1.4"
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = "^1.0"
 log = { version = "0.4", features = ["std"] }
 typetag = "0.1"
-itertools = {version = "0.10", optional = true}
 tls_codec = { version = "0.1.4", features = ["derive", "serde_serialize"] }
+# Crypto backends required for KAT and testing - "test-utils" feature
+itertools = { version = "0.10", optional = true }
+openmls_rust_crypto = { version = "0.1", path = "../openmls_rust_crypto", optional = true }
+evercrypt_backend = { version = "0.1", path = "../evercrypt_backend", optional = true }
 
 [features]
 default = []
-test-utils = ["itertools", "openmls_rust_crypto", "evercrypt_backend"]
+test-utils = ["itertools", "openmls_rust_crypto"]
+evercrypt = ["evercrypt_backend"] # Evercrypt needs to be enabled individually
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
 
@@ -37,6 +39,11 @@ itertools = "0.10"
 test_macros = { path = "../test_macros" }
 openmls = { path = ".", features = ["test-utils"] }
 tempfile = "3"
+
+# x64 targets get evercrypt compiled into dev-dependencies.
+[target.'cfg(x86_64)'.dev-dependencies.openmls]
+path = "."
+features = ["test-utils", "evercrypt"]
 
 [[bench]]
 name = "benchmark"
