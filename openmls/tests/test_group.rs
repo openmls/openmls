@@ -1,8 +1,12 @@
-#[cfg(all(target_arch = "x86_64", not(target_os = "macos"), not(target_family = "wasm")))]
+#[cfg(all(
+    target_arch = "x86_64",
+    not(target_os = "macos"),
+    not(target_family = "wasm")
+))]
 use evercrypt_backend::OpenMlsEvercrypt;
 use openmls::{group::create_commit::Proposals, prelude::*};
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::AeadType, OpenMlsCryptoProvider};
+use openmls_traits::OpenMlsCryptoProvider;
 
 #[test]
 fn create_commit_optional_path() {
@@ -978,7 +982,11 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
 ///  - Charlie removes Bob
 fn group_operations() {
     for ciphersuite in Config::supported_ciphersuites() {
-        #[cfg(all(target_arch = "x86_64", not(target_os = "macos"), not(target_family = "wasm")))]
+        #[cfg(all(
+            target_arch = "x86_64",
+            not(target_os = "macos"),
+            not(target_family = "wasm")
+        ))]
         if ciphersuite.aead() == AeadType::ChaCha20Poly1305 {
             do_group_operations(OpenMlsEvercrypt::default(), ciphersuite);
         }

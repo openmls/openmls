@@ -87,14 +87,26 @@ fn auto_save(managed_group: &ManagedGroup) {
 // The following enables the OpenMlsEvercrypt provider on machines that support
 // it. This is a basic check to ensure that the provider generally works.
 // TODO: #520 - Better tests for Evercrypt backend
-#[cfg(all(target_arch = "x86_64", not(target_os = "macos"), not(target_family = "wasm")))]
+#[cfg(all(
+    target_arch = "x86_64",
+    not(target_os = "macos"),
+    not(target_family = "wasm")
+))]
 use evercrypt_backend::OpenMlsEvercrypt;
-#[cfg(all(target_arch = "x86_64", not(target_os = "macos"), not(target_family = "wasm")))]
+#[cfg(all(
+    target_arch = "x86_64",
+    not(target_os = "macos"),
+    not(target_family = "wasm")
+))]
 fn crypto() -> impl OpenMlsCryptoProvider {
     OpenMlsEvercrypt::default()
 }
 
-#[cfg(any(not(target_arch = "x86_64"), target_os = "macos", target_family = "wasm"))]
+#[cfg(any(
+    not(target_arch = "x86_64"),
+    target_os = "macos",
+    target_family = "wasm"
+))]
 fn crypto() -> impl OpenMlsCryptoProvider {
     OpenMlsRustCrypto::default()
 }
