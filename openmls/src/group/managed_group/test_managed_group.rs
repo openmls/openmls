@@ -232,7 +232,6 @@ fn remover() {
 ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
 
     let crypto = &OpenMlsRustCrypto::default();
-    println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
     let group_id = GroupId::from_slice(b"Test Group");
 
@@ -291,7 +290,6 @@ ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
 #[test]
 fn test_invalid_plaintext() {
     let ciphersuite_name = Ciphersuite::default().name();
-    println!("Testing ciphersuite {:?}", ciphersuite_name);
     let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
 
     // Some basic setup functions for the managed group.
@@ -339,9 +337,9 @@ fn test_invalid_plaintext() {
         .expect_err("No error when distributing message with invalid signature.");
 
     assert_eq!(
-        ClientError::ManagedGroupError(ManagedGroupError::CredentialError(
-            CredentialError::InvalidSignature
-        )),
+        ClientError::ManagedGroupError(ManagedGroupError::Group(MlsGroupError::MlsPlaintextError(
+            MlsPlaintextError::CredentialError(CredentialError::InvalidSignature)
+        ))),
         error
     );
 
@@ -360,9 +358,9 @@ fn test_invalid_plaintext() {
         .expect_err("No error when distributing message with invalid signature.");
 
     assert_eq!(
-        ClientError::ManagedGroupError(ManagedGroupError::InvalidMessage(
-            InvalidMessageError::UnknownSender
-        )),
+        ClientError::ManagedGroupError(ManagedGroupError::Group(MlsGroupError::MlsPlaintextError(
+            MlsPlaintextError::UnknownSender
+        ))),
         error
-    )
+    );
 }

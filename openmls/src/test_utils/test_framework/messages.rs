@@ -21,7 +21,7 @@ pub enum MessageType {
     MlsPlaintext = 1,
 }
 
-impl<'a> tls_codec::Size for MlsMessageIn<'a> {
+impl tls_codec::Size for MlsMessageIn {
     fn tls_serialized_len(&self) -> usize {
         MessageType::MlsCiphertext.tls_serialized_len()
             + match self {
@@ -31,7 +31,7 @@ impl<'a> tls_codec::Size for MlsMessageIn<'a> {
     }
 }
 
-impl<'a> tls_codec::Serialize for MlsMessageIn<'a> {
+impl tls_codec::Serialize for MlsMessageIn {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         let written;
         match self {
@@ -48,7 +48,7 @@ impl<'a> tls_codec::Serialize for MlsMessageIn<'a> {
     }
 }
 
-impl<'a> tls_codec::Deserialize for MlsMessageIn<'a> {
+impl tls_codec::Deserialize for MlsMessageIn {
     fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
         let msg_type = MessageType::tls_deserialize(bytes)?;
         Ok(match msg_type {

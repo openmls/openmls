@@ -1,6 +1,7 @@
 # OpenMLS [![OpenMLS Chat][chat-image]][chat-link]
 
 [![Tests & Checks](https://github.com/openmls/openmls/actions/workflows/tests.yml/badge.svg)](https://github.com/openmls/openmls/actions/workflows/tests.yml)
+[![ARM64 Build Status](https://cloud.drone.io/api/badges/openmls/openmls/status.svg?ref=refs/heads/main)](https://cloud.drone.io/openmls/openmls)
 [![Deploy Docs](https://github.com/openmls/openmls/workflows/Deploy%20Docs/badge.svg)](https://openmls.github.io/openmls/openmls/index.html)
 [![codecov](https://codecov.io/gh/openmls/openmls/branch/main/graph/badge.svg?token=5SDRDRTZI0)](https://codecov.io/gh/openmls/openmls)
 [![OpenMLS List][list-image]][list-link]

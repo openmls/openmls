@@ -268,8 +268,14 @@ fn test_update_path() {
             mls_plaintext_commit.confirmation_tag()
         );
 
+        let mut proposal_store = ProposalStore::new();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
+                .expect("Could not create staged proposal."),
+        );
+
         let staged_commit = alice_group
-            .stage_commit(&mls_plaintext_commit, epoch_proposals, &[], None, &crypto)
+            .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, &crypto)
             .expect("error staging commit");
         alice_group.merge_commit(staged_commit);
         let ratchet_tree = alice_group.tree().public_key_tree_copy();
@@ -382,13 +388,14 @@ fn test_update_path() {
             )
             .expect("Could not add membership key");
 
-        let staged_commit_res = alice_group.stage_commit(
-            &broken_plaintext,
-            &[&update_proposal_bob],
-            &[],
-            None,
-            &crypto,
+        let mut proposal_store = ProposalStore::new();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, update_proposal_bob)
+                .expect("Could not create staged proposal."),
         );
+
+        let staged_commit_res =
+            alice_group.stage_commit(&broken_plaintext, &proposal_store, &[], None, &crypto);
         assert_eq!(
             staged_commit_res.expect_err("Successful processing of a broken commit."),
             MlsGroupError::StageCommitError(StageCommitError::DecryptionFailure(
@@ -521,10 +528,20 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         .expect("Error creating commit");
 
     log::info!(" >>> Staging & merging commit ...");
+
+    let mut proposal_store = ProposalStore::new();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
+                .expect("Could not create staged proposal."),
+        );
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, psk_proposal)
+                .expect("Could not create staged proposal."),
+        );
     let staged_commit = alice_group
         .stage_commit(
             &mls_plaintext_commit,
-            epoch_proposals,
+            &proposal_store,
             &[],
             Some(psk_fetcher),
             &crypto,

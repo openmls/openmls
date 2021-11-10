@@ -3,7 +3,7 @@ use tls_codec::{Deserialize, Serialize, Size, TlsByteVecU16, TlsByteVecU32};
 use super::*;
 use std::io::{Read, Write};
 
-impl<'a> tls_codec::Deserialize for VerifiableMlsPlaintext<'a> {
+impl tls_codec::Deserialize for VerifiableMlsPlaintext {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
         let wire_format = WireFormat::tls_deserialize(bytes)?;
         let group_id = GroupId::tls_deserialize(bytes)?;
@@ -37,7 +37,7 @@ impl<'a> tls_codec::Deserialize for VerifiableMlsPlaintext<'a> {
     }
 }
 
-impl<'a> tls_codec::Size for VerifiableMlsPlaintext<'a> {
+impl tls_codec::Size for VerifiableMlsPlaintext {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
         self.tbs.wire_format.tls_serialized_len()
@@ -53,7 +53,7 @@ impl<'a> tls_codec::Size for VerifiableMlsPlaintext<'a> {
     }
 }
 
-impl<'a> tls_codec::Serialize for VerifiableMlsPlaintext<'a> {
+impl tls_codec::Serialize for VerifiableMlsPlaintext {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         let mut written = self.tbs.wire_format.tls_serialize(writer)?;
         written += self.tbs.group_id.tls_serialize(writer)?;
@@ -154,10 +154,10 @@ pub(super) fn serialize_plaintext_tbs<'a, W: Write>(
     payload.tls_serialize(buffer).map(|l| l + written)
 }
 
-impl<'a> tls_codec::Size for MlsPlaintextTbs<'a> {
+impl tls_codec::Size for MlsPlaintextTbs {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
-        let context_len = if let Some(serialized_context) = self.serialized_context {
+        let context_len = if let Some(serialized_context) = &self.serialized_context {
             serialized_context.len()
         } else {
             0
@@ -173,10 +173,10 @@ impl<'a> tls_codec::Size for MlsPlaintextTbs<'a> {
     }
 }
 
-impl<'a> tls_codec::Serialize for MlsPlaintextTbs<'a> {
+impl tls_codec::Serialize for MlsPlaintextTbs {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         serialize_plaintext_tbs(
-            self.serialized_context,
+            self.serialized_context.as_deref(),
             self.wire_format,
             &self.group_id,
             &self.epoch,

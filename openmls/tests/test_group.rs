@@ -120,6 +120,7 @@ fn create_commit_optional_path() {
                 &crypto,
             )
             .expect("Could not create proposal.");
+
         let epoch_proposals = &[&bob_add_proposal];
         let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = match group_alice
             .create_commit(
@@ -143,8 +144,13 @@ fn create_commit_optional_path() {
         assert!(!commit.has_path() && kpb_option.is_none());
 
         // Alice applies the Commit without the forced self-update
+        let mut proposal_store = ProposalStore::new();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
+                .expect("Could not create staged proposal."),
+        );
         let staged_commit = group_alice
-            .stage_commit(&mls_plaintext_commit, epoch_proposals, &[], None, &crypto)
+            .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, &crypto)
             .expect("Error staging commit");
         group_alice.merge_commit(staged_commit);
         let ratchet_tree = group_alice.tree().public_key_tree_copy();
@@ -198,11 +204,17 @@ fn create_commit_optional_path() {
         };
         assert!(commit.has_path() && kpb_option.is_some());
 
+        proposal_store.empty();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, alice_update_proposal)
+                .expect("Could not create staged proposal."),
+        );
+
         // Apply UpdateProposal
         let staged_commit = group_alice
             .stage_commit(
                 &commit_mls_plaintext,
-                proposals,
+                &proposal_store,
                 &[kpb_option.unwrap()],
                 None, /* PSK fetcher */
                 &crypto,
@@ -385,10 +397,16 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     // Check that the function returned a Welcome message
     assert!(welcome_bundle_alice_bob_option.is_some());
 
+    let mut proposal_store = ProposalStore::new();
+    proposal_store.add(
+        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
+            .expect("Could not create staged proposal."),
+    );
+
     let staged_commit = group_alice
         .stage_commit(
             &mls_plaintext_commit,
-            epoch_proposals,
+            &proposal_store,
             &[],
             None, /* PSK fetcher */
             &crypto,
@@ -424,7 +442,9 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         .create_application_message(&[], &message_alice, &alice_credential_bundle, 0, &crypto)
         .unwrap();
     let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_alice, &crypto) {
-        Ok(mls_plaintext) => mls_plaintext,
+        Ok(mls_plaintext) => group_bob
+            .verify(mls_plaintext, &crypto)
+            .expect("Error verifying plaintext"),
         Err(e) => panic!("Error decrypting MlsCiphertext: {:?}", e),
     };
     assert_eq!(
@@ -469,10 +489,16 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     // Check there is no Welcome message
     assert!(welcome_option.is_none());
 
+    let mut proposal_store = ProposalStore::new();
+    proposal_store.add(
+        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, update_proposal_bob)
+            .expect("Could not create staged proposal."),
+    );
+
     let staged_commit = group_alice
         .stage_commit(
             &mls_plaintext_commit,
-            &[&update_proposal_bob],
+            &proposal_store,
             &[],
             None, /* PSK fetcher */
             &crypto,
@@ -482,7 +508,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     let staged_commit = group_bob
         .stage_commit(
             &mls_plaintext_commit,
-            &[&update_proposal_bob],
+            &proposal_store,
             &[kpb_option.unwrap()],
             None, /* PSK fetcher */
             &crypto,
@@ -531,10 +557,16 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     // Check that there is a new KeyPackageBundle
     assert!(kpb_option.is_some());
 
+    proposal_store.empty();
+    proposal_store.add(
+        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, update_proposal_alice)
+            .expect("Could not create staged proposal."),
+    );
+
     let staged_commit = group_alice
         .stage_commit(
             &mls_plaintext_commit,
-            &[&update_proposal_alice],
+            &proposal_store,
             &[kpb_option.unwrap()],
             None, /* PSK fetcher */
             &crypto,
@@ -544,7 +576,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     let staged_commit = group_bob
         .stage_commit(
             &mls_plaintext_commit,
-            &[&update_proposal_alice],
+            &proposal_store,
             &[],
             None, /* PSK fetcher */
             &crypto,
@@ -593,10 +625,16 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     // Check that there is a new KeyPackageBundle
     assert!(kpb_option.is_some());
 
+    proposal_store.empty();
+    proposal_store.add(
+        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, update_proposal_bob)
+            .expect("Could not create staged proposal."),
+    );
+
     let staged_commit = group_alice
         .stage_commit(
             &mls_plaintext_commit,
-            &[&update_proposal_bob],
+            &proposal_store,
             &[kpb_option.unwrap()],
             None,
             /* PSK fetcher */ &crypto,
@@ -606,7 +644,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     let staged_commit = group_bob
         .stage_commit(
             &mls_plaintext_commit,
-            &[&update_proposal_bob],
+            &proposal_store,
             &[bob_update_key_package_bundle],
             None,
             /* PSK fetcher */ &crypto,
@@ -669,10 +707,16 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     // Make sure the is a Welcome message for Charlie
     assert!(welcome_for_charlie_option.is_some());
 
+    proposal_store.empty();
+    proposal_store.add(
+        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, add_charlie_proposal_bob)
+            .expect("Could not create staged proposal."),
+    );
+
     let staged_commit = group_alice
         .stage_commit(
             &mls_plaintext_commit,
-            &[&add_charlie_proposal_bob],
+            &proposal_store,
             &[],
             None,
             /* PSK fetcher */ &crypto,
@@ -682,7 +726,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     let staged_commit = group_bob
         .stage_commit(
             &mls_plaintext_commit,
-            &[&add_charlie_proposal_bob],
+            &proposal_store,
             &[],
             None,
             /* PSK fetcher */ &crypto,
@@ -724,11 +768,15 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         )
         .unwrap();
     let mls_plaintext_alice = match group_alice.decrypt(&mls_ciphertext_charlie.clone(), &crypto) {
-        Ok(mls_plaintext) => mls_plaintext,
+        Ok(mls_plaintext) => group_alice
+            .verify(mls_plaintext, &crypto)
+            .expect("Error verifying plaintext"),
         Err(e) => panic!("Error decrypting MlsCiphertext: {:?}", e),
     };
     let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_charlie, &crypto) {
-        Ok(mls_plaintext) => mls_plaintext,
+        Ok(mls_plaintext) => group_bob
+            .verify(mls_plaintext, &crypto)
+            .expect("Error verifying plaintext"),
         Err(e) => panic!("Error decrypting MlsCiphertext: {:?}", e),
     };
     assert_eq!(
@@ -775,10 +823,16 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     // Check that there is a new KeyPackageBundle
     assert!(kpb_option.is_some());
 
+    proposal_store.empty();
+    proposal_store.add(
+        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, update_proposal_charlie)
+            .expect("Could not create staged proposal."),
+    );
+
     let staged_commit = group_alice
         .stage_commit(
             &mls_plaintext_commit,
-            &[&update_proposal_charlie],
+            &proposal_store,
             &[],
             None,
             /* PSK fetcher */ &crypto,
@@ -788,7 +842,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     let staged_commit = group_bob
         .stage_commit(
             &mls_plaintext_commit,
-            &[&update_proposal_charlie],
+            &proposal_store,
             &[],
             None,
             /* PSK fetcher */ &crypto,
@@ -798,7 +852,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     let staged_commit = group_charlie
         .stage_commit(
             &mls_plaintext_commit,
-            &[&update_proposal_charlie],
+            &proposal_store,
             &[kpb_option.unwrap()],
             None,
             /* PSK fetcher */ &crypto,
@@ -843,10 +897,16 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     // Check that there is a new KeyPackageBundle
     assert!(kpb_option.is_some());
 
+    proposal_store.empty();
+    proposal_store.add(
+        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, remove_bob_proposal_charlie)
+            .expect("Could not create staged proposal."),
+    );
+
     let staged_commit = group_alice
         .stage_commit(
             &mls_plaintext_commit,
-            &[&remove_bob_proposal_charlie],
+            &proposal_store,
             &[],
             None,
             /* PSK fetcher */ &crypto,
@@ -857,7 +917,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         group_bob
             .stage_commit(
                 &mls_plaintext_commit,
-                &[&remove_bob_proposal_charlie],
+                &proposal_store,
                 &[],
                 None,
                 /* PSK fetcher */ &crypto,
@@ -868,7 +928,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     let staged_commit = group_charlie
         .stage_commit(
             &mls_plaintext_commit,
-            &[&remove_bob_proposal_charlie],
+            &proposal_store,
             &[kpb_option.unwrap()],
             None,
             /* PSK fetcher */ &crypto,
