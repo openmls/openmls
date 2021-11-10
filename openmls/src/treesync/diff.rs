@@ -1,14 +1,20 @@
-use hpke::HpkePublicKey;
 use openmls_traits::OpenMlsCryptoProvider;
 
 use super::node::{Node, TreeSyncNode, TreeSyncNodeError};
 
 use crate::{
-    binary_tree::{
-        Addressable, LeafIndex, MlsBinaryTreeDiff, MlsBinaryTreeDiffError, StagedMlsBinaryTreeDiff,
+    binary_tree::{LeafIndex, MlsBinaryTreeDiff, MlsBinaryTreeDiffError, StagedMlsBinaryTreeDiff},
+    ciphersuite::{
+        signable::{Signable, SignedStruct},
+        Ciphersuite, HpkePublicKey,
     },
-    ciphersuite::Ciphersuite,
-    prelude::KeyPackage,
+    credentials::{CredentialBundle, CredentialError},
+    extensions::{
+        Extension,
+        ExtensionType::{self, ParentHash},
+        ParentHashExtension,
+    },
+    prelude::{KeyPackage, KeyPackagePayload},
 };
 
 pub(crate) struct StagedTreeSyncDiff {
@@ -70,34 +76,87 @@ impl<'a> TreeSyncDiff<'a> {
         Ok(())
     }
 
+    pub(crate) fn own_update_path(
+        &mut self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+        leaf_index: LeafIndex,
+        mut key_package_payload: KeyPackagePayload,
+        credential_bundle: &CredentialBundle,
+        // FIXME: This should probably be a slice, since the path is needed to
+        // prepare the commit as well. Same for the function below.
+        mut path: Vec<Node>,
+    ) -> Result<KeyPackage, TreeSyncDiffError> {
+        let parent_hash = self.process_update_path(backend, ciphersuite, leaf_index, path)?;
+
+        let parent_hash_extension = Extension::ParentHash(ParentHashExtension::new(&parent_hash));
+        key_package_payload.add_extension(parent_hash_extension);
+        let key_package = key_package_payload.sign(backend, credential_bundle)?;
+        // Set the leaf's parent hash. TODO: If the key package has a parent
+        // hash extension, check its value against the previously computed
+        // parent hash. If it doesn't, set it and sign the key package anew.
+
+        // Replace the leaf.
+        self.diff.replace_leaf(
+            leaf_index,
+            Some(TreeSyncNode::LeafNode(key_package.clone())),
+        )?;
+        Ok(key_package)
+    }
+
+    pub(crate) fn receive_update_path(
+        &mut self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+        leaf_index: LeafIndex,
+        key_package: &KeyPackage,
+        mut path: Vec<Node>,
+    ) -> Result<(), TreeSyncDiffError> {
+        let parent_hash = self.process_update_path(backend, ciphersuite, leaf_index, path)?;
+        // Verify the parent hash.
+        let phe = key_package
+            .extension_with_type(ExtensionType::ParentHash)
+            .ok_or(TreeSyncDiffError::MissingParentHash)?;
+        if phe
+            .as_parent_hash_extension()
+            .map_err(|_| TreeSyncDiffError::LibraryError)?
+            .parent_hash()
+            != parent_hash
+        {
+            return Err(TreeSyncDiffError::ParentHashMismatch);
+        };
+
+        // Replace the leaf.
+        self.diff.replace_leaf(
+            leaf_index,
+            Some(TreeSyncNode::LeafNode(key_package.clone())),
+        )?;
+        Ok(())
+    }
+
     /// Process a given update path, consisting of a vector of `Node`. This
     /// function
     /// * replaces the nodes in the direct path of the given `leaf_node` with
     /// the the ones in `path` and
     /// * computes the `parent_hash` of all nodes in the path and compares it to
     /// the one in the `leaf_node`.
-    fn update_path(
+    fn process_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
         leaf_index: LeafIndex,
-        mut leaf_node: KeyPackage,
         mut path: Vec<Node>,
-    ) -> Result<(), TreeSyncDiffError> {
+    ) -> Result<Vec<u8>, TreeSyncDiffError> {
         // Compute the parent hash.
         let parent_hash = self.set_parent_hashes(backend, ciphersuite, &mut path, leaf_index)?;
+        // Set the direct path.
         let direct_path = path
             .drain(..)
             .map(|node| Some(TreeSyncNode::ParentNode(node)))
             .collect();
         // Set the direct path.
         self.diff.set_direct_path(leaf_index, Some(direct_path))?;
-
-        // FIXME: Update key package before replacing.
-        // Replace the leaf.
-        self.diff
-            .replace_leaf(leaf_index, Some(TreeSyncNode::LeafNode(leaf_node)))?;
-        Ok(())
+        Ok(parent_hash)
     }
 
     /// Set the parent hash of the given nodes assuming that they are the new
@@ -143,8 +202,10 @@ impl<'a> TreeSyncDiff<'a> {
                     .as_ref()
                     .ok_or(TreeSyncDiffError::LibraryError)?;
                 let leaf = leaf_node.as_leaf_node()?;
-                let pk = leaf.hpke_init_key().as_slice();
-                if let Some(position) = resolution.iter().position(|bytes| bytes == pk) {
+                if let Some(position) = resolution
+                    .iter()
+                    .position(|bytes| bytes == leaf.hpke_init_key())
+                {
                     resolution.remove(position);
                 };
             }
@@ -153,25 +214,6 @@ impl<'a> TreeSyncDiff<'a> {
         }
         // The final hash is the one of the leaf's parent.
         Ok(previous_parent_hash)
-    }
-
-    pub(crate) fn set_parent_hash(
-        &mut self,
-        backend: &impl OpenMlsCryptoProvider,
-        // Hash of the parent of this node.
-        hash_of_parent: &[u8],
-        node: &TreeSyncNode,
-        // Resolution of the child of this node that is not updated.
-        original_child_resolution: &[HpkePublicKey],
-    ) -> Vec<u8> {
-        // This is P.
-        // 1. Create P's `ParentHashInput` struct. We need:
-        //   * P's HpkePublicKey
-        //   * The the hash of P's parent
-        //   * The original child resolution of the child that is not being
-        //     updated right now.
-        //   * Filter P's unmerged leaves out of the original_child_resolution
-        todo!()
     }
 
     /// Compute the tree hash of the TreeSync instance we would get when merging
@@ -186,10 +228,13 @@ implement_error! {
         Simple {
             LibraryError = "An unrecoverable error has occurred.",
             PathLengthError = "The given path does not have the length of the given leaf's direct path.",
+            MissingParentHash = "The given key package does not contain a parent hash extension.",
+            ParentHashMismatch = "The parent hash of the given key package is invalid.",
         }
         Complex {
             TreeSyncNodeError(TreeSyncNodeError) = "We found a node with an unexpected type.",
             TreeDiffError(MlsBinaryTreeDiffError) = "An error occurred while operating on the diff.",
+            CredentialError(CredentialError) = "An error occurred while signing a `KeyPackage`.",
         }
     }
 }

@@ -3,7 +3,10 @@
 
 use openmls_traits::OpenMlsCryptoProvider;
 
-use crate::binary_tree::{Addressable, MlsBinaryTree, MlsBinaryTreeError};
+use crate::{
+    binary_tree::{Addressable, MlsBinaryTree, MlsBinaryTreeError},
+    ciphersuite::HpkePublicKey,
+};
 
 use self::{diff::TreeSyncDiff, node::TreeSyncNode};
 
@@ -16,7 +19,7 @@ pub(crate) struct TreeSync {
 }
 
 impl Addressable for Option<TreeSyncNode> {
-    type Address = Vec<u8>;
+    type Address = HpkePublicKey;
 
     fn address(&self) -> Option<Self::Address> {
         self.as_ref().map(|node| node.address()).flatten()

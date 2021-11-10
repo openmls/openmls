@@ -1,4 +1,3 @@
-use hpke::HpkePublicKey;
 use openmls_traits::OpenMlsCryptoProvider;
 use tls_codec::{
     Deserialize, Serialize, Size, TlsByteVecU8, TlsSerialize, TlsSize, TlsSliceU32, TlsSliceU8,
@@ -7,7 +6,7 @@ use tls_codec::{
 
 use crate::{
     binary_tree::{Addressable, LeafIndex},
-    ciphersuite::Ciphersuite,
+    ciphersuite::{Ciphersuite, HpkePublicKey},
     prelude::KeyPackage,
 };
 
@@ -60,8 +59,8 @@ impl Node {
     /// In case of MLS, this would be the node's HPKEPublicKey. TreeSync
     /// can then gather everything necessary to build the `ParentHashInput`,
     /// `LeafNodeHashInput` and `ParentNodeTreeHashInput` structs for a given node.
-    fn node_content(&self) -> &[u8] {
-        self.public_key.as_slice()
+    fn node_content(&self) -> &HpkePublicKey {
+        &self.public_key
     }
 
     /// Get the list of unmerged leaves.
@@ -86,7 +85,7 @@ impl Node {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
         parent_hash: &[u8],
-        original_child_resolution: &[Vec<u8>],
+        original_child_resolution: &[HpkePublicKey],
     ) {
         let parent_hash_input =
             ParentHashInput::new(&self.public_key, &parent_hash, original_child_resolution);
@@ -112,12 +111,12 @@ impl Node {
 }
 
 impl Addressable for TreeSyncNode {
-    type Address = Vec<u8>;
+    type Address = HpkePublicKey;
 
     fn address(&self) -> Option<Self::Address> {
         let address = match self {
-            TreeSyncNode::LeafNode(kp) => kp.hpke_init_key().as_slice().to_vec(),
-            TreeSyncNode::ParentNode(node) => node.node_content().to_vec(),
+            TreeSyncNode::LeafNode(kp) => kp.hpke_init_key().clone(),
+            TreeSyncNode::ParentNode(node) => node.node_content().clone(),
         };
         Some(address)
     }
@@ -127,26 +126,19 @@ impl Addressable for TreeSyncNode {
 pub(crate) struct ParentHashInput<'a> {
     public_key: &'a HpkePublicKey,
     parent_hash: TlsSliceU8<'a, u8>,
-    // FIXME: This should be a slice.
-    original_child_resolution: TlsVecU32<HpkePublicKey>,
+    original_child_resolution: TlsSliceU32<'a, HpkePublicKey>,
 }
 
 impl<'a> ParentHashInput<'a> {
     pub(crate) fn new(
         public_key: &'a HpkePublicKey,
         parent_hash: &'a [u8],
-        original_child_resolution: &'a [Vec<u8>],
+        original_child_resolution: &'a [HpkePublicKey],
     ) -> Self {
-        let ocr: Vec<HpkePublicKey> = original_child_resolution
-            .iter()
-            // FIXME: Unwrapping here for now. Ideally, we'd use HpkePublicKey
-            // as address directly.
-            .map(|&bytes| HpkePublicKey::tls_deserialize(&mut bytes.as_slice()).unwrap())
-            .collect();
         Self {
             public_key,
             parent_hash: TlsSliceU8(parent_hash),
-            original_child_resolution: ocr.into(),
+            original_child_resolution: TlsSliceU32(original_child_resolution),
         }
     }
     pub(crate) fn hash(
