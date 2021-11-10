@@ -8,10 +8,9 @@ use std::{
 };
 
 use evercrypt::prelude::*;
-use hpke::{
-    prelude::{HpkeAeadMode, HpkeKdfMode, HpkeKemMode},
-    Hpke,
-};
+use hpke::Hpke;
+use hpke_rs_crypto::types as hpke_types;
+use hpke_rs_evercrypt::HpkeEvercrypt;
 use log::error;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
@@ -248,7 +247,7 @@ impl OpenMlsCrypto for EvercryptProvider {
         aad: &[u8],
         ptxt: &[u8],
     ) -> openmls_traits::types::HpkeCiphertext {
-        let (kem_output, ciphertext) = Hpke::new(
+        let (kem_output, ciphertext) = Hpke::<HpkeEvercrypt>::new(
             hpke::Mode::Base,
             kem_mode(config.0),
             kdf_mode(config.1),
@@ -270,7 +269,7 @@ impl OpenMlsCrypto for EvercryptProvider {
         info: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
-        Hpke::new(
+        Hpke::<HpkeEvercrypt>::new(
             hpke::Mode::Base,
             kem_mode(config.0),
             kdf_mode(config.1),
@@ -294,7 +293,7 @@ impl OpenMlsCrypto for EvercryptProvider {
         config: openmls_traits::types::HpkeConfig,
         ikm: &[u8],
     ) -> openmls_traits::types::HpkeKeyPair {
-        let kp = Hpke::new(
+        let kp = Hpke::<HpkeEvercrypt>::new(
             hpke::Mode::Base,
             kem_mode(config.0),
             kdf_mode(config.1),
@@ -311,32 +310,32 @@ impl OpenMlsCrypto for EvercryptProvider {
 }
 
 #[inline(always)]
-fn kem_mode(kem: HpkeKemType) -> HpkeKemMode {
+fn kem_mode(kem: HpkeKemType) -> hpke_types::KemAlgorithm {
     match kem {
-        HpkeKemType::DhKemP256 => HpkeKemMode::DhKemP256,
-        HpkeKemType::DhKemP384 => HpkeKemMode::DhKemP384,
-        HpkeKemType::DhKemP521 => HpkeKemMode::DhKemP521,
-        HpkeKemType::DhKem25519 => HpkeKemMode::DhKem25519,
-        HpkeKemType::DhKem448 => HpkeKemMode::DhKem448,
+        HpkeKemType::DhKemP256 => hpke_types::KemAlgorithm::DhKemP256,
+        HpkeKemType::DhKemP384 => hpke_types::KemAlgorithm::DhKemP384,
+        HpkeKemType::DhKemP521 => hpke_types::KemAlgorithm::DhKemP521,
+        HpkeKemType::DhKem25519 => hpke_types::KemAlgorithm::DhKem25519,
+        HpkeKemType::DhKem448 => hpke_types::KemAlgorithm::DhKem448,
     }
 }
 
 #[inline(always)]
-fn kdf_mode(kdf: HpkeKdfType) -> HpkeKdfMode {
+fn kdf_mode(kdf: HpkeKdfType) -> hpke_types::KdfAlgorithm {
     match kdf {
-        HpkeKdfType::HkdfSha256 => HpkeKdfMode::HkdfSha256,
-        HpkeKdfType::HkdfSha384 => HpkeKdfMode::HkdfSha384,
-        HpkeKdfType::HkdfSha512 => HpkeKdfMode::HkdfSha512,
+        HpkeKdfType::HkdfSha256 => hpke_types::KdfAlgorithm::HkdfSha256,
+        HpkeKdfType::HkdfSha384 => hpke_types::KdfAlgorithm::HkdfSha384,
+        HpkeKdfType::HkdfSha512 => hpke_types::KdfAlgorithm::HkdfSha512,
     }
 }
 
 #[inline(always)]
-fn aead_mode(aead: HpkeAeadType) -> HpkeAeadMode {
+fn aead_mode(aead: HpkeAeadType) -> hpke_types::AeadAlgorithm {
     match aead {
-        HpkeAeadType::AesGcm128 => HpkeAeadMode::AesGcm128,
-        HpkeAeadType::AesGcm256 => HpkeAeadMode::AesGcm256,
-        HpkeAeadType::ChaCha20Poly1305 => HpkeAeadMode::ChaCha20Poly1305,
-        HpkeAeadType::Export => HpkeAeadMode::Export,
+        HpkeAeadType::AesGcm128 => hpke_types::AeadAlgorithm::Aes128Gcm,
+        HpkeAeadType::AesGcm256 => hpke_types::AeadAlgorithm::Aes256Gcm,
+        HpkeAeadType::ChaCha20Poly1305 => hpke_types::AeadAlgorithm::ChaCha20Poly1305,
+        HpkeAeadType::Export => hpke_types::AeadAlgorithm::HpkeExport,
     }
 }
 
@@ -609,7 +608,7 @@ fn der_decode(mut signature_bytes: &[u8]) -> Result<Vec<u8>, CryptoError> {
 
 #[test]
 fn test_der_codec() {
-    let evercrypt = Evercrypt::default();
+    let evercrypt = EvercryptProvider::default();
     let payload = vec![0u8];
     let signature_scheme = SignatureScheme::ECDSA_SECP256R1_SHA256;
     let (sk, pk) = signature_key_gen(signature_mode(signature_scheme).unwrap())
@@ -644,7 +643,7 @@ fn test_der_codec() {
 
 #[test]
 fn test_der_decoding() {
-    let evercrypt = Evercrypt::default();
+    let evercrypt = EvercryptProvider::default();
     let payload = vec![0u8];
     let signature_scheme = SignatureScheme::ECDSA_SECP256R1_SHA256;
     let (sk, _) = signature_key_gen(signature_mode(signature_scheme).unwrap())
@@ -742,7 +741,7 @@ fn test_der_decoding() {
 
 #[test]
 fn test_der_encoding() {
-    let evercrypt = Evercrypt::default();
+    let evercrypt = EvercryptProvider::default();
     let payload = vec![0u8];
     let signature_scheme = SignatureScheme::ECDSA_SECP256R1_SHA256;
     let (sk, _) = signature_key_gen(signature_mode(signature_scheme).unwrap())

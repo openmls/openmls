@@ -34,7 +34,7 @@ See [traits](./traits/Readme.md) for more details.
 
 ## Development
 
-OpenMLS requires at least Rust 1.50.0.
+OpenMLS requires at least Rust 1.56.0.
 
 ### Build
 
@@ -89,6 +89,6 @@ OpenMLS adheres to the [Contributor Covenant](https://www.contributor-covenant.o
 [chat-link]: https://openmls.zulipchat.com
 [list-image]: https://img.shields.io/badge/mailing-list-blue.svg
 [list-link]: https://groups.google.com/u/0/g/openmls-dev
-[rustc-image]: https://img.shields.io/badge/rustc-1.50+-blue.svg
+[rustc-image]: https://img.shields.io/badge/rustc-1.56+-blue.svg
 [docs-main-badge]: https://img.shields.io/badge/docs-main-blue.svg
 [docs-main-link]: https://openmls.tech/openmls/openmls/index.html
