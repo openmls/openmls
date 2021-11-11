@@ -6,7 +6,7 @@
 use evercrypt_backend::OpenMlsEvercrypt;
 use openmls::{group::create_commit::Proposals, prelude::*};
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{types::AeadType, OpenMlsCryptoProvider};
 
 #[test]
 fn create_commit_optional_path() {
