@@ -180,7 +180,7 @@ fn proposal_queue_functions() {
     }
 }
 
-/// Test, that we the StagedProposalQueue is iterated in the right order.
+/// Test, that we StagedProposalQueue is iterated in the right order.
 #[test]
 fn proposal_queue_order() {
     let crypto = OpenMlsRustCrypto::default();
