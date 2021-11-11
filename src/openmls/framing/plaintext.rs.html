@@ -818,6 +818,11 @@
 <span id="818">818</span>
 <span id="819">819</span>
 <span id="820">820</span>
+<span id="821">821</span>
+<span id="822">822</span>
+<span id="823">823</span>
+<span id="824">824</span>
+<span id="825">825</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MlsPlaintext</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! An MlsPlaintext is a framing structure for MLS messages. It can contain</span>
@@ -1061,6 +1066,11 @@
     <span class="doccomment">/// Returns a reference to the `content` field.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">content</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextContentType</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">content</span>
+    }
+
+    <span class="doccomment">/// Returns the `content` field and consumes the parent.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">take_content</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">MlsPlaintextContentType</span> {
+        <span class="self">self</span>.<span class="ident">content</span>
     }
 
     <span class="doccomment">/// Get the content type of this message.</span>

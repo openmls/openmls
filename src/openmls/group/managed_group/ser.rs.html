@@ -46,9 +46,6 @@
 <span id="46">46</span>
 <span id="47">47</span>
 <span id="48">48</span>
-<span id="49">49</span>
-<span id="50">50</span>
-<span id="51">51</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use</span> <span class="ident">serde</span>::{
@@ -59,7 +56,6 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SerializedManagedGroup</span> {
     <span class="ident">managed_group_config</span>: <span class="ident">ManagedGroupConfig</span>,
     <span class="ident">group</span>: <span class="ident">MlsGroup</span>,
-    <span class="ident">pending_proposals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span><span class="op">&gt;</span>,
     <span class="ident">proposal_store</span>: <span class="ident">ProposalStore</span>,
     <span class="ident">own_kpbs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>,
     <span class="ident">aad</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
@@ -73,7 +69,6 @@
         <span class="ident">ManagedGroup</span> {
             <span class="ident">managed_group_config</span>: <span class="self">self</span>.<span class="ident">managed_group_config</span>,
             <span class="ident">group</span>: <span class="self">self</span>.<span class="ident">group</span>,
-            <span class="ident">pending_proposals</span>: <span class="self">self</span>.<span class="ident">pending_proposals</span>,
             <span class="ident">proposal_store</span>: <span class="self">self</span>.<span class="ident">proposal_store</span>,
             <span class="ident">own_kpbs</span>: <span class="self">self</span>.<span class="ident">own_kpbs</span>,
             <span class="ident">aad</span>: <span class="self">self</span>.<span class="ident">aad</span>,
@@ -91,7 +86,6 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">serializer</span>.<span class="ident">serialize_struct</span>(<span class="string">&quot;SerializedManagedGroup&quot;</span>, <span class="number">6</span>)<span class="question-mark">?</span>;
         <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;managed_group_config&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">managed_group_config</span>)<span class="question-mark">?</span>;
         <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;group&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group</span>)<span class="question-mark">?</span>;
-        <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;pending_proposals&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">pending_proposals</span>)<span class="question-mark">?</span>;
         <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;proposal_store&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">proposal_store</span>)<span class="question-mark">?</span>;
         <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;own_kpbs&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">own_kpbs</span>)<span class="question-mark">?</span>;
         <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;aad&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>)<span class="question-mark">?</span>;

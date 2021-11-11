@@ -62,7 +62,7 @@
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError::UseAfterEviction</span>(<span class="ident">UseAfterEviction::Error</span>));
         }
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">pending_proposals</span>.<span class="ident">is_empty</span>() {
+        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">proposal_store</span>.<span class="ident">is_empty</span>() {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError::PendingProposalsExist</span>(
                 <span class="ident">PendingProposalsError::Exists</span>,
             ));

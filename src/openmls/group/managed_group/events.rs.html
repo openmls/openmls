@@ -273,7 +273,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">MemberAddedEvent</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">aad</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">sender</span>: <span class="ident">Credential</span>, <span class="ident">added_member</span>: <span class="ident">Credential</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">_new</span>(<span class="ident">aad</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">sender</span>: <span class="ident">Credential</span>, <span class="ident">added_member</span>: <span class="ident">Credential</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">aad</span>,
             <span class="ident">sender</span>,
@@ -306,7 +306,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">MemberRemovedEvent</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">aad</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">removal</span>: <span class="ident">Removal</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">_new</span>(<span class="ident">aad</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">removal</span>: <span class="ident">Removal</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> { <span class="ident">aad</span>, <span class="ident">removal</span> }
     }
 
@@ -358,7 +358,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">PskReceivedEvent</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">aad</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">psk_id</span>: <span class="ident">PreSharedKeyId</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">_new</span>(<span class="ident">aad</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">psk_id</span>: <span class="ident">PreSharedKeyId</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> { <span class="ident">aad</span>, <span class="ident">psk_id</span> }
     }
 
@@ -382,7 +382,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">ReInitEvent</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">aad</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">re_init_proposal</span>: <span class="ident">ReInitProposal</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">_new</span>(<span class="ident">aad</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">re_init_proposal</span>: <span class="ident">ReInitProposal</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">aad</span>,
             <span class="ident">re_init_proposal</span>,
@@ -474,7 +474,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Removal</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">_new</span>(
         <span class="ident">own_credential</span>: <span class="ident">Credential</span>,
         <span class="ident">remover_credential</span>: <span class="ident">Credential</span>,
         <span class="ident">leaver_credential</span>: <span class="ident">Credential</span>,
