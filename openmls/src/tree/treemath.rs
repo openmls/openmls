@@ -74,9 +74,10 @@ pub(crate) fn right(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, Tree
 
 // The parent here might be beyond the right edge of the tree.
 pub(crate) fn parent_step(x: usize) -> usize {
-    let k = level(NodeIndex::from(x));
-    let b = (x >> (k + 1)) & 0x01;
-    (x | (1 << k)) ^ (b << (k + 1))
+    // We need to use u64 for some of the operations where usize is too small on 32bit platforms
+    let k = level(NodeIndex::from(x)) as u64;
+    let b = (x as u64 >> (k + 1)) & 0x01;
+    (x | (1 << k)) ^ ((b as usize) << (k + 1))
 }
 
 pub(crate) fn parent(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, TreeMathError> {
