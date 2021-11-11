@@ -158,7 +158,7 @@ impl ManagedGroup {
         self.group.group_id()
     }
 
-    /// Returns a list of staged proposal
+    /// Returns an `Iterator` over staged proposals.
     pub fn pending_proposals(&self) -> impl Iterator<Item = &StagedProposal> {
         self.proposal_store.proposals()
     }
