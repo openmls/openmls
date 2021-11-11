@@ -12,14 +12,15 @@ readme = "README.md"
 [dependencies]
 openmls_traits = { version = "0.1", path = "../traits" }
 uuid = { version = "0.8", features = ["v4"] }
-rand = "0.8"
-getrandom = "0.2"
 lazy_static = "1.4"
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = "^1.0"
 log = { version = "0.4", features = ["std"] }
 typetag = "0.1"
 tls_codec = { version = "0.1.4", features = ["derive", "serde_serialize"] }
+# Only required for tests. The js feature is required for wasm
+rand = { version = "0.8", optional = true }
+getrandom = { version = "0.2", features = ["js"], optional = true }
 # Crypto backends required for KAT and testing - "test-utils" feature
 itertools = { version = "0.10", optional = true }
 openmls_rust_crypto = { version = "0.1", path = "../openmls_rust_crypto", optional = true }
@@ -27,7 +28,7 @@ evercrypt_backend = { version = "0.1", path = "../evercrypt_backend", optional =
 
 [features]
 default = []
-test-utils = ["itertools", "openmls_rust_crypto"]
+test-utils = ["itertools", "openmls_rust_crypto", "rand", "getrandom"]
 evercrypt = ["evercrypt_backend"] # Evercrypt needs to be enabled individually
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
