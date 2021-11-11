@@ -1,6 +1,9 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use crate::binary_tree::{array_representation::treemath::sibling, Addressable, LeafIndex};
+use crate::binary_tree::{
+    array_representation::treemath::{parent, sibling},
+    Addressable, LeafIndex,
+};
 
 use super::{
     tree::{to_node_index, ABinaryTree, ABinaryTreeError, NodeIndex, TreeSize},
@@ -40,15 +43,15 @@ impl<'a, T: Default + Clone + Addressable> AbDiff<'a, T> {
             return Err(ABinaryTreeDiffError::OutOfBounds);
         }
         let node_index = to_node_index(leaf_index);
-        self.add_to_diff(node_index, new_leaf);
+        self.add_to_diff(node_index, new_leaf)?;
         Ok(())
     }
 
     pub(crate) fn add_leaf(&mut self, new_leaf: T) -> Result<LeafIndex, ABinaryTreeDiffError> {
         // Make sure that the input node has an address.
         let address = new_leaf.address().ok_or(ABinaryTreeError::InvalidNode)?;
-        self.add_to_diff(self.size(), T::default());
-        self.add_to_diff(self.size(), new_leaf);
+        self.add_to_diff(self.size(), T::default())?;
+        self.add_to_diff(self.size(), new_leaf)?;
         Ok(self.leaf_count() - 1)
     }
 
@@ -90,6 +93,13 @@ impl<'a, T: Default + Clone + Addressable> AbDiff<'a, T> {
 
     pub(crate) fn leaf(&self, leaf_index: LeafIndex) -> Option<&T> {
         self.node_by_index(to_node_index(leaf_index))
+    }
+
+    pub(crate) fn leaf_mut(
+        &mut self,
+        leaf_index: LeafIndex,
+    ) -> Result<&mut T, ABinaryTreeDiffError> {
+        self.node_mut_by_index(to_node_index(leaf_index))
     }
 
     /// Returns a reference to the node at index `node_index` or `None` if the
@@ -163,15 +173,49 @@ impl<'a, T: Default + Clone + Addressable> AbDiff<'a, T> {
                     path.get(*node_index as usize)
                         .ok_or(ABinaryTreeDiffError::PathLengthMismatch)?
                         .clone(),
-                );
+                )?;
             }
         }
         for node_index in &direct_path {
-            self.add_to_diff(*node_index, T::default());
+            self.add_to_diff(*node_index, T::default())?;
         }
         Ok(())
     }
 
+    fn apply_to_node<F>(
+        &mut self,
+        node_index: NodeIndex,
+        f: F,
+    ) -> Result<Vec<u8>, ABinaryTreeDiffError>
+    where
+        F: Fn(&mut T, Vec<u8>, Vec<u8>) -> Vec<u8> + Copy,
+    {
+        // Check if this is a leaf.
+        if node_index % 2 == 0 {
+            let leaf = self.node_mut_by_index(node_index)?;
+            return Ok(f(leaf, vec![], vec![]));
+        }
+        // Compute left hash.
+        let left_child_index = left(node_index)?;
+        let left_hash = self.apply_to_node(left_child_index, f)?;
+        let right_child_index = right(node_index, self.size())?;
+        let right_hash = self.apply_to_node(right_child_index, f)?;
+        let node = self.node_mut_by_index(node_index)?;
+        Ok(f(node, left_hash, right_hash))
+    }
+
+    /// This function applies the given function to every node in the tree,
+    /// starting with the leaves. In addition to the node itself, the function
+    /// takes as input the results of the function applied to its children.
+    pub(crate) fn fold_tree<F>(&mut self, f: F) -> Result<Vec<u8>, ABinaryTreeDiffError>
+    where
+        F: Fn(&mut T, Vec<u8>, Vec<u8>) -> Vec<u8> + Copy,
+    {
+        let root_index = root(self.size());
+        self.apply_to_node(root_index, f)
+    }
+
+    /// Any Error while applying `f` will be treated as a LibraryError.
     pub(crate) fn apply_to_direct_path<F, E>(
         &mut self,
         leaf_index: LeafIndex,
@@ -185,25 +229,10 @@ impl<'a, T: Default + Clone + Addressable> AbDiff<'a, T> {
             direct_path(node_index, self.size()).map_err(|_| ABinaryTreeError::OutOfBounds)?;
         for node_index in &direct_path_indices {
             let node = self.node_mut_by_index(*node_index)?;
-            f(node);
+            f(node).map_err(|_| ABinaryTreeError::LibraryError)?;
         }
         Ok(())
     }
-
-    //pub(crate) fn direct_path_mut(
-    //    &mut self,
-    //    leaf_index: LeafIndex,
-    //) -> Result<Vec<&mut T>, ABinaryTreeDiffError> {
-    //    let node_index = to_node_index(leaf_index);
-    //    let direct_path_indices =
-    //        direct_path(node_index, self.size()).map_err(|_| ABinaryTreeError::OutOfBounds)?;
-    //    let mut direct_path = Vec::new();
-    //    for node_index in &direct_path_indices {
-    //        let node = self.node_mut_by_index(*node_index)?;
-    //        direct_path.push(node);
-    //    }
-    //    Ok(direct_path)
-    //}
 
     pub(crate) fn direct_path(
         &self,

@@ -4,8 +4,15 @@
 use std::collections::HashMap;
 use std::convert::TryFrom;
 
-use super::treemath::{copath, direct_path, lowest_common_ancestor, root};
-use crate::binary_tree::{Addressable, LeafIndex};
+use openmls_traits::OpenMlsCryptoProvider;
+
+use super::treemath::{
+    copath, direct_path, left, lowest_common_ancestor, right, root, TreeMathError,
+};
+use crate::{
+    binary_tree::{Addressable, LeafIndex},
+    ciphersuite::Ciphersuite,
+};
 
 /// The `NodeIndex` is used throughout this trait to index nodes as if the
 /// underlying binary tree was implementing the array representation.
@@ -29,7 +36,7 @@ impl<T: Default + Clone + Addressable> TryFrom<Vec<T>> for ABinaryTree<T> {
     type Error = ABinaryTreeError;
 
     fn try_from(nodes: Vec<T>) -> Result<Self, Self::Error> {
-        Self::new(&nodes)
+        Self::new(nodes)
     }
 }
 
@@ -41,7 +48,7 @@ impl<T: Default + Clone + Addressable> ABinaryTree<T> {
     /// allow the creation of a full, left-balanced binary tree and an
     /// `OutOfRange` error if the number of given nodes exceeds the range of
     /// `NodeIndex`.
-    pub(crate) fn new(nodes: &[T]) -> Result<Self, ABinaryTreeError> {
+    pub(crate) fn new(nodes: Vec<T>) -> Result<Self, ABinaryTreeError> {
         if nodes.len() > NodeIndex::max_value() as usize {
             return Err(ABinaryTreeError::OutOfRange);
         } else if nodes.len() % 2 != 1 {
@@ -56,10 +63,7 @@ impl<T: Default + Clone + Addressable> ABinaryTree<T> {
                 node_map.insert(address, i as u32);
             }
         }
-        Ok(ABinaryTree {
-            nodes: nodes.to_vec(),
-            node_map,
-        })
+        Ok(ABinaryTree { nodes, node_map })
     }
 
     /// Obtain a reference to the data contained in the `Node` at index
@@ -267,18 +271,72 @@ impl<T: Default + Clone + Addressable> ABinaryTree<T> {
     pub(crate) fn iter(&self) -> impl Iterator<Item = &T> {
         self.nodes.iter()
     }
+
+    fn apply_to_node<F, E>(
+        &mut self,
+        node_index: NodeIndex,
+        f: F,
+    ) -> Result<Result<Vec<u8>, E>, ABinaryTreeError>
+    where
+        F: Fn(
+                &mut T,
+                Option<LeafIndex>,
+                Result<Vec<u8>, E>,
+                Result<Vec<u8>, E>,
+            ) -> Result<Vec<u8>, E>
+            + Copy,
+    {
+        // Check if this is a leaf.
+        if node_index % 2 == 0 {
+            let leaf = self
+                .node_mut_by_index(node_index)
+                .ok_or(ABinaryTreeError::LibraryError)?;
+            return Ok(f(leaf, Some(node_index / 2), Ok(vec![]), Ok(vec![])));
+        }
+        // Compute left hash.
+        let left_child_index = left(node_index)?;
+        let left_hash = self.apply_to_node(left_child_index, f)?;
+        let right_child_index = right(node_index, self.size())?;
+        let right_hash = self.apply_to_node(right_child_index, f)?;
+        let node = self
+            .node_mut_by_index(node_index)
+            .ok_or(ABinaryTreeError::LibraryError)?;
+        Ok(f(node, None, left_hash, right_hash))
+    }
+
+    /// This function applies the given function to every node in the tree,
+    /// starting with the leaves. In addition to the node itself, the function
+    /// takes as input the results of the function applied to its children.
+    pub(crate) fn fold_tree<F, E>(&mut self, f: F) -> Result<Result<Vec<u8>, E>, ABinaryTreeError>
+    where
+        F: Fn(
+                &mut T,
+                Option<LeafIndex>,
+                Result<Vec<u8>, E>,
+                Result<Vec<u8>, E>,
+            ) -> Result<Vec<u8>, E>
+            + Copy,
+    {
+        let root_index = root(self.size());
+        self.apply_to_node(root_index, f)
+    }
 }
 
 implement_error! {
     pub enum ABinaryTreeError {
-        OutOfRange = "Adding nodes exceeds the maximum possible size of the tree.",
-        NotEnoughNodes = "Not enough nodes to remove.",
-        InvalidNumberOfNodes = "The given number of nodes does not allow the creation of a full, left-balanced binary tree.",
-        OutOfBounds = "The given index is outside of the tree.",
-        AddressCollision = "Found two nodes with the same address.",
-        InvalidNode = "Can't add the default node to the tree.",
-        NodeNotFound = "Can't find the node with the given address in the tree.",
-        LibraryError = "An inconsistency in the internal state of the tree was detected.",
+        Simple {
+            OutOfRange = "Adding nodes exceeds the maximum possible size of the tree.",
+            NotEnoughNodes = "Not enough nodes to remove.",
+            InvalidNumberOfNodes = "The given number of nodes does not allow the creation of a full, left-balanced binary tree.",
+            OutOfBounds = "The given index is outside of the tree.",
+            AddressCollision = "Found two nodes with the same address.",
+            InvalidNode = "Can't add the default node to the tree.",
+            NodeNotFound = "Can't find the node with the given address in the tree.",
+            LibraryError = "An inconsistency in the internal state of the tree was detected.",
+        }
+        Complex {
+            TreeMathError(TreeMathError) = "Error while traversing the tree.",
+        }
     }
 }
 

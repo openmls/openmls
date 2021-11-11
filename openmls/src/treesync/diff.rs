@@ -1,6 +1,6 @@
 use openmls_traits::OpenMlsCryptoProvider;
 
-use super::node::{Node, TreeSyncNode, TreeSyncNodeError};
+use super::node::{Node, ParentNode, TreeSyncNode, TreeSyncNodeError};
 
 use crate::{
     binary_tree::{LeafIndex, MlsBinaryTreeDiff, MlsBinaryTreeDiffError, StagedMlsBinaryTreeDiff},
@@ -18,12 +18,12 @@ use crate::{
 };
 
 pub(crate) struct StagedTreeSyncDiff {
-    diff: StagedMlsBinaryTreeDiff<Option<TreeSyncNode>>,
+    diff: StagedMlsBinaryTreeDiff<TreeSyncNode>,
+    new_tree_hash: Vec<u8>,
 }
 
 pub(crate) struct TreeSyncDiff<'a> {
-    diff: MlsBinaryTreeDiff<'a, Option<TreeSyncNode>>,
-    new_tree_hash: Vec<u8>,
+    diff: MlsBinaryTreeDiff<'a, TreeSyncNode>,
 }
 
 impl<'a> TreeSyncDiff<'a> {
@@ -34,7 +34,7 @@ impl<'a> TreeSyncDiff<'a> {
         leaf_index: LeafIndex,
     ) -> Result<(), MlsBinaryTreeDiffError> {
         self.diff
-            .replace_leaf(leaf_index, Some(TreeSyncNode::LeafNode(leaf_node)))?;
+            .replace_leaf(leaf_index, Node::LeafNode(leaf_node).into())?;
         self.diff.set_direct_path(leaf_index, None)?;
         Ok(())
     }
@@ -47,23 +47,19 @@ impl<'a> TreeSyncDiff<'a> {
         // Add the new leaf to the tree.
         let leaf_index = if let Some(leaf_index) = self.diff.get_empty_leaf()? {
             self.diff
-                .replace_leaf(leaf_index, Some(TreeSyncNode::LeafNode(leaf_node)))?;
+                .replace_leaf(leaf_index, Node::LeafNode(leaf_node).into())?;
             leaf_index
         } else {
-            self.diff
-                .add_leaf(Some(TreeSyncNode::LeafNode(leaf_node)))?
+            self.diff.add_leaf(Node::LeafNode(leaf_node).into())?
         };
-        // Get vector with mutable references.
-        //let direct_path = self.diff.direct_path_mut(leaf_index)?;
         // Add new unmerged leaves entry to all nodes in direct path.
-        let add_unmerged_leaf =
-            |node_option: &mut Option<TreeSyncNode>| -> Result<(), TreeSyncDiffError> {
-                if let Some(node) = node_option {
-                    let pn = node.as_parent_node_mut()?;
-                    pn.add_unmerged_leaf(leaf_index);
-                }
-                Ok(())
-            };
+        let add_unmerged_leaf = |tsn: &mut TreeSyncNode| -> Result<(), TreeSyncDiffError> {
+            if let Some(ref mut node) = tsn.node_mut() {
+                let pn = node.as_parent_node_mut()?;
+                pn.add_unmerged_leaf(leaf_index);
+            }
+            Ok(())
+        };
         self.diff
             .apply_to_direct_path(leaf_index, add_unmerged_leaf)?;
         Ok(())
@@ -71,7 +67,7 @@ impl<'a> TreeSyncDiff<'a> {
 
     /// Remove a group member by blanking the target leaf and its direct path.
     fn remove_leaf(&mut self, leaf_index: LeafIndex) -> Result<(), MlsBinaryTreeDiffError> {
-        self.diff.replace_leaf(leaf_index, None)?;
+        self.diff.replace_leaf(leaf_index, TreeSyncNode::blank())?;
         self.diff.set_direct_path(leaf_index, None)?;
         Ok(())
     }
@@ -85,22 +81,17 @@ impl<'a> TreeSyncDiff<'a> {
         credential_bundle: &CredentialBundle,
         // FIXME: This should probably be a slice, since the path is needed to
         // prepare the commit as well. Same for the function below.
-        mut path: Vec<Node>,
+        mut path: Vec<ParentNode>,
     ) -> Result<KeyPackage, TreeSyncDiffError> {
         let parent_hash = self.process_update_path(backend, ciphersuite, leaf_index, path)?;
 
         let parent_hash_extension = Extension::ParentHash(ParentHashExtension::new(&parent_hash));
         key_package_payload.add_extension(parent_hash_extension);
         let key_package = key_package_payload.sign(backend, credential_bundle)?;
-        // Set the leaf's parent hash. TODO: If the key package has a parent
-        // hash extension, check its value against the previously computed
-        // parent hash. If it doesn't, set it and sign the key package anew.
 
         // Replace the leaf.
-        self.diff.replace_leaf(
-            leaf_index,
-            Some(TreeSyncNode::LeafNode(key_package.clone())),
-        )?;
+        self.diff
+            .replace_leaf(leaf_index, Node::LeafNode(key_package.clone()).into())?;
         Ok(key_package)
     }
 
@@ -110,7 +101,7 @@ impl<'a> TreeSyncDiff<'a> {
         ciphersuite: &Ciphersuite,
         leaf_index: LeafIndex,
         key_package: &KeyPackage,
-        mut path: Vec<Node>,
+        mut path: Vec<ParentNode>,
     ) -> Result<(), TreeSyncDiffError> {
         let parent_hash = self.process_update_path(backend, ciphersuite, leaf_index, path)?;
         // Verify the parent hash.
@@ -127,10 +118,8 @@ impl<'a> TreeSyncDiff<'a> {
         };
 
         // Replace the leaf.
-        self.diff.replace_leaf(
-            leaf_index,
-            Some(TreeSyncNode::LeafNode(key_package.clone())),
-        )?;
+        self.diff
+            .replace_leaf(leaf_index, Node::LeafNode(key_package.clone()).into())?;
         Ok(())
     }
 
@@ -145,14 +134,14 @@ impl<'a> TreeSyncDiff<'a> {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
         leaf_index: LeafIndex,
-        mut path: Vec<Node>,
+        mut path: Vec<ParentNode>,
     ) -> Result<Vec<u8>, TreeSyncDiffError> {
         // Compute the parent hash.
         let parent_hash = self.set_parent_hashes(backend, ciphersuite, &mut path, leaf_index)?;
         // Set the direct path.
         let direct_path = path
             .drain(..)
-            .map(|node| Some(TreeSyncNode::ParentNode(node)))
+            .map(|node| Node::ParentNode(node).into())
             .collect();
         // Set the direct path.
         self.diff.set_direct_path(leaf_index, Some(direct_path))?;
@@ -167,7 +156,7 @@ impl<'a> TreeSyncDiff<'a> {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
-        path: &mut [Node],
+        path: &mut [ParentNode],
         leaf_index: LeafIndex,
     ) -> Result<Vec<u8>, TreeSyncDiffError> {
         // If the path is empty, return a zero-length string.
@@ -199,6 +188,7 @@ impl<'a> TreeSyncDiff<'a> {
                     .ok_or(MlsBinaryTreeDiffError::NodeNotFound)?;
                 // All unmerged leaves should be non-blank.
                 let leaf_node = leaf_option
+                    .node()
                     .as_ref()
                     .ok_or(TreeSyncDiffError::LibraryError)?;
                 let leaf = leaf_node.as_leaf_node()?;
@@ -214,12 +204,6 @@ impl<'a> TreeSyncDiff<'a> {
         }
         // The final hash is the one of the leaf's parent.
         Ok(previous_parent_hash)
-    }
-
-    /// Compute the tree hash of the TreeSync instance we would get when merging
-    /// the diff.
-    fn tree_hash(&self) -> Vec<u8> {
-        todo!()
     }
 }
 

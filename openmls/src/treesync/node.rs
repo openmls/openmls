@@ -1,60 +1,147 @@
 use openmls_traits::OpenMlsCryptoProvider;
 use tls_codec::{
-    Deserialize, Serialize, Size, TlsByteVecU8, TlsSerialize, TlsSize, TlsSliceU32, TlsSliceU8,
-    TlsVecU32,
+    Error as TlsCodecError, Serialize, Size, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize,
+    TlsSliceU32, TlsSliceU8, TlsVecU32,
 };
 
 use crate::{
     binary_tree::{Addressable, LeafIndex},
     ciphersuite::{Ciphersuite, HpkePublicKey},
-    prelude::KeyPackage,
+    treesync::hashes::{LeafNodeHashInput, ParentNodeTreeHashInput},
 };
 
-#[derive(Debug, Clone)]
-pub(crate) struct Node {
+use crate::key_packages::KeyPackage;
+
+use super::hashes::{ParentHashError, ParentHashInput};
+use super::mls_node::MlsNode;
+
+#[derive(Debug, PartialEq, Clone, TlsDeserialize, TlsSerialize, TlsSize)]
+pub(crate) struct ParentNode {
     public_key: HpkePublicKey,
     parent_hash: TlsByteVecU8,
     unmerged_leaves: TlsVecU32<LeafIndex>,
-    tree_hash: Vec<u8>,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum TreeSyncNode {
+pub(crate) enum Node {
     LeafNode(KeyPackage),
-    ParentNode(Node),
+    ParentNode(ParentNode),
+}
+
+#[derive(Debug, Clone, Default)]
+/// This intermediate struct on top of `Option<Node>` allows us to cache tree
+/// hash values.
+pub(crate) struct TreeSyncNode {
+    tree_hash: Vec<u8>,
+    node: Option<Node>,
+}
+
+impl From<Node> for TreeSyncNode {
+    fn from(node: Node) -> Self {
+        Self {
+            tree_hash: vec![],
+            node: Some(node),
+        }
+    }
 }
 
 impl TreeSyncNode {
+    pub(super) fn blank() -> Self {
+        Self::default()
+    }
+
+    pub(super) fn node(&self) -> &Option<Node> {
+        &self.node
+    }
+
+    pub(super) fn node_mut(&mut self) -> &mut Option<Node> {
+        &mut self.node
+    }
+
+    pub(super) fn tree_hash(&self) -> &[u8] {
+        &self.tree_hash
+    }
+
+    pub(super) fn compute_tree_hash(
+        &mut self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+        leaf_index_option: Option<LeafIndex>,
+        left_hash_result: Result<Vec<u8>, TreeSyncNodeError>,
+        right_hash_result: Result<Vec<u8>, TreeSyncNodeError>,
+    ) -> Result<Vec<u8>, TreeSyncNodeError> {
+        // TODO: How to figure out when to read a cached value and when to
+        // compute a new one?
+        let left_hash = left_hash_result?;
+        let right_hash = right_hash_result?;
+        // Check if I'm a leaf node.
+        let hash = if let Some(leaf_index) = leaf_index_option {
+            let key_package_option = match self.node.as_ref() {
+                Some(ref node) => Some(node.as_leaf_node()?),
+                None => None,
+            };
+            let hash_input = LeafNodeHashInput::new(&leaf_index, key_package_option);
+            hash_input.hash(ciphersuite, backend)
+        } else {
+            let parent_node_option = match self.node.as_ref() {
+                Some(ref node) => Some(node.as_parent_node()?),
+                None => None,
+            };
+            let hash_input = ParentNodeTreeHashInput::new(
+                parent_node_option,
+                TlsSliceU8(&left_hash),
+                TlsSliceU8(&right_hash),
+            );
+            hash_input.hash(ciphersuite, backend)
+        };
+        self.tree_hash = hash.clone();
+        Ok(hash)
+    }
+}
+
+impl Node {
     pub(crate) fn as_leaf_node(&self) -> Result<&KeyPackage, TreeSyncNodeError> {
         match self {
-            TreeSyncNode::LeafNode(kp) => Ok(&kp),
-            TreeSyncNode::ParentNode(_) => Err(TreeSyncNodeError::AsLeafError),
+            Node::LeafNode(kp) => Ok(&kp),
+            Node::ParentNode(_) => Err(TreeSyncNodeError::AsLeafError),
         }
     }
 
     pub(crate) fn as_leaf_node_mut(&mut self) -> Result<&mut KeyPackage, TreeSyncNodeError> {
         match self {
-            TreeSyncNode::LeafNode(ref mut kp) => Ok(kp),
-            TreeSyncNode::ParentNode(_) => Err(TreeSyncNodeError::AsLeafError),
+            Node::LeafNode(ref mut kp) => Ok(kp),
+            Node::ParentNode(_) => Err(TreeSyncNodeError::AsLeafError),
         }
     }
 
-    pub(crate) fn as_parent_node_mut(&mut self) -> Result<&mut Node, TreeSyncNodeError> {
+    pub(crate) fn as_parent_node(&self) -> Result<&ParentNode, TreeSyncNodeError> {
         match self {
-            TreeSyncNode::LeafNode(_) => Err(TreeSyncNodeError::AsLeafError),
-            TreeSyncNode::ParentNode(ref mut node) => Ok(node),
+            Node::LeafNode(_) => Err(TreeSyncNodeError::AsParentError),
+            Node::ParentNode(ref node) => Ok(node),
+        }
+    }
+
+    pub(crate) fn as_parent_node_mut(&mut self) -> Result<&mut ParentNode, TreeSyncNodeError> {
+        match self {
+            Node::LeafNode(_) => Err(TreeSyncNodeError::AsParentError),
+            Node::ParentNode(ref mut node) => Ok(node),
         }
     }
 }
 
 implement_error! {
     pub enum TreeSyncNodeError {
-        AsLeafError = "This is not a leaf node.",
-        AsParentError = "This is not a parent node.",
+        Simple{
+            AsLeafError = "This is not a leaf node.",
+            AsParentError = "This is not a parent node.",
+        }
+        Complex {
+            ParentHashError(ParentHashError) = "Error while computing parent hash.",
+        }
     }
 }
 
-impl Node {
+impl ParentNode {
     /// Return the value of the node relevant for the parent hash and tree hash.
     /// In case of MLS, this would be the node's HPKEPublicKey. TreeSync
     /// can then gather everything necessary to build the `ParentHashInput`,
@@ -78,35 +165,40 @@ impl Node {
         self.unmerged_leaves.push(leaf_index)
     }
 
-    /// Set the parent hash value of this node. FIXME: Do we really need this
-    /// function? Or can we set the parent hash when creating this node?
+    /// Set the parent hash value of this node.
     pub(super) fn set_parent_hash(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
         parent_hash: &[u8],
         original_child_resolution: &[HpkePublicKey],
-    ) {
+    ) -> Result<(), TreeSyncNodeError> {
         let parent_hash_input =
             ParentHashInput::new(&self.public_key, &parent_hash, original_child_resolution);
-        self.parent_hash = parent_hash_input.hash(backend, ciphersuite).into()
+        self.parent_hash = parent_hash_input.hash(backend, ciphersuite)?.into();
+        Ok(())
     }
 
     /// Get the parent hash value of this node.
     pub(crate) fn parent_hash(&self) -> &[u8] {
         self.parent_hash.as_slice()
     }
+}
 
-    /// Set the tree hash value for the given node. This assuming that the node
-    /// caches the tree hash. FIXME: Do we really need this function? Or can we
-    /// set the hash when creating this node?
-    fn set_tree_hash(&mut self, tree_hash: Vec<u8>) {
-        self.tree_hash = tree_hash
-    }
-
-    /// Get the tree hash value for the given node.
-    fn tree_hash(&self) -> &[u8] {
-        self.tree_hash.as_slice()
+impl From<&MlsNode> for Node {
+    fn from(mls_node: &MlsNode) -> Self {
+        let tsn = match mls_node {
+            MlsNode::Leaf(ref kp) => Node::LeafNode(kp.clone()),
+            MlsNode::Parent(ref pn) => {
+                let node = ParentNode {
+                    public_key: pn.public_key.clone(),
+                    parent_hash: pn.parent_hash.clone().into(),
+                    unmerged_leaves: pn.unmerged_leaves.clone().into(),
+                };
+                Node::ParentNode(node)
+            }
+        };
+        tsn
     }
 }
 
@@ -114,49 +206,9 @@ impl Addressable for TreeSyncNode {
     type Address = HpkePublicKey;
 
     fn address(&self) -> Option<Self::Address> {
-        let address = match self {
-            TreeSyncNode::LeafNode(kp) => kp.hpke_init_key().clone(),
-            TreeSyncNode::ParentNode(node) => node.node_content().clone(),
-        };
-        Some(address)
-    }
-}
-
-#[derive(TlsSerialize, TlsSize)]
-pub(crate) struct ParentHashInput<'a> {
-    public_key: &'a HpkePublicKey,
-    parent_hash: TlsSliceU8<'a, u8>,
-    original_child_resolution: TlsSliceU32<'a, HpkePublicKey>,
-}
-
-impl<'a> ParentHashInput<'a> {
-    pub(crate) fn new(
-        public_key: &'a HpkePublicKey,
-        parent_hash: &'a [u8],
-        original_child_resolution: &'a [HpkePublicKey],
-    ) -> Self {
-        Self {
-            public_key,
-            parent_hash: TlsSliceU8(parent_hash),
-            original_child_resolution: TlsSliceU32(original_child_resolution),
-        }
-    }
-    pub(crate) fn hash(
-        &self,
-        backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
-    ) -> Vec<u8> {
-        let payload = self.tls_serialize_detached().unwrap();
-        ciphersuite.hash(backend, &payload)
-    }
-}
-
-implement_error! {
-    pub enum ParentHashError {
-        EndedWithLeafNode = "The search for a valid child ended with a leaf node.",
-        AllChecksFailed = "All checks failed: Neither child has the right parent hash.",
-        InputNotParentNode = "The input node is not a parent node.",
-        NotAParentNode = "The node is not a parent node.",
-        EmptyParentNode = "The parent node was blank.",
+        self.node.as_ref().map(|node| match node {
+            Node::LeafNode(kp) => kp.hpke_init_key().clone(),
+            Node::ParentNode(node) => node.node_content().clone(),
+        })
     }
 }
