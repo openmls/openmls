@@ -43,7 +43,6 @@ impl ManagedGroup {
         let managed_group = ManagedGroup {
             managed_group_config: managed_group_config.clone(),
             group,
-            pending_proposals: vec![],
             proposal_store: ProposalStore::new(),
             own_kpbs: vec![],
             aad: vec![],
@@ -82,7 +81,6 @@ impl ManagedGroup {
         let managed_group = ManagedGroup {
             managed_group_config: managed_group_config.clone(),
             group,
-            pending_proposals: vec![],
             proposal_store: ProposalStore::new(),
             own_kpbs: vec![],
             aad: vec![],

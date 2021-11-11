@@ -1,3 +1,5 @@
+use mls_group::create_commit_params::CreateCommitParams;
+
 use super::*;
 
 impl ManagedGroup {
@@ -25,8 +27,8 @@ impl ManagedGroup {
             return Err(ManagedGroupError::EmptyInput(EmptyInputError::AddMembers));
         }
 
-        // Create add proposals by value from key packages
-        let proposals = key_packages
+        // Create inline add proposals from key packages
+        let inline_proposals = key_packages
             .iter()
             .map(|key_package| {
                 Proposal::Add(AddProposal {
@@ -34,13 +36,6 @@ impl ManagedGroup {
                 })
             })
             .collect::<Vec<Proposal>>();
-        let proposals_by_value = &proposals.iter().collect::<Vec<&Proposal>>();
-
-        // Include pending proposals
-        let proposals_by_reference = &self
-            .pending_proposals
-            .iter()
-            .collect::<Vec<&MlsPlaintext>>();
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
@@ -50,17 +45,13 @@ impl ManagedGroup {
 
         // Create Commit over all proposals
         // TODO #141
-        let (commit, welcome_option, kpb_option) = self.group.create_commit(
-            self.framing_parameters(),
-            &credential_bundle,
-            Proposals {
-                proposals_by_reference,
-                proposals_by_value,
-            },
-            true,
-            None,
-            backend,
-        )?;
+        let params = CreateCommitParams::builder()
+            .framing_parameters(self.framing_parameters())
+            .credential_bundle(&credential_bundle)
+            .proposal_store(&self.proposal_store)
+            .inline_proposals(inline_proposals)
+            .build();
+        let (commit, welcome_option, kpb_option) = self.group.create_commit(params, backend)?;
         log::error!("plaintext (foo): {:?}", commit);
 
         let welcome = match welcome_option {
@@ -109,8 +100,8 @@ impl ManagedGroup {
             ));
         }
 
-        // Create add proposals by value
-        let proposals = members
+        // Create inline remove proposals
+        let inline_proposals = members
             .iter()
             .map(|member| {
                 Proposal::Remove(RemoveProposal {
@@ -118,13 +109,6 @@ impl ManagedGroup {
                 })
             })
             .collect::<Vec<Proposal>>();
-        let proposals_by_value = &proposals.iter().collect::<Vec<&Proposal>>();
-
-        // Include pending proposals
-        let proposals_by_reference = &self
-            .pending_proposals
-            .iter()
-            .collect::<Vec<&MlsPlaintext>>();
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
@@ -134,17 +118,13 @@ impl ManagedGroup {
 
         // Create Commit over all proposals
         // TODO #141
-        let (commit, welcome_option, kpb_option) = self.group.create_commit(
-            self.framing_parameters(),
-            &credential_bundle,
-            Proposals {
-                proposals_by_reference,
-                proposals_by_value,
-            },
-            false,
-            None,
-            backend,
-        )?;
+        let params = CreateCommitParams::builder()
+            .framing_parameters(self.framing_parameters())
+            .credential_bundle(&credential_bundle)
+            .proposal_store(&self.proposal_store)
+            .inline_proposals(inline_proposals)
+            .build();
+        let (commit, welcome_option, kpb_option) = self.group.create_commit(params, backend)?;
 
         // It has to be a full Commit and we have to save the KeyPackageBundle for later
         if let Some(kpb) = kpb_option {

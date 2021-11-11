@@ -6,9 +6,12 @@
 use clap::Parser;
 use openmls::{
     ciphersuite::signable::Verifiable,
-    group::tests::{
-        kat_messages::{self, MessagesTestVector},
-        kat_transcripts::{self, TranscriptTestVector},
+    group::{
+        create_commit_params::CreateCommitParams,
+        tests::{
+            kat_messages::{self, MessagesTestVector},
+            kat_transcripts::{self, TranscriptTestVector},
+        },
     },
     prelude::*,
     schedule::kat_key_schedule::{self, KeyScheduleTestVector},
@@ -886,19 +889,29 @@ impl MlsClient for MlsClientImpl {
 
         let framing_parameters = FramingParameters::new(&[], interop_group.wire_format);
 
+        let mut proposal_store = ProposalStore::new();
+        for proposal in proposal_plaintexts {
+            if let Ok(staging_proposal) = StagedProposal::from_mls_plaintext(
+                interop_group.group.ciphersuite(),
+                &self.crypto_provider,
+                proposal,
+            ) {
+                proposal_store.add(staging_proposal);
+            } else {
+                return Err(Status::aborted("could not create staged proposal"));
+            }
+        }
+
+        let params = CreateCommitParams::builder()
+            .framing_parameters(framing_parameters)
+            .credential_bundle(&interop_group.credential_bundle)
+            .proposal_store(&proposal_store)
+            .force_self_update(false)
+            .build();
+
         let (commit, option_welcome, option_kpb) = interop_group
             .group
-            .create_commit(
-                framing_parameters,
-                &interop_group.credential_bundle,
-                Proposals {
-                    proposals_by_reference: &proposals_by_reference,
-                    proposals_by_value: &proposals_by_value,
-                },
-                false,
-                None,
-                &self.crypto_provider,
-            )
+            .create_commit(params, &self.crypto_provider)
             .map_err(|e| into_status(e))?;
 
         if let Some(kpb) = option_kpb {

@@ -6,7 +6,7 @@
 
 use crate::{
     ciphersuite::signable::Signable,
-    group::{create_commit::Proposals, GroupEpoch, WireFormat},
+    group::{create_commit_params::CreateCommitParams, GroupEpoch, WireFormat},
     messages::{public_group_state::VerifiablePublicGroupState, Commit, GroupInfo, GroupSecrets},
     messages::{ConfirmationTag, GroupInfoPayload},
     node::Node,
@@ -158,19 +158,16 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
             &crypto,
         )
         .unwrap();
-    let (commit_pt, welcome_option, _option_kpb) = group
-        .create_commit(
-            framing_parameters,
-            &credential_bundle,
-            Proposals {
-                proposals_by_reference: &[&add_proposal_pt],
-                proposals_by_value: &[],
-            },
-            true,
-            None,
-            &crypto,
-        )
-        .unwrap();
+
+    let proposal_store = ProposalStore::from_staged_proposal(
+        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, add_proposal_pt.clone()).unwrap(),
+    );
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&credential_bundle)
+        .proposal_store(&proposal_store)
+        .build();
+    let (commit_pt, welcome_option, _option_kpb) = group.create_commit(params, &crypto).unwrap();
     let commit = if let MlsPlaintextContentType::Commit(commit) = commit_pt.content() {
         commit.clone()
     } else {
