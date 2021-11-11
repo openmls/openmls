@@ -243,7 +243,7 @@ impl MlsPlaintext {
         &self.content
     }
 
-    /// Returns the `content` field and consume the parent.
+    /// Returns the `content` field and consumes the parent.
     pub fn take_content(self) -> MlsPlaintextContentType {
         self.content
     }
