@@ -281,32 +281,29 @@ impl PskSecret {
         if psk_ids.len() != psks.len() {
             return Err(PskSecretError::DifferentLength);
         }
-        if psks.len() > u16::MAX as usize {
+        let num_psks = psks.len();
+        if num_psks > u16::MAX as usize {
             return Err(PskSecretError::TooManyKeys);
         }
-        let mut secret = vec![];
+        let num_psks = num_psks as u16;
         let mls_version = ProtocolVersion::default();
-        for (index, psk) in psks.iter().enumerate() {
+        let mut psk_secret = Secret::zero(ciphersuite, mls_version);
+        for ((index, psk), psk_id) in psks.iter().enumerate().zip(psk_ids.iter()) {
             let zero_secret = Secret::zero(ciphersuite, mls_version);
-            let psk_input = zero_secret.hkdf_extract(backend, psk);
-            let psk_label = PskLabel::new(&psk_ids[index], index as u16, psks.len() as u16)
+            let psk_extracted = zero_secret.hkdf_extract(backend, psk);
+            let psk_label = PskLabel::new(psk_id, index as u16, num_psks)
                 .tls_serialize_detached()
                 .map_err(|_| PskSecretError::EncodingError)?;
 
-            // FIXME: remove unwrap
-            let psk_secret = psk_input
-                .kdf_expand_label(
-                    backend,
-                    "derived psk",
-                    &psk_label,
-                    ciphersuite.hash_length(),
-                )
-                .unwrap();
-            secret.extend_from_slice(psk_secret.as_slice());
+            let psk_input = psk_extracted.kdf_expand_label(
+                backend,
+                "derived psk",
+                &psk_label,
+                ciphersuite.hash_length(),
+            )?;
+            psk_secret = psk_input.hkdf_extract(backend, &psk_secret);
         }
-        Ok(Self {
-            secret: Secret::from_slice(&secret, mls_version, ciphersuite),
-        })
+        Ok(Self { secret: psk_secret })
     }
 
     /// Return the inner secret
