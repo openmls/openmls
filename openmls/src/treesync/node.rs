@@ -1,8 +1,5 @@
 use openmls_traits::OpenMlsCryptoProvider;
-use tls_codec::{
-    Error as TlsCodecError, Serialize, Size, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize,
-    TlsSliceU32, TlsSliceU8, TlsVecU32,
-};
+use tls_codec::{Size, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize, TlsSliceU8, TlsVecU32};
 
 use crate::{
     binary_tree::{Addressable, LeafIndex},
@@ -65,14 +62,6 @@ impl TreeSyncNode {
 
     pub(super) fn erase_tree_hash(&mut self) {
         self.tree_hash = None
-    }
-
-    pub(super) fn verify_parent_hash(
-        &self,
-        child: &TreeSyncNode,
-        other_child_resolution: Vec<HpkePublicKey>,
-    ) -> Result<(), TreeSyncNodeError> {
-        todo!()
     }
 
     pub(super) fn compute_tree_hash(

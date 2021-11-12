@@ -1,18 +1,10 @@
 //! This module contains an implementation of a binary tree based on an array
 //! representation.
 
-use std::collections::HashMap;
 use std::convert::TryFrom;
 
-use openmls_traits::OpenMlsCryptoProvider;
-
-use super::treemath::{
-    copath, direct_path, left, lowest_common_ancestor, right, root, TreeMathError,
-};
-use crate::{
-    binary_tree::{Addressable, LeafIndex},
-    ciphersuite::Ciphersuite,
-};
+use super::treemath::{root, TreeMathError};
+use crate::binary_tree::LeafIndex;
 
 /// The `NodeIndex` is used throughout this trait to index nodes as if the
 /// underlying binary tree was implementing the array representation.
@@ -27,12 +19,11 @@ pub(crate) type TreeSize = NodeIndex;
 #[derive(Clone, Debug)]
 /// A representation of a full, left-balanced binary tree that uses a simple
 /// vector to store nodes.
-pub(crate) struct ABinaryTree<T: Default + Clone + Addressable> {
+pub(crate) struct ABinaryTree<T: Default + Clone> {
     nodes: Vec<T>,
-    node_map: HashMap<T::Address, NodeIndex>,
 }
 
-impl<T: Default + Clone + Addressable> TryFrom<Vec<T>> for ABinaryTree<T> {
+impl<T: Default + Clone> TryFrom<Vec<T>> for ABinaryTree<T> {
     type Error = ABinaryTreeError;
 
     fn try_from(nodes: Vec<T>) -> Result<Self, Self::Error> {
@@ -40,7 +31,7 @@ impl<T: Default + Clone + Addressable> TryFrom<Vec<T>> for ABinaryTree<T> {
     }
 }
 
-impl<T: Default + Clone + Addressable> ABinaryTree<T> {
+impl<T: Default + Clone> ABinaryTree<T> {
     /// Create a tree from the given vector of nodes. The vector of nodes can't
     /// be empty and has to yield a full, left-balanced binary tree. The nodes
     /// in the tree are ordered in the array-representation. This function
@@ -54,16 +45,7 @@ impl<T: Default + Clone + Addressable> ABinaryTree<T> {
         } else if nodes.len() % 2 != 1 {
             return Err(ABinaryTreeError::InvalidNumberOfNodes);
         }
-        let mut node_map = HashMap::new();
-        for (i, node) in nodes.iter().enumerate() {
-            if let Some(address) = node.address() {
-                if node_map.contains_key(&address) {
-                    return Err(ABinaryTreeError::AddressCollision);
-                }
-                node_map.insert(address, i as u32);
-            }
-        }
-        Ok(ABinaryTree { nodes, node_map })
+        Ok(ABinaryTree { nodes })
     }
 
     /// Obtain a reference to the data contained in the `Node` at index
@@ -97,43 +79,11 @@ impl<T: Default + Clone + Addressable> ABinaryTree<T> {
         (self.size() + 1) / 2
     }
 
-    /// Given a node, return the nodes index according to the array
-    /// representation as defined in the MLS spec. If the node is not in the
-    /// tree, return `None`.
-    pub(crate) fn index(&self, address: &T::Address) -> Option<NodeIndex> {
-        self.node_map.get(address).copied()
-    }
-
-    /// Compute the lowest common ancestor of the nodes with the given indices,
-    /// where the indexing corresponds to the array representation of the
-    /// underlying binary tree. Returns an `OutOfBounds` error if either of the
-    /// indices is out of the bounds of the tree.
-    pub(crate) fn lowest_common_ancestor(
-        &self,
-        address_1: &T::Address,
-        address_2: &T::Address,
-    ) -> Result<&T, ABinaryTreeError> {
-        let node_index_1 = self
-            .index(address_1)
-            .ok_or(ABinaryTreeError::NodeNotFound)?;
-        let node_index_2 = self
-            .index(address_2)
-            .ok_or(ABinaryTreeError::NodeNotFound)?;
-        let lowest_common_ancestor = lowest_common_ancestor(node_index_1, node_index_2);
-        self.node_by_index(lowest_common_ancestor)
-            .ok_or(ABinaryTreeError::OutOfBounds)
-    }
-
     /// Return a reference to the root node of the tree.
     pub(crate) fn root(&self) -> Result<&T, ABinaryTreeError> {
         self.nodes
             .get(root(self.size()) as usize)
             .ok_or(ABinaryTreeError::LibraryError)
-    }
-
-    /// Return an iterator over all the nodes in the tree.
-    pub(crate) fn iter(&self) -> impl Iterator<Item = &T> {
-        self.nodes.iter()
     }
 }
 

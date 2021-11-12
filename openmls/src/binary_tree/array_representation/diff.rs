@@ -1,9 +1,6 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
-use crate::binary_tree::{
-    array_representation::treemath::{parent, sibling},
-    Addressable, LeafIndex,
-};
+use crate::binary_tree::{array_representation::treemath::sibling, Addressable, LeafIndex};
 
 use super::{
     tree::{to_node_index, ABinaryTree, ABinaryTreeError, NodeIndex, TreeSize},
@@ -90,8 +87,14 @@ impl<'a, T: Default + Clone> AbDiff<'a, T> {
     }
 
     fn add_to_diff(&mut self, node_index: NodeIndex, node: T) -> Result<(), ABinaryTreeDiffError> {
+        // Check that we're extending the tree by at most one.
+        if node_index > self.size() {
+            return Err(ABinaryTreeDiffError::ExtendingOutOfBounds);
+        }
+        // If we are overwriting a node, remove its address from the node_map.
+        self.diff.insert(node_index, node);
         // Finally, check if the new node increases the size of the diff.
-        if node_index >= self.size() {
+        if node_index == self.size() {
             self.size = node_index + 1
         }
         Ok(())
@@ -105,11 +108,25 @@ impl<'a, T: Default + Clone> AbDiff<'a, T> {
         (self.size() + 1) / 2
     }
 
-    pub(crate) fn leaf(&'a self, leaf_index: LeafIndex) -> NodeReference<'a, T> {
-        NodeReference {
-            diff: &self,
-            node_index: to_node_index(leaf_index),
+    fn new_reference(
+        &'a self,
+        node_index: NodeIndex,
+    ) -> Result<NodeReference<'a, T>, ABinaryTreeDiffError> {
+        if node_index >= self.size() {
+            return Err(ABinaryTreeDiffError::OutOfBounds);
         }
+        Ok(NodeReference {
+            diff: &self,
+            node_index,
+        })
+    }
+
+    pub(crate) fn leaf(
+        &'a self,
+        leaf_index: LeafIndex,
+    ) -> Result<NodeReference<'a, T>, ABinaryTreeDiffError> {
+        let node_index = to_node_index(leaf_index);
+        self.new_reference(node_index)
     }
 
     pub(crate) fn leaf_mut(
@@ -153,17 +170,14 @@ impl<'a, T: Default + Clone> AbDiff<'a, T> {
 
     /// Returns references to the leaves of the tree in order from left to
     /// right.
-    pub(crate) fn leaves(&'a self) -> Vec<NodeReference<'a, T>> {
+    pub(crate) fn leaves(&'a self) -> Result<Vec<NodeReference<'a, T>>, ABinaryTreeDiffError> {
         let mut leaf_references = Vec::new();
         for leaf_index in 0..self.leaf_count() {
             let node_index = to_node_index(leaf_index);
-            let node_ref = NodeReference {
-                diff: &self,
-                node_index,
-            };
+            let node_ref = self.new_reference(node_index)?;
             leaf_references.push(node_ref);
         }
-        leaf_references
+        Ok(leaf_references)
     }
 
     /// Sets the nodes in the direct path of the given leaf index to the nodes
@@ -454,6 +468,7 @@ implement_error! {
             AddressCollision = "A node with the given address is already part of this diff.",
             NodeNotFound = "Can't find the node with the given address in the diff.",
             HasNoSibling = "Can't compure sibling resolution of the root node, as it has no sibling.",
+            ExtendingOutOfBounds = "Trying to write too far outside of the tree.",
         }
         Complex {
             ABinaryTreeError(ABinaryTreeError) = "An Error occurred while accessing the underlying binary tree.",

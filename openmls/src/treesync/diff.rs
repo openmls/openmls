@@ -56,20 +56,21 @@ impl<'a> TreeSyncDiff<'a> {
     /// of the parent nodes in its direct path.
     pub(crate) fn add_leaf(&mut self, leaf_node: KeyPackage) -> Result<(), TreeSyncDiffError> {
         // Find a free leaf and fill it with the new key package.
-        let leaf_refs = self.diff.leaves();
+        let leaf_refs = self.diff.leaves()?;
         let mut leaf_index_option = None;
         for (leaf_index, leaf_ref) in leaf_refs.iter().enumerate() {
             // FIXME: Safeguard this conversion to u32.
             let leaf_index: LeafIndex = leaf_index as u32;
             if leaf_ref.try_deref()?.node().is_none() {
-                self.diff
-                    .replace_leaf(leaf_index, Node::LeafNode(leaf_node).into())?;
                 leaf_index_option = Some(leaf_index);
                 continue;
             }
         }
-        // If we don't find a free leaf, create one.
+        // If we found a free leaf, replace it with the new one, otherwise
+        // extend the tree.
         let leaf_index = if let Some(leaf_index) = leaf_index_option {
+            self.diff
+                .replace_leaf(leaf_index, Node::LeafNode(leaf_node).into())?;
             leaf_index
         } else {
             self.diff
@@ -110,7 +111,7 @@ impl<'a> TreeSyncDiff<'a> {
         credential_bundle: &CredentialBundle,
         // FIXME: This should probably be a slice, since the path is needed to
         // prepare the commit as well. Same for the function below.
-        mut path: Vec<ParentNode>,
+        path: Vec<ParentNode>,
     ) -> Result<KeyPackage, TreeSyncDiffError> {
         let parent_hash = self.process_update_path(backend, ciphersuite, leaf_index, path)?;
 
@@ -130,7 +131,7 @@ impl<'a> TreeSyncDiff<'a> {
         ciphersuite: &Ciphersuite,
         leaf_index: LeafIndex,
         key_package: &KeyPackage,
-        mut path: Vec<ParentNode>,
+        path: Vec<ParentNode>,
     ) -> Result<(), TreeSyncDiffError> {
         let parent_hash = self.process_update_path(backend, ciphersuite, leaf_index, path)?;
         // Verify the parent hash.
@@ -186,7 +187,7 @@ impl<'a> TreeSyncDiff<'a> {
         resolution: &mut Vec<HpkePublicKey>,
     ) -> Result<(), TreeSyncDiffError> {
         for leaf_index in parent_node.unmerged_leaves() {
-            let leaf_ref = self.diff.leaf(*leaf_index);
+            let leaf_ref = self.diff.leaf(*leaf_index)?;
             let leaf = leaf_ref.try_deref()?;
             // All unmerged leaves should be non-blank.
             let leaf_node = leaf
@@ -275,7 +276,7 @@ impl<'a> TreeSyncDiff<'a> {
         &self,
         leaf_index: LeafIndex,
     ) -> Result<Vec<Vec<HpkePublicKey>>, TreeSyncDiffError> {
-        let leaf = self.diff.leaf(leaf_index);
+        let leaf = self.diff.leaf(leaf_index)?;
         let mut full_path = vec![leaf];
         let mut direct_path = self.diff.direct_path(leaf_index)?;
         full_path.append(&mut direct_path);

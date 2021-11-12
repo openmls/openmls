@@ -76,7 +76,7 @@ impl<'a> tls_codec::Size for LeafNodeHashInput<'a> {
 
 impl<'a> tls_codec::Serialize for LeafNodeHashInput<'a> {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, TlsCodecError> {
-        let mut written = self.leaf_index.tls_serialize(writer)?;
+        let written = self.leaf_index.tls_serialize(writer)?;
         match self.key_package {
             Some(kp) => kp.tls_serialize(writer),
             None => {

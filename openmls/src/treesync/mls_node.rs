@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use crate::prelude::KeyPackage;
 
@@ -64,11 +64,11 @@ impl tls_codec::Serialize for MlsNode {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         match self {
             MlsNode::Leaf(kp) => {
-                let mut written = MlsNodeType::Leaf.tls_serialize(writer)?;
+                let written = MlsNodeType::Leaf.tls_serialize(writer)?;
                 kp.tls_serialize(writer).map(|l| l + written)
             }
             MlsNode::Parent(n) => {
-                let mut written = MlsNodeType::Parent.tls_serialize(writer)?;
+                let written = MlsNodeType::Parent.tls_serialize(writer)?;
                 n.tls_serialize(writer).map(|l| l + written)
             }
         }
