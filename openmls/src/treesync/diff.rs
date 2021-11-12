@@ -157,7 +157,7 @@ impl<'a> TreeSyncDiff<'a> {
         Ok(())
     }
 
-    pub(crate) fn own_update_path(
+    pub(crate) fn apply_own_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
@@ -196,7 +196,7 @@ impl<'a> TreeSyncDiff<'a> {
         Ok(key_package)
     }
 
-    pub(crate) fn receive_update_path(
+    pub(crate) fn apply_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,

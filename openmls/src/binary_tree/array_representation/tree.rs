@@ -3,10 +3,7 @@
 
 use std::convert::TryFrom;
 
-use super::{
-    diff::StagedAbDiff,
-    treemath::{root, TreeMathError},
-};
+use super::{diff::StagedAbDiff, treemath::TreeMathError};
 use crate::binary_tree::LeafIndex;
 
 /// The `NodeIndex` is used throughout this trait to index nodes as if the
@@ -69,13 +66,6 @@ impl<T: Clone> ABinaryTree<T> {
     /// Return the number of leaves in the tree.
     pub(crate) fn leaf_count(&self) -> TreeSize {
         (self.size() + 1) / 2
-    }
-
-    /// Return a reference to the root node of the tree.
-    pub(crate) fn root(&self) -> Result<&T, ABinaryTreeError> {
-        self.nodes
-            .get(root(self.size()) as usize)
-            .ok_or(ABinaryTreeError::LibraryError)
     }
 
     pub(crate) fn merge_diff(&mut self, diff: StagedAbDiff<T>) -> Result<(), ABinaryTreeError> {

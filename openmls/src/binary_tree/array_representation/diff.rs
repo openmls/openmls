@@ -89,6 +89,7 @@ impl<'a, T: Clone + Addressable> NodeReference<'a, T> {
     }
 }
 
+/// FIXME: Ideally, one would also use node references to write to the tree.
 impl<'a, T: Clone> AbDiff<'a, T> {
     pub(crate) fn new(tree: &'a ABinaryTree<T>) -> Self {
         Self {
@@ -127,13 +128,6 @@ impl<'a, T: Clone> AbDiff<'a, T> {
     ) -> Result<NodeReference<'a, T>, ABinaryTreeDiffError> {
         let node_index = to_node_index(leaf_index);
         self.new_reference(node_index)
-    }
-
-    pub(crate) fn leaf_mut(
-        &mut self,
-        leaf_index: LeafIndex,
-    ) -> Result<&mut T, ABinaryTreeDiffError> {
-        self.node_mut_by_index(to_node_index(leaf_index))
     }
 
     /// Returns references to the leaves of the tree in order from left to
@@ -324,7 +318,11 @@ impl<'a, T: Clone> AbDiff<'a, T> {
     }
 
     fn add_to_diff(&mut self, node_index: NodeIndex, node: T) -> Result<(), ABinaryTreeDiffError> {
-        // Check that we're extending the tree by at most one.
+        // Prevent the tree from becoming too large.
+        if self.size() > NodeIndex::max_value() - 2 {
+            return Err(ABinaryTreeDiffError::TreeTooLarge);
+        } // Make sure that the input node has an address.
+          // Check that we're extending the tree by at most one.
         if node_index > self.size() {
             return Err(ABinaryTreeDiffError::ExtendingOutOfBounds);
         }
@@ -364,6 +362,7 @@ implement_error! {
         Simple {
             LibraryError = "An inconsistency in the internal state of the diff was detected.",
             OutOfBounds = "The given leaf index is not within the tree.",
+            TreeTooLarge = "Maximum tree size reached.",
             PathLengthMismatch = "The given path index is not the same length as the direct path.",
             AddressCollision = "A node with the given address is already part of this diff.",
             NodeNotFound = "Can't find the node with the given address in the diff.",
