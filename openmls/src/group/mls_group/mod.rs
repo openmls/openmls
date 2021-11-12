@@ -2,19 +2,23 @@ use log::{debug, trace};
 use psk::{PreSharedKeys, PskSecret};
 
 pub mod create_commit;
+pub mod create_commit_params;
 mod new_from_welcome;
 pub mod proposals;
 pub mod staged_commit;
 #[cfg(test)]
+mod test_create_commit_params;
+#[cfg(test)]
 mod test_duplicate_extension;
 #[cfg(test)]
 mod test_mls_group;
+#[cfg(test)]
+mod test_proposals;
 
 use crate::ciphersuite::signable::{Signable, Verifiable};
 use crate::config::Config;
 use crate::credentials::{CredentialBundle, CredentialError};
 use crate::framing::*;
-use crate::group::mls_group::create_commit::Proposals;
 use crate::group::*;
 use crate::key_packages::*;
 use crate::messages::public_group_state::{PublicGroupState, PublicGroupStateTbs};
@@ -247,34 +251,6 @@ impl MlsGroup {
             backend,
         )
         .map_err(|e| e.into())
-    }
-
-    // === ===
-
-    // 11.2. Commit
-    // opaque ProposalID<0..255>;
-    //
-    // struct {
-    //     ProposalID proposals<0..2^32-1>;
-    //     optional<UpdatePath> path;
-    // } Commit;
-    pub fn create_commit(
-        &self,
-        framing_parameters: FramingParameters,
-        credential_bundle: &CredentialBundle,
-        proposals: Proposals,
-        force_self_update: bool,
-        psk_fetcher_option: Option<PskFetcher>,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> CreateCommitResult {
-        self.create_commit_internal(
-            framing_parameters,
-            credential_bundle,
-            proposals,
-            force_self_update,
-            psk_fetcher_option,
-            backend,
-        )
     }
 
     // Create application message

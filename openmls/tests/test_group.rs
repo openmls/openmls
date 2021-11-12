@@ -1,12 +1,6 @@
-#[cfg(all(
-    target_arch = "x86_64",
-    not(target_os = "macos"),
-    not(target_family = "wasm")
-))]
-use evercrypt_backend::OpenMlsEvercrypt;
-use openmls::{group::create_commit::Proposals, prelude::*};
+use openmls::{group::create_commit_params::CreateCommitParams, prelude::*};
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{types::AeadType, OpenMlsCryptoProvider};
+use openmls_traits::OpenMlsCryptoProvider;
 
 #[test]
 fn create_commit_optional_path() {
@@ -88,24 +82,22 @@ fn create_commit_optional_path() {
                 &crypto,
             )
             .expect("Could not create proposal.");
-        let epoch_proposals = vec![bob_add_proposal];
-        let (mls_plaintext_commit, _welcome_bundle_alice_bob_option, kpb_option) = match group_alice
-            .create_commit(
-                framing_parameters,
-                &alice_credential_bundle,
-                Proposals {
-                    proposals_by_reference: &(epoch_proposals
-                        .iter()
-                        .collect::<Vec<&MlsPlaintext>>()),
-                    proposals_by_value: &[],
-                },
-                true, /* force self-update */
-                None, /* No PSK fetcher */
-                &crypto,
-            ) {
-            Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {:?}", e),
-        };
+
+        let mut proposal_store = ProposalStore::from_staged_proposal(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
+                .expect("Could not create StagedProposal."),
+        );
+
+        let params = CreateCommitParams::builder()
+            .framing_parameters(framing_parameters)
+            .credential_bundle(&alice_credential_bundle)
+            .proposal_store(&proposal_store)
+            .build();
+        let (mls_plaintext_commit, _welcome_bundle_alice_bob_option, kpb_option) =
+            match group_alice.create_commit(params /* No PSK fetcher */, &crypto) {
+                Ok(c) => c,
+                Err(e) => panic!("Error creating commit: {:?}", e),
+            };
         let commit = match mls_plaintext_commit.content() {
             MlsPlaintextContentType::Commit(commit) => commit,
             _ => panic!(),
@@ -126,22 +118,23 @@ fn create_commit_optional_path() {
             )
             .expect("Could not create proposal.");
 
-        let epoch_proposals = &[&bob_add_proposal];
-        let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = match group_alice
-            .create_commit(
-                framing_parameters,
-                &alice_credential_bundle,
-                Proposals {
-                    proposals_by_reference: epoch_proposals,
-                    proposals_by_value: &[],
-                },
-                false, /* don't force selfupdate */
-                None,  /* PSK fetcher */
-                &crypto,
-            ) {
-            Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {:?}", e),
-        };
+        proposal_store.empty();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
+                .expect("Could not create StagedProposal."),
+        );
+
+        let params = CreateCommitParams::builder()
+            .framing_parameters(framing_parameters)
+            .credential_bundle(&alice_credential_bundle)
+            .proposal_store(&proposal_store)
+            .force_self_update(false)
+            .build();
+        let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) =
+            match group_alice.create_commit(params /* PSK fetcher */, &crypto) {
+                Ok(c) => c,
+                Err(e) => panic!("Error creating commit: {:?}", e),
+            };
         let commit = match mls_plaintext_commit.content() {
             MlsPlaintextContentType::Commit(commit) => commit,
             _ => panic!(),
@@ -149,11 +142,7 @@ fn create_commit_optional_path() {
         assert!(!commit.has_path() && kpb_option.is_none());
 
         // Alice applies the Commit without the forced self-update
-        let mut proposal_store = ProposalStore::new();
-        proposal_store.add(
-            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
-                .expect("Could not create staged proposal."),
-        );
+
         let staged_commit = group_alice
             .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, &crypto)
             .expect("Error staging commit");
@@ -186,34 +175,30 @@ fn create_commit_optional_path() {
                 &crypto,
             )
             .expect("Could not create proposal.");
-        let proposals = &[&alice_update_proposal];
+
+        proposal_store.empty();
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, alice_update_proposal)
+                .expect("Could not create StagedProposal."),
+        );
 
         // Only UpdateProposal
-        let (commit_mls_plaintext, _welcome_option, kpb_option) = match group_alice.create_commit(
-            framing_parameters,
-            &alice_credential_bundle,
-            Proposals {
-                proposals_by_reference: proposals,
-                proposals_by_value: &[],
-            },
-            false, /* force self update */
-            None,  /* PSK fetcher */
-            &crypto,
-        ) {
-            Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {:?}", e),
-        };
+        let params = CreateCommitParams::builder()
+            .framing_parameters(framing_parameters)
+            .credential_bundle(&alice_credential_bundle)
+            .proposal_store(&proposal_store)
+            .force_self_update(false)
+            .build();
+        let (commit_mls_plaintext, _welcome_option, kpb_option) =
+            match group_alice.create_commit(params /* PSK fetcher */, &crypto) {
+                Ok(c) => c,
+                Err(e) => panic!("Error creating commit: {:?}", e),
+            };
         let commit = match commit_mls_plaintext.content() {
             MlsPlaintextContentType::Commit(commit) => commit,
             _ => panic!(),
         };
         assert!(commit.has_path() && kpb_option.is_some());
-
-        proposal_store.empty();
-        proposal_store.add(
-            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, alice_update_proposal)
-                .expect("Could not create staged proposal."),
-        );
 
         // Apply UpdateProposal
         let staged_commit = group_alice
@@ -293,17 +278,18 @@ fn basic_group_setup() {
                 &crypto,
             )
             .expect("Could not create proposal.");
-        let _commit = match group_alice.create_commit(
-            framing_parameters,
-            &alice_credential_bundle,
-            Proposals {
-                proposals_by_reference: &[&bob_add_proposal],
-                proposals_by_value: &[],
-            },
-            true,
-            None, /* PSK fetcher */
-            &crypto,
-        ) {
+
+        let proposal_store = ProposalStore::from_staged_proposal(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
+                .expect("Could not create StagedProposal."),
+        );
+
+        let params = CreateCommitParams::builder()
+            .framing_parameters(framing_parameters)
+            .credential_bundle(&alice_credential_bundle)
+            .proposal_store(&proposal_store)
+            .build();
+        let _commit = match group_alice.create_commit(params /* PSK fetcher */, &crypto) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
@@ -380,19 +366,20 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &crypto,
         )
         .expect("Could not create proposal.");
-    let epoch_proposals = &[&bob_add_proposal];
+
+    let mut proposal_store = ProposalStore::from_staged_proposal(
+        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
+            .expect("Could not create StagedProposal."),
+    );
+
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .force_self_update(false)
+        .build();
     let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = group_alice
-        .create_commit(
-            framing_parameters,
-            &alice_credential_bundle,
-            Proposals {
-                proposals_by_reference: epoch_proposals,
-                proposals_by_value: &[],
-            },
-            false,
-            None, /* PSK fetcher */
-            &crypto,
-        )
+        .create_commit(params, &crypto)
         .expect("Error creating commit");
     let commit = match mls_plaintext_commit.content() {
         MlsPlaintextContentType::Commit(commit) => commit,
@@ -401,12 +388,6 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     assert!(!commit.has_path() && kpb_option.is_none());
     // Check that the function returned a Welcome message
     assert!(welcome_bundle_alice_bob_option.is_some());
-
-    let mut proposal_store = ProposalStore::new();
-    proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
-            .expect("Could not create staged proposal."),
-    );
 
     let staged_commit = group_alice
         .stage_commit(
@@ -474,31 +455,29 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &crypto,
         )
         .expect("Could not create proposal.");
-    let (mls_plaintext_commit, welcome_option, kpb_option) = match group_bob.create_commit(
-        framing_parameters,
-        &bob_credential_bundle,
-        Proposals {
-            proposals_by_reference: &[&update_proposal_bob],
-            proposals_by_value: &[],
-        },
-        false, /* force self update */
-        None,  /* PSK fetcher */
-        &crypto,
-    ) {
-        Ok(c) => c,
-        Err(e) => panic!("Error creating commit: {:?}", e),
-    };
+
+    proposal_store.empty();
+    proposal_store.add(
+        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, update_proposal_bob)
+            .expect("Could not create StagedProposal."),
+    );
+
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&bob_credential_bundle)
+        .proposal_store(&proposal_store)
+        .force_self_update(false)
+        .build();
+    let (mls_plaintext_commit, welcome_option, kpb_option) =
+        match group_bob.create_commit(params, &crypto) {
+            Ok(c) => c,
+            Err(e) => panic!("Error creating commit: {:?}", e),
+        };
 
     // Check that there is a new KeyPackageBundle
     assert!(kpb_option.is_some());
     // Check there is no Welcome message
     assert!(welcome_option.is_none());
-
-    let mut proposal_store = ProposalStore::new();
-    proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, update_proposal_bob)
-            .expect("Could not create staged proposal."),
-    );
 
     let staged_commit = group_alice
         .stage_commit(
@@ -544,29 +523,27 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &crypto,
         )
         .expect("Could not create proposal.");
-    let (mls_plaintext_commit, _, kpb_option) = match group_alice.create_commit(
-        framing_parameters,
-        &alice_credential_bundle,
-        Proposals {
-            proposals_by_reference: &[&update_proposal_alice],
-            proposals_by_value: &[],
-        },
-        false, /* force self update */
-        None,  /* PSK fetcher */
-        &crypto,
-    ) {
-        Ok(c) => c,
-        Err(e) => panic!("Error creating commit: {:?}", e),
-    };
-
-    // Check that there is a new KeyPackageBundle
-    assert!(kpb_option.is_some());
 
     proposal_store.empty();
     proposal_store.add(
         StagedProposal::from_mls_plaintext(ciphersuite, &crypto, update_proposal_alice)
-            .expect("Could not create staged proposal."),
+            .expect("Could not create StagedProposal."),
     );
+
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .force_self_update(false)
+        .build();
+    let (mls_plaintext_commit, _, kpb_option) =
+        match group_alice.create_commit(params /* PSK fetcher */, &crypto) {
+            Ok(c) => c,
+            Err(e) => panic!("Error creating commit: {:?}", e),
+        };
+
+    // Check that there is a new KeyPackageBundle
+    assert!(kpb_option.is_some());
 
     let staged_commit = group_alice
         .stage_commit(
@@ -612,29 +589,26 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &crypto,
         )
         .expect("Could not create proposal.");
-    let (mls_plaintext_commit, _, kpb_option) = match group_alice.create_commit(
-        framing_parameters,
-        &alice_credential_bundle,
-        Proposals {
-            proposals_by_reference: &[&update_proposal_bob],
-            proposals_by_value: &[],
-        },
-        false, /* force self update */
-        None,  /* PSK fetcher */
-        &crypto,
-    ) {
+
+    proposal_store.empty();
+    proposal_store.add(
+        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, update_proposal_bob)
+            .expect("Could not create StagedProposal."),
+    );
+
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .force_self_update(false)
+        .build();
+    let (mls_plaintext_commit, _, kpb_option) = match group_alice.create_commit(params, &crypto) {
         Ok(c) => c,
         Err(e) => panic!("Error creating commit: {:?}", e),
     };
 
     // Check that there is a new KeyPackageBundle
     assert!(kpb_option.is_some());
-
-    proposal_store.empty();
-    proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, update_proposal_bob)
-            .expect("Could not create staged proposal."),
-    );
 
     let staged_commit = group_alice
         .stage_commit(
@@ -690,33 +664,29 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         )
         .expect("Could not create proposal.");
 
-    let (mls_plaintext_commit, welcome_for_charlie_option, kpb_option) = match group_bob
-        .create_commit(
-            framing_parameters,
-            &bob_credential_bundle,
-            Proposals {
-                proposals_by_reference: &[&add_charlie_proposal_bob],
-                proposals_by_value: &[],
-            },
-            false, /* force self update */
-            None,  /* PSK fetcher */
-            &crypto,
-        ) {
-        Ok(c) => c,
-        Err(e) => panic!("Error creating commit: {:?}", e),
-    };
+    proposal_store.empty();
+    proposal_store.add(
+        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, add_charlie_proposal_bob)
+            .expect("Could not create StagedProposal."),
+    );
+
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&bob_credential_bundle)
+        .proposal_store(&proposal_store)
+        .force_self_update(false)
+        .build();
+    let (mls_plaintext_commit, welcome_for_charlie_option, kpb_option) =
+        match group_bob.create_commit(params, &crypto) {
+            Ok(c) => c,
+            Err(e) => panic!("Error creating commit: {:?}", e),
+        };
 
     // Check there is no KeyPackageBundle since there are only Add Proposals and no
     // forced self-update
     assert!(kpb_option.is_none());
     // Make sure the is a Welcome message for Charlie
     assert!(welcome_for_charlie_option.is_some());
-
-    proposal_store.empty();
-    proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, add_charlie_proposal_bob)
-            .expect("Could not create staged proposal."),
-    );
 
     let staged_commit = group_alice
         .stage_commit(
@@ -810,29 +780,26 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &crypto,
         )
         .expect("Could not create proposal.");
-    let (mls_plaintext_commit, _, kpb_option) = match group_charlie.create_commit(
-        framing_parameters,
-        &charlie_credential_bundle,
-        Proposals {
-            proposals_by_reference: &[&update_proposal_charlie],
-            proposals_by_value: &[],
-        },
-        false, /* force self update */
-        None,  /* PSK fetcher */
-        &crypto,
-    ) {
+
+    proposal_store.empty();
+    proposal_store.add(
+        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, update_proposal_charlie)
+            .expect("Could not create StagedProposal."),
+    );
+
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&charlie_credential_bundle)
+        .proposal_store(&proposal_store)
+        .force_self_update(false)
+        .build();
+    let (mls_plaintext_commit, _, kpb_option) = match group_charlie.create_commit(params, &crypto) {
         Ok(c) => c,
         Err(e) => panic!("Error creating commit: {:?}", e),
     };
 
     // Check that there is a new KeyPackageBundle
     assert!(kpb_option.is_some());
-
-    proposal_store.empty();
-    proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, update_proposal_charlie)
-            .expect("Could not create staged proposal."),
-    );
 
     let staged_commit = group_alice
         .stage_commit(
@@ -884,29 +851,27 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &crypto,
         )
         .expect("Could not create proposal.");
-    let (mls_plaintext_commit, _, kpb_option) = match group_charlie.create_commit(
-        framing_parameters,
-        &charlie_credential_bundle,
-        Proposals {
-            proposals_by_reference: &[&remove_bob_proposal_charlie],
-            proposals_by_value: &[],
-        },
-        false, /* force self update */
-        None,  /* PSK fetcher */
-        &crypto,
-    ) {
-        Ok(c) => c,
-        Err(e) => panic!("Error creating commit: {:?}", e),
-    };
-
-    // Check that there is a new KeyPackageBundle
-    assert!(kpb_option.is_some());
 
     proposal_store.empty();
     proposal_store.add(
         StagedProposal::from_mls_plaintext(ciphersuite, &crypto, remove_bob_proposal_charlie)
-            .expect("Could not create staged proposal."),
+            .expect("Could not create StagedProposal."),
     );
+
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&charlie_credential_bundle)
+        .proposal_store(&proposal_store)
+        .force_self_update(false)
+        .build();
+    let (mls_plaintext_commit, _, kpb_option) =
+        match group_charlie.create_commit(params /* PSK fetcher */, &crypto) {
+            Ok(c) => c,
+            Err(e) => panic!("Error creating commit: {:?}", e),
+        };
+
+    // Check that there is a new KeyPackageBundle
+    assert!(kpb_option.is_some());
 
     let staged_commit = group_alice
         .stage_commit(
@@ -987,8 +952,8 @@ fn group_operations() {
             not(target_os = "macos"),
             not(target_family = "wasm")
         ))]
-        if ciphersuite.aead() == AeadType::ChaCha20Poly1305 {
-            do_group_operations(OpenMlsEvercrypt::default(), ciphersuite);
+        if ciphersuite.aead() == openmls_traits::types::AeadType::ChaCha20Poly1305 {
+            do_group_operations(evercrypt_backend::OpenMlsEvercrypt::default(), ciphersuite);
         }
         do_group_operations(OpenMlsRustCrypto::default(), ciphersuite);
     }

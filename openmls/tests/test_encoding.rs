@@ -1,4 +1,6 @@
-use openmls::{ciphersuite::signable::Verifiable, group::create_commit::Proposals, prelude::*};
+use openmls::{
+    ciphersuite::signable::Verifiable, group::create_commit_params::CreateCommitParams, prelude::*,
+};
 pub mod utils;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
@@ -303,20 +305,26 @@ fn test_commit_encoding() {
             )
             .expect("Could not create proposal.");
 
-        let proposals = &[&add, &remove, &update];
-        let (commit, _welcome_option, _key_package_bundle_option) = group_state
-            .create_commit(
-                framing_parameters,
-                alice_credential_bundle,
-                Proposals {
-                    proposals_by_reference: proposals,
-                    proposals_by_value: &[],
-                },
-                true,
-                None,
-                &crypto,
-            )
-            .unwrap();
+        let mut proposal_store = ProposalStore::from_staged_proposal(
+            StagedProposal::from_mls_plaintext(group_state.ciphersuite(), &crypto, add)
+                .expect("Could not create StagedProposal."),
+        );
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(group_state.ciphersuite(), &crypto, remove)
+                .expect("Could not create StagedProposal."),
+        );
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(group_state.ciphersuite(), &crypto, update)
+                .expect("Could not create StagedProposal."),
+        );
+
+        let params = CreateCommitParams::builder()
+            .framing_parameters(framing_parameters)
+            .credential_bundle(alice_credential_bundle)
+            .proposal_store(&proposal_store)
+            .build();
+        let (commit, _welcome_option, _key_package_bundle_option) =
+            group_state.create_commit(params, &crypto).unwrap();
         let commit_encoded = commit.tls_serialize_detached().unwrap();
         let commit_decoded =
             match VerifiableMlsPlaintext::tls_deserialize(&mut commit_encoded.as_slice()) {
@@ -364,26 +372,19 @@ fn test_welcome_message_encoding() {
             )
             .expect("Could not create proposal.");
 
-        let proposals = &[&add];
-        let (commit, welcome_option, key_package_bundle_option) = group_state
-            .create_commit(
-                framing_parameters,
-                credential_bundle,
-                Proposals {
-                    proposals_by_reference: proposals,
-                    proposals_by_value: &[],
-                },
-                true,
-                None,
-                &crypto,
-            )
-            .unwrap();
-        // Alice applies the commit
-        let mut proposal_store = ProposalStore::new();
-        proposal_store.add(
+        let proposal_store = ProposalStore::from_staged_proposal(
             StagedProposal::from_mls_plaintext(group_state.ciphersuite(), &crypto, add)
-                .expect("Could not create staged proposal."),
+                .expect("Could not create StagedProposal."),
         );
+
+        let params = CreateCommitParams::builder()
+            .framing_parameters(framing_parameters)
+            .credential_bundle(credential_bundle)
+            .proposal_store(&proposal_store)
+            .build();
+        let (commit, welcome_option, key_package_bundle_option) =
+            group_state.create_commit(params, &crypto).unwrap();
+        // Alice applies the commit
         let staged_commit = group_state
             .stage_commit(
                 &commit,

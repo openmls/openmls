@@ -1,7 +1,7 @@
 use crate::ciphersuite::signable::Signable;
 use crate::config::{Config, ProtocolVersion};
 use crate::credentials::*;
-use crate::group::proposals::StagedProposalQueue;
+use crate::group::proposals::{CreationProposalQueue, StagedProposalQueue};
 use crate::key_packages::*;
 use crate::messages::proposals::*;
 use crate::messages::PathSecret;
@@ -838,7 +838,7 @@ impl RatchetTree {
     pub fn apply_proposals(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        proposal_queue: ProposalQueue,
+        proposal_queue: CreationProposalQueue,
         updates_key_package_bundles: &[KeyPackageBundle],
     ) -> Result<ApplyProposalsValues, TreeError> {
         log::debug!("Applying proposal");
