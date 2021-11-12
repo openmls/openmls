@@ -4,16 +4,9 @@ use super::node::{Node, ParentNode, TreeSyncNode, TreeSyncNodeError};
 
 use crate::{
     binary_tree::{LeafIndex, MlsBinaryTreeDiff, MlsBinaryTreeDiffError, StagedMlsBinaryTreeDiff},
-    ciphersuite::{
-        signable::{Signable, SignedStruct},
-        Ciphersuite, HpkePublicKey,
-    },
+    ciphersuite::{signable::Signable, Ciphersuite},
     credentials::{CredentialBundle, CredentialError},
-    extensions::{
-        Extension,
-        ExtensionType::{self, ParentHash},
-        ParentHashExtension,
-    },
+    extensions::{Extension, ExtensionType, ParentHashExtension},
     prelude::{KeyPackage, KeyPackagePayload},
 };
 
@@ -26,6 +19,8 @@ pub(crate) struct TreeSyncDiff<'a> {
     diff: MlsBinaryTreeDiff<'a, TreeSyncNode>,
 }
 
+/// Note: Any function that modifies a node should erase the tree hash of every
+/// node in its direct path.
 impl<'a> TreeSyncDiff<'a> {
     /// Update a leaf node and blank the nodes in the updated leaf's direct path.
     fn update_leaf(
@@ -35,6 +30,7 @@ impl<'a> TreeSyncDiff<'a> {
     ) -> Result<(), MlsBinaryTreeDiffError> {
         self.diff
             .replace_leaf(leaf_index, Node::LeafNode(leaf_node).into())?;
+        // This effectively wipes the tree hashes in the direct path.
         self.diff.set_direct_path(leaf_index, None)?;
         Ok(())
     }
@@ -52,12 +48,14 @@ impl<'a> TreeSyncDiff<'a> {
         } else {
             self.diff.add_leaf(Node::LeafNode(leaf_node).into())?
         };
-        // Add new unmerged leaves entry to all nodes in direct path.
+        // Add new unmerged leaves entry to all nodes in direct path. Also, wipe
+        // the cached tree hash.
         let add_unmerged_leaf = |tsn: &mut TreeSyncNode| -> Result<(), TreeSyncDiffError> {
             if let Some(ref mut node) = tsn.node_mut() {
                 let pn = node.as_parent_node_mut()?;
                 pn.add_unmerged_leaf(leaf_index);
             }
+            tsn.erase_tree_hash();
             Ok(())
         };
         self.diff
@@ -68,6 +66,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// Remove a group member by blanking the target leaf and its direct path.
     fn remove_leaf(&mut self, leaf_index: LeafIndex) -> Result<(), MlsBinaryTreeDiffError> {
         self.diff.replace_leaf(leaf_index, TreeSyncNode::blank())?;
+        // This also erases any cached tree hash.
         self.diff.set_direct_path(leaf_index, None)?;
         Ok(())
     }
@@ -143,7 +142,8 @@ impl<'a> TreeSyncDiff<'a> {
             .drain(..)
             .map(|node| Node::ParentNode(node).into())
             .collect();
-        // Set the direct path.
+        // Set the direct path. Note, that the nodes here don't have a tree hash
+        // set.
         self.diff.set_direct_path(leaf_index, Some(direct_path))?;
         Ok(parent_hash)
     }
@@ -199,7 +199,7 @@ impl<'a> TreeSyncDiff<'a> {
                     resolution.remove(position);
                 };
             }
-            path_node.set_parent_hash(backend, ciphersuite, &previous_parent_hash, resolution);
+            path_node.set_parent_hash(backend, ciphersuite, &previous_parent_hash, resolution)?;
             previous_parent_hash = path_node.parent_hash().to_vec()
         }
         // The final hash is the one of the leaf's parent.

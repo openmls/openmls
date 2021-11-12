@@ -64,6 +64,10 @@ impl TreeSync {
         ciphersuite: &Ciphersuite,
         node_options: &[Option<MlsNode>],
     ) -> Result<Self, TreeSyncError> {
+        // FIXME: We might want to verify some more things here, such as the
+        // validity of the leaf indices in the unmerged leaves or the uniqueness
+        // of public keys in the tree. We are building on those properties in
+        // other functions.
         let mut ts_nodes: Vec<TreeSyncNode> = Vec::new();
         for node_option in node_options {
             let ts_node_option: TreeSyncNode = match node_option {
@@ -93,7 +97,8 @@ impl TreeSync {
                 right_hash_result,
             )
         };
-        let tree_hash = tree_sync.tree.fold_tree(cth);
+        // This sets the tree hashes in the node cashes.
+        let _tree_hash = tree_sync.tree.fold_tree(cth);
         // TODO: Verify Parent Hash
         todo!()
     }

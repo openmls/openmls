@@ -182,37 +182,122 @@ impl<'a, T: Default + Clone + Addressable> AbDiff<'a, T> {
         Ok(())
     }
 
-    fn apply_to_node<F>(
-        &mut self,
-        node_index: NodeIndex,
-        f: F,
-    ) -> Result<Vec<u8>, ABinaryTreeDiffError>
-    where
-        F: Fn(&mut T, Vec<u8>, Vec<u8>) -> Vec<u8> + Copy,
-    {
-        // Check if this is a leaf.
-        if node_index % 2 == 0 {
-            let leaf = self.node_mut_by_index(node_index)?;
-            return Ok(f(leaf, vec![], vec![]));
-        }
-        // Compute left hash.
-        let left_child_index = left(node_index)?;
-        let left_hash = self.apply_to_node(left_child_index, f)?;
-        let right_child_index = right(node_index, self.size())?;
-        let right_hash = self.apply_to_node(right_child_index, f)?;
-        let node = self.node_mut_by_index(node_index)?;
-        Ok(f(node, left_hash, right_hash))
-    }
+    // FIXME: Verify that these two are outdated, as the computation only needs
+    // to be performed on the full tree. More up-to-date versions of these
+    // functions are implemented for the tree.
+    //fn apply_to_node<F>(
+    //    &mut self,
+    //    node_index: NodeIndex,
+    //    f: F,
+    //) -> Result<Vec<u8>, ABinaryTreeDiffError>
+    //where
+    //    F: Fn(&mut T, Vec<u8>, Vec<u8>) -> Vec<u8> + Copy,
+    //{
+    //    // Check if this is a leaf.
+    //    if node_index % 2 == 0 {
+    //        let leaf = self.node_mut_by_index(node_index)?;
+    //        return Ok(f(leaf, vec![], vec![]));
+    //    }
+    //    // Compute left hash.
+    //    let left_child_index = left(node_index)?;
+    //    let left_hash = self.apply_to_node(left_child_index, f)?;
+    //    let right_child_index = right(node_index, self.size())?;
+    //    let right_hash = self.apply_to_node(right_child_index, f)?;
+    //    let node = self.node_mut_by_index(node_index)?;
+    //    Ok(f(node, left_hash, right_hash))
+    //}
 
-    /// This function applies the given function to every node in the tree,
-    /// starting with the leaves. In addition to the node itself, the function
-    /// takes as input the results of the function applied to its children.
-    pub(crate) fn fold_tree<F>(&mut self, f: F) -> Result<Vec<u8>, ABinaryTreeDiffError>
+    ///// This function applies the given function to every node in the tree,
+    ///// starting with the leaves. In addition to the node itself, the function
+    ///// takes as input the results of the function applied to its children.
+    //pub(crate) fn fold_tree<F>(&mut self, f: F) -> Result<Vec<u8>, ABinaryTreeDiffError>
+    //where
+    //    F: Fn(&mut T, Vec<u8>, Vec<u8>) -> Vec<u8> + Copy,
+    //{
+    //    let root_index = root(self.size());
+    //    self.apply_to_node(root_index, f)
+    //}
+
+    /// FIXME: This algorithm is very messy in terms of abstraction layers. With
+    /// the resolution computation, this layer is already aware of blanks (which
+    /// is unfortunate). Maybe it would be possible to implement this on the
+    /// higher layer with an iterator over all nodes. We would still need:
+    /// left_child(), right_child(), resolution().
+
+    /// The problem here (and indeed the problem with implementing `resolution`
+    /// on a higher layer) is that this layer can't give you anything based on a
+    /// node reference `&T`, because it can't distinguish blanks. We would need
+    /// a "reference" that includes the node index (or something similar).
+    /// Alternatively, we have an additional "node" layer that keeps a node
+    /// index with the actual node.
+    pub(crate) fn parent_hash_traverse<F, E>(
+        &self,
+        f: F,
+    ) -> Result<Result<bool, E>, ABinaryTreeDiffError>
     where
-        F: Fn(&mut T, Vec<u8>, Vec<u8>) -> Vec<u8> + Copy,
+        F: Fn(
+                &T,
+                &T,              // child node
+                Vec<T::Address>, // other child resolution
+            ) -> Result<bool, E>
+            + Copy,
     {
-        let root_index = root(self.size());
-        self.apply_to_node(root_index, f)
+        for node_index in 0..self.size() {
+            let node = self
+                .node_by_index(node_index)
+                .ok_or(ABinaryTreeError::LibraryError)?;
+            let left_child_index = left(node_index)?;
+            let left_child = self
+                .node_by_index(left_child_index)
+                .ok_or(ABinaryTreeError::LibraryError)?;
+            let mut right_child_index = right(node_index, self.size())?;
+            let right_child_resolution = self.resolution(right_child_index)?;
+            let result = f(node, left_child, right_child_resolution);
+            // If this was successful continue with the next node, otherwise
+            // proceed with the algorithm on this node. If it threw an error,
+            // return. FIXME: This is a bit unelegant.
+            match result {
+                Ok(success) => {
+                    if success {
+                        continue;
+                    }
+                }
+                Err(e) => return Ok(Err(e)),
+            }
+            let mut right_child = self
+                .node_by_index(right_child_index)
+                .ok_or(ABinaryTreeError::LibraryError)?;
+            // While the right child is blank, replace it with its left child
+            // until it's non-blank or a leaf.
+            while right_child.address().is_none() && right_child_index % 2 != 0 {
+                right_child_index = left(right_child_index)?;
+                right_child = self
+                    .node_by_index(right_child_index)
+                    .ok_or(ABinaryTreeError::LibraryError)?;
+            }
+            // If the "right child" is a blank leaf node, the check fails.
+            if right_child.address().is_none() && right_child_index % 2 == 0 {
+                return Ok(Ok(false));
+            };
+            // Perform the check with the parent hash of the "right child" and
+            // the left child resolution.
+            let left_child_resolution = self.resolution(left_child_index)?;
+            let result = f(node, right_child, left_child_resolution);
+            // If this was successful continue with the next node, otherwise
+            // return false. If it threw an error, return. FIXME:
+            // This is a bit unelegant.
+            match result {
+                Ok(success) => {
+                    if success {
+                        continue;
+                    } else {
+                        return Ok(Ok(false));
+                    }
+                }
+                Err(e) => return Ok(Err(e)),
+            }
+        }
+        Ok(Ok(true))
     }
 
     /// Any Error while applying `f` will be treated as a LibraryError.

@@ -32,14 +32,14 @@ pub(crate) enum Node {
 /// This intermediate struct on top of `Option<Node>` allows us to cache tree
 /// hash values.
 pub(crate) struct TreeSyncNode {
-    tree_hash: Vec<u8>,
+    tree_hash: Option<Vec<u8>>,
     node: Option<Node>,
 }
 
 impl From<Node> for TreeSyncNode {
     fn from(node: Node) -> Self {
         Self {
-            tree_hash: vec![],
+            tree_hash: None,
             node: Some(node),
         }
     }
@@ -58,8 +58,20 @@ impl TreeSyncNode {
         &mut self.node
     }
 
-    pub(super) fn tree_hash(&self) -> &[u8] {
+    pub(super) fn tree_hash(&self) -> &Option<Vec<u8>> {
         &self.tree_hash
+    }
+
+    pub(super) fn erase_tree_hash(&mut self) {
+        self.tree_hash = None
+    }
+
+    pub(super) fn verify_parent_hash(
+        &self,
+        child: &TreeSyncNode,
+        other_child_resolution: Vec<HpkePublicKey>,
+    ) -> Result<(), TreeSyncNodeError> {
+        todo!()
     }
 
     pub(super) fn compute_tree_hash(
@@ -70,8 +82,11 @@ impl TreeSyncNode {
         left_hash_result: Result<Vec<u8>, TreeSyncNodeError>,
         right_hash_result: Result<Vec<u8>, TreeSyncNodeError>,
     ) -> Result<Vec<u8>, TreeSyncNodeError> {
-        // TODO: How to figure out when to read a cached value and when to
-        // compute a new one?
+        // If there's a cached tree hash, use that one.
+        if let Some(hash) = self.tree_hash() {
+            return Ok(hash.clone());
+        };
+        // Otherwise compute it.
         let left_hash = left_hash_result?;
         let right_hash = right_hash_result?;
         // Check if I'm a leaf node.
@@ -94,7 +109,7 @@ impl TreeSyncNode {
             );
             hash_input.hash(ciphersuite, backend)
         };
-        self.tree_hash = hash.clone();
+        self.tree_hash = Some(hash.clone());
         Ok(hash)
     }
 }
