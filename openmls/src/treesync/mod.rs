@@ -30,16 +30,17 @@ impl TreeSync {
         self.tree_hash.as_slice()
     }
 
-    /// Merge the given diff into the `TreeSync` instance. This operation
-    /// re-computes all necessary tree hashes.
-    /// Note, that the private values corresponding to the ones in the
-    /// TreeSync should be committed at the same time.
+    /// Merge the given diff into the `TreeSync` instance, refreshing the
+    /// `tree_has` value in the process. FIXME: Right now, we are storing no
+    /// private values in the diff. Shoud we decide to do so in the future, we'd
+    /// need to merge them here as well.
     pub(crate) fn merge_diff(
         &mut self,
         tree_sync_diff: StagedTreeSyncDiff,
     ) -> Result<(), TreeSyncError> {
-        // TODO: Implement.
-        todo!()
+        let (diff, new_tree_hash) = tree_sync_diff.into_parts();
+        self.tree_hash = new_tree_hash;
+        Ok(self.tree.merge_diff(diff)?)
     }
 
     /// Create an empty diff based on this TreeSync instance all operations
