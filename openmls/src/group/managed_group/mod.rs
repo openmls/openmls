@@ -21,7 +21,7 @@ use crate::{
     ciphersuite::signable::{Signable, Verifiable},
     credentials::Credential,
     framing::*,
-    group::{mls_group::create_commit::Proposals, *},
+    group::*,
     key_packages::{KeyPackage, KeyPackageBundle},
     messages::{proposals::*, Welcome},
     prelude::KeyPackageBundlePayload,
@@ -45,7 +45,7 @@ pub use events::*;
 pub(crate) use resumption::ResumptionSecretStore;
 use ser::*;
 
-use super::proposals::ProposalStore;
+use super::proposals::{ProposalStore, StagedProposal};
 
 /// A `ManagedGroup` represents an [MlsGroup] with
 /// an easier, high-level API designed to be used in production. The API exposes
@@ -82,10 +82,8 @@ pub struct ManagedGroup {
     // the internal `MlsGroup` used for lower level operations. See `MlsGroup` for more
     // information.
     group: MlsGroup,
-    // A queue of incoming proposals from the DS for a given epoch. New proposals are added to the
-    // queue through `process_messages()`. The queue is emptied after every epoch change.
-    pending_proposals: Vec<MlsPlaintext>,
-    // A [ProposalStore] that stores proposals within one epoch. The store is emptied after every epoch change.
+    // A [ProposalStore] that stores incoming proposals from the DS within one epoch.
+    // The store is emptied after every epoch change.
     proposal_store: ProposalStore,
     // Own `KeyPackageBundle`s that were created for update proposals or commits. The vector is
     // emptied after every epoch change.
@@ -160,9 +158,9 @@ impl ManagedGroup {
         self.group.group_id()
     }
 
-    /// Returns a list of proposal
-    pub fn pending_proposals(&self) -> &[MlsPlaintext] {
-        &self.pending_proposals
+    /// Returns an `Iterator` over staged proposals.
+    pub fn pending_proposals(&self) -> impl Iterator<Item = &StagedProposal> {
+        self.proposal_store.proposals()
     }
 
     // === Load & save ===
@@ -288,93 +286,6 @@ impl ManagedGroup {
             }
         }
         true
-    }
-
-    /// Prepare the corresponding events for the proposals covered by the
-    /// Commit
-    fn prepare_events(
-        &self,
-        ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
-        proposals: &[ProposalOrRef],
-        sender: LeafIndex,
-        indexed_members: &HashMap<LeafIndex, Credential>,
-    ) -> Vec<GroupEvent> {
-        let mut events = Vec::new();
-        // We want to collect the events in the order specified by the committer.
-        // We convert the pending proposals to a list of references
-        let pending_proposals_list = self
-            .pending_proposals
-            .iter()
-            .collect::<Vec<&MlsPlaintext>>();
-        // Build a proposal queue for easier searching
-        let pending_proposals_queue = ProposalQueue::from_proposals_by_reference(
-            ciphersuite,
-            backend,
-            &pending_proposals_list,
-        );
-        for proposal_or_ref in proposals {
-            match proposal_or_ref {
-                ProposalOrRef::Proposal(proposal) => {
-                    events.push(self.prepare_proposal_event(proposal, sender, indexed_members));
-                }
-                ProposalOrRef::Reference(proposal_reference) => {
-                    if let Some(queued_proposal) = pending_proposals_queue.get(proposal_reference) {
-                        events.push(self.prepare_proposal_event(
-                            queued_proposal.proposal(),
-                            queued_proposal.sender().to_leaf_index(),
-                            indexed_members,
-                        ));
-                    }
-                }
-            }
-        }
-        events
-    }
-
-    /// Prepare the corresponding events for the pending proposal list.
-    fn prepare_proposal_event(
-        &self,
-        proposal: &Proposal,
-        sender: LeafIndex,
-        indexed_members: &HashMap<LeafIndex, Credential>,
-    ) -> GroupEvent {
-        let sender_credential = &indexed_members[&sender];
-        match proposal {
-            // Add proposals
-            Proposal::Add(add_proposal) => GroupEvent::MemberAdded(MemberAddedEvent::new(
-                self.aad.to_vec(),
-                sender_credential.clone(),
-                add_proposal.key_package.credential().clone(),
-            )),
-            // Update proposals
-            Proposal::Update(update_proposal) => {
-                GroupEvent::MemberUpdated(MemberUpdatedEvent::new(
-                    self.aad.to_vec(),
-                    update_proposal.key_package.credential().clone(),
-                ))
-            }
-            // Remove proposals
-            Proposal::Remove(remove_proposal) => {
-                let removal = Removal::new(
-                    indexed_members[&self.group.tree().own_node_index()].clone(),
-                    sender_credential.clone(),
-                    indexed_members[&LeafIndex::from(remove_proposal.removed)].clone(),
-                );
-
-                GroupEvent::MemberRemoved(MemberRemovedEvent::new(self.aad.to_vec(), removal))
-            }
-            // PSK proposals
-            Proposal::PreSharedKey(psk_proposal) => {
-                let psk_id = psk_proposal.psk().clone();
-
-                GroupEvent::PskReceived(PskReceivedEvent::new(self.aad.to_vec(), psk_id))
-            }
-            // ReInit proposals
-            Proposal::ReInit(reinit_proposal) => {
-                GroupEvent::ReInit(ReInitEvent::new(self.aad.to_vec(), reinit_proposal.clone()))
-            }
-        }
     }
 
     /// Auto-save function

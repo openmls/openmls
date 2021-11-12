@@ -1,3 +1,5 @@
+use mls_group::create_commit_params::CreateCommitParams;
+
 use super::*;
 
 impl ManagedGroup {
@@ -24,9 +26,6 @@ impl ManagedGroup {
             .read(credential.signature_key())
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
-        // Include pending proposals into Commit
-        let messages_to_commit: Vec<&MlsPlaintext> = self.pending_proposals.iter().collect();
-
         // Create Commit over all proposals. If a `KeyPackageBundle` was passed
         // in, use it to create an update proposal by value. TODO #141
         let (commit, welcome_option, kpb_option) = match key_package_bundle_option {
@@ -34,30 +33,21 @@ impl ManagedGroup {
                 let update_proposal = Proposal::Update(UpdateProposal {
                     key_package: kpb.key_package().clone(),
                 });
-                self.group.create_commit(
-                    self.framing_parameters(),
-                    &credential_bundle,
-                    Proposals {
-                        proposals_by_reference: &messages_to_commit,
-                        proposals_by_value: &[&update_proposal],
-                    },
-                    true, /* force_self_update */
-                    None,
-                    backend,
-                )?
+                let params = CreateCommitParams::builder()
+                    .framing_parameters(self.framing_parameters())
+                    .credential_bundle(&credential_bundle)
+                    .proposal_store(&self.proposal_store)
+                    .inline_proposals(vec![update_proposal])
+                    .build();
+                self.group.create_commit(params, backend)?
             }
             None => {
-                self.group.create_commit(
-                    self.framing_parameters(),
-                    &credential_bundle,
-                    Proposals {
-                        proposals_by_reference: &messages_to_commit,
-                        proposals_by_value: &[],
-                    },
-                    true, /* force_self_update */
-                    None,
-                    backend,
-                )?
+                let params = CreateCommitParams::builder()
+                    .framing_parameters(self.framing_parameters())
+                    .credential_bundle(&credential_bundle)
+                    .proposal_store(&self.proposal_store)
+                    .build();
+                self.group.create_commit(params, backend)?
             }
         };
 
