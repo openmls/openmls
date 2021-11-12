@@ -131,6 +131,8 @@ pub enum CryptoError {
     UnsupportedKdf,
     InvalidLength,
     UnsupportedHashAlgorithm,
+    SignatureEncodingError,
+    SignatureDecodingError,
 }
 
 impl std::fmt::Display for CryptoError {

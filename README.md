@@ -29,15 +29,13 @@ A WIP Rust implementation of [Messaging Layer Security](https://github.com/mlswg
 
 OpenMLS does not implement its own cryptographic primitives.
 Instead, it relies on existing implementations of the cryptographic primitives used.
-There are two different cryptography backends supported right now.
-
-##### Rust Crypto
-
-This is the default cryptographic backend, using the following rust crates: [hkdf], [sha2], [p256], [p384], [x25519-dalek-ng], [ed25519-dalek] [chacha20poly1305], [aes-gcm].
+There are two different cryptography backends implemented right now.
+But consumers can bring their own implementation.
+See [traits](./traits/Readme.md) for more details.
 
 ## Development
 
-OpenMLS requires at least Rust 1.50.0.
+OpenMLS requires at least Rust 1.56.0.
 
 ### Build
 
@@ -54,6 +52,13 @@ OpenMLS requires at least Rust 1.50.0.
 ## Workspace
 
 This repository is a cargo workspace with the OpenMLS library as the main component.
+
+In order to use OpenMLS an implementation of the [traits](./traits/Readme.md) is required.
+This repository provides two default implementations
+
+- [Rust Crypto](./openmls_rust_crypto/Readme.md)
+- [Evercrypt](./evercrypt_backend/Readme.md)
+
 It further holds the following crates that are used for testing.
 
 ### Delivery Service
@@ -85,16 +90,6 @@ OpenMLS adheres to the [Contributor Covenant](https://www.contributor-covenant.o
 [chat-link]: https://openmls.zulipchat.com
 [list-image]: https://img.shields.io/badge/mailing-list-blue.svg
 [list-link]: https://groups.google.com/u/0/g/openmls-dev
-[rustc-image]: https://img.shields.io/badge/rustc-1.50+-blue.svg
+[rustc-image]: https://img.shields.io/badge/rustc-1.56+-blue.svg
 [docs-main-badge]: https://img.shields.io/badge/docs-main-blue.svg
 [docs-main-link]: https://openmls.tech/openmls/openmls/index.html
-[hkdf]: https://docs.rs/hkdf/
-[sha2]: https://docs.rs/sha2
-[p256]: https://docs.rs/p256
-[p384]: https://docs.rs/p384
-[x25519-dalek-ng]: https://docs.rs/x25519-dalek-ng
-[ed25519-dalek]: https://docs.rs/ed25519-dalek
-[chacha20poly1305]: https://docs.rs/chacha20poly1305
-[aes-gcm]: https://docs.rs/aes-gcm
-[evercrypt]: https://github.com/project-everest/hacl-star/
-[evercrypt rust bindings]: https://crates.io/crates/evercrypt
