@@ -79,17 +79,6 @@ impl<'a, T: Clone + Addressable> NodeReference<'a, T> {
         let right_child_index = right(self.node_index, self.diff.size())?;
         self.diff.new_reference(right_child_index)
     }
-}
-
-pub(crate) struct NodeReferenceMut<'a, T: Clone> {
-    diff: &'a mut AbDiff<'a, T>,
-    node_index: NodeIndex,
-}
-
-impl<'a, T: Clone + Addressable> NodeReferenceMut<'a, T> {
-    pub(crate) fn try_deref(&mut self) -> Result<&mut T, ABinaryTreeDiffError> {
-        self.diff.node_mut_by_index(self.node_index)
-    }
 
     pub(crate) fn leaf_index(&self) -> Option<LeafIndex> {
         if self.is_leaf() {
@@ -97,34 +86,6 @@ impl<'a, T: Clone + Addressable> NodeReferenceMut<'a, T> {
         } else {
             None
         }
-    }
-
-    pub(crate) fn is_leaf(&self) -> bool {
-        self.node_index % 2 == 0
-    }
-
-    /// Returns a reference to the sibling of the referenced node. Returns an
-    /// error when the reference points to the root node or to a node not in the
-    /// tree.
-    pub(crate) fn sibling(self) -> Result<NodeReferenceMut<'a, T>, ABinaryTreeDiffError> {
-        let sibling_index = sibling(self.node_index, self.diff.size())?;
-        self.diff.new_reference_mut(sibling_index)
-    }
-
-    /// Returns a reference to the left child of the referenced node. Returns an
-    /// error when the reference points to a leaf node or to a node not in the
-    /// tree.
-    pub(crate) fn left_child(self) -> Result<NodeReferenceMut<'a, T>, ABinaryTreeDiffError> {
-        let left_child_index = left(self.node_index)?;
-        self.diff.new_reference_mut(left_child_index)
-    }
-
-    /// Returns a reference to the right child of the referenced node. Returns an
-    /// error when the reference points to a leaf node or to a node not in the
-    /// tree.
-    pub(crate) fn right_child(self) -> Result<NodeReferenceMut<'a, T>, ABinaryTreeDiffError> {
-        let right_child_index = right(self.node_index, self.diff.size())?;
-        self.diff.new_reference_mut(right_child_index)
     }
 }
 
@@ -226,6 +187,54 @@ impl<'a, T: Clone> AbDiff<'a, T> {
             )?;
         }
         Ok(())
+    }
+
+    fn apply_to_node<F, E>(
+        &mut self,
+        node_index: NodeIndex,
+        f: F,
+    ) -> Result<Result<Vec<u8>, E>, ABinaryTreeDiffError>
+    where
+        F: Fn(
+                &mut T,
+                Option<LeafIndex>,
+                Result<Vec<u8>, E>,
+                Result<Vec<u8>, E>,
+            ) -> Result<Vec<u8>, E>
+            + Copy,
+    {
+        // Check if this is a leaf.
+        if node_index % 2 == 0 {
+            let leaf = self.node_mut_by_index(node_index)?;
+            return Ok(f(leaf, Some(node_index / 2), Ok(vec![]), Ok(vec![])));
+        }
+        // Compute left hash.
+        let left_child_index = left(node_index)?;
+        let left_hash = self.apply_to_node(left_child_index, f)?;
+        let right_child_index = right(node_index, self.size())?;
+        let right_hash = self.apply_to_node(right_child_index, f)?;
+        let node = self.node_mut_by_index(node_index)?;
+        Ok(f(node, None, left_hash, right_hash))
+    }
+
+    /// This function applies the given function to every node in the tree,
+    /// starting with the leaves. In addition to the node itself, the function
+    /// takes as input the results of the function applied to its children.
+    pub(crate) fn fold_tree<F, E>(
+        &mut self,
+        f: F,
+    ) -> Result<Result<Vec<u8>, E>, ABinaryTreeDiffError>
+    where
+        F: Fn(
+                &mut T,
+                Option<LeafIndex>,
+                Result<Vec<u8>, E>,
+                Result<Vec<u8>, E>,
+            ) -> Result<Vec<u8>, E>
+            + Copy,
+    {
+        let root_index = root(self.size());
+        self.apply_to_node(root_index, f)
     }
 
     /// Any Error while applying `f` will be treated as a LibraryError.
@@ -334,19 +343,6 @@ impl<'a, T: Clone> AbDiff<'a, T> {
 
     fn leaf_count(&self) -> LeafIndex {
         (self.size() + 1) / 2
-    }
-
-    fn new_reference_mut(
-        &'a mut self,
-        node_index: NodeIndex,
-    ) -> Result<NodeReferenceMut<'a, T>, ABinaryTreeDiffError> {
-        if node_index >= self.size() {
-            return Err(ABinaryTreeDiffError::OutOfBounds);
-        }
-        Ok(NodeReferenceMut {
-            diff: self,
-            node_index,
-        })
     }
 
     fn new_reference(

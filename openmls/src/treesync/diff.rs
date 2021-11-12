@@ -9,8 +9,8 @@ use super::{
 
 use crate::{
     binary_tree::{
-        array_representation::diff::{NodeReference, NodeReferenceMut},
-        LeafIndex, MlsBinaryTreeDiff, MlsBinaryTreeDiffError, StagedMlsBinaryTreeDiff,
+        array_representation::diff::NodeReference, LeafIndex, MlsBinaryTreeDiff,
+        MlsBinaryTreeDiffError, StagedMlsBinaryTreeDiff,
     },
     ciphersuite::{signable::Signable, Ciphersuite, HpkePublicKey},
     credentials::{CredentialBundle, CredentialError},
@@ -500,52 +500,8 @@ impl<'a> TreeSyncDiff<'a> {
             )?)
         };
 
-        todo!()
-        //self.diff.fold_tree(compute_tree_hash)?
+        self.diff.fold_tree(compute_tree_hash)?
     }
-
-    fn compute_tree_hash(
-        backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
-        mut node_ref: NodeReferenceMut<'a, TreeSyncNode>,
-    ) -> Result<Vec<u8>, TreeSyncDiffError> {
-        // Check if this is a leaf.
-        if let Some(leaf_index) = node_ref.leaf_index() {
-            let leaf = node_ref.try_deref()?;
-            // FIXME: Passing an optional leaf index is not ideal.
-            todo!()
-            //Ok(leaf.compute_tree_hash(backend, ciphersuite, Some(leaf_index), vec![], vec![])?);
-        }
-        todo!()
-        // Compute left hash.
-        //let left_child_ref = self.
-        //let left_child_index = left(node_index)?;
-        //let left_hash = self.apply_to_node(left_child_index, f)?;
-        //let right_child_index = right(node_index, self.size())?;
-        //let right_hash = self.apply_to_node(right_child_index, f)?;
-        //let node = self.node_mut_by_index(node_index)?;
-        //Ok(f(node, None, left_hash, right_hash))
-    }
-
-    // This function applies the given function to every node in the tree,
-    // starting with the leaves. In addition to the node itself, the function
-    // takes as input the results of the function applied to its children.
-    //pub(crate) fn fold_tree<F, E>(
-    //    &mut self,
-    //    f: F,
-    //) -> Result<Result<Vec<u8>, E>, ABinaryTreeDiffError>
-    //where
-    //    F: Fn(
-    //            &mut T,
-    //            Option<LeafIndex>,
-    //            Result<Vec<u8>, E>,
-    //            Result<Vec<u8>, E>,
-    //        ) -> Result<Vec<u8>, E>
-    //        + Copy,
-    //{
-    //    let root_index = root(self.size());
-    //    self.apply_to_node(root_index, f)
-    //}
 }
 
 implement_error! {
