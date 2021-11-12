@@ -42,7 +42,7 @@ impl TryFrom<u8> for MlsNodeType {
 /// contains an optional `KeyPackage`), or a parent node (in which case it
 /// contains an optional `ParentNode`).
 #[derive(Debug, PartialEq, Clone)]
-pub(super) enum MlsNode {
+pub(crate) enum MlsNode {
     Leaf(KeyPackage),
     Parent(ParentNode),
 }

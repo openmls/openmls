@@ -10,26 +10,58 @@ use super::{
     treemath::{direct_path, left, right, root, TreeMathError},
 };
 
-pub(crate) struct StagedAbDiff<T: Default + Clone + Addressable> {
+pub(crate) struct StagedAbDiff<T: Default + Clone> {
     diff: HashMap<NodeIndex, T>,
 }
 
-pub(crate) struct AbDiff<'a, T: Default + Clone + Addressable> {
+impl<'a, T: Default + Clone> From<AbDiff<'a, T>> for StagedAbDiff<T> {
+    fn from(diff: AbDiff<'a, T>) -> Self {
+        StagedAbDiff { diff: diff.diff }
+    }
+}
+
+pub(crate) struct AbDiff<'a, T: Default + Clone> {
     original_tree: &'a ABinaryTree<T>,
     diff: HashMap<NodeIndex, T>,
-    node_map: HashMap<T::Address, NodeIndex>,
     size: TreeSize,
+}
+
+impl<'a, T: Default + Clone> From<&'a ABinaryTree<T>> for AbDiff<'a, T> {
+    fn from(tree: &'a ABinaryTree<T>) -> Self {
+        AbDiff {
+            original_tree: &tree,
+            diff: HashMap::new(),
+            size: tree.size(),
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct NodeReference<'a, T: Default + Clone> {
+    diff: &'a AbDiff<'a, T>,
+    node_index: NodeIndex,
+}
+
+impl<'a, T: Default + Clone + Addressable> NodeReference<'a, T> {
+    pub(crate) fn try_deref(&self) -> Result<&T, ABinaryTreeDiffError> {
+        self.diff
+            .node_by_index(self.node_index)
+            .ok_or(ABinaryTreeDiffError::LibraryError)
+    }
+
+    pub(crate) fn is_leaf(&self) -> bool {
+        self.node_index % 2 == 0
+    }
 }
 
 // FIXME: For now, we fail late, i.e. we check if changes to the tree make sense
 // when we try to merge. This is because, for example, checking if a leaf is
 // within the size of the tree is hard when given only a diff.
-impl<'a, T: Default + Clone + Addressable> AbDiff<'a, T> {
+impl<'a, T: Default + Clone> AbDiff<'a, T> {
     pub(crate) fn new(tree: &'a ABinaryTree<T>) -> Self {
         Self {
             original_tree: tree,
             diff: HashMap::new(),
-            node_map: HashMap::new(),
             size: tree.size(),
         }
     }
@@ -47,28 +79,17 @@ impl<'a, T: Default + Clone + Addressable> AbDiff<'a, T> {
         Ok(())
     }
 
-    pub(crate) fn add_leaf(&mut self, new_leaf: T) -> Result<LeafIndex, ABinaryTreeDiffError> {
-        // Make sure that the input node has an address.
-        let address = new_leaf.address().ok_or(ABinaryTreeError::InvalidNode)?;
-        self.add_to_diff(self.size(), T::default())?;
+    pub(crate) fn add_leaf(
+        &mut self,
+        parent_node: T,
+        new_leaf: T,
+    ) -> Result<LeafIndex, ABinaryTreeDiffError> {
+        self.add_to_diff(self.size(), parent_node)?;
         self.add_to_diff(self.size(), new_leaf)?;
         Ok(self.leaf_count() - 1)
     }
 
     fn add_to_diff(&mut self, node_index: NodeIndex, node: T) -> Result<(), ABinaryTreeDiffError> {
-        // If the node has an address, check that we don't have a collision.
-        if let Some(address) = node.address() {
-            if self.node_map.contains_key(&address) {
-                return Err(ABinaryTreeDiffError::AddressCollision);
-            }
-            self.node_map.insert(address, node_index);
-        }
-        // If we are overwriting a node, remove its address from the node_map.
-        if let Some(old_node) = self.diff.insert(node_index, node) {
-            if let Some(address) = old_node.address() {
-                self.node_map.remove(&address);
-            }
-        };
         // Finally, check if the new node increases the size of the diff.
         if node_index >= self.size() {
             self.size = node_index + 1
@@ -84,15 +105,11 @@ impl<'a, T: Default + Clone + Addressable> AbDiff<'a, T> {
         (self.size() + 1) / 2
     }
 
-    fn node(&self, address: &T::Address) -> Option<&T> {
-        self.node_map
-            .get(address)
-            .map(|&node_index| self.node_by_index(node_index))
-            .flatten()
-    }
-
-    pub(crate) fn leaf(&self, leaf_index: LeafIndex) -> Option<&T> {
-        self.node_by_index(to_node_index(leaf_index))
+    pub(crate) fn leaf(&'a self, leaf_index: LeafIndex) -> NodeReference<'a, T> {
+        NodeReference {
+            diff: &self,
+            node_index: to_node_index(leaf_index),
+        }
     }
 
     pub(crate) fn leaf_mut(
@@ -134,20 +151,19 @@ impl<'a, T: Default + Clone + Addressable> AbDiff<'a, T> {
         }
     }
 
-    /// Returns the index of the first leaf that does not have an address.
-    /// Returns None if no such leaf could be found.
-    pub(crate) fn get_empty_leaf(&self) -> Result<Option<LeafIndex>, ABinaryTreeDiffError> {
+    /// Returns references to the leaves of the tree in order from left to
+    /// right.
+    pub(crate) fn leaves(&'a self) -> Vec<NodeReference<'a, T>> {
+        let mut leaf_references = Vec::new();
         for leaf_index in 0..self.leaf_count() {
             let node_index = to_node_index(leaf_index);
-            let leaf = self
-                .node_by_index(node_index)
-                .ok_or(ABinaryTreeDiffError::LibraryError)?;
-            if leaf.address().is_none() {
-                return Ok(Some(leaf_index));
-            }
+            let node_ref = NodeReference {
+                diff: &self,
+                node_index,
+            };
+            leaf_references.push(node_ref);
         }
-        // We didn't find a leaf without an address.
-        Ok(None)
+        leaf_references
     }
 
     /// Sets the nodes in the direct path of the given leaf index to the nodes
@@ -218,86 +234,122 @@ impl<'a, T: Default + Clone + Addressable> AbDiff<'a, T> {
     //    self.apply_to_node(root_index, f)
     //}
 
-    /// FIXME: This algorithm is very messy in terms of abstraction layers. With
-    /// the resolution computation, this layer is already aware of blanks (which
-    /// is unfortunate). Maybe it would be possible to implement this on the
-    /// higher layer with an iterator over all nodes. We would still need:
-    /// left_child(), right_child(), resolution().
+    //pub(crate) fn parent_hash_traverse<F, E>(
+    //    &self,
+    //    f: F,
+    //) -> Result<Result<bool, E>, ABinaryTreeDiffError>
+    //where
+    //    F: Fn(
+    //            &T,
+    //            &T,              // child node
+    //            Vec<T::Address>, // other child resolution
+    //        ) -> Result<bool, E>
+    //        + Copy,
+    //{
+    //    for node_index in 0..self.size() {
+    //        let node = self
+    //            .node_by_index(node_index)
+    //            .ok_or(ABinaryTreeError::LibraryError)?;
+    //        let left_child_index = left(node_index)?;
+    //        let left_child = self
+    //            .node_by_index(left_child_index)
+    //            .ok_or(ABinaryTreeError::LibraryError)?;
+    //        let mut right_child_index = right(node_index, self.size())?;
+    //        let right_child_resolution = self.resolution(right_child_index)?;
+    //        let result = f(node, left_child, right_child_resolution);
+    //        // If this was successful continue with the next node, otherwise
+    //        // proceed with the algorithm on this node. If it threw an error,
+    //        // return. FIXME: This is a bit unelegant.
+    //        match result {
+    //            Ok(success) => {
+    //                if success {
+    //                    continue;
+    //                }
+    //            }
+    //            Err(e) => return Ok(Err(e)),
+    //        }
+    //        let mut right_child = self
+    //            .node_by_index(right_child_index)
+    //            .ok_or(ABinaryTreeError::LibraryError)?;
+    //        // While the right child is blank, replace it with its left child
+    //        // until it's non-blank or a leaf.
+    //        while right_child.address().is_none() && right_child_index % 2 != 0 {
+    //            right_child_index = left(right_child_index)?;
+    //            right_child = self
+    //                .node_by_index(right_child_index)
+    //                .ok_or(ABinaryTreeError::LibraryError)?;
+    //        }
+    //        // If the "right child" is a blank leaf node, the check fails.
+    //        if right_child.address().is_none() && right_child_index % 2 == 0 {
+    //            return Ok(Ok(false));
+    //        };
+    //        // Perform the check with the parent hash of the "right child" and
+    //        // the left child resolution.
+    //        let left_child_resolution = self.resolution(left_child_index)?;
+    //        let result = f(node, right_child, left_child_resolution);
+    //        // If this was successful continue with the next node, otherwise
+    //        // return false. If it threw an error, return. FIXME:
+    //        // This is a bit unelegant.
+    //        match result {
+    //            Ok(success) => {
+    //                if success {
+    //                    continue;
+    //                } else {
+    //                    return Ok(Ok(false));
+    //                }
+    //            }
+    //            Err(e) => return Ok(Err(e)),
+    //        }
+    //    }
+    //    Ok(Ok(true))
+    //}
 
-    /// The problem here (and indeed the problem with implementing `resolution`
-    /// on a higher layer) is that this layer can't give you anything based on a
-    /// node reference `&T`, because it can't distinguish blanks. We would need
-    /// a "reference" that includes the node index (or something similar).
-    /// Alternatively, we have an additional "node" layer that keeps a node
-    /// index with the actual node.
-    pub(crate) fn parent_hash_traverse<F, E>(
-        &self,
+    fn apply_to_node<F, E>(
+        &mut self,
+        node_index: NodeIndex,
         f: F,
-    ) -> Result<Result<bool, E>, ABinaryTreeDiffError>
+    ) -> Result<Result<Vec<u8>, E>, ABinaryTreeDiffError>
     where
         F: Fn(
-                &T,
-                &T,              // child node
-                Vec<T::Address>, // other child resolution
-            ) -> Result<bool, E>
+                &mut T,
+                Option<LeafIndex>,
+                Result<Vec<u8>, E>,
+                Result<Vec<u8>, E>,
+            ) -> Result<Vec<u8>, E>
             + Copy,
     {
-        for node_index in 0..self.size() {
-            let node = self
-                .node_by_index(node_index)
-                .ok_or(ABinaryTreeError::LibraryError)?;
-            let left_child_index = left(node_index)?;
-            let left_child = self
-                .node_by_index(left_child_index)
-                .ok_or(ABinaryTreeError::LibraryError)?;
-            let mut right_child_index = right(node_index, self.size())?;
-            let right_child_resolution = self.resolution(right_child_index)?;
-            let result = f(node, left_child, right_child_resolution);
-            // If this was successful continue with the next node, otherwise
-            // proceed with the algorithm on this node. If it threw an error,
-            // return. FIXME: This is a bit unelegant.
-            match result {
-                Ok(success) => {
-                    if success {
-                        continue;
-                    }
-                }
-                Err(e) => return Ok(Err(e)),
-            }
-            let mut right_child = self
-                .node_by_index(right_child_index)
-                .ok_or(ABinaryTreeError::LibraryError)?;
-            // While the right child is blank, replace it with its left child
-            // until it's non-blank or a leaf.
-            while right_child.address().is_none() && right_child_index % 2 != 0 {
-                right_child_index = left(right_child_index)?;
-                right_child = self
-                    .node_by_index(right_child_index)
-                    .ok_or(ABinaryTreeError::LibraryError)?;
-            }
-            // If the "right child" is a blank leaf node, the check fails.
-            if right_child.address().is_none() && right_child_index % 2 == 0 {
-                return Ok(Ok(false));
-            };
-            // Perform the check with the parent hash of the "right child" and
-            // the left child resolution.
-            let left_child_resolution = self.resolution(left_child_index)?;
-            let result = f(node, right_child, left_child_resolution);
-            // If this was successful continue with the next node, otherwise
-            // return false. If it threw an error, return. FIXME:
-            // This is a bit unelegant.
-            match result {
-                Ok(success) => {
-                    if success {
-                        continue;
-                    } else {
-                        return Ok(Ok(false));
-                    }
-                }
-                Err(e) => return Ok(Err(e)),
-            }
+        // Check if this is a leaf.
+        if node_index % 2 == 0 {
+            let leaf = self.node_mut_by_index(node_index)?;
+            return Ok(f(leaf, Some(node_index / 2), Ok(vec![]), Ok(vec![])));
         }
-        Ok(Ok(true))
+        // Compute left hash.
+        let left_child_index = left(node_index)?;
+        let left_hash = self.apply_to_node(left_child_index, f)?;
+        let right_child_index = right(node_index, self.size())?;
+        let right_hash = self.apply_to_node(right_child_index, f)?;
+        let node = self.node_mut_by_index(node_index)?;
+        Ok(f(node, None, left_hash, right_hash))
+    }
+
+    /// This function applies the given function to every node in the tree,
+    /// starting with the leaves. In addition to the node itself, the function
+    /// takes as input the results of the function applied to its children.
+    pub(crate) fn fold_tree<F, E>(
+        &mut self,
+        f: F,
+    ) -> Result<Result<Vec<u8>, E>, ABinaryTreeDiffError>
+    where
+        F: Fn(
+                &mut T,
+                Option<LeafIndex>,
+                Result<Vec<u8>, E>,
+                Result<Vec<u8>, E>,
+            ) -> Result<Vec<u8>, E>
+            + Copy,
+    {
+        let root_index = root(self.size());
+        self.apply_to_node(root_index, f)
     }
 
     /// Any Error while applying `f` will be treated as a LibraryError.
@@ -311,112 +363,85 @@ impl<'a, T: Default + Clone + Addressable> AbDiff<'a, T> {
     {
         let node_index = to_node_index(leaf_index);
         let direct_path_indices =
-            direct_path(node_index, self.size()).map_err(|_| ABinaryTreeError::OutOfBounds)?;
+            direct_path(node_index, self.size()).map_err(|_| ABinaryTreeDiffError::OutOfBounds)?;
         for node_index in &direct_path_indices {
             let node = self.node_mut_by_index(*node_index)?;
-            f(node).map_err(|_| ABinaryTreeError::LibraryError)?;
+            f(node).map_err(|_| ABinaryTreeDiffError::LibraryError)?;
         }
         Ok(())
     }
 
     pub(crate) fn direct_path(
-        &self,
+        &'a self,
         leaf_index: LeafIndex,
-    ) -> Result<Vec<&T>, ABinaryTreeDiffError> {
+    ) -> Result<Vec<NodeReference<'a, T>>, ABinaryTreeDiffError> {
         let node_index = to_node_index(leaf_index);
         let direct_path_indices =
             direct_path(node_index, self.size()).map_err(|_| ABinaryTreeError::OutOfBounds)?;
         let mut direct_path = Vec::new();
         for node_index in &direct_path_indices {
-            let node = self
-                .node_by_index(*node_index)
-                .ok_or(ABinaryTreeDiffError::LibraryError)?;
-            direct_path.push(node);
+            let node_ref = NodeReference {
+                diff: &self,
+                node_index: *node_index,
+            };
+            direct_path.push(node_ref);
         }
         Ok(direct_path)
     }
 
-    /// Helper function computing the resolution of a node with the given index.
-    fn resolution(&self, node_index: NodeIndex) -> Result<Vec<T::Address>, ABinaryTreeDiffError> {
-        let node = self
-            .node_by_index(node_index)
-            .ok_or(ABinaryTreeDiffError::LibraryError)?;
-        if let Some(address) = node.address() {
-            return Ok(vec![address]);
+    /// Returns a reference to the sibling of the referenced node. Returns an
+    /// error when the reference points to the root node or to a node not in the
+    /// tree.
+    pub(crate) fn sibling(
+        &'a self,
+        node_ref: NodeReference<'a, T>,
+    ) -> Result<NodeReference<'a, T>, ABinaryTreeDiffError> {
+        let sibling_index = sibling(node_ref.node_index, self.size())?;
+        Ok(NodeReference {
+            diff: &self,
+            node_index: sibling_index,
+        })
+    }
+
+    /// Returns a reference to the left child of the referenced node. Returns an
+    /// error when the reference points to a leaf node or to a node not in the
+    /// tree.
+    pub(crate) fn left_child(
+        &'a self,
+        node_ref: NodeReference<'a, T>,
+    ) -> Result<NodeReference<'a, T>, ABinaryTreeDiffError> {
+        let left_child_index = left(node_ref.node_index)?;
+        Ok(NodeReference {
+            diff: &self,
+            node_index: left_child_index,
+        })
+    }
+
+    /// Returns a reference to the right child of the referenced node. Returns an
+    /// error when the reference points to a leaf node or to a node not in the
+    /// tree.
+    pub(crate) fn right_child(
+        &'a self,
+        node_ref: NodeReference<'a, T>,
+    ) -> Result<NodeReference<'a, T>, ABinaryTreeDiffError> {
+        let right_child_index = right(node_ref.node_index, self.size())?;
+        Ok(NodeReference {
+            diff: &self,
+            node_index: right_child_index,
+        })
+    }
+
+    /// Returns an unordered vector with references to all nodes.
+    pub(crate) fn all_nodes(&'a self) -> Vec<NodeReference<'a, T>> {
+        let mut node_references = Vec::new();
+        for node_index in 0..self.size() {
+            let node_ref = NodeReference {
+                diff: &self,
+                node_index,
+            };
+            node_references.push(node_ref)
         }
-        let mut resolution = Vec::new();
-        let left_child_index = left(node_index)?;
-        let right_child_index = right(node_index, self.size())?;
-        resolution.append(&mut self.resolution(left_child_index)?);
-        resolution.append(&mut self.resolution(right_child_index)?);
-        Ok(resolution)
-    }
-
-    /// Compute the resolution of the copath of the leaf node corresponding to
-    /// the given leaf index. This includes the neighbour of the given leaf.
-    pub(crate) fn copath_resolutions(
-        &self,
-        leaf_index: LeafIndex,
-    ) -> Result<Vec<Vec<T::Address>>, ABinaryTreeDiffError> {
-        let leaf_node_index = to_node_index(leaf_index);
-        let mut full_path = vec![leaf_node_index];
-        let mut direct_path = direct_path(leaf_node_index, self.size())?;
-        full_path.append(&mut direct_path);
-
-        let mut copath_resolutions = Vec::new();
-        for node_index in &full_path {
-            // If sibling is not a blank, return its HpkePublicKey.
-            let sibling_index = sibling(*node_index, self.size())?;
-            let resolution = self.resolution(sibling_index)?;
-            copath_resolutions.push(resolution);
-        }
-        Ok(copath_resolutions)
-    }
-
-    // Probably obsolete functions below
-
-    pub(crate) fn root(&self) -> Option<&T> {
-        let root_index = root(self.size());
-        self.node_by_index(root_index)
-    }
-
-    /// Returns a reference to the sibling of the node with the given address.
-    /// Returns an error when the address points to the root node or to a node
-    /// not in the tree.
-    pub(crate) fn sibling(&self, address: &T::Address) -> Result<&T, ABinaryTreeDiffError> {
-        let node_index = self
-            .node_map
-            .get(address)
-            .ok_or(ABinaryTreeDiffError::NodeNotFound)?;
-        let sibling_index = sibling(*node_index, self.size())?;
-        self.node_by_index(sibling_index)
-            .ok_or(ABinaryTreeDiffError::NodeNotFound)
-    }
-
-    /// Returns a reference to the left child of the node with the given
-    /// address. Returns an error when the address points to a leaf node or to a
-    /// node not in the tree.
-    pub(crate) fn left_child(&self, address: &T::Address) -> Result<&T, ABinaryTreeDiffError> {
-        let node_index = self
-            .node_map
-            .get(address)
-            .ok_or(ABinaryTreeDiffError::NodeNotFound)?;
-        let left_child_index = left(*node_index)?;
-        self.node_by_index(left_child_index)
-            .ok_or(ABinaryTreeDiffError::NodeNotFound)
-    }
-
-    /// Returns a reference to the right child of the node with the given
-    /// address. Returns an error when the address points to a leaf node or to a
-    /// node not in the tree.
-    pub(crate) fn right_child(&self, address: &T::Address) -> Result<&T, ABinaryTreeDiffError> {
-        let node_index = self
-            .node_map
-            .get(address)
-            .ok_or(ABinaryTreeDiffError::NodeNotFound)?;
-        let right_child_index = right(*node_index, self.size())?;
-        self.node_by_index(right_child_index)
-            .ok_or(ABinaryTreeDiffError::NodeNotFound)
+        node_references
     }
 }
 

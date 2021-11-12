@@ -1,17 +1,15 @@
 //! This module contains the functionality required to synchronize a tree across
 //! multiple parties.
 
-use std::convert::{TryFrom, TryInto};
-
 use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
-    binary_tree::{Addressable, LeafIndex, MlsBinaryTree, MlsBinaryTreeError},
-    ciphersuite::{Ciphersuite, HpkePublicKey},
+    binary_tree::{MlsBinaryTree, MlsBinaryTreeError},
+    ciphersuite::Ciphersuite,
 };
 
 use self::{
-    diff::TreeSyncDiff,
+    diff::{StagedTreeSyncDiff, TreeSyncDiff, TreeSyncDiffError},
     mls_node::MlsNode,
     node::{Node, TreeSyncNode, TreeSyncNodeError},
 };
@@ -32,34 +30,25 @@ impl TreeSync {
         self.tree_hash.as_slice()
     }
 
-    fn compute_tree_hash(&mut self) -> Result<(), TreeSyncError> {
-        todo!()
-    }
-
-    /// Verify the parent hash of every parent node in the tree. FIXME: Do this
-    /// when importing a tree from a vector of nodes.
-    fn verify_parent_hashes(
-        &self,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<(), TreeSyncError> {
-        todo!()
-    }
-
     /// Merge the given diff into the `TreeSync` instance. This operation
     /// re-computes all necessary tree hashes.
     /// Note, that the private values corresponding to the ones in the
     /// TreeSync should be committed at the same time.
-    fn merge_diff(&mut self, tree_sync_diff: TreeSyncDiff) -> Result<(), TreeSyncError> {
+    pub(crate) fn merge_diff(
+        &mut self,
+        tree_sync_diff: StagedTreeSyncDiff,
+    ) -> Result<(), TreeSyncError> {
+        // TODO: Implement.
         todo!()
     }
 
     /// Create an empty diff based on this TreeSync instance all operations
     /// are created based on an initial, empty diff.
-    fn empty_diff(&self) -> TreeSyncDiff {
-        todo!()
+    pub(crate) fn empty_diff(&self) -> TreeSyncDiff {
+        self.into()
     }
 
-    fn from_nodes(
+    pub(crate) fn from_nodes(
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
         node_options: &[Option<MlsNode>],
@@ -84,23 +73,14 @@ impl TreeSync {
             tree,
             tree_hash: vec![],
         };
-        let cth = |node: &mut TreeSyncNode,
-                   leaf_index_option: Option<LeafIndex>,
-                   left_hash_result: Result<Vec<u8>, TreeSyncNodeError>,
-                   right_hash_result: Result<Vec<u8>, TreeSyncNodeError>|
-         -> Result<Vec<u8>, TreeSyncNodeError> {
-            node.compute_tree_hash(
-                backend,
-                ciphersuite,
-                leaf_index_option,
-                left_hash_result,
-                right_hash_result,
-            )
-        };
-        // This sets the tree hashes in the node cashes.
-        let _tree_hash = tree_sync.tree.fold_tree(cth);
-        // TODO: Verify Parent Hash
-        todo!()
+        let diff = tree_sync.empty_diff();
+        // Verify all parent hashes.
+        diff.verify_parent_hashes(backend, ciphersuite)?;
+        // Make the diff into a staged diff.
+        let staged_diff = diff.to_staged_diff(backend, ciphersuite)?;
+        // Merge the diff.
+        tree_sync.merge_diff(staged_diff)?;
+        Ok(tree_sync)
     }
 }
 
@@ -111,6 +91,8 @@ implement_error! {
         }
         Complex {
             BinaryTreeError(MlsBinaryTreeError) = "An error occurred during an operation on the underlying binary tree.",
+            TreeSyncNodeError(TreeSyncNodeError) = "An error occurred during an operation on the underlying binary tree.",
+            TreeSyncDiffError(TreeSyncDiffError) = "An error while trying to apply a diff.",
         }
     }
 }

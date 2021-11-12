@@ -7,6 +7,7 @@ use tls_codec::{
 use crate::{
     binary_tree::{Addressable, LeafIndex},
     ciphersuite::{Ciphersuite, HpkePublicKey},
+    extensions::ExtensionType::ParentHash,
     treesync::hashes::{LeafNodeHashInput, ParentNodeTreeHashInput},
 };
 
@@ -79,16 +80,14 @@ impl TreeSyncNode {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
         leaf_index_option: Option<LeafIndex>,
-        left_hash_result: Result<Vec<u8>, TreeSyncNodeError>,
-        right_hash_result: Result<Vec<u8>, TreeSyncNodeError>,
+        left_hash: Vec<u8>,
+        right_hash: Vec<u8>,
     ) -> Result<Vec<u8>, TreeSyncNodeError> {
         // If there's a cached tree hash, use that one.
         if let Some(hash) = self.tree_hash() {
             return Ok(hash.clone());
         };
         // Otherwise compute it.
-        let left_hash = left_hash_result?;
-        let right_hash = right_hash_result?;
         // Check if I'm a leaf node.
         let hash = if let Some(leaf_index) = leaf_index_option {
             let key_package_option = match self.node.as_ref() {
@@ -142,6 +141,31 @@ impl Node {
             Node::ParentNode(ref mut node) => Ok(node),
         }
     }
+
+    pub(crate) fn public_key(&self) -> &HpkePublicKey {
+        match self {
+            Node::LeafNode(kp) => kp.hpke_init_key(),
+            Node::ParentNode(pn) => &pn.public_key,
+        }
+    }
+
+    /// Returns the parent hash of a given node. Returns None if the node is a
+    /// leaf node without a parent hash extension.
+    pub(crate) fn parent_hash(&self) -> Result<&[u8], TreeSyncNodeError> {
+        let parent_hash = match self {
+            Node::LeafNode(kp) => {
+                let extension = kp
+                    .extension_with_type(ParentHash)
+                    .ok_or(TreeSyncNodeError::MissingParentHashExtension)?;
+                let parent_hash_extension = extension
+                    .as_parent_hash_extension()
+                    .map_err(|_| TreeSyncNodeError::LibraryError)?;
+                parent_hash_extension.parent_hash()
+            }
+            Node::ParentNode(pn) => pn.parent_hash(),
+        };
+        Ok(parent_hash)
+    }
 }
 
 implement_error! {
@@ -149,6 +173,8 @@ implement_error! {
         Simple{
             AsLeafError = "This is not a leaf node.",
             AsParentError = "This is not a parent node.",
+            MissingParentHashExtension = "The given key package does not have a parent hash extension.",
+            LibraryError = "An unrecoverable error has occurred during a TreeSySyncNode operation.",
         }
         Complex {
             ParentHashError(ParentHashError) = "Error while computing parent hash.",
@@ -180,18 +206,21 @@ impl ParentNode {
         self.unmerged_leaves.push(leaf_index)
     }
 
-    /// Set the parent hash value of this node.
-    pub(super) fn set_parent_hash(
-        &mut self,
+    /// Compute the parent hash value of this node.
+    pub(super) fn compute_parent_hash(
+        &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
         parent_hash: &[u8],
         original_child_resolution: &[HpkePublicKey],
-    ) -> Result<(), TreeSyncNodeError> {
+    ) -> Result<Vec<u8>, TreeSyncNodeError> {
         let parent_hash_input =
             ParentHashInput::new(&self.public_key, &parent_hash, original_child_resolution);
-        self.parent_hash = parent_hash_input.hash(backend, ciphersuite)?.into();
-        Ok(())
+        Ok(parent_hash_input.hash(backend, ciphersuite)?)
+    }
+
+    pub(super) fn set_parent_hash(&mut self, parent_hash: Vec<u8>) {
+        self.parent_hash = parent_hash.into()
     }
 
     /// Get the parent hash value of this node.
