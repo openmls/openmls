@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["Client","The client contains the necessary state for a client in the context of MLS. It contains the group states, as well as a reference to a `KeyStore` containing its `CredentialBundle`s. The `key_package_bundles` field contains generated `KeyPackageBundle`s that are waiting to be used for new groups."]]});

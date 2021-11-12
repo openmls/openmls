@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["MessageType","Enum defining encodings for the different message types/"]]});

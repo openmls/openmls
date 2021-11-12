@@ -1,1 +1,0 @@
-initSidebarItems({"mod":[["test_framework","This crate provides a framework to set up clients and groups using the OpenMLS managed_group API. To use the framework, start by creating a new `TestSetup` with a number of clients. After that, `create_clients` has to be called before the the `TestSetup` can be used."]]});
