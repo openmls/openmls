@@ -9,10 +9,9 @@ use chacha20poly1305::ChaCha20Poly1305;
 // for the rust-analyzer issue with the following line.
 use ed25519_dalek::Signer as DalekSigner;
 use hkdf::Hkdf;
-use hpke::{
-    prelude::{HpkeAeadMode, HpkeKdfMode, HpkeKemMode},
-    Hpke,
-};
+use hpke::Hpke;
+use hpke_rs_crypto::types as hpke_types;
+use hpke_rs_rust_crypto::HpkeRustCrypto;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     random::OpenMlsRand,
@@ -42,32 +41,32 @@ impl Default for RustCrypto {
 }
 
 #[inline(always)]
-fn kem_mode(kem: HpkeKemType) -> HpkeKemMode {
+fn kem_mode(kem: HpkeKemType) -> hpke_types::KemAlgorithm {
     match kem {
-        HpkeKemType::DhKemP256 => HpkeKemMode::DhKemP256,
-        HpkeKemType::DhKemP384 => HpkeKemMode::DhKemP384,
-        HpkeKemType::DhKemP521 => HpkeKemMode::DhKemP521,
-        HpkeKemType::DhKem25519 => HpkeKemMode::DhKem25519,
-        HpkeKemType::DhKem448 => HpkeKemMode::DhKem448,
+        HpkeKemType::DhKemP256 => hpke_types::KemAlgorithm::DhKemP256,
+        HpkeKemType::DhKemP384 => hpke_types::KemAlgorithm::DhKemP384,
+        HpkeKemType::DhKemP521 => hpke_types::KemAlgorithm::DhKemP521,
+        HpkeKemType::DhKem25519 => hpke_types::KemAlgorithm::DhKem25519,
+        HpkeKemType::DhKem448 => hpke_types::KemAlgorithm::DhKem448,
     }
 }
 
 #[inline(always)]
-fn kdf_mode(kdf: HpkeKdfType) -> HpkeKdfMode {
+fn kdf_mode(kdf: HpkeKdfType) -> hpke_types::KdfAlgorithm {
     match kdf {
-        HpkeKdfType::HkdfSha256 => HpkeKdfMode::HkdfSha256,
-        HpkeKdfType::HkdfSha384 => HpkeKdfMode::HkdfSha384,
-        HpkeKdfType::HkdfSha512 => HpkeKdfMode::HkdfSha512,
+        HpkeKdfType::HkdfSha256 => hpke_types::KdfAlgorithm::HkdfSha256,
+        HpkeKdfType::HkdfSha384 => hpke_types::KdfAlgorithm::HkdfSha384,
+        HpkeKdfType::HkdfSha512 => hpke_types::KdfAlgorithm::HkdfSha512,
     }
 }
 
 #[inline(always)]
-fn aead_mode(aead: HpkeAeadType) -> HpkeAeadMode {
+fn aead_mode(aead: HpkeAeadType) -> hpke_types::AeadAlgorithm {
     match aead {
-        HpkeAeadType::AesGcm128 => HpkeAeadMode::AesGcm128,
-        HpkeAeadType::AesGcm256 => HpkeAeadMode::AesGcm256,
-        HpkeAeadType::ChaCha20Poly1305 => HpkeAeadMode::ChaCha20Poly1305,
-        HpkeAeadType::Export => HpkeAeadMode::Export,
+        HpkeAeadType::AesGcm128 => hpke_types::AeadAlgorithm::Aes128Gcm,
+        HpkeAeadType::AesGcm256 => hpke_types::AeadAlgorithm::Aes256Gcm,
+        HpkeAeadType::ChaCha20Poly1305 => hpke_types::AeadAlgorithm::ChaCha20Poly1305,
+        HpkeAeadType::Export => hpke_types::AeadAlgorithm::HpkeExport,
     }
 }
 
@@ -289,7 +288,7 @@ impl OpenMlsCrypto for RustCrypto {
         aad: &[u8],
         ptxt: &[u8],
     ) -> types::HpkeCiphertext {
-        let (kem_output, ciphertext) = Hpke::new(
+        let (kem_output, ciphertext) = Hpke::<HpkeRustCrypto>::new(
             hpke::Mode::Base,
             kem_mode(config.0),
             kdf_mode(config.1),
@@ -311,7 +310,7 @@ impl OpenMlsCrypto for RustCrypto {
         info: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
-        Hpke::new(
+        Hpke::<HpkeRustCrypto>::new(
             hpke::Mode::Base,
             kem_mode(config.0),
             kdf_mode(config.1),
@@ -331,7 +330,7 @@ impl OpenMlsCrypto for RustCrypto {
     }
 
     fn derive_hpke_keypair(&self, config: HpkeConfig, ikm: &[u8]) -> types::HpkeKeyPair {
-        let kp = Hpke::new(
+        let kp = Hpke::<HpkeRustCrypto>::new(
             hpke::Mode::Base,
             kem_mode(config.0),
             kdf_mode(config.1),

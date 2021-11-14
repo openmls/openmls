@@ -120,8 +120,8 @@ impl Ciphersuite {
     }
 
     /// Get the AEAD mode
-    #[cfg(test)]
-    pub(crate) fn aead(&self) -> AeadType {
+    #[cfg(any(test, feature = "test-utils"))]
+    pub fn aead(&self) -> AeadType {
         self.aead
     }
 
