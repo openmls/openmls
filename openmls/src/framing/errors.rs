@@ -57,6 +57,7 @@ implement_error! {
         Simple {
             NotAnApplicationMessage = "The MlsPlaintext message is not an application message.",
             UnknownSender = "Sender is not part of the group",
+            MissingMembershipTag = "The membership tag is missing.",
             WrongWireFormat = "Wrong wire format.",
             LibraryError = "A library error occured",
         }

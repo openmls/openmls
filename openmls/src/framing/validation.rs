@@ -111,7 +111,7 @@ impl UnverifiedMessage {
         &self.aad_option
     }
     pub fn sender(&self) -> &Sender {
-        todo!()
+        &self.plaintext.sender()
     }
     pub fn credential(&self) -> Option<&Credential> {
         self.credential.as_ref()
@@ -139,13 +139,13 @@ impl UnverifiedContextMessage {
         if plaintext.sender().is_member() {
             // Unless the message was encrypted, the membership tag is required
             if plaintext.wire_format() != WireFormat::MlsCiphertext {
-                // Check that the membership tag is present if sender is member
+                // Check that the membership tag is present
                 if plaintext.membership_tag.is_none() {
                     return Err(ValidationError::MissingMembershipTag);
                 }
                 // Add serialized context to plaintext
                 plaintext.set_context(serialized_context);
-                // Verify the membership key
+                // Verify the membership tag
                 plaintext.verify_membership(backend, membership_key)?;
             }
         }
@@ -157,6 +157,7 @@ impl UnverifiedContextMessage {
                         credential,
                     }))
                 } else {
+                    // If the sender is a member, there must be a credential
                     Err(ValidationError::LibraryError)
                 }
             }
