@@ -219,3 +219,70 @@ impl MlsCiphertextContent {
         })
     }
 }
+
+impl tls_codec::Serialize for MlsMessageIn {
+    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        match self {
+            MlsMessageIn::Ciphertext(m) => m.tls_serialize(writer),
+            MlsMessageIn::Plaintext(m) => m.tls_serialize(writer),
+        }
+    }
+}
+
+impl tls_codec::Deserialize for MlsMessageIn {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
+        // Determine the wire format by looking at the first byte
+        let mut first_byte_buffer = [0u8];
+        bytes
+            .read_exact(&mut first_byte_buffer)
+            .map_err(|_| tls_codec::Error::EndOfStream)?;
+        match first_byte_buffer.first() {
+            Some(first_byte) => {
+                let mut chain = first_byte_buffer.chain(bytes);
+                let wire_format = WireFormat::tls_deserialize(&mut vec![*first_byte].as_slice())?;
+                match wire_format {
+                    WireFormat::MlsPlaintext => {
+                        let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut chain)?;
+                        Ok(MlsMessageIn::Plaintext(plaintext))
+                    }
+                    WireFormat::MlsCiphertext => {
+                        let ciphertext = MlsCiphertext::tls_deserialize(&mut chain)?;
+                        Ok(MlsMessageIn::Ciphertext(ciphertext))
+                    }
+                }
+            }
+            None => Err(tls_codec::Error::EndOfStream),
+        }
+    }
+}
+
+impl tls_codec::Size for MlsMessageIn {
+    #[inline]
+    fn tls_serialized_len(&self) -> usize {
+        match &self {
+            MlsMessageIn::Plaintext(plaintext) => {
+                VerifiableMlsPlaintext::tls_serialized_len(plaintext)
+            }
+            MlsMessageIn::Ciphertext(ciphertext) => MlsCiphertext::tls_serialized_len(ciphertext),
+        }
+    }
+}
+
+impl tls_codec::Serialize for MlsMessageOut {
+    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        match self {
+            MlsMessageOut::Ciphertext(m) => m.tls_serialize(writer),
+            MlsMessageOut::Plaintext(m) => m.tls_serialize(writer),
+        }
+    }
+}
+
+impl tls_codec::Size for MlsMessageOut {
+    #[inline]
+    fn tls_serialized_len(&self) -> usize {
+        match &self {
+            MlsMessageOut::Plaintext(plaintext) => MlsPlaintext::tls_serialized_len(plaintext),
+            MlsMessageOut::Ciphertext(ciphertext) => MlsCiphertext::tls_serialized_len(ciphertext),
+        }
+    }
+}

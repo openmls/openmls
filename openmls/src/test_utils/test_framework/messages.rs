@@ -3,10 +3,7 @@
 //! serialization/deserialization functions attach an additional byte that
 //! indicates if a message is a plaintext or a ciphertext
 
-use crate::{
-    group::MlsMessageIn,
-    prelude::{MlsCiphertext, VerifiableMlsPlaintext},
-};
+//use crate::prelude::{MlsCiphertext, MlsMessageIn, VerifiableMlsPlaintext};
 
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -21,6 +18,7 @@ pub enum MessageType {
     MlsPlaintext = 1,
 }
 
+/*
 impl tls_codec::Size for MlsMessageIn {
     fn tls_serialized_len(&self) -> usize {
         MessageType::MlsCiphertext.tls_serialized_len()
@@ -61,3 +59,4 @@ impl tls_codec::Deserialize for MlsMessageIn {
         })
     }
 }
+*/

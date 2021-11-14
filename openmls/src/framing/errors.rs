@@ -51,3 +51,25 @@ implement_error! {
         }
     }
 }
+
+// FIXME
+implement_error! {
+    pub enum ValidationError {
+        Simple {
+            NotAnApplicationMessage = "The MlsPlaintext message is not an application message.",
+            UnknownSender = "Sender is not part of the group",
+            InvalidSignature = "The MlsPlaintext signature is invalid",
+            MissingMembershipTag = "Membership tag is missing.",
+            //InvalidMembershipTag = "The MlsPlaintext membership tag is invalid",
+            WrongWireFormat = "Wrong wire format.",
+            LibraryError = "A library error occured",
+        }
+        Complex {
+            CodecError(TlsCodecError) = "TLS Codec error",
+            CredentialError(CredentialError) = "See [`CredentialError`](`crate::credentials::CredentialError`) for details.",
+            //VerificationError(VerificationError) = "See [`VerificationError`](`VerificationError`) for details.",
+            MlsPlaintextError(MlsPlaintextError) = "See [`MlsPlaintextError`](`MlsPlaintextError`) for details.",
+            MlsCiphertextError(MlsCiphertextError) = "See [`MlsCiphertextError`](`MlsCiphertextError`) for details.",
+        }
+    }
+}

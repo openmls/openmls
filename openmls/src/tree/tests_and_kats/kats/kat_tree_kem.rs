@@ -31,7 +31,7 @@ use crate::{
     tree::{treemath::*, CiphersuiteName, HashSet, LeafIndex, NodeIndex, RatchetTree, UpdatePath},
 };
 use crate::{
-    group::MlsMessageOut,
+    framing::MlsMessageOut,
     prelude::MlsPlaintextContentType,
     test_utils::{
         bytes_to_hex,
