@@ -222,7 +222,7 @@ impl MlsCiphertext {
             mls_ciphertext_content.content
         );
 
-        let decomposed = VerifiableMlsPlaintext::new(
+        let verifiable = VerifiableMlsPlaintext::new(
             MlsPlaintextTbs::new(
                 self.wire_format,
                 self.group_id.clone(),
@@ -238,7 +238,7 @@ impl MlsCiphertext {
             mls_ciphertext_content.confirmation_tag,
             None, /* MlsCiphertexts don't carry along the membership tag. */
         );
-        Ok(decomposed)
+        Ok(verifiable)
     }
 
     /// Returns `true` if this is a handshake message and `false` otherwise.
