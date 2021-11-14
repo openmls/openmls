@@ -576,7 +576,6 @@ impl VerifiableMlsPlaintext {
     }
 
     /// Get the group id as [`GroupId`].
-    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn group_id(&self) -> &GroupId {
         &self.tbs.group_id
     }
