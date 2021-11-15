@@ -48,9 +48,10 @@ impl DecryptedMessage {
     pub(crate) fn from_inbound_plaintext(
         inbound_message: MlsMessageIn,
     ) -> Result<Self, ValidationError> {
-        match inbound_message {
-            MlsMessageIn::Plaintext(plaintext) => Self::from_plaintext(plaintext),
-            MlsMessageIn::Ciphertext(_) => Err(ValidationError::WrongWireFormat),
+        if let MlsMessageIn::Plaintext(plaintext) = inbound_message {
+            Self::from_plaintext(plaintext)
+        } else {
+            Err(ValidationError::WrongWireFormat)
         }
     }
     pub(crate) fn from_inbound_ciphertext(
@@ -60,13 +61,12 @@ impl DecryptedMessage {
         epoch_secrets: &EpochSecrets,
         secret_tree: &mut SecretTree,
     ) -> Result<Self, ValidationError> {
-        match inbound_message {
-            MlsMessageIn::Plaintext(_) => Err(ValidationError::WrongWireFormat),
-            MlsMessageIn::Ciphertext(ciphertext) => {
-                let plaintext =
-                    ciphertext.to_plaintext(ciphersuite, backend, epoch_secrets, secret_tree)?;
-                Self::from_plaintext(plaintext)
-            }
+        if let MlsMessageIn::Ciphertext(ciphertext) = inbound_message {
+            let plaintext =
+                ciphertext.to_plaintext(ciphersuite, backend, epoch_secrets, secret_tree)?;
+            Self::from_plaintext(plaintext)
+        } else {
+            Err(ValidationError::WrongWireFormat)
         }
     }
     fn from_plaintext(plaintext: VerifiableMlsPlaintext) -> Result<Self, ValidationError> {
