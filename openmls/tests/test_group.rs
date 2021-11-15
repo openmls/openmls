@@ -768,7 +768,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         &[ciphersuite.name()],
         &charlie_credential_bundle,
         &crypto,
-        mandatory_extensions.clone(),
+        mandatory_extensions,
     )
     .expect("Could not create key package bundle.");
 
