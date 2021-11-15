@@ -158,6 +158,12 @@ impl Default for CommitSecret {
     }
 }
 
+impl From<Secret> for CommitSecret {
+    fn from(secret: Secret) -> Self {
+        Self { secret }
+    }
+}
+
 impl CommitSecret {
     pub(crate) fn new(
         ciphersuite: &Ciphersuite,
@@ -206,6 +212,12 @@ impl CommitSecret {
 #[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct InitSecret {
     secret: Secret,
+}
+
+impl From<Secret> for InitSecret {
+    fn from(secret: Secret) -> Self {
+        Self { secret }
+    }
 }
 
 impl InitSecret {
