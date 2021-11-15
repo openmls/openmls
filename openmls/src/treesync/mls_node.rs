@@ -1,10 +1,12 @@
 use std::convert::TryFrom;
 
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{
+    Size, TlsByteSliceU8, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32,
+};
 
-use crate::prelude::KeyPackage;
+use crate::{binary_tree::LeafIndex, ciphersuite::HpkePublicKey, prelude::KeyPackage};
 
-use super::node::ParentNode;
+use super::node::{leaf_node::LeafNode, parent_node::ParentNode, Node};
 
 /// Node type. Can be either `Leaf` or `Parent`.
 #[derive(PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize)]
@@ -38,36 +40,26 @@ impl TryFrom<u8> for MlsNodeType {
     }
 }
 
-/// Ratchet tree node. A `Node` can either be a leaf node (in which case it
-/// contains an optional `KeyPackage`), or a parent node (in which case it
-/// contains an optional `ParentNode`).
-#[derive(Debug, PartialEq, Clone)]
-pub(crate) enum MlsNode {
-    Leaf(KeyPackage),
-    Parent(ParentNode),
-}
-
 // The Node is defined as enum, not option. So unfortunately we have to implement
 // (de)serialization by hand.
-
-impl tls_codec::Size for MlsNode {
+impl tls_codec::Size for Node {
     fn tls_serialized_len(&self) -> usize {
         1 // Length of MlsNodeType
             + match self {
-                MlsNode::Leaf(kp) => kp.tls_serialized_len(),
-                MlsNode::Parent(n) => n.tls_serialized_len(),
+                Node::LeafNode(kp) => kp.tls_serialized_len(),
+                Node::ParentNode(n) => n.tls_serialized_len(),
             }
     }
 }
 
-impl tls_codec::Serialize for MlsNode {
+impl tls_codec::Serialize for Node {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         match self {
-            MlsNode::Leaf(kp) => {
+            Node::LeafNode(kp) => {
                 let written = MlsNodeType::Leaf.tls_serialize(writer)?;
                 kp.tls_serialize(writer).map(|l| l + written)
             }
-            MlsNode::Parent(n) => {
+            Node::ParentNode(n) => {
                 let written = MlsNodeType::Parent.tls_serialize(writer)?;
                 n.tls_serialize(writer).map(|l| l + written)
             }
@@ -75,12 +67,12 @@ impl tls_codec::Serialize for MlsNode {
     }
 }
 
-impl tls_codec::Deserialize for MlsNode {
+impl tls_codec::Deserialize for Node {
     fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
         let node_type = MlsNodeType::tls_deserialize(bytes)?;
         let node = match node_type {
-            MlsNodeType::Leaf => MlsNode::Leaf(KeyPackage::tls_deserialize(bytes)?),
-            MlsNodeType::Parent => MlsNode::Parent(ParentNode::tls_deserialize(bytes)?),
+            MlsNodeType::Leaf => Node::LeafNode(LeafNode::tls_deserialize(bytes)?),
+            MlsNodeType::Parent => Node::ParentNode(ParentNode::tls_deserialize(bytes)?),
         };
         Ok(node)
     }

@@ -3,12 +3,12 @@ use crate::config::ProtocolVersion;
 use crate::extensions::*;
 use crate::group::*;
 use crate::schedule::psk::PreSharedKeys;
-use crate::schedule::JoinerSecret;
+use crate::schedule::{CommitSecret, JoinerSecret};
 use crate::tree::{index::*, *};
 
+use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::HpkeCiphertext;
 
-#[cfg(any(feature = "test-utils", test))]
 use openmls_traits::OpenMlsCryptoProvider;
 
 use serde::{Deserialize, Serialize};
@@ -299,6 +299,44 @@ pub struct PathSecret {
 impl From<Secret> for PathSecret {
     fn from(path_secret: Secret) -> Self {
         Self { path_secret }
+    }
+}
+
+impl PathSecret {
+    /// Derives a node secret which in turn is used to derive an HpkeKeyPair.
+    pub(crate) fn derive_key_pair(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+    ) -> Result<(HpkePublicKey, HpkePrivateKey), CryptoError> {
+        let mut node_secret =
+            self.path_secret
+                .kdf_expand_label(backend, "node", &[], ciphersuite.hash_length())?;
+        let key_pair = backend
+            .crypto()
+            .derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice());
+
+        Ok((
+            HpkePublicKey::from(key_pair.public),
+            HpkePrivateKey::from(key_pair.private),
+        ))
+    }
+
+    /// Derives a path secret.
+    pub(crate) fn derive_path_secret(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+    ) -> Result<Self, CryptoError> {
+        let path_secret =
+            self.path_secret
+                .kdf_expand_label(backend, "path", &[], ciphersuite.hash_length())?;
+        Ok(Self { path_secret })
+    }
+
+    /// This is used to turn the path secret into a commit secret.
+    pub(crate) fn secret(self) -> Secret {
+        self.path_secret
     }
 }
 

@@ -95,6 +95,12 @@ impl KeyPackagePayload {
         self.remove_extension(extension.extension_type());
         self.extensions.push(extension);
     }
+
+    /// Update the parent hash extension of this key package.
+    pub(crate) fn update_parent_hash(&mut self, parent_hash: &[u8]) {
+        let extension = Extension::ParentHash(ParentHashExtension::new(parent_hash));
+        self.add_extension(extension);
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -334,6 +340,10 @@ impl KeyPackageBundlePayload {
     /// Add (or replace) an extension to the KeyPackage.
     pub fn add_extension(&mut self, extension: Extension) {
         self.key_package_payload.add_extension(extension)
+    }
+
+    pub fn into_parts(self) -> (KeyPackagePayload, Secret) {
+        (self.key_package_payload, self.leaf_secret)
     }
 }
 

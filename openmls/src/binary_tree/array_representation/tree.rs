@@ -68,6 +68,21 @@ impl<T: Clone> ABinaryTree<T> {
         (self.size() + 1) / 2
     }
 
+    /// Vector of leaves sorted from left to right in the tree.
+    pub(crate) fn leaves(&self) -> Result<Vec<&T>, ABinaryTreeError> {
+        let mut leaf_references = Vec::new();
+        for leaf_index in 0..self.leaf_count() {
+            let node_index = usize::try_from(to_node_index(leaf_index))
+                .map_err(|_| ABinaryTreeError::LibraryError)?;
+            let node_ref = self
+                .nodes
+                .get(node_index)
+                .ok_or(ABinaryTreeError::LibraryError)?;
+            leaf_references.push(node_ref);
+        }
+        Ok(leaf_references)
+    }
+
     pub(crate) fn merge_diff(&mut self, diff: StagedAbDiff<T>) -> Result<(), ABinaryTreeError> {
         for (node_index, diff_node) in diff.diff().drain() {
             // Perform swap-remove.

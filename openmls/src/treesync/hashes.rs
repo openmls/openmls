@@ -8,7 +8,7 @@ use crate::{
     ciphersuite::{Ciphersuite, HpkePublicKey},
 };
 
-use super::node::ParentNode;
+use super::node::parent_node::ParentNode;
 use crate::key_packages::KeyPackage;
 
 #[derive(TlsSerialize, TlsSize)]

@@ -115,6 +115,7 @@
 //! ```
 
 use crate::framing::MlsPlaintextTbmPayload;
+use crate::messages::PathSecret;
 use crate::tree::index::LeafIndex;
 use crate::tree::secret_tree::SecretTree;
 use crate::{ciphersuite::Mac, group::GroupContext, prelude::MembershipTag};
@@ -151,6 +152,14 @@ impl Default for CommitSecret {
     fn default() -> Self {
         CommitSecret {
             secret: Secret::default(),
+        }
+    }
+}
+
+impl From<PathSecret> for CommitSecret {
+    fn from(path_secret: PathSecret) -> Self {
+        CommitSecret {
+            secret: path_secret.secret(),
         }
     }
 }

@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use crate::binary_tree::{array_representation::treemath::sibling, Addressable, LeafIndex};
+use crate::binary_tree::{array_representation::treemath::sibling, LeafIndex};
 
 use super::{
     tree::{to_node_index, ABinaryTree, ABinaryTreeError, NodeIndex, TreeSize},
-    treemath::{direct_path, left, right, root, TreeMathError},
+    treemath::{direct_path, left, lowest_common_ancestor, right, root, TreeMathError},
 };
 
 pub(crate) struct StagedAbDiff<T: Clone> {
@@ -45,7 +45,7 @@ pub(crate) struct NodeReference<'a, T: Clone> {
     node_index: NodeIndex,
 }
 
-impl<'a, T: Clone + Addressable> NodeReference<'a, T> {
+impl<'a, T: Clone> NodeReference<'a, T> {
     pub(crate) fn try_deref(&self) -> Result<&T, ABinaryTreeDiffError> {
         self.diff
             .node_by_index(self.node_index)
@@ -231,6 +231,31 @@ impl<'a, T: Clone> AbDiff<'a, T> {
         self.apply_to_node(root_index, f)
     }
 
+    /// This applies the given function to the lowest common ancestor (i.e. the
+    /// subtree root), as well as the direct path from that node to the root.
+    pub(crate) fn apply_to_subtree_path<F, E>(
+        &mut self,
+        leaf_index_1: LeafIndex,
+        leaf_index_2: LeafIndex,
+        mut f: F,
+    ) -> Result<(), ABinaryTreeDiffError>
+    where
+        F: FnMut(&mut T) -> Result<(), E>,
+    {
+        let node_index_1 = to_node_index(leaf_index_1);
+        let node_index_2 = to_node_index(leaf_index_2);
+        let lca = lowest_common_ancestor(node_index_1, node_index_2);
+        let mut direct_path_indices =
+            direct_path(lca, self.size()).map_err(|_| ABinaryTreeDiffError::OutOfBounds)?;
+        let mut full_path = vec![lca];
+        full_path.append(&mut direct_path_indices);
+        for node_index in &full_path {
+            let node = self.node_mut_by_index(*node_index)?;
+            f(node).map_err(|_| ABinaryTreeDiffError::PathModificationError)?;
+        }
+        Ok(())
+    }
+
     /// Any Error while applying `f` will be treated as a LibraryError.
     pub(crate) fn apply_to_direct_path<F, E>(
         &mut self,
@@ -361,6 +386,7 @@ implement_error! {
     pub enum ABinaryTreeDiffError {
         Simple {
             LibraryError = "An inconsistency in the internal state of the diff was detected.",
+            PathModificationError = "Error while trying to modify path.",
             OutOfBounds = "The given leaf index is not within the tree.",
             TreeTooLarge = "Maximum tree size reached.",
             PathLengthMismatch = "The given path index is not the same length as the direct path.",
