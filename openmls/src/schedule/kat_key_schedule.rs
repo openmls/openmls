@@ -302,7 +302,6 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
             ciphersuite,
         ));
         log::trace!("    CommitSecret from tve {:?}", epoch.commit_secret);
-        // let psk = hex_to_bytes(&epoch.psk_secret);
         let mut psks = Vec::new();
         let mut psk_ids = Vec::new();
         for psk_value in epoch.psks.iter() {
