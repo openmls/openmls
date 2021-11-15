@@ -62,6 +62,8 @@ impl TestClient {
 /// keystore, which holds the KeyPackages published by the clients.
 pub(crate) struct TestSetup {
     pub(crate) _key_store: RefCell<HashMap<(&'static str, CiphersuiteName), Vec<KeyPackage>>>,
+    // Clippy has a hard time figuring this one out
+    #[allow(dead_code)]
     pub clients: RefCell<HashMap<&'static str, RefCell<TestClient>>>,
 }
 
