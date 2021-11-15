@@ -49,7 +49,7 @@ impl DecryptedMessage {
         inbound_message: MlsMessageIn,
     ) -> Result<Self, ValidationError> {
         match inbound_message {
-            MlsMessageIn::Plaintext(plaintext) => Ok(DecryptedMessage { plaintext }),
+            MlsMessageIn::Plaintext(plaintext) => Self::from_plaintext(plaintext),
             MlsMessageIn::Ciphertext(_) => Err(ValidationError::WrongWireFormat),
         }
     }
@@ -65,9 +65,33 @@ impl DecryptedMessage {
             MlsMessageIn::Ciphertext(ciphertext) => {
                 let plaintext =
                     ciphertext.to_plaintext(ciphersuite, backend, epoch_secrets, secret_tree)?;
-                Ok(DecryptedMessage { plaintext })
+                Self::from_plaintext(plaintext)
             }
         }
+    }
+    fn from_plaintext(plaintext: VerifiableMlsPlaintext) -> Result<Self, ValidationError> {
+        // Unless the message was encrypted, the membership tag is required when the sender is a member
+        if plaintext.sender().is_member()
+            && plaintext.wire_format() != WireFormat::MlsCiphertext
+            && plaintext.membership_tag().is_none()
+        {
+            return Err(ValidationError::MissingMembershipTag);
+        }
+        // Check that if the message is a commit the confirmation tag is present
+        if plaintext.content_type() == ContentType::Commit && plaintext.confirmation_tag().is_none()
+        {
+            return Err(ValidationError::MissingConfirmationTag);
+        }
+        // Check that application messages are always encrypted
+        if plaintext.content_type() == ContentType::Application {
+            if plaintext.wire_format() != WireFormat::MlsCiphertext {
+                return Err(ValidationError::UnencryptedApplicationMessage);
+            } else if !plaintext.sender().is_member() {
+                // This should not happen because the sender of an MlsCiphertext should always be a member
+                return Err(ValidationError::LibraryError);
+            }
+        }
+        Ok(DecryptedMessage { plaintext })
     }
     pub fn wire_format(&self) -> WireFormat {
         self.plaintext.wire_format()
@@ -77,12 +101,6 @@ impl DecryptedMessage {
     }
     pub fn content_type(&self) -> ContentType {
         self.plaintext.content_type()
-    }
-    pub(crate) fn has_membership_tag(&self) -> bool {
-        self.plaintext.membership_tag().is_some()
-    }
-    pub(crate) fn has_confirmation_tag(&self) -> bool {
-        self.plaintext.confirmation_tag().is_some()
     }
 }
 
@@ -111,7 +129,7 @@ impl UnverifiedMessage {
         &self.aad_option
     }
     pub fn sender(&self) -> &Sender {
-        &self.plaintext.sender()
+        self.plaintext.sender()
     }
     pub fn credential(&self) -> Option<&Credential> {
         self.credential.as_ref()
@@ -137,12 +155,8 @@ impl UnverifiedContextMessage {
         let (mut plaintext, credential_option) = unverified_message.into_parts();
 
         if plaintext.sender().is_member() {
-            // Unless the message was encrypted, the membership tag is required
+            // Verify the membership tag
             if plaintext.wire_format() != WireFormat::MlsCiphertext {
-                // Check that the membership tag is present
-                if plaintext.membership_tag.is_none() {
-                    return Err(ValidationError::MissingMembershipTag);
-                }
                 // Add serialized context to plaintext
                 plaintext.set_context(serialized_context);
                 // Verify the membership tag

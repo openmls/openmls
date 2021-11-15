@@ -56,8 +56,10 @@ implement_error! {
     pub enum ValidationError {
         Simple {
             NotAnApplicationMessage = "The MlsPlaintext message is not an application message.",
+            UnencryptedApplicationMessage = "The MlsPlaintext contains an application message but was not encrypted.",
             UnknownSender = "Sender is not part of the group",
             MissingMembershipTag = "The membership tag is missing.",
+            MissingConfirmationTag = "The confirmation tag is missing.",
             WrongWireFormat = "Wrong wire format.",
             LibraryError = "A library error occured",
         }

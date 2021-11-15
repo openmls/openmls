@@ -19,7 +19,7 @@ impl ManagedGroup {
         /*
         High level checks:
          - epoch must be within bounds
-         - IFF content_type is application, wire_format must be
+         - IFF content_type is application, wire_format must be ciphertext
          - AAD can be extracted/evaluated
          - decryption
          - IFF content_type is a commit, confirmation_tag must be present
@@ -48,8 +48,6 @@ impl ManagedGroup {
             )?,
         };
 
-        // Check that application messages are always encrypted
-
         let mut credential = None;
 
         // Check that the sender is a valid member of the tree
@@ -75,32 +73,6 @@ impl ManagedGroup {
                     .credential()
                     .clone(),
             );
-
-            // Verify the membership tag exists.
-            // This is also checked later when ContextPlaintext is built, but we want to fail early
-            if !decrypted_message.has_membership_tag() {
-                return Err(ManagedGroupError::InvalidMessage(
-                    InvalidMessageError::MissingMembershipTag,
-                ));
-            }
-        }
-
-        // Check that if the message is a commit the confirmation tag is present
-        if decrypted_message.content_type() == ContentType::Commit
-            && !decrypted_message.has_confirmation_tag()
-        {
-            return Err(ManagedGroupError::InvalidMessage(
-                InvalidMessageError::MissingConfirmationTag,
-            ));
-        }
-
-        // Check that application messages are always encrypted
-        if decrypted_message.content_type() == ContentType::Application
-            && decrypted_message.wire_format() != WireFormat::MlsCiphertext
-        {
-            return Err(ManagedGroupError::InvalidMessage(
-                InvalidMessageError::InvalidApplicationMessage,
-            ));
         }
 
         Ok(UnverifiedMessage::from_decrypted_message(
