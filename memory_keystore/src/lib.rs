@@ -81,9 +81,9 @@ pub enum Error {
     SerializationError,
 }
 
-impl Into<String> for Error {
-    fn into(self) -> String {
-        match self {
+impl From<Error> for String {
+    fn from(val: Error) -> Self {
+        match val {
             Error::UnsupportedValueTypeBytes => {
                 "The key store does not allow storing serialized values.".to_string()
             }
