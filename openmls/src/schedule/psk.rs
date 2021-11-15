@@ -272,6 +272,15 @@ pub struct PskSecret {
 
 impl PskSecret {
     /// Create a new `PskSecret` from PSK IDs and PSKs
+    ///
+    /// ```text
+    /// psk_extracted_[i] = KDF.Extract(0, psk_[i])
+    /// psk_input_[i] = ExpandWithLabel(psk_extracted_[i], "derived psk", PSKLabel, KDF.Nh)
+    ///
+    /// psk_secret_[0] = 0
+    /// psk_secret_[i] = KDF.Extract(psk_input[i-1], psk_secret_[i-1])
+    /// psk_secret     = psk_secret[n]
+    /// ```
     pub fn new(
         ciphersuite: &'static Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,

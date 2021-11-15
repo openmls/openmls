@@ -135,6 +135,9 @@ pub mod codec;
 pub mod errors;
 pub(crate) mod psk;
 
+#[cfg(test)]
+mod unit_tests;
+
 #[cfg(any(feature = "test-utils", test))]
 pub mod kat_key_schedule;
 
