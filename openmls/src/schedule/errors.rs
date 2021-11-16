@@ -18,7 +18,7 @@ implement_error! {
 implement_error! {
     pub enum PskSecretError {
         Simple {
-            TooManyKeys = "More than 2^16 PSKS were provided.",
+            TooManyKeys = "More than 2^16 PSKs were provided.",
             DifferentLength = "The IDs and secrets vectors have different lengths.",
             EncodingError = "Error serializing the PSK label.",
         }
