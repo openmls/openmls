@@ -29,7 +29,7 @@ pub(crate) fn level(index: NodeIndex) -> usize {
         return 0;
     }
     let mut k = 0;
-    while ((x >> k) & 0x01) == 1 {
+    while ((x as u64 >> k) & 0x01) == 1 {
         k += 1;
     }
     k
@@ -75,9 +75,10 @@ pub(crate) fn right(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, Tree
 // The parent here might be beyond the right edge of the tree.
 pub(crate) fn parent_step(x: usize) -> usize {
     // We need to use u64 for some of the operations where usize is too small on 32bit platforms
-    let k = level(NodeIndex::from(x)) as u64;
+    let k = level(NodeIndex::from(x));
     let b = (x as u64 >> (k + 1)) & 0x01;
-    (x | (1 << k)) ^ ((b as usize) << (k + 1))
+    let res = (x as u64 | (1 << k)) ^ (b << (k + 1));
+    res as usize
 }
 
 pub(crate) fn parent(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, TreeMathError> {
