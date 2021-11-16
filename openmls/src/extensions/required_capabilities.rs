@@ -42,7 +42,7 @@ impl RequiredCapabilitiesExtension {
         }
     }
 
-    /// Get a reference to the required extension typtes.
+    /// Get a reference to the required extension types.
     pub(crate) fn extensions(&self) -> &[ExtensionType] {
         self.extensions.as_slice()
     }
