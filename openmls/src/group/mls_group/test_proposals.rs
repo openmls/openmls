@@ -1,8 +1,7 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use tls_codec::{Deserialize, Serialize};
 
 use crate::{
-    ciphersuite::{Ciphersuite, CiphersuiteName, Secret},
+    ciphersuite::Secret,
     config::Config,
     credentials::{CredentialBundle, CredentialType},
     extensions::{Extension, LifetimeExtension},
@@ -13,9 +12,7 @@ use crate::{
         GroupContext, GroupEpoch, GroupId, WireFormat,
     },
     key_packages::KeyPackageBundle,
-    messages::proposals::{
-        AddProposal, Proposal, ProposalOrRef, ProposalReference, ProposalType, RemoveProposal,
-    },
+    messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalReference, ProposalType},
     schedule::MembershipKey,
     tree::index::*,
 };
