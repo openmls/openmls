@@ -39,6 +39,7 @@ fn test_psks() {
                 )
             })
             .collect::<Vec<PreSharedKeyId>>();
-        let psk_secret = PskSecret::new(ciphersuite, &backend, psk_ids, psks).expect("Could not calculate PSK secret.");
+        let psk_secret = PskSecret::new(ciphersuite, &backend, psk_ids, psks)
+            .expect("Could not calculate PSK secret.");
     }
 }
