@@ -341,6 +341,12 @@
 <span id="341">341</span>
 <span id="342">342</span>
 <span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Pre shared keys.</span>
 <span class="doccomment">//! ```text</span>
 <span class="doccomment">//! enum {</span>
@@ -615,6 +621,15 @@
 
 <span class="kw">impl</span> <span class="ident">PskSecret</span> {
     <span class="doccomment">/// Create a new `PskSecret` from PSK IDs and PSKs</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// ```text</span>
+    <span class="doccomment">/// psk_extracted_[i] = KDF.Extract(0, psk_[i])</span>
+    <span class="doccomment">/// psk_input_[i] = ExpandWithLabel(psk_extracted_[i], &quot;derived psk&quot;, PSKLabel, KDF.Nh)</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// psk_secret_[0] = 0</span>
+    <span class="doccomment">/// psk_secret_[i] = KDF.Extract(psk_input[i-1], psk_secret_[i-1])</span>
+    <span class="doccomment">/// psk_secret     = psk_secret[n]</span>
+    <span class="doccomment">/// ```</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
@@ -624,32 +639,29 @@
         <span class="kw">if</span> <span class="ident">psk_ids</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">psks</span>.<span class="ident">len</span>() {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">PskSecretError::DifferentLength</span>);
         }
-        <span class="kw">if</span> <span class="ident">psks</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">u16::MAX</span> <span class="kw">as</span> <span class="ident">usize</span> {
+        <span class="kw">let</span> <span class="ident">num_psks</span> <span class="op">=</span> <span class="ident">psks</span>.<span class="ident">len</span>();
+        <span class="kw">if</span> <span class="ident">num_psks</span> <span class="op">&gt;</span> <span class="ident">u16::MAX</span> <span class="kw">as</span> <span class="ident">usize</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">PskSecretError::TooManyKeys</span>);
         }
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">secret</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+        <span class="kw">let</span> <span class="ident">num_psks</span> <span class="op">=</span> <span class="ident">num_psks</span> <span class="kw">as</span> <span class="ident">u16</span>;
         <span class="kw">let</span> <span class="ident">mls_version</span> <span class="op">=</span> <span class="ident">ProtocolVersion::default</span>();
-        <span class="kw">for</span> (<span class="ident">index</span>, <span class="ident">psk</span>) <span class="kw">in</span> <span class="ident">psks</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">psk_secret</span> <span class="op">=</span> <span class="ident">Secret::zero</span>(<span class="ident">ciphersuite</span>, <span class="ident">mls_version</span>);
+        <span class="kw">for</span> ((<span class="ident">index</span>, <span class="ident">psk</span>), <span class="ident">psk_id</span>) <span class="kw">in</span> <span class="ident">psks</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>().<span class="ident">zip</span>(<span class="ident">psk_ids</span>.<span class="ident">iter</span>()) {
             <span class="kw">let</span> <span class="ident">zero_secret</span> <span class="op">=</span> <span class="ident">Secret::zero</span>(<span class="ident">ciphersuite</span>, <span class="ident">mls_version</span>);
-            <span class="kw">let</span> <span class="ident">psk_input</span> <span class="op">=</span> <span class="ident">zero_secret</span>.<span class="ident">hkdf_extract</span>(<span class="ident">backend</span>, <span class="ident">psk</span>);
-            <span class="kw">let</span> <span class="ident">psk_label</span> <span class="op">=</span> <span class="ident">PskLabel::new</span>(<span class="kw-2">&amp;</span><span class="ident">psk_ids</span>[<span class="ident">index</span>], <span class="ident">index</span> <span class="kw">as</span> <span class="ident">u16</span>, <span class="ident">psks</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u16</span>)
+            <span class="kw">let</span> <span class="ident">psk_extracted</span> <span class="op">=</span> <span class="ident">zero_secret</span>.<span class="ident">hkdf_extract</span>(<span class="ident">backend</span>, <span class="ident">psk</span>);
+            <span class="kw">let</span> <span class="ident">psk_label</span> <span class="op">=</span> <span class="ident">PskLabel::new</span>(<span class="ident">psk_id</span>, <span class="ident">index</span> <span class="kw">as</span> <span class="ident">u16</span>, <span class="ident">num_psks</span>)
                 .<span class="ident">tls_serialize_detached</span>()
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PskSecretError::EncodingError</span>)<span class="question-mark">?</span>;
 
-            <span class="comment">// FIXME: remove unwrap</span>
-            <span class="kw">let</span> <span class="ident">psk_secret</span> <span class="op">=</span> <span class="ident">psk_input</span>
-                .<span class="ident">kdf_expand_label</span>(
-                    <span class="ident">backend</span>,
-                    <span class="string">&quot;derived psk&quot;</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">psk_label</span>,
-                    <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>(),
-                )
-                .<span class="ident">unwrap</span>();
-            <span class="ident">secret</span>.<span class="ident">extend_from_slice</span>(<span class="ident">psk_secret</span>.<span class="ident">as_slice</span>());
+            <span class="kw">let</span> <span class="ident">psk_input</span> <span class="op">=</span> <span class="ident">psk_extracted</span>.<span class="ident">kdf_expand_label</span>(
+                <span class="ident">backend</span>,
+                <span class="string">&quot;derived psk&quot;</span>,
+                <span class="kw-2">&amp;</span><span class="ident">psk_label</span>,
+                <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>(),
+            )<span class="question-mark">?</span>;
+            <span class="ident">psk_secret</span> <span class="op">=</span> <span class="ident">psk_input</span>.<span class="ident">hkdf_extract</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">psk_secret</span>);
         }
-        <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
-            <span class="ident">secret</span>: <span class="ident">Secret::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">secret</span>, <span class="ident">mls_version</span>, <span class="ident">ciphersuite</span>),
-        })
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span> { <span class="ident">secret</span>: <span class="ident">psk_secret</span> })
     }
 
     <span class="doccomment">/// Return the inner secret</span>

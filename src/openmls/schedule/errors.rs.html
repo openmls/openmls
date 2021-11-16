@@ -39,7 +39,16 @@
 <span id="39">39</span>
 <span id="40">40</span>
 <span id="41">41</span>
-</pre><pre class="rust"><code><span class="macro">implement_error!</span> {
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite::CryptoError</span>;
+
+<span class="macro">implement_error!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ErrorState</span> {
         <span class="ident">NotInit</span> <span class="op">=</span> <span class="string">&quot;Expected to be in initial state.&quot;</span>,
         <span class="ident">NotEpoch</span> <span class="op">=</span> <span class="string">&quot;Expected to be in epoch state.&quot;</span>,
@@ -56,9 +65,14 @@
 
 <span class="macro">implement_error!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PskSecretError</span> {
-        <span class="ident">TooManyKeys</span> <span class="op">=</span> <span class="string">&quot;More than 2^16 PSKS were provided.&quot;</span>,
-        <span class="ident">DifferentLength</span> <span class="op">=</span> <span class="string">&quot;The IDs and secrets vectors have different lengths.&quot;</span>,
-        <span class="ident">EncodingError</span> <span class="op">=</span> <span class="string">&quot;Error serializing the PSK label.&quot;</span>,
+        <span class="ident">Simple</span> {
+            <span class="ident">TooManyKeys</span> <span class="op">=</span> <span class="string">&quot;More than 2^16 PSKs were provided.&quot;</span>,
+            <span class="ident">DifferentLength</span> <span class="op">=</span> <span class="string">&quot;The IDs and secrets vectors have different lengths.&quot;</span>,
+            <span class="ident">EncodingError</span> <span class="op">=</span> <span class="string">&quot;Error serializing the PSK label.&quot;</span>,
+        }
+        <span class="ident">Complex</span> {
+            <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span> <span class="string">&quot;See [`CryptoError`] for more details.&quot;</span>,
+        }
     }
 }
 
