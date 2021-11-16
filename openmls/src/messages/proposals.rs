@@ -13,7 +13,9 @@ use tls_codec::{
 
 use super::errors::*;
 
-#[derive(PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize)]
+#[derive(
+    PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize, Serialize, Deserialize,
+)]
 #[repr(u8)]
 pub enum ProposalType {
     Add = 1,
