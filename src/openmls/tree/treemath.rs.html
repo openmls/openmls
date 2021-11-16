@@ -311,6 +311,8 @@
 <span id="311">311</span>
 <span id="312">312</span>
 <span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree::index</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std::cmp::Ordering</span>;
 
@@ -342,7 +344,7 @@
         <span class="kw">return</span> <span class="number">0</span>;
     }
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">k</span> <span class="op">=</span> <span class="number">0</span>;
-    <span class="kw">while</span> ((<span class="ident">x</span> <span class="op">&gt;</span><span class="op">&gt;</span> <span class="ident">k</span>) <span class="op">&amp;</span> <span class="number">0x01</span>) <span class="op">=</span><span class="op">=</span> <span class="number">1</span> {
+    <span class="kw">while</span> ((<span class="ident">x</span> <span class="kw">as</span> <span class="ident">u64</span> <span class="op">&gt;</span><span class="op">&gt;</span> <span class="ident">k</span>) <span class="op">&amp;</span> <span class="number">0x01</span>) <span class="op">=</span><span class="op">=</span> <span class="number">1</span> {
         <span class="ident">k</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
     }
     <span class="ident">k</span>
@@ -387,9 +389,11 @@
 
 <span class="comment">// The parent here might be beyond the right edge of the tree.</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">parent_step</span>(<span class="ident">x</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+    <span class="comment">// We need to use u64 for some of the operations where usize is too small on 32bit platforms</span>
     <span class="kw">let</span> <span class="ident">k</span> <span class="op">=</span> <span class="ident">level</span>(<span class="ident">NodeIndex::from</span>(<span class="ident">x</span>));
-    <span class="kw">let</span> <span class="ident">b</span> <span class="op">=</span> (<span class="ident">x</span> <span class="op">&gt;</span><span class="op">&gt;</span> (<span class="ident">k</span> <span class="op">+</span> <span class="number">1</span>)) <span class="op">&amp;</span> <span class="number">0x01</span>;
-    (<span class="ident">x</span> <span class="op">|</span> (<span class="number">1</span> <span class="op">&lt;</span><span class="op">&lt;</span> <span class="ident">k</span>)) <span class="op">^</span> (<span class="ident">b</span> <span class="op">&lt;</span><span class="op">&lt;</span> (<span class="ident">k</span> <span class="op">+</span> <span class="number">1</span>))
+    <span class="kw">let</span> <span class="ident">b</span> <span class="op">=</span> (<span class="ident">x</span> <span class="kw">as</span> <span class="ident">u64</span> <span class="op">&gt;</span><span class="op">&gt;</span> (<span class="ident">k</span> <span class="op">+</span> <span class="number">1</span>)) <span class="op">&amp;</span> <span class="number">0x01</span>;
+    <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> (<span class="ident">x</span> <span class="kw">as</span> <span class="ident">u64</span> <span class="op">|</span> (<span class="number">1</span> <span class="op">&lt;</span><span class="op">&lt;</span> <span class="ident">k</span>)) <span class="op">^</span> (<span class="ident">b</span> <span class="op">&lt;</span><span class="op">&lt;</span> (<span class="ident">k</span> <span class="op">+</span> <span class="number">1</span>));
+    <span class="ident">res</span> <span class="kw">as</span> <span class="ident">usize</span>
 }
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">parent</span>(<span class="ident">index</span>: <span class="ident">NodeIndex</span>, <span class="ident">size</span>: <span class="ident">LeafIndex</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NodeIndex</span>, <span class="ident">TreeMathError</span><span class="op">&gt;</span> {
