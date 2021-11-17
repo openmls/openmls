@@ -67,6 +67,8 @@ pub struct KeyScheduleTestVector {
     epochs: Vec<Epoch>,
 }
 
+// Ignore clippy warning since this just used for testing
+#[allow(clippy::type_complexity)]
 fn generate(
     ciphersuite: &'static Ciphersuite,
     init_secret: &InitSecret,
@@ -330,7 +332,7 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
             ciphersuite,
             &crypto,
             joiner_secret.clone(),
-            Some(PskSecret::from(psk_secret)),
+            Some(psk_secret),
         );
         let welcome_secret = key_schedule.welcome(&crypto).unwrap();
 

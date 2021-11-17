@@ -331,19 +331,9 @@ impl PskSecret {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.as_slice()
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn clone(&self) -> Self {
         Self {
             secret: self.secret.clone(),
         }
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn from_slice(b: &[u8]) -> Self {
-        Self { secret: b.into() }
     }
 }
