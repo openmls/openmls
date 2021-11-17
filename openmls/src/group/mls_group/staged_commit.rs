@@ -136,7 +136,7 @@ impl MlsGroup {
             &self.interim_transcript_hash,
         )?;
 
-        // TODO #186: Implement extensions
+        // TODO #483: Implement extensions
         let extensions: Vec<Extension> = Vec::new();
 
         let provisional_group_context = GroupContext::new(
