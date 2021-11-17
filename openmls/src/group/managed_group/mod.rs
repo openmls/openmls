@@ -18,7 +18,7 @@ use crate::credentials::CredentialBundle;
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 
 use crate::{
-    ciphersuite::signable::{Signable, Verifiable},
+    ciphersuite::signable::Signable,
     credentials::Credential,
     framing::*,
     group::*,
@@ -313,85 +313,5 @@ impl ManagedGroup {
     /// Group framing parameters
     fn framing_parameters(&self) -> FramingParameters {
         FramingParameters::new(&self.aad, self.managed_group_config.wire_format)
-    }
-}
-
-/// Unified message type for input to the managed API
-#[derive(Debug, Clone)]
-pub enum MlsMessageIn {
-    /// An OpenMLS `MlsPlaintext`.
-    Plaintext(VerifiableMlsPlaintext),
-
-    /// An OpenMLS `MlsCiphertext`.
-    Ciphertext(MlsCiphertext),
-}
-
-#[cfg(any(feature = "test-utils", test))]
-impl MlsMessageIn {
-    pub fn group_id(&self) -> &[u8] {
-        match self {
-            MlsMessageIn::Ciphertext(m) => m.group_id().as_slice(),
-            MlsMessageIn::Plaintext(m) => m.group_id().as_slice(),
-        }
-    }
-}
-
-/// Unified message type for output by the managed API
-#[derive(PartialEq, Debug, Clone)]
-pub enum MlsMessageOut {
-    /// An OpenMLS `MlsPlaintext`.
-    Plaintext(MlsPlaintext),
-
-    /// An OpenMLS `MlsCiphertext`.
-    Ciphertext(MlsCiphertext),
-}
-
-impl From<MlsPlaintext> for MlsMessageOut {
-    fn from(mls_plaintext: MlsPlaintext) -> Self {
-        MlsMessageOut::Plaintext(mls_plaintext)
-    }
-}
-
-impl From<MlsCiphertext> for MlsMessageOut {
-    fn from(mls_ciphertext: MlsCiphertext) -> Self {
-        MlsMessageOut::Ciphertext(mls_ciphertext)
-    }
-}
-
-impl MlsMessageOut {
-    /// Get the group ID as plain byte vector.
-    pub fn group_id(&self) -> &[u8] {
-        match self {
-            MlsMessageOut::Ciphertext(m) => m.group_id().as_slice(),
-            MlsMessageOut::Plaintext(m) => m.group_id().as_slice(),
-        }
-    }
-
-    /// Get the epoch as plain u64.
-    pub fn epoch(&self) -> u64 {
-        match self {
-            MlsMessageOut::Ciphertext(m) => m.epoch.0,
-            MlsMessageOut::Plaintext(m) => m.epoch().0,
-        }
-    }
-
-    /// Returns `true` if this is a handshake message and `false` otherwise.
-    pub fn is_handshake_message(&self) -> bool {
-        match self {
-            MlsMessageOut::Ciphertext(m) => m.is_handshake_message(),
-            MlsMessageOut::Plaintext(m) => m.is_handshake_message(),
-        }
-    }
-}
-
-#[cfg(any(feature = "test-utils", test))]
-impl From<MlsMessageOut> for MlsMessageIn {
-    fn from(message: MlsMessageOut) -> Self {
-        match message {
-            MlsMessageOut::Plaintext(pt) => {
-                MlsMessageIn::Plaintext(VerifiableMlsPlaintext::from_plaintext(pt, None))
-            }
-            MlsMessageOut::Ciphertext(ct) => MlsMessageIn::Ciphertext(ct),
-        }
     }
 }

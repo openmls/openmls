@@ -249,8 +249,8 @@ impl MlsPlaintext {
     }
 
     /// Get the content type of this message.
-    pub(crate) fn content_type(&self) -> &ContentType {
-        &self.content_type
+    pub(crate) fn content_type(&self) -> ContentType {
+        self.content_type
     }
 
     /// Get the sender of this message.
@@ -261,6 +261,11 @@ impl MlsPlaintext {
     /// Get the sender leaf index of this message.
     pub fn sender_index(&self) -> LeafIndex {
         self.sender.to_leaf_index()
+    }
+
+    /// Get the membership tag of this message.
+    pub fn membership_tag(&self) -> Option<&MembershipTag> {
+        self.membership_tag.as_ref()
     }
 
     /// Adds a membership tag to this `MlsPlaintext`. The membership_tag is
@@ -571,7 +576,6 @@ impl VerifiableMlsPlaintext {
     }
 
     /// Get the group id as [`GroupId`].
-    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn group_id(&self) -> &GroupId {
         &self.tbs.group_id
     }
@@ -607,8 +611,7 @@ impl VerifiableMlsPlaintext {
         self.membership_tag.is_some()
     }
 
-    #[cfg(test)]
-    pub(super) fn membership_tag(&self) -> &Option<MembershipTag> {
+    pub(crate) fn membership_tag(&self) -> &Option<MembershipTag> {
         &self.membership_tag
     }
 
@@ -623,7 +626,7 @@ impl VerifiableMlsPlaintext {
     }
 
     /// Returns `true` if this is a commit message and `false` otherwise.
-    pub(crate) fn is_commit(&self) -> bool {
+    pub fn is_commit(&self) -> bool {
         self.tbs.content_type.is_commit()
     }
 
@@ -633,8 +636,13 @@ impl VerifiableMlsPlaintext {
     }
 
     /// Get the confirmation tag.
-    pub(crate) fn confirmation_tag(&self) -> Option<&ConfirmationTag> {
+    pub fn confirmation_tag(&self) -> Option<&ConfirmationTag> {
         self.confirmation_tag.as_ref()
+    }
+
+    /// Get the content type
+    pub fn content_type(&self) -> ContentType {
+        self.tbs.content_type
     }
 }
 

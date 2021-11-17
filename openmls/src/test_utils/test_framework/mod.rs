@@ -22,7 +22,7 @@
 //! group states.
 
 #![allow(dead_code)]
-use crate::group::MlsMessageIn;
+use crate::framing::MlsMessageIn;
 /// We allow dead code here due to the following issue:
 /// https://github.com/rust-lang/rust/issues/46379, which would otherwise create
 /// a lot of unused code warnings.
