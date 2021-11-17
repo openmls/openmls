@@ -183,6 +183,52 @@ impl<'a, T: Clone> AbDiff<'a, T> {
         Ok(())
     }
 
+    /// Given two leaf indices, returns the position of the shared subtree root
+    /// in the direct path of the first leaf index.
+    pub(crate) fn subtree_root_position(
+        &self,
+        leaf_index_1: LeafIndex,
+        leaf_index_2: LeafIndex,
+    ) -> Result<usize, ABinaryTreeDiffError> {
+        let subtree_root_node_index =
+            lowest_common_ancestor(to_node_index(leaf_index_1), to_node_index(leaf_index_2));
+        let leaf_index_1_direct_path = direct_path(to_node_index(leaf_index_1), self.size())?;
+        leaf_index_1_direct_path
+            .iter()
+            .position(|&direct_path_node_index| direct_path_node_index == subtree_root_node_index)
+            // The shared subtree root has to be in the direct path of both nodes.
+            .ok_or(ABinaryTreeDiffError::LibraryError)
+    }
+
+    /// Returns the copath node of the `leaf_index_1` that is in the direct path
+    /// of `leaf_index_2`, as well as the position of the subtree root in the
+    /// direct path of `leaf_index_1`. Returns an error if both leaf indices are
+    /// the same.
+    pub(crate) fn subtree_root_copath_node(
+        &'a self,
+        leaf_index_1: LeafIndex,
+        leaf_index_2: LeafIndex,
+    ) -> Result<NodeReference<'a, T>, ABinaryTreeDiffError> {
+        if leaf_index_1 == leaf_index_2 {
+            return Err(ABinaryTreeDiffError::SameLeafError);
+        }
+
+        // We want to return the position of the lowest common ancestor in the
+        // direct path of `leaf_index_1` (i.e. the sender_leaf_index).
+        let subtree_root_node_index =
+            lowest_common_ancestor(to_node_index(leaf_index_1), to_node_index(leaf_index_2));
+
+        // Figure out which child is the relevant copath node.
+        let copath_node_index = if leaf_index_2 < leaf_index_1 {
+            left(subtree_root_node_index)?
+        } else {
+            right(subtree_root_node_index, self.size())?
+        };
+
+        let copath_node_ref = self.new_reference(copath_node_index)?;
+        Ok(copath_node_ref)
+    }
+
     fn apply_to_node<F, E>(
         &mut self,
         node_index: NodeIndex,
@@ -386,6 +432,7 @@ implement_error! {
     pub enum ABinaryTreeDiffError {
         Simple {
             LibraryError = "An inconsistency in the internal state of the diff was detected.",
+            SameLeafError = "Can't compute the copath node of the subtree root of a single leaf.",
             PathModificationError = "Error while trying to modify path.",
             OutOfBounds = "The given leaf index is not within the tree.",
             TreeTooLarge = "Maximum tree size reached.",

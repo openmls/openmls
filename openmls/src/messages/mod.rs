@@ -7,7 +7,7 @@ use crate::schedule::{CommitSecret, JoinerSecret};
 use crate::tree::{index::*, *};
 
 use openmls_traits::crypto::OpenMlsCrypto;
-use openmls_traits::types::HpkeCiphertext;
+use openmls_traits::types::{CryptoError as CryptoTraitError, HpkeCiphertext};
 
 use openmls_traits::OpenMlsCryptoProvider;
 
@@ -327,16 +327,57 @@ impl PathSecret {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
-    ) -> Result<Self, CryptoError> {
+    ) -> Result<Self, PathSecretError> {
         let path_secret =
             self.path_secret
                 .kdf_expand_label(backend, "path", &[], ciphersuite.hash_length())?;
         Ok(Self { path_secret })
     }
 
+    pub(crate) fn encrypt(
+        &self,
+        backend: &impl OpenMlsCrypto,
+        ciphersuite: &Ciphersuite,
+        public_key: &HpkePublicKey,
+        group_context: &[u8],
+    ) -> HpkeCiphertext {
+        backend.hpke_seal(
+            ciphersuite.hpke_config(),
+            public_key.as_slice(),
+            group_context,
+            &[],
+            self.path_secret.as_slice(),
+        )
+    }
+
     /// This is used to turn the path secret into a commit secret.
     pub(crate) fn secret(self) -> Secret {
         self.path_secret
+    }
+
+    pub(crate) fn decrypt(
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &'static Ciphersuite,
+        ciphertext: &HpkeCiphertext,
+        private_key: &HpkePrivateKey,
+        group_context: &[u8],
+    ) -> Result<PathSecret, PathSecretError> {
+        let secret_bytes = backend.crypto().hpke_open(
+            ciphersuite.hpke_config(),
+            ciphertext,
+            private_key.as_slice(),
+            group_context,
+            &[],
+        )?;
+        let path_secret = Secret::from_slice(&secret_bytes, ciphersuite.version(), ciphersuite);
+        Ok(Self { path_secret })
+    }
+}
+
+implement_error! {
+    pub enum PathSecretError {
+        DecryptionError(CryptoTraitError) = "Error decrypting PathSecret.",
+        DerivationError(CryptoError) = "Error deriving PathSecret.",
     }
 }
 

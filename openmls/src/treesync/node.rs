@@ -135,8 +135,15 @@ impl Node {
 
     pub(crate) fn public_key(&self) -> &HpkePublicKey {
         match self {
-            Node::LeafNode(kp) => kp.public_key(),
+            Node::LeafNode(ln) => ln.public_key(),
             Node::ParentNode(pn) => pn.public_key(),
+        }
+    }
+
+    pub(in crate::treesync) fn private_key(&self) -> &Option<HpkePrivateKey> {
+        match self {
+            Node::LeafNode(ln) => ln.private_key(),
+            Node::ParentNode(pn) => pn.private_key(),
         }
     }
 

@@ -51,6 +51,10 @@ impl LeafNode {
         &self.key_package.hpke_init_key()
     }
 
+    pub(crate) fn private_key(&self) -> &Option<HpkePrivateKey> {
+        &self.private_key_option
+    }
+
     pub(crate) fn set_private_key(&mut self, private_key: HpkePrivateKey) {
         self.private_key_option = Some(private_key)
     }

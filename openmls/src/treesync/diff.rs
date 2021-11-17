@@ -18,7 +18,7 @@ use crate::{
     ciphersuite::{signable::Signable, Ciphersuite, CryptoError, HpkePrivateKey, HpkePublicKey},
     credentials::{CredentialBundle, CredentialError},
     extensions::{Extension, ExtensionType, ParentHashExtension},
-    messages::PathSecret,
+    messages::{PathSecret, PathSecretError},
     prelude::{KeyPackage, KeyPackageBundlePayload},
     schedule::CommitSecret,
 };
@@ -571,6 +571,59 @@ impl<'a> TreeSyncDiff<'a> {
 
         self.diff.fold_tree(compute_tree_hash)?
     }
+
+    /// Returns the position of the shared subtree root in the direct path of
+    /// the given leaf index.
+    pub(crate) fn subtree_root_position(
+        &self,
+        leaf_index: LeafIndex,
+    ) -> Result<usize, TreeSyncDiffError> {
+        Ok(self
+            .diff
+            .subtree_root_position(leaf_index, self.own_leaf_index)?)
+    }
+
+    /// Returns the positions in the filtered copath resolution (i.e. the
+    /// position in the copath, as well as the position in the resolution of the
+    /// copath node), as well as the matching private key.
+    pub(crate) fn decryption_key(
+        &self,
+        sender_leaf_index: LeafIndex,
+        exclusion_list: &[LeafIndex],
+    ) -> Result<(&HpkePrivateKey, usize), TreeSyncDiffError> {
+        // Get the copath node of the sender that is in our direct path, as well
+        // as its position in our direct path.
+        let subtree_root_ref = self
+            .diff
+            .subtree_root_copath_node(sender_leaf_index, self.own_leaf_index)?;
+
+        let sender_copath_resolution = self.resolution(subtree_root_ref, exclusion_list)?;
+
+        // Get all of the public keys that we have secret keys for, i.e. our own
+        // leaf pk, as well as potentially a number of public keys from our
+        // direct path.
+        let mut own_node_refs = vec![self.diff.leaf(self.own_leaf_index)?];
+        own_node_refs.append(&mut self.diff.direct_path(self.own_leaf_index)?);
+        // Add our own key package public key.
+        for node_ref in own_node_refs {
+            let node_tsn = node_ref.try_deref()?;
+            // If the node is blank, skip it.
+            if let Some(node) = node_tsn.node() {
+                // If we don't have the private key, skip it.
+                if let Some(private_key) = node.private_key() {
+                    // If we do have the private key, check if the key is in the
+                    // resolution.
+                    if let Some(resolution_position) = sender_copath_resolution
+                        .iter()
+                        .position(|pk| pk == node.public_key())
+                    {
+                        return Ok((private_key, resolution_position));
+                    };
+                }
+            }
+        }
+        Err(TreeSyncDiffError::NoPrivateKeyFound)
+    }
 }
 
 implement_error! {
@@ -585,13 +638,15 @@ implement_error! {
             RedundantBlank = "The leaf we were trying to blank is already blank.",
             UpdateBlank = "The leaf we were trying to update is blank.",
             PublicKeyMismatch = "The derived public key doesn't match the one in the tree.",
+            NoPrivateKeyFound = "Couldn't find a fitting private key in the filtered resolution of the given leaf index.",
         }
         Complex {
             TreeSyncNodeError(TreeSyncNodeError) = "We found a node with an unexpected type.",
             TreeDiffError(MlsBinaryTreeDiffError) = "An error occurred while operating on the diff.",
             CredentialError(CredentialError) = "An error occurred while signing a `KeyPackage`.",
             CryptoError(CryptoError) = "An error occurred during key derivation.",
-            ParentNodeError(ParentNodeError) = "An error occurred during key derivation.",
+            DerivationError(PathSecretError) = "An error occurred during PathSecret derivation.",
+            ParentNodeError(ParentNodeError) = "An error occurred during path derivation.",
         }
     }
 }

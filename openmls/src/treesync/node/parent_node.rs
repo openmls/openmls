@@ -1,14 +1,18 @@
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
 use tls_codec::{TlsByteVecU8, TlsVecU32};
 
-use crate::{ciphersuite::CryptoError, schedule::CommitSecret};
+use crate::{
+    ciphersuite::CryptoError,
+    schedule::CommitSecret,
+    treesync::treekem::{UpdatePath, UpdatePathNode},
+};
 
 use super::TreeSyncNodeError;
 
 use crate::{
     binary_tree::LeafIndex,
     ciphersuite::{Ciphersuite, HpkePrivateKey, HpkePublicKey},
-    messages::PathSecret,
+    messages::{PathSecret, PathSecretError},
     treesync::hashes::ParentHashInput,
 };
 
@@ -17,7 +21,7 @@ pub(crate) struct ParentNode {
     public_key: HpkePublicKey,
     parent_hash: TlsByteVecU8,
     unmerged_leaves: TlsVecU32<LeafIndex>,
-    private_key: Option<HpkePrivateKey>,
+    private_key_option: Option<HpkePrivateKey>,
 }
 
 impl tls_codec::Deserialize for ParentNode {
@@ -32,7 +36,7 @@ impl tls_codec::Deserialize for ParentNode {
             public_key,
             parent_hash,
             unmerged_leaves,
-            private_key: None,
+            private_key_option: None,
         })
     }
 }
@@ -65,11 +69,19 @@ impl tls_codec::Serialize for &ParentNode {
 
 impl From<(HpkePublicKey, HpkePrivateKey)> for ParentNode {
     fn from((public_key, private_key): (HpkePublicKey, HpkePrivateKey)) -> Self {
+        let parent_node: ParentNode = public_key.into();
+        parent_node.set_private_key(private_key);
+        parent_node
+    }
+}
+
+impl From<HpkePublicKey> for ParentNode {
+    fn from(public_key: HpkePublicKey) -> Self {
         Self {
             public_key,
             parent_hash: vec![].into(),
             unmerged_leaves: vec![].into(),
-            private_key: Some(private_key),
+            private_key_option: None,
         }
     }
 }
@@ -77,6 +89,28 @@ impl From<(HpkePublicKey, HpkePrivateKey)> for ParentNode {
 pub(crate) struct PlainUpdatePathNode {
     public_key: HpkePublicKey,
     path_secret: PathSecret,
+}
+
+impl PlainUpdatePathNode {
+    pub(in crate::treesync) fn encrypt(
+        &self,
+        backend: &impl OpenMlsCrypto,
+        ciphersuite: &Ciphersuite,
+        public_keys: &[HpkePublicKey],
+        group_context: &[u8],
+    ) -> UpdatePathNode {
+        let mut encrypted_path_secrets = Vec::new();
+        for pk in public_keys {
+            let encrypted_path_secret =
+                self.path_secret
+                    .encrypt(backend, ciphersuite, pk, group_context);
+            encrypted_path_secrets.push(encrypted_path_secret);
+        }
+        UpdatePathNode {
+            public_key: self.public_key.clone(),
+            encrypted_path_secrets: encrypted_path_secrets.into(),
+        }
+    }
 }
 
 impl ParentNode {
@@ -101,7 +135,10 @@ impl ParentNode {
             let (public_key, private_key) = path_secret.derive_key_pair(backend, ciphersuite)?;
             let parent_node = (public_key.clone(), private_key).into();
             path.push(parent_node);
+            // Derive the next path secret.
             path_secret_option = Some(path_secret.derive_path_secret(backend, ciphersuite)?);
+            // Store the current path secret and the derived public key for
+            // later encryption.
             let update_path_node = PlainUpdatePathNode {
                 public_key,
                 path_secret,
@@ -114,6 +151,7 @@ impl ParentNode {
             .into();
         Ok((path, update_path_nodes, commit_secret))
     }
+
     /// Return the value of the node relevant for the parent hash and tree hash.
     /// In case of MLS, this would be the node's HPKEPublicKey. TreeSync
     /// can then gather everything necessary to build the `ParentHashInput`,
@@ -126,8 +164,12 @@ impl ParentNode {
         &self.public_key
     }
 
+    pub(crate) fn private_key(&self) -> &Option<HpkePrivateKey> {
+        &self.private_key_option
+    }
+
     pub(crate) fn set_private_key(&mut self, private_key: HpkePrivateKey) {
-        self.private_key = Some(private_key)
+        self.private_key_option = Some(private_key)
     }
 
     /// Get the list of unmerged leaves.
@@ -175,6 +217,7 @@ implement_error! {
         }
         Complex {
             CryptoError(CryptoError) = "An error occurred during key derivation.",
+            DerivationError(PathSecretError) = "An error occurred during key derivation.",
         }
     }
 }

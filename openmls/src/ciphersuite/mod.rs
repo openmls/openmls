@@ -109,6 +109,10 @@ impl Ciphersuite {
             .unwrap()
     }
 
+    pub(crate) fn version(&self) -> ProtocolVersion {
+        version_from_suite(&self.name())
+    }
+
     /// Get the signature scheme of this ciphersuite.
     pub fn signature_scheme(&self) -> SignatureScheme {
         self.signature_scheme
