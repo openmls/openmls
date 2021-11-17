@@ -88,7 +88,7 @@ impl MlsGroup {
         let group_id = GroupId { value: id.into() };
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
         let tree = RatchetTree::new(backend, key_package_bundle);
-        // TODO #186: Implement extensions
+        // TODO #483: Implement extensions
         let extensions: Vec<Extension> = Vec::new();
 
         let group_context = GroupContext::create_initial_group_context(

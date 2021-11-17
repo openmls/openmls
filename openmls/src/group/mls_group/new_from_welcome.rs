@@ -179,7 +179,7 @@ impl MlsGroup {
             group_info.epoch(),
             tree_hash,
             group_info.confirmed_transcript_hash().to_vec(),
-            // TODO #186: Implement extensions
+            // TODO #483: Implement extensions
             &[],
         )?;
         // TODO #141: Implement PSK
