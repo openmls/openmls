@@ -51,6 +51,26 @@
 <span id="51">51</span>
 <span id="52">52</span>
 <span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Framing errors.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `MlsPlaintextError` and `MlsCiphertextError` are thrown on errors</span>
@@ -101,6 +121,26 @@
         }
         <span class="ident">Complex</span> {
             <span class="ident">CredentialError</span>(<span class="ident">CredentialError</span>) <span class="op">=</span> <span class="string">&quot;Credential error&quot;</span>,
+        }
+    }
+}
+
+<span class="macro">implement_error!</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ValidationError</span> {
+        <span class="ident">Simple</span> {
+            <span class="ident">NotAnApplicationMessage</span> <span class="op">=</span> <span class="string">&quot;The MlsPlaintext message is not an application message.&quot;</span>,
+            <span class="ident">UnencryptedApplicationMessage</span> <span class="op">=</span> <span class="string">&quot;The MlsPlaintext contains an application message but was not encrypted.&quot;</span>,
+            <span class="ident">UnknownSender</span> <span class="op">=</span> <span class="string">&quot;Sender is not part of the group&quot;</span>,
+            <span class="ident">MissingMembershipTag</span> <span class="op">=</span> <span class="string">&quot;The membership tag is missing.&quot;</span>,
+            <span class="ident">MissingConfirmationTag</span> <span class="op">=</span> <span class="string">&quot;The confirmation tag is missing.&quot;</span>,
+            <span class="ident">WrongWireFormat</span> <span class="op">=</span> <span class="string">&quot;Wrong wire format.&quot;</span>,
+            <span class="ident">LibraryError</span> <span class="op">=</span> <span class="string">&quot;A library error occured&quot;</span>,
+        }
+        <span class="ident">Complex</span> {
+            <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span> <span class="string">&quot;TLS Codec error&quot;</span>,
+            <span class="ident">CredentialError</span>(<span class="ident">CredentialError</span>) <span class="op">=</span> <span class="string">&quot;See [`CredentialError`](`crate::credentials::CredentialError`) for details.&quot;</span>,
+            <span class="ident">MlsPlaintextError</span>(<span class="ident">MlsPlaintextError</span>) <span class="op">=</span> <span class="string">&quot;See [`MlsPlaintextError`](`MlsPlaintextError`) for details.&quot;</span>,
+            <span class="ident">MlsCiphertextError</span>(<span class="ident">MlsCiphertextError</span>) <span class="op">=</span> <span class="string">&quot;See [`MlsCiphertextError`](`MlsCiphertextError`) for details.&quot;</span>,
         }
     }
 }

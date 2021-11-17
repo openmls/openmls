@@ -190,38 +190,10 @@
 <span id="190">190</span>
 <span id="191">191</span>
 <span id="192">192</span>
-<span id="193">193</span>
-<span id="194">194</span>
-<span id="195">195</span>
-<span id="196">196</span>
-<span id="197">197</span>
-<span id="198">198</span>
-<span id="199">199</span>
-<span id="200">200</span>
-<span id="201">201</span>
-<span id="202">202</span>
-<span id="203">203</span>
-<span id="204">204</span>
-<span id="205">205</span>
-<span id="206">206</span>
-<span id="207">207</span>
-<span id="208">208</span>
-<span id="209">209</span>
-<span id="210">210</span>
-<span id="211">211</span>
-<span id="212">212</span>
-<span id="213">213</span>
-<span id="214">214</span>
-<span id="215">215</span>
-<span id="216">216</span>
-<span id="217">217</span>
-<span id="218">218</span>
-<span id="219">219</span>
-<span id="220">220</span>
-<span id="221">221</span>
-<span id="222">222</span>
-<span id="223">223</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">mls_group</span>::{<span class="ident">proposals::StagedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::ops::DerefMut</span>;
+
+<span class="kw">use</span> <span class="ident">mls_group</span>::{<span class="ident">proposals::StagedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
+<span class="kw">use</span> <span class="ident">tls_codec::Serialize</span>;
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
@@ -233,17 +205,17 @@
     <span class="doccomment">/// [self::process_unverified_message()].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">parse_message</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="ident">message</span>: <span class="ident">InboundMessage</span>,
+        <span class="ident">message</span>: <span class="ident">MlsMessageIn</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnverifiedMessage</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="comment">/*
         High level checks:
          - epoch must be within bounds
-         - Sender must be a member
+         - IFF content_type is application, wire_format must be ciphertext
          - AAD can be extracted/evaluated
          - decryption
          - IFF content_type is a commit, confirmation_tag must be present
-         - membership tag must be present/verified
+         - IFF sender_type is member, membership tag must be present
         */</span>
 
         <span class="comment">// Make sure we are still a member of the group</span>
@@ -257,81 +229,60 @@
             ));
         }
 
-        <span class="comment">// Check the type of message we received</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">membership_tag_required</span> <span class="op">=</span> <span class="bool-val">false</span>;
-        <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">plaintext</span>, <span class="ident">aad_option</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">message</span> {
-            <span class="comment">// If it is a ciphertext we decrypt it and return the plaintext message.</span>
-            <span class="comment">// Attempting to decrypt it will also check the bounds of the epoch.</span>
-            <span class="ident">InboundMessage::Ciphertext</span>(<span class="ident">ciphertext</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">let</span> <span class="ident">aad</span> <span class="op">=</span> <span class="ident">ciphertext</span>.<span class="ident">authenticated_data</span>.<span class="ident">clone</span>().<span class="ident">into_vec</span>();
-
-                <span class="kw">let</span> <span class="ident">plaintext</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">decrypt</span>(<span class="kw-2">&amp;</span><span class="ident">ciphertext</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
-
-                (<span class="ident">plaintext</span>, <span class="prelude-val">Some</span>(<span class="ident">aad</span>))
-            }
-            <span class="comment">// If it is a plaintext message we return it with an empty AAD</span>
-            <span class="comment">// after we check that the membership tag is present and valid</span>
-            <span class="ident">InboundMessage::Plaintext</span>(<span class="ident">plaintext</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="comment">// We expect a membership tag for plaintext messages</span>
-                <span class="comment">// TODO #106: Membership tag is not expected for external senders</span>
-                <span class="ident">membership_tag_required</span> <span class="op">=</span> <span class="bool-val">true</span>;
-
-                (<span class="ident">plaintext</span>, <span class="prelude-val">None</span>)
-            }
+        <span class="kw">let</span> <span class="ident">decrypted_message</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">message</span>.<span class="ident">wire_format</span>() {
+            <span class="ident">WireFormat::MlsPlaintext</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">DecryptedMessage::from_inbound_plaintext</span>(<span class="ident">message</span>)<span class="question-mark">?</span>,
+            <span class="ident">WireFormat::MlsCiphertext</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">DecryptedMessage::from_inbound_ciphertext</span>(
+                <span class="ident">message</span>,
+                <span class="self">self</span>.<span class="ident">ciphersuite</span>(),
+                <span class="ident">backend</span>,
+                <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">epoch_secrets</span>(),
+                <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">secret_tree_mut</span>().<span class="ident">deref_mut</span>(),
+            )<span class="question-mark">?</span>,
         };
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">credential</span> <span class="op">=</span> <span class="prelude-val">None</span>;
 
         <span class="comment">// Check that the sender is a valid member of the tree</span>
         <span class="comment">// The sender index must be within the tree and the corresponding leaf node must not be blank</span>
-        <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">plaintext</span>.<span class="ident">sender_index</span>();
-        <span class="kw">if</span> <span class="ident">sender</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">tree</span>().<span class="ident">leaf_count</span>() <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">tree</span>().<span class="ident">nodes</span>[<span class="ident">sender</span>].<span class="ident">is_blank</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError::InvalidMessage</span>(
-                <span class="ident">InvalidMessageError::UnknownSender</span>,
-            ));
-        }
-
-        <span class="comment">// Extract the credential</span>
-        <span class="comment">// Unwrapping here is safe, because we know the leaf node exists and is not blank</span>
-        <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">tree</span>().<span class="ident">nodes</span>[<span class="ident">sender</span>]
-            .<span class="ident">key_package</span>
-            .<span class="ident">as_ref</span>()
-            .<span class="ident">unwrap</span>()
-            .<span class="ident">credential</span>()
-            .<span class="ident">clone</span>();
-
-        <span class="comment">// Verify the membership tag if needed</span>
-        <span class="kw">if</span> <span class="ident">membership_tag_required</span> {
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">plaintext</span>.<span class="ident">has_membership_tag</span>() {
+        <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">decrypted_message</span>.<span class="ident">sender</span>();
+        <span class="kw">if</span> <span class="ident">sender</span>.<span class="ident">is_member</span>() {
+            <span class="kw">let</span> <span class="ident">sender_index</span> <span class="op">=</span> <span class="ident">sender</span>.<span class="ident">to_leaf_index</span>();
+            <span class="kw">if</span> <span class="ident">sender_index</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">tree</span>().<span class="ident">leaf_count</span>()
+                <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">tree</span>().<span class="ident">nodes</span>[<span class="ident">sender_index</span>].<span class="ident">is_blank</span>()
+            {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError::InvalidMessage</span>(
-                    <span class="ident">InvalidMessageError::MissingMembershipTag</span>,
+                    <span class="ident">InvalidMessageError::UnknownSender</span>,
                 ));
             }
-            <span class="comment">// This sets the context implicitly.</span>
-            <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">verify_membership_tag</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">plaintext</span>)<span class="question-mark">?</span>;
+
+            <span class="comment">// Extract the credential</span>
+            <span class="comment">// Unwrapping here is safe, because we know the leaf node exists and is not blank</span>
+            <span class="ident">credential</span> <span class="op">=</span> <span class="prelude-val">Some</span>(
+                <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">tree</span>().<span class="ident">nodes</span>[<span class="ident">sender_index</span>]
+                    .<span class="ident">key_package</span>
+                    .<span class="ident">as_ref</span>()
+                    .<span class="ident">unwrap</span>()
+                    .<span class="ident">credential</span>()
+                    .<span class="ident">clone</span>(),
+            );
         }
 
-        <span class="comment">// Check that if the message is a commit and the confirmation tag is present</span>
-        <span class="kw">if</span> <span class="ident">plaintext</span>.<span class="ident">is_commit</span>() <span class="op">&amp;&amp;</span> <span class="ident">plaintext</span>.<span class="ident">confirmation_tag</span>().<span class="ident">is_none</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError::InvalidMessage</span>(
-                <span class="ident">InvalidMessageError::MissingConfirmationTag</span>,
-            ));
-        }
-
-        <span class="prelude-val">Ok</span>(<span class="ident">UnverifiedMessage</span> {
-            <span class="ident">plaintext</span>,
+        <span class="prelude-val">Ok</span>(<span class="ident">UnverifiedMessage::from_decrypted_message</span>(
+            <span class="ident">decrypted_message</span>,
             <span class="ident">credential</span>,
-            <span class="ident">aad_option</span>,
-        })
+        ))
     }
 
     <span class="doccomment">/// This processing function does most of the semantic verifications.</span>
     <span class="doccomment">/// It returns a [ProcessedMessage] enum.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">process_unverified_message</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="ident">message</span>: <span class="ident">UnverifiedMessage</span>,
-        <span class="ident">signature_key</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SignaturePublicKey</span><span class="op">&gt;</span>,
+        <span class="ident">unverified_message</span>: <span class="ident">UnverifiedMessage</span>,
+        <span class="ident">signature_key</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SignaturePublicKey</span><span class="op">&gt;</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ProcessedMessage</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="comment">/*
+         - IF sender_type is member, membership_tag must be valid
          - Signature verification, either with leaf key or optional parameter
          - IF Commit:
            - Extract all inline &amp; pending proposals
@@ -349,40 +300,67 @@
            - Confirmation tag must be successfully verified
         */</span>
 
-        <span class="comment">// Signature verification</span>
-        <span class="comment">// If a signature key is provided it will be used,</span>
-        <span class="comment">// otherwise we take the key from the credential</span>
+        <span class="comment">// Add the context to the message and verify the membership tag if necessary</span>
+        <span class="kw">let</span> <span class="ident">serialized_context</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">context</span>().<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">plaintext</span>: <span class="ident">MlsPlaintext</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">signature_key</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">signature_public_key</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">message</span>
-                .<span class="ident">plaintext</span>
-                .<span class="ident">verify_with_key</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">signature_public_key</span>)<span class="question-mark">?</span>,
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">message</span>.<span class="ident">plaintext</span>.<span class="ident">verify</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">message</span>.<span class="ident">credential</span>)<span class="question-mark">?</span>,
-        };
+        <span class="kw">let</span> <span class="ident">context_plaintext</span> <span class="op">=</span> <span class="ident">UnverifiedContextMessage::from_unverified_message_with_context</span>(
+            <span class="ident">unverified_message</span>,
+            <span class="ident">serialized_context</span>,
+            <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">epoch_secrets</span>().<span class="ident">membership_key</span>(),
+            <span class="ident">backend</span>,
+        )<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(<span class="kw">match</span> <span class="ident">plaintext</span>.<span class="ident">content</span>() {
-            <span class="ident">MlsPlaintextContentType::Application</span>(<span class="ident">application_message</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="ident">ProcessedMessage::ApplicationMessage</span>(<span class="ident">application_message</span>.<span class="ident">as_slice</span>().<span class="ident">to_vec</span>())
+        <span class="kw">match</span> <span class="ident">context_plaintext</span> {
+            <span class="ident">UnverifiedContextMessage::Member</span>(<span class="ident">member_message</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="comment">// Signature verification</span>
+                <span class="kw">let</span> <span class="ident">verified_member_message</span> <span class="op">=</span>
+                    <span class="ident">member_message</span>.<span class="ident">into_verified</span>(<span class="ident">backend</span>, <span class="ident">signature_key</span>)<span class="question-mark">?</span>;
+
+                <span class="prelude-val">Ok</span>(<span class="kw">match</span> <span class="ident">verified_member_message</span>.<span class="ident">plaintext</span>().<span class="ident">content</span>() {
+                    <span class="ident">MlsPlaintextContentType::Application</span>(<span class="ident">application_message</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="ident">ProcessedMessage::ApplicationMessage</span>(
+                            <span class="ident">application_message</span>.<span class="ident">as_slice</span>().<span class="ident">to_vec</span>(),
+                        )
+                    }
+                    <span class="ident">MlsPlaintextContentType::Proposal</span>(<span class="ident">_proposal</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="ident">ProcessedMessage::ProposalMessage</span>(<span class="ident">Box::new</span>(
+                            <span class="ident">StagedProposal::from_mls_plaintext</span>(
+                                <span class="self">self</span>.<span class="ident">ciphersuite</span>(),
+                                <span class="ident">backend</span>,
+                                <span class="ident">verified_member_message</span>.<span class="ident">take_plaintext</span>(),
+                            )
+                            .<span class="ident">unwrap</span>(),
+                        ))
+                    }
+                    <span class="ident">MlsPlaintextContentType::Commit</span>(<span class="ident">_commit</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="kw">let</span> <span class="ident">staged_commit</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">stage_commit</span>(
+                            <span class="ident">verified_member_message</span>.<span class="ident">plaintext</span>(),
+                            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">proposal_store</span>,
+                            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">own_kpbs</span>,
+                            <span class="prelude-val">None</span>,
+                            <span class="ident">backend</span>,
+                        )<span class="question-mark">?</span>;
+                        <span class="ident">ProcessedMessage::StagedCommitMessage</span>(<span class="ident">Box::new</span>(<span class="ident">staged_commit</span>))
+                    }
+                })
             }
-            <span class="ident">MlsPlaintextContentType::Proposal</span>(<span class="ident">_proposal</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="ident">ProcessedMessage::ProposalMessage</span>(<span class="ident">Box::new</span>(
-                    <span class="ident">StagedProposal::from_mls_plaintext</span>(<span class="self">self</span>.<span class="ident">ciphersuite</span>(), <span class="ident">backend</span>, <span class="ident">plaintext</span>)
-                        .<span class="ident">unwrap</span>(),
-                ))
+            <span class="ident">UnverifiedContextMessage::External</span>(<span class="ident">external_message</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="comment">// Signature verification</span>
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">signature_public_key</span>) <span class="op">=</span> <span class="ident">signature_key</span> {
+                    <span class="kw">let</span> <span class="ident">_verified_external_message</span> <span class="op">=</span>
+                        <span class="ident">external_message</span>.<span class="ident">into_verified</span>(<span class="ident">backend</span>, <span class="ident">signature_public_key</span>)<span class="question-mark">?</span>;
+                } <span class="kw">else</span> {
+                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError::NoSignatureKey</span>);
+                }
+
+                <span class="comment">// We don&#39;t support external messages yet</span>
+                <span class="comment">// TODO #192</span>
+                <span class="macro">todo!</span>()
             }
-            <span class="ident">MlsPlaintextContentType::Commit</span>(<span class="ident">_commit</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">let</span> <span class="ident">staged_commit</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">stage_commit</span>(
-                    <span class="kw-2">&amp;</span><span class="ident">plaintext</span>,
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">proposal_store</span>,
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">own_kpbs</span>,
-                    <span class="prelude-val">None</span>,
-                    <span class="ident">backend</span>,
-                )<span class="question-mark">?</span>;
-                <span class="ident">ProcessedMessage::StagedCommitMessage</span>(<span class="ident">Box::new</span>(<span class="ident">staged_commit</span>))
-            }
-        })
+        }
     }
 
+    <span class="doccomment">/// Stores a standalone proposal in the internal [ProposalStore]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">store_pending_proposal</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">pending_proposal</span>: <span class="ident">StagedProposal</span>) {
         <span class="comment">/*
          - Store proposal in pending proposal list
@@ -390,6 +368,7 @@
         <span class="self">self</span>.<span class="ident">proposal_store</span>.<span class="ident">add</span>(<span class="ident">pending_proposal</span>);
     }
 
+    <span class="doccomment">/// Merge a [StagedCommit] into the group after inspection</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">merge_staged_commit</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">staged_commit</span>: <span class="ident">StagedCommit</span>,
@@ -402,47 +381,6 @@
         <span class="self">self</span>.<span class="ident">proposal_store</span>.<span class="ident">empty</span>();
         <span class="prelude-val">Ok</span>(())
     }
-}
-
-<span class="doccomment">/// Inbound message from the DS.</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">InboundMessage</span> {
-    <span class="ident">Plaintext</span>(<span class="ident">VerifiableMlsPlaintext</span>),
-    <span class="ident">Ciphertext</span>(<span class="ident">MlsCiphertext</span>),
-}
-
-<span class="kw">impl</span> <span class="ident">InboundMessage</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">epoch</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">GroupEpoch</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">InboundMessage::Plaintext</span>(<span class="ident">plaintext</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">plaintext</span>.<span class="ident">epoch</span>(),
-            <span class="ident">InboundMessage::Ciphertext</span>(<span class="ident">ciphertext</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ciphertext</span>.<span class="ident">epoch</span>(),
-        }
-    }
-}
-
-<span class="doccomment">/// Partially checked and potentially decrypted message.</span>
-<span class="doccomment">/// Use this to inspect the [Credential] of the message sender</span>
-<span class="doccomment">/// and the optional `aad` if the original message was an [MlsCiphertext].</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UnverifiedMessage</span> {
-    <span class="ident">plaintext</span>: <span class="ident">VerifiableMlsPlaintext</span>,
-    <span class="ident">credential</span>: <span class="ident">Credential</span>,
-    <span class="ident">aad_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">UnverifiedMessage</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">aad</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad_option</span>
-    }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">credential</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Credential</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">credential</span>
-    }
-}
-
-<span class="doccomment">/// Message that contains messages that are syntactically and semantically correct.</span>
-<span class="doccomment">/// [StagedCommit] and [StagedProposal] can be inspected for authorization purposes.</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProcessedMessage</span> {
-    <span class="ident">ApplicationMessage</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>),
-    <span class="ident">ProposalMessage</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">StagedProposal</span><span class="op">&gt;</span>),
-    <span class="ident">StagedCommitMessage</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">StagedCommit</span><span class="op">&gt;</span>),
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-search-index-js="../../../../search-index.js" data-search-js="../../../../search.js"></div>

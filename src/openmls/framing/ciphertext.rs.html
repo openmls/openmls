@@ -415,7 +415,7 @@
         <span class="kw">let</span> <span class="ident">mls_ciphertext_content_aad</span> <span class="op">=</span> <span class="ident">MlsCiphertextContentAad</span> {
             <span class="ident">group_id</span>: <span class="ident">context</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
             <span class="ident">epoch</span>: <span class="ident">context</span>.<span class="ident">epoch</span>(),
-            <span class="ident">content_type</span>: <span class="kw-2">*</span><span class="ident">mls_plaintext</span>.<span class="ident">content_type</span>(),
+            <span class="ident">content_type</span>: <span class="ident">mls_plaintext</span>.<span class="ident">content_type</span>(),
             <span class="ident">authenticated_data</span>: <span class="ident">mls_plaintext</span>.<span class="ident">authenticated_data</span>().<span class="ident">into</span>(),
         };
         <span class="kw">let</span> <span class="ident">mls_ciphertext_content_aad_bytes</span> <span class="op">=</span>
@@ -461,7 +461,7 @@
         <span class="kw">let</span> <span class="ident">mls_sender_data_aad</span> <span class="op">=</span> <span class="ident">MlsSenderDataAad::new</span>(
             <span class="ident">context</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
             <span class="ident">context</span>.<span class="ident">epoch</span>(),
-            <span class="kw-2">*</span><span class="ident">mls_plaintext</span>.<span class="ident">content_type</span>(),
+            <span class="ident">mls_plaintext</span>.<span class="ident">content_type</span>(),
         );
         <span class="comment">// Serialize the sender data AAD</span>
         <span class="kw">let</span> <span class="ident">mls_sender_data_aad_bytes</span> <span class="op">=</span> <span class="ident">mls_sender_data_aad</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
@@ -482,7 +482,7 @@
             <span class="ident">wire_format</span>: <span class="ident">WireFormat::MlsCiphertext</span>,
             <span class="ident">group_id</span>: <span class="ident">context</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
             <span class="ident">epoch</span>: <span class="ident">context</span>.<span class="ident">epoch</span>(),
-            <span class="ident">content_type</span>: <span class="kw-2">*</span><span class="ident">mls_plaintext</span>.<span class="ident">content_type</span>(),
+            <span class="ident">content_type</span>: <span class="ident">mls_plaintext</span>.<span class="ident">content_type</span>(),
             <span class="ident">authenticated_data</span>: <span class="ident">mls_plaintext</span>.<span class="ident">authenticated_data</span>().<span class="ident">into</span>(),
             <span class="ident">encrypted_sender_data</span>: <span class="ident">encrypted_sender_data</span>.<span class="ident">into</span>(),
             <span class="ident">ciphertext</span>: <span class="ident">ciphertext</span>.<span class="ident">into</span>(),
