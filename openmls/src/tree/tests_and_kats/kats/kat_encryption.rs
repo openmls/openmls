@@ -408,10 +408,11 @@ pub fn generate_test_vector(
 #[test]
 fn write_test_vectors() {
     let mut tests = Vec::new();
-    const NUM_GENERATIONS: u32 = 20;
+    const NUM_LEAVES: u32 = 7;
+    const NUM_GENERATIONS: u32 = 5;
 
     for ciphersuite in Config::supported_ciphersuites() {
-        for n_leaves in 1u32..20 {
+        for n_leaves in 1u32..NUM_LEAVES {
             let test = generate_test_vector(NUM_GENERATIONS, n_leaves, ciphersuite);
             tests.push(test);
         }
