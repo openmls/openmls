@@ -154,14 +154,11 @@ impl ManagedGroup {
             }
             UnverifiedContextMessage::External(external_message) => {
                 // Signature verification
-                match signature_key {
-                    Some(signature_public_key) => {
-                        let _verified_external_message =
-                            external_message.into_verified(backend, signature_public_key)?;
-                    }
-                    None => {
-                        return Err(ManagedGroupError::NoSignatureKey);
-                    }
+                if let Some(signature_public_key) = signature_key {
+                    let _verified_external_message =
+                        external_message.into_verified(backend, signature_public_key)?;
+                } else {
+                    return Err(ManagedGroupError::NoSignatureKey);
                 }
 
                 // We don't support external messages yet
