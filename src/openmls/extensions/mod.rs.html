@@ -273,6 +273,18 @@
 <span id="273">273</span>
 <span id="274">274</span>
 <span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Extensions</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ## Extension struct</span>
@@ -306,6 +318,7 @@
 <span class="kw">mod</span> <span class="ident">life_time_extension</span>;
 <span class="kw">mod</span> <span class="ident">parent_hash_extension</span>;
 <span class="kw">mod</span> <span class="ident">ratchet_tree_extension</span>;
+<span class="kw">mod</span> <span class="ident">required_capabilities</span>;
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Size</span>, <span class="ident">TlsByteVecU32</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsSliceU32</span>};
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">capabilities_extension::CapabilitiesExtension</span>;
@@ -314,6 +327,7 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">life_time_extension::LifetimeExtension</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">parent_hash_extension::ParentHashExtension</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ratchet_tree_extension::RatchetTreeExtension</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">required_capabilities::RequiredCapabilitiesExtension</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">test_extensions</span>;
@@ -344,6 +358,7 @@
     <span class="ident">KeyId</span> <span class="op">=</span> <span class="number">3</span>,
     <span class="ident">ParentHash</span> <span class="op">=</span> <span class="number">4</span>,
     <span class="ident">RatchetTree</span> <span class="op">=</span> <span class="number">5</span>,
+    <span class="ident">RequiredCapabilities</span> <span class="op">=</span> <span class="number">6</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">u16</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ExtensionType</span> {
@@ -385,6 +400,9 @@
 
     <span class="doccomment">/// A [`RatchetTreeExtension`]</span>
     <span class="ident">RatchetTree</span>(<span class="ident">RatchetTreeExtension</span>),
+
+    <span class="doccomment">/// A [`RequiredCapabilitiesExtension`]</span>
+    <span class="ident">RequiredCapabilities</span>(<span class="ident">RequiredCapabilitiesExtension</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Size</span> <span class="kw">for</span> <span class="ident">Extension</span> {
@@ -398,6 +416,7 @@
             <span class="ident">Extension::LifeTime</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">tls_serialized_len</span>(),
             <span class="ident">Extension::ParentHash</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">tls_serialized_len</span>(),
             <span class="ident">Extension::RatchetTree</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">tls_serialized_len</span>(),
+            <span class="ident">Extension::RequiredCapabilities</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">tls_serialized_len</span>(),
         }
     }
 }
@@ -417,6 +436,7 @@
             <span class="ident">Extension::LifeTime</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">tls_serialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">extension_data</span>),
             <span class="ident">Extension::ParentHash</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">tls_serialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">extension_data</span>),
             <span class="ident">Extension::RatchetTree</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">tls_serialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">extension_data</span>),
+            <span class="ident">Extension::RequiredCapabilities</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">tls_serialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">extension_data</span>),
         }<span class="question-mark">?</span>;
         <span class="macro">debug_assert_eq!</span>(<span class="ident">extension_data_written</span>, <span class="ident">extension_data_len</span>);
         <span class="macro">debug_assert_eq!</span>(<span class="ident">extension_data_written</span>, <span class="ident">extension_data</span>.<span class="ident">len</span>());
@@ -452,6 +472,9 @@
             <span class="ident">ExtensionType::RatchetTree</span> <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="ident">Extension::RatchetTree</span>(<span class="ident">RatchetTreeExtension::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">extension_data</span>)<span class="question-mark">?</span>)
             }
+            <span class="ident">ExtensionType::RequiredCapabilities</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Extension::RequiredCapabilities</span>(
+                <span class="ident">RequiredCapabilitiesExtension::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">extension_data</span>)<span class="question-mark">?</span>,
+            ),
             <span class="ident">ExtensionType::Reserved</span> <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::DecodingError</span>(<span class="macro">format!</span>(
                     <span class="string">&quot;{:?} is not a valid extension type&quot;</span>,
@@ -531,6 +554,7 @@
             <span class="ident">Extension::LifeTime</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ExtensionType::Lifetime</span>,
             <span class="ident">Extension::ParentHash</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ExtensionType::ParentHash</span>,
             <span class="ident">Extension::RatchetTree</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ExtensionType::RatchetTree</span>,
+            <span class="ident">Extension::RequiredCapabilities</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ExtensionType::RequiredCapabilities</span>,
         }
     }
 }
