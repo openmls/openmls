@@ -8,9 +8,10 @@
 use std::convert::TryFrom;
 
 use crate::{
-    ciphersuite::{Ciphersuite, CiphersuiteName},
+    ciphersuite::{Ciphersuite, CiphersuiteName, Secret},
     config::{Config, ProtocolVersion},
     group::{GroupContext, GroupEpoch, GroupId},
+    prelude::{BranchPsk, Psk, PskType::Branch},
     schedule::{EpochSecrets, InitSecret, JoinerSecret, KeySchedule, WelcomeSecret},
     test_utils::{bytes_to_hex, hex_to_bytes},
 };
@@ -20,10 +21,17 @@ use crate::test_utils::{read, write};
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{random::OpenMlsRand, types::HpkeKeyPair, OpenMlsCryptoProvider};
+use rand::{rngs::OsRng, RngCore};
 use serde::{self, Deserialize, Serialize};
 
-use super::CommitSecret;
 use super::{errors::KsTestVectorError, PskSecret};
+use super::{CommitSecret, PreSharedKeyId};
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+struct PskValue {
+    psk_id: String, /* hex encoded PreSharedKeyID */
+    psk: String,    /* hex-encoded binary data */
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct Epoch {
@@ -31,7 +39,7 @@ struct Epoch {
     tree_hash: String,
     commit_secret: String,
     // XXX: PSK is not supported in OpenMLS yet #141
-    psk_secret: String,
+    psks: Vec<PskValue>,
     confirmed_transcript_hash: String,
 
     // Computed values
@@ -68,7 +76,7 @@ fn generate(
     Vec<u8>,
     CommitSecret,
     JoinerSecret,
-    PskSecret,
+    Vec<(PreSharedKeyId, Secret)>,
     WelcomeSecret,
     EpochSecrets,
     Vec<u8>,
@@ -78,7 +86,29 @@ fn generate(
     let crypto = OpenMlsRustCrypto::default();
     let tree_hash = crypto.rand().random_vec(ciphersuite.hash_length()).unwrap();
     let commit_secret = CommitSecret::random(ciphersuite, &crypto);
-    let psk_secret = PskSecret::random(ciphersuite, &crypto);
+
+    // Build the PSK secret.
+    let mut psk_ids = Vec::new();
+    let mut psks = Vec::new();
+    let mut psks_out = Vec::new();
+    for _ in 0..(OsRng.next_u32() % 0x10) {
+        let psk_id =
+        // XXX: Test all different PSK types.
+        PreSharedKeyId::new(
+            Branch,
+            Psk::Branch(BranchPsk {
+                psk_group_id: GroupId::random(&crypto),
+                psk_epoch: GroupEpoch(epoch),
+            }),
+            crypto.rand().random_vec(13).unwrap(),
+        );
+        let psk = PskSecret::random(ciphersuite, &crypto);
+        psk_ids.push(psk_id.clone());
+        psks.push(psk.secret().clone());
+        psks_out.push((psk_id, psk.secret().clone()));
+    }
+    let psk_secret = PskSecret::new(ciphersuite, &crypto, &psk_ids, &psks).unwrap();
+
     let joiner_secret = JoinerSecret::new(&crypto, &commit_secret, init_secret);
     let mut key_schedule = KeySchedule::init(
         ciphersuite,
@@ -111,7 +141,7 @@ fn generate(
         confirmed_transcript_hash,
         commit_secret,
         joiner_secret,
-        psk_secret,
+        psks_out,
         welcome_secret,
         epoch_secrets,
         tree_hash,
@@ -144,7 +174,7 @@ pub fn generate_test_vector(
             confirmed_transcript_hash,
             commit_secret,
             joiner_secret,
-            psk_secret,
+            psks,
             welcome_secret,
             epoch_secrets,
             tree_hash,
@@ -152,10 +182,18 @@ pub fn generate_test_vector(
             external_key_pair,
         ) = generate(ciphersuite, &init_secret, &group_id, epoch);
 
+        let psks = psks
+            .iter()
+            .map(|(psk_id, psk)| PskValue {
+                psk_id: bytes_to_hex(&psk_id.tls_serialize_detached().unwrap()),
+                psk: bytes_to_hex(psk.as_slice()),
+            })
+            .collect::<Vec<_>>();
+
         let epoch_info = Epoch {
             tree_hash: bytes_to_hex(&tree_hash),
             commit_secret: bytes_to_hex(commit_secret.as_slice()),
-            psk_secret: bytes_to_hex(psk_secret.as_slice()),
+            psks,
             confirmed_transcript_hash: bytes_to_hex(&confirmed_transcript_hash),
             group_context: bytes_to_hex(&group_context.tls_serialize_detached().unwrap()),
             joiner_secret: bytes_to_hex(joiner_secret.as_slice()),
@@ -207,21 +245,22 @@ fn read_test_vectors() {
         }
     }
 
-    // mlspp test vectors
-    let tv_files = [
-        "test_vectors/mlspp/mlspp_key_schedule_1.json",
-        "test_vectors/mlspp/mlspp_key_schedule_2.json",
-        "test_vectors/mlspp/mlspp_key_schedule_3.json",
-    ];
-    for &tv_file in tv_files.iter() {
-        let tv: KeyScheduleTestVector = read(tv_file);
-        run_test_vector(tv).expect("Error while checking key schedule test vector.");
-    }
+    // FIXME: Interop #495
+    // // mlspp test vectors
+    // let tv_files = [
+    //     "test_vectors/mlspp/mlspp_key_schedule_1.json",
+    //     "test_vectors/mlspp/mlspp_key_schedule_2.json",
+    //     "test_vectors/mlspp/mlspp_key_schedule_3.json",
+    // ];
+    // for &tv_file in tv_files.iter() {
+    //     let tv: KeyScheduleTestVector = read(tv_file);
+    //     run_test_vector(tv).expect("Error while checking key schedule test vector.");
+    // }
 }
 
 #[cfg(any(feature = "test-utils", test))]
 pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestVectorError> {
-    use tls_codec::Serialize;
+    use tls_codec::{Deserialize, Serialize};
 
     use crate::ciphersuite::HpkePublicKey;
 
@@ -247,15 +286,37 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
         "  InitSecret from tve: {:?}",
         test_vector.initial_init_secret
     );
-    let mut init_secret = InitSecret::from_slice(&init_secret);
+    let mut init_secret = InitSecret::from(Secret::from_slice(
+        &init_secret,
+        ProtocolVersion::default(),
+        ciphersuite,
+    ));
 
     for (i, epoch) in test_vector.epochs.iter().enumerate() {
         log::debug!("  Epoch {:?}", i);
         let tree_hash = hex_to_bytes(&epoch.tree_hash);
         let commit_secret = hex_to_bytes(&epoch.commit_secret);
-        let commit_secret = CommitSecret::from_slice(&commit_secret);
+        let commit_secret = CommitSecret::from(Secret::from_slice(
+            &commit_secret,
+            ProtocolVersion::default(),
+            ciphersuite,
+        ));
         log::trace!("    CommitSecret from tve {:?}", epoch.commit_secret);
-        let psk = hex_to_bytes(&epoch.psk_secret);
+        let mut psks = Vec::new();
+        let mut psk_ids = Vec::new();
+        for psk_value in epoch.psks.iter() {
+            psk_ids.push(
+                PreSharedKeyId::tls_deserialize(&mut hex_to_bytes(&psk_value.psk_id).as_slice())
+                    .unwrap(),
+            );
+            psks.push(Secret::from_slice(
+                &hex_to_bytes(&psk_value.psk),
+                ProtocolVersion::default(),
+                ciphersuite,
+            ));
+        }
+        // let psk = Vec::new();
+        let psk_secret = PskSecret::new(ciphersuite, &crypto, &psk_ids, &psks).unwrap();
 
         let joiner_secret = JoinerSecret::new(&crypto, &commit_secret, &init_secret);
         if hex_to_bytes(&epoch.joiner_secret) != joiner_secret.as_slice() {
@@ -269,7 +330,7 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
             ciphersuite,
             &crypto,
             joiner_secret.clone(),
-            Some(PskSecret::from_slice(&psk)),
+            Some(PskSecret::from(psk_secret)),
         );
         let welcome_secret = key_schedule.welcome(&crypto).unwrap();
 

@@ -104,7 +104,7 @@ impl MlsGroup {
         // Calculate tree hash
         let tree_hash = provisional_tree.tree_hash(backend);
 
-        // TODO #186: Implement extensions
+        // TODO #483: Implement extensions
         let extensions: Vec<Extension> = Vec::new();
 
         // Calculate group context

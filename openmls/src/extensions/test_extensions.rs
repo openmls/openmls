@@ -7,7 +7,9 @@ use tls_codec::{Deserialize, Serialize};
 
 use super::*;
 
-use crate::{group::create_commit_params::CreateCommitParams, prelude::*};
+use crate::{
+    group::create_commit_params::CreateCommitParams, messages::proposals::ProposalType, prelude::*,
+};
 
 #[test]
 fn capabilities() {
@@ -258,3 +260,40 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         MlsGroupError::WelcomeError(WelcomeError::MissingRatchetTree)
     );
 });
+
+#[test]
+fn required_capabilities() {
+    // A required capabilities extension with the default values for openmls (none).
+    let extension_bytes = vec![0u8, 6, 0, 0, 0, 2, 0, 0];
+    let mut extension_bytes_mut = &extension_bytes[..];
+
+    let ext = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
+
+    // Check that decoding works
+    let required_capabilities = Extension::tls_deserialize(&mut extension_bytes_mut).unwrap();
+    assert_eq!(ext, required_capabilities);
+
+    // Encoding creates the expected bytes.
+    assert_eq!(
+        extension_bytes,
+        &required_capabilities.tls_serialize_detached().unwrap()[..]
+    );
+
+    // Build one with some content.
+    let required_capabilities = RequiredCapabilitiesExtension::new(
+        &[ExtensionType::KeyId, ExtensionType::RatchetTree],
+        &[ProposalType::Reinit],
+    );
+    let ext = Extension::RequiredCapabilities(required_capabilities);
+    let extension_bytes = vec![0u8, 6, 0, 0, 0, 7, 4, 0, 3, 0, 5, 1, 5];
+
+    // Test encoding and decoding
+    let encoded = ext
+        .tls_serialize_detached()
+        .expect("error encoding required capabilities extension");
+    let ext_decoded = Extension::tls_deserialize(&mut encoded.as_slice())
+        .expect("error decoding required capabilities extension");
+
+    assert_eq!(ext, ext_decoded);
+    assert_eq!(extension_bytes, encoded);
+}
