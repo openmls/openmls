@@ -40,14 +40,18 @@ use crate::ciphersuite::signable::Verifiable;
 
 use super::*;
 
-/// Contains a [VerifiableMlsPlaintext]. Can be built either from a plaintext or ciphertext.
-/// In the latter case, it attempts to decrypt the ciphertext.
-/// Checks the presence of the membership tag and confirmation tag.
+/// Intermediate message that can be constructed either from a plaintext message or from ciphertext message.
+/// If it it constructed from a ciphertext message, the ciphertext message is decrypted first.
+/// Does the following checks:
+/// - Confirmation tag must be present for Commit messages
+/// - Membership tag must be present for member messages, if the original incoming message was not an MlsCiphertext
+/// - Ensures application messages were originally MlsCiphertext messages
 pub struct DecryptedMessage {
     plaintext: VerifiableMlsPlaintext,
 }
 
 impl DecryptedMessage {
+    /// Constructs a [DecryptedMessage] from a [VerifiableMlsPlaintext].
     pub(crate) fn from_inbound_plaintext(
         inbound_message: MlsMessageIn,
     ) -> Result<Self, ValidationError> {
@@ -57,6 +61,9 @@ impl DecryptedMessage {
             Err(ValidationError::WrongWireFormat)
         }
     }
+
+    /// Constructs a [DecryptedMessage] from a [MlsCiphertext] by attempting to decrypt it
+    /// to a [VerifiableMlsPlaintext] first.
     pub(crate) fn from_inbound_ciphertext(
         inbound_message: MlsMessageIn,
         ciphersuite: &Ciphersuite,
@@ -72,6 +79,11 @@ impl DecryptedMessage {
             Err(ValidationError::WrongWireFormat)
         }
     }
+
+    // Internal constructor function. Does the following checks:
+    // - Confirmation tag must be present for Commit messages
+    // - Membership tag must be present for member messages, if the original incoming message was not an MlsCiphertext
+    // - Ensures application messages were originally MlsCiphertext messages
     fn from_plaintext(plaintext: VerifiableMlsPlaintext) -> Result<Self, ValidationError> {
         // Unless the message was encrypted, the membership tag is required when the sender is a member
         if plaintext.sender().is_member()
@@ -96,12 +108,18 @@ impl DecryptedMessage {
         }
         Ok(DecryptedMessage { plaintext })
     }
+
+    /// Returns the wire format
     pub fn wire_format(&self) -> WireFormat {
         self.plaintext.wire_format()
     }
+
+    /// Returns the sender
     pub fn sender(&self) -> &Sender {
         self.plaintext.sender()
     }
+
+    /// Returns the content type
     pub fn content_type(&self) -> ContentType {
         self.plaintext.content_type()
     }
@@ -117,6 +135,7 @@ pub struct UnverifiedMessage {
 }
 
 impl UnverifiedMessage {
+    /// Construct an [UnverifiedMessage] from a [DecryptedMessage] and an optional [Credential].
     pub(crate) fn from_decrypted_message(
         decrypted_message: DecryptedMessage,
         credential: Option<Credential>,
@@ -128,15 +147,22 @@ impl UnverifiedMessage {
         }
     }
 
+    /// Returns the AAD.
     pub fn aad(&self) -> &Option<Vec<u8>> {
         &self.aad_option
     }
+
+    /// Returns the sender.
     pub fn sender(&self) -> &Sender {
         self.plaintext.sender()
     }
+
+    /// Return the credential if there is one.
     pub fn credential(&self) -> Option<&Credential> {
         self.credential.as_ref()
     }
+
+    /// Decomposes an [UnverifiedMessage] into its parts.
     pub(crate) fn into_parts(self) -> (VerifiableMlsPlaintext, Option<Credential>) {
         (self.plaintext, self.credential)
     }
@@ -152,6 +178,8 @@ pub enum UnverifiedContextMessage {
 }
 
 impl UnverifiedContextMessage {
+    /// Constructs an [UnverifiedContextMessage] from an [UnverifiedMessage] and adds the serialized group context.
+    /// If the message is a an unencrypted member message, the membership tag is verified.
     pub(crate) fn from_unverified_message_with_context(
         unverified_message: UnverifiedMessage,
         serialized_context: Vec<u8>,
@@ -196,6 +224,8 @@ pub struct UnverifiedMemberMessage {
 }
 
 impl UnverifiedMemberMessage {
+    /// Verifies the signature on an [UnverifiedMemberMessage] and returns a [VerifiedMemberMessage] if the
+    /// verification is successful.
     pub(crate) fn into_verified(
         self,
         backend: &impl OpenMlsCryptoProvider,
@@ -221,6 +251,8 @@ pub struct UnverifiedExternalMessage {
 }
 
 impl UnverifiedExternalMessage {
+    /// Verifies the signature on an [UnverifiedExternalMessage] and returns a [VerifiedExternalMessage] if the
+    /// verification is successful.
     pub(crate) fn into_verified(
         self,
         backend: &impl OpenMlsCryptoProvider,
@@ -239,9 +271,12 @@ pub struct VerifiedMemberMessage {
 }
 
 impl VerifiedMemberMessage {
+    /// Returns a reference to the inner [MlsPlaintext].
     pub fn plaintext(&self) -> &MlsPlaintext {
         &self.plaintext
     }
+
+    /// Consumes the message and returns the inner [MlsPlaintext].
     pub fn take_plaintext(self) -> MlsPlaintext {
         self.plaintext
     }
@@ -253,9 +288,12 @@ pub struct VerifiedExternalMessage {
 }
 
 impl VerifiedExternalMessage {
+    /// Returns a reference to the inner [MlsPlaintext].
     pub fn plaintext(&self) -> &MlsPlaintext {
         &self.plaintext
     }
+
+    /// Consumes the message and returns the inner [MlsPlaintext].
     pub fn take_plaintext(self) -> MlsPlaintext {
         self.plaintext
     }
