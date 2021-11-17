@@ -43,12 +43,12 @@ impl RequiredCapabilitiesExtension {
     }
 
     /// Get a reference to the required extension types.
-    pub(crate) fn extensions(&self) -> &[ExtensionType] {
+    pub(crate) fn _extensions(&self) -> &[ExtensionType] {
         self.extensions.as_slice()
     }
 
     /// Get a reference to the required proposal types.
-    pub(crate) fn proposals(&self) -> &[ProposalType] {
+    pub(crate) fn _proposals(&self) -> &[ProposalType] {
         self.proposals.as_slice()
     }
 }
