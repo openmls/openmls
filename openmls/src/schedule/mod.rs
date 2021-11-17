@@ -135,6 +135,9 @@ pub mod codec;
 pub mod errors;
 pub(crate) mod psk;
 
+#[cfg(test)]
+mod unit_tests;
+
 #[cfg(any(feature = "test-utils", test))]
 pub mod kat_key_schedule;
 
@@ -152,6 +155,12 @@ impl Default for CommitSecret {
         CommitSecret {
             secret: Secret::default(),
         }
+    }
+}
+
+impl From<Secret> for CommitSecret {
+    fn from(secret: Secret) -> Self {
+        Self { secret }
     }
 }
 
@@ -203,6 +212,12 @@ impl CommitSecret {
 #[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct InitSecret {
     secret: Secret,
+}
+
+impl From<Secret> for InitSecret {
+    fn from(secret: Secret) -> Self {
+        Self { secret }
+    }
 }
 
 impl InitSecret {
