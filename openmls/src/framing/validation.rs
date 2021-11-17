@@ -1,18 +1,18 @@
 //! # Validation steps for incoming messages
 //! ```text
+//! parse_message(MlsMessageIn) -> UnverifiedMessage
+//!
 //! MlsMessageIn (exposes: wire format, group, epoch)
-//! |
-//! V
-//! parse_message()
 //! |
 //! V
 //! DecryptedMessage
 //! |
 //! V
 //! UnverifiedMessage (exposes AAD, Credential of sender)
-//! |
-//! V
-//! process_unverified_message()
+//!
+//! process_unverified_message(UnverfiedMessage) -> ProcessedMessage
+//!
+//! UnverifiedMessage
 //! |
 //! V
 //! UnverifiedContextMessage (includes group context)
@@ -40,6 +40,9 @@ use crate::ciphersuite::signable::Verifiable;
 
 use super::*;
 
+/// Contains a [VerifiableMlsPlaintext]. Can be built either from a plaintext or ciphertext.
+/// In the latter case, it attempts to decrypt the ciphertext.
+/// Checks the presence of the membership tag and confirmation tag.
 pub struct DecryptedMessage {
     plaintext: VerifiableMlsPlaintext,
 }
@@ -139,6 +142,10 @@ impl UnverifiedMessage {
     }
 }
 
+/// Contains an [VerifiableMlsPlaintext] and a [Credential] if it is a member message.
+/// It sets the serialized group context and verifies the membership tag for member messages.
+/// It can be converted to a verified message by verifying the signature, either with the credential
+/// or an external signature key.
 pub enum UnverifiedContextMessage {
     Member(UnverifiedMemberMessage),
     External(UnverifiedExternalMessage),
@@ -182,6 +189,7 @@ impl UnverifiedContextMessage {
     }
 }
 
+/// Part of [UnverifiedContextMessage].
 pub struct UnverifiedMemberMessage {
     plaintext: VerifiableMlsPlaintext,
     credential: Credential,
@@ -195,25 +203,19 @@ impl UnverifiedMemberMessage {
     ) -> Result<VerifiedMemberMessage, ValidationError> {
         // If a signature key is provided it will be used,
         // otherwise we take the key from the credential
-        match signature_key {
-            Some(signature_public_key) => {
-                match self
-                    .plaintext
-                    .verify_with_key(backend, signature_public_key)
-                {
-                    Ok(plaintext) => Ok(VerifiedMemberMessage { plaintext }),
-                    Err(e) => Err(e.into()),
-                }
-            }
-            None => match self.plaintext.verify(backend, &self.credential) {
-                Ok(plaintext) => Ok(VerifiedMemberMessage { plaintext }),
-                Err(e) => Err(e.into()),
-            },
+        let verified_member_message = if let Some(signature_public_key) = signature_key {
+            self.plaintext
+                .verify_with_key(backend, signature_public_key)
+        } else {
+            self.plaintext.verify(backend, &self.credential)
         }
+        .map(|plaintext| VerifiedMemberMessage { plaintext })?;
+        Ok(verified_member_message)
     }
 }
 
 // TODO #192: We don't support external senders yet
+/// Part of [UnverifiedContextMessage].
 pub struct UnverifiedExternalMessage {
     plaintext: VerifiableMlsPlaintext,
 }
@@ -231,6 +233,7 @@ impl UnverifiedExternalMessage {
     }
 }
 
+/// Member message, where all semantic checks on the framing have been successfully performed.
 pub struct VerifiedMemberMessage {
     plaintext: MlsPlaintext,
 }
@@ -244,6 +247,7 @@ impl VerifiedMemberMessage {
     }
 }
 
+/// External message, where all semantic checks on the framing have been successfully performed.
 pub struct VerifiedExternalMessage {
     plaintext: MlsPlaintext,
 }
