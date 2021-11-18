@@ -198,15 +198,6 @@ impl tls_codec::Serialize for MlsPlaintextTbs {
 
 impl tls_codec::Deserialize for MlsCiphertext {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
-        /*
-        pub(crate) wire_format: WireFormat,
-        pub(crate) group_id: GroupId,
-        pub(crate) epoch: GroupEpoch,
-        pub(crate) content_type: ContentType,
-        pub(crate) authenticated_data: TlsByteVecU32,
-        pub(crate) encrypted_sender_data: TlsByteVecU8,
-        pub(crate) ciphertext: TlsByteVecU32,
-        */
         let wire_format = WireFormat::tls_deserialize(bytes)?;
         let group_id = GroupId::tls_deserialize(bytes)?;
         let epoch = GroupEpoch::tls_deserialize(bytes)?;

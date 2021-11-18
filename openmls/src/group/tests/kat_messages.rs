@@ -473,7 +473,6 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
             .unwrap()
             .tls_serialize_detached()
             .unwrap();
-
     if tv_mls_plaintext_application != my_mls_plaintext_application {
         log::error!("  MlsPlaintextApplication encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_mls_plaintext_application);

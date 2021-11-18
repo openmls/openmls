@@ -82,7 +82,7 @@ implement_error! {
             WrongEpoch = "The epoch does not match the group's epoch.",
             MissingConfirmationTag = "The confirmation tag is missing in the Commit message.",
             InvalidSignature = "The message's signature is invalid.",
-            WrongGroupId = "Worng group ID.",
+            WrongGroupId = "Wrong group ID.",
         }
         Complex {
             InvalidCiphertext(MlsCiphertextError) =
