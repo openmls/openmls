@@ -35,6 +35,7 @@ impl ManagedGroup {
             group_config,
             None, /* Initial PSK */
             None, /* MLS version */
+            managed_group_config.required_capabilities.clone(),
         )?;
 
         let resumption_secret_store =

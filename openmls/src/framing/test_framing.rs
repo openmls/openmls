@@ -4,6 +4,7 @@ use mls_group::proposals::StagedProposal;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
+use crate::extensions::RequiredCapabilitiesExtension;
 use crate::framing::*;
 use crate::prelude::KeyPackageBundle;
 use crate::prelude::_print_tree;
@@ -388,6 +389,7 @@ fn unknown_sender() {
             MlsGroupConfig::default(),
             None, /* Initial PSK */
             None, /* MLS version */
+            RequiredCapabilitiesExtension::default(),
         )
         .unwrap();
 
@@ -637,6 +639,7 @@ fn confirmation_tag_presence() {
             MlsGroupConfig::default(),
             None, /* Initial PSK */
             None, /* MLS version */
+            RequiredCapabilitiesExtension::default(),
         )
         .unwrap();
 
@@ -731,6 +734,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
             MlsGroupConfig::default(),
             None, /* Initial PSK */
             None, /* MLS version */
+            RequiredCapabilitiesExtension::default(),
         )
         .unwrap();
 

@@ -68,6 +68,7 @@ fn create_commit_optional_path() {
             MlsGroupConfig::default(),
             None, /* Initial PSK */
             None, /* MLS version */
+            RequiredCapabilitiesExtension::default(),
         )
         .unwrap();
 
@@ -266,6 +267,7 @@ fn basic_group_setup() {
             MlsGroupConfig::default(),
             None, /* Initial PSK */
             None, /* MLS version */
+            RequiredCapabilitiesExtension::default(),
         )
         .expect("Could not create group.");
 
@@ -354,6 +356,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         MlsGroupConfig::default(),
         None, /* Initial PSK */
         None, /* MLS version */
+        RequiredCapabilitiesExtension::default(),
     )
     .expect("Could not create group.");
 

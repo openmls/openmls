@@ -152,7 +152,8 @@ pub(crate) struct GroupInfoPayload {
     epoch: GroupEpoch,
     tree_hash: TlsByteVecU8,
     confirmed_transcript_hash: TlsByteVecU8,
-    extensions: TlsVecU32<Extension>,
+    group_context_extensions: TlsVecU32<Extension>,
+    other_extensions: TlsVecU32<Extension>,
     confirmation_tag: ConfirmationTag,
     signer_index: LeafIndex,
 }
@@ -164,7 +165,8 @@ impl GroupInfoPayload {
         epoch: GroupEpoch,
         tree_hash: Vec<u8>,
         confirmed_transcript_hash: Vec<u8>,
-        extensions: Vec<Extension>,
+        group_context_extensions: &[Extension],
+        other_extensions: &[Extension],
         confirmation_tag: ConfirmationTag,
         signer_index: LeafIndex,
     ) -> Self {
@@ -173,7 +175,8 @@ impl GroupInfoPayload {
             epoch,
             tree_hash: tree_hash.into(),
             confirmed_transcript_hash: confirmed_transcript_hash.into(),
-            extensions: extensions.into(),
+            group_context_extensions: group_context_extensions.into(),
+            other_extensions: other_extensions.into(),
             confirmation_tag,
             signer_index,
         }
@@ -243,15 +246,20 @@ impl GroupInfo {
         &self.payload.confirmation_tag
     }
 
-    /// Get the extensions.
-    pub(crate) fn extensions(&self) -> &[Extension] {
-        self.payload.extensions.as_slice()
+    /// Get other application extensions.
+    pub(crate) fn other_extensions(&self) -> &[Extension] {
+        self.payload.other_extensions.as_slice()
     }
 
-    /// Set the group info's extensions.
+    /// Get the [`GroupContext`] extensions.
+    pub(crate) fn group_context_extensions(&self) -> &[Extension] {
+        self.payload.group_context_extensions.as_slice()
+    }
+
+    /// Set the group info's other extensions.
     #[cfg(test)]
-    pub(crate) fn set_extensions(&mut self, extensions: Vec<Extension>) {
-        self.payload.extensions = extensions.into();
+    pub(crate) fn set_other_extensions(&mut self, extensions: Vec<Extension>) {
+        self.payload.other_extensions = extensions.into();
     }
 
     /// Re-sign the group info.

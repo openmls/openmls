@@ -82,20 +82,20 @@ impl MlsGroup {
         config: MlsGroupConfig,
         psk_option: impl Into<Option<PskSecret>>,
         version: impl Into<Option<ProtocolVersion>>,
+        required_capabilities: RequiredCapabilitiesExtension,
     ) -> Result<Self, MlsGroupError> {
         debug!("Created group {:x?}", id);
         trace!(" >>> with {:?}, {:?}", ciphersuite_name, config);
         let group_id = GroupId { value: id.into() };
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
         let tree = RatchetTree::new(backend, key_package_bundle);
-        // TODO #483: Implement extensions
-        let extensions: Vec<Extension> = Vec::new();
+        let required_capabilities = &[Extension::RequiredCapabilities(required_capabilities)];
 
         let group_context = GroupContext::create_initial_group_context(
             ciphersuite,
             group_id,
             tree.tree_hash(backend),
-            &extensions,
+            required_capabilities,
         )?;
         let commit_secret = tree.private_tree().commit_secret();
         // Derive an initial joiner secret based on the commit secret.
@@ -413,15 +413,15 @@ impl MlsGroup {
     /// Get the groups extensions.
     /// Right now this is limited to the ratchet tree extension which is built
     /// on the fly when calling this function.
-    pub fn extensions(&self) -> Vec<Extension> {
-        let extensions: Vec<Extension> = if self.use_ratchet_tree_extension {
-            vec![Extension::RatchetTree(RatchetTreeExtension::new(
-                self.tree().public_key_tree_copy(),
-            ))]
-        } else {
-            Vec::new()
-        };
-        extensions
+    pub fn other_extensions(&self) -> Vec<Extension> {
+        vec![Extension::RatchetTree(RatchetTreeExtension::new(
+            self.tree().public_key_tree_copy(),
+        ))]
+    }
+
+    /// Get the group context extensions.
+    pub fn group_context_extensions(&self) -> &[Extension] {
+        self.group_context.extensions()
     }
 
     /// Export the `PublicGroupState`

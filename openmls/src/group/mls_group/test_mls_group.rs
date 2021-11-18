@@ -44,6 +44,7 @@ fn test_mls_group_persistence() {
         MlsGroupConfig::default(),
         None, /* Initial PSK */
         None, /* MLS version */
+        RequiredCapabilitiesExtension::default(),
     )
     .unwrap();
 
@@ -87,7 +88,8 @@ fn test_failed_groupinfo_decryption() {
                 epoch,
                 tree_hash,
                 confirmed_transcript_hash,
-                extensions,
+                &Vec::new(),
+                &extensions,
                 confirmation_tag,
                 signer_index,
             );
@@ -228,6 +230,7 @@ fn test_update_path() {
             MlsGroupConfig::default(),
             None, /* Initial PSK */
             None, /* MLS version */
+            RequiredCapabilitiesExtension::default(),
         )
         .unwrap();
 
@@ -469,12 +472,12 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
     let mut alice_group = MlsGroup::new(
         &group_id,
         ciphersuite.name(),
-
         &crypto,
         alice_key_package_bundle,
         MlsGroupConfig::default(),
         Some(initial_psk),
         None, /* MLS version */
+        RequiredCapabilitiesExtension::default(),
     )
     .unwrap();
 

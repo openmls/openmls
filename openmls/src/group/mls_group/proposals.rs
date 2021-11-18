@@ -370,6 +370,12 @@ impl<'a> CreationProposalQueue<'a> {
                     // TODO #141: Only keep one ReInit
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
+                ProposalType::ExternalInit => unimplemented!("See #556"),
+                ProposalType::AppAck => unimplemented!("See #291"),
+                ProposalType::GroupContextExtensions => {
+                    // TODO: Validate proposal?
+                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
+                }
             }
         }
         // Check for presence of Removes and delete Updates

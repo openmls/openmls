@@ -5,6 +5,7 @@ use crate::{
     ciphersuite::signable::Verifiable,
     config::Config,
     credentials::{CredentialBundle, CredentialType},
+    extensions::RequiredCapabilitiesExtension,
     group::{
         create_commit_params::CreateCommitParams,
         proposals::{ProposalStore, StagedProposal},
@@ -71,6 +72,7 @@ fn test_pgs() {
             MlsGroupConfig::default(),
             None, /* Initial PSK */
             None, /* MLS version */
+            RequiredCapabilitiesExtension::default(),
         )
         .expect("Could not create group.");
 

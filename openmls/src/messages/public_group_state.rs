@@ -26,7 +26,8 @@ use crate::{
 ///     uint64 epoch;
 ///     opaque tree_hash<0..255>;
 ///     opaque interim_transcript_hash<0..255>;
-///     Extension extensions<0..2^32-1>;
+///     Extension group_context_extensions<0..2^32-1>;
+///     Extension other_extensions<0..2^32-1>;
 ///     HPKEPublicKey external_pub;
 ///     uint32 signer_index;
 ///     opaque signature<0..2^16-1>;
@@ -42,7 +43,8 @@ pub struct PublicGroupState {
     pub(crate) epoch: GroupEpoch,
     pub(crate) tree_hash: TlsByteVecU8,
     pub(crate) interim_transcript_hash: TlsByteVecU8,
-    pub(crate) extensions: TlsVecU32<Extension>,
+    pub(crate) group_context_extensions: TlsVecU32<Extension>,
+    pub(crate) other_extensions: TlsVecU32<Extension>,
     pub(crate) external_pub: HpkePublicKey,
     pub(crate) signer_index: LeafIndex,
     pub(crate) signature: Signature,
@@ -79,7 +81,8 @@ impl VerifiedStruct<VerifiablePublicGroupState> for PublicGroupState {
             epoch: v.tbs.epoch,
             tree_hash: v.tbs.tree_hash,
             interim_transcript_hash: v.tbs.interim_transcript_hash,
-            extensions: v.tbs.extensions,
+            group_context_extensions: v.tbs.group_context_extensions,
+            other_extensions: v.tbs.other_extensions,
             external_pub: v.tbs.external_pub,
             signer_index: v.tbs.signer_index,
             signature: v.signature,
@@ -97,7 +100,8 @@ impl SignedStruct<PublicGroupStateTbs> for PublicGroupState {
             epoch: tbs.epoch,
             tree_hash: tbs.tree_hash,
             interim_transcript_hash: tbs.interim_transcript_hash,
-            extensions: tbs.extensions,
+            group_context_extensions: tbs.group_context_extensions,
+            other_extensions: tbs.other_extensions,
             external_pub: tbs.external_pub,
             signer_index: tbs.signer_index,
             signature,
@@ -123,7 +127,8 @@ impl<'a> Verifiable for VerifiablePublicGroupState {
 ///     uint64 epoch;
 ///     opaque tree_hash<0..255>;
 ///     opaque interim_transcript_hash<0..255>;
-///     Extension extensions<0..2^32-1>;
+///     Extension group_context_extensions<0..2^32-1>;
+///     Extension other_extensions<0..2^32-1>;
 ///     HPKEPublicKey external_pub;
 /// } PublicGroupStateTBS;
 /// ```
@@ -134,7 +139,8 @@ pub(crate) struct PublicGroupStateTbs {
     pub(crate) epoch: GroupEpoch,
     pub(crate) tree_hash: TlsByteVecU8,
     pub(crate) interim_transcript_hash: TlsByteVecU8,
-    pub(crate) extensions: TlsVecU32<Extension>,
+    pub(crate) group_context_extensions: TlsVecU32<Extension>,
+    pub(crate) other_extensions: TlsVecU32<Extension>,
     pub(crate) external_pub: HpkePublicKey,
     pub(crate) signer_index: LeafIndex,
 }
@@ -154,14 +160,15 @@ impl PublicGroupStateTbs {
         let epoch = mls_group.context().epoch();
         let tree_hash = mls_group.tree().tree_hash(backend).into();
         let interim_transcript_hash = mls_group.interim_transcript_hash().into();
-        let extensions = mls_group.extensions().into();
+        let other_extensions = mls_group.other_extensions().into();
 
         PublicGroupStateTbs {
             group_id,
             epoch,
             tree_hash,
             interim_transcript_hash,
-            extensions,
+            group_context_extensions: mls_group.group_context_extensions().into(),
+            other_extensions,
             external_pub: external_pub.into(),
             ciphersuite: ciphersuite.name(),
             signer_index: mls_group.tree().own_node_index(),

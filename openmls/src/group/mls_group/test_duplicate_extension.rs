@@ -58,6 +58,7 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
         config,
         None, /* Initial PSK */
         None, /* MLS version */
+        RequiredCapabilitiesExtension::default(),
     )
     .unwrap();
 
@@ -134,9 +135,9 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
     let mut group_info = GroupInfo::tls_deserialize(&mut group_info_bytes.as_slice()).expect("Could not decode GroupInfo");
 
     // Duplicate extensions
-    let extensions = group_info.extensions();
+    let extensions = group_info.other_extensions();
     let duplicate_extensions = vec![extensions[0].clone(), extensions[0].clone()];
-    group_info.set_extensions(duplicate_extensions);
+    group_info.set_other_extensions(duplicate_extensions);
 
     // Put everything back together
     let group_info = group_info.re_sign(&bob_credential_bundle, &crypto).expect("Error re-signing GroupInfo");

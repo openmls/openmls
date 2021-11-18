@@ -137,6 +137,8 @@ fn group(
 ) -> (MlsGroup, CredentialBundle) {
     use openmls_traits::types::SignatureScheme;
 
+    use crate::extensions::RequiredCapabilitiesExtension;
+
     let credential_bundle = CredentialBundle::new(
         "Kreator".into(),
         CredentialType::Basic,
@@ -161,6 +163,7 @@ fn group(
             MlsGroupConfig::default(),
             None, /* Initial PSK */
             ProtocolVersion::Mls10,
+            RequiredCapabilitiesExtension::default(),
         )
         .unwrap(),
         credential_bundle,
@@ -174,6 +177,8 @@ fn receiver_group(
     group_id: &GroupId,
 ) -> MlsGroup {
     use openmls_traits::types::SignatureScheme;
+
+    use crate::extensions::RequiredCapabilitiesExtension;
 
     let credential_bundle = CredentialBundle::new(
         "Receiver".into(),
@@ -197,6 +202,7 @@ fn receiver_group(
         MlsGroupConfig::default(),
         None, /* Initial PSK */
         ProtocolVersion::Mls10,
+        RequiredCapabilitiesExtension::default(),
     )
     .unwrap()
 }

@@ -161,6 +161,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             group_config.config,
             None, /* Initial PSK */
             None, /* MLS version */
+            RequiredCapabilitiesExtension::default(),
         )
         .unwrap();
         let mut proposal_list = Vec::new();

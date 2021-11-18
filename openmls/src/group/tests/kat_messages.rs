@@ -76,6 +76,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         config,
         None,
         ProtocolVersion::default(),
+        RequiredCapabilitiesExtension::default(),
     )
     .unwrap();
 
@@ -87,7 +88,10 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         GroupEpoch(0),
         crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
         crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
-        vec![Extension::RatchetTree(RatchetTreeExtension::new(
+        &[Extension::RequiredCapabilities(
+            RequiredCapabilitiesExtension::default(),
+        )],
+        &[Extension::RatchetTree(RatchetTreeExtension::new(
             ratchet_tree.clone(),
         ))],
         ConfirmationTag(Mac {

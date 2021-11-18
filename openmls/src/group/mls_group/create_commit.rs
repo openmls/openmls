@@ -169,7 +169,7 @@ impl MlsGroup {
         // Check if new members were added an create welcome message
         if !plaintext_secrets.is_empty() {
             // Create the ratchet tree extension if necessary
-            let extensions: Vec<Extension> = if self.use_ratchet_tree_extension {
+            let other_extensions: Vec<Extension> = if self.use_ratchet_tree_extension {
                 vec![Extension::RatchetTree(RatchetTreeExtension::new(
                     provisional_tree.public_key_tree_copy(),
                 ))]
@@ -182,7 +182,8 @@ impl MlsGroup {
                 provisional_group_context.epoch,
                 tree_hash,
                 confirmed_transcript_hash,
-                extensions,
+                self.group_context_extensions(),
+                &other_extensions,
                 confirmation_tag,
                 sender_index,
             );

@@ -42,4 +42,8 @@ impl GroupContext {
     pub fn epoch(&self) -> GroupEpoch {
         self.epoch
     }
+    /// Return the extensions of the context
+    pub fn extensions(&self) -> &[Extension] {
+        self.extensions.as_slice()
+    }
 }
