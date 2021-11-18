@@ -82,7 +82,7 @@ impl SignatureKeypair {
 }
 
 impl SignatureKeypair {
-    pub(crate) fn new(
+    pub fn new(
         signature_scheme: SignatureScheme,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<SignatureKeypair, CryptoError> {
