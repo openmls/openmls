@@ -2,6 +2,8 @@ mod codec;
 mod errors;
 pub use codec::*;
 pub use errors::*;
+#[cfg(test)]
+mod tests;
 
 use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
@@ -136,19 +138,6 @@ impl PartialEq for BasicCredential {
     }
 }
 
-#[test]
-fn test_protocol_version() {
-    use crate::config::ProtocolVersion;
-    let mls10_version = ProtocolVersion::Mls10;
-    let default_version = ProtocolVersion::default();
-    let mls10_e = mls10_version.tls_serialize_detached().unwrap();
-    assert_eq!(mls10_e[0], mls10_version as u8);
-    let default_e = default_version.tls_serialize_detached().unwrap();
-    assert_eq!(default_e[0], default_version as u8);
-    assert_eq!(mls10_e[0], 1);
-    assert_eq!(default_e[0], 1);
-}
-
 /// This struct contains a credential and the corresponding private key.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -185,6 +174,29 @@ impl CredentialBundle {
             credential,
             signature_private_key: private_key,
         })
+    }
+
+    /// Creates a new [CredentialBundle] from an identity, a [SignatureScheme] and a [SignatureKeypair].
+    /// Note that only BasicCredentials are cuurently supported.
+    pub fn from_parts(
+        identity: Vec<u8>,
+        signature_scheme: SignatureScheme,
+        keypair: SignatureKeypair,
+    ) -> Self {
+        let (signature_private_key, public_key) = keypair.into_tuple();
+        let basic_credential = BasicCredential {
+            identity: identity.into(),
+            signature_scheme,
+            public_key,
+        };
+        let credential = Credential {
+            credential_type: CredentialType::Basic,
+            credential: MlsCredentialType::Basic(basic_credential),
+        };
+        Self {
+            credential,
+            signature_private_key,
+        }
     }
 
     pub fn credential(&self) -> &Credential {
