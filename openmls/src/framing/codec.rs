@@ -1,4 +1,4 @@
-use tls_codec::{Deserialize, Serialize, Size, TlsByteVecU16, TlsByteVecU32};
+use tls_codec::{Deserialize, Serialize, Size, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8};
 
 use super::*;
 use std::io::{Read, Write};
@@ -15,6 +15,13 @@ impl tls_codec::Deserialize for VerifiableMlsPlaintext {
         let signature = Signature::tls_deserialize(bytes)?;
         let confirmation_tag = Option::<ConfirmationTag>::tls_deserialize(bytes)?;
         let membership_tag = Option::<MembershipTag>::tls_deserialize(bytes)?;
+
+        // ValSem1: Check the wire format
+        if wire_format != WireFormat::MlsPlaintext {
+            return Err(tls_codec::Error::DecodingError(
+                "Wrong wire format.".to_string(),
+            ));
+        }
 
         let verifiable = VerifiableMlsPlaintext::new(
             MlsPlaintextTbs::new(
@@ -186,6 +193,46 @@ impl tls_codec::Serialize for MlsPlaintextTbs {
             &self.payload,
             writer,
         )
+    }
+}
+
+impl tls_codec::Deserialize for MlsCiphertext {
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
+        /*
+        pub(crate) wire_format: WireFormat,
+        pub(crate) group_id: GroupId,
+        pub(crate) epoch: GroupEpoch,
+        pub(crate) content_type: ContentType,
+        pub(crate) authenticated_data: TlsByteVecU32,
+        pub(crate) encrypted_sender_data: TlsByteVecU8,
+        pub(crate) ciphertext: TlsByteVecU32,
+        */
+        let wire_format = WireFormat::tls_deserialize(bytes)?;
+        let group_id = GroupId::tls_deserialize(bytes)?;
+        let epoch = GroupEpoch::tls_deserialize(bytes)?;
+        let content_type = ContentType::tls_deserialize(bytes)?;
+        let authenticated_data = TlsByteVecU32::tls_deserialize(bytes)?;
+        let encrypted_sender_data = TlsByteVecU8::tls_deserialize(bytes)?;
+        let ciphertext = TlsByteVecU32::tls_deserialize(bytes)?;
+
+        // ValSem1: Check the wire format
+        if wire_format != WireFormat::MlsCiphertext {
+            return Err(tls_codec::Error::DecodingError(
+                "Wrong wire format.".to_string(),
+            ));
+        }
+
+        let mls_ciphertext = MlsCiphertext {
+            wire_format,
+            group_id,
+            epoch,
+            content_type,
+            authenticated_data,
+            encrypted_sender_data,
+            ciphertext,
+        };
+
+        Ok(mls_ciphertext)
     }
 }
 

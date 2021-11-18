@@ -95,3 +95,10 @@ impl From<MlsMessageOut> for MlsMessageIn {
         }
     }
 }
+
+#[cfg(any(feature = "test-utils", test))]
+impl From<VerifiableMlsPlaintext> for MlsMessageIn {
+    fn from(plaintext: VerifiableMlsPlaintext) -> Self {
+        MlsMessageIn::Plaintext(plaintext)
+    }
+}
