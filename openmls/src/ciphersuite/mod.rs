@@ -31,7 +31,7 @@ mod reuse_guard;
 mod secret;
 mod ser;
 pub mod signable;
-pub mod signature;
+pub(crate) mod signature;
 
 pub(crate) use aead::*;
 pub use ciphersuites::*;

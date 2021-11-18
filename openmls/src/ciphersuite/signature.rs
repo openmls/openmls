@@ -43,11 +43,21 @@ impl<T> SignedStruct<T> for Signature {
 }
 
 impl SignatureKeypair {
-    /// Construct new [SignatureKeypair] from a private and a public key
-    pub fn from_keys(private_key: SignaturePrivateKey, public_key: SignaturePublicKey) -> Self {
+    /// Construct a new [SignatureKeypair] from bytes of a private and a public key
+    pub fn from_bytes(
+        signature_scheme: SignatureScheme,
+        private_key: Vec<u8>,
+        public_key: Vec<u8>,
+    ) -> Self {
         Self {
-            private_key,
-            public_key,
+            private_key: SignaturePrivateKey {
+                signature_scheme,
+                value: private_key,
+            },
+            public_key: SignaturePublicKey {
+                signature_scheme,
+                value: public_key,
+            },
         }
     }
 
@@ -112,6 +122,7 @@ impl SignaturePublicKey {
             signature_scheme,
         })
     }
+
     /// Verify a `Signature` on the `payload` byte slice with the key pair's
     /// public key.
     pub fn verify(
@@ -134,6 +145,11 @@ impl SignaturePublicKey {
             )
             .map_err(|_| CryptoError::InvalidSignature)
     }
+
+    /// Get the signature scheme of the keypair
+    pub fn signature_scheme(&self) -> SignatureScheme {
+        self.signature_scheme
+    }
 }
 
 impl SignaturePrivateKey {
@@ -151,5 +167,10 @@ impl SignaturePrivateKey {
             Ok(s) => Ok(Signature { value: s.into() }),
             Err(_) => Err(CryptoError::CryptoLibraryError),
         }
+    }
+
+    /// Get the signature scheme of the keypair
+    pub fn signature_scheme(&self) -> SignatureScheme {
+        self.signature_scheme
     }
 }

@@ -18,7 +18,10 @@ pub use crate::tree::index::LeafIndex;
 // PSKs
 pub use crate::schedule::psk::ExternalPskBundle;
 
-pub use crate::ciphersuite::*;
+pub use crate::ciphersuite::{
+    signature::{SignatureKeypair, SignaturePrivateKey, SignaturePublicKey},
+    *,
+};
 pub use crate::config::*;
 pub use crate::credentials::*;
 pub use crate::extensions::*;
