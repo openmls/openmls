@@ -57,14 +57,14 @@ impl<T: Clone> ABinaryTree<T> {
     }
 
     /// Return the number of nodes in the tree.
-    pub(crate) fn size(&self) -> NodeIndex {
+    pub(super) fn size(&self) -> NodeIndex {
         let len = self.nodes.len();
         debug_assert!(len <= u32::MAX as usize);
         self.nodes.len() as u32
     }
 
     /// Return the number of leaves in the tree.
-    pub(crate) fn leaf_count(&self) -> TreeSize {
+    fn leaf_count(&self) -> TreeSize {
         (self.size() + 1) / 2
     }
 

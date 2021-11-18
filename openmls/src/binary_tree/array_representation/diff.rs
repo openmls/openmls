@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use crate::binary_tree::{array_representation::treemath::sibling, LeafIndex};
+use crate::binary_tree::{
+    array_representation::treemath::sibling, LeafIndex, MlsBinaryTreeDiffError,
+};
 
 use super::{
     tree::{to_node_index, ABinaryTree, ABinaryTreeError, NodeIndex, TreeSize},
@@ -91,14 +93,8 @@ impl<'a, T: Clone> NodeReference<'a, T> {
 
 /// FIXME: Ideally, one would also use node references to write to the tree.
 impl<'a, T: Clone> AbDiff<'a, T> {
-    pub(crate) fn new(tree: &'a ABinaryTree<T>) -> Self {
-        Self {
-            original_tree: tree,
-            diff: HashMap::new(),
-            size: tree.size(),
-        }
-    }
-
+    /// Replace the content of the node at the given leaf index with new
+    /// content.
     pub(crate) fn replace_leaf(
         &mut self,
         leaf_index: LeafIndex,
@@ -112,6 +108,7 @@ impl<'a, T: Clone> AbDiff<'a, T> {
         Ok(())
     }
 
+    /// Extend the tree by a leaf and its new parent node.
     pub(crate) fn add_leaf(
         &mut self,
         parent_node: T,
@@ -122,6 +119,7 @@ impl<'a, T: Clone> AbDiff<'a, T> {
         Ok(self.leaf_count() - 1)
     }
 
+    /// Obtain a `NodeReference` to the leaf with the given `LeafIndex`.
     pub(crate) fn leaf(
         &'a self,
         leaf_index: LeafIndex,
@@ -131,7 +129,8 @@ impl<'a, T: Clone> AbDiff<'a, T> {
     }
 
     /// Returns references to the leaves of the tree in order from left to
-    /// right.
+    /// right. NOTE: This is used to find blank leaves to place new members
+    /// into.
     pub(crate) fn leaves(&'a self) -> Result<Vec<NodeReference<'a, T>>, ABinaryTreeDiffError> {
         let mut leaf_references = Vec::new();
         for leaf_index in 0..self.leaf_count() {
@@ -143,8 +142,9 @@ impl<'a, T: Clone> AbDiff<'a, T> {
     }
 
     // FIXME: Come up with a better name.
-    /// Sets all nodes in the direct path to a copy of the given node.
-    pub(crate) fn set_direct_path_nodes(
+    /// Sets all nodes in the direct path to a copy of the given node. NOTE:
+    /// This is used to blank a direct path.
+    pub(crate) fn set_direct_path_to_node(
         &mut self,
         leaf_index: LeafIndex,
         node: &T,
@@ -161,6 +161,8 @@ impl<'a, T: Clone> AbDiff<'a, T> {
     /// Sets the nodes in the direct path of the given leaf index to the nodes
     /// given in the `path`. Returns an error if the `leaf_index` is not in the
     /// tree or if the given `path` is longer or shorter than the direct path.
+    /// NOTE: This function is used to replace a direct path with new nodes
+    /// (e.g. when performing an own update), or to blank a direct path.
     pub(crate) fn set_direct_path(
         &mut self,
         leaf_index: LeafIndex,
@@ -184,7 +186,9 @@ impl<'a, T: Clone> AbDiff<'a, T> {
     }
 
     /// Given two leaf indices, returns the position of the shared subtree root
-    /// in the direct path of the first leaf index.
+    /// in the direct path of the first leaf index. NOTE: This function is
+    /// required in the process of finding the right ciphertext to decrypt in a
+    /// received `UpdatePathNode`.
     pub(crate) fn subtree_root_position(
         &self,
         leaf_index_1: LeafIndex,
@@ -201,9 +205,9 @@ impl<'a, T: Clone> AbDiff<'a, T> {
     }
 
     /// Returns the copath node of the `leaf_index_1` that is in the direct path
-    /// of `leaf_index_2`, as well as the position of the subtree root in the
-    /// direct path of `leaf_index_1`. Returns an error if both leaf indices are
-    /// the same.
+    /// of `leaf_index_2`. Returns an error if both leaf indices are the same.
+    /// NOTE: This function is required in the process of finding the private
+    /// key to decrypt a received `UpdatePathNode`.
     pub(crate) fn subtree_root_copath_node(
         &'a self,
         leaf_index_1: LeafIndex,
@@ -229,24 +233,25 @@ impl<'a, T: Clone> AbDiff<'a, T> {
         Ok(copath_node_ref)
     }
 
-    fn apply_to_node<F, E>(
+    fn apply_to_node<E: Into<MlsBinaryTreeDiffError>, FoldingResult: Default, F>(
         &mut self,
         node_index: NodeIndex,
         f: F,
-    ) -> Result<Result<Vec<u8>, E>, ABinaryTreeDiffError>
+    ) -> Result<FoldingResult, ABinaryTreeDiffError>
     where
-        F: Fn(
-                &mut T,
-                Option<LeafIndex>,
-                Result<Vec<u8>, E>,
-                Result<Vec<u8>, E>,
-            ) -> Result<Vec<u8>, E>
+        F: Fn(&mut T, Option<LeafIndex>, FoldingResult, FoldingResult) -> Result<FoldingResult, E>
             + Copy,
     {
         // Check if this is a leaf.
         if node_index % 2 == 0 {
             let leaf = self.node_mut_by_index(node_index)?;
-            return Ok(f(leaf, Some(node_index / 2), Ok(vec![]), Ok(vec![])));
+            return Ok(f(
+                leaf,
+                Some(node_index / 2),
+                FoldingResult::default(),
+                FoldingResult::default(),
+            )
+            .map_err(|e| e.into())?);
         }
         // Compute left hash.
         let left_child_index = left(node_index)?;
@@ -254,24 +259,23 @@ impl<'a, T: Clone> AbDiff<'a, T> {
         let right_child_index = right(node_index, self.size())?;
         let right_hash = self.apply_to_node(right_child_index, f)?;
         let node = self.node_mut_by_index(node_index)?;
-        Ok(f(node, None, left_hash, right_hash))
+        Ok(f(node, None, left_hash, right_hash).map_err(|e| e.into())?)
     }
 
     /// This function applies the given function to every node in the tree,
     /// starting with the leaves. In addition to the node itself, the function
     /// takes as input the results of the function applied to its children.
-    pub(crate) fn fold_tree<F, E>(
+    /// NOTE: This function is required to compute the treehash and set the
+    /// treehash caches in each node.
+    pub(crate) fn fold_tree<E, FoldingResult, F>(
         &mut self,
         f: F,
-    ) -> Result<Result<Vec<u8>, E>, ABinaryTreeDiffError>
+    ) -> Result<FoldingResult, ABinaryTreeDiffError>
     where
-        F: Fn(
-                &mut T,
-                Option<LeafIndex>,
-                Result<Vec<u8>, E>,
-                Result<Vec<u8>, E>,
-            ) -> Result<Vec<u8>, E>
+        F: Fn(&mut T, Option<LeafIndex>, FoldingResult, FoldingResult) -> Result<FoldingResult, E>
             + Copy,
+        E: Into<MlsBinaryTreeDiffError>,
+        FoldingResult: Default,
     {
         let root_index = root(self.size());
         self.apply_to_node(root_index, f)
@@ -279,6 +283,10 @@ impl<'a, T: Clone> AbDiff<'a, T> {
 
     /// This applies the given function to the lowest common ancestor (i.e. the
     /// subtree root), as well as the direct path from that node to the root.
+    /// NOTE: This function is used to set the private keys when receiving a
+    /// Welcome message or when receiving an UpdatePath. We don't want to fully
+    /// replace the nodes here, because they might have unmerged leaves that
+    /// we'd need to explicitly copy to the new nodes.
     pub(crate) fn apply_to_subtree_path<F, E>(
         &mut self,
         leaf_index_1: LeafIndex,
@@ -302,7 +310,10 @@ impl<'a, T: Clone> AbDiff<'a, T> {
         Ok(())
     }
 
-    /// Any Error while applying `f` will be treated as a LibraryError.
+    /// Apply the given function `f` to all nodes in the direct path of the
+    /// given `LeafIndex`. NOTE: This function is used to add the leaf index of
+    /// a newly added leaf to the `unmerged_leaves` of all nodes in its direct
+    /// path.
     pub(crate) fn apply_to_direct_path<F, E>(
         &mut self,
         leaf_index: LeafIndex,
@@ -321,6 +332,9 @@ impl<'a, T: Clone> AbDiff<'a, T> {
         Ok(())
     }
 
+    /// Returns a vector of `NodeReference` instances, each one referencing a
+    /// node in the direct path of the given `LeafIndex`, ordered from the
+    /// parent of the corresponding leaf to the root of the tree.
     pub(crate) fn direct_path(
         &'a self,
         leaf_index: LeafIndex,
@@ -336,13 +350,9 @@ impl<'a, T: Clone> AbDiff<'a, T> {
         Ok(direct_path)
     }
 
-    pub(crate) fn root(&'a self) -> Result<NodeReference<'a, T>, ABinaryTreeDiffError> {
-        let root_index = root(self.size());
-        self.new_reference(root_index)
-    }
-
-    /// Returns an unordered vector with references to all nodes.
-    pub(crate) fn all_nodes(&'a self) -> Vec<NodeReference<'a, T>> {
+    /// Returns an unordered vector with references to all nodes. NOTE: This is
+    /// required for parent hash verification when receiving a new tree.
+    pub(crate) fn all_nodes(&'a self) -> impl Iterator<Item = &T> {
         let mut node_references = Vec::new();
         for node_index in 0..self.size() {
             let node_ref = NodeReference {
@@ -426,7 +436,27 @@ impl<'a, T: Clone> AbDiff<'a, T> {
             node_index,
         })
     }
+
+    /// FIXME: This is a temporary solution to return a reference to a node's
+    /// content without relying on the NodeReference as its own object.
+    pub(crate) fn dereference(
+        &'a self,
+        node_ref: NodeReference<'a, T>,
+    ) -> Result<&'a T, ABinaryTreeDiffError> {
+        // We only create references for nodes that are within the tree and the
+        // tree can't be changed while references are out there, because
+        // references include a reference to the diff.
+        self.node_by_index(node_ref.node_index)
+            .ok_or(ABinaryTreeDiffError::LibraryError)
+    }
 }
+
+pub(crate) struct DiffIterator<'a, T: Clone> {
+    diff: &'a AbDiff<'a, T>,
+    current_index: NodeIndex,
+}
+
+// TODO: Implement the Iterator trait for this thing.
 
 implement_error! {
     pub enum ABinaryTreeDiffError {
@@ -441,6 +471,7 @@ implement_error! {
             NodeNotFound = "Can't find the node with the given address in the diff.",
             HasNoSibling = "Can't compure sibling resolution of the root node, as it has no sibling.",
             ExtendingOutOfBounds = "Trying to write too far outside of the tree.",
+            FoldingError = "Error while executing folding function.",
         }
         Complex {
             ABinaryTreeError(ABinaryTreeError) = "An Error occurred while accessing the underlying binary tree.",

@@ -17,7 +17,6 @@ use self::{
 
 mod diff;
 mod hashes;
-mod mls_node;
 mod node;
 pub(crate) mod treekem;
 
@@ -34,9 +33,7 @@ impl TreeSync {
     }
 
     /// Merge the given diff into the `TreeSync` instance, refreshing the
-    /// `tree_has` value in the process. FIXME: Right now, we are storing no
-    /// private values in the diff. Shoud we decide to do so in the future, we'd
-    /// need to merge them here as well.
+    /// `tree_has` value in the process.
     pub(crate) fn merge_diff(
         &mut self,
         tree_sync_diff: StagedTreeSyncDiff,
@@ -84,10 +81,12 @@ impl TreeSync {
         node_options: &[Option<Node>],
         key_package_bundle: KeyPackageBundle,
     ) -> Result<Self, TreeSyncError> {
-        // FIXME: We might want to verify some more things here, such as the
-        // validity of the leaf indices in the unmerged leaves or the uniqueness
-        // of public keys in the tree. We are building on those properties in
-        // other functions.
+        // FIXME: We need to not only set the private key of the leaf node, but
+        // also (potentially) compute the path based on a path secret. FIXME: We
+        // might want to verify some more things here, such as the validity of
+        // the leaf indices in the unmerged leaves or the uniqueness of public
+        // keys in the tree. We are building on those properties in other
+        // functions.
         let mut ts_nodes: Vec<TreeSyncNode> = Vec::new();
         let mut own_index_option = None;
         let own_key_package = key_package_bundle.key_package;
@@ -127,7 +126,8 @@ impl TreeSync {
             let diff = tree_sync.empty_diff();
             // Verify all parent hashes.
             diff.verify_parent_hashes(backend, ciphersuite)?;
-            // Make the diff into a staged diff.
+            // Make the diff into a staged diff. This is to compute the tree
+            // hashes and poulate the tree hash caches.
             let staged_diff = diff.to_staged_diff(backend, ciphersuite)?;
             // Merge the diff.
             tree_sync.merge_diff(staged_diff)?;

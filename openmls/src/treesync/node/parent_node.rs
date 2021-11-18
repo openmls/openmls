@@ -69,7 +69,7 @@ impl tls_codec::Serialize for &ParentNode {
 
 impl From<(HpkePublicKey, HpkePrivateKey)> for ParentNode {
     fn from((public_key, private_key): (HpkePublicKey, HpkePrivateKey)) -> Self {
-        let parent_node: ParentNode = public_key.into();
+        let mut parent_node: ParentNode = public_key.into();
         parent_node.set_private_key(private_key);
         parent_node
     }

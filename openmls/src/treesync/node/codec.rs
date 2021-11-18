@@ -1,12 +1,8 @@
-use std::convert::TryFrom;
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
-use tls_codec::{
-    Size, TlsByteSliceU8, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32,
-};
+use crate::prelude::KeyPackage;
 
-use crate::{binary_tree::LeafIndex, ciphersuite::HpkePublicKey, prelude::KeyPackage};
-
-use super::node::{leaf_node::LeafNode, parent_node::ParentNode, Node};
+use super::{leaf_node::LeafNode, parent_node::ParentNode, Node};
 
 /// Node type. Can be either `Leaf` or `Parent`.
 #[derive(PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize)]
@@ -28,20 +24,6 @@ impl MlsNodeType {
     }
 }
 
-impl TryFrom<u8> for MlsNodeType {
-    type Error = &'static str;
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        match value {
-            0 => Err("Invalid node type."),
-            1 => Ok(MlsNodeType::Leaf),
-            2 => Ok(MlsNodeType::Parent),
-            _ => Err("Unknown node type."),
-        }
-    }
-}
-
-// The Node is defined as enum, not option. So unfortunately we have to implement
-// (de)serialization by hand.
 impl tls_codec::Size for Node {
     fn tls_serialized_len(&self) -> usize {
         1 // Length of MlsNodeType
@@ -51,6 +33,8 @@ impl tls_codec::Size for Node {
             }
     }
 }
+
+// Implementations for `Node`
 
 impl tls_codec::Serialize for Node {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
@@ -75,5 +59,34 @@ impl tls_codec::Deserialize for Node {
             MlsNodeType::Parent => Node::ParentNode(ParentNode::tls_deserialize(bytes)?),
         };
         Ok(node)
+    }
+}
+
+// Implementations for `LeafNode`
+
+impl tls_codec::Deserialize for LeafNode {
+    fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>
+    where
+        Self: Sized,
+    {
+        let key_package = KeyPackage::tls_deserialize(bytes)?;
+        Ok(key_package.into())
+    }
+}
+
+impl tls_codec::Size for LeafNode {
+    fn tls_serialized_len(&self) -> usize {
+        self.key_package().tls_serialized_len()
+    }
+}
+impl tls_codec::Size for &LeafNode {
+    fn tls_serialized_len(&self) -> usize {
+        self.key_package().tls_serialized_len()
+    }
+}
+
+impl tls_codec::Serialize for &LeafNode {
+    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        self.key_package().tls_serialize(writer)
     }
 }

@@ -1,21 +1,20 @@
+mod codec;
 pub(crate) mod leaf_node;
 pub(crate) mod parent_node;
 
 use openmls_traits::OpenMlsCryptoProvider;
-use tls_codec::{Size, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize, TlsSliceU8, TlsVecU32};
+use tls_codec::TlsSliceU8;
 
 use crate::{
-    binary_tree::{Addressable, LeafIndex},
+    binary_tree::{LeafIndex, MlsBinaryTreeDiffError, MlsBinaryTreeError},
     ciphersuite::{Ciphersuite, HpkePrivateKey, HpkePublicKey},
     extensions::ExtensionType::ParentHash,
     treesync::hashes::{LeafNodeHashInput, ParentNodeTreeHashInput},
 };
 
-use crate::key_packages::KeyPackage;
-
 use self::{leaf_node::LeafNode, parent_node::ParentNode};
 
-use super::hashes::{ParentHashError, ParentHashInput};
+use super::hashes::ParentHashError;
 
 #[derive(Debug, PartialEq, Clone)]
 pub(crate) enum Node {
@@ -178,5 +177,11 @@ implement_error! {
         Complex {
             ParentHashError(ParentHashError) = "Error while computing parent hash.",
         }
+    }
+}
+
+impl Into<MlsBinaryTreeDiffError> for TreeSyncNodeError {
+    fn into(self) -> MlsBinaryTreeDiffError {
+        MlsBinaryTreeDiffError::FoldingError
     }
 }

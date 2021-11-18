@@ -1,4 +1,4 @@
-use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeKeyPair, OpenMlsCryptoProvider};
+use openmls_traits::OpenMlsCryptoProvider;
 
 use std::{collections::HashSet, convert::TryFrom};
 
@@ -13,11 +13,11 @@ use super::{
 use crate::{
     binary_tree::{
         array_representation::diff::NodeReference, LeafIndex, MlsBinaryTreeDiff,
-        MlsBinaryTreeDiffError, StagedMlsBinaryTreeDiff,
+        MlsBinaryTreeDiffError, MlsBinaryTreeError, StagedMlsBinaryTreeDiff,
     },
     ciphersuite::{signable::Signable, Ciphersuite, CryptoError, HpkePrivateKey, HpkePublicKey},
     credentials::{CredentialBundle, CredentialError},
-    extensions::{Extension, ExtensionType, ParentHashExtension},
+    extensions::ExtensionType,
     messages::{PathSecret, PathSecretError},
     prelude::{KeyPackage, KeyPackageBundlePayload},
     schedule::CommitSecret,
@@ -95,7 +95,7 @@ impl<'a> TreeSyncDiff<'a> {
         self.diff.replace_leaf(leaf_index, node.into())?;
         // This effectively wipes the tree hashes in the direct path.
         self.diff
-            .set_direct_path_nodes(leaf_index, &TreeSyncNode::blank())?;
+            .set_direct_path_to_node(leaf_index, &TreeSyncNode::blank())?;
         Ok(())
     }
 
@@ -160,7 +160,7 @@ impl<'a> TreeSyncDiff<'a> {
         self.diff.replace_leaf(leaf_index, TreeSyncNode::blank())?;
         // This also erases any cached tree hash in the direct path.
         self.diff
-            .set_direct_path_nodes(leaf_index, &TreeSyncNode::blank())?;
+            .set_direct_path_to_node(leaf_index, &TreeSyncNode::blank())?;
         Ok(())
     }
 
@@ -555,21 +555,19 @@ impl<'a> TreeSyncDiff<'a> {
     ) -> Result<Vec<u8>, TreeSyncDiffError> {
         let compute_tree_hash = |node: &mut TreeSyncNode,
                                  leaf_index_option: Option<LeafIndex>,
-                                 left_hash_result: Result<Vec<u8>, TreeSyncDiffError>,
-                                 right_hash_result: Result<Vec<u8>, TreeSyncDiffError>|
-         -> Result<Vec<u8>, TreeSyncDiffError> {
-            let left_hash = left_hash_result?;
-            let right_hash = right_hash_result?;
-            Ok(node.compute_tree_hash(
+                                 left_hash: Vec<u8>,
+                                 right_hash: Vec<u8>|
+         -> Result<Vec<u8>, TreeSyncNodeError> {
+            node.compute_tree_hash(
                 backend,
                 ciphersuite,
                 leaf_index_option,
                 left_hash,
                 right_hash,
-            )?)
+            )
         };
 
-        self.diff.fold_tree(compute_tree_hash)?
+        Ok(self.diff.fold_tree(compute_tree_hash)?)
     }
 
     /// Returns the position of the shared subtree root in the direct path of
@@ -606,7 +604,8 @@ impl<'a> TreeSyncDiff<'a> {
         own_node_refs.append(&mut self.diff.direct_path(self.own_leaf_index)?);
         // Add our own key package public key.
         for node_ref in own_node_refs {
-            let node_tsn = node_ref.try_deref()?;
+            let node_tsn = self.diff.dereference(node_ref)?;
+            //let node_tsn = node_ref.try_deref()?;
             // If the node is blank, skip it.
             if let Some(node) = node_tsn.node() {
                 // If we don't have the private key, skip it.
