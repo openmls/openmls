@@ -43,6 +43,14 @@ impl<T> SignedStruct<T> for Signature {
 }
 
 impl SignatureKeypair {
+    /// Construct new [SignatureKeypair] from a private and a public key
+    pub fn from_keys(private_key: SignaturePrivateKey, public_key: SignaturePublicKey) -> Self {
+        Self {
+            private_key,
+            public_key,
+        }
+    }
+
     /// Get the private and public key objects
     pub fn into_tuple(self) -> (SignaturePrivateKey, SignaturePublicKey) {
         (self.private_key, self.public_key)
