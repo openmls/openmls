@@ -145,6 +145,14 @@
 <span id="145">145</span>
 <span id="146">146</span>
 <span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(
@@ -190,6 +198,14 @@
 }
 
 <span class="kw">impl</span> <span class="ident">SignatureKeypair</span> {
+    <span class="doccomment">/// Construct new [SignatureKeypair] from a private and a public key</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_keys</span>(<span class="ident">private_key</span>: <span class="ident">SignaturePrivateKey</span>, <span class="ident">public_key</span>: <span class="ident">SignaturePublicKey</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">Self</span> {
+            <span class="ident">private_key</span>,
+            <span class="ident">public_key</span>,
+        }
+    }
+
     <span class="doccomment">/// Get the private and public key objects</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_tuple</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">SignaturePrivateKey</span>, <span class="ident">SignaturePublicKey</span>) {
         (<span class="self">self</span>.<span class="ident">private_key</span>, <span class="self">self</span>.<span class="ident">public_key</span>)
