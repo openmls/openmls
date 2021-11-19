@@ -46,4 +46,12 @@ impl GroupContext {
     pub fn extensions(&self) -> &[Extension] {
         self.extensions.as_slice()
     }
+    /// Get the required capabilities extension.
+    pub fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {
+        self.extensions
+            .iter()
+            .find(|e| e.extension_type() == ExtensionType::RequiredCapabilities)
+            .map(|e| e.as_required_capabilities_extension().ok())
+            .flatten()
+    }
 }

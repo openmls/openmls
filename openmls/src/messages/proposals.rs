@@ -335,3 +335,18 @@ pub struct AppAckProposal {
 pub struct GroupContextExtensionProposal {
     extensions: TlsVecU32<Extension>,
 }
+
+impl ProposalType {
+    /// Check whether a proposal type is supported or not.
+    pub fn is_supported(&self) -> bool {
+        match self {
+            ProposalType::Add
+            | ProposalType::Update
+            | ProposalType::Remove
+            | ProposalType::Presharedkey
+            | ProposalType::Reinit => true,
+            ProposalType::ExternalInit | ProposalType::AppAck => false,
+            ProposalType::GroupContextExtensions => true,
+        }
+    }
+}

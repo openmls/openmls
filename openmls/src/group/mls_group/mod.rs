@@ -16,7 +16,7 @@ mod test_mls_group;
 mod test_proposals;
 
 use crate::ciphersuite::signable::{Signable, Verifiable};
-use crate::config::Config;
+use crate::config::{check_required_capabilities_support, Config};
 use crate::credentials::{CredentialBundle, CredentialError};
 use crate::framing::*;
 use crate::group::*;
@@ -89,6 +89,8 @@ impl MlsGroup {
         let group_id = GroupId { value: id.into() };
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
         let tree = RatchetTree::new(backend, key_package_bundle);
+
+        check_required_capabilities_support(&required_capabilities)?;
         let required_capabilities = &[Extension::RequiredCapabilities(required_capabilities)];
 
         let group_context = GroupContext::create_initial_group_context(
@@ -160,6 +162,7 @@ impl MlsGroup {
         joiner_key_package: KeyPackage,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsPlaintext, MlsGroupError> {
+        joiner_key_package.validate_required_capabilities(self.required_capabilities())?;
         let add_proposal = AddProposal {
             key_package: joiner_key_package,
         };
@@ -422,6 +425,11 @@ impl MlsGroup {
     /// Get the group context extensions.
     pub fn group_context_extensions(&self) -> &[Extension] {
         self.group_context.extensions()
+    }
+
+    /// Get the required capabilities extension of this group.
+    pub fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {
+        self.group_context.required_capabilities()
     }
 
     /// Export the `PublicGroupState`

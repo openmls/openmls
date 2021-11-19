@@ -41,4 +41,14 @@ impl RequiredCapabilitiesExtension {
             proposals: proposals.into(),
         }
     }
+
+    /// Get a slice with the required extension types.
+    pub(crate) fn extensions(&self) -> &[ExtensionType] {
+        self.extensions.as_slice()
+    }
+
+    /// Get a slice with the required proposal types.
+    pub(crate) fn proposals(&self) -> &[ProposalType] {
+        self.proposals.as_slice()
+    }
 }

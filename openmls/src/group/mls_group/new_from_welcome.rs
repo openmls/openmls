@@ -18,11 +18,12 @@ impl MlsGroup {
         psk_fetcher_option: Option<PskFetcher>,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, WelcomeError> {
-        log::debug!("MlsGroup::new_from_welcome_internal");
+        println!("MlsGroup::new_from_welcome_internal");
         let mls_version = *welcome.version();
         if !Config::supported_versions().contains(&mls_version) {
             return Err(WelcomeError::UnsupportedMlsVersion);
         }
+
         let ciphersuite_name = welcome.ciphersuite();
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
 
@@ -78,6 +79,23 @@ impl MlsGroup {
             .aead_open(backend, welcome.encrypted_group_info(), &[], &welcome_nonce)
             .map_err(|_| WelcomeError::GroupInfoDecryptionFailure)?;
         let group_info = GroupInfo::tls_deserialize(&mut group_info_bytes.as_slice())?;
+
+        // Make sure that we can support the required capabilities in the group info.
+        let group_context_extensions = group_info.group_context_extensions();
+        let required_capabilities = group_context_extensions
+            .iter()
+            .find(|&extension| extension.extension_type() == ExtensionType::RequiredCapabilities);
+        if let Some(required_capabilities) = required_capabilities {
+            let required_capabilities =
+                required_capabilities.as_required_capabilities_extension()?;
+            check_required_capabilities_support(required_capabilities)?;
+            // Also check that our key package actually supports the extensions.
+            // Per spec the sender must have checked this. But you never know.
+            key_package_bundle
+                .key_package()
+                .check_extension_support(required_capabilities.extensions())?
+        }
+
         let path_secret_option = group_secrets.path_secret;
 
         // Build the ratchet tree
@@ -170,9 +188,9 @@ impl MlsGroup {
             group_info.epoch(),
             tree_hash,
             group_info.confirmed_transcript_hash().to_vec(),
-            // TODO #483: Implement extensions
-            &[],
+            group_context_extensions,
         )?;
+
         // TODO #141: Implement PSK
         key_schedule.add_context(backend, &group_context)?;
         let epoch_secrets = key_schedule.epoch_secrets(backend, true)?;

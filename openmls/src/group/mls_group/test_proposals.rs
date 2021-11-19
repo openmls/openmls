@@ -2,20 +2,26 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use crate::{
     ciphersuite::Secret,
-    config::Config,
+    config::{errors::ConfigError, Config},
     credentials::{CredentialBundle, CredentialType},
-    extensions::{Extension, LifetimeExtension},
+    extensions::{
+        Extension, ExtensionType, KeyIdExtension, LifetimeExtension, RequiredCapabilitiesExtension,
+    },
     framing::sender::{Sender, SenderType},
     framing::{FramingParameters, MlsPlaintext},
     group::{
+        create_commit_params::CreateCommitParams,
+        errors::MlsGroupError,
         proposals::{CreationProposalQueue, ProposalStore, StagedProposal, StagedProposalQueue},
-        GroupContext, GroupEpoch, GroupId, WireFormat,
+        GroupContext, GroupEpoch, GroupId, MlsGroupConfig, WireFormat,
     },
-    key_packages::KeyPackageBundle,
+    key_packages::{KeyPackageBundle, KeyPackageError},
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalReference, ProposalType},
     schedule::MembershipKey,
     tree::index::*,
 };
+
+use super::MlsGroup;
 
 /// This test makes sure CreationProposalQueue works as intented. This functionality is
 /// used in `create_commit` to filter the epoch proposals. Expected result:
@@ -311,4 +317,241 @@ fn proposal_queue_order() {
         assert_eq!(proposal_collection[0].proposal(), &proposal_add_bob1);
         assert_eq!(proposal_collection[1].proposal(), &proposal_add_alice1);
     }
+}
+
+#[test]
+fn test_required_unsupported_proposals() {
+    let crypto = OpenMlsRustCrypto::default();
+    let ciphersuite = &Config::supported_ciphersuites()[0];
+
+    // Define credential bundles
+    let alice_credential_bundle = CredentialBundle::new(
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+        &crypto,
+    )
+    .unwrap();
+    // Generate KeyPackages
+    let alice_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &alice_credential_bundle,
+        &crypto,
+        Vec::new(),
+    )
+    .unwrap();
+
+    // Set required capabilities
+    let extensions = &[];
+    let proposals = &[ProposalType::GroupContextExtensions, ProposalType::AppAck];
+    let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
+
+    // This must fail because we don't actually support AppAck proposals
+    let e = MlsGroup::new(
+        &GroupId::random(&crypto).as_slice(),
+        ciphersuite.name(),
+        &crypto,
+        alice_key_package_bundle,
+        MlsGroupConfig::default(),
+        None, /* PSK */
+        None, /* MLS version */
+        required_capabilities,
+    )
+    .expect_err(
+        "MlsGroup creation must fail because AppAck proposals aren't supported in OpenMLS yet.",
+    );
+    assert_eq!(
+        e,
+        MlsGroupError::ConfigError(ConfigError::UnsupportedProposalType)
+    )
+}
+
+#[test]
+fn test_required_extension_key_package_mismatch() {
+    let crypto = OpenMlsRustCrypto::default();
+    let ciphersuite = &Config::supported_ciphersuites()[0];
+
+    // Basic group setup.
+    let group_aad = b"Alice's test group";
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+
+    // Define credential bundles
+    let alice_credential_bundle = CredentialBundle::new(
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+        &crypto,
+    )
+    .unwrap();
+    let bob_credential_bundle = CredentialBundle::new(
+        "Bob".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+        &crypto,
+    )
+    .unwrap();
+
+    // Generate KeyPackages
+    let alice_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &alice_credential_bundle,
+        &crypto,
+        Vec::new(),
+    )
+    .unwrap();
+
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &bob_credential_bundle,
+        &crypto,
+        Vec::new(),
+    )
+    .unwrap();
+    let bob_key_package = bob_key_package_bundle.key_package();
+
+    // Set required capabilities
+    let extensions = &[
+        ExtensionType::Capabilities,
+        ExtensionType::RequiredCapabilities,
+        ExtensionType::KeyId,
+    ];
+    let proposals = &[
+        ProposalType::GroupContextExtensions,
+        ProposalType::Add,
+        ProposalType::Remove,
+        ProposalType::Update,
+    ];
+    let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
+
+    let alice_group = MlsGroup::new(
+        &GroupId::random(&crypto).as_slice(),
+        ciphersuite.name(),
+        &crypto,
+        alice_key_package_bundle,
+        MlsGroupConfig::default(),
+        None, /* PSK */
+        None, /* MLS version */
+        required_capabilities,
+    )
+    .expect("Error creating MlsGroup.");
+
+    let e = alice_group
+        .create_add_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            bob_key_package.clone(),
+            &crypto,
+        )
+        .expect_err("Proposal was created even though the key package didn't support the required extensions.");
+    assert_eq!(
+        e,
+        MlsGroupError::KeyPackageError(KeyPackageError::UnsupportedExtension)
+    );
+}
+
+#[test]
+fn test_group_context_extensions() {
+    let crypto = OpenMlsRustCrypto::default();
+    let ciphersuite = &Config::supported_ciphersuites()[0];
+
+    // Basic group setup.
+    let group_aad = b"Alice's test group";
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+
+    // Define credential bundles
+    let alice_credential_bundle = CredentialBundle::new(
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+        &crypto,
+    )
+    .unwrap();
+    let bob_credential_bundle = CredentialBundle::new(
+        "Bob".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+        &crypto,
+    )
+    .unwrap();
+
+    // Generate KeyPackages
+    let alice_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &alice_credential_bundle,
+        &crypto,
+        Vec::new(),
+    )
+    .unwrap();
+
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &bob_credential_bundle,
+        &crypto,
+        vec![Extension::KeyPackageId(KeyIdExtension::default())],
+    )
+    .unwrap();
+    let bob_key_package = bob_key_package_bundle.key_package();
+
+    // Set required capabilities
+    let extensions = &[ExtensionType::Capabilities, ExtensionType::KeyId];
+    let proposals = &[
+        ProposalType::GroupContextExtensions,
+        ProposalType::Add,
+        ProposalType::Remove,
+        ProposalType::Update,
+    ];
+    let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
+
+    let mut alice_group = MlsGroup::new(
+        &GroupId::random(&crypto).as_slice(),
+        ciphersuite.name(),
+        &crypto,
+        alice_key_package_bundle,
+        MlsGroupConfig::default(),
+        None, /* PSK */
+        None, /* MLS version */
+        required_capabilities,
+    )
+    .expect("Error creating MlsGroup.");
+
+    let bob_add_proposal = alice_group
+        .create_add_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            bob_key_package.clone(),
+            &crypto,
+        )
+        .expect("Could not create proposal");
+
+    let proposal_store = ProposalStore::from_staged_proposal(
+        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
+            .expect("Could not create StagedProposal."),
+    );
+    log::info!(" >>> Creating commit ...");
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .force_self_update(false)
+        .build();
+    let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
+        .create_commit(params, &crypto)
+        .expect("Error creating commit");
+
+    log::info!(" >>> Staging & merging commit ...");
+
+    let staged_commit = alice_group
+        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, &crypto)
+        .expect("error staging commit");
+    alice_group.merge_commit(staged_commit);
+    let ratchet_tree = alice_group.tree().public_key_tree_copy();
+
+    let _bob_group = MlsGroup::new_from_welcome(
+        welcome_bundle_alice_bob_option.unwrap(),
+        Some(ratchet_tree),
+        bob_key_package_bundle,
+        None,
+        &crypto,
+    )
+    .expect("Error joining group.");
 }

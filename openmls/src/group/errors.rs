@@ -6,7 +6,9 @@
 use crate::ciphersuite::CryptoError;
 use crate::config::ConfigError;
 use crate::credentials::CredentialError;
+use crate::extensions::errors::ExtensionError;
 use crate::framing::errors::{MlsCiphertextError, MlsPlaintextError, VerificationError};
+use crate::key_packages::KeyPackageError;
 use crate::messages::errors::ProposalQueueError;
 use crate::schedule::errors::{KeyScheduleError, PskSecretError};
 use crate::tree::{treemath::TreeMathError, ParentHashError, TreeError};
@@ -49,6 +51,8 @@ implement_error! {
                 "See [`CredentialError`](crate::credentials::CredentialError) for details.",
             TreeError(TreeError) =
                 "See [`TreeError`](crate::tree::TreeError) for details.",
+            KeyPackageError(KeyPackageError) =
+                "See [`KeyPackageError`] for details.",
         }
     }
 }
@@ -94,6 +98,10 @@ implement_error! {
                 "An error occurred in the key schedule.",
             PskError(PskError) =
                 "A PSK error occured.",
+            ExtensionError(ExtensionError) =
+                "See [`ExtensionError`] for details.",
+            KeyPackageError(KeyPackageError) =
+                "See [`KeyPackageError`] for details.",
         }
     }
 }

@@ -11,6 +11,7 @@ use crate::ciphersuite::signable::Verifiable;
 use crate::ciphersuite::*;
 use crate::config::{Config, ProtocolVersion};
 use crate::credentials::*;
+use crate::extensions::RequiredCapabilitiesExtension;
 use crate::extensions::{
     CapabilitiesExtension, Extension, ExtensionError, ExtensionType, LifetimeExtension,
     ParentHashExtension,
@@ -94,6 +95,11 @@ impl KeyPackagePayload {
     pub fn add_extension(&mut self, extension: Extension) {
         self.remove_extension(extension.extension_type());
         self.extensions.push(extension);
+    }
+
+    /// Get extension pf the KeyPackage.
+    pub fn extensions(&self) -> &[Extension] {
+        self.extensions.as_slice()
     }
 }
 
@@ -209,9 +215,45 @@ impl KeyPackage {
         self.payload.extensions.as_slice()
     }
 
+    /// Check whether the this key package supports all the required extensions
+    /// in the provided list.
+    pub fn check_extension_support(
+        &self,
+        required_extensions: &[ExtensionType],
+    ) -> Result<(), KeyPackageError> {
+        let my_extension_types = self
+            .extensions()
+            .iter()
+            .map(|ext| ext.extension_type())
+            .collect::<Vec<_>>();
+        for required in required_extensions.iter() {
+            if !my_extension_types.contains(&required) {
+                return Err(KeyPackageError::UnsupportedExtension);
+            }
+        }
+        Ok(())
+    }
+
     /// Get a reference to the credential.
     pub fn credential(&self) -> &Credential {
         &self.payload.credential
+    }
+
+    /// Check that all extensions that are required, are supported by this key
+    /// package.
+    pub(crate) fn validate_required_capabilities(
+        &self,
+        required_capabilities: Option<&RequiredCapabilitiesExtension>,
+    ) -> Result<(), KeyPackageError> {
+        if let Some(required_capabilities) = required_capabilities {
+            let my_extension_types = self.extensions().iter().map(|e| e.extension_type());
+            for required_extension in required_capabilities.extensions() {
+                if !my_extension_types.clone().any(|e| &e == required_extension) {
+                    return Err(KeyPackageError::UnsupportedExtension);
+                }
+            }
+        }
+        Ok(())
     }
 }
 

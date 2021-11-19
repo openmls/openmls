@@ -104,16 +104,14 @@ impl MlsGroup {
         // Calculate tree hash
         let tree_hash = provisional_tree.tree_hash(backend);
 
-        // TODO #483: Implement extensions
-        let extensions: Vec<Extension> = Vec::new();
-
         // Calculate group context
+        println!("create commit ext: {:?}", self.group_context.extensions());
         let provisional_group_context = GroupContext::new(
             self.group_context.group_id.clone(),
             provisional_epoch,
             tree_hash.clone(),
             confirmed_transcript_hash.clone(),
-            &extensions,
+            self.group_context.extensions(),
         )?;
 
         let joiner_secret = JoinerSecret::new(
