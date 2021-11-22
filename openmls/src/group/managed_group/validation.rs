@@ -101,25 +101,6 @@ impl ManagedGroup {
         signature_key: Option<&SignaturePublicKey>,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<ProcessedMessage, ManagedGroupError> {
-        /*
-         - x IF sender_type is member, membership_tag must be valid
-         - x Signature verification, either with leaf key or optional parameter
-         - x IF Commit:
-           - x Extract all inline & pending proposals
-         - x Semantic validation of all proposals
-           - x IF Add Proposal: Double join check
-           - x IF Remove Proposal: Ghost removal check
-           - x IF Update Proposal: Identity must be unchanged
-         - IF Commit:
-           - Commit must not cover inline self Remove proposal
-           - Path must be present, if Commit contains Removes or Updates
-           - Path must be the right length
-           - Staging step: proposals must be applied to modify the provisional tree
-           - Path must be applied and decrypt correctly
-           - New public keys from Path must be verified and match the private keys from the direct path
-           - Confirmation tag must be successfully verified
-        */
-
         // Add the context to the message and verify the membership tag if necessary
         let serialized_context = self.group.context().tls_serialize_detached()?;
 
