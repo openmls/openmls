@@ -11,7 +11,7 @@ use std::convert::TryFrom;
 /// `MlsCiphertext` is the framing struct for an encrypted `MlsPlaintext`.
 /// This message format is meant to be sent to and received from the Delivery
 /// Service.
-#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
+#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize)]
 pub struct MlsCiphertext {
     pub(crate) wire_format: WireFormat,
     pub(crate) group_id: GroupId,
