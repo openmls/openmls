@@ -14,6 +14,7 @@ mod test_duplicate_extension;
 mod test_mls_group;
 #[cfg(test)]
 mod test_proposals;
+pub mod validation;
 
 use crate::ciphersuite::signable::{Signable, Verifiable};
 use crate::config::Config;
@@ -39,7 +40,9 @@ use std::io::{Error, Read, Write};
 use std::cell::RefMut;
 use tls_codec::Serialize as TlsSerializeTrait;
 
-use super::errors::{ExporterError, MlsGroupError, PskError};
+use super::errors::{
+    ExporterError, FramingValidationError, MlsGroupError, ProposalValidationError, PskError,
+};
 
 pub type CreateCommitResult =
     Result<(MlsPlaintext, Option<Welcome>, Option<KeyPackageBundle>), MlsGroupError>;

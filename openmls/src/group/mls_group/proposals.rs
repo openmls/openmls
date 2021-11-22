@@ -1,7 +1,8 @@
 use crate::group::errors::*;
 
 use crate::messages::proposals::{
-    Proposal, ProposalOrRef, ProposalOrRefType, ProposalReference, ProposalType,
+    AddProposal, PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalOrRefType,
+    ProposalReference, ProposalType, RemoveProposal, UpdateProposal,
 };
 use crate::tree::index::LeafIndex;
 use crate::{ciphersuite::*, framing::*};
@@ -118,7 +119,9 @@ pub struct StagedProposalQueue {
 
 impl StagedProposalQueue {
     /// Returns a new `StagedProposalQueue` from proposals that were committed and
-    /// don't need filtering
+    /// don't need filtering.
+    /// This functions does the following checks:
+    ///  - ValSem200
     pub(crate) fn from_committed_proposals(
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
@@ -143,15 +146,34 @@ impl StagedProposalQueue {
         // Iterate over the committed proposals and insert the proposals in the queue
         for proposal_or_ref in committed_proposals.into_iter() {
             let queued_proposal = match proposal_or_ref {
-                ProposalOrRef::Proposal(proposal) => StagedProposal::from_proposal_and_sender(
-                    ciphersuite,
-                    backend,
-                    proposal,
-                    sender,
-                )?,
+                ProposalOrRef::Proposal(proposal) => {
+                    // ValSem200
+                    if let Proposal::Remove(ref remove_proposal) = proposal {
+                        if remove_proposal.removed() == sender.sender.as_u32() {
+                            return Err(StagedProposalQueueError::SelfRemoval);
+                        }
+                    }
+
+                    StagedProposal::from_proposal_and_sender(
+                        ciphersuite,
+                        backend,
+                        proposal,
+                        sender,
+                    )?
+                }
                 ProposalOrRef::Reference(ref proposal_reference) => {
                     match proposals_by_reference_queue.get(proposal_reference) {
-                        Some(queued_proposal) => queued_proposal.clone(),
+                        Some(staged_proposal) => {
+                            // ValSem200
+                            if let Proposal::Remove(ref remove_proposal) = staged_proposal.proposal
+                            {
+                                if remove_proposal.removed() == sender.sender.as_u32() {
+                                    return Err(StagedProposalQueueError::SelfRemoval);
+                                }
+                            }
+
+                            staged_proposal.clone()
+                        }
                         None => return Err(StagedProposalQueueError::ProposalNotFound),
                     }
                 }
@@ -192,6 +214,106 @@ impl StagedProposalQueue {
                 None => false,
             })
             .map(move |reference| self.get(reference).unwrap())
+    }
+}
+
+pub struct StagedAddProposal<'a> {
+    add_proposal: &'a AddProposal,
+    sender: &'a Sender,
+}
+
+impl<'a> StagedAddProposal<'a> {
+    pub(crate) fn try_from_staged_proposal(staged_proposal: &'a StagedProposal) -> Option<Self> {
+        if let Proposal::Add(add_proposal) = staged_proposal.proposal() {
+            let sender = staged_proposal.sender();
+            Some(Self {
+                add_proposal,
+                sender,
+            })
+        } else {
+            None
+        }
+    }
+    pub fn add_proposal(&self) -> &AddProposal {
+        self.add_proposal
+    }
+    pub fn sender(&self) -> &Sender {
+        self.sender
+    }
+}
+
+pub struct StagedRemoveProposal<'a> {
+    remove_proposal: &'a RemoveProposal,
+    sender: &'a Sender,
+}
+
+impl<'a> StagedRemoveProposal<'a> {
+    pub(crate) fn try_from_staged_proposal(staged_proposal: &'a StagedProposal) -> Option<Self> {
+        if let Proposal::Remove(remove_proposal) = staged_proposal.proposal() {
+            let sender = staged_proposal.sender();
+            Some(Self {
+                remove_proposal,
+                sender,
+            })
+        } else {
+            None
+        }
+    }
+    pub fn remove_proposal(&self) -> &RemoveProposal {
+        self.remove_proposal
+    }
+    pub fn sender(&self) -> &Sender {
+        self.sender
+    }
+}
+
+pub struct StagedUpdateProposal<'a> {
+    update_proposal: &'a UpdateProposal,
+    sender: &'a Sender,
+}
+
+impl<'a> StagedUpdateProposal<'a> {
+    pub(crate) fn try_from_staged_proposal(staged_proposal: &'a StagedProposal) -> Option<Self> {
+        if let Proposal::Update(update_proposal) = staged_proposal.proposal() {
+            let sender = staged_proposal.sender();
+            Some(Self {
+                update_proposal,
+                sender,
+            })
+        } else {
+            None
+        }
+    }
+    pub fn update_proposal(&self) -> &UpdateProposal {
+        self.update_proposal
+    }
+    pub fn sender(&self) -> &Sender {
+        self.sender
+    }
+}
+
+pub struct StagedPskProposal<'a> {
+    psk_proposal: &'a PreSharedKeyProposal,
+    sender: &'a Sender,
+}
+
+impl<'a> StagedPskProposal<'a> {
+    pub(crate) fn try_from_staged_proposal(staged_proposal: &'a StagedProposal) -> Option<Self> {
+        if let Proposal::PreSharedKey(psk_proposal) = staged_proposal.proposal() {
+            let sender = staged_proposal.sender();
+            Some(Self {
+                psk_proposal,
+                sender,
+            })
+        } else {
+            None
+        }
+    }
+    pub fn psk_proposal(&self) -> &PreSharedKeyProposal {
+        self.psk_proposal
+    }
+    pub fn sender(&self) -> &Sender {
+        self.sender
     }
 }
 

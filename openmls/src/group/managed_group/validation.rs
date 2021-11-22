@@ -11,32 +11,31 @@ impl ManagedGroup {
     /// If the input is a [MlsCiphertext] message, it will be decrypted.
     /// Returns an [UnverifiedMessage] that can be inspected and later processed in
     /// [self::process_unverified_message()].
+    /// Checks the following semantic validation:
+    ///  - ValSem2
+    ///  - ValSem3
+    ///  - ValSem4
+    ///  - ValSem5
+    ///  - ValSem6
+    ///  - ValSem7
+    ///  - ValSem9
     pub fn parse_message(
         &mut self,
         message: MlsMessageIn,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<UnverifiedMessage, ManagedGroupError> {
-        /*
-        High level checks:
-         - epoch must be within bounds
-         - IFF content_type is application, wire_format must be ciphertext
-         - AAD can be extracted/evaluated
-         - decryption
-         - IFF content_type is a commit, confirmation_tag must be present
-         - IFF sender_type is member, membership tag must be present
-        */
-
         // Make sure we are still a member of the group
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
-        // Check the message has the correct epoch number
-        if message.epoch() != self.group.context().epoch() {
-            return Err(ManagedGroupError::InvalidMessage(
-                InvalidMessageError::WrongEpoch,
-            ));
-        }
 
+        // Checks the following semantic validation:
+        //  - ValSem2
+        //  - ValSem3
+        self.group.validate_framing(&message)?;
+
+        // Checks the following semantic validation:
+        //  - ValSem6
         let decrypted_message = match message.wire_format() {
             WireFormat::MlsPlaintext => DecryptedMessage::from_inbound_plaintext(message)?,
             WireFormat::MlsCiphertext => DecryptedMessage::from_inbound_ciphertext(
@@ -50,20 +49,19 @@ impl ManagedGroup {
 
         let mut credential = None;
 
-        // Check that the sender is a valid member of the tree
-        // The sender index must be within the tree and the corresponding leaf node must not be blank
+        // Checks the following semantic validation:
+        //  - ValSem4
+        //  - ValSem5
+        //  - ValSem7
+        //  - ValSem9
+        self.group
+            .validate_plaintext(decrypted_message.plaintext())?;
+
+        // Extract the credential if the sender is a member
         let sender = decrypted_message.sender();
         if sender.is_member() {
             let sender_index = sender.to_leaf_index();
-            if sender_index > self.group.tree().leaf_count()
-                || self.group.tree().nodes[sender_index].is_blank()
-            {
-                return Err(ManagedGroupError::InvalidMessage(
-                    InvalidMessageError::UnknownSender,
-                ));
-            }
 
-            // Extract the credential
             // Unwrapping here is safe, because we know the leaf node exists and is not blank
             credential = Some(
                 self.group.tree().nodes[sender_index]
@@ -83,6 +81,20 @@ impl ManagedGroup {
 
     /// This processing function does most of the semantic verifications.
     /// It returns a [ProcessedMessage] enum.
+    /// Checks the following semantic validation:
+    ///  - ValSem8
+    ///  - ValSem10
+    ///  - ValSem100
+    ///  - ValSem101
+    ///  - ValSem102
+    ///  - ValSem103
+    ///  - ValSem104
+    ///  - ValSem105
+    ///  - ValSem106
+    ///  - ValSem107
+    ///  - ValSem108
+    ///  - ValSem109
+    ///  - ValSem110
     pub fn process_unverified_message(
         &mut self,
         unverified_message: UnverifiedMessage,
@@ -90,14 +102,14 @@ impl ManagedGroup {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<ProcessedMessage, ManagedGroupError> {
         /*
-         - IF sender_type is member, membership_tag must be valid
-         - Signature verification, either with leaf key or optional parameter
-         - IF Commit:
-           - Extract all inline & pending proposals
-         - Semantic validation of all proposals
-           - IF Add Proposal: Double join check
-           - IF Remove Proposal: Ghost removal check
-           - IF Update Proposal: Identity must be unchanged
+         - x IF sender_type is member, membership_tag must be valid
+         - x Signature verification, either with leaf key or optional parameter
+         - x IF Commit:
+           - x Extract all inline & pending proposals
+         - x Semantic validation of all proposals
+           - x IF Add Proposal: Double join check
+           - x IF Remove Proposal: Ghost removal check
+           - x IF Update Proposal: Identity must be unchanged
          - IF Commit:
            - Commit must not cover inline self Remove proposal
            - Path must be present, if Commit contains Removes or Updates
@@ -111,6 +123,8 @@ impl ManagedGroup {
         // Add the context to the message and verify the membership tag if necessary
         let serialized_context = self.group.context().tls_serialize_detached()?;
 
+        // Checks the following semantic validation:
+        //  - ValSem8
         let context_plaintext = UnverifiedContextMessage::from_unverified_message_with_context(
             unverified_message,
             serialized_context,
@@ -120,7 +134,8 @@ impl ManagedGroup {
 
         match context_plaintext {
             UnverifiedContextMessage::Member(member_message) => {
-                // Signature verification
+                // Checks the following semantic validation:
+                //  - ValSem10
                 let verified_member_message =
                     member_message.into_verified(backend, signature_key)?;
 

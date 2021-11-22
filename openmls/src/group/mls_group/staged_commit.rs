@@ -1,4 +1,7 @@
-use super::proposals::{ProposalStore, StagedProposal, StagedProposalQueue};
+use super::proposals::{
+    ProposalStore, StagedAddProposal, StagedProposalQueue, StagedPskProposal, StagedRemoveProposal,
+    StagedUpdateProposal,
+};
 use super::*;
 use core::fmt::Debug;
 
@@ -12,6 +15,9 @@ impl MlsGroup {
     ///  - Verifies the confirmation tag/membership tag
     /// Returns a [StagedCommit] that can be inspected and later merged
     /// into the group state with [merge_commit()]
+    /// This function does the following checks:
+    ///  - ValSem201
+    ///  - ValSem205
     pub fn stage_commit(
         &mut self,
         mls_plaintext: &MlsPlaintext,
@@ -111,6 +117,7 @@ impl MlsGroup {
             }
         } else {
             if apply_proposals_values.path_required {
+                // ValSem201
                 return Err(StageCommitError::RequiredPathNotFound.into());
             }
             &zero_commit_secret
@@ -176,6 +183,7 @@ impl MlsGroup {
         )?;
 
         // Verify confirmation tag
+        // ValSem205
         let own_confirmation_tag = provisional_epoch_secrets
             .confirmation_key()
             .tag(backend, &confirmed_transcript_hash);
@@ -255,20 +263,24 @@ pub struct StagedCommit {
 }
 
 impl StagedCommit {
-    pub fn adds(&self) -> impl Iterator<Item = &StagedProposal> {
+    pub fn adds(&self) -> impl Iterator<Item = StagedAddProposal> {
         self.staged_proposal_queue
             .filtered_by_type(ProposalType::Add)
+            .filter_map(|p| StagedAddProposal::try_from_staged_proposal(p))
     }
-    pub fn removes(&self) -> impl Iterator<Item = &StagedProposal> {
+    pub fn removes(&self) -> impl Iterator<Item = StagedRemoveProposal> {
         self.staged_proposal_queue
             .filtered_by_type(ProposalType::Remove)
+            .filter_map(|p| StagedRemoveProposal::try_from_staged_proposal(p))
     }
-    pub fn updates(&self) -> impl Iterator<Item = &StagedProposal> {
+    pub fn updates(&self) -> impl Iterator<Item = StagedUpdateProposal> {
         self.staged_proposal_queue
-            .filtered_by_type(ProposalType::Update)
+            .filtered_by_type(ProposalType::Add)
+            .filter_map(|p| StagedUpdateProposal::try_from_staged_proposal(p))
     }
-    pub fn psks(&self) -> impl Iterator<Item = &StagedProposal> {
+    pub fn psks(&self) -> impl Iterator<Item = StagedPskProposal> {
         self.staged_proposal_queue
             .filtered_by_type(ProposalType::Presharedkey)
+            .filter_map(|p| StagedPskProposal::try_from_staged_proposal(p))
     }
 }
