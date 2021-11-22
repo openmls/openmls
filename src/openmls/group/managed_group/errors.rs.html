@@ -93,6 +93,7 @@
 <span id="93">93</span>
 <span id="94">94</span>
 <span id="95">95</span>
+<span id="96">96</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS Managed Group errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -177,6 +178,7 @@
             <span class="ident">WrongEpoch</span> <span class="op">=</span> <span class="string">&quot;The epoch does not match the group&#39;s epoch.&quot;</span>,
             <span class="ident">MissingConfirmationTag</span> <span class="op">=</span> <span class="string">&quot;The confirmation tag is missing in the Commit message.&quot;</span>,
             <span class="ident">InvalidSignature</span> <span class="op">=</span> <span class="string">&quot;The message&#39;s signature is invalid.&quot;</span>,
+            <span class="ident">WrongGroupId</span> <span class="op">=</span> <span class="string">&quot;Wrong group ID.&quot;</span>,
         }
         <span class="ident">Complex</span> {
             <span class="ident">InvalidCiphertext</span>(<span class="ident">MlsCiphertextError</span>) <span class="op">=</span>

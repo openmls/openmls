@@ -190,6 +190,14 @@
 <span id="190">190</span>
 <span id="191">191</span>
 <span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::ops::DerefMut</span>;
 
 <span class="kw">use</span> <span class="ident">mls_group</span>::{<span class="ident">proposals::StagedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
@@ -222,10 +230,18 @@
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError::UseAfterEviction</span>(<span class="ident">UseAfterEviction::Error</span>));
         }
+
         <span class="comment">// Check the message has the correct epoch number</span>
         <span class="kw">if</span> <span class="ident">message</span>.<span class="ident">epoch</span>() <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">context</span>().<span class="ident">epoch</span>() {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError::InvalidMessage</span>(
                 <span class="ident">InvalidMessageError::WrongEpoch</span>,
+            ));
+        }
+
+        <span class="comment">// ValSem2: Check the group ID is the right one</span>
+        <span class="kw">if</span> <span class="ident">message</span>.<span class="ident">group_id</span>() <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">group_id</span>() {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError::InvalidMessage</span>(
+                <span class="ident">InvalidMessageError::WrongGroupId</span>,
             ));
         }
 

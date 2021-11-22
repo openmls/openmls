@@ -306,6 +306,7 @@
 <span id="306">306</span>
 <span id="307">307</span>
 <span id="308">308</span>
+<span id="309">309</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages</span>
 <span class="doccomment">//! ```text</span>
 <span class="doccomment">//! parse_message(MlsMessageIn) -&gt; UnverifiedMessage</span>
@@ -436,6 +437,7 @@
 <span class="doccomment">/// Partially checked and potentially decrypted message.</span>
 <span class="doccomment">/// Use this to inspect the [Credential] of the message sender</span>
 <span class="doccomment">/// and the optional `aad` if the original message was an [MlsCiphertext].</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UnverifiedMessage</span> {
     <span class="ident">plaintext</span>: <span class="ident">VerifiableMlsPlaintext</span>,
     <span class="ident">credential</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Credential</span><span class="op">&gt;</span>,
