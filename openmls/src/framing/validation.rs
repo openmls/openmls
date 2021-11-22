@@ -133,6 +133,7 @@ impl DecryptedMessage {
 /// Partially checked and potentially decrypted message.
 /// Use this to inspect the [Credential] of the message sender
 /// and the optional `aad` if the original message was an [MlsCiphertext].
+#[derive(Debug)]
 pub struct UnverifiedMessage {
     plaintext: VerifiableMlsPlaintext,
     credential: Option<Credential>,
