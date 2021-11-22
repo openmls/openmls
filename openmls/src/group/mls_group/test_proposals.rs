@@ -1,11 +1,12 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
-    ciphersuite::Secret,
+    ciphersuite::{Ciphersuite, Secret},
     config::{errors::ConfigError, Config},
     credentials::{CredentialBundle, CredentialType},
     extensions::{
-        Extension, ExtensionType, KeyIdExtension, LifetimeExtension, RequiredCapabilitiesExtension,
+        Extension, ExtensionError, ExtensionType, KeyIdExtension, RequiredCapabilitiesExtension,
     },
     framing::sender::{Sender, SenderType},
     framing::{FramingParameters, MlsPlaintext},
@@ -23,6 +24,28 @@ use crate::{
 
 use super::MlsGroup;
 
+fn setup_client(
+    id: &str,
+    ciphersuite: &Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+) -> (CredentialBundle, KeyPackageBundle) {
+    let credential_bundle = CredentialBundle::new(
+        id.into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+        backend,
+    )
+    .unwrap();
+    let key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &credential_bundle,
+        backend,
+        Vec::new(),
+    )
+    .unwrap();
+    (credential_bundle, key_package_bundle)
+}
+
 /// This test makes sure CreationProposalQueue works as intented. This functionality is
 /// used in `create_commit` to filter the epoch proposals. Expected result:
 /// `filtered_queued_proposals` returns only proposals of a certain type
@@ -33,46 +56,17 @@ fn proposal_queue_functions() {
         // Framing parameters
         let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
         // Define identities
-        let alice_credential_bundle = CredentialBundle::new(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-            &crypto,
-        )
-        .unwrap();
-        let bob_credential_bundle = CredentialBundle::new(
-            "Bob".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-            &crypto,
-        )
-        .unwrap();
+        let (alice_credential_bundle, alice_key_package_bundle) =
+            setup_client("Alice", ciphersuite, &crypto);
+        let (_bob_credential_bundle, bob_key_package_bundle) =
+            setup_client("Bob", ciphersuite, &crypto);
 
-        // Mandatory extensions, will be fixed in #164
-        let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
-        let mandatory_extensions = vec![lifetime_extension];
-
-        // Generate KeyPackages
-        let alice_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
-            &alice_credential_bundle,
-            &crypto,
-            mandatory_extensions.clone(),
-        )
-        .unwrap();
-        let bob_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
-            &bob_credential_bundle,
-            &crypto,
-            mandatory_extensions.clone(),
-        )
-        .unwrap();
         let bob_key_package = bob_key_package_bundle.key_package();
         let alice_update_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &alice_credential_bundle,
             &crypto,
-            mandatory_extensions,
+            Vec::new(),
         )
         .unwrap();
         let alice_update_key_package = alice_update_key_package_bundle.key_package();
@@ -191,36 +185,11 @@ fn proposal_queue_order() {
         // Framing parameters
         let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
         // Define identities
-        let alice_credential_bundle = CredentialBundle::new(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-            &crypto,
-        )
-        .expect("Could not create CredentialBundle");
-        let bob_credential_bundle = CredentialBundle::new(
-            "Bob".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-            &crypto,
-        )
-        .expect("Could not create CredentialBundle");
+        let (alice_credential_bundle, alice_key_package_bundle) =
+            setup_client("Alice", ciphersuite, &crypto);
+        let (_bob_credential_bundle, bob_key_package_bundle) =
+            setup_client("Bob", ciphersuite, &crypto);
 
-        // Generate KeyPackages
-        let alice_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
-            &alice_credential_bundle,
-            &crypto,
-            Vec::new(),
-        )
-        .unwrap();
-        let bob_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
-            &bob_credential_bundle,
-            &crypto,
-            Vec::new(),
-        )
-        .unwrap();
         let bob_key_package = bob_key_package_bundle.key_package();
         let alice_update_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
@@ -324,22 +293,8 @@ fn test_required_unsupported_proposals() {
     let crypto = OpenMlsRustCrypto::default();
     let ciphersuite = &Config::supported_ciphersuites()[0];
 
-    // Define credential bundles
-    let alice_credential_bundle = CredentialBundle::new(
-        "Alice".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_scheme(),
-        &crypto,
-    )
-    .unwrap();
-    // Generate KeyPackages
-    let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &alice_credential_bundle,
-        &crypto,
-        Vec::new(),
-    )
-    .unwrap();
+    let (_alice_credential_bundle, alice_key_package_bundle) =
+        setup_client("Alice", ciphersuite, &crypto);
 
     // Set required capabilities
     let extensions = &[];
@@ -375,38 +330,10 @@ fn test_required_extension_key_package_mismatch() {
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
 
-    // Define credential bundles
-    let alice_credential_bundle = CredentialBundle::new(
-        "Alice".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_scheme(),
-        &crypto,
-    )
-    .unwrap();
-    let bob_credential_bundle = CredentialBundle::new(
-        "Bob".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_scheme(),
-        &crypto,
-    )
-    .unwrap();
-
-    // Generate KeyPackages
-    let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &alice_credential_bundle,
-        &crypto,
-        Vec::new(),
-    )
-    .unwrap();
-
-    let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &bob_credential_bundle,
-        &crypto,
-        Vec::new(),
-    )
-    .unwrap();
+    let (alice_credential_bundle, alice_key_package_bundle) =
+        setup_client("Alice", ciphersuite, &crypto);
+    let (_bob_credential_bundle, bob_key_package_bundle) =
+        setup_client("Bob", ciphersuite, &crypto);
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // Set required capabilities
@@ -458,30 +385,9 @@ fn test_group_context_extensions() {
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
 
-    // Define credential bundles
-    let alice_credential_bundle = CredentialBundle::new(
-        "Alice".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_scheme(),
-        &crypto,
-    )
-    .unwrap();
-    let bob_credential_bundle = CredentialBundle::new(
-        "Bob".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_scheme(),
-        &crypto,
-    )
-    .unwrap();
-
-    // Generate KeyPackages
-    let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &alice_credential_bundle,
-        &crypto,
-        Vec::new(),
-    )
-    .unwrap();
+    let (alice_credential_bundle, alice_key_package_bundle) =
+        setup_client("Alice", ciphersuite, &crypto);
+    let (bob_credential_bundle, _) = setup_client("Bob", ciphersuite, &crypto);
 
     let bob_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite.name()],
@@ -554,4 +460,267 @@ fn test_group_context_extensions() {
         &crypto,
     )
     .expect("Error joining group.");
+}
+
+#[test]
+fn test_group_context_extension_proposal_fails() {
+    let crypto = OpenMlsRustCrypto::default();
+    let ciphersuite = &Config::supported_ciphersuites()[0];
+
+    // Basic group setup.
+    let group_aad = b"Alice's test group";
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+
+    let (alice_credential_bundle, alice_key_package_bundle) =
+        setup_client("Alice", ciphersuite, &crypto);
+    let (bob_credential_bundle, _) = setup_client("Bob", ciphersuite, &crypto);
+
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &bob_credential_bundle,
+        &crypto,
+        vec![Extension::KeyPackageId(KeyIdExtension::default())],
+    )
+    .unwrap();
+    let bob_key_package = bob_key_package_bundle.key_package();
+
+    // Set required capabilities
+    let extensions = &[ExtensionType::Capabilities];
+    let proposals = &[
+        ProposalType::GroupContextExtensions,
+        ProposalType::Add,
+        ProposalType::Remove,
+        ProposalType::Update,
+    ];
+    let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
+
+    let mut alice_group = MlsGroup::new(
+        &GroupId::random(&crypto).as_slice(),
+        ciphersuite.name(),
+        &crypto,
+        alice_key_package_bundle,
+        MlsGroupConfig::default(),
+        None, /* PSK */
+        None, /* MLS version */
+        required_capabilities,
+    )
+    .expect("Error creating MlsGroup.");
+
+    // Alice tries to add a required capability it doesn't support itself.
+    let required_key_id = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
+        &[ExtensionType::KeyId],
+        &[],
+    ));
+    let e = alice_group.create_group_context_ext_proposal(
+        framing_parameters,
+        &alice_credential_bundle,
+        &[required_key_id.clone()],
+        &crypto,
+    ).expect_err("Alice was able to create a gce proposal with a required extensions it doesn't support.");
+    assert_eq!(
+        e,
+        MlsGroupError::KeyPackageError(KeyPackageError::UnsupportedExtension)
+    );
+
+    // Well, this failed luckily.
+
+    // Adding Bob
+    let bob_add_proposal = alice_group
+        .create_add_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            bob_key_package.clone(),
+            &crypto,
+        )
+        .expect("Could not create proposal");
+
+    let proposal_store = ProposalStore::from_staged_proposal(
+        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
+            .expect("Could not create StagedProposal."),
+    );
+    log::info!(" >>> Creating commit ...");
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .force_self_update(false)
+        .build();
+    let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
+        .create_commit(params, &crypto)
+        .expect("Error creating commit");
+
+    log::info!(" >>> Staging & merging commit ...");
+
+    let staged_commit = alice_group
+        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, &crypto)
+        .expect("error staging commit");
+    alice_group.merge_commit(staged_commit);
+    let ratchet_tree = alice_group.tree().public_key_tree_copy();
+
+    let mut bob_group = MlsGroup::new_from_welcome(
+        welcome_bundle_alice_bob_option.unwrap(),
+        Some(ratchet_tree),
+        bob_key_package_bundle,
+        None,
+        &crypto,
+    )
+    .expect("Error joining group.");
+
+    // Now Bob wants the KeyId extension to be required.
+    // This should fail because Alice doesn't support it.
+    let e = bob_group
+        .create_group_context_ext_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            &[required_key_id],
+            &crypto,
+        )
+        .expect_err("Bob was able to create a gce proposal for an extension not supported by all other parties.");
+    assert_eq!(
+        e,
+        MlsGroupError::KeyPackageError(KeyPackageError::UnsupportedExtension)
+    );
+}
+
+#[test]
+fn test_group_context_extension_proposal() {
+    let crypto = OpenMlsRustCrypto::default();
+    let ciphersuite = &Config::supported_ciphersuites()[0];
+
+    // Basic group setup.
+    let group_aad = b"Alice's test group";
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+
+    let (alice_credential_bundle, _) = setup_client("Alice", ciphersuite, &crypto);
+    let (bob_credential_bundle, _) = setup_client("Bob", ciphersuite, &crypto);
+
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &bob_credential_bundle,
+        &crypto,
+        vec![Extension::KeyPackageId(KeyIdExtension::default())],
+    )
+    .unwrap();
+    let alice_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &alice_credential_bundle,
+        &crypto,
+        vec![Extension::KeyPackageId(KeyIdExtension::default())],
+    )
+    .unwrap();
+    let bob_key_package = bob_key_package_bundle.key_package();
+
+    // Set required capabilities
+    let extensions = &[ExtensionType::Capabilities];
+    let proposals = &[
+        ProposalType::GroupContextExtensions,
+        ProposalType::Add,
+        ProposalType::Remove,
+        ProposalType::Update,
+    ];
+    let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
+
+    let mut alice_group = MlsGroup::new(
+        &GroupId::random(&crypto).as_slice(),
+        ciphersuite.name(),
+        &crypto,
+        alice_key_package_bundle,
+        MlsGroupConfig::default(),
+        None, /* PSK */
+        None, /* MLS version */
+        required_capabilities,
+    )
+    .expect("Error creating MlsGroup.");
+
+    // Adding Bob
+    let bob_add_proposal = alice_group
+        .create_add_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            bob_key_package.clone(),
+            &crypto,
+        )
+        .expect("Could not create proposal");
+
+    let proposal_store = ProposalStore::from_staged_proposal(
+        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
+            .expect("Could not create StagedProposal."),
+    );
+    log::info!(" >>> Creating commit ...");
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .force_self_update(false)
+        .build();
+    let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _) = alice_group
+        .create_commit(params, &crypto)
+        .expect("Error creating commit");
+
+    log::info!(" >>> Staging & merging commit ...");
+
+    let staged_commit = alice_group
+        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, &crypto)
+        .expect("error staging commit");
+    alice_group.merge_commit(staged_commit);
+    let ratchet_tree = alice_group.tree().public_key_tree_copy();
+
+    let mut bob_group = MlsGroup::new_from_welcome(
+        welcome_bundle_alice_bob_option.unwrap(),
+        Some(ratchet_tree),
+        bob_key_package_bundle,
+        None,
+        &crypto,
+    )
+    .expect("Error joining group.");
+
+    // Alice adds a required capability.
+    let required_key_id = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
+        &[ExtensionType::KeyId],
+        &[],
+    ));
+    let gce_proposal = alice_group
+        .create_group_context_ext_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            &[required_key_id],
+            &crypto,
+        )
+        .expect("Error creating gce proposal.");
+
+    let proposal_store = ProposalStore::from_staged_proposal(
+        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, gce_proposal)
+            .expect("Could not create StagedProposal."),
+    );
+    log::info!(" >>> Creating commit ...");
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .force_self_update(false)
+        .build();
+    let (gce_mls_plaintext, _, _) = alice_group
+        .create_commit(params, &crypto)
+        .expect("Error creating commit");
+
+    log::info!(" >>> Staging & merging commit ...");
+
+    let staged_commit = alice_group
+        .stage_commit(&gce_mls_plaintext, &proposal_store, &[], None, &crypto)
+        .expect("error staging commit");
+    alice_group.merge_commit(staged_commit);
+
+    let staged_commit = bob_group
+        .stage_commit(&gce_mls_plaintext, &proposal_store, &[], None, &crypto)
+        .expect("error staging commit");
+    bob_group.merge_commit(staged_commit);
+
+    assert_eq!(
+        bob_group
+            .export_secret(&crypto, "label", b"gce test", 32)
+            .expect("Error exporting secret."),
+        bob_group
+            .export_secret(&crypto, "label", b"gce test", 32)
+            .expect("Error exporting secret.")
+    )
 }

@@ -336,6 +336,15 @@ pub struct GroupContextExtensionProposal {
     extensions: TlsVecU32<Extension>,
 }
 
+impl GroupContextExtensionProposal {
+    /// Create a new [`GroupContextExtensionProposal`].
+    pub(crate) fn new(extensions: &[Extension]) -> Self {
+        Self {
+            extensions: extensions.into(),
+        }
+    }
+}
+
 impl ProposalType {
     /// Check whether a proposal type is supported or not.
     pub fn is_supported(&self) -> bool {

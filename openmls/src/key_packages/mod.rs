@@ -241,11 +241,11 @@ impl KeyPackage {
 
     /// Check that all extensions that are required, are supported by this key
     /// package.
-    pub(crate) fn validate_required_capabilities(
+    pub(crate) fn validate_required_capabilities<'a>(
         &self,
-        required_capabilities: Option<&RequiredCapabilitiesExtension>,
+        required_capabilities: impl Into<Option<&'a RequiredCapabilitiesExtension>>,
     ) -> Result<(), KeyPackageError> {
-        if let Some(required_capabilities) = required_capabilities {
+        if let Some(required_capabilities) = required_capabilities.into() {
             let my_extension_types = self.extensions().iter().map(|e| e.extension_type());
             for required_extension in required_capabilities.extensions() {
                 if !my_extension_types.clone().any(|e| &e == required_extension) {

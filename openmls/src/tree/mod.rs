@@ -162,6 +162,14 @@ impl RatchetTree {
         tree
     }
 
+    /// Get a list of all leaf key packages.
+    pub(crate) fn key_packages(&self) -> impl Iterator<Item = Option<&KeyPackage>> {
+        self.nodes
+            .iter()
+            .filter(|n| n.is_leaf())
+            .map(|n| n.key_package())
+    }
+
     /// Get a vector with a copy of all nodes in the tree, containing `None` for
     /// blank nodes.
     pub fn public_key_tree_copy(&self) -> Vec<Option<Node>> {

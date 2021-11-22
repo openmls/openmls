@@ -18,7 +18,6 @@ mod test_proposals;
 use crate::ciphersuite::signable::{Signable, Verifiable};
 use crate::config::{check_required_capabilities_support, Config};
 use crate::credentials::{CredentialBundle, CredentialError};
-use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
 use crate::messages::public_group_state::{PublicGroupState, PublicGroupStateTbs};
@@ -26,6 +25,7 @@ use crate::messages::{proposals::*, *};
 use crate::schedule::*;
 use crate::tree::{index::*, node::*, secret_tree::*, *};
 use crate::{ciphersuite::*, config::ProtocolVersion};
+use crate::{framing::*, key_packages};
 
 use serde::{
     de::{self, MapAccess, SeqAccess, Visitor},
@@ -157,7 +157,6 @@ impl MlsGroup {
     pub fn create_add_proposal(
         &self,
         framing_parameters: FramingParameters,
-
         credential_bundle: &CredentialBundle,
         joiner_key_package: KeyPackage,
         backend: &impl OpenMlsCryptoProvider,
@@ -244,6 +243,49 @@ impl MlsGroup {
     ) -> Result<MlsPlaintext, MlsGroupError> {
         let presharedkey_proposal = PreSharedKeyProposal::new(psk);
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
+        MlsPlaintext::new_proposal(
+            framing_parameters,
+            self.sender_index(),
+            proposal,
+            credential_bundle,
+            self.context(),
+            self.epoch_secrets().membership_key(),
+            backend,
+        )
+        .map_err(|e| e.into())
+    }
+
+    /// Create a `GroupContextExtensions` proposal.
+    pub fn create_group_context_ext_proposal(
+        &self,
+        framing_parameters: FramingParameters,
+        credential_bundle: &CredentialBundle,
+        extensions: &[Extension],
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<MlsPlaintext, MlsGroupError> {
+        // Ensure that the group supports all the extensions that are wanted.
+        let required_extension = extensions
+            .iter()
+            .find(|extension| extension.extension_type() == ExtensionType::RequiredCapabilities);
+        if let Some(required_extension) = required_extension {
+            let required_capabilities = required_extension.as_required_capabilities_extension()?;
+            // Ensure we support all the capabilities.
+            check_required_capabilities_support(required_capabilities)?;
+            self.tree()
+                .own_key_package()
+                .validate_required_capabilities(required_capabilities)?;
+            // Ensure that all other key packages support all the required
+            // extensions as well.
+            for key_package in self.tree().key_packages() {
+                if let Some(key_package) = key_package {
+                    key_package.check_extension_support(required_capabilities.extensions())?;
+                } else {
+                    return Err(MlsGroupError::TreeError(TreeError::InvalidTree));
+                }
+            }
+        }
+        let proposal = GroupContextExtensionProposal::new(extensions);
+        let proposal = Proposal::GroupContextExtensions(proposal);
         MlsPlaintext::new_proposal(
             framing_parameters,
             self.sender_index(),

@@ -46,13 +46,15 @@ implement_error! {
             MathError(TreeMathError) =
                 "An error occurred during a tree math operation.",
             PskError(PskError) =
-                "A PSK error occured.",
+                "A PSK error occurred.",
             CredentialError(CredentialError) =
                 "See [`CredentialError`](crate::credentials::CredentialError) for details.",
             TreeError(TreeError) =
                 "See [`TreeError`](crate::tree::TreeError) for details.",
             KeyPackageError(KeyPackageError) =
                 "See [`KeyPackageError`] for details.",
+            ExtensionError(ExtensionError) =
+                "See [`ExtensionError`] for details.",
         }
     }
 }
