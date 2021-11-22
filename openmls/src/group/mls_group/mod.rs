@@ -4,6 +4,7 @@ use psk::{PreSharedKeys, PskSecret};
 pub mod create_commit;
 pub mod create_commit_params;
 mod new_from_welcome;
+pub mod process;
 pub mod proposals;
 pub mod staged_commit;
 #[cfg(test)]

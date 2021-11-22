@@ -16,6 +16,18 @@ impl MlsGroup {
     /// Returns a [StagedCommit] that can be inspected and later merged
     /// into the group state with [merge_commit()]
     /// This function does the following checks:
+    ///  - ValSem100
+    ///  - ValSem101
+    ///  - ValSem102
+    ///  - ValSem103
+    ///  - ValSem104
+    ///  - ValSem105
+    ///  - ValSem106
+    ///  - ValSem107
+    ///  - ValSem108
+    ///  - ValSem109
+    ///  - ValSem110
+    ///  - ValSem111
     ///  - ValSem201
     ///  - ValSem205
     pub fn stage_commit(
@@ -58,6 +70,24 @@ impl MlsGroup {
             *mls_plaintext.sender(),
         )
         .map_err(|_| StageCommitError::MissingProposal)?;
+
+        // Validate the staged proposals by doing the following checks:
+
+        // ValSem100
+        // ValSem101
+        // ValSem102
+        // ValSem103
+        // ValSem104
+        // ValSem105
+        // ValSem106
+        self.validate_add_proposals(&proposal_queue)?;
+        // ValSem107
+        // ValSem108
+        self.validate_remove_proposals(&proposal_queue)?;
+        // ValSem109
+        // ValSem110
+        // ValSem111
+        self.validate_update_proposals(&proposal_queue)?;
 
         // Create provisional tree and apply proposals
         let mut provisional_tree = self.tree.borrow_mut();
@@ -263,24 +293,16 @@ pub struct StagedCommit {
 }
 
 impl StagedCommit {
-    pub fn adds(&self) -> impl Iterator<Item = StagedAddProposal> {
-        self.staged_proposal_queue
-            .filtered_by_type(ProposalType::Add)
-            .filter_map(|p| StagedAddProposal::try_from_staged_proposal(p))
+    pub fn add_proposals(&self) -> impl Iterator<Item = StagedAddProposal> {
+        self.staged_proposal_queue.add_proposals()
     }
-    pub fn removes(&self) -> impl Iterator<Item = StagedRemoveProposal> {
-        self.staged_proposal_queue
-            .filtered_by_type(ProposalType::Remove)
-            .filter_map(|p| StagedRemoveProposal::try_from_staged_proposal(p))
+    pub fn remove_proposals(&self) -> impl Iterator<Item = StagedRemoveProposal> {
+        self.staged_proposal_queue.remove_proposals()
     }
-    pub fn updates(&self) -> impl Iterator<Item = StagedUpdateProposal> {
-        self.staged_proposal_queue
-            .filtered_by_type(ProposalType::Add)
-            .filter_map(|p| StagedUpdateProposal::try_from_staged_proposal(p))
+    pub fn update_proposals(&self) -> impl Iterator<Item = StagedUpdateProposal> {
+        self.staged_proposal_queue.update_proposals()
     }
-    pub fn psks(&self) -> impl Iterator<Item = StagedPskProposal> {
-        self.staged_proposal_queue
-            .filtered_by_type(ProposalType::Presharedkey)
-            .filter_map(|p| StagedPskProposal::try_from_staged_proposal(p))
+    pub fn psk_proposals(&self) -> impl Iterator<Item = StagedPskProposal> {
+        self.staged_proposal_queue.psk_proposals()
     }
 }

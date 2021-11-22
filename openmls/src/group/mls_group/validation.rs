@@ -3,10 +3,7 @@
 
 use std::collections::HashSet;
 
-use super::{
-    proposals::{StagedAddProposal, StagedRemoveProposal, StagedUpdateProposal},
-    *,
-};
+use super::{proposals::StagedProposalQueue, *};
 
 impl MlsGroup {
     // === Messages ===
@@ -43,7 +40,7 @@ impl MlsGroup {
             let sender_index = sender.to_leaf_index();
             if sender_index > self.tree().leaf_count() || self.tree().nodes[sender_index].is_blank()
             {
-                return Err(FramingValidationError::UnknownSender.into());
+                return Err(FramingValidationError::UnknownMember.into());
             }
         }
 
@@ -83,10 +80,12 @@ impl MlsGroup {
     ///  - ValSem104
     ///  - ValSem105
     ///  - ValSem106
-    pub fn validate_add_proposals<'a>(
+    pub fn validate_add_proposals(
         &self,
-        add_proposals: impl Iterator<Item = StagedAddProposal<'a>>,
+        staged_proposal_queue: &StagedProposalQueue,
     ) -> Result<(), MlsGroupError> {
+        let add_proposals = staged_proposal_queue.add_proposals();
+
         let mut identity_set = HashSet::new();
         let mut signature_key_set = HashSet::new();
         let mut public_key_set = HashSet::new();
@@ -98,7 +97,7 @@ impl MlsGroup {
                 .identity()
                 .to_vec();
             // ValSem100
-            if identity_set.insert(identity) {
+            if !identity_set.insert(identity) {
                 return Err(ProposalValidationError::DuplicateIdentityAddProposal.into());
             }
             let signature_key = add_proposal
@@ -109,7 +108,7 @@ impl MlsGroup {
                 .as_slice()
                 .to_vec();
             // ValSem101
-            if signature_key_set.insert(signature_key) {
+            if !signature_key_set.insert(signature_key) {
                 return Err(ProposalValidationError::DuplicateSignatureKeyAddProposal.into());
             }
             let public_key = add_proposal
@@ -119,8 +118,8 @@ impl MlsGroup {
                 .as_slice()
                 .to_vec();
             // ValSem102
-            if public_key_set.insert(public_key) {
-                return Err(ProposalValidationError::DuplicateIdentityAddProposal.into());
+            if !public_key_set.insert(public_key) {
+                return Err(ProposalValidationError::DuplicatePublicKeyAddProposal.into());
             }
         }
 
@@ -147,19 +146,28 @@ impl MlsGroup {
 
     /// Validate Remove proposals. This function implements the following checks:
     ///  - ValSem107
-    pub fn validate_remove_proposals<'a>(
+    ///  - ValSem109
+    pub fn validate_remove_proposals(
         &self,
-        removed_proposals: impl Iterator<Item = StagedRemoveProposal<'a>>,
+        staged_proposal_queue: &StagedProposalQueue,
     ) -> Result<(), MlsGroupError> {
-        let tree = &self.tree();
-        let mut indexed_key_packages = tree.indexed_key_packages();
+        let remove_proposals = staged_proposal_queue.remove_proposals();
 
-        for remove_proposal in removed_proposals {
+        let mut removes_set = HashSet::new();
+        let tree = &self.tree();
+
+        let index_set: HashSet<NodeIndex> =
+            HashSet::from_iter(tree.indexed_key_packages().map(|(index, _kp)| index));
+
+        for remove_proposal in remove_proposals {
+            let removed = remove_proposal.remove_proposal().removed();
             // ValSem107
-            if indexed_key_packages.any(|(index, _key_package)| {
-                remove_proposal.remove_proposal().removed() == index.as_u32()
-            }) {
+            if !index_set.contains(&NodeIndex::from(LeafIndex::from(removed))) {
                 return Err(ProposalValidationError::UnknownMemberRemoval.into());
+            }
+            // ValSem108
+            if !removes_set.insert(removed) {
+                return Err(ProposalValidationError::DuplicateMemberRemoval.into());
             }
         }
 
@@ -167,13 +175,14 @@ impl MlsGroup {
     }
 
     /// Validate Update proposals. This function implements the following checks:
-    ///  - ValSem108
     ///  - ValSem109
     ///  - ValSem110
-    pub fn validate_update_proposals<'a>(
+    ///  - ValSem111
+    pub fn validate_update_proposals(
         &self,
-        update_proposals: impl Iterator<Item = StagedUpdateProposal<'a>>,
+        staged_proposal_queue: &StagedProposalQueue,
     ) -> Result<(), MlsGroupError> {
+        let update_proposals = staged_proposal_queue.update_proposals();
         let tree = &self.tree();
         let mut indexed_key_packages = tree.indexed_key_packages();
 
@@ -191,10 +200,12 @@ impl MlsGroup {
 
         for update_proposal in update_proposals {
             if let Some(existing_key_package) = indexed_key_packages
-                .find(|(index, _key_package)| &update_proposal.sender().sender == index)
+                .find(|(index, _key_package)| {
+                    &NodeIndex::from(update_proposal.sender().sender) == index
+                })
                 .map(|(_index, key_package)| key_package)
             {
-                // ValSem108
+                // ValSem109
                 if update_proposal
                     .update_proposal()
                     .key_package()
@@ -210,7 +221,7 @@ impl MlsGroup {
                     .credential()
                     .signature_key()
                     .as_slice();
-                // ValSem109
+                // ValSem110
                 if signature_key_set.contains(signature_key) {
                     return Err(ProposalValidationError::ExistingSignatureKeyUpdateProposal.into());
                 }
@@ -219,12 +230,12 @@ impl MlsGroup {
                     .key_package()
                     .hpke_init_key()
                     .as_slice();
-                // ValSem110
+                // ValSem111
                 if public_key_set.contains(public_key) {
                     return Err(ProposalValidationError::ExistingPublicKeyUpdateProposal.into());
                 }
             } else {
-                return Err(ProposalValidationError::UnknownSender.into());
+                return Err(ProposalValidationError::UnknownMember.into());
             }
         }
 

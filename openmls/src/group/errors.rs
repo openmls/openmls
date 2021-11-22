@@ -6,6 +6,7 @@
 use crate::ciphersuite::CryptoError;
 use crate::config::ConfigError;
 use crate::credentials::CredentialError;
+use crate::framing::errors::ValidationError;
 use crate::framing::errors::{MlsCiphertextError, MlsPlaintextError, VerificationError};
 use crate::messages::errors::ProposalQueueError;
 use crate::schedule::errors::{KeyScheduleError, PskSecretError};
@@ -17,6 +18,7 @@ implement_error! {
         Simple {
             InitSecretNotFound =
                 "Missing init secret when creating commit.",
+            NoSignatureKey = "No signature was found.",
         }
         Complex {
             MlsCiphertextError(MlsCiphertextError) =
@@ -49,6 +51,8 @@ implement_error! {
                 "See [`CredentialError`](crate::credentials::CredentialError) for details.",
             TreeError(TreeError) =
                 "See [`TreeError`](crate::tree::TreeError) for details.",
+            ValidationError(ValidationError) =
+                "See [`ValidationError`](crate::framing::ValidationError) for details.",
             FramingValidationError(FramingValidationError) =
                 "See [`FramingValidationError`](crate::group::FramingValidationError) for details.",
             ProposalValidationError(ProposalValidationError) =
@@ -216,7 +220,7 @@ implement_error! {
     pub enum FramingValidationError {
         WrongGroupId = "Message group ID differs from the group's group ID.",
         WrongEpoch = "Message epoch differs from the group's epoch.",
-        UnknownSender = "The sender is not a member of the group.",
+        UnknownMember = "The sender could not be matched to a member of the group.",
         UnencryptedApplicationMessage = "Application messages must always be encrypted.",
         NonMemberApplicationMessage = "An application message was sent from an external sender.",
         MissingMembershipTag = "Membership tag is missing.",
@@ -226,7 +230,7 @@ implement_error! {
 
 implement_error! {
     pub enum ProposalValidationError {
-        UnknownSender = "The sender is not a member of the group.",
+        UnknownMember = "The sender could not be matched to a member of the group.",
         DuplicateIdentityAddProposal = "Found two add proposals with the same identity.",
         DuplicateSignatureKeyAddProposal = "Found two add proposals with the same signature key.",
         DuplicatePublicKeyAddProposal = "Found two add proposals with the same HPKE public key.",
@@ -236,6 +240,7 @@ implement_error! {
         UpdateProposalIdentityMismatch = "The identity of the update proposal did not match the existing identity.",
         ExistingSignatureKeyUpdateProposal = "Signature key of the update proposal already existed in tree.",
         ExistingPublicKeyUpdateProposal = "HPKE public key of the update proposal already existed in tree.",
-        UnknownMemberRemoval = "The remove proposal refrenced a non-existing member.",
+        DuplicateMemberRemoval = "Duplicate remove proposals for the same member.",
+        UnknownMemberRemoval = "The remove proposal referenced a non-existing member.",
     }
 }

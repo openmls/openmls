@@ -179,10 +179,10 @@ impl RatchetTree {
     }
 
     /// Returns an iterator over indexes and references to key packages of non-blank leaf nodes
-    pub fn indexed_key_packages(&self) -> impl Iterator<Item = (LeafIndex, &KeyPackage)> {
+    pub fn indexed_key_packages(&self) -> impl Iterator<Item = (NodeIndex, &KeyPackage)> {
         self.nodes.iter().enumerate().filter_map(|(index, node)| {
             node.key_package()
-                .map(|key_package| (LeafIndex::from(index), key_package))
+                .map(|key_package| (NodeIndex::from(index), key_package))
         })
     }
 
