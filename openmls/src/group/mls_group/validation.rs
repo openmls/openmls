@@ -146,7 +146,7 @@ impl MlsGroup {
 
     /// Validate Remove proposals. This function implements the following checks:
     ///  - ValSem107
-    ///  - ValSem109
+    ///  - ValSem108
     pub fn validate_remove_proposals(
         &self,
         staged_proposal_queue: &StagedProposalQueue,
