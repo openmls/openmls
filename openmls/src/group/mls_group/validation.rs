@@ -38,13 +38,15 @@ impl MlsGroup {
         let sender = plaintext.sender();
         if sender.is_member() {
             let sender_index = sender.to_leaf_index();
-            if sender_index >= self.tree().leaf_count() || self.tree().nodes[sender_index].is_blank()
+            if sender_index >= self.tree().leaf_count()
+                || self.tree().nodes[sender_index].is_blank()
             {
                 return Err(FramingValidationError::UnknownMember.into());
             }
         }
 
         // ValSem5
+        // Application messages must always be encrypted
         if plaintext.content_type() == ContentType::Application {
             if plaintext.wire_format() != WireFormat::MlsCiphertext {
                 return Err(FramingValidationError::UnencryptedApplicationMessage.into());
@@ -54,6 +56,9 @@ impl MlsGroup {
         }
 
         // ValSem7
+        // If the sender is of type member and the message was not an MlsCiphertext,
+        // the member has to prove its ownership by adding a membership tag.
+        // The membership tag is checkecked in ValSem8.
         if plaintext.sender().is_member()
             && plaintext.wire_format() != WireFormat::MlsCiphertext
             && plaintext.membership_tag().is_none()
@@ -162,12 +167,13 @@ impl MlsGroup {
         for remove_proposal in remove_proposals {
             let removed = remove_proposal.remove_proposal().removed();
             // ValSem107
-            if !index_set.contains(&NodeIndex::from(LeafIndex::from(removed))) {
-                return Err(ProposalValidationError::UnknownMemberRemoval.into());
-            }
-            // ValSem108
             if !removes_set.insert(removed) {
                 return Err(ProposalValidationError::DuplicateMemberRemoval.into());
+            }
+
+            // ValSem108
+            if !index_set.contains(&NodeIndex::from(LeafIndex::from(removed))) {
+                return Err(ProposalValidationError::UnknownMemberRemoval.into());
             }
         }
 
@@ -177,7 +183,6 @@ impl MlsGroup {
     /// Validate Update proposals. This function implements the following checks:
     ///  - ValSem109
     ///  - ValSem110
-    ///  - ValSem111
     pub fn validate_update_proposals(
         &self,
         staged_proposal_queue: &StagedProposalQueue,
@@ -185,12 +190,6 @@ impl MlsGroup {
         let update_proposals = staged_proposal_queue.update_proposals();
         let tree = &self.tree();
         let mut indexed_key_packages = tree.indexed_key_packages();
-
-        let mut signature_key_set = HashSet::new();
-        for key_package in self.tree().key_packages() {
-            let signature_key = key_package.credential().signature_key().as_slice().to_vec();
-            signature_key_set.insert(signature_key);
-        }
 
         let mut public_key_set = HashSet::new();
         for key_package in self.tree().key_packages() {
@@ -215,22 +214,12 @@ impl MlsGroup {
                 {
                     return Err(ProposalValidationError::UpdateProposalIdentityMismatch.into());
                 }
-                let signature_key = update_proposal
-                    .update_proposal()
-                    .key_package()
-                    .credential()
-                    .signature_key()
-                    .as_slice();
-                // ValSem110
-                if signature_key_set.contains(signature_key) {
-                    return Err(ProposalValidationError::ExistingSignatureKeyUpdateProposal.into());
-                }
                 let public_key = update_proposal
                     .update_proposal()
                     .key_package()
                     .hpke_init_key()
                     .as_slice();
-                // ValSem111
+                // ValSem110
                 if public_key_set.contains(public_key) {
                     return Err(ProposalValidationError::ExistingPublicKeyUpdateProposal.into());
                 }

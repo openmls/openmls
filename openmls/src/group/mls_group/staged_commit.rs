@@ -27,7 +27,6 @@ impl MlsGroup {
     ///  - ValSem108
     ///  - ValSem109
     ///  - ValSem110
-    ///  - ValSem111
     ///  - ValSem201
     ///  - ValSem205
     pub fn stage_commit(
@@ -86,7 +85,6 @@ impl MlsGroup {
         self.validate_remove_proposals(&proposal_queue)?;
         // ValSem109
         // ValSem110
-        // ValSem111
         self.validate_update_proposals(&proposal_queue)?;
 
         // Create provisional tree and apply proposals
@@ -293,15 +291,22 @@ pub struct StagedCommit {
 }
 
 impl StagedCommit {
+    /// Returns the Add proposals that are covered by the Commit message as in iterator over [StagedAddProposal].
     pub fn add_proposals(&self) -> impl Iterator<Item = StagedAddProposal> {
         self.staged_proposal_queue.add_proposals()
     }
+
+    /// Returns the Remove proposals that are covered by the Commit message as in iterator over [StagedRemoveProposal].
     pub fn remove_proposals(&self) -> impl Iterator<Item = StagedRemoveProposal> {
         self.staged_proposal_queue.remove_proposals()
     }
+
+    /// Returns the Update proposals that are covered by the Commit message as in iterator over [StagedUpdateProposal].
     pub fn update_proposals(&self) -> impl Iterator<Item = StagedUpdateProposal> {
         self.staged_proposal_queue.update_proposals()
     }
+
+    /// Returns the PresharedKey proposals that are covered by the Commit message as in iterator over [StagedPskProposal].
     pub fn psk_proposals(&self) -> impl Iterator<Item = StagedPskProposal> {
         self.staged_proposal_queue.psk_proposals()
     }

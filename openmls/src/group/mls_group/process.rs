@@ -88,7 +88,6 @@ impl MlsGroup {
     ///  - ValSem107
     ///  - ValSem109
     ///  - ValSem110
-    ///  - ValSem111
     pub fn process_unverified_message(
         &mut self,
         unverified_message: UnverifiedMessage,
@@ -133,6 +132,16 @@ impl MlsGroup {
                         ))
                     }
                     MlsPlaintextContentType::Commit(_commit) => {
+                        //  - ValSem100
+                        //  - ValSem101
+                        //  - ValSem102
+                        //  - ValSem103
+                        //  - ValSem104
+                        //  - ValSem105
+                        //  - ValSem106
+                        //  - ValSem107
+                        //  - ValSem109
+                        //  - ValSem110
                         let staged_commit = self.stage_commit(
                             verified_member_message.plaintext(),
                             proposal_store,
