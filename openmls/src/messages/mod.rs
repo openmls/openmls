@@ -1,10 +1,11 @@
+use crate::binary_tree::LeafIndex;
 use crate::ciphersuite::{signable::*, *};
 use crate::config::ProtocolVersion;
 use crate::extensions::*;
 use crate::group::*;
 use crate::schedule::psk::PreSharedKeys;
 use crate::schedule::{CommitSecret, JoinerSecret};
-use crate::tree::{index::*, *};
+use crate::treesync::treekem::UpdatePath;
 
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::{CryptoError as CryptoTraitError, HpkeCiphertext};
@@ -309,7 +310,7 @@ impl PathSecret {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
     ) -> Result<(HpkePublicKey, HpkePrivateKey), CryptoError> {
-        let mut node_secret =
+        let node_secret =
             self.path_secret
                 .kdf_expand_label(backend, "node", &[], ciphersuite.hash_length())?;
         let key_pair = backend
@@ -336,12 +337,12 @@ impl PathSecret {
 
     pub(crate) fn encrypt(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
         public_key: &HpkePublicKey,
         group_context: &[u8],
     ) -> HpkeCiphertext {
-        backend.hpke_seal(
+        backend.crypto().hpke_seal(
             ciphersuite.hpke_config(),
             public_key.as_slice(),
             group_context,

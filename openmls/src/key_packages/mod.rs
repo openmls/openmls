@@ -342,8 +342,8 @@ impl KeyPackageBundlePayload {
         self.key_package_payload.add_extension(extension)
     }
 
-    pub fn into_parts(self) -> (KeyPackagePayload, Secret) {
-        (self.key_package_payload, self.leaf_secret)
+    pub(crate) fn leaf_secret(&self) -> &Secret {
+        &self.leaf_secret
     }
 }
 
@@ -543,6 +543,10 @@ impl KeyPackageBundle {
     /// Get the unsigned payload version of this key package bundle for modificaiton.
     pub fn unsigned(self) -> KeyPackageBundlePayload {
         self.into()
+    }
+
+    pub(crate) fn into_parts(self) -> (KeyPackage, Secret) {
+        (self.key_package, self.leaf_secret)
     }
 }
 

@@ -1,4 +1,5 @@
 use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
+use serde::{Deserialize, Serialize};
 use tls_codec::{TlsByteVecU8, TlsVecU32};
 
 use crate::{
@@ -16,7 +17,7 @@ use crate::{
     treesync::hashes::ParentHashInput,
 };
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub(crate) struct ParentNode {
     public_key: HpkePublicKey,
     parent_hash: TlsByteVecU8,
@@ -94,7 +95,7 @@ pub(crate) struct PlainUpdatePathNode {
 impl PlainUpdatePathNode {
     pub(in crate::treesync) fn encrypt(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
         public_keys: &[HpkePublicKey],
         group_context: &[u8],
@@ -110,6 +111,10 @@ impl PlainUpdatePathNode {
             public_key: self.public_key.clone(),
             encrypted_path_secrets: encrypted_path_secrets.into(),
         }
+    }
+
+    pub(in crate::treesync) fn path_secret(&self) -> &PathSecret {
+        &self.path_secret
     }
 }
 

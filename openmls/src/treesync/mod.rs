@@ -1,13 +1,17 @@
 //! This module contains the functionality required to synchronize a tree across
 //! multiple parties.
 
+use std::collections::HashMap;
+
 use openmls_traits::OpenMlsCryptoProvider;
+use serde::{Deserialize, Serialize};
 
 use crate::{
-    binary_tree::{LeafIndex, MlsBinaryTree, MlsBinaryTreeError},
+    binary_tree::{MlsBinaryTree, MlsBinaryTreeError},
     ciphersuite::Ciphersuite,
-    messages::PathSecret,
+    messages::{PathSecret, PathSecretError},
     prelude::{KeyPackage, KeyPackageBundle},
+    schedule::CommitSecret,
 };
 
 use self::{
@@ -15,11 +19,14 @@ use self::{
     node::{Node, TreeSyncNode, TreeSyncNodeError},
 };
 
-mod diff;
+pub(crate) mod diff;
 mod hashes;
-mod node;
+pub(crate) mod node;
 pub(crate) mod treekem;
 
+pub use crate::binary_tree::LeafIndex;
+
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct TreeSync {
     tree: MlsBinaryTree<TreeSyncNode>,
     own_leaf_index: LeafIndex,
@@ -27,6 +34,30 @@ pub(crate) struct TreeSync {
 }
 
 impl TreeSync {
+    /// Create a new tree from a `KeyPackageBundle` and return the resulting
+    /// `CommitSecret`.
+    pub(crate) fn new(
+        backend: &impl OpenMlsCryptoProvider,
+        key_package_bundle: KeyPackageBundle,
+    ) -> Result<(Self, CommitSecret), TreeSyncError> {
+        let key_package = key_package_bundle.key_package();
+        let node: Node = Node::LeafNode(key_package.clone().into());
+        let path_secret: PathSecret = key_package_bundle.leaf_secret().clone().into();
+        let commit_secret: CommitSecret = path_secret
+            .derive_path_secret(backend, key_package.ciphersuite())?
+            .into();
+        let node_options = vec![Some(node)];
+        Ok((
+            Self::from_nodes(
+                backend,
+                key_package.ciphersuite(),
+                &node_options,
+                key_package_bundle,
+            )?,
+            commit_secret,
+        ))
+    }
+
     /// Return the tree hash of the root node.
     pub(crate) fn tree_hash(&self) -> &[u8] {
         self.tree_hash.as_slice()
@@ -137,7 +168,11 @@ impl TreeSync {
         }
     }
 
-    pub(crate) fn leaves(&self) -> Result<Vec<(LeafIndex, &KeyPackage)>, TreeSyncError> {
+    pub(crate) fn leaf_count(&self) -> LeafIndex {
+        self.tree.leaf_count()
+    }
+
+    pub(crate) fn leaves(&self) -> Result<HashMap<LeafIndex, &KeyPackage>, TreeSyncError> {
         let tsn_leaves: Vec<(usize, &TreeSyncNode)> = self
             .tree
             .leaves()?
@@ -145,15 +180,38 @@ impl TreeSync {
             .enumerate()
             .filter(|(_, tsn)| tsn.node().is_some())
             .collect();
-        let mut leaves = Vec::new();
+        let mut leaves = HashMap::new();
         for (index, tsn_leaf) in tsn_leaves {
             let index = u32::try_from(index).map_err(|_| TreeSyncError::LibraryError)?;
             if let Some(ref node) = tsn_leaf.node() {
                 let leaf = node.as_leaf_node()?;
-                leaves.push((index, leaf.key_package()))
+                leaves.insert(index, leaf.key_package());
             }
         }
         Ok(leaves)
+    }
+
+    pub(crate) fn export_nodes(&self) -> Vec<Option<Node>> {
+        self.tree
+            .export_nodes()
+            .drain(..)
+            .map(|ts_node| ts_node.into())
+            .collect()
+    }
+
+    pub(crate) fn own_leaf_index(&self) -> LeafIndex {
+        self.own_leaf_index
+    }
+
+    pub(crate) fn own_leaf_node(&self) -> Result<&KeyPackage, TreeSyncError> {
+        // Our own leaf should be insider of the tree and never blank. FIXME:
+        // This should be ensured by the verification routine.
+        let leaves = self.tree.leaves()?;
+        let leaf = leaves
+            .get(self.own_leaf_index as usize)
+            .ok_or(TreeSyncError::LibraryError)?;
+        let leaf_node = leaf.node().ok_or(TreeSyncError::LibraryError)?;
+        Ok(leaf_node.as_leaf_node()?.key_package())
     }
 }
 
@@ -168,6 +226,7 @@ implement_error! {
             BinaryTreeError(MlsBinaryTreeError) = "An error occurred during an operation on the underlying binary tree.",
             TreeSyncNodeError(TreeSyncNodeError) = "An error occurred during an operation on the underlying binary tree.",
             TreeSyncDiffError(TreeSyncDiffError) = "An error while trying to apply a diff.",
+            DerivationError(PathSecretError) = "Error while deriving commit secret for new tree.",
         }
     }
 }

@@ -13,16 +13,19 @@ use super::{
 use crate::{
     binary_tree::{
         array_representation::diff::NodeReference, LeafIndex, MlsBinaryTreeDiff,
-        MlsBinaryTreeDiffError, MlsBinaryTreeError, StagedMlsBinaryTreeDiff,
+        MlsBinaryTreeDiffError, StagedMlsBinaryTreeDiff,
     },
     ciphersuite::{signable::Signable, Ciphersuite, CryptoError, HpkePrivateKey, HpkePublicKey},
     credentials::{CredentialBundle, CredentialError},
     extensions::ExtensionType,
     messages::{PathSecret, PathSecretError},
-    prelude::{KeyPackage, KeyPackageBundlePayload},
+    prelude::{KeyPackage, KeyPackageBundle, KeyPackageBundlePayload},
     schedule::CommitSecret,
 };
 
+pub(crate) type UpdatePathResult = (KeyPackageBundle, Vec<PlainUpdatePathNode>, CommitSecret);
+
+#[derive(Debug)]
 pub(crate) struct StagedTreeSyncDiff {
     diff: StagedMlsBinaryTreeDiff<TreeSyncNode>,
     new_tree_hash: Vec<u8>,
@@ -33,7 +36,7 @@ impl StagedTreeSyncDiff {
         (self.diff, self.new_tree_hash)
     }
 
-    pub(crate) fn new_tree_hash(&self) -> &[u8] {
+    pub(crate) fn tree_hash(&self) -> &[u8] {
         &self.new_tree_hash
     }
 }
@@ -54,6 +57,13 @@ impl<'a> From<&'a TreeSync> for TreeSyncDiff<'a> {
     }
 }
 
+// We want to enforce a few invariants on the tree that should be explicitly
+// checked before making a Diff a StagedDiff and before creating an actual tree
+// from a vector of nodes.
+
+// * Private keys should only be in our own leaf and in the direct path.
+// * unmerged leaf indices should only point to non-blank leaf nodes
+
 /// Note: Any function that modifies a node should erase the tree hash of every
 /// node in its direct path. FIXME: We currently don't guarantee that we fail
 /// before changing the state of the diff. E.g., if a parent hash is invalid,
@@ -65,6 +75,10 @@ impl<'a> TreeSyncDiff<'a> {
         } else {
             Ok(())
         }
+    }
+
+    pub(crate) fn leaf_count(&self) -> LeafIndex {
+        self.diff.leaf_count()
     }
 
     /// Update an existing leaf node and blank the nodes in the updated leaf's
@@ -83,8 +97,9 @@ impl<'a> TreeSyncDiff<'a> {
         self.node_keys.insert(node.public_key().clone());
         let node_ref = self.diff.leaf(leaf_index)?;
         // Can't update a blank leaf.
-        let old_leaf = node_ref
-            .try_deref()?
+        let old_leaf = self
+            .diff
+            .try_deref(node_ref)?
             .node()
             .as_ref()
             .ok_or(TreeSyncDiffError::UpdateBlank)?;
@@ -102,8 +117,12 @@ impl<'a> TreeSyncDiff<'a> {
     /// Adds a new leaf to the tree either by filling a blank leaf or by
     /// creating a new leaf, inserting intermediate blanks as necessary. This
     /// also adds the leaf_index of the new leaf to the `unmerged_leaves` state
-    /// of the parent nodes in its direct path.
-    pub(crate) fn add_leaf(&mut self, leaf_node: KeyPackage) -> Result<(), TreeSyncDiffError> {
+    /// of the parent nodes in its direct path. Returns the LeafIndex of the new
+    /// leaf.
+    pub(crate) fn add_leaf(
+        &mut self,
+        leaf_node: KeyPackage,
+    ) -> Result<LeafIndex, TreeSyncDiffError> {
         let node = Node::LeafNode(leaf_node.into());
         // Check if the key of the new leaf is unique in the
         // tree.
@@ -117,7 +136,7 @@ impl<'a> TreeSyncDiff<'a> {
         for (leaf_index, leaf_ref) in leaf_refs.iter().enumerate() {
             let leaf_index: LeafIndex =
                 u32::try_from(leaf_index).map_err(|_| TreeSyncDiffError::LibraryError)?;
-            if leaf_ref.try_deref()?.node().is_none() {
+            if self.diff.try_deref(*leaf_ref)?.node().is_none() {
                 leaf_index_option = Some(leaf_index);
                 continue;
             }
@@ -132,24 +151,23 @@ impl<'a> TreeSyncDiff<'a> {
         };
         // Add new unmerged leaves entry to all nodes in direct path. Also, wipe
         // the cached tree hash.
-        let add_unmerged_leaf = |tsn: &mut TreeSyncNode| -> Result<(), TreeSyncDiffError> {
+        for node_ref in self.diff.direct_path(leaf_index)? {
+            let tsn = self.diff.try_deref_mut(node_ref)?;
             if let Some(ref mut node) = tsn.node_mut() {
                 let pn = node.as_parent_node_mut()?;
                 pn.add_unmerged_leaf(leaf_index);
             }
             tsn.erase_tree_hash();
-            Ok(())
-        };
-        self.diff
-            .apply_to_direct_path(leaf_index, add_unmerged_leaf)?;
-        Ok(())
+        }
+        Ok(leaf_index)
     }
 
     /// Remove a group member by blanking the target leaf and its direct path.
     pub(crate) fn blank_leaf(&mut self, leaf_index: LeafIndex) -> Result<(), TreeSyncDiffError> {
         let node_ref = self.diff.leaf(leaf_index)?;
-        let old_leaf = node_ref
-            .try_deref()?
+        let old_leaf = self
+            .diff
+            .try_deref(node_ref)?
             .node()
             .as_ref()
             .ok_or(TreeSyncDiffError::RedundantBlank)?;
@@ -164,15 +182,15 @@ impl<'a> TreeSyncDiff<'a> {
         Ok(())
     }
 
-    pub(crate) fn apply_own_update_path(
+    /// FIXME: This function has some overlap with the one(s) below.
+    pub(crate) fn re_apply_own_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
-        key_package_bundle_payload: KeyPackageBundlePayload,
-        credential_bundle: &CredentialBundle,
-    ) -> Result<(KeyPackage, Vec<PlainUpdatePathNode>, CommitSecret), TreeSyncDiffError> {
-        let (mut key_package_payload, leaf_secret) = key_package_bundle_payload.into_parts();
-        let leaf_path_secret = PathSecret::from(leaf_secret);
+        key_package_bundle: &KeyPackageBundle,
+    ) -> Result<CommitSecret, TreeSyncDiffError> {
+        let leaf_secret = key_package_bundle.leaf_secret();
+        let leaf_path_secret = PathSecret::from(leaf_secret.clone());
 
         let path_secret = leaf_path_secret.derive_path_secret(backend, ciphersuite)?;
 
@@ -185,18 +203,33 @@ impl<'a> TreeSyncDiff<'a> {
         let parent_hash =
             self.process_update_path(backend, ciphersuite, self.own_leaf_index, path.clone())?;
 
-        key_package_payload.update_parent_hash(&parent_hash);
-        let key_package = key_package_payload.sign(backend, credential_bundle)?;
+        let parent_hash_ext = key_package_bundle
+            .key_package()
+            .extension_with_type(ExtensionType::ParentHash)
+            .ok_or(TreeSyncDiffError::MissingParentHash)?;
 
-        let node = Node::LeafNode(key_package.clone().into());
+        // We just filtered by extensiontype, so this should be a parrent hash extension.
+        let kpb_parent_hash = parent_hash_ext
+            .as_parent_hash_extension()
+            .map_err(|_| TreeSyncDiffError::LibraryError)?
+            .parent_hash();
+
+        // Double-check that the computed parent hash and that of the given KPB
+        // match.
+        if kpb_parent_hash != parent_hash {
+            return Err(TreeSyncDiffError::ParentHashMismatch);
+        }
+
+        let node = Node::LeafNode(key_package_bundle.key_package().clone().into());
         // Check if the key of the new leaf is unique in the
         // tree.
         self.unique_key(&node)?;
 
         // Remove the key of the old leaf from the key map.
         let node_ref = self.diff.leaf(self.own_leaf_index)?;
-        let old_leaf = node_ref
-            .try_deref()?
+        let old_leaf = self
+            .diff
+            .try_deref(node_ref)?
             .node()
             .as_ref()
             .ok_or(TreeSyncDiffError::RedundantBlank)?;
@@ -206,9 +239,61 @@ impl<'a> TreeSyncDiff<'a> {
 
         // Replace the leaf.
         self.diff.replace_leaf(self.own_leaf_index, node.into())?;
-        Ok((key_package, update_path_nodes, commit_secret))
+        // FIXME: The API here should change.
+        Ok(commit_secret)
     }
 
+    pub(crate) fn apply_own_update_path(
+        &mut self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+        key_package_bundle_payload: KeyPackageBundlePayload,
+        credential_bundle: &CredentialBundle,
+    ) -> Result<UpdatePathResult, TreeSyncDiffError> {
+        let leaf_secret = key_package_bundle_payload.leaf_secret();
+        let leaf_path_secret = PathSecret::from(leaf_secret.clone());
+
+        let path_secret = leaf_path_secret.derive_path_secret(backend, ciphersuite)?;
+
+        let path_length = self.diff.direct_path(self.own_leaf_index)?.len();
+
+        let (path, update_path_nodes, commit_secret) =
+            ParentNode::derive_path(backend, ciphersuite, path_secret, path_length)?;
+
+        // This also adds the public keys to the diff's key map.
+        let parent_hash =
+            self.process_update_path(backend, ciphersuite, self.own_leaf_index, path.clone())?;
+
+        key_package_bundle_payload.update_parent_hash(&parent_hash);
+        let key_package_bundle = key_package_bundle_payload.sign(backend, credential_bundle)?;
+
+        let node = Node::LeafNode(key_package_bundle.key_package().clone().into());
+        // Check if the key of the new leaf is unique in the
+        // tree.
+        self.unique_key(&node)?;
+
+        // Remove the key of the old leaf from the key map.
+        let node_ref = self.diff.leaf(self.own_leaf_index)?;
+        let old_leaf = self
+            .diff
+            .try_deref(node_ref)?
+            .node()
+            .as_ref()
+            .ok_or(TreeSyncDiffError::RedundantBlank)?;
+        let removed = self.node_keys.remove(old_leaf.public_key());
+        // The old key has to have been in the node map.
+        debug_assert!(removed);
+
+        // Replace the leaf.
+        self.diff.replace_leaf(self.own_leaf_index, node.into())?;
+        Ok((key_package_bundle, update_path_nodes, commit_secret))
+    }
+
+    /// The given path of ParentNodes should already include any potential path
+    /// secrets. FIXME: I might want to change this API, because it's slightly
+    /// asymmetrical as compared to re-applying one's own update path: Here, the
+    /// CommitSecret falls out of the decryption process, whereas in the other
+    /// case, the commit_secret falls out of the path-application process.
     pub(crate) fn apply_received_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -216,7 +301,6 @@ impl<'a> TreeSyncDiff<'a> {
         sender_leaf_index: LeafIndex,
         key_package: &KeyPackage,
         path: Vec<ParentNode>,
-        path_secret: PathSecret,
     ) -> Result<(), TreeSyncDiffError> {
         let node = Node::LeafNode(key_package.clone().into());
         // Check if the key of the new leaf is unique in the
@@ -238,13 +322,11 @@ impl<'a> TreeSyncDiff<'a> {
             return Err(TreeSyncDiffError::ParentHashMismatch);
         };
 
-        // Set the path secrets using the given path secret.
-        self.set_path_secrets(backend, ciphersuite, path_secret, sender_leaf_index)?;
-
         // Remove the key of the old leaf from the key map.
         let node_ref = self.diff.leaf(sender_leaf_index)?;
-        let old_leaf = node_ref
-            .try_deref()?
+        let old_leaf = self
+            .diff
+            .try_deref(node_ref)?
             .node()
             .as_ref()
             .ok_or(TreeSyncDiffError::RedundantBlank)?;
@@ -282,7 +364,7 @@ impl<'a> TreeSyncDiff<'a> {
 
         // Remove the keys from the old direct path from the node_map.
         for node_ref in self.diff.direct_path(leaf_index)? {
-            if let Some(node) = node_ref.try_deref()?.node() {
+            if let Some(node) = self.diff.try_deref(node_ref)?.node() {
                 let removed = self.node_keys.remove(node.public_key());
                 // The old key has to have been in the node map.
                 debug_assert!(removed);
@@ -295,7 +377,9 @@ impl<'a> TreeSyncDiff<'a> {
         Ok(parent_hash)
     }
 
-    /// Sets the path secrets, but doesn't otherwise touch the nodes.
+    /// Sets the path secrets, but doesn't otherwise touch the nodes. This
+    /// function also checks that the derived public keys match the existing
+    /// public keys.
     pub(super) fn set_path_secrets(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -303,7 +387,9 @@ impl<'a> TreeSyncDiff<'a> {
         mut path_secret: PathSecret,
         sender_index: LeafIndex,
     ) -> Result<(), TreeSyncDiffError> {
-        let set_path_secret = |tsn: &mut TreeSyncNode| -> Result<(), TreeSyncDiffError> {
+        let subtree_path = self.diff.subtree_path(self.own_leaf_index, sender_index)?;
+        for node_ref in subtree_path {
+            let tsn = self.diff.try_deref_mut(node_ref)?;
             // We only care about non-blank nodes.
             if let Some(ref mut node) = tsn.node_mut() {
                 // This has to be a parent node.
@@ -327,10 +413,7 @@ impl<'a> TreeSyncDiff<'a> {
                 // If the leaf is blank or our index is in the list of unmerged
                 // leaves, go to the next node.
             }
-            Ok(())
-        };
-        self.diff
-            .apply_to_subtree_path(self.own_leaf_index, sender_index, set_path_secret)?;
+        }
         Ok(())
     }
 
@@ -343,7 +426,7 @@ impl<'a> TreeSyncDiff<'a> {
     ) -> Result<(), TreeSyncDiffError> {
         for leaf_index in parent_node.unmerged_leaves() {
             let leaf_ref = self.diff.leaf(*leaf_index)?;
-            let leaf = leaf_ref.try_deref()?;
+            let leaf = self.diff.try_deref(leaf_ref)?;
             // All unmerged leaves should be non-blank.
             let leaf_node = leaf
                 .node()
@@ -378,7 +461,7 @@ impl<'a> TreeSyncDiff<'a> {
 
         // Get the resolutions of the copath nodes (i.e. the original child
         // resolutions).
-        let mut copath_resolutions = self.copath_resolutions(leaf_index, &[])?;
+        let mut copath_resolutions = self.copath_resolutions(leaf_index, HashSet::new())?;
         // There should be as many copath resolutions as nodes in the direct
         // path.
         if path.len() != copath_resolutions.len() {
@@ -412,13 +495,13 @@ impl<'a> TreeSyncDiff<'a> {
     /// given in the list.
     fn resolution(
         &self,
-        node_ref: NodeReference<'a, TreeSyncNode>,
-        exclusion_list: &[LeafIndex],
+        node_ref: NodeReference,
+        excluded_indices: HashSet<&LeafIndex>,
     ) -> Result<Vec<HpkePublicKey>, TreeSyncDiffError> {
-        if let Some(node) = node_ref.try_deref()?.node() {
+        if let Some(node) = self.diff.try_deref(node_ref)?.node() {
             // If the node is a leaf, check if it is in the exclusion list.
-            if let Some(leaf_index) = node_ref.leaf_index() {
-                if exclusion_list.contains(&leaf_index) {
+            if let Some(leaf_index) = self.diff.leaf_index(node_ref) {
+                if excluded_indices.contains(&leaf_index) {
                     return Ok(vec![]);
                 }
             }
@@ -427,10 +510,10 @@ impl<'a> TreeSyncDiff<'a> {
         let mut resolution = Vec::new();
         // FIXME: I don't quite understand why I have to clone here.
         // NodeReference should implement the Copy trait.
-        let left_child = node_ref.clone().left_child()?;
-        let right_child = node_ref.right_child()?;
-        resolution.append(&mut self.resolution(left_child, exclusion_list)?);
-        resolution.append(&mut self.resolution(right_child, exclusion_list)?);
+        let left_child = self.diff.left_child(node_ref)?;
+        let right_child = self.diff.right_child(node_ref)?;
+        resolution.append(&mut self.resolution(left_child, excluded_indices)?);
+        resolution.append(&mut self.resolution(right_child, excluded_indices)?);
         Ok(resolution)
     }
 
@@ -441,7 +524,7 @@ impl<'a> TreeSyncDiff<'a> {
     pub(crate) fn copath_resolutions(
         &self,
         leaf_index: LeafIndex,
-        exclusion_list: &[LeafIndex],
+        excluded_indices: HashSet<&LeafIndex>,
     ) -> Result<Vec<Vec<HpkePublicKey>>, TreeSyncDiffError> {
         let leaf = self.diff.leaf(leaf_index)?;
         let mut full_path = vec![leaf];
@@ -453,8 +536,8 @@ impl<'a> TreeSyncDiff<'a> {
             // If sibling is not a blank, return its HpkePublicKey.
             // FIXME: I don't quite understand why I have to clone here.
             // NodeReference should implement the Copy trait.
-            let sibling_ref = node_ref.clone().sibling()?;
-            let resolution = self.resolution(sibling_ref, &[])?;
+            let sibling_ref = self.diff.sibling(*node_ref)?;
+            let resolution = self.resolution(sibling_ref, excluded_indices)?;
             copath_resolutions.push(resolution);
         }
         Ok(copath_resolutions)
@@ -465,21 +548,20 @@ impl<'a> TreeSyncDiff<'a> {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
     ) -> Result<(), TreeSyncDiffError> {
-        let node_refs = self.diff.all_nodes();
-        for node_ref in &node_refs {
+        for node_ref in self.diff.iter() {
             // Continue early if node is blank.
-            if let Some(node) = node_ref.try_deref()?.node() {
+            if let Some(node) = self.diff.try_deref(node_ref)?.node() {
                 // We don't care about leaf nodes.
                 if let Node::ParentNode(parent_node) = node {
-                    let left_child_ref = node_ref.clone().left_child()?;
-                    let mut right_child_ref = node_ref.clone().right_child()?;
+                    let left_child_ref = self.diff.left_child(node_ref)?;
+                    let mut right_child_ref = self.diff.right_child(node_ref)?;
                     // If the left node is blank, we continue with the next step
                     // in the verification algorithm.
-                    if let Some(left_child) = left_child_ref.try_deref()?.node() {
+                    if let Some(left_child) = self.diff.try_deref(left_child_ref)?.node() {
                         let mut right_child_resolution =
-                            self.resolution(right_child_ref.clone(), &[])?;
+                            self.resolution(right_child_ref.clone(), HashSet::new())?;
                         // Filter unmerged leaves from resolution.
-                        self.filter_resolution(parent_node, &mut right_child_resolution)?;
+                        self.filter_resolution(&parent_node, &mut right_child_resolution)?;
                         let node_hash = parent_node.compute_parent_hash(
                             backend,
                             ciphersuite,
@@ -495,21 +577,21 @@ impl<'a> TreeSyncDiff<'a> {
 
                     // If the right child is blank, replace it with its left child
                     // until it's non-blank or a leaf.
-                    while right_child_ref.try_deref()?.node().is_none()
-                        && !right_child_ref.is_leaf()
+                    while self.diff.try_deref(right_child_ref)?.node().is_none()
+                        && !self.diff.is_leaf(right_child_ref)
                     {
-                        right_child_ref = right_child_ref.left_child()?;
+                        right_child_ref = self.diff.left_child(right_child_ref)?;
                     }
                     // If the "right child" is a non-blank node, we continue,
                     // otherwise it has to be a blank leaf node and the check
                     // fails.
-                    if let Some(right_child) = right_child_ref.try_deref()?.node() {
+                    if let Some(right_child) = self.diff.try_deref(right_child_ref)?.node() {
                         // Perform the check with the parent hash of the "right
                         // child" and the left child resolution.
                         let mut left_child_resolution =
-                            self.resolution(left_child_ref.clone(), &[])?;
+                            self.resolution(left_child_ref.clone(), HashSet::new())?;
                         // Filter unmerged leaves from resolution.
-                        self.filter_resolution(parent_node, &mut left_child_resolution)?;
+                        self.filter_resolution(&parent_node, &mut left_child_resolution)?;
                         let node_hash = parent_node.compute_parent_hash(
                             backend,
                             ciphersuite,
@@ -541,33 +623,51 @@ impl<'a> TreeSyncDiff<'a> {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
     ) -> Result<StagedTreeSyncDiff, TreeSyncDiffError> {
-        let new_tree_hash = self.set_tree_hashes(backend, ciphersuite)?;
+        let new_tree_hash = self.compute_tree_hash(backend, ciphersuite)?;
         Ok(StagedTreeSyncDiff {
             diff: self.diff.into(),
             new_tree_hash,
         })
     }
 
-    fn set_tree_hashes(
+    fn set_tree_hash(
+        &mut self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+        node_ref: NodeReference,
+    ) -> Result<Vec<u8>, TreeSyncDiffError> {
+        // Check if this is a leaf.
+        if let Some(leaf_index) = self.diff.leaf_index(node_ref) {
+            let leaf = self.diff.try_deref_mut(node_ref)?;
+            let tree_hash =
+                leaf.compute_tree_hash(backend, ciphersuite, Some(leaf_index), vec![], vec![])?;
+            return Ok(tree_hash);
+        }
+        // Return early if there's already a cached tree hash.
+        let node = self.diff.try_deref_mut(node_ref)?;
+        if let Some(tree_hash) = node.tree_hash() {
+            return Ok(tree_hash.to_vec());
+        }
+        // Compute left hash.
+        let left_child = self.diff.left_child(node_ref)?;
+        let left_hash = self.set_tree_hash(backend, ciphersuite, left_child)?;
+        // Compute right hash.
+        let right_child = self.diff.right_child(node_ref)?;
+        let right_hash = self.set_tree_hash(backend, ciphersuite, right_child)?;
+        let tree_hash =
+            node.compute_tree_hash(backend, ciphersuite, None, left_hash, right_hash)?;
+
+        Ok(tree_hash)
+    }
+
+    pub(crate) fn compute_tree_hash(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
     ) -> Result<Vec<u8>, TreeSyncDiffError> {
-        let compute_tree_hash = |node: &mut TreeSyncNode,
-                                 leaf_index_option: Option<LeafIndex>,
-                                 left_hash: Vec<u8>,
-                                 right_hash: Vec<u8>|
-         -> Result<Vec<u8>, TreeSyncNodeError> {
-            node.compute_tree_hash(
-                backend,
-                ciphersuite,
-                leaf_index_option,
-                left_hash,
-                right_hash,
-            )
-        };
+        let root_ref = self.diff.root();
 
-        Ok(self.diff.fold_tree(compute_tree_hash)?)
+        Ok(self.set_tree_hash(backend, ciphersuite, root_ref)?)
     }
 
     /// Returns the position of the shared subtree root in the direct path of
@@ -587,7 +687,7 @@ impl<'a> TreeSyncDiff<'a> {
     pub(crate) fn decryption_key(
         &self,
         sender_leaf_index: LeafIndex,
-        exclusion_list: &[LeafIndex],
+        excluded_indices: HashSet<&LeafIndex>,
     ) -> Result<(&HpkePrivateKey, usize), TreeSyncDiffError> {
         // Get the copath node of the sender that is in our direct path, as well
         // as its position in our direct path.
@@ -595,7 +695,7 @@ impl<'a> TreeSyncDiff<'a> {
             .diff
             .subtree_root_copath_node(sender_leaf_index, self.own_leaf_index)?;
 
-        let sender_copath_resolution = self.resolution(subtree_root_ref, exclusion_list)?;
+        let sender_copath_resolution = self.resolution(subtree_root_ref, HashSet::new())?;
 
         // Get all of the public keys that we have secret keys for, i.e. our own
         // leaf pk, as well as potentially a number of public keys from our
@@ -604,7 +704,7 @@ impl<'a> TreeSyncDiff<'a> {
         own_node_refs.append(&mut self.diff.direct_path(self.own_leaf_index)?);
         // Add our own key package public key.
         for node_ref in own_node_refs {
-            let node_tsn = self.diff.dereference(node_ref)?;
+            let node_tsn = self.diff.try_deref(node_ref)?;
             //let node_tsn = node_ref.try_deref()?;
             // If the node is blank, skip it.
             if let Some(node) = node_tsn.node() {
@@ -622,6 +722,16 @@ impl<'a> TreeSyncDiff<'a> {
             }
         }
         Err(TreeSyncDiffError::NoPrivateKeyFound)
+    }
+
+    pub(crate) fn export_nodes(&self) -> Result<Vec<Option<Node>>, TreeSyncDiffError> {
+        let nodes = self
+            .diff
+            .export_nodes()?
+            .drain(..)
+            .map(|ts_node| ts_node.node().to_owned())
+            .collect();
+        Ok(nodes)
     }
 }
 

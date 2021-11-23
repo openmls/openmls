@@ -226,7 +226,7 @@ impl ManagedGroup {
         let remove_proposal = self.group.create_remove_proposal(
             self.framing_parameters(),
             &credential_bundle,
-            self.group.tree().own_node_index(),
+            self.group.tree().own_leaf_index(),
             backend,
         )?;
 

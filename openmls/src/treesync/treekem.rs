@@ -1,4 +1,6 @@
-use tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
+use std::collections::HashSet;
+
+use tls_codec::{Error as TlsCodecError, Size, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
 use openmls_traits::{
     crypto::OpenMlsCrypto,
@@ -10,12 +12,13 @@ pub(crate) use serde::{Deserialize, Serialize};
 use crate::{
     binary_tree::LeafIndex,
     ciphersuite::{Ciphersuite, HpkePublicKey},
-    messages::{PathSecret, PathSecretError},
+    messages::{proposals::AddProposal, GroupSecrets, PathSecret, PathSecretError},
     prelude::KeyPackage,
-    schedule::CommitSecret,
+    schedule::{CommitSecret, JoinerSecret, PreSharedKeys},
 };
 
 use super::{
+    diff::TreeSyncDiff,
     node::parent_node::{ParentNode, ParentNodeError, PlainUpdatePathNode},
     TreeSync, TreeSyncDiffError,
 };
@@ -23,11 +26,11 @@ use super::{
 impl TreeSync {
     pub(crate) fn encrypt_path(
         &self,
-        backend: &impl OpenMlsCrypto,
+        backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
         path: &[PlainUpdatePathNode],
         group_context: &[u8],
-        exclusion_list: &[LeafIndex],
+        exclusion_list: HashSet<&LeafIndex>,
         key_package: &KeyPackage,
     ) -> Result<UpdatePath, TreeKemError> {
         let copath_resolutions = self
@@ -51,17 +54,17 @@ impl TreeSync {
         })
     }
 
+    /// The path returned here already includes any path secrets included in the
+    /// `UpdatePath`.
     pub(crate) fn decrypt_path(
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &'static Ciphersuite,
         update_path: &UpdatePath,
         sender_leaf_index: LeafIndex,
-        exclusion_list: &[LeafIndex],
+        exclusion_list: HashSet<&LeafIndex>,
         group_context: &[u8],
     ) -> Result<(Vec<ParentNode>, CommitSecret), TreeKemError> {
-        // Create a diff that we can operate on. FIXME: A recurring problem is
-        // that we need the same functions from Diff and Tree.
         let diff = self.empty_diff();
         let path_position = diff.subtree_root_position(sender_leaf_index)?;
         let update_path_node = update_path
@@ -128,6 +131,60 @@ impl UpdatePathNode {
     }
 }
 
+/// Helper struct holding values that are encryptedin the
+/// `EncryptedGroupSecrets`. In particular, the `group_secrets_bytes` are
+/// encrypted for the `public_key` into `encrypted_group_secrets` later.
+pub(crate) struct PlaintextSecret {
+    public_key: HpkePublicKey,
+    group_secrets_bytes: Vec<u8>,
+    key_package_hash: Vec<u8>,
+}
+
+impl PlaintextSecret {
+    /// Prepare the `GroupSecrets` for a number of `invited_members` based on a
+    /// provisional `RatchetTree`. If there are `path_secrets` in the
+    /// provisional tree, we need to include a `path_secret` into the
+    /// `GroupSecrets`.
+    pub(crate) fn from_plain_update_path(
+        diff: &TreeSyncDiff,
+        joiner_secret: &JoinerSecret,
+        invited_members: Vec<(LeafIndex, AddProposal)>,
+        plain_path_option: Option<&[PlainUpdatePathNode]>,
+        presharedkeys: &PreSharedKeys,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Vec<Self>, TreeKemError> {
+        let mut plaintext_secrets = vec![];
+        for (leaf_index, add_proposal) in invited_members {
+            let key_package = add_proposal.key_package;
+            let key_package_hash = key_package.hash(backend);
+
+            let direct_path_position = diff.subtree_root_position(leaf_index)?;
+
+            // If a plain path was given, there have to be secrets for every new member.
+            let path_secret_option = if let Some(plain_path) = plain_path_option {
+                Some(
+                    plain_path
+                        .get(direct_path_position)
+                        .map(|pupn| pupn.path_secret())
+                        .ok_or(TreeKemError::PathSecretNotFound)?,
+                )
+            } else {
+                None
+            };
+
+            // Create the GroupSecrets object for the respective member.
+            let group_secrets_bytes =
+                GroupSecrets::new_encoded(joiner_secret, path_secret_option, presharedkeys)?;
+            plaintext_secrets.push(PlaintextSecret {
+                public_key: key_package.hpke_init_key().clone(),
+                group_secrets_bytes,
+                key_package_hash,
+            });
+        }
+        Ok(plaintext_secrets)
+    }
+}
+
 /// 7.7. Update Paths
 ///
 /// ```text
@@ -156,6 +213,10 @@ impl UpdatePath {
     fn nodes(&self) -> &TlsVecU32<UpdatePathNode> {
         &self.nodes
     }
+
+    pub(crate) fn leaf_key_package(&self) -> &KeyPackage {
+        &self.leaf_key_package
+    }
 }
 
 implement_error! {
@@ -165,11 +226,13 @@ implement_error! {
             PathLengthError = "The given path to encrypt does not have the same length as the direct path.",
             UpdatePathNodeNotFound = "Couldn't find our UpdatePathNode in the given UpdatePath.",
             EncryptedCiphertextNotFound = "Couldn't find a matching encrypted ciphertext in the given UpdatePathNode.",
+            PathSecretNotFound = "Couldn't find the path secret to encrypt for one of the new members.",
         }
         Complex {
             TreeSyncError(TreeSyncDiffError) = "Error while retrieving public keys from the tree.",
             PathSecretError(PathSecretError) = "Error decrypting PathSecret.",
             PathDerivationError(ParentNodeError) = "Error deriving path from PathSecret.",
+            EncodingError(TlsCodecError) = "Error while encoding GroupSecrets.",
         }
     }
 }

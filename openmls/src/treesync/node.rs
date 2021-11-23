@@ -3,6 +3,7 @@ pub(crate) mod leaf_node;
 pub(crate) mod parent_node;
 
 use openmls_traits::OpenMlsCryptoProvider;
+use serde::{Deserialize, Serialize};
 use tls_codec::TlsSliceU8;
 
 use crate::{
@@ -16,13 +17,13 @@ use self::{leaf_node::LeafNode, parent_node::ParentNode};
 
 use super::hashes::ParentHashError;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub(crate) enum Node {
     LeafNode(LeafNode),
     ParentNode(ParentNode),
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 /// This intermediate struct on top of `Option<Node>` allows us to cache tree
 /// hash values.
 pub(crate) struct TreeSyncNode {
@@ -36,6 +37,12 @@ impl From<Node> for TreeSyncNode {
             tree_hash: None,
             node: Some(node),
         }
+    }
+}
+
+impl Into<Option<Node>> for TreeSyncNode {
+    fn into(self) -> Option<Node> {
+        self.node
     }
 }
 

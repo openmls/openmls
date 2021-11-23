@@ -34,4 +34,4 @@ pub(crate) type StagedMlsBinaryTreeDiff<Node> = StagedAbDiff<Node>;
 pub(crate) type MlsBinaryTreeError = ABinaryTreeError;
 pub(crate) type MlsBinaryTreeDiffError = ABinaryTreeDiffError;
 
-pub(crate) type LeafIndex = u32;
+pub type LeafIndex = u32;

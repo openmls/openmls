@@ -10,6 +10,7 @@ use crate::framing::errors::{MlsCiphertextError, MlsPlaintextError, Verification
 use crate::messages::errors::ProposalQueueError;
 use crate::schedule::errors::{KeyScheduleError, PskSecretError};
 use crate::tree::{treemath::TreeMathError, ParentHashError, TreeError};
+use crate::treesync::{diff::TreeSyncDiffError, treekem::TreeKemError, TreeSyncError};
 use tls_codec::Error as TlsCodecError;
 
 implement_error! {
@@ -49,6 +50,12 @@ implement_error! {
                 "See [`CredentialError`](crate::credentials::CredentialError) for details.",
             TreeError(TreeError) =
                 "See [`TreeError`](crate::tree::TreeError) for details.",
+            TreeSyncError(TreeSyncError) =
+                "See [`TreeSyncError`](crate::treesync::TreeSyncError) for details.",
+            TreeSyncDiffError(TreeSyncDiffError) =
+                "See [`TreeSyncDiffError`](crate::treesync::diff::TreeSyncDiffError) for details.",
+            TreeKemError(TreeKemError) =
+                "See [`TreeKemError`](crate::treesync::treekem::TreeKemError) for details.",
         }
     }
 }
@@ -78,6 +85,8 @@ implement_error! {
                 "The sender key package is missing.",
             UnknownError =
                 "An unknown error occurred.",
+            UnknownSender =
+                "Sender not found in tree.",
             }
         Complex {
             ConfigError(ConfigError) =
@@ -94,6 +103,8 @@ implement_error! {
                 "An error occurred in the key schedule.",
             PskError(PskError) =
                 "A PSK error occured.",
+            TreeSyncError(TreeSyncError) =
+                "An error occurred while importing the new tree.",
         }
     }
 }

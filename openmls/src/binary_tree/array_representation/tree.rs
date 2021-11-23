@@ -3,6 +3,8 @@
 
 use std::convert::TryFrom;
 
+use serde::{Deserialize, Serialize};
+
 use super::{diff::StagedAbDiff, treemath::TreeMathError};
 use crate::binary_tree::LeafIndex;
 
@@ -16,7 +18,7 @@ pub(super) fn to_node_index(leaf_index: LeafIndex) -> NodeIndex {
 
 pub(crate) type TreeSize = NodeIndex;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 /// A representation of a full, left-balanced binary tree that uses a simple
 /// vector to store nodes.
 pub(crate) struct ABinaryTree<T: Clone> {
@@ -64,7 +66,7 @@ impl<T: Clone> ABinaryTree<T> {
     }
 
     /// Return the number of leaves in the tree.
-    fn leaf_count(&self) -> TreeSize {
+    pub(crate) fn leaf_count(&self) -> TreeSize {
         (self.size() + 1) / 2
     }
 
@@ -92,6 +94,11 @@ impl<T: Clone> ABinaryTree<T> {
             );
         }
         Ok(())
+    }
+
+    /// Export the nodes of the tree in the array representation.
+    pub(crate) fn export_nodes(&self) -> Vec<T> {
+        self.nodes.clone()
     }
 }
 

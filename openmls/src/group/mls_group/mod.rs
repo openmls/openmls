@@ -1,6 +1,7 @@
 use log::{debug, trace};
 use psk::{PreSharedKeys, PskSecret};
 
+mod apply_proposals;
 pub mod create_commit;
 pub mod create_commit_params;
 mod new_from_welcome;
@@ -24,7 +25,10 @@ use crate::key_packages::*;
 use crate::messages::public_group_state::{PublicGroupState, PublicGroupStateTbs};
 use crate::messages::{proposals::*, *};
 use crate::schedule::*;
-use crate::tree::{index::*, node::*, secret_tree::*, *};
+use crate::tree::secret_tree::SecretTree;
+//use crate::tree::{index::*, node::*, secret_tree::*, *};
+use crate::treesync::node::Node;
+use crate::treesync::*;
 use crate::{ciphersuite::*, config::ProtocolVersion};
 
 use serde::{
@@ -51,7 +55,7 @@ pub struct MlsGroup {
     group_context: GroupContext,
     epoch_secrets: EpochSecrets,
     secret_tree: RefCell<SecretTree>,
-    tree: RefCell<RatchetTree>,
+    tree: RefCell<TreeSync>,
     interim_transcript_hash: Vec<u8>,
     // Group config.
     // Set to true if the ratchet tree extension is added to the `GroupInfo`.
@@ -87,24 +91,23 @@ impl MlsGroup {
         trace!(" >>> with {:?}, {:?}", ciphersuite_name, config);
         let group_id = GroupId { value: id.into() };
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
-        let tree = RatchetTree::new(backend, key_package_bundle);
+        let (tree, commit_secret) = TreeSync::new(backend, key_package_bundle)?;
         // TODO #186: Implement extensions
         let extensions: Vec<Extension> = Vec::new();
 
         let group_context = GroupContext::create_initial_group_context(
             ciphersuite,
             group_id,
-            tree.tree_hash(backend),
+            tree.tree_hash().to_vec(),
             &extensions,
         )?;
-        let commit_secret = tree.private_tree().commit_secret();
         // Derive an initial joiner secret based on the commit secret.
         // Derive an epoch secret from the joiner secret.
         // We use a random `InitSecret` for initialization.
         let version = version.into().unwrap_or_default();
         let joiner_secret = JoinerSecret::new(
             backend,
-            commit_secret,
+            &commit_secret,
             &InitSecret::random(ciphersuite, backend, version),
         );
 
@@ -114,7 +117,7 @@ impl MlsGroup {
 
         let secret_tree = epoch_secrets
             .encryption_secret()
-            .create_secret_tree(LeafIndex::from(1u32));
+            .create_secret_tree(crate::tree::index::LeafIndex::from(1u32));
         let interim_transcript_hash = vec![];
         Ok(MlsGroup {
             ciphersuite,
@@ -166,7 +169,7 @@ impl MlsGroup {
         let proposal = Proposal::Add(add_proposal);
         MlsPlaintext::new_proposal(
             framing_parameters,
-            self.sender_index(),
+            self.sender_index().into(),
             proposal,
             credential_bundle,
             self.context(),
@@ -191,7 +194,7 @@ impl MlsGroup {
         let proposal = Proposal::Update(update_proposal);
         MlsPlaintext::new_proposal(
             framing_parameters,
-            self.sender_index(),
+            self.sender_index().into(),
             proposal,
             credential_bundle,
             self.context(),
@@ -218,7 +221,7 @@ impl MlsGroup {
         let proposal = Proposal::Remove(remove_proposal);
         MlsPlaintext::new_proposal(
             framing_parameters,
-            self.sender_index(),
+            self.sender_index().into(),
             proposal,
             credential_bundle,
             self.context(),
@@ -243,7 +246,7 @@ impl MlsGroup {
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
         MlsPlaintext::new_proposal(
             framing_parameters,
-            self.sender_index(),
+            self.sender_index().into(),
             proposal,
             credential_bundle,
             self.context(),
@@ -263,7 +266,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsCiphertext, MlsGroupError> {
         let mls_plaintext = MlsPlaintext::new_application(
-            self.sender_index(),
+            self.sender_index().into(),
             aad,
             msg,
             credential_bundle,
@@ -287,7 +290,7 @@ impl MlsGroup {
             self.ciphersuite,
             backend,
             self.context(),
-            self.sender_index(),
+            self.sender_index().into(),
             Secrets {
                 epoch_secrets: self.epoch_secrets(),
                 secret_tree: &mut self.secret_tree_mut(),
@@ -321,15 +324,11 @@ impl MlsGroup {
         // Verify the signature on the plaintext.
         let tree = self.tree();
 
-        let node = &tree
-            .nodes
-            .get(NodeIndex::from(verifiable.sender_index()).as_usize())
+        let leaves = tree.leaves()?;
+        let kp = leaves
+            .get(&verifiable.sender_index().as_u32())
             .ok_or(MlsPlaintextError::UnknownSender)?;
-        let credential = if let Some(kp) = node.key_package.as_ref() {
-            kp.credential()
-        } else {
-            return Err(MlsPlaintextError::UnknownSender.into());
-        };
+        let credential = kp.credential();
         // Set the context if it has not been set already.
         if !verifiable.has_context() {
             verifiable.set_context(self.context().tls_serialize_detached()?);
@@ -391,7 +390,7 @@ impl MlsGroup {
     }
 
     /// Returns the ratchet tree
-    pub fn tree(&self) -> Ref<RatchetTree> {
+    pub fn tree(&self) -> Ref<TreeSync> {
         self.tree.borrow()
     }
 
@@ -416,7 +415,7 @@ impl MlsGroup {
     pub fn extensions(&self) -> Vec<Extension> {
         let extensions: Vec<Extension> = if self.use_ratchet_tree_extension {
             vec![Extension::RatchetTree(RatchetTreeExtension::new(
-                self.tree().public_key_tree_copy(),
+                self.tree().export_nodes(),
             ))]
         } else {
             Vec::new()
@@ -444,7 +443,7 @@ impl MlsGroup {
 // Private and crate functions
 impl MlsGroup {
     pub(crate) fn sender_index(&self) -> LeafIndex {
-        self.tree.borrow().own_node_index()
+        self.tree.borrow().own_leaf_index().into()
     }
 
     pub(crate) fn epoch_secrets(&self) -> &EpochSecrets {

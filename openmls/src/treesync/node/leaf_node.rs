@@ -1,16 +1,11 @@
-use openmls_traits::OpenMlsCryptoProvider;
-use tls_codec::{TlsByteVecU8, TlsVecU32};
-
-use super::TreeSyncNodeError;
+use serde::{Deserialize, Serialize};
 
 use crate::{
-    binary_tree::LeafIndex,
-    ciphersuite::{Ciphersuite, HpkePrivateKey, HpkePublicKey},
+    ciphersuite::{HpkePrivateKey, HpkePublicKey},
     prelude::KeyPackage,
-    treesync::hashes::ParentHashInput,
 };
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub(crate) struct LeafNode {
     key_package: KeyPackage,
     private_key_option: Option<HpkePrivateKey>,
