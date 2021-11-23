@@ -35,7 +35,7 @@ pub(crate) struct AbDiff<'a, T: Clone> {
 impl<'a, T: Clone> From<&'a ABinaryTree<T>> for AbDiff<'a, T> {
     fn from(tree: &'a ABinaryTree<T>) -> Self {
         AbDiff {
-            original_tree: &tree,
+            original_tree: tree,
             diff: HashMap::new(),
             size: tree.size(),
         }
@@ -276,7 +276,6 @@ impl<'a, T: Clone> AbDiff<'a, T> {
             Ok(node)
         } else if let Some(tree_node) = self.original_tree.node_by_index(node_index) {
             self.add_to_diff(node_index, tree_node.clone())?;
-            drop(tree_node);
             self.diff
                 .get_mut(&node_index)
                 .ok_or(ABinaryTreeDiffError::LibraryError)

@@ -105,16 +105,18 @@ impl<T: Clone> ABinaryTree<T> {
         // that can be added without intermediate nodes.
         for (node_index, diff_node) in diff.diff().drain() {
             // If the node is too far outside of the tree, deal with it later.
-            if node_index == self.size() {
-                self.nodes.push(diff_node);
-            } else if node_index > self.size() {
-                outside_nodes.push((node_index, diff_node))
-            } else {
-                // Perform swap-remove.
-                self.nodes.push(diff_node);
-                self.nodes.swap_remove(
-                    usize::try_from(node_index).map_err(|_| ABinaryTreeError::LibraryError)?,
-                );
+            match node_index {
+                node_index if node_index == self.size() => self.nodes.push(diff_node),
+                node_index if node_index > self.size() => {
+                    outside_nodes.push((node_index, diff_node))
+                }
+                node_index => {
+                    // Perform swap-remove.
+                    self.nodes.push(diff_node);
+                    self.nodes.swap_remove(
+                        usize::try_from(node_index).map_err(|_| ABinaryTreeError::LibraryError)?,
+                    );
+                }
             }
         }
         // Afterwards, sort the remaining nodes and simply add them to the tree
