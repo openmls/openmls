@@ -112,6 +112,7 @@ impl SignaturePublicKey {
             signature_scheme,
         })
     }
+
     /// Verify a `Signature` on the `payload` byte slice with the key pair's
     /// public key.
     pub fn verify(
@@ -133,6 +134,11 @@ impl SignaturePublicKey {
                 signature.value.as_slice(),
             )
             .map_err(|_| CryptoError::InvalidSignature)
+    }
+
+    /// Returns the bytes of the signature public key.
+    pub fn as_slice(&self) -> &[u8] {
+        &self.value
     }
 }
 
