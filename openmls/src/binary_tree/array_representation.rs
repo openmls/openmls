@@ -7,4 +7,4 @@ pub(crate) mod tree;
 #[allow(dead_code)]
 /// FIXME: There's some dead code in treemath that will be used in treesync in
 /// the future.
-mod treemath;
+pub(super) mod treemath;

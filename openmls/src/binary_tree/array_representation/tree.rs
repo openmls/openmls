@@ -2,6 +2,7 @@
 //! representation.
 
 use std::convert::TryFrom;
+use std::fmt::Debug;
 
 use serde::{Deserialize, Serialize};
 
@@ -24,11 +25,11 @@ pub(crate) type TreeSize = NodeIndex;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 /// A representation of a full, left-balanced binary tree that uses a simple
 /// vector to store nodes.
-pub(crate) struct ABinaryTree<T: Clone> {
+pub(crate) struct ABinaryTree<T: Clone + Debug> {
     nodes: Vec<T>,
 }
 
-impl<T: Clone> TryFrom<Vec<T>> for ABinaryTree<T> {
+impl<T: Clone + Debug> TryFrom<Vec<T>> for ABinaryTree<T> {
     type Error = ABinaryTreeError;
 
     fn try_from(nodes: Vec<T>) -> Result<Self, Self::Error> {
@@ -36,7 +37,7 @@ impl<T: Clone> TryFrom<Vec<T>> for ABinaryTree<T> {
     }
 }
 
-impl<T: Clone> ABinaryTree<T> {
+impl<T: Clone + Debug> ABinaryTree<T> {
     /// Create a tree from the given vector of nodes. The vector of nodes can't
     /// be empty and has to yield a full, left-balanced binary tree. The nodes
     /// in the tree are ordered in the array-representation. This function

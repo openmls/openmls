@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use std::fmt::Debug;
+
 use crate::binary_tree::{
     array_representation::treemath::sibling, LeafIndex, MlsBinaryTreeDiffError,
 };
@@ -10,29 +12,29 @@ use super::{
 };
 
 #[derive(Debug)]
-pub(crate) struct StagedAbDiff<T: Clone> {
+pub(crate) struct StagedAbDiff<T: Clone + Debug> {
     diff: HashMap<NodeIndex, T>,
 }
 
-impl<'a, T: Clone> From<AbDiff<'a, T>> for StagedAbDiff<T> {
+impl<'a, T: Clone + Debug> From<AbDiff<'a, T>> for StagedAbDiff<T> {
     fn from(diff: AbDiff<'a, T>) -> Self {
         StagedAbDiff { diff: diff.diff }
     }
 }
 
-impl<T: Clone> StagedAbDiff<T> {
+impl<T: Clone + Debug> StagedAbDiff<T> {
     pub(super) fn diff(self) -> HashMap<NodeIndex, T> {
         self.diff
     }
 }
 
-pub(crate) struct AbDiff<'a, T: Clone> {
+pub(crate) struct AbDiff<'a, T: Clone + Debug> {
     original_tree: &'a ABinaryTree<T>,
     diff: HashMap<NodeIndex, T>,
     size: TreeSize,
 }
 
-impl<'a, T: Clone> From<&'a ABinaryTree<T>> for AbDiff<'a, T> {
+impl<'a, T: Clone + Debug> From<&'a ABinaryTree<T>> for AbDiff<'a, T> {
     fn from(tree: &'a ABinaryTree<T>) -> Self {
         AbDiff {
             original_tree: tree,
@@ -48,7 +50,7 @@ pub(crate) struct NodeReference {
     node_index: NodeIndex,
 }
 
-impl<'a, T: Clone> AbDiff<'a, T> {
+impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// Replace the content of the node at the given leaf index with new
     /// content.
     pub(crate) fn replace_leaf(
@@ -56,7 +58,7 @@ impl<'a, T: Clone> AbDiff<'a, T> {
         leaf_index: LeafIndex,
         new_leaf: T,
     ) -> Result<(), ABinaryTreeDiffError> {
-        if leaf_index > self.leaf_count() {
+        if leaf_index >= self.leaf_count() {
             return Err(ABinaryTreeDiffError::OutOfBounds);
         }
         let node_index = to_node_index(leaf_index);
@@ -122,7 +124,7 @@ impl<'a, T: Clone> AbDiff<'a, T> {
     pub(crate) fn set_direct_path(
         &mut self,
         leaf_index: LeafIndex,
-        path: Vec<T>,
+        mut path: Vec<T>,
     ) -> Result<(), ABinaryTreeDiffError> {
         let node_index = to_node_index(leaf_index);
         let direct_path =
@@ -130,13 +132,8 @@ impl<'a, T: Clone> AbDiff<'a, T> {
         if path.len() != direct_path.len() {
             return Err(ABinaryTreeDiffError::PathLengthMismatch);
         }
-        for node_index in &direct_path {
-            self.add_to_diff(
-                *node_index,
-                path.get(*node_index as usize)
-                    .ok_or(ABinaryTreeDiffError::PathLengthMismatch)?
-                    .clone(),
-            )?;
+        for (node_index, node) in direct_path.iter().zip(path.drain(..)) {
+            self.add_to_diff(*node_index, node)?;
         }
         Ok(())
     }
@@ -220,6 +217,7 @@ impl<'a, T: Clone> AbDiff<'a, T> {
         let node_index = to_node_index(leaf_index);
         let direct_path_indices =
             direct_path(node_index, self.size()).map_err(|_| ABinaryTreeError::OutOfBounds)?;
+        println!("Direct path indices {:?}", direct_path_indices);
         let mut direct_path = Vec::new();
         for node_index in &direct_path_indices {
             let node_ref = self.new_reference(*node_index)?;
@@ -390,14 +388,27 @@ impl<'a, T: Clone> AbDiff<'a, T> {
             None
         }
     }
+
+    #[cfg(test)]
+    pub fn deref_vec(
+        &self,
+        node_ref_vec: Vec<NodeReference>,
+    ) -> Result<Vec<&T>, ABinaryTreeDiffError> {
+        let mut node_vec = Vec::new();
+        for node_ref in node_ref_vec {
+            let node = self.try_deref(node_ref)?;
+            node_vec.push(node);
+        }
+        Ok(node_vec)
+    }
 }
 
-pub(crate) struct DiffIterator<'a, T: Clone> {
+pub(crate) struct DiffIterator<'a, T: Clone + Debug> {
     diff: &'a AbDiff<'a, T>,
     current_index: NodeIndex,
 }
 
-impl<'a, T: Clone> Iterator for DiffIterator<'a, T> {
+impl<'a, T: Clone + Debug> Iterator for DiffIterator<'a, T> {
     type Item = NodeReference;
 
     fn next(&mut self) -> Option<Self::Item> {
