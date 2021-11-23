@@ -79,7 +79,7 @@ impl MlsGroup {
     ///  - ValSem103
     ///  - ValSem104
     ///  - ValSem105
-    ///  - ValSem106
+    ///  - TODO: ValSem106
     pub fn validate_add_proposals(
         &self,
         staged_proposal_queue: &StagedProposalQueue,
