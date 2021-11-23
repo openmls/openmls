@@ -18,6 +18,7 @@ mod test_proposals;
 use crate::ciphersuite::signable::{Signable, Verifiable};
 use crate::config::{check_required_capabilities_support, Config};
 use crate::credentials::{CredentialBundle, CredentialError};
+use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
 use crate::messages::public_group_state::{PublicGroupState, PublicGroupStateTbs};
@@ -25,7 +26,6 @@ use crate::messages::{proposals::*, *};
 use crate::schedule::*;
 use crate::tree::{index::*, node::*, secret_tree::*, *};
 use crate::{ciphersuite::*, config::ProtocolVersion};
-use crate::{framing::*, key_packages};
 
 use serde::{
     de::{self, MapAccess, SeqAccess, Visitor},
@@ -72,23 +72,78 @@ implement_persistence!(
     mls_version
 );
 
-/// Public `MlsGroup` functions.
-impl MlsGroup {
-    pub fn new(
-        id: &[u8],
-        ciphersuite_name: CiphersuiteName,
-        backend: &impl OpenMlsCryptoProvider,
-        key_package_bundle: KeyPackageBundle,
-        config: MlsGroupConfig,
-        psk_option: impl Into<Option<PskSecret>>,
-        version: impl Into<Option<ProtocolVersion>>,
+/// Builder for [`MlsGroup`].
+pub struct MlsGroupBuilder {
+    key_package_bundle: KeyPackageBundle,
+    group_id: Option<GroupId>,
+    config: Option<MlsGroupConfig>,
+    psk: Option<PskSecret>,
+    version: Option<ProtocolVersion>,
+    required_capabilities: Option<RequiredCapabilitiesExtension>,
+}
+
+impl MlsGroupBuilder {
+    /// Create a new [`MlsGroupBuilder`].
+    pub fn new(key_package_bundle: KeyPackageBundle) -> Self {
+        Self {
+            key_package_bundle,
+            group_id: None,
+            config: None,
+            psk: None,
+            version: None,
+            required_capabilities: None,
+        }
+    }
+    /// Set the [`GroupId`] of the [`MlsGroup`].
+    pub fn with_group_id(mut self, group_id: GroupId) -> Self {
+        self.group_id = Some(group_id);
+        self
+    }
+    /// Set the [`GroupId`] of the [`MlsGroup`].
+    pub fn with_group_id_slice(mut self, group_id: &[u8]) -> Self {
+        self.group_id = Some(GroupId::from_slice(group_id));
+        self
+    }
+    /// Set the [`MlsGroupConfig`] of the [`MlsGroup`].
+    pub fn with_config(mut self, config: MlsGroupConfig) -> Self {
+        self.config = Some(config);
+        self
+    }
+    /// Set the [`PskSecret`] of the [`MlsGroup`].
+    pub fn with_psk(mut self, psk: PskSecret) -> Self {
+        self.psk = Some(psk);
+        self
+    }
+    /// Set the [`ProtocolVersion`] of the [`MlsGroup`].
+    pub fn with_version(mut self, version: ProtocolVersion) -> Self {
+        self.version = Some(version);
+        self
+    }
+    /// Set the [`RequiredCapabilitiesExtension`] of the [`MlsGroup`].
+    pub fn with_required_capabilities(
+        mut self,
         required_capabilities: RequiredCapabilitiesExtension,
-    ) -> Result<Self, MlsGroupError> {
-        debug!("Created group {:x?}", id);
-        trace!(" >>> with {:?}, {:?}", ciphersuite_name, config);
-        let group_id = GroupId { value: id.into() };
-        let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
-        let tree = RatchetTree::new(backend, key_package_bundle);
+    ) -> Self {
+        self.required_capabilities = Some(required_capabilities);
+        self
+    }
+
+    /// Build the [`MlsGroup`].
+    /// Any values that haven't been set in the builder are set to their default
+    /// values (which might be random).
+    ///
+    /// This function performs cryptographic operations and there requires an
+    /// [`OpenMlsCryptoProvider`].
+    pub fn build(self, backend: &impl OpenMlsCryptoProvider) -> Result<MlsGroup, MlsGroupError> {
+        let ciphersuite = self.key_package_bundle.key_package().ciphersuite();
+        let config = self.config.unwrap_or_default();
+        let group_id = self.group_id.unwrap_or_else(|| GroupId::random(backend));
+        let required_capabilities = self.required_capabilities.unwrap_or_default();
+        let version = self.version.unwrap_or_default();
+
+        debug!("Created group {:x?}", group_id);
+        trace!(" >>> with {:?}, {:?}", ciphersuite, config);
+        let tree = RatchetTree::new(backend, self.key_package_bundle);
 
         check_required_capabilities_support(&required_capabilities)?;
         let required_capabilities = &[Extension::RequiredCapabilities(required_capabilities)];
@@ -103,14 +158,13 @@ impl MlsGroup {
         // Derive an initial joiner secret based on the commit secret.
         // Derive an epoch secret from the joiner secret.
         // We use a random `InitSecret` for initialization.
-        let version = version.into().unwrap_or_default();
         let joiner_secret = JoinerSecret::new(
             backend,
             commit_secret,
             &InitSecret::random(ciphersuite, backend, version),
         );
 
-        let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_option);
+        let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, self.psk);
         key_schedule.add_context(backend, &group_context)?;
         let epoch_secrets = key_schedule.epoch_secrets(backend, true)?;
 
@@ -118,6 +172,7 @@ impl MlsGroup {
             .encryption_secret()
             .create_secret_tree(LeafIndex::from(1u32));
         let interim_transcript_hash = vec![];
+
         Ok(MlsGroup {
             ciphersuite,
             group_context,
@@ -128,6 +183,14 @@ impl MlsGroup {
             use_ratchet_tree_extension: config.add_ratchet_tree_extension,
             mls_version: version,
         })
+    }
+}
+
+/// Public [`MlsGroup`] functions.
+impl MlsGroup {
+    /// Get a builder for [`MlsGroup`].
+    pub fn builder(key_package_bundle: KeyPackageBundle) -> MlsGroupBuilder {
+        MlsGroupBuilder::new(key_package_bundle)
     }
 
     // Join a group from a welcome message

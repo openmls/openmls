@@ -4,7 +4,6 @@ use mls_group::proposals::StagedProposal;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
-use crate::extensions::RequiredCapabilitiesExtension;
 use crate::framing::*;
 use crate::prelude::KeyPackageBundle;
 use crate::prelude::_print_tree;
@@ -380,18 +379,9 @@ fn unknown_sender() {
         .unwrap();
 
         // Alice creates a group
-        let group_id = [1, 2, 3, 4];
-        let mut group_alice = MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            crypto,
-            alice_key_package_bundle,
-            MlsGroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
-            RequiredCapabilitiesExtension::default(),
-        )
-        .unwrap();
+        let mut group_alice = MlsGroup::builder(alice_key_package_bundle)
+            .build(crypto)
+            .expect("Error creating group.");
 
         // Alice adds Bob
         let bob_add_proposal = group_alice
@@ -630,18 +620,9 @@ fn confirmation_tag_presence() {
         .unwrap();
 
         // Alice creates a group
-        let group_id = [1, 2, 3, 4];
-        let mut group_alice = MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            crypto,
-            alice_key_package_bundle,
-            MlsGroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
-            RequiredCapabilitiesExtension::default(),
-        )
-        .unwrap();
+        let mut group_alice = MlsGroup::builder(alice_key_package_bundle)
+            .build(crypto)
+            .expect("Error creating group.");
 
         // Alice adds Bob
         let bob_add_proposal = group_alice
@@ -725,18 +706,9 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
         .unwrap();
 
         // Alice creates a group
-        let group_id = [1, 2, 3, 4];
-        let mut group_alice = MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            crypto,
-            alice_key_package_bundle,
-            MlsGroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
-            RequiredCapabilitiesExtension::default(),
-        )
-        .unwrap();
+        let mut group_alice = MlsGroup::builder(alice_key_package_bundle)
+            .build(crypto)
+            .expect("Error creating group.");
 
         // Alice adds Bob
         let bob_add_proposal = group_alice

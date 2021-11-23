@@ -47,20 +47,12 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
         ..MlsGroupConfig::default()
     };
 
-    let group_id = [5, 6, 7, 8];
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
 
-    let mut alice_group = MlsGroup::new(
-        &group_id,
-        ciphersuite.name(),
-        &crypto,
-        alice_key_package_bundle,
-        config,
-        None, /* Initial PSK */
-        None, /* MLS version */
-        RequiredCapabilitiesExtension::default(),
-    )
-    .unwrap();
+    let mut alice_group = MlsGroup::builder(alice_key_package_bundle)
+        .with_config(config)
+        .build(&crypto)
+        .expect("Error creating group.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group

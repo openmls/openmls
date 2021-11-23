@@ -137,8 +137,6 @@ fn group(
 ) -> (MlsGroup, CredentialBundle) {
     use openmls_traits::types::SignatureScheme;
 
-    use crate::extensions::RequiredCapabilitiesExtension;
-
     let credential_bundle = CredentialBundle::new(
         "Kreator".into(),
         CredentialType::Basic,
@@ -153,19 +151,10 @@ fn group(
         Vec::new(),
     )
     .unwrap();
-    let group_id = [1, 2, 3, 4];
     (
-        MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            backend,
-            key_package_bundle,
-            MlsGroupConfig::default(),
-            None, /* Initial PSK */
-            ProtocolVersion::Mls10,
-            RequiredCapabilitiesExtension::default(),
-        )
-        .unwrap(),
+        MlsGroup::builder(key_package_bundle)
+            .build(backend)
+            .expect("Error creating MlsGroup"),
         credential_bundle,
     )
 }
@@ -177,8 +166,6 @@ fn receiver_group(
     group_id: &GroupId,
 ) -> MlsGroup {
     use openmls_traits::types::SignatureScheme;
-
-    use crate::extensions::RequiredCapabilitiesExtension;
 
     let credential_bundle = CredentialBundle::new(
         "Receiver".into(),
@@ -194,17 +181,10 @@ fn receiver_group(
         Vec::new(),
     )
     .unwrap();
-    MlsGroup::new(
-        group_id.as_slice(),
-        ciphersuite.name(),
-        backend,
-        key_package_bundle,
-        MlsGroupConfig::default(),
-        None, /* Initial PSK */
-        ProtocolVersion::Mls10,
-        RequiredCapabilitiesExtension::default(),
-    )
-    .unwrap()
+    MlsGroup::builder(key_package_bundle)
+        .with_group_id(group_id.clone())
+        .build(backend)
+        .expect("Error creating MlsGroup")
 }
 
 // XXX: we could be more creative in generating these messages.

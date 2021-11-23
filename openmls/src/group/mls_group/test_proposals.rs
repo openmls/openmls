@@ -5,16 +5,14 @@ use crate::{
     ciphersuite::{Ciphersuite, Secret},
     config::{errors::ConfigError, Config},
     credentials::{CredentialBundle, CredentialType},
-    extensions::{
-        Extension, ExtensionError, ExtensionType, KeyIdExtension, RequiredCapabilitiesExtension,
-    },
+    extensions::{Extension, ExtensionType, KeyIdExtension, RequiredCapabilitiesExtension},
     framing::sender::{Sender, SenderType},
     framing::{FramingParameters, MlsPlaintext},
     group::{
         create_commit_params::CreateCommitParams,
         errors::MlsGroupError,
         proposals::{CreationProposalQueue, ProposalStore, StagedProposal, StagedProposalQueue},
-        GroupContext, GroupEpoch, GroupId, MlsGroupConfig, WireFormat,
+        GroupContext, GroupEpoch, GroupId, WireFormat,
     },
     key_packages::{KeyPackageBundle, KeyPackageError},
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalReference, ProposalType},
@@ -302,19 +300,12 @@ fn test_required_unsupported_proposals() {
     let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
 
     // This must fail because we don't actually support AppAck proposals
-    let e = MlsGroup::new(
-        &GroupId::random(&crypto).as_slice(),
-        ciphersuite.name(),
-        &crypto,
-        alice_key_package_bundle,
-        MlsGroupConfig::default(),
-        None, /* PSK */
-        None, /* MLS version */
-        required_capabilities,
-    )
-    .expect_err(
-        "MlsGroup creation must fail because AppAck proposals aren't supported in OpenMLS yet.",
-    );
+    let e = MlsGroup::builder(alice_key_package_bundle)
+        .with_required_capabilities(required_capabilities)
+        .build(&crypto)
+        .expect_err(
+            "MlsGroup creation must fail because AppAck proposals aren't supported in OpenMLS yet.",
+        );
     assert_eq!(
         e,
         MlsGroupError::ConfigError(ConfigError::UnsupportedProposalType)
@@ -350,17 +341,10 @@ fn test_required_extension_key_package_mismatch() {
     ];
     let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
 
-    let alice_group = MlsGroup::new(
-        &GroupId::random(&crypto).as_slice(),
-        ciphersuite.name(),
-        &crypto,
-        alice_key_package_bundle,
-        MlsGroupConfig::default(),
-        None, /* PSK */
-        None, /* MLS version */
-        required_capabilities,
-    )
-    .expect("Error creating MlsGroup.");
+    let alice_group = MlsGroup::builder(alice_key_package_bundle)
+        .with_required_capabilities(required_capabilities)
+        .build(&crypto)
+        .expect("Error creating MlsGroup.");
 
     let e = alice_group
         .create_add_proposal(
@@ -408,17 +392,10 @@ fn test_group_context_extensions() {
     ];
     let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
 
-    let mut alice_group = MlsGroup::new(
-        &GroupId::random(&crypto).as_slice(),
-        ciphersuite.name(),
-        &crypto,
-        alice_key_package_bundle,
-        MlsGroupConfig::default(),
-        None, /* PSK */
-        None, /* MLS version */
-        required_capabilities,
-    )
-    .expect("Error creating MlsGroup.");
+    let mut alice_group = MlsGroup::builder(alice_key_package_bundle)
+        .with_required_capabilities(required_capabilities)
+        .build(&crypto)
+        .expect("Error creating MlsGroup.");
 
     let bob_add_proposal = alice_group
         .create_add_proposal(
@@ -494,17 +471,10 @@ fn test_group_context_extension_proposal_fails() {
     ];
     let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
 
-    let mut alice_group = MlsGroup::new(
-        &GroupId::random(&crypto).as_slice(),
-        ciphersuite.name(),
-        &crypto,
-        alice_key_package_bundle,
-        MlsGroupConfig::default(),
-        None, /* PSK */
-        None, /* MLS version */
-        required_capabilities,
-    )
-    .expect("Error creating MlsGroup.");
+    let mut alice_group = MlsGroup::builder(alice_key_package_bundle)
+        .with_required_capabilities(required_capabilities)
+        .build(&crypto)
+        .expect("Error creating MlsGroup.");
 
     // Alice tries to add a required capability it doesn't support itself.
     let required_key_id = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
@@ -557,7 +527,7 @@ fn test_group_context_extension_proposal_fails() {
     alice_group.merge_commit(staged_commit);
     let ratchet_tree = alice_group.tree().public_key_tree_copy();
 
-    let mut bob_group = MlsGroup::new_from_welcome(
+    let bob_group = MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.unwrap(),
         Some(ratchet_tree),
         bob_key_package_bundle,
@@ -620,17 +590,10 @@ fn test_group_context_extension_proposal() {
     ];
     let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
 
-    let mut alice_group = MlsGroup::new(
-        &GroupId::random(&crypto).as_slice(),
-        ciphersuite.name(),
-        &crypto,
-        alice_key_package_bundle,
-        MlsGroupConfig::default(),
-        None, /* PSK */
-        None, /* MLS version */
-        required_capabilities,
-    )
-    .expect("Error creating MlsGroup.");
+    let mut alice_group = MlsGroup::builder(alice_key_package_bundle)
+        .with_required_capabilities(required_capabilities)
+        .build(&crypto)
+        .expect("Error creating MlsGroup.");
 
     // Adding Bob
     let bob_add_proposal = alice_group

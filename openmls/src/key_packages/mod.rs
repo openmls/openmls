@@ -221,13 +221,9 @@ impl KeyPackage {
         &self,
         required_extensions: &[ExtensionType],
     ) -> Result<(), KeyPackageError> {
-        let my_extension_types = self
-            .extensions()
-            .iter()
-            .map(|ext| ext.extension_type())
-            .collect::<Vec<_>>();
+        let my_extension_types = self.extensions().iter().map(|ext| ext.extension_type());
         for required in required_extensions.iter() {
-            if !my_extension_types.contains(&required) {
+            if !my_extension_types.clone().any(|e| &e == required) {
                 return Err(KeyPackageError::UnsupportedExtension);
             }
         }

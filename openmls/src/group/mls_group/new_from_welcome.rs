@@ -120,7 +120,7 @@ impl MlsGroup {
         } else {
             ratchet_tree_extension
                 .pop()
-                .ok_or_else(|| WelcomeError::UnknownError)?
+                .ok_or(WelcomeError::UnknownError)?
         };
 
         // Set nodes either from the extension or from the `nodes_option`.

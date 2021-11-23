@@ -159,6 +159,7 @@ pub(crate) struct GroupInfoPayload {
 }
 
 impl GroupInfoPayload {
+    #[allow(clippy::too_many_arguments)] // TODO: #569 refactor GroupInfoPayload
     /// Create a new group info payload struct.
     pub(crate) fn new(
         group_id: GroupId,

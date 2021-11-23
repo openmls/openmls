@@ -35,18 +35,9 @@ fn test_mls_group_persistence() {
     .unwrap();
 
     // Alice creates a group
-    let group_id = [1, 2, 3, 4];
-    let alice_group = MlsGroup::new(
-        &group_id,
-        ciphersuite.name(),
-        &crypto,
-        alice_key_package_bundle,
-        MlsGroupConfig::default(),
-        None, /* Initial PSK */
-        None, /* MLS version */
-        RequiredCapabilitiesExtension::default(),
-    )
-    .unwrap();
+    let alice_group = MlsGroup::builder(alice_key_package_bundle)
+        .build(&crypto)
+        .expect("Error creating group.");
 
     let mut file_out = tempfile::NamedTempFile::new().expect("Could not create file");
     alice_group
@@ -221,18 +212,9 @@ fn test_update_path() {
         let bob_key_package = bob_key_package_bundle.key_package();
 
         // === Alice creates a group ===
-        let group_id = [1, 2, 3, 4];
-        let mut alice_group = MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            &crypto,
-            alice_key_package_bundle,
-            MlsGroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
-            RequiredCapabilitiesExtension::default(),
-        )
-        .unwrap();
+        let mut alice_group = MlsGroup::builder(alice_key_package_bundle)
+            .build(&crypto)
+            .expect("Error creating group.");
 
         // === Alice adds Bob ===
         let bob_add_proposal = alice_group
@@ -452,7 +434,6 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group with a PSK ===
-    let group_id = [1, 2, 3, 4];
     let psk_id = vec![1u8, 2, 3];
 
     let secret = Secret::random(ciphersuite,  &crypto, None /* MLS version */);
@@ -469,17 +450,10 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         &[preshared_key_id.clone()],
         &[external_psk_bundle.secret().clone()],
     ).expect("Could not create PskSecret");
-    let mut alice_group = MlsGroup::new(
-        &group_id,
-        ciphersuite.name(),
-        &crypto,
-        alice_key_package_bundle,
-        MlsGroupConfig::default(),
-        Some(initial_psk),
-        None, /* MLS version */
-        RequiredCapabilitiesExtension::default(),
-    )
-    .unwrap();
+    let mut alice_group = MlsGroup::builder(alice_key_package_bundle)
+        .with_psk(initial_psk)
+        .build(&crypto)
+        .expect("Error creating group.");
 
     // === Alice creates a PSK proposal ===
     log::info!(" >>> Creating psk proposal ...");

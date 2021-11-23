@@ -32,6 +32,12 @@ pub enum CiphersuiteName {
     MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 = 0x0006,
 }
 
+impl Default for CiphersuiteName {
+    fn default() -> Self {
+        CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
+    }
+}
+
 implement_enum_display!(CiphersuiteName);
 
 impl From<CiphersuiteName> for SignatureScheme {

@@ -59,18 +59,9 @@ fn create_commit_optional_path() {
         assert!(alice_update_key_package.verify(&crypto,).is_ok());
 
         // Alice creates a group
-        let group_id = [1, 2, 3, 4];
-        let mut group_alice = MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            &crypto,
-            alice_key_package_bundle,
-            MlsGroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
-            RequiredCapabilitiesExtension::default(),
-        )
-        .unwrap();
+        let mut group_alice = MlsGroup::builder(alice_key_package_bundle)
+            .build(&crypto)
+            .expect("Error creating MlsGroup.");
 
         // Alice proposes to add Bob with forced self-update
         // Even though there are only Add Proposals, this should generated a path field
@@ -258,18 +249,9 @@ fn basic_group_setup() {
         .unwrap();
 
         // Alice creates a group
-        let group_id = [1, 2, 3, 4];
-        let group_alice = MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            &crypto,
-            alice_key_package_bundle,
-            MlsGroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
-            RequiredCapabilitiesExtension::default(),
-        )
-        .expect("Could not create group.");
+        let group_alice = MlsGroup::builder(alice_key_package_bundle)
+            .build(&crypto)
+            .expect("Error creating MlsGroup.");
 
         // Alice adds Bob
         let bob_add_proposal = group_alice
@@ -347,18 +329,9 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group ===
-    let group_id = [1, 2, 3, 4];
-    let mut group_alice = MlsGroup::new(
-        &group_id,
-        ciphersuite.name(),
-        &crypto,
-        alice_key_package_bundle,
-        MlsGroupConfig::default(),
-        None, /* Initial PSK */
-        None, /* MLS version */
-        RequiredCapabilitiesExtension::default(),
-    )
-    .expect("Could not create group.");
+    let mut group_alice = MlsGroup::builder(alice_key_package_bundle)
+        .build(&crypto)
+        .expect("Error creating MlsGroup.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = group_alice

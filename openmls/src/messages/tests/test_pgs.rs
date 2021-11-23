@@ -5,7 +5,6 @@ use crate::{
     ciphersuite::signable::Verifiable,
     config::Config,
     credentials::{CredentialBundle, CredentialType},
-    extensions::RequiredCapabilitiesExtension,
     group::{
         create_commit_params::CreateCommitParams,
         proposals::{ProposalStore, StagedProposal},
@@ -14,7 +13,7 @@ use crate::{
     key_packages::KeyPackageBundle,
     messages::{
         public_group_state::{PublicGroupState, VerifiablePublicGroupState},
-        LeafIndex, MlsGroup, MlsGroupConfig,
+        LeafIndex, MlsGroup,
     },
     prelude::FramingParameters,
 };
@@ -63,18 +62,9 @@ fn test_pgs() {
         .unwrap();
 
         // Alice creates a group
-        let group_id = [1, 2, 3, 4];
-        let mut group_alice = MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            &crypto,
-            alice_key_package_bundle,
-            MlsGroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
-            RequiredCapabilitiesExtension::default(),
-        )
-        .expect("Could not create group.");
+        let mut group_alice = MlsGroup::builder(alice_key_package_bundle)
+            .build(&crypto)
+            .expect("Could not create group.");
 
         // Alice adds Bob
         let bob_add_proposal = group_alice
