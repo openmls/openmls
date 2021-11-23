@@ -459,7 +459,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // MlsPlaintextApplication
-    let tv_mls_plaintext_application = hex_to_bytes(&tv.mls_plaintext_application);
+    let mut tv_mls_plaintext_application = hex_to_bytes(&tv.mls_plaintext_application);
+    // Fake the wire format so we can deserialize
+    tv_mls_plaintext_application[0] = WireFormat::MlsPlaintext as u8;
     let my_mls_plaintext_application =
         VerifiableMlsPlaintext::tls_deserialize(&mut tv_mls_plaintext_application.as_slice())
             .unwrap()
@@ -476,7 +478,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // MlsPlaintext(Proposal)
-    let tv_mls_plaintext_proposal = hex_to_bytes(&tv.mls_plaintext_proposal);
+    let mut tv_mls_plaintext_proposal = hex_to_bytes(&tv.mls_plaintext_proposal);
+    // Fake the wire format so we can deserialize
+    tv_mls_plaintext_proposal[0] = WireFormat::MlsPlaintext as u8;
     let my_mls_plaintext_proposal =
         VerifiableMlsPlaintext::tls_deserialize(&mut tv_mls_plaintext_proposal.as_slice())
             .unwrap()
@@ -493,7 +497,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // MlsPlaintext(Commit)
-    let tv_mls_plaintext_commit = hex_to_bytes(&tv.mls_plaintext_commit);
+    let mut tv_mls_plaintext_commit = hex_to_bytes(&tv.mls_plaintext_commit);
+    // Fake the wire format so we can deserialize
+    tv_mls_plaintext_commit[0] = WireFormat::MlsPlaintext as u8;
     let my_mls_plaintext_commit =
         VerifiableMlsPlaintext::tls_deserialize(&mut tv_mls_plaintext_commit.as_slice())
             .unwrap()

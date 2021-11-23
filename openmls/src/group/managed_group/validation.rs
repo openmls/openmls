@@ -30,10 +30,18 @@ impl ManagedGroup {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
+
         // Check the message has the correct epoch number
         if message.epoch() != self.group.context().epoch() {
             return Err(ManagedGroupError::InvalidMessage(
                 InvalidMessageError::WrongEpoch,
+            ));
+        }
+
+        // ValSem2: Check the group ID is the right one
+        if message.group_id() != self.group_id() {
+            return Err(ManagedGroupError::InvalidMessage(
+                InvalidMessageError::WrongGroupId,
             ));
         }
 
