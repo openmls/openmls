@@ -18,7 +18,7 @@ implement_error! {
         Simple {
             InitSecretNotFound =
                 "Missing init secret when creating commit.",
-            NoSignatureKey = "No signature was found.",
+            NoSignatureKey = "No signature key was found.",
         }
         Complex {
             MlsCiphertextError(MlsCiphertextError) =
