@@ -38,7 +38,7 @@ impl MlsGroup {
         let sender = plaintext.sender();
         if sender.is_member() {
             let sender_index = sender.to_leaf_index();
-            if sender_index > self.tree().leaf_count() || self.tree().nodes[sender_index].is_blank()
+            if sender_index >= self.tree().leaf_count() || self.tree().nodes[sender_index].is_blank()
             {
                 return Err(FramingValidationError::UnknownMember.into());
             }
