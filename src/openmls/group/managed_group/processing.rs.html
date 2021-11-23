@@ -194,6 +194,8 @@
 <span id="194">194</span>
 <span id="195">195</span>
 <span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">mls_group</span>::{<span class="ident">create_commit_params::CreateCommitParams</span>, <span class="ident">proposals::StagedProposal</span>};
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude::ErrorString</span>;
@@ -320,8 +322,10 @@
                             ))
                         }
                         <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="kw">let</span> <span class="ident">error_string</span> <span class="op">=</span>
-                                <span class="string">&quot;stage_commit() did not return an StageCommitError.&quot;</span>.<span class="ident">to_string</span>();
+                            <span class="kw">let</span> <span class="ident">error_string</span> <span class="op">=</span> <span class="macro">format!</span>(
+                                <span class="string">&quot;Unexpected error for stage_commit(): {:?}&quot;</span>,
+                                <span class="ident">stage_commit_error</span>
+                            );
                             <span class="ident">events</span>.<span class="ident">push</span>(<span class="ident">GroupEvent::Error</span>(<span class="ident">ErrorEvent::new</span>(
                                 <span class="ident">ManagedGroupError::LibraryError</span>(<span class="ident">ErrorString::from</span>(<span class="ident">error_string</span>)),
                             )));

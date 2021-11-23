@@ -539,12 +539,17 @@
 <span id="539">539</span>
 <span id="540">540</span>
 <span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">trace</span>};
 <span class="kw">use</span> <span class="ident">psk</span>::{<span class="ident">PreSharedKeys</span>, <span class="ident">PskSecret</span>};
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">create_commit</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">create_commit_params</span>;
 <span class="kw">mod</span> <span class="ident">new_from_welcome</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">process</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">proposals</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">staged_commit</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
@@ -555,6 +560,7 @@
 <span class="kw">mod</span> <span class="ident">test_mls_group</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">test_proposals</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">validation</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite::signable</span>::{<span class="ident">Signable</span>, <span class="ident">Verifiable</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config::Config</span>;
@@ -580,7 +586,9 @@
 <span class="kw">use</span> <span class="ident">std::cell::RefMut</span>;
 <span class="kw">use</span> <span class="ident">tls_codec::Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::errors</span>::{<span class="ident">ExporterError</span>, <span class="ident">MlsGroupError</span>, <span class="ident">PskError</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::errors</span>::{
+    <span class="ident">ExporterError</span>, <span class="ident">FramingValidationError</span>, <span class="ident">MlsGroupError</span>, <span class="ident">ProposalValidationError</span>, <span class="ident">PskError</span>,
+};
 
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">CreateCommitResult</span> <span class="op">=</span>
     <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">MlsPlaintext</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Welcome</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>), <span class="ident">MlsGroupError</span><span class="op">&gt;</span>;

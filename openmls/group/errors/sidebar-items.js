@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["CreateCommitError",""],["CreationProposalQueueError",""],["ExporterError",""],["MlsGroupError",""],["PskError",""],["StageCommitError",""],["StagedProposalError",""],["StagedProposalQueueError",""],["WelcomeError",""]]});
+initSidebarItems({"enum":[["CreateCommitError",""],["CreationProposalQueueError",""],["ExporterError",""],["FramingValidationError",""],["MlsGroupError",""],["ProposalValidationError",""],["PskError",""],["StageCommitError",""],["StagedProposalError",""],["StagedProposalQueueError",""],["WelcomeError",""]]});

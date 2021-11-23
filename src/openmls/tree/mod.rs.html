@@ -1048,6 +1048,30 @@
 <span id="1048">1048</span>
 <span id="1049">1049</span>
 <span id="1050">1050</span>
+<span id="1051">1051</span>
+<span id="1052">1052</span>
+<span id="1053">1053</span>
+<span id="1054">1054</span>
+<span id="1055">1055</span>
+<span id="1056">1056</span>
+<span id="1057">1057</span>
+<span id="1058">1058</span>
+<span id="1059">1059</span>
+<span id="1060">1060</span>
+<span id="1061">1061</span>
+<span id="1062">1062</span>
+<span id="1063">1063</span>
+<span id="1064">1064</span>
+<span id="1065">1065</span>
+<span id="1066">1066</span>
+<span id="1067">1067</span>
+<span id="1068">1068</span>
+<span id="1069">1069</span>
+<span id="1070">1070</span>
+<span id="1071">1071</span>
+<span id="1072">1072</span>
+<span id="1073">1073</span>
+<span id="1074">1074</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite::signable::Signable</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config</span>::{<span class="ident">Config</span>, <span class="ident">ProtocolVersion</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credentials</span>::<span class="kw-2">*</span>;
@@ -1223,6 +1247,19 @@
         <span class="ident">treemath::leaf_count</span>(<span class="self">self</span>.<span class="ident">tree_size</span>())
     }
 
+    <span class="doccomment">/// Returns an iterator over references to key packages of non-blank leaf nodes</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">key_packages</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">nodes</span>.<span class="ident">iter</span>().<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">node</span><span class="op">|</span> <span class="ident">node</span>.<span class="ident">key_package</span>())
+    }
+
+    <span class="doccomment">/// Returns an iterator over indexes and references to key packages of non-blank leaf nodes</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">indexed_key_packages</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> (<span class="ident">NodeIndex</span>, <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span>)<span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">nodes</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>().<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">index</span>, <span class="ident">node</span>)<span class="op">|</span> {
+            <span class="ident">node</span>.<span class="ident">key_package</span>()
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">key_package</span><span class="op">|</span> (<span class="ident">NodeIndex::from</span>(<span class="ident">index</span>), <span class="ident">key_package</span>))
+        })
+    }
+
     <span class="doccomment">/// Compute the resolution for a given node index. Leaves listed in the</span>
     <span class="doccomment">/// `exclusion_list` are subtracted from the final resolution.</span>
     <span class="kw">fn</span> <span class="ident">resolve</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">index</span>: <span class="ident">NodeIndex</span>, <span class="ident">exclusion_list</span>: <span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LeafIndex</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeIndex</span><span class="op">&gt;</span> {
@@ -1315,6 +1352,10 @@
     <span class="doccomment">/// &gt; intermediate nodes in the path above the leaf. The path is ordered</span>
     <span class="doccomment">/// &gt; from the closest node to the leaf to the root; each node MUST be the</span>
     <span class="doccomment">/// &gt; parent of its predecessor.</span>
+    <span class="doccomment">/// This function does the following checks:</span>
+    <span class="doccomment">///  - ValSem202</span>
+    <span class="doccomment">///  - ValSem203</span>
+    <span class="doccomment">///  - ValSem204</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">update_path</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
@@ -1334,6 +1375,11 @@
             .<span class="ident">expect</span>(<span class="string">&quot;update_path: Error when computing direct path.&quot;</span>);
         <span class="kw">let</span> <span class="ident">sender_co_path</span> <span class="op">=</span> <span class="ident">treemath::copath</span>(<span class="ident">sender</span>, <span class="self">self</span>.<span class="ident">leaf_count</span>())
             .<span class="ident">expect</span>(<span class="string">&quot;update_path: Error when computing copath.&quot;</span>);
+
+        <span class="comment">// ValSem202</span>
+        <span class="kw">if</span> <span class="ident">sender_direct_path</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">update_path</span>.<span class="ident">nodes</span>.<span class="ident">len</span>() {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TreeError::InvalidUpdatePath</span>);
+        }
 
         <span class="comment">// Find the position of the common ancestor in the sender&#39;s direct path</span>
         <span class="kw">let</span> <span class="ident">common_ancestor_sender_dirpath_index</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">sender_direct_path</span>
@@ -1410,6 +1456,7 @@
         );
 
         <span class="comment">// Decrypt the secret and derive path secrets</span>
+        <span class="comment">// ValSem203</span>
         <span class="kw">let</span> <span class="ident">secret_bytes</span> <span class="op">=</span> <span class="ident">backend</span>
             .<span class="ident">crypto</span>()
             .<span class="ident">hpke_open</span>(
@@ -1441,6 +1488,7 @@
         <span class="kw">let</span> (<span class="kw">_</span>, <span class="ident">common_public_keys</span>) <span class="op">=</span>
             <span class="ident">update_path_public_keys</span>.<span class="ident">split_at</span>(<span class="ident">update_path_public_keys</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">common_path</span>.<span class="ident">len</span>());
 
+        <span class="comment">// ValSem204</span>
         <span class="kw">if</span> <span class="ident">new_path_public_keys</span> <span class="op">!</span><span class="op">=</span> <span class="ident">common_public_keys</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TreeError::InvalidUpdatePath</span>);
         }
