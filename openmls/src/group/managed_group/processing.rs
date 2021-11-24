@@ -124,8 +124,10 @@ impl ManagedGroup {
                             ))
                         }
                         _ => {
-                            let error_string =
-                                "stage_commit() did not return an StageCommitError.".to_string();
+                            let error_string = format!(
+                                "Unexpected error for stage_commit(): {:?}",
+                                stage_commit_error
+                            );
                             events.push(GroupEvent::Error(ErrorEvent::new(
                                 ManagedGroupError::LibraryError(ErrorString::from(error_string)),
                             )));

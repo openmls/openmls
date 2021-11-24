@@ -11,8 +11,8 @@ use crate::{
     extensions::Extension,
     framing::{MlsCiphertext, MlsMessageIn, VerifiableMlsPlaintext},
     group::{
-        GroupId, InvalidMessageError, ManagedGroup, ManagedGroupConfig, ManagedGroupError,
-        WireFormat,
+        FramingValidationError, GroupId, ManagedGroup, ManagedGroupConfig, ManagedGroupError,
+        MlsGroupError, WireFormat,
     },
     key_packages::{KeyPackage, KeyPackageBundle, KeyPackageError},
 };
@@ -208,6 +208,8 @@ fn test_valsem2() {
 
     assert_eq!(
         err,
-        ManagedGroupError::InvalidMessage(InvalidMessageError::WrongGroupId,)
+        ManagedGroupError::Group(MlsGroupError::FramingValidationError(
+            FramingValidationError::WrongGroupId
+        ))
     );
 }

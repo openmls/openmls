@@ -7,7 +7,9 @@ use crate::ciphersuite::CryptoError;
 use crate::config::ConfigError;
 use crate::credentials::CredentialError;
 use crate::extensions::errors::ExtensionError;
-use crate::framing::errors::{MlsCiphertextError, MlsPlaintextError, VerificationError};
+use crate::framing::errors::{
+    MlsCiphertextError, MlsPlaintextError, ValidationError, VerificationError,
+};
 use crate::key_packages::KeyPackageError;
 use crate::messages::errors::ProposalQueueError;
 use crate::schedule::errors::{KeyScheduleError, PskSecretError};
@@ -19,6 +21,7 @@ implement_error! {
         Simple {
             InitSecretNotFound =
                 "Missing init secret when creating commit.",
+            NoSignatureKey = "No signature key was found.",
         }
         Complex {
             MlsCiphertextError(MlsCiphertextError) =
@@ -55,6 +58,12 @@ implement_error! {
                 "See [`KeyPackageError`] for details.",
             ExtensionError(ExtensionError) =
                 "See [`ExtensionError`] for details.",
+            ValidationError(ValidationError) =
+                "See [`ValidationError`](crate::framing::ValidationError) for details.",
+            FramingValidationError(FramingValidationError) =
+                "See [`FramingValidationError`](crate::group::FramingValidationError) for details.",
+            ProposalValidationError(ProposalValidationError) =
+                "See [`ProposalValidationError`](crate::group::ProposalValidationError) for details.",
         }
     }
 }
@@ -199,6 +208,7 @@ implement_error! {
     pub enum StagedProposalQueueError {
         Simple {
             ProposalNotFound = "Not all proposals in the Commit were found locally.",
+            SelfRemoval = "The sender of a Commit tried to remove themselves.",
         }
         Complex {
             NotAProposal(StagedProposalError) = "The given MLS Plaintext was not a Proposal.",
@@ -214,5 +224,34 @@ implement_error! {
         Complex {
             NotAProposal(StagedProposalError) = "The given MLS Plaintext was not a Proposal.",
         }
+    }
+}
+
+implement_error! {
+    pub enum FramingValidationError {
+        WrongGroupId = "Message group ID differs from the group's group ID.",
+        WrongEpoch = "Message epoch differs from the group's epoch.",
+        UnknownMember = "The sender could not be matched to a member of the group.",
+        UnencryptedApplicationMessage = "Application messages must always be encrypted.",
+        NonMemberApplicationMessage = "An application message was sent from an external sender.",
+        MissingMembershipTag = "Membership tag is missing.",
+        MissingConfirmationTag = "Confirmation tag is missing.",
+    }
+}
+
+implement_error! {
+    pub enum ProposalValidationError {
+        UnknownMember = "The sender could not be matched to a member of the group.",
+        DuplicateIdentityAddProposal = "Found two add proposals with the same identity.",
+        DuplicateSignatureKeyAddProposal = "Found two add proposals with the same signature key.",
+        DuplicatePublicKeyAddProposal = "Found two add proposals with the same HPKE public key.",
+        ExistingIdentityAddProposal = "Identity of the add proposal already existed in tree.",
+        ExistingSignatureKeyAddProposal = "Signature key of the add proposal already existed in tree.",
+        ExistingPublicKeyAddProposal = "HPKE public key of the add proposal already existed in tree.",
+        UpdateProposalIdentityMismatch = "The identity of the update proposal did not match the existing identity.",
+        ExistingSignatureKeyUpdateProposal = "Signature key of the update proposal already existed in tree.",
+        ExistingPublicKeyUpdateProposal = "HPKE public key of the update proposal already existed in tree.",
+        DuplicateMemberRemoval = "Duplicate remove proposals for the same member.",
+        UnknownMemberRemoval = "The remove proposal referenced a non-existing member.",
     }
 }

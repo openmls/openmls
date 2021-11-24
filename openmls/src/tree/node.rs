@@ -142,11 +142,6 @@ impl Node {
         self.key_package.is_none() && self.node.is_none()
     }
 
-    /// Returns `true` if this is a leaf node and `false` otherwise.
-    pub(crate) fn is_leaf(&self) -> bool {
-        self.node_type.is_leaf()
-    }
-
     /// Returns `true` if the node is a non-blank parent node and `false`
     /// otherwise.
     pub(crate) fn is_full_parent(&self) -> bool {
