@@ -420,7 +420,7 @@ impl MlsClient for MlsClientImpl {
             ..Default::default()
         };
         let mut group = MlsGroup::builder(
-            GroupId::from_slice(create_group_request.group_id),
+            GroupId::from_slice(&create_group_request.group_id),
             key_package_bundle,
         )
         .with_config(config)
