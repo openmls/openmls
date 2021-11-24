@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::binary_tree::{MlsBinaryTree, MlsBinaryTreeDiffError, MlsBinaryTreeError};
 
 use super::array_representation::tree::NodeIndex;
@@ -8,6 +10,7 @@ use super::array_representation::treemath::TreeMathError;
 // * Write better comments on tests
 // * test programmatically, i.e. do loops over various tree sizes where possible
 // * Re-write docs on the tree and diff functions
+// * Eliminate all TODOs and FIXMEs
 
 #[test]
 fn test_tree_basics() {
@@ -275,7 +278,7 @@ fn test_direct_path_manipulation() {
         st_diff.direct_path(1).expect_err(
             "should not be able to compute direct path with leaf index outside of tree."
         ),
-        MlsBinaryTreeDiffError::ABinaryTreeError(MlsBinaryTreeError::OutOfBounds)
+        MlsBinaryTreeDiffError::TreeError(TreeMathError::NodeNotInTree)
     );
 
     // Setting the direct path to one node.
@@ -388,7 +391,7 @@ fn test_direct_path_manipulation() {
         .expect_err("no error setting direct path outside of tree.");
     assert_eq!(
         error,
-        MlsBinaryTreeDiffError::ABinaryTreeError(MlsBinaryTreeError::OutOfBounds)
+        MlsBinaryTreeDiffError::TreeError(TreeMathError::NodeNotInTree)
     );
 
     let error = lt_diff
@@ -396,7 +399,7 @@ fn test_direct_path_manipulation() {
         .expect_err("no error setting direct path outside of tree.");
     assert_eq!(
         error,
-        MlsBinaryTreeDiffError::ABinaryTreeError(MlsBinaryTreeError::OutOfBounds)
+        MlsBinaryTreeDiffError::TreeError(TreeMathError::NodeNotInTree)
     );
 
     // Setting a direct path with wrong length
@@ -528,7 +531,7 @@ fn test_subtree_root_copath_node() {
     assert_eq!(subtree_root_copath_node, &23);
 
     let subtree_root_copath_node_ref = diff
-        .subtree_root_copath_node(34, 42)
+        .subtree_root_copath_node(42, 34)
         .expect("error computing subtree root");
     let subtree_root_copath_node = diff
         .try_deref(subtree_root_copath_node_ref)
@@ -572,7 +575,10 @@ fn test_subtree_path() {
     let error = diff
         .subtree_path(0, 3)
         .expect_err("no error when computing subtree root position outside of tree");
-    assert_eq!(error, MlsBinaryTreeDiffError::OutOfBounds);
+    assert_eq!(
+        error,
+        MlsBinaryTreeDiffError::TreeError(TreeMathError::NodeNotInTree)
+    );
 
     // Larger tree
     let tree = MlsBinaryTree::new((0..101).collect()).expect("error creating tree");
@@ -605,4 +611,66 @@ fn test_subtree_path() {
         diff.deref_vec(subtree_path).expect("error dereferencing"),
         vec![&79, &95, &63]
     );
+}
+
+#[test]
+fn test_diff_iter() {
+    let tree = MlsBinaryTree::new((0..101).collect()).expect("error creating tree");
+
+    let diff = tree.empty_diff();
+
+    let mut node_set = HashSet::new();
+
+    for node_ref in diff.iter() {
+        let node = diff.try_deref(node_ref).expect("error dereferencing");
+        node_set.insert(node);
+    }
+
+    for i in 0..101 {
+        assert!(node_set.contains(&i));
+    }
+}
+
+#[test]
+fn test_export_diff_nodes() {
+    let tree = MlsBinaryTree::new((0..101).collect()).expect("error creating tree");
+
+    let diff = tree.empty_diff();
+
+    let nodes = diff
+        .export_nodes()
+        .expect("error exporting nodes from diff");
+
+    // If we re-export the nodes into a tree, we should end up with the same tree.
+    let new_tree = MlsBinaryTree::new(nodes).expect("error creating tree from exported nodes");
+
+    assert_eq!(tree, new_tree);
+}
+
+#[test]
+fn test_diff_mutable_access_after_manipulation() {
+    let tree = MlsBinaryTree::new((0..101).collect()).expect("error creating tree");
+
+    let mut diff = tree.empty_diff();
+
+    // Let's change the nodes along a direct path.
+    diff.set_direct_path_to_node(5, &999)
+        .expect("error setting direct path nodes");
+
+    // Now let's get references to a neighbour's path, where some nodes were
+    // changed and some weren't.
+    let direct_path_refs = diff
+        .direct_path(6)
+        .expect("error getting direct path references");
+    for node_ref in &direct_path_refs {
+        let node_mut = diff
+            .try_deref_mut(*node_ref)
+            .expect("error dereferencing mutably");
+        *node_mut = 888;
+    }
+
+    let direct_path = diff
+        .deref_vec(direct_path_refs)
+        .expect("error dereferencing direct path nodes");
+    assert_eq!(direct_path, vec![&888, &888, &888, &888, &888, &888])
 }

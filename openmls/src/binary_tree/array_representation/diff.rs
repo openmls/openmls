@@ -11,6 +11,8 @@ use super::{
     treemath::{direct_path, left, lowest_common_ancestor, right, root, TreeMathError},
 };
 
+/// The `StagedAbDiff` can be created from an `AbDiff` instance. It's sole
+/// purpose is to be merged into an existing `ABinaryTree` instance.
 #[derive(Debug)]
 pub(crate) struct StagedAbDiff<T: Clone + Debug> {
     diff: HashMap<NodeIndex, T>,
@@ -28,6 +30,10 @@ impl<T: Clone + Debug> StagedAbDiff<T> {
     }
 }
 
+/// The `AbDiff` represents a Diff for an `ABinaryTree`. It can be created from
+/// an `ABinaryTree` instance and then accessed mutably or immutably. Any
+/// changes are saved by the `AbDiff` applied to the original `ABinaryTree`
+/// instance upon merging.
 pub(crate) struct AbDiff<'a, T: Clone + Debug> {
     original_tree: &'a ABinaryTree<T>,
     diff: HashMap<NodeIndex, T>,
@@ -52,7 +58,8 @@ pub(crate) struct NodeReference {
 
 impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// Replace the content of the node at the given leaf index with new
-    /// content.
+    /// content. Returns an error if the given leaf index larger than the leaf
+    /// count of the diff.
     pub(crate) fn replace_leaf(
         &mut self,
         leaf_index: LeafIndex,
@@ -108,8 +115,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         node: &T,
     ) -> Result<(), ABinaryTreeDiffError> {
         let node_index = to_node_index(leaf_index);
-        let direct_path =
-            direct_path(node_index, self.size()).map_err(|_| ABinaryTreeError::OutOfBounds)?;
+        let direct_path = direct_path(node_index, self.size())?;
         for node_index in &direct_path {
             self.add_to_diff(*node_index, node.clone())?;
         }
@@ -127,8 +133,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         mut path: Vec<T>,
     ) -> Result<(), ABinaryTreeDiffError> {
         let node_index = to_node_index(leaf_index);
-        let direct_path =
-            direct_path(node_index, self.size()).map_err(|_| ABinaryTreeError::OutOfBounds)?;
+        let direct_path = direct_path(node_index, self.size())?;
         if path.len() != direct_path.len() {
             return Err(ABinaryTreeDiffError::PathLengthMismatch);
         }
@@ -211,8 +216,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         let node_index_1 = to_node_index(leaf_index_1);
         let node_index_2 = to_node_index(leaf_index_2);
         let lca = lowest_common_ancestor(node_index_1, node_index_2);
-        let direct_path_indices =
-            direct_path(lca, self.size()).map_err(|_| ABinaryTreeDiffError::OutOfBounds)?;
+        let direct_path_indices = direct_path(lca, self.size())?;
         let mut full_path = vec![self.new_reference(lca)?];
         for node_index in direct_path_indices {
             let node_ref = self.new_reference(node_index)?;
@@ -230,9 +234,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         leaf_index: LeafIndex,
     ) -> Result<Vec<NodeReference>, ABinaryTreeDiffError> {
         let node_index = to_node_index(leaf_index);
-        let direct_path_indices =
-            direct_path(node_index, self.size()).map_err(|_| ABinaryTreeError::OutOfBounds)?;
-        println!("Direct path indices {:?}", direct_path_indices);
+        let direct_path_indices = direct_path(node_index, self.size())?;
         let mut direct_path = Vec::new();
         for node_index in &direct_path_indices {
             let node_ref = self.new_reference(*node_index)?;
@@ -306,7 +308,6 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         if node_index > self.size() {
             return Err(ABinaryTreeDiffError::ExtendingOutOfBounds);
         }
-        // If we are overwriting a node, remove its address from the node_map.
         self.diff.insert(node_index, node);
         // Finally, check if the new node increases the size of the diff.
         if node_index == self.size() {
