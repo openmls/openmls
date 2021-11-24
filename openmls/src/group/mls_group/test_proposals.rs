@@ -429,6 +429,8 @@ fn test_group_context_extensions() {
     alice_group.merge_commit(staged_commit);
     let ratchet_tree = alice_group.tree().public_key_tree_copy();
 
+    // Make sure that Bob can join the group with the required extension in place
+    // and Bob's key package supporting them.
     let _bob_group = MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.unwrap(),
         Some(ratchet_tree),

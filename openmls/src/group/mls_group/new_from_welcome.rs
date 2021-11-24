@@ -18,7 +18,7 @@ impl MlsGroup {
         psk_fetcher_option: Option<PskFetcher>,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, WelcomeError> {
-        println!("MlsGroup::new_from_welcome_internal");
+        log::debug!("MlsGroup::new_from_welcome_internal");
         let mls_version = *welcome.version();
         if !Config::supported_versions().contains(&mls_version) {
             return Err(WelcomeError::UnsupportedMlsVersion);
