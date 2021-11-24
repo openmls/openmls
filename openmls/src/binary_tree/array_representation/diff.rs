@@ -147,9 +147,20 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         leaf_index_1: LeafIndex,
         leaf_index_2: LeafIndex,
     ) -> Result<usize, ABinaryTreeDiffError> {
+        // If the given leaf indices are identical, the shared subtree root is
+        // the index itself. Since the index of the leaf itself doesn't appear
+        // in the direct path, we can't return anything meaningful. This check
+        // also ensures that the tree is large enough such that the direct path
+        // is never empty, since if there is a second leaf index (that is within
+        // the bound of the tree), there is a non-leaf root node that is in the
+        // direct path of all leaves.
+        if leaf_index_1 == leaf_index_2 {
+            return Err(ABinaryTreeDiffError::SameLeafError);
+        }
         let subtree_root_node_index =
             lowest_common_ancestor(to_node_index(leaf_index_1), to_node_index(leaf_index_2));
         let leaf_index_1_direct_path = direct_path(to_node_index(leaf_index_1), self.size())?;
+
         leaf_index_1_direct_path
             .iter()
             .position(|&direct_path_node_index| direct_path_node_index == subtree_root_node_index)
@@ -168,12 +179,15 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     ) -> Result<NodeReference, ABinaryTreeDiffError> {
         if leaf_index_1 == leaf_index_2 {
             return Err(ABinaryTreeDiffError::SameLeafError);
+        } else if leaf_index_1 >= self.leaf_count() || leaf_index_2 >= self.leaf_count() {
+            return Err(ABinaryTreeDiffError::OutOfBounds);
         }
 
         // We want to return the position of the lowest common ancestor in the
         // direct path of `leaf_index_1` (i.e. the sender_leaf_index).
         let subtree_root_node_index =
             lowest_common_ancestor(to_node_index(leaf_index_1), to_node_index(leaf_index_2));
+        println!("subtree_root_node_index: {:?}", subtree_root_node_index);
 
         // Figure out which child is the relevant copath node.
         let copath_node_index = if leaf_index_2 < leaf_index_1 {
@@ -181,6 +195,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         } else {
             right(subtree_root_node_index, self.size())?
         };
+        println!("copath_node_index: {:?}", copath_node_index);
 
         let copath_node_ref = self.new_reference(copath_node_index)?;
         Ok(copath_node_ref)
@@ -438,6 +453,7 @@ implement_error! {
             HasNoSibling = "Can't compure sibling resolution of the root node, as it has no sibling.",
             ExtendingOutOfBounds = "Trying to write too far outside of the tree.",
             FoldingError = "Error while executing folding function.",
+            EmptyDirectPath = "Can't compute subtree root position in an empty direct path.",
         }
         Complex {
             ABinaryTreeError(ABinaryTreeError) = "An Error occurred while accessing the underlying binary tree.",

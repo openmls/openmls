@@ -1,10 +1,13 @@
-use core::panic;
-
 use crate::binary_tree::{MlsBinaryTree, MlsBinaryTreeDiffError, MlsBinaryTreeError};
 
 use super::array_representation::tree::NodeIndex;
 
 use super::array_representation::treemath::TreeMathError;
+
+// TODO:
+// * Write better comments on tests
+// * test programmatically, i.e. do loops over various tree sizes where possible
+// * Re-write docs on the tree and diff functions
 
 #[test]
 fn test_tree_basics() {
@@ -376,4 +379,230 @@ fn test_direct_path_manipulation() {
         .expect("error dereferencing direct path nodes.");
     println!("direct path nodes: {:?}", direct_path_nodes);
     assert_eq!(direct_path_nodes, vec![&1, &3, &7, &15, &31, &883]);
+
+    // Error cases
+
+    // Setting the direct path of a node outside of the tree.
+    let error = lt_diff
+        .set_direct_path_to_node(51, &999)
+        .expect_err("no error setting direct path outside of tree.");
+    assert_eq!(
+        error,
+        MlsBinaryTreeDiffError::ABinaryTreeError(MlsBinaryTreeError::OutOfBounds)
+    );
+
+    let error = lt_diff
+        .set_direct_path(100, vec![888, 887, 886, 885, 884, 883])
+        .expect_err("no error setting direct path outside of tree.");
+    assert_eq!(
+        error,
+        MlsBinaryTreeDiffError::ABinaryTreeError(MlsBinaryTreeError::OutOfBounds)
+    );
+
+    // Setting a direct path with wrong length
+    let error = lt_diff
+        .set_direct_path(49, vec![888, 887, 886, 885, 884, 883, 0])
+        .expect_err("no error setting direct path outside of tree.");
+    assert_eq!(error, MlsBinaryTreeDiffError::PathLengthMismatch);
+
+    let error = lt_diff
+        .set_direct_path(0, vec![666, 999])
+        .expect_err("no error setting direct path outside of tree.");
+    assert_eq!(error, MlsBinaryTreeDiffError::PathLengthMismatch);
+}
+
+#[test]
+fn test_subtree_root_position() {
+    // Computing with a 1-node tree will always lead to a SameLeafError. See below.
+
+    // Small tree
+    let small_tree = MlsBinaryTree::new((0..3).collect()).expect("error creating tree");
+    let diff = small_tree.empty_diff();
+
+    // If the given leaf indices are identical, the shared subtree root is
+    // the index itself. Since the index of the leaf itself doesn't appear
+    // in the direct path, we can't return anything meaningful.
+    let error = diff
+        .subtree_root_position(0, 0)
+        .expect_err("no error when computing subtree root position of identical indices");
+    assert_eq!(error, MlsBinaryTreeDiffError::SameLeafError);
+
+    // Since the tree is small, the subtree root is on position 0.
+    let subtree_root_position = diff
+        .subtree_root_position(0, 1)
+        .expect("error computing subtree root");
+    assert_eq!(subtree_root_position, 0);
+
+    // Computing with one of the indices out of bounds.
+    let error = diff
+        .subtree_root_position(3, 0)
+        .expect_err("no error when computing subtree root position outside of tree");
+    assert_eq!(
+        error,
+        MlsBinaryTreeDiffError::TreeError(TreeMathError::NodeNotInTree)
+    );
+
+    // Larger tree
+    let tree = MlsBinaryTree::new((0..101).collect()).expect("error creating tree");
+
+    let diff = tree.empty_diff();
+
+    // Subtree root position of leaves in the left and right half of the tree is
+    // the last node in the direct path.
+    let subtree_root_position = diff
+        .subtree_root_position(0, 49)
+        .expect("error computing subtree root");
+    let direct_path = diff.direct_path(0).expect("error computing direct path");
+    assert_eq!(subtree_root_position, direct_path.len() - 1);
+
+    // Subtree root position of leaves in the same half of the tree.
+    let subtree_root_position = diff
+        .subtree_root_position(0, 10)
+        .expect("error computing subtree root");
+    assert_eq!(subtree_root_position, 3);
+
+    let subtree_root_position = diff
+        .subtree_root_position(24, 42)
+        .expect("error computing subtree root");
+    assert_eq!(subtree_root_position, 5);
+}
+
+#[test]
+fn test_subtree_root_copath_node() {
+    // The tree needs to have at least two leaves, as the function will error
+    // out if the given leaf indices are identical. (Tested below.)
+
+    // Small tree
+    let small_tree = MlsBinaryTree::new((0..3).collect()).expect("error creating tree");
+    let diff = small_tree.empty_diff();
+
+    // If the given leaf indices are identical, the function should return an error.
+    let error = diff
+        .subtree_root_copath_node(0, 0)
+        .expect_err("no error when computing subtree root copath node of identical indices");
+    assert_eq!(error, MlsBinaryTreeDiffError::SameLeafError);
+
+    // Since the tree is small, the subtree root copath node is the same as the
+    // second leaf index.
+    let subtree_root_copath_node = diff
+        .subtree_root_copath_node(0, 1)
+        .expect("error computing subtree root");
+    assert_eq!(
+        diff.try_deref(subtree_root_copath_node)
+            .expect("error dereferencing"),
+        &2
+    );
+
+    // Computing with one of the indices out of bounds.
+    let error = diff
+        .subtree_root_copath_node(3, 0)
+        .expect_err("no error when computing subtree root position outside of tree");
+    assert_eq!(error, MlsBinaryTreeDiffError::OutOfBounds);
+
+    // Larger tree
+    let tree = MlsBinaryTree::new((0..101).collect()).expect("error creating tree");
+
+    let diff = tree.empty_diff();
+
+    // Subtree root copath node of leaves in the left and right half of the tree is
+    // the second to last node in the direct path of the second index.
+    let subtree_root_copath_node_ref = diff
+        .subtree_root_copath_node(0, 49)
+        .expect("error computing subtree root");
+    let subtree_root_copath_node = diff
+        .try_deref(subtree_root_copath_node_ref)
+        .expect("error dereferencing");
+    let direct_path = diff.direct_path(49).expect("error computing direct path");
+    let direct_path_node = diff
+        .try_deref(direct_path[direct_path.len() - 2])
+        .expect("error dereferencing");
+    assert_eq!(subtree_root_copath_node, direct_path_node);
+
+    // Subtree root position of leaves in the same half of the tree.
+    let subtree_root_copath_node_ref = diff
+        .subtree_root_copath_node(0, 10)
+        .expect("error computing subtree root");
+    let subtree_root_copath_node = diff
+        .try_deref(subtree_root_copath_node_ref)
+        .expect("error dereferencing");
+    assert_eq!(subtree_root_copath_node, &23);
+
+    let subtree_root_copath_node_ref = diff
+        .subtree_root_copath_node(34, 42)
+        .expect("error computing subtree root");
+    let subtree_root_copath_node = diff
+        .try_deref(subtree_root_copath_node_ref)
+        .expect("error dereferencing");
+    assert_eq!(subtree_root_copath_node, &87);
+}
+
+#[test]
+fn test_subtree_path() {
+    // This should work on a one-node tree.
+    let tree = MlsBinaryTree::new(vec![0]).expect("error creating tree");
+    let diff = tree.empty_diff();
+
+    // Since in contrast to the direct path, the subtree path contains the
+    // shared subtree root itself, the subtree path of the only node should be
+    // that node.
+    let subtree_path = diff
+        .subtree_path(0, 0)
+        .expect("error computing subtree path");
+    let node = diff
+        .try_deref(*subtree_path.first().unwrap())
+        .expect("error dereferencing");
+    assert_eq!(node, &0);
+
+    // Small tree
+    let small_tree = MlsBinaryTree::new((0..3).collect()).expect("error creating tree");
+    let diff = small_tree.empty_diff();
+
+    // Since the tree is small, the subtree path of the two leaves should
+    // consist of only the root.
+    let subtree_path = diff
+        .subtree_path(0, 1)
+        .expect("error computing subtree path");
+    assert_eq!(
+        diff.try_deref(*subtree_path.first().unwrap())
+            .expect("error dereferencing"),
+        &1
+    );
+
+    // Computing with one of the indices out of bounds.
+    let error = diff
+        .subtree_path(0, 3)
+        .expect_err("no error when computing subtree root position outside of tree");
+    assert_eq!(error, MlsBinaryTreeDiffError::OutOfBounds);
+
+    // Larger tree
+    let tree = MlsBinaryTree::new((0..101).collect()).expect("error creating tree");
+
+    let diff = tree.empty_diff();
+
+    // Subtree path of leaves in the left and right half of the tree is the root node.
+    let subtree_path = diff
+        .subtree_path(0, 49)
+        .expect("error computing subtree path");
+    assert_eq!(
+        diff.try_deref(*subtree_path.first().unwrap())
+            .expect("error dereferencing"),
+        diff.try_deref(diff.root()).expect("error dereferencing")
+    );
+
+    // Subtree root position of leaves in the same half of the tree.
+    let subtree_path = diff
+        .subtree_path(0, 10)
+        .expect("error computing subtree root");
+    assert_eq!(
+        diff.deref_vec(subtree_path).expect("error dereferencing"),
+        vec![&15, &31, &63]
+    );
+
+    let subtree_path = diff
+        .subtree_path(34, 42)
+        .expect("error computing subtree root");
+    assert_eq!(
+        diff.deref_vec(subtree_path).expect("error dereferencing"),
+        vec![&79, &95, &63]
+    );
 }

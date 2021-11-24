@@ -14,16 +14,6 @@ use array_representation::tree::{ABinaryTree, ABinaryTreeError};
 
 use self::array_representation::diff::{AbDiff, StagedAbDiff};
 
-/// This trait requires the implementer to provide each instance with an
-/// `Address`. The address MUST be unique per instance.
-pub trait Addressable {
-    type Address: PartialEq + Eq + Hash;
-
-    /// Returns the address of this node. If it's the default node, return `None`
-    /// instead.
-    fn address(&self) -> Option<Self::Address>;
-}
-
 /// We use this type alias as a convenience, so we can later swap out the tree
 /// representation with a feature-flag.
 pub(crate) type MlsBinaryTree<Node> = ABinaryTree<Node>;
