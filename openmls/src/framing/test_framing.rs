@@ -379,7 +379,7 @@ fn unknown_sender() {
         .unwrap();
 
         // Alice creates a group
-        let mut group_alice = MlsGroup::builder(alice_key_package_bundle)
+        let mut group_alice = MlsGroup::builder(GroupId::random(crypto), alice_key_package_bundle)
             .build(crypto)
             .expect("Error creating group.");
 
@@ -620,7 +620,7 @@ fn confirmation_tag_presence() {
         .unwrap();
 
         // Alice creates a group
-        let mut group_alice = MlsGroup::builder(alice_key_package_bundle)
+        let mut group_alice = MlsGroup::builder(GroupId::random(crypto), alice_key_package_bundle)
             .build(crypto)
             .expect("Error creating group.");
 
@@ -706,7 +706,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
         .unwrap();
 
         // Alice creates a group
-        let mut group_alice = MlsGroup::builder(alice_key_package_bundle)
+        let mut group_alice = MlsGroup::builder(GroupId::random(crypto), alice_key_package_bundle)
             .build(crypto)
             .expect("Error creating group.");
 

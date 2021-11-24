@@ -33,6 +33,7 @@ pub enum CiphersuiteName {
 }
 
 impl Default for CiphersuiteName {
+    /// The default ciphersuite is the MTI.
     fn default() -> Self {
         CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
     }

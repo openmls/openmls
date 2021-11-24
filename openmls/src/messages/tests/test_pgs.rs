@@ -8,7 +8,7 @@ use crate::{
     group::{
         create_commit_params::CreateCommitParams,
         proposals::{ProposalStore, StagedProposal},
-        WireFormat,
+        GroupId, WireFormat,
     },
     key_packages::KeyPackageBundle,
     messages::{
@@ -62,7 +62,7 @@ fn test_pgs() {
         .unwrap();
 
         // Alice creates a group
-        let mut group_alice = MlsGroup::builder(alice_key_package_bundle)
+        let mut group_alice = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
             .build(&crypto)
             .expect("Could not create group.");
 

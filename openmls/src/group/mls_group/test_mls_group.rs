@@ -35,7 +35,7 @@ fn test_mls_group_persistence() {
     .unwrap();
 
     // Alice creates a group
-    let alice_group = MlsGroup::builder(alice_key_package_bundle)
+    let alice_group = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
         .build(&crypto)
         .expect("Error creating group.");
 
@@ -212,7 +212,7 @@ fn test_update_path() {
         let bob_key_package = bob_key_package_bundle.key_package();
 
         // === Alice creates a group ===
-        let mut alice_group = MlsGroup::builder(alice_key_package_bundle)
+        let mut alice_group = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
             .build(&crypto)
             .expect("Error creating group.");
 
@@ -450,7 +450,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         &[preshared_key_id.clone()],
         &[external_psk_bundle.secret().clone()],
     ).expect("Could not create PskSecret");
-    let mut alice_group = MlsGroup::builder(alice_key_package_bundle)
+    let mut alice_group = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
         .with_psk(initial_psk)
         .build(&crypto)
         .expect("Error creating group.");

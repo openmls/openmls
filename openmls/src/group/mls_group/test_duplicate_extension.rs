@@ -49,7 +49,7 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
 
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
 
-    let mut alice_group = MlsGroup::builder(alice_key_package_bundle)
+    let mut alice_group = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
         .with_config(config)
         .build(&crypto)
         .expect("Error creating group.");

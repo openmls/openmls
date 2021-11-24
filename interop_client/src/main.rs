@@ -419,11 +419,13 @@ impl MlsClient for MlsClientImpl {
             add_ratchet_tree_extension: true,
             ..Default::default()
         };
-        let mut group = MlsGroup::builder(key_package_bundle)
-            .with_group_id_slice(&create_group_request.group_id)
-            .with_config(config)
-            .build(&self.crypto_provider)
-            .map_err(into_status)?;
+        let mut group = MlsGroup::builder(
+            GroupId::from_slice(create_group_request.group_id),
+            key_package_bundle,
+        )
+        .with_config(config)
+        .build(&self.crypto_provider)
+        .map_err(into_status)?;
 
         let wire_format = wire_format(create_group_request.encrypt_handshake);
 

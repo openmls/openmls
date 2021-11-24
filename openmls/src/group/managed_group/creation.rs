@@ -27,8 +27,7 @@ impl ManagedGroup {
             add_ratchet_tree_extension: managed_group_config.use_ratchet_tree_extension,
             ..Default::default()
         };
-        let group = MlsGroup::builder(key_package_bundle)
-            .with_group_id(group_id)
+        let group = MlsGroup::builder(group_id, key_package_bundle)
             .with_config(group_config)
             .with_required_capabilities(managed_group_config.required_capabilities.clone())
             .build(backend)?;

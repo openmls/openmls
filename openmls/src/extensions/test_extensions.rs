@@ -130,7 +130,7 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     };
 
     // === Alice creates a group with the ratchet tree extension ===
-    let mut alice_group = MlsGroup::builder(alice_key_package_bundle)
+    let mut alice_group = MlsGroup::builder(GroupId::random(crypto), alice_key_package_bundle)
         .with_config(config)
         .build(crypto)
         .expect("Error creating group.");
@@ -201,7 +201,7 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         ..MlsGroupConfig::default()
     };
 
-    let mut alice_group = MlsGroup::builder(alice_key_package_bundle)
+    let mut alice_group = MlsGroup::builder(GroupId::random(crypto), alice_key_package_bundle)
         .with_config(config)
         .build(crypto)
         .expect("Error creating group.");

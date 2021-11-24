@@ -59,7 +59,7 @@ fn create_commit_optional_path() {
         assert!(alice_update_key_package.verify(&crypto,).is_ok());
 
         // Alice creates a group
-        let mut group_alice = MlsGroup::builder(alice_key_package_bundle)
+        let mut group_alice = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
             .build(&crypto)
             .expect("Error creating MlsGroup.");
 
@@ -249,7 +249,7 @@ fn basic_group_setup() {
         .unwrap();
 
         // Alice creates a group
-        let group_alice = MlsGroup::builder(alice_key_package_bundle)
+        let group_alice = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
             .build(&crypto)
             .expect("Error creating MlsGroup.");
 
@@ -329,7 +329,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group ===
-    let mut group_alice = MlsGroup::builder(alice_key_package_bundle)
+    let mut group_alice = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
         .build(&crypto)
         .expect("Error creating MlsGroup.");
 

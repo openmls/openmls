@@ -79,7 +79,7 @@ implement_persistence!(
 /// Builder for [`MlsGroup`].
 pub struct MlsGroupBuilder {
     key_package_bundle: KeyPackageBundle,
-    group_id: Option<GroupId>,
+    group_id: GroupId,
     config: Option<MlsGroupConfig>,
     psk: Option<PskSecret>,
     version: Option<ProtocolVersion>,
@@ -88,25 +88,15 @@ pub struct MlsGroupBuilder {
 
 impl MlsGroupBuilder {
     /// Create a new [`MlsGroupBuilder`].
-    pub fn new(key_package_bundle: KeyPackageBundle) -> Self {
+    pub fn new(group_id: GroupId, key_package_bundle: KeyPackageBundle) -> Self {
         Self {
             key_package_bundle,
-            group_id: None,
+            group_id,
             config: None,
             psk: None,
             version: None,
             required_capabilities: None,
         }
-    }
-    /// Set the [`GroupId`] of the [`MlsGroup`].
-    pub fn with_group_id(mut self, group_id: GroupId) -> Self {
-        self.group_id = Some(group_id);
-        self
-    }
-    /// Set the [`GroupId`] of the [`MlsGroup`].
-    pub fn with_group_id_slice(mut self, group_id: &[u8]) -> Self {
-        self.group_id = Some(GroupId::from_slice(group_id));
-        self
     }
     /// Set the [`MlsGroupConfig`] of the [`MlsGroup`].
     pub fn with_config(mut self, config: MlsGroupConfig) -> Self {
@@ -141,11 +131,10 @@ impl MlsGroupBuilder {
     pub fn build(self, backend: &impl OpenMlsCryptoProvider) -> Result<MlsGroup, MlsGroupError> {
         let ciphersuite = self.key_package_bundle.key_package().ciphersuite();
         let config = self.config.unwrap_or_default();
-        let group_id = self.group_id.unwrap_or_else(|| GroupId::random(backend));
         let required_capabilities = self.required_capabilities.unwrap_or_default();
         let version = self.version.unwrap_or_default();
 
-        debug!("Created group {:x?}", group_id);
+        debug!("Created group {:x?}", self.group_id);
         trace!(" >>> with {:?}, {:?}", ciphersuite, config);
         let tree = RatchetTree::new(backend, self.key_package_bundle);
 
@@ -154,7 +143,7 @@ impl MlsGroupBuilder {
 
         let group_context = GroupContext::create_initial_group_context(
             ciphersuite,
-            group_id,
+            self.group_id,
             tree.tree_hash(backend),
             required_capabilities,
         )?;
@@ -193,8 +182,8 @@ impl MlsGroupBuilder {
 /// Public [`MlsGroup`] functions.
 impl MlsGroup {
     /// Get a builder for [`MlsGroup`].
-    pub fn builder(key_package_bundle: KeyPackageBundle) -> MlsGroupBuilder {
-        MlsGroupBuilder::new(key_package_bundle)
+    pub fn builder(group_id: GroupId, key_package_bundle: KeyPackageBundle) -> MlsGroupBuilder {
+        MlsGroupBuilder::new(group_id, key_package_bundle)
     }
 
     // Join a group from a welcome message

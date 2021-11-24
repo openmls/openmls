@@ -172,8 +172,7 @@ async fn test_group() {
     let group_aad = b"MyFirstGroup AAD";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
     let group_ciphersuite = key_package_bundles[0].key_package().ciphersuite_name();
-    let mut group = MlsGroup::builder(key_package_bundles.remove(0))
-        .with_group_id_slice(group_id)
+    let mut group = MlsGroup::builder(GroupId::from_slice(group_id), key_package_bundles.remove(0))
         .build(crypto)
         .unwrap();
 

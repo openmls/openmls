@@ -153,11 +153,13 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             .get(&group_config.ciphersuite)
             .unwrap();
         // Initialize the group state for the initial member.
-        let mls_group = MlsGroup::builder(initial_key_package_bundle)
-            .with_group_id_slice(&group_id.to_be_bytes())
-            .with_config(group_config.config)
-            .build(&crypto)
-            .expect("Error creating new MlsGroup");
+        let mls_group = MlsGroup::builder(
+            GroupId::from_slice(&group_id.to_be_bytes()),
+            initial_key_package_bundle,
+        )
+        .with_config(group_config.config)
+        .build(&crypto)
+        .expect("Error creating new MlsGroup");
         let mut proposal_list = Vec::new();
         let group_aad = b"";
         // Framing parameters

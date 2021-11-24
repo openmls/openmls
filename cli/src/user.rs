@@ -271,7 +271,7 @@ impl User {
             add_ratchet_tree_extension: true,
             ..Default::default()
         };
-        let mls_group = MlsGroup::builder(kpb)
+        let mls_group = MlsGroup::builder(GroupId::random(&self.crypto), kpb)
             .with_config(config)
             .build(&self.crypto)
             .unwrap();

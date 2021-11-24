@@ -300,7 +300,7 @@ fn test_required_unsupported_proposals() {
     let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
 
     // This must fail because we don't actually support AppAck proposals
-    let e = MlsGroup::builder(alice_key_package_bundle)
+    let e = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
         .with_required_capabilities(required_capabilities)
         .build(&crypto)
         .expect_err(
@@ -341,7 +341,7 @@ fn test_required_extension_key_package_mismatch() {
     ];
     let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
 
-    let alice_group = MlsGroup::builder(alice_key_package_bundle)
+    let alice_group = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
         .with_required_capabilities(required_capabilities)
         .build(&crypto)
         .expect("Error creating MlsGroup.");
@@ -392,7 +392,7 @@ fn test_group_context_extensions() {
     ];
     let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
 
-    let mut alice_group = MlsGroup::builder(alice_key_package_bundle)
+    let mut alice_group = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
         .with_required_capabilities(required_capabilities)
         .build(&crypto)
         .expect("Error creating MlsGroup.");
@@ -471,7 +471,7 @@ fn test_group_context_extension_proposal_fails() {
     ];
     let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
 
-    let mut alice_group = MlsGroup::builder(alice_key_package_bundle)
+    let mut alice_group = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
         .with_required_capabilities(required_capabilities)
         .build(&crypto)
         .expect("Error creating MlsGroup.");
@@ -590,7 +590,7 @@ fn test_group_context_extension_proposal() {
     ];
     let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
 
-    let mut alice_group = MlsGroup::builder(alice_key_package_bundle)
+    let mut alice_group = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
         .with_required_capabilities(required_capabilities)
         .build(&crypto)
         .expect("Error creating MlsGroup.");

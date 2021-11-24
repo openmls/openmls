@@ -152,7 +152,7 @@ fn group(
     )
     .unwrap();
     (
-        MlsGroup::builder(key_package_bundle)
+        MlsGroup::builder(GroupId::random(backend), key_package_bundle)
             .build(backend)
             .expect("Error creating MlsGroup"),
         credential_bundle,
@@ -181,8 +181,7 @@ fn receiver_group(
         Vec::new(),
     )
     .unwrap();
-    MlsGroup::builder(key_package_bundle)
-        .with_group_id(group_id.clone())
+    MlsGroup::builder(group_id.clone(), key_package_bundle)
         .build(backend)
         .expect("Error creating MlsGroup")
 }
