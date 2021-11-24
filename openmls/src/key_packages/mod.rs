@@ -97,7 +97,7 @@ impl KeyPackagePayload {
         self.extensions.push(extension);
     }
 
-    /// Get extension pf the KeyPackage.
+    /// Get extensions of the KeyPackage.
     pub fn extensions(&self) -> &[Extension] {
         self.extensions.as_slice()
     }

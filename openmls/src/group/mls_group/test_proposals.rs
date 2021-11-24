@@ -476,7 +476,7 @@ fn test_group_context_extension_proposal_fails() {
         .build(&crypto)
         .expect("Error creating MlsGroup.");
 
-    // Alice tries to add a required capability it doesn't support itself.
+    // Alice tries to add a required capability she doesn't support herself.
     let required_key_id = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
         &[ExtensionType::KeyId],
         &[],
@@ -486,7 +486,7 @@ fn test_group_context_extension_proposal_fails() {
         &alice_credential_bundle,
         &[required_key_id.clone()],
         &crypto,
-    ).expect_err("Alice was able to create a gce proposal with a required extensions it doesn't support.");
+    ).expect_err("Alice was able to create a gce proposal with a required extensions she doesn't support.");
     assert_eq!(
         e,
         MlsGroupError::KeyPackageError(KeyPackageError::UnsupportedExtension)
@@ -679,7 +679,7 @@ fn test_group_context_extension_proposal() {
     bob_group.merge_commit(staged_commit);
 
     assert_eq!(
-        bob_group
+        alice_group
             .export_secret(&crypto, "label", b"gce test", 32)
             .expect("Error exporting secret."),
         bob_group
