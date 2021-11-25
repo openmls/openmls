@@ -48,7 +48,7 @@ fn generate_key_package_bundle(
     Ok(kp)
 }
 
-/// Auto-save
+/// Save the group state
 /// `(managed_group: &ManagedGroup)`
 fn save(managed_group: &mut ManagedGroup) {
     let name = String::from_utf8(own_identity(managed_group))
@@ -103,7 +103,7 @@ fn crypto() -> impl OpenMlsCryptoProvider {
 ///  - Charlie removes Bob
 ///  - Alice removes Charlie and adds Bob
 ///  - Bob leaves
-///  - Test auto-save
+///  - Test saving the group state
 #[test]
 fn managed_group_operations() {
     let crypto = crypto();

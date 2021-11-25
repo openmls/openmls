@@ -64,7 +64,7 @@ impl ManagedGroup {
         // the configuration
         let mls_message = self.plaintext_to_mls_message(commit, backend)?;
 
-        // Since the state of the group was changed, call the auto-save function
+        // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
 
         Ok((mls_message, welcome_option))
@@ -108,7 +108,7 @@ impl ManagedGroup {
 
         let mls_message = self.plaintext_to_mls_message(update_proposal, backend)?;
 
-        // Since the state of the group was changed, call the auto-save function
+        // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
 
         Ok(mls_message)

@@ -21,9 +21,13 @@ impl ManagedGroup {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
+        // Since the state of the group might be changed, arm the state flag
+        self.flag_state_change();
+
+        // Parse the message
         self.group
             .parse_message(message, backend)
-            .map_err(|e| e.into())
+            .map_err(ManagedGroupError::Group)
     }
 
     /// This processing function does most of the semantic verifications.
@@ -49,6 +53,9 @@ impl ManagedGroup {
     pub fn store_pending_proposal(&mut self, proposal: StagedProposal) {
         // Store the proposal in in the internal ProposalStore
         self.proposal_store.add(proposal);
+
+        // Since the state of the group might be changed, arm the state flag
+        self.flag_state_change();
     }
 
     /// Create a Commit message that covers the pending proposals that are
@@ -85,7 +92,7 @@ impl ManagedGroup {
         // the configuration
         let mls_message = self.plaintext_to_mls_message(commit, backend)?;
 
-        // Since the state of the group was changed, call the auto-save function
+        // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
 
         Ok((mls_message, welcome_option))
@@ -100,16 +107,23 @@ impl ManagedGroup {
         if staged_commit.self_removed() {
             self.active = false;
         }
+
+        // Since the state of the group might be changed, arm the state flag
+        self.flag_state_change();
+
         // Merge staged commit
         self.group
             .merge_staged_commit(staged_commit, &mut self.proposal_store)
             .map_err(ManagedGroupError::Group)?;
+
         // Extract and store the resumption secret for the current epoch
         let resumption_secret = self.group.epoch_secrets().resumption_secret();
         self.resumption_secret_store
             .add(self.group.context().epoch(), resumption_secret.clone());
+
         // Delete own KeyPackageBundles
         self.own_kpbs.clear();
+
         Ok(())
     }
 }

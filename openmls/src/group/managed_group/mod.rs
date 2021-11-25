@@ -109,7 +109,7 @@ impl ManagedGroup {
     pub fn set_configuration(&mut self, managed_group_config: &ManagedGroupConfig) {
         self.managed_group_config = managed_group_config.clone();
 
-        // Since the state of the group was changed, call the auto-save function
+        // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
     }
 
@@ -122,7 +122,7 @@ impl ManagedGroup {
     pub fn set_aad(&mut self, aad: &[u8]) {
         self.aad = aad.to_vec();
 
-        // Since the state of the group was changed, call the auto-save function
+        // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
     }
 
@@ -233,7 +233,7 @@ impl ManagedGroup {
         Ok(msg)
     }
 
-    /// Auto-save function
+    /// Arm the state changed flag function
     fn flag_state_change(&mut self) {
         self.state_changed = true;
     }
