@@ -54,6 +54,29 @@ impl<T: Clone + Debug> StagedAbDiff<T> {
     }
 }
 
+/// A `NodeReference` represents the position of a node in an `AbDiff`. It can
+/// be used to access the node at that position or to navigate to other,
+/// neighbouring nodes via the `sibling`, `left_child` and `right_child`
+/// functions of the `AbDiff`.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct NodeReference {
+    node_index: NodeIndex,
+}
+
+impl NodeReference {
+    /// Creates a new `NodeReference` to a node at the given index. Returns an
+    /// error if the given index is outside the bounds of the diff.
+    pub(super) fn try_from_node_index<T: Clone + Debug>(
+        diff: &AbDiff<T>,
+        node_index: NodeIndex,
+    ) -> Result<Self, ABinaryTreeDiffError> {
+        if node_index >= diff.size() {
+            return Err(ABinaryTreeDiffError::OutOfBounds);
+        }
+        Ok(NodeReference { node_index })
+    }
+}
+
 /// The `AbDiff` represents a set of differences (i.e. a "Diff") for an
 /// `ABinaryTree`. It can be created from an `ABinaryTree` instance and then
 /// accessed mutably or immutably. Any changes are saved by the `AbDiff` applied
@@ -75,15 +98,6 @@ impl<'a, T: Clone + Debug> From<&'a ABinaryTree<T>> for AbDiff<'a, T> {
     }
 }
 
-/// A `NodeReference` represents the position of a node in an `AbDiff`. It can
-/// be used to access the node at that position or to navigate to other,
-/// neighbouring nodes via the `sibling`, `left_child` and `right_child`
-/// functions of the `AbDiff`.
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct NodeReference {
-    node_index: NodeIndex,
-}
-
 impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     // Functions handling interactions with leaves.
     ///////////////////////////////////////////////
@@ -96,8 +110,8 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         parent_node: T,
         new_leaf: T,
     ) -> Result<LeafIndex, ABinaryTreeDiffError> {
-        self.add_to_diff(self.size(), parent_node)?;
-        self.add_to_diff(self.size(), new_leaf)?;
+        self.add_node(self.size(), parent_node)?;
+        self.add_node(self.size(), new_leaf)?;
         Ok(self.leaf_count() - 1)
     }
 
@@ -121,7 +135,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
             return Err(ABinaryTreeDiffError::OutOfBounds);
         }
         let node_index = to_node_index(leaf_index);
-        self.add_to_diff(node_index, new_leaf)?;
+        self.add_node(node_index, new_leaf)?;
         Ok(())
     }
 
@@ -133,7 +147,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         leaf_index: LeafIndex,
     ) -> Result<NodeReference, ABinaryTreeDiffError> {
         let node_index = to_node_index(leaf_index);
-        self.new_reference(node_index)
+        NodeReference::try_from_node_index(self, node_index)
     }
 
     /// Returns references to the leaves of the diff in order from left to
@@ -143,7 +157,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         let mut leaf_references = Vec::new();
         for leaf_index in 0..self.leaf_count() {
             let node_index = to_node_index(leaf_index);
-            let node_ref = self.new_reference(node_index)?;
+            let node_ref = NodeReference::try_from_node_index(self, node_index)?;
             leaf_references.push(node_ref);
         }
         Ok(leaf_references)
@@ -162,8 +176,8 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         let node_index = to_node_index(leaf_index);
         let direct_path_indices = direct_path(node_index, self.size())?;
         let mut direct_path = Vec::new();
-        for node_index in &direct_path_indices {
-            let node_ref = self.new_reference(*node_index)?;
+        for node_index in direct_path_indices {
+            let node_ref = NodeReference::try_from_node_index(self, node_index)?;
             direct_path.push(node_ref);
         }
         Ok(direct_path)
@@ -180,7 +194,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         let node_index = to_node_index(leaf_index);
         let direct_path = direct_path(node_index, self.size())?;
         for node_index in &direct_path {
-            self.add_to_diff(*node_index, node.clone())?;
+            self.add_node(*node_index, node.clone())?;
         }
         Ok(())
     }
@@ -200,7 +214,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
             return Err(ABinaryTreeDiffError::PathLengthMismatch);
         }
         for (node_index, node) in direct_path.iter().zip(path.into_iter()) {
-            self.add_to_diff(*node_index, node)?;
+            self.add_node(*node_index, node)?;
         }
         Ok(())
     }
@@ -267,7 +281,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
             right(subtree_root_node_index, self.size())?
         };
 
-        self.new_reference(copath_node_index)
+        NodeReference::try_from_node_index(self, copath_node_index)
     }
 
     /// Returns a vector of `NodeReference`s, where the first reference is to
@@ -287,9 +301,9 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         let node_index_2 = to_node_index(leaf_index_2);
         let lca = lowest_common_ancestor(node_index_1, node_index_2);
         let direct_path_indices = direct_path(lca, self.size())?;
-        let mut full_path = vec![self.new_reference(lca)?];
+        let mut full_path = vec![NodeReference::try_from_node_index(self, lca)?];
         for node_index in direct_path_indices {
-            let node_ref = self.new_reference(node_index)?;
+            let node_ref = NodeReference::try_from_node_index(self, node_index)?;
             full_path.push(node_ref);
         }
 
@@ -386,7 +400,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         node_ref: NodeReference,
     ) -> Result<NodeReference, ABinaryTreeDiffError> {
         let sibling_index = sibling(node_ref.node_index, self.size())?;
-        self.new_reference(sibling_index)
+        NodeReference::try_from_node_index(self, sibling_index)
     }
 
     /// Returns a `NodeReference` to the left child of the referenced node.
@@ -397,7 +411,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         node_ref: NodeReference,
     ) -> Result<NodeReference, ABinaryTreeDiffError> {
         let left_child_index = left(node_ref.node_index)?;
-        self.new_reference(left_child_index)
+        NodeReference::try_from_node_index(self, left_child_index)
     }
 
     /// Returns a `NodeReference` to the right child of the referenced node.
@@ -408,7 +422,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         node_ref: NodeReference,
     ) -> Result<NodeReference, ABinaryTreeDiffError> {
         let right_child_index = right(node_ref.node_index, self.size())?;
-        self.new_reference(right_child_index)
+        NodeReference::try_from_node_index(self, right_child_index)
     }
 
     /// Returns the `LeafIndex` of the referenced node. If the referenced node
@@ -425,18 +439,6 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     //////////////////////////////////
 
     // Node access functions
-
-    /// Creates a new `NodeReference` to a node at the given index. Returns an
-    /// error if the given index is outside the bounds of the diff.
-    fn new_reference(
-        &'a self,
-        node_index: NodeIndex,
-    ) -> Result<NodeReference, ABinaryTreeDiffError> {
-        if node_index >= self.size() {
-            return Err(ABinaryTreeDiffError::OutOfBounds);
-        }
-        Ok(NodeReference { node_index })
-    }
 
     /// Returns a reference to the node at index `node_index` or `None` if the
     /// node can neither be found in the tree nor in the diff.
@@ -475,7 +477,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
             // If not, we take a copy from the original tree and put it in the
             // diff before returning a mutable reference to it.
         } else if let Some(tree_node) = self.original_tree.node_by_index(node_index) {
-            self.add_to_diff(node_index, tree_node.clone())?;
+            self.add_node(node_index, tree_node.clone())?;
             self.diff
                 .get_mut(&node_index)
                 // We just inserted this into the diff, so this should be Some.
@@ -496,7 +498,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// the diff. Returns an error if adding the node would increase the size of
     /// the diff beyond `NodeIndex::max_value()` or if the given node index is
     /// larger than the current size of the diff.
-    fn add_to_diff(&mut self, node_index: NodeIndex, node: T) -> Result<(), ABinaryTreeDiffError> {
+    fn add_node(&mut self, node_index: NodeIndex, node: T) -> Result<(), ABinaryTreeDiffError> {
         // Prevent the tree from becoming too large.
         if self.size() == NodeIndex::max_value() {
             return Err(ABinaryTreeDiffError::TreeTooLarge);
