@@ -29,6 +29,7 @@
 <span id="29">29</span>
 <span id="30">30</span>
 <span id="31">31</span>
+<span id="32">32</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Package errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `KeyPackageError` are thrown on errors handling `KeyPackage`s and</span>
@@ -46,6 +47,7 @@
             <span class="ident">InvalidSignature</span> <span class="op">=</span> <span class="string">&quot;The key package signature is not valid.&quot;</span>,
             <span class="ident">LibraryError</span> <span class="op">=</span> <span class="string">&quot;An unknown OpenMLS library error occurred.&quot;</span>,
             <span class="ident">DuplicateExtension</span> <span class="op">=</span> <span class="string">&quot;Duplicate extensions are not allowed.&quot;</span>,
+            <span class="ident">UnsupportedExtension</span> <span class="op">=</span> <span class="string">&quot;The key package does not support all required extensions.&quot;</span>,
             <span class="ident">NoCiphersuitesSupplied</span> <span class="op">=</span> <span class="string">&quot;Creating a new key package requires at least one ciphersuite.&quot;</span>,
             <span class="ident">CiphersuiteMismatch</span> <span class="op">=</span> <span class="string">&quot;The list of ciphersuites is not consistent with the capabilities extension.&quot;</span>,
             <span class="ident">CiphersuiteSignatureSchemeMismatch</span> <span class="op">=</span> <span class="string">&quot;The ciphersuite does not match the signature scheme.&quot;</span>,

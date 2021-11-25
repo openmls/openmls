@@ -315,6 +315,9 @@
 <span id="315">315</span>
 <span id="316">316</span>
 <span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">application</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">callbacks</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
@@ -581,6 +584,9 @@
             <span class="ident">Proposal::Update</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {}
             <span class="ident">Proposal::PreSharedKey</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {}
             <span class="ident">Proposal::ReInit</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {}
+            <span class="ident">Proposal::ExternalInit</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unimplemented!</span>(<span class="string">&quot;See #556&quot;</span>),
+            <span class="ident">Proposal::AppAck</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unimplemented!</span>(<span class="string">&quot;See #291&quot;</span>),
+            <span class="ident">Proposal::GroupContextExtensions</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {}
         }
         <span class="bool-val">true</span>
     }

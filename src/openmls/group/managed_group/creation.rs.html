@@ -89,11 +89,6 @@
 <span id="89">89</span>
 <span id="90">90</span>
 <span id="91">91</span>
-<span id="92">92</span>
-<span id="93">93</span>
-<span id="94">94</span>
-<span id="95">95</span>
-<span id="96">96</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
 <span class="kw">impl</span> <span class="ident">ManagedGroup</span> {
@@ -123,15 +118,10 @@
             <span class="ident">add_ratchet_tree_extension</span>: <span class="ident">managed_group_config</span>.<span class="ident">use_ratchet_tree_extension</span>,
             ..<span class="ident">Default::default</span>()
         };
-        <span class="kw">let</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">MlsGroup::new</span>(
-            <span class="ident">group_id</span>.<span class="ident">as_slice</span>(),
-            <span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>().<span class="ident">ciphersuite_name</span>(),
-            <span class="ident">backend</span>,
-            <span class="ident">key_package_bundle</span>,
-            <span class="ident">group_config</span>,
-            <span class="prelude-val">None</span>, <span class="comment">/* Initial PSK */</span>
-            <span class="prelude-val">None</span>, <span class="comment">/* MLS version */</span>
-        )<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">MlsGroup::builder</span>(<span class="ident">group_id</span>, <span class="ident">key_package_bundle</span>)
+            .<span class="ident">with_config</span>(<span class="ident">group_config</span>)
+            .<span class="ident">with_required_capabilities</span>(<span class="ident">managed_group_config</span>.<span class="ident">required_capabilities</span>.<span class="ident">clone</span>())
+            .<span class="ident">build</span>(<span class="ident">backend</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">resumption_secret_store</span> <span class="op">=</span>
             <span class="ident">ResumptionSecretStore::new</span>(<span class="ident">managed_group_config</span>.<span class="ident">number_of_resumption_secrets</span>);

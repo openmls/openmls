@@ -162,6 +162,13 @@
 <span id="162">162</span>
 <span id="163">163</span>
 <span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Ciphersuite and algorithm definitions and conversions.</span>
 
 <span class="kw">use</span> <span class="ident">openmls_traits::types</span>::{<span class="ident">HpkeAeadType</span>, <span class="ident">HpkeKdfType</span>, <span class="ident">HpkeKemType</span>};
@@ -194,6 +201,13 @@
     <span class="ident">MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448</span> <span class="op">=</span> <span class="number">0x0004</span>,
     <span class="ident">MLS10_256_DHKEMP521_AES256GCM_SHA512_P521</span> <span class="op">=</span> <span class="number">0x0005</span>,
     <span class="ident">MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448</span> <span class="op">=</span> <span class="number">0x0006</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">CiphersuiteName</span> {
+    <span class="doccomment">/// The default ciphersuite is the MTI.</span>
+    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="ident">CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519</span>
+    }
 }
 
 <span class="macro">implement_enum_display!</span>(<span class="ident">CiphersuiteName</span>);

@@ -235,6 +235,15 @@
 <span id="235">235</span>
 <span id="236">236</span>
 <span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">log::debug</span>;
 <span class="kw">use</span> <span class="ident">openmls_traits::crypto::OpenMlsCrypto</span>;
 <span class="kw">use</span> <span class="ident">tls_codec::Deserialize</span>;
@@ -260,6 +269,7 @@
         <span class="kw">if</span> <span class="op">!</span><span class="ident">Config::supported_versions</span>().<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">mls_version</span>) {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">WelcomeError::UnsupportedMlsVersion</span>);
         }
+
         <span class="kw">let</span> <span class="ident">ciphersuite_name</span> <span class="op">=</span> <span class="ident">welcome</span>.<span class="ident">ciphersuite</span>();
         <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">Config::ciphersuite</span>(<span class="ident">ciphersuite_name</span>)<span class="question-mark">?</span>;
 
@@ -315,37 +325,48 @@
             .<span class="ident">aead_open</span>(<span class="ident">backend</span>, <span class="ident">welcome</span>.<span class="ident">encrypted_group_info</span>(), <span class="kw-2">&amp;</span>[], <span class="kw-2">&amp;</span><span class="ident">welcome_nonce</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">WelcomeError::GroupInfoDecryptionFailure</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">group_info</span> <span class="op">=</span> <span class="ident">GroupInfo::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">group_info_bytes</span>.<span class="ident">as_slice</span>())<span class="question-mark">?</span>;
+
+        <span class="comment">// Make sure that we can support the required capabilities in the group info.</span>
+        <span class="kw">let</span> <span class="ident">group_context_extensions</span> <span class="op">=</span> <span class="ident">group_info</span>.<span class="ident">group_context_extensions</span>();
+        <span class="kw">let</span> <span class="ident">required_capabilities</span> <span class="op">=</span> <span class="ident">group_context_extensions</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">find</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">extension</span><span class="op">|</span> <span class="ident">extension</span>.<span class="ident">extension_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">ExtensionType::RequiredCapabilities</span>);
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">required_capabilities</span>) <span class="op">=</span> <span class="ident">required_capabilities</span> {
+            <span class="kw">let</span> <span class="ident">required_capabilities</span> <span class="op">=</span>
+                <span class="ident">required_capabilities</span>.<span class="ident">as_required_capabilities_extension</span>()<span class="question-mark">?</span>;
+            <span class="ident">check_required_capabilities_support</span>(<span class="ident">required_capabilities</span>)<span class="question-mark">?</span>;
+            <span class="comment">// Also check that our key package actually supports the extensions.</span>
+            <span class="comment">// Per spec the sender must have checked this. But you never know.</span>
+            <span class="ident">key_package_bundle</span>
+                .<span class="ident">key_package</span>()
+                .<span class="ident">check_extension_support</span>(<span class="ident">required_capabilities</span>.<span class="ident">extensions</span>())<span class="question-mark">?</span>
+        }
+
         <span class="kw">let</span> <span class="ident">path_secret_option</span> <span class="op">=</span> <span class="ident">group_secrets</span>.<span class="ident">path_secret</span>;
 
         <span class="comment">// Build the ratchet tree</span>
         <span class="comment">// First check the extensions to see if the tree is in there.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ratchet_tree_extensions</span> <span class="op">=</span> <span class="ident">group_info</span>
-            .<span class="ident">extensions</span>()
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ratchet_tree_extension</span> <span class="op">=</span> <span class="ident">group_info</span>
+            .<span class="ident">other_extensions</span>()
             .<span class="ident">iter</span>()
             .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">extension_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">ExtensionType::RatchetTree</span>)
-            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Extension</span><span class="op">&gt;</span><span class="op">&gt;</span>();
-
-        <span class="kw">let</span> <span class="ident">ratchet_tree_extension</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">ratchet_tree_extensions</span>.<span class="ident">is_empty</span>() {
-            <span class="prelude-val">None</span>
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">ratchet_tree_extensions</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">1</span> {
-            <span class="kw">let</span> <span class="ident">extension</span> <span class="op">=</span> <span class="ident">ratchet_tree_extensions</span>
-                .<span class="ident">pop</span>()
-                <span class="comment">// Unwrappig here is safe because we know we only have one element</span>
-                .<span class="ident">unwrap</span>()
-                .<span class="ident">as_ratchet_tree_extension</span>()
-                <span class="comment">// Unwrapping here is safe, because we know the extension type already</span>
-                .<span class="ident">unwrap</span>()
-                <span class="comment">// We clone the nodes here upon extraction, so that we don&#39;t have to clone</span>
-                <span class="comment">// them later when we build the tree</span>
-                .<span class="ident">clone</span>();
-            <span class="prelude-val">Some</span>(<span class="ident">extension</span>)
-        } <span class="kw">else</span> {
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">as_ratchet_tree_extension</span>().<span class="ident">ok</span>())
+            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">RatchetTreeExtension</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>();
+        <span class="kw">if</span> <span class="ident">ratchet_tree_extension</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">1</span> {
             <span class="comment">// Throw an error if there is more than one ratchet tree extension.</span>
             <span class="comment">// This shouldn&#39;t be the case anyway, because extensions are checked</span>
             <span class="comment">// for uniqueness anyway when decoding them.</span>
             <span class="comment">// We have to see if this makes problems later as it&#39;s not something</span>
             <span class="comment">// required by the spec right now.</span>
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">WelcomeError::DuplicateRatchetTreeExtension</span>);
+        }
+
+        <span class="kw">let</span> <span class="ident">ratchet_tree_extension</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">ratchet_tree_extension</span>.<span class="ident">is_empty</span>() {
+            <span class="prelude-val">None</span>
+        } <span class="kw">else</span> {
+            <span class="ident">ratchet_tree_extension</span>
+                .<span class="ident">pop</span>()
+                .<span class="ident">ok_or</span>(<span class="ident">WelcomeError::UnknownError</span>)<span class="question-mark">?</span>
         };
 
         <span class="comment">// Set nodes either from the extension or from the `nodes_option`.</span>
@@ -353,17 +374,14 @@
         <span class="comment">// this group. Note that this is not strictly necessary. But there&#39;s</span>
         <span class="comment">// currently no other mechanism to enable the extension.</span>
         <span class="kw">let</span> (<span class="ident">nodes</span>, <span class="ident">enable_ratchet_tree_extension</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">ratchet_tree_extension</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">tree</span>) <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">tree</span>.<span class="ident">into_vector</span>(), <span class="bool-val">true</span>),
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">nodes</span>) <span class="op">=</span> <span class="ident">nodes_option</span> {
-                    (<span class="ident">nodes</span>, <span class="bool-val">false</span>)
-                } <span class="kw">else</span> {
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">WelcomeError::MissingRatchetTree</span>);
-                }
-            }
+            <span class="prelude-val">Some</span>(<span class="ident">tree</span>) <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">tree</span>.<span class="ident">as_slice</span>(), <span class="bool-val">true</span>),
+            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">nodes_option</span>.<span class="ident">as_ref</span>() {
+                <span class="prelude-val">Some</span>(<span class="ident">n</span>) <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">n</span>.<span class="ident">as_slice</span>(), <span class="bool-val">false</span>),
+                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">WelcomeError::MissingRatchetTree</span>),
+            },
         };
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tree</span> <span class="op">=</span> <span class="ident">RatchetTree::new_from_nodes</span>(<span class="ident">backend</span>, <span class="ident">key_package_bundle</span>, <span class="kw-2">&amp;</span><span class="ident">nodes</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tree</span> <span class="op">=</span> <span class="ident">RatchetTree::new_from_nodes</span>(<span class="ident">backend</span>, <span class="ident">key_package_bundle</span>, <span class="ident">nodes</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Verify tree hash</span>
         <span class="kw">let</span> <span class="ident">tree_hash</span> <span class="op">=</span> <span class="ident">tree</span>.<span class="ident">tree_hash</span>(<span class="ident">backend</span>);
@@ -416,9 +434,9 @@
             <span class="ident">group_info</span>.<span class="ident">epoch</span>(),
             <span class="ident">tree_hash</span>,
             <span class="ident">group_info</span>.<span class="ident">confirmed_transcript_hash</span>().<span class="ident">to_vec</span>(),
-            <span class="comment">// TODO #483: Implement extensions</span>
-            <span class="kw-2">&amp;</span>[],
+            <span class="ident">group_context_extensions</span>,
         )<span class="question-mark">?</span>;
+
         <span class="comment">// TODO #141: Implement PSK</span>
         <span class="ident">key_schedule</span>.<span class="ident">add_context</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">group_context</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">epoch_secrets</span> <span class="op">=</span> <span class="ident">key_schedule</span>.<span class="ident">epoch_secrets</span>(<span class="ident">backend</span>, <span class="bool-val">true</span>)<span class="question-mark">?</span>;

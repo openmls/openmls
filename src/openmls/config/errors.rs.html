@@ -15,6 +15,8 @@
 <span id="15">15</span>
 <span id="16">16</span>
 <span id="17">17</span>
+<span id="18">18</span>
+<span id="19">19</span>
 </pre><pre class="rust"><code><span class="doccomment">//!# Config errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! A `ConfigError` is thrown when either the configuration itself is invalid or</span>
@@ -27,6 +29,8 @@
         <span class="ident">UnsupportedMlsVersion</span> <span class="op">=</span> <span class="string">&quot;MLS version is not supported by this configuration.&quot;</span>,
         <span class="ident">UnsupportedCiphersuite</span> <span class="op">=</span> <span class="string">&quot;Ciphersuite is not supported by this configuration.&quot;</span>,
         <span class="ident">UnsupportedSignatureScheme</span> <span class="op">=</span> <span class="string">&quot;Signature scheme is not supported by this configuration.&quot;</span>,
+        <span class="ident">UnsupportedProposalType</span> <span class="op">=</span> <span class="string">&quot;Unsupported, required proposal type.&quot;</span>,
+        <span class="ident">UnsupportedExtensionsType</span> <span class="op">=</span> <span class="string">&quot;Unsupported, required extension type.&quot;</span>,
         <span class="ident">IncompatibleMlsVersion</span> <span class="op">=</span> <span class="string">&quot;Operation on incompatible MLS versions.&quot;</span>,
         <span class="ident">IncompatibleCiphersuite</span> <span class="op">=</span> <span class="string">&quot;Operation on incompatible cipher suites.&quot;</span>,
         <span class="ident">LibraryError</span> <span class="op">=</span> <span class="string">&quot;Library error&quot;</span>,

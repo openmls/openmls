@@ -158,6 +158,9 @@
 <span id="158">158</span>
 <span id="159">159</span>
 <span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -178,6 +181,8 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">number_of_resumption_secrets</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// Flag to indicate the Ratchet Tree Extension should be used</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">use_ratchet_tree_extension</span>: <span class="ident">bool</span>,
+    <span class="doccomment">/// Required capabilities (extensions and proposal types)</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">required_capabilities</span>: <span class="ident">RequiredCapabilitiesExtension</span>,
     <span class="doccomment">/// Callbacks</span>
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip</span>)]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">callbacks</span>: <span class="ident">ManagedGroupCallbacks</span>,
@@ -242,6 +247,7 @@
             <span class="ident">number_of_resumption_secrets</span>: <span class="number">0</span>,
             <span class="ident">use_ratchet_tree_extension</span>: <span class="bool-val">false</span>,
             <span class="ident">callbacks</span>: <span class="ident">ManagedGroupCallbacks::default</span>(),
+            <span class="ident">required_capabilities</span>: <span class="ident">RequiredCapabilitiesExtension::default</span>(),
         }
     }
 }

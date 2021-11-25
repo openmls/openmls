@@ -44,6 +44,7 @@
 <span id="44">44</span>
 <span id="45">45</span>
 <span id="46">46</span>
+<span id="47">47</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Ratchet tree extension</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! &gt; GroupInfo Extension</span>
@@ -86,8 +87,9 @@
         <span class="ident">RatchetTreeExtension</span> { <span class="ident">tree</span>: <span class="ident">tree</span>.<span class="ident">into</span>() }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">into_vector</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">into</span>()
+    <span class="doccomment">/// Get a slice of the nodes in tis tree.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span>] {
+        <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">as_slice</span>()
     }
 }
 </code></pre></div>

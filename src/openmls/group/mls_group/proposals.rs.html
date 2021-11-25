@@ -625,6 +625,12 @@
 <span id="625">625</span>
 <span id="626">626</span>
 <span id="627">627</span>
+<span id="628">628</span>
+<span id="629">629</span>
+<span id="630">630</span>
+<span id="631">631</span>
+<span id="632">632</span>
+<span id="633">633</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::errors</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::proposals</span>::{
@@ -1162,6 +1168,12 @@
                 }
                 <span class="ident">ProposalType::Reinit</span> <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="comment">// TODO #141: Only keep one ReInit</span>
+                    <span class="ident">proposal_pool</span>.<span class="ident">insert</span>(<span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>(), <span class="ident">queued_proposal</span>);
+                }
+                <span class="ident">ProposalType::ExternalInit</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unimplemented!</span>(<span class="string">&quot;See #556&quot;</span>),
+                <span class="ident">ProposalType::AppAck</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unimplemented!</span>(<span class="string">&quot;See #291&quot;</span>),
+                <span class="ident">ProposalType::GroupContextExtensions</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="comment">// TODO: Validate proposal?</span>
                     <span class="ident">proposal_pool</span>.<span class="ident">insert</span>(<span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>(), <span class="ident">queued_proposal</span>);
                 }
             }

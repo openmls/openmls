@@ -308,9 +308,6 @@
 <span id="308">308</span>
 <span id="309">309</span>
 <span id="310">310</span>
-<span id="311">311</span>
-<span id="312">312</span>
-<span id="313">313</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">super</span>::proposals</span>::{
     <span class="ident">ProposalStore</span>, <span class="ident">StagedAddProposal</span>, <span class="ident">StagedProposalQueue</span>, <span class="ident">StagedPskProposal</span>, <span class="ident">StagedRemoveProposal</span>,
     <span class="ident">StagedUpdateProposal</span>,
@@ -484,15 +481,12 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">interim_transcript_hash</span>,
         )<span class="question-mark">?</span>;
 
-        <span class="comment">// TODO #483: Implement extensions</span>
-        <span class="kw">let</span> <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-
         <span class="kw">let</span> <span class="ident">provisional_group_context</span> <span class="op">=</span> <span class="ident">GroupContext::new</span>(
             <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(),
             <span class="ident">provisional_epoch</span>,
             <span class="ident">provisional_tree</span>.<span class="ident">tree_hash</span>(<span class="ident">backend</span>),
             <span class="ident">confirmed_transcript_hash</span>.<span class="ident">clone</span>(),
-            <span class="kw-2">&amp;</span><span class="ident">extensions</span>,
+            <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">extensions</span>(),
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Create key schedule</span>
