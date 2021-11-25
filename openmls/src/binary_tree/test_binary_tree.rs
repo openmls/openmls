@@ -9,7 +9,6 @@ use super::array_representation::treemath::TreeMathError;
 // TODO:
 // * Write better comments on tests
 // * test programmatically, i.e. do loops over various tree sizes where possible
-// * Re-write docs on the tree and diff functions
 
 #[test]
 fn test_tree_basics() {
@@ -285,6 +284,8 @@ fn test_tree_navigation() {
     let tree = MlsBinaryTree::new((0..3).collect()).expect("error creating tree");
 
     let diff = tree.empty_diff();
+
+    // Create a root reference and navigate around a little bit.
     let root_ref = diff.root();
 
     let left_child = diff
@@ -309,6 +310,20 @@ fn test_tree_navigation() {
         diff.try_deref(right_child_sibling)
             .expect("error dereferencing"),
         diff.try_deref(left_child).expect("error dereferencing")
+    );
+
+    // Error cases
+
+    assert_eq!(
+        diff.left_child(right_child)
+            .expect_err("successfully navigated to child of leaf node"),
+        MlsBinaryTreeDiffError::TreeError(TreeMathError::LeafHasNoChildren)
+    );
+
+    assert_eq!(
+        diff.right_child(right_child)
+            .expect_err("successfully navigated to child of leaf node"),
+        MlsBinaryTreeDiffError::TreeError(TreeMathError::LeafHasNoChildren)
     );
 
     assert_eq!(

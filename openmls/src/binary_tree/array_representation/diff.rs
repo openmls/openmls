@@ -85,21 +85,8 @@ pub(crate) struct NodeReference {
 }
 
 impl<'a, T: Clone + Debug> AbDiff<'a, T> {
-    /// Replace the content of the node at the given leaf index with new
-    /// content. Returns an error if the given leaf index is larger than the
-    /// leaf count of the diff.
-    pub(crate) fn replace_leaf(
-        &mut self,
-        leaf_index: LeafIndex,
-        new_leaf: T,
-    ) -> Result<(), ABinaryTreeDiffError> {
-        if leaf_index >= self.leaf_count() {
-            return Err(ABinaryTreeDiffError::OutOfBounds);
-        }
-        let node_index = to_node_index(leaf_index);
-        self.add_to_diff(node_index, new_leaf)?;
-        Ok(())
-    }
+    // Functions handling interactions with leaves.
+    ///////////////////////////////////////////////
 
     /// Extend the diff by a leaf and its new parent node. Returns an error if
     /// adding either of the two nodes increases the size of the diff beyond
@@ -114,38 +101,28 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         Ok(self.leaf_count() - 1)
     }
 
-    /// Removes a node from the right edge of the diff, thus decreasing the size
-    /// of the diff by one. Throws an error if this would make the diff too
-    /// small (i.e. < 1 node).
-    fn remove_node(&mut self) -> Result<(), ABinaryTreeDiffError> {
-        // First make sure that the tree isn't getting too small.
-        if self.size() <= 1 {
-            return Err(ABinaryTreeDiffError::TreeTooSmall);
-        }
-        // Then check if the tree was extended before. If so, just remove the
-        // last node from the diff.
-        if self.size() > self.original_tree.size() {
-            let removed = self.diff.remove(&(self.size() - 1));
-            // There should be a node here to remove.
-            debug_assert!(removed.is_some());
-        } else {
-            // If that is not the case, either the tree is of the same length as
-            // the diff, or the diff is already smaller. In both cases, we check
-            // if there is a node at the right edge to remove from the diff.
-            self.diff.remove(&(self.size() - 1));
-            // Regardless of the result, we decrease the size to signal that a
-            // node was removed from the diff.
-        }
-        self.size -= 1;
-        Ok(())
-    }
-
     /// Removes a leaf from the diff. To keep the binary tree (diff) balanced,
     /// this also removes the parent of the leaf. Returns an error if the diff
     /// only has one leaf left.
     pub(crate) fn remove_leaf(&mut self) -> Result<(), ABinaryTreeDiffError> {
         self.remove_node()?;
         self.remove_node()
+    }
+
+    /// Replace the content of the node at the given leaf index with new
+    /// content. Returns an error if the given leaf index is larger than the
+    /// leaf count of the diff.
+    pub(crate) fn replace_leaf(
+        &mut self,
+        leaf_index: LeafIndex,
+        new_leaf: T,
+    ) -> Result<(), ABinaryTreeDiffError> {
+        if leaf_index >= self.leaf_count() {
+            return Err(ABinaryTreeDiffError::OutOfBounds);
+        }
+        let node_index = to_node_index(leaf_index);
+        self.add_to_diff(node_index, new_leaf)?;
+        Ok(())
     }
 
     /// Obtain a `NodeReference` to the leaf with the given `LeafIndex`. Returns
@@ -170,6 +147,26 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
             leaf_references.push(node_ref);
         }
         Ok(leaf_references)
+    }
+
+    // Functions related to the direct paths of leaves
+    //////////////////////////////////////////////////
+
+    /// Returns a vector of `NodeReference` instances, each one referencing a
+    /// node in the direct path of the given `LeafIndex`, ordered from the
+    /// parent of the corresponding leaf to the root of the tree.
+    pub(crate) fn direct_path(
+        &'a self,
+        leaf_index: LeafIndex,
+    ) -> Result<Vec<NodeReference>, ABinaryTreeDiffError> {
+        let node_index = to_node_index(leaf_index);
+        let direct_path_indices = direct_path(node_index, self.size())?;
+        let mut direct_path = Vec::new();
+        for node_index in &direct_path_indices {
+            let node_ref = self.new_reference(*node_index)?;
+            direct_path.push(node_ref);
+        }
+        Ok(direct_path)
     }
 
     /// Sets all nodes in the direct path to a copy of the given node. This
@@ -207,6 +204,9 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         }
         Ok(())
     }
+
+    // Functions related to the shared subtree of two given leaves
+    //////////////////////////////////////////////////////////////
 
     /// Given two leaf indices, returns the position of the shared subtree root
     /// in the direct path of the first leaf index. Returns an error if both
@@ -296,22 +296,8 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         Ok(full_path)
     }
 
-    /// Returns a vector of `NodeReference` instances, each one referencing a
-    /// node in the direct path of the given `LeafIndex`, ordered from the
-    /// parent of the corresponding leaf to the root of the tree.
-    pub(crate) fn direct_path(
-        &'a self,
-        leaf_index: LeafIndex,
-    ) -> Result<Vec<NodeReference>, ABinaryTreeDiffError> {
-        let node_index = to_node_index(leaf_index);
-        let direct_path_indices = direct_path(node_index, self.size())?;
-        let mut direct_path = Vec::new();
-        for node_index in &direct_path_indices {
-            let node_ref = self.new_reference(*node_index)?;
-            direct_path.push(node_ref);
-        }
-        Ok(direct_path)
-    }
+    // Functions pertaining to the whole diff
+    /////////////////////////////////////////
 
     /// Returns an iterator over references to the content of all nodes in the
     /// diff.
@@ -339,7 +325,118 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         Ok(nodes)
     }
 
+    /// Returns the size of the diff.
+    pub(in crate::binary_tree) fn size(&self) -> NodeIndex {
+        self.size
+    }
+
+    /// Returns the leaf count of the diff.
+    pub(crate) fn leaf_count(&self) -> LeafIndex {
+        (self.size() + 1) / 2
+    }
+
+    // Functions around individual `NodeReference`s
+    ///////////////////////////////////////////////
+
+    /// Returns a reference to the node pointed to by the `NodeReference`.
+    /// Returns an Error if the `NodeReference` points to a node outside of the
+    /// bounds of the tree. This can happen, for example, if the node was
+    /// removed while shrinking the diff after the creation of the
+    /// `NodeReference`.
+    pub(crate) fn try_deref(&self, node_ref: NodeReference) -> Result<&T, ABinaryTreeDiffError> {
+        self.node_by_index(node_ref.node_index)
+            .ok_or(ABinaryTreeDiffError::OutOfBounds)
+    }
+
+    /// Returns a mutable reference to the node pointed to by the
+    /// `NodeReference`. Returns an Error if the `NodeReference` points to a
+    /// node outside of the bounds of the tree. This can happen, for example, if
+    /// the node was removed while shrinking the diff after the creation of the
+    /// `NodeReference`.
+    pub(crate) fn try_deref_mut(
+        &mut self,
+        node_ref: NodeReference,
+    ) -> Result<&mut T, ABinaryTreeDiffError> {
+        self.node_mut_by_index(node_ref.node_index)
+    }
+
+    /// Return a `NodeReference` to the root node of the diff. Since the diff
+    /// always consists of at least one node, this operation cannot fail.
+    pub(crate) fn root(&self) -> NodeReference {
+        let root_index = root(self.size());
+        // We create the reference directly instead of via self.new_reference,
+        // since due to the minimum tree size of one node, the root is always
+        // within bounds.
+        NodeReference {
+            node_index: root_index,
+        }
+    }
+
+    /// Returns true if the given `NodeReference` points to a leaf and `false`
+    /// otherwise.
+    pub(crate) fn is_leaf(&self, node_ref: NodeReference) -> bool {
+        node_ref.node_index % 2 == 0
+    }
+
+    /// Returns a `NodeReference` to the sibling of the referenced node. Returns
+    /// an error when the given `NodeReference` points to the root node or to a
+    /// node not in the tree.
+    pub(crate) fn sibling(
+        &self,
+        node_ref: NodeReference,
+    ) -> Result<NodeReference, ABinaryTreeDiffError> {
+        let sibling_index = sibling(node_ref.node_index, self.size())?;
+        self.new_reference(sibling_index)
+    }
+
+    /// Returns a `NodeReference` to the left child of the referenced node.
+    /// Returns an error when the given `NodeReference` points to a leaf node or
+    /// to a node not in the tree.
+    pub(crate) fn left_child(
+        &self,
+        node_ref: NodeReference,
+    ) -> Result<NodeReference, ABinaryTreeDiffError> {
+        let left_child_index = left(node_ref.node_index)?;
+        self.new_reference(left_child_index)
+    }
+
+    /// Returns a `NodeReference` to the right child of the referenced node.
+    /// Returns an error when the given `NodeReference` points to a leaf node or
+    /// to a node not in the tree.
+    pub(crate) fn right_child(
+        &self,
+        node_ref: NodeReference,
+    ) -> Result<NodeReference, ABinaryTreeDiffError> {
+        let right_child_index = right(node_ref.node_index, self.size())?;
+        self.new_reference(right_child_index)
+    }
+
+    /// Returns the `LeafIndex` of the referenced node. If the referenced node
+    /// is not a leaf, `None` is returned.
+    pub(crate) fn leaf_index(&self, node_ref: NodeReference) -> Option<LeafIndex> {
+        if self.is_leaf(node_ref) {
+            Some(node_ref.node_index / 2)
+        } else {
+            None
+        }
+    }
+
     // Private helper functions below.
+    //////////////////////////////////
+
+    // Node access functions
+
+    /// Creates a new `NodeReference` to a node at the given index. Returns an
+    /// error if the given index is outside the bounds of the diff.
+    fn new_reference(
+        &'a self,
+        node_index: NodeIndex,
+    ) -> Result<NodeReference, ABinaryTreeDiffError> {
+        if node_index >= self.size() {
+            return Err(ABinaryTreeDiffError::OutOfBounds);
+        }
+        Ok(NodeReference { node_index })
+    }
 
     /// Returns a reference to the node at index `node_index` or `None` if the
     /// node can neither be found in the tree nor in the diff.
@@ -390,6 +487,8 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         }
     }
 
+    // Helper functions for node addition and removal
+
     /// Add a node to the diff at the given index. This function can be used
     /// both to extend the diff (by choosing a `node_index` that is equal to the
     /// size of the diff) and to place a node at the given index such that any
@@ -414,107 +513,30 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         Ok(())
     }
 
-    /// Returns the size of the diff.
-    pub(in crate::binary_tree) fn size(&self) -> NodeIndex {
-        self.size
-    }
-
-    /// Returns the leaf count of the diff.
-    pub(crate) fn leaf_count(&self) -> LeafIndex {
-        (self.size() + 1) / 2
-    }
-
-    /// Creates a new `NodeReference` to a node at the given index. Returns an
-    /// error if the given index is outside the bounds of the diff.
-    fn new_reference(
-        &'a self,
-        node_index: NodeIndex,
-    ) -> Result<NodeReference, ABinaryTreeDiffError> {
-        if node_index >= self.size() {
-            return Err(ABinaryTreeDiffError::OutOfBounds);
+    /// Removes a node from the right edge of the diff, thus decreasing the size
+    /// of the diff by one. Throws an error if this would make the diff too
+    /// small (i.e. < 1 node).
+    fn remove_node(&mut self) -> Result<(), ABinaryTreeDiffError> {
+        // First make sure that the tree isn't getting too small.
+        if self.size() <= 1 {
+            return Err(ABinaryTreeDiffError::TreeTooSmall);
         }
-        Ok(NodeReference { node_index })
-    }
-
-    /// Returns a reference to the node pointed to by the `NodeReference`.
-    /// Returns an Error if the `NodeReference` points to a node outside of the
-    /// bounds of the tree. This can happen, for example, if the node was
-    /// removed while shrinking the diff after the creation of the
-    /// `NodeReference`.
-    pub(crate) fn try_deref(&self, node_ref: NodeReference) -> Result<&T, ABinaryTreeDiffError> {
-        self.node_by_index(node_ref.node_index)
-            .ok_or(ABinaryTreeDiffError::OutOfBounds)
-    }
-
-    /// Returns a mutable reference to the node pointed to by the
-    /// `NodeReference`. Returns an Error if the `NodeReference` points to a
-    /// node outside of the bounds of the tree. This can happen, for example, if
-    /// the node was removed while shrinking the diff after the creation of the
-    /// `NodeReference`.
-    pub(crate) fn try_deref_mut(
-        &mut self,
-        node_ref: NodeReference,
-    ) -> Result<&mut T, ABinaryTreeDiffError> {
-        self.node_mut_by_index(node_ref.node_index)
-    }
-
-    /// Return a `NodeReference` to the root node of the diff. Since the diff
-    /// always consists of at least one node, this operation cannot fail.
-    pub(crate) fn root(&self) -> NodeReference {
-        let root_index = root(self.size());
-        // We create the reference directly instead of via self.new_reference,
-        // since due to the minimum tree size of one node, the root is always
-        // within bounds.
-        NodeReference {
-            node_index: root_index,
-        }
-    }
-
-    pub(crate) fn is_leaf(&self, node_ref: NodeReference) -> bool {
-        node_ref.node_index % 2 == 0
-    }
-
-    /// Returns a `NodeReference` to the sibling of the referenced node. Returns
-    /// an error when the given `NodeReference` points to the root node or to a
-    /// node not in the tree.
-    pub(crate) fn sibling(
-        &self,
-        node_ref: NodeReference,
-    ) -> Result<NodeReference, ABinaryTreeDiffError> {
-        let sibling_index = sibling(node_ref.node_index, self.size())?;
-        self.new_reference(sibling_index)
-    }
-
-    /// Returns a `NodeReference` to the left child of the referenced node.
-    /// Returns an error when the given `NodeReference` points to a leaf node or
-    /// to a node not in the tree.
-    pub(crate) fn left_child(
-        &self,
-        node_ref: NodeReference,
-    ) -> Result<NodeReference, ABinaryTreeDiffError> {
-        let left_child_index = left(node_ref.node_index)?;
-        self.new_reference(left_child_index)
-    }
-
-    /// Returns a `NodeReference` to the right child of the referenced node.
-    /// Returns an error when the given `NodeReference` points to a leaf node or
-    /// to a node not in the tree.
-    pub(crate) fn right_child(
-        &self,
-        node_ref: NodeReference,
-    ) -> Result<NodeReference, ABinaryTreeDiffError> {
-        let right_child_index = right(node_ref.node_index, self.size())?;
-        self.new_reference(right_child_index)
-    }
-
-    /// Returns the `LeafIndex` of the referenced node. If the referenced node
-    /// is not a leaf, `None` is returned.
-    pub(crate) fn leaf_index(&self, node_ref: NodeReference) -> Option<LeafIndex> {
-        if self.is_leaf(node_ref) {
-            Some(node_ref.node_index / 2)
+        // Then check if the tree was extended before. If so, just remove the
+        // last node from the diff.
+        if self.size() > self.original_tree.size() {
+            let removed = self.diff.remove(&(self.size() - 1));
+            // There should be a node here to remove.
+            debug_assert!(removed.is_some());
         } else {
-            None
+            // If that is not the case, either the tree is of the same length as
+            // the diff, or the diff is already smaller. In both cases, we check
+            // if there is a node at the right edge to remove from the diff.
+            self.diff.remove(&(self.size() - 1));
+            // Regardless of the result, we decrease the size to signal that a
+            // node was removed from the diff.
         }
+        self.size -= 1;
+        Ok(())
     }
 
     #[cfg(test)]

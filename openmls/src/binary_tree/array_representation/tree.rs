@@ -26,6 +26,7 @@ pub(super) fn to_node_index(leaf_index: LeafIndex) -> NodeIndex {
     leaf_index * 2
 }
 
+#[cfg_attr(test, derive(PartialEq))]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 /// A representation of a full, left-balanced binary tree that uses a simple
 /// vector to store nodes. Each tree has to consist of at least one node.
@@ -160,12 +161,5 @@ implement_error! {
         InvalidNode = "Can't add the default node to the tree.",
         NodeNotFound = "Can't find the node with the given address in the tree.",
         LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
-    }
-}
-
-#[cfg(test)]
-impl PartialEq for ABinaryTree<u32> {
-    fn eq(&self, other: &Self) -> bool {
-        self.nodes == other.nodes
     }
 }
