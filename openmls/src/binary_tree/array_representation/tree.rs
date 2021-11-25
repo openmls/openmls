@@ -81,9 +81,9 @@ impl<T: Clone + Debug> ABinaryTree<T> {
     pub(crate) fn leaves(&self) -> Result<Vec<&T>, ABinaryTreeError> {
         let mut leaf_references = Vec::new();
         for leaf_index in 0..self.leaf_count() {
-            // The tree size and thus the leaf cound should fit into usize on 32
-            // bit architectures.
             let node_index = usize::try_from(to_node_index(leaf_index))
+                // The tree size and thus the leaf count should fit into usize on 32
+                // bit architectures.
                 .map_err(|_| ABinaryTreeError::LibraryError)?;
             let node_ref = self
                 .nodes
@@ -101,34 +101,34 @@ impl<T: Clone + Debug> ABinaryTree<T> {
     }
 
     pub(crate) fn merge_diff(&mut self, diff: StagedAbDiff<T>) -> Result<(), ABinaryTreeError> {
-        let mut outside_nodes = Vec::new();
-        // First, deal only with indices that are either inside of the tree or
-        // that can be added without intermediate nodes.
-        for (node_index, diff_node) in diff.diff().drain() {
-            // If the node is too far outside of the tree, deal with it later.
+        // The diff size should fit into a 32 bit usize.
+        let diff_size = usize::try_from(diff.size()).map_err(|_| ABinaryTreeError::LibraryError)?;
+        // If the size of the diff is smaller than the tree, truncate the tree
+        // to the size of the diff.
+        self.nodes.truncate(diff_size);
+
+        // Iterate over the BTreeMap in order of indices.
+        for (node_index, diff_node) in diff.diff().into_iter() {
             match node_index {
+                // If the node would extend the tree, push it to the vector of nodes.
                 node_index if node_index == self.size() => self.nodes.push(diff_node),
+                // If the node index points too far outside of the tree,
+                // something has gone wrong.
                 node_index if node_index > self.size() => {
-                    outside_nodes.push((node_index, diff_node))
+                    return Err(ABinaryTreeError::LibraryError)
                 }
+                // If the node_index points to somewhere within the size of the
+                // tree, do a swap-remove.
                 node_index => {
                     // Perform swap-remove.
                     self.nodes.push(diff_node);
                     self.nodes.swap_remove(
+                        // If the node_index is larger that u32 max, something
+                        // has gone wrong.
                         usize::try_from(node_index).map_err(|_| ABinaryTreeError::LibraryError)?,
                     );
                 }
             }
-        }
-        // Afterwards, sort the remaining nodes and simply add them to the tree
-        // in order. FIXME: We should be able to make this more efficient.
-        outside_nodes.sort_unstable_by_key(|&(i, _)| i);
-        for (node_index, diff_node) in outside_nodes {
-            if node_index != self.size() {
-                // This should not happen if the diff is well-formed.
-                return Err(ABinaryTreeError::LibraryError);
-            }
-            self.nodes.push(diff_node)
         }
         Ok(())
     }

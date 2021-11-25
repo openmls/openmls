@@ -1,10 +1,8 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use std::fmt::Debug;
 
-use crate::binary_tree::{
-    array_representation::treemath::sibling, LeafIndex, MlsBinaryTreeDiffError,
-};
+use crate::binary_tree::{array_representation::treemath::sibling, LeafIndex};
 
 use super::{
     tree::{to_node_index, ABinaryTree, ABinaryTreeError, NodeIndex, TreeSize},
@@ -15,18 +13,26 @@ use super::{
 /// purpose is to be merged into an existing `ABinaryTree` instance.
 #[derive(Debug)]
 pub(crate) struct StagedAbDiff<T: Clone + Debug> {
-    diff: HashMap<NodeIndex, T>,
+    diff: BTreeMap<NodeIndex, T>,
+    size: TreeSize,
 }
 
 impl<'a, T: Clone + Debug> From<AbDiff<'a, T>> for StagedAbDiff<T> {
     fn from(diff: AbDiff<'a, T>) -> Self {
-        StagedAbDiff { diff: diff.diff }
+        StagedAbDiff {
+            diff: diff.diff,
+            size: diff.size,
+        }
     }
 }
 
 impl<T: Clone + Debug> StagedAbDiff<T> {
-    pub(super) fn diff(self) -> HashMap<NodeIndex, T> {
+    pub(super) fn diff(self) -> BTreeMap<NodeIndex, T> {
         self.diff
+    }
+
+    pub(super) fn size(&self) -> TreeSize {
+        self.size
     }
 }
 
@@ -36,7 +42,7 @@ impl<T: Clone + Debug> StagedAbDiff<T> {
 /// instance upon merging.
 pub(crate) struct AbDiff<'a, T: Clone + Debug> {
     original_tree: &'a ABinaryTree<T>,
-    diff: HashMap<NodeIndex, T>,
+    diff: BTreeMap<NodeIndex, T>,
     size: TreeSize,
 }
 
@@ -44,7 +50,7 @@ impl<'a, T: Clone + Debug> From<&'a ABinaryTree<T>> for AbDiff<'a, T> {
     fn from(tree: &'a ABinaryTree<T>) -> Self {
         AbDiff {
             original_tree: tree,
-            diff: HashMap::new(),
+            diff: BTreeMap::new(),
             size: tree.size(),
         }
     }
@@ -52,7 +58,6 @@ impl<'a, T: Clone + Debug> From<&'a ABinaryTree<T>> for AbDiff<'a, T> {
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct NodeReference {
-    //diff: &'a AbDiff<'a, T>,
     node_index: NodeIndex,
 }
 
@@ -84,6 +89,38 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         Ok(self.leaf_count() - 1)
     }
 
+    /// Removes a node from the right edge of the diff and decreases the size of
+    /// the diff by one. Throws an error if this would make the tree too small.
+    fn remove_node(&mut self) -> Result<(), ABinaryTreeDiffError> {
+        // First make sure that the tree isn't getting too small.
+        if self.size() <= 1 {
+            return Err(ABinaryTreeDiffError::TreeTooSmall);
+        }
+        // Then check if the tree was extended before. If so, just remove the
+        // last node from the diff.
+        if self.size() > self.original_tree.size() {
+            let removed = self.diff.remove(&(self.size() - 1));
+            // There should be a node here to remove.
+            debug_assert!(removed.is_some());
+        } else {
+            // If that is not the case, either the tree is of the same length as
+            // the diff, or the diff is already smaller. In both cases, we check
+            // if there is a node at the right edge to remove from the diff.
+            self.diff.remove(&(self.size() - 1));
+            // Regardless of the result, we decrease the size to signal that a
+            // node was removed from the diff.
+        }
+        self.size -= 1;
+        Ok(())
+    }
+
+    /// Removes a leaf from the tree. To keep the binary tree balanced, this
+    /// also removes the parent of the leaf.
+    pub(crate) fn remove_leaf(&mut self) -> Result<(), ABinaryTreeDiffError> {
+        self.remove_node()?;
+        self.remove_node()
+    }
+
     /// Obtain a `NodeReference` to the leaf with the given `LeafIndex`.
     pub(crate) fn leaf(
         &'a self,
@@ -94,8 +131,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     }
 
     /// Returns references to the leaves of the tree in order from left to
-    /// right. NOTE: This is used to find blank leaves to place new members
-    /// into.
+    /// right.
     pub(crate) fn leaves(&'a self) -> Result<Vec<NodeReference>, ABinaryTreeDiffError> {
         let mut leaf_references = Vec::new();
         for leaf_index in 0..self.leaf_count() {
@@ -106,9 +142,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         Ok(leaf_references)
     }
 
-    // FIXME: Come up with a better name.
-    /// Sets all nodes in the direct path to a copy of the given node. NOTE:
-    /// This is used to blank a direct path.
+    /// Sets all nodes in the direct path to a copy of the given node.
     pub(crate) fn set_direct_path_to_node(
         &mut self,
         leaf_index: LeafIndex,
@@ -125,28 +159,24 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// Sets the nodes in the direct path of the given leaf index to the nodes
     /// given in the `path`. Returns an error if the `leaf_index` is not in the
     /// tree or if the given `path` is longer or shorter than the direct path.
-    /// NOTE: This function is used to replace a direct path with new nodes
-    /// (e.g. when performing an own update), or to blank a direct path.
     pub(crate) fn set_direct_path(
         &mut self,
         leaf_index: LeafIndex,
-        mut path: Vec<T>,
+        path: Vec<T>,
     ) -> Result<(), ABinaryTreeDiffError> {
         let node_index = to_node_index(leaf_index);
         let direct_path = direct_path(node_index, self.size())?;
         if path.len() != direct_path.len() {
             return Err(ABinaryTreeDiffError::PathLengthMismatch);
         }
-        for (node_index, node) in direct_path.iter().zip(path.drain(..)) {
+        for (node_index, node) in direct_path.iter().zip(path.into_iter()) {
             self.add_to_diff(*node_index, node)?;
         }
         Ok(())
     }
 
     /// Given two leaf indices, returns the position of the shared subtree root
-    /// in the direct path of the first leaf index. NOTE: This function is
-    /// required in the process of finding the right ciphertext to decrypt in a
-    /// received `UpdatePathNode`.
+    /// in the direct path of the first leaf index.
     pub(crate) fn subtree_root_position(
         &self,
         leaf_index_1: LeafIndex,
@@ -175,8 +205,6 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
 
     /// Returns the copath node of the `leaf_index_1` that is in the direct path
     /// of `leaf_index_2`. Returns an error if both leaf indices are the same.
-    /// NOTE: This function is required in the process of finding the private
-    /// key to decrypt a received `UpdatePathNode`.
     pub(crate) fn subtree_root_copath_node(
         &'a self,
         leaf_index_1: LeafIndex,
@@ -244,8 +272,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     }
 
     /// Returns an iterator over references to the content of all nodes in the
-    /// diff. NOTE: This is required for parent hash verification when receiving
-    /// a new tree.
+    /// diff.
     pub(crate) fn iter(&'a self) -> DiffIterator<'a, T> {
         DiffIterator {
             diff: self,
@@ -256,10 +283,10 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     pub(crate) fn export_nodes(&self) -> Result<Vec<T>, ABinaryTreeDiffError> {
         let mut nodes = Vec::new();
         for node_index in 0..self.size() {
-            // Every node index within size() should point to a node in the
-            // tree.
             let node = self
                 .node_by_index(node_index)
+                // Every node index within size() should point to a node in the
+                // tree.
                 .ok_or(ABinaryTreeDiffError::LibraryError)?;
             nodes.push(node.clone());
         }
@@ -271,10 +298,16 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// Returns a reference to the node at index `node_index` or `None` if the
     /// node can neither be found in the tree nor in the diff.
     fn node_by_index(&self, node_index: NodeIndex) -> Option<&T> {
-        if let Some(node) = self.diff.get(&node_index) {
+        // We first check if the given node_index is within the bounds of the diff.
+        if node_index >= self.size() {
+            return None;
+            // If it is, check if it's in the diff.
+        } else if let Some(node) = self.diff.get(&node_index) {
             Some(node)
+            // If it isn't in the diff, it must be in the tree.
         } else if let Some(node) = self.original_tree.node_by_index(node_index) {
             Some(node)
+            // If it isn't in the tree either, something has gone wrong.
         } else {
             None
         }
@@ -283,19 +316,29 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// Returns a mutable reference to the node at index `node_index` or `None`
     /// if the node can neither be found in the tree nor in the diff.
     fn node_mut_by_index(&mut self, node_index: NodeIndex) -> Result<&mut T, ABinaryTreeDiffError> {
+        // We first check if the given node_index is within the bounds of the diff.
+        if node_index >= self.size() {
+            return Err(ABinaryTreeDiffError::OutOfBounds);
+        }
+        // We then check if the node is already in the diff. (Not using `if let
+        // ...` here, because the borrow checker doesn't like that).
         if self.diff.contains_key(&node_index) {
-            let node = self
-                .diff
+            self.diff
                 .get_mut(&node_index)
-                .ok_or(ABinaryTreeDiffError::NodeNotFound)?;
-            Ok(node)
+                // We just checked that this index exists, so this must be Some.
+                .ok_or(ABinaryTreeDiffError::LibraryError)
+            // If not, we take a copy from the original tree and put it in the
+            // diff before returning a mutable reference to it.
         } else if let Some(tree_node) = self.original_tree.node_by_index(node_index) {
             self.add_to_diff(node_index, tree_node.clone())?;
             self.diff
                 .get_mut(&node_index)
+                // We just inserted this into the diff, so this should be Some.
                 .ok_or(ABinaryTreeDiffError::LibraryError)
         } else {
-            Err(ABinaryTreeDiffError::OutOfBounds)
+            // If the node is neither out of bounds, nor in the diff, nor in the
+            // tree, something must have gone wrong somewhere.
+            Err(ABinaryTreeDiffError::LibraryError)
         }
     }
 
@@ -335,26 +378,24 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     }
 
     pub(crate) fn try_deref(&self, node_ref: NodeReference) -> Result<&T, ABinaryTreeDiffError> {
-        // We only create references for nodes that are within the tree and the
-        // tree can't be changed while references are out there, because
-        // references include a reference to the diff.
         self.node_by_index(node_ref.node_index)
-            .ok_or(ABinaryTreeDiffError::LibraryError)
+            .ok_or(ABinaryTreeDiffError::OutOfBounds)
     }
 
     pub(crate) fn try_deref_mut(
         &mut self,
         node_ref: NodeReference,
     ) -> Result<&mut T, ABinaryTreeDiffError> {
-        // We only create references for nodes that are within the tree and the
-        // tree can't be changed while references are out there, because
-        // references include a reference to the diff.
         self.node_mut_by_index(node_ref.node_index)
-            .map_err(|_| ABinaryTreeDiffError::LibraryError)
     }
 
+    /// Return a `NodeReference` to the root node of the diff. Since the diff
+    /// always consists of at least one node, this operation cannot fail.
     pub(crate) fn root(&self) -> NodeReference {
         let root_index = root(self.size());
+        // We create the reference directly instead of via self.new_reference,
+        // since due to the minimum tree size of one node, the root is always
+        // within bounds.
         NodeReference {
             node_index: root_index,
         }
@@ -448,6 +489,7 @@ implement_error! {
             PathModificationError = "Error while trying to modify path.",
             OutOfBounds = "The given leaf index is not within the tree.",
             TreeTooLarge = "Maximum tree size reached.",
+            TreeTooSmall = "Minimum tree size reached.",
             PathLengthMismatch = "The given path index is not the same length as the direct path.",
             AddressCollision = "A node with the given address is already part of this diff.",
             NodeNotFound = "Can't find the node with the given address in the diff.",

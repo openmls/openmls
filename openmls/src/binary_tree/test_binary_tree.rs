@@ -10,7 +10,6 @@ use super::array_representation::treemath::TreeMathError;
 // * Write better comments on tests
 // * test programmatically, i.e. do loops over various tree sizes where possible
 // * Re-write docs on the tree and diff functions
-// * Eliminate all TODOs and FIXMEs
 
 #[test]
 fn test_tree_basics() {
@@ -85,7 +84,7 @@ fn test_tree_basics() {
 }
 
 #[test]
-fn test_basic_diff_mechanics() {
+fn test_node_references() {
     // Test empty diff.
     let mut tree =
         MlsBinaryTree::new(vec![0]).expect("Error when creating a one-node binary tree.");
@@ -195,14 +194,24 @@ fn test_basic_diff_mechanics() {
         MlsBinaryTree::new(vec![2, 0, 4]).expect("Error when creating a one-node binary tree.");
 
     assert_eq!(new_tree, tree);
+}
+
+#[test]
+fn test_diff_merging() {
+    let mut tree = MlsBinaryTree::new(vec![2, 0, 4]).expect("Error creating tree.");
+    let original_tree = tree.clone();
 
     let mut diff = tree.empty_diff();
-    // Diff merging with more nodes.
+
+    // Merging larger diffs.
+
+    // Add a lot of leaves.
     for index in 0..1000 {
         diff.add_leaf(index, index)
             .expect("error while adding large number of leaves");
     }
 
+    // Check that the leaves were actually added.
     let leaves = diff
         .leaves()
         .expect("error compiling vector of leaf references.");
@@ -219,9 +228,56 @@ fn test_basic_diff_mechanics() {
     );
     assert_eq!(leaves.len(), diff.leaf_count() as usize);
 
+    // Remove some of them again
+    for _ in 0..200 {
+        diff.remove_leaf()
+            .expect("error while removing large number of leaves");
+    }
+
+    // Check that the leaves were actually removed.
+    let leaves = diff
+        .leaves()
+        .expect("error compiling vector of leaf references.");
+
+    let first_leaf = leaves.first().expect("leaf vector is empty");
+    let last_leaf = leaves.last().expect("leaf vector is empty");
+    assert_eq!(
+        diff.try_deref(*first_leaf).expect("error dereferencing"),
+        &2
+    );
+    assert_eq!(
+        diff.try_deref(*last_leaf).expect("error dereferencing"),
+        &799
+    );
+    assert_eq!(leaves.len(), diff.leaf_count() as usize);
+
     let staged_diff = diff.into();
     tree.merge_diff(staged_diff)
         .expect("error when merging large diff");
+
+    // Verify that the tree has changed post-merge.
+    let leaves = tree
+        .leaves()
+        .expect("error compiling vector of leaf references.");
+
+    let first_leaf = leaves.first().expect("leaf vector is empty");
+    let last_leaf = leaves.last().expect("leaf vector is empty");
+    assert_eq!(*first_leaf, &2);
+    assert_eq!(*last_leaf, &799);
+
+    // Merging a diff that decreases the size of the tree.
+
+    let mut diff = tree.empty_diff();
+    for _ in 0..800 {
+        diff.remove_leaf()
+            .expect("error while removing large number of leaves");
+    }
+
+    let staged_diff = diff.into();
+    tree.merge_diff(staged_diff)
+        .expect("error when merging large diff");
+
+    assert_eq!(tree, original_tree);
 }
 
 #[test]
@@ -341,7 +397,7 @@ fn test_direct_path_manipulation() {
     assert_eq!(direct_path_nodes, vec![&888]);
 
     // Large tree
-    let large_tree = MlsBinaryTree::new((0..101).collect()).expect("error creating tree");
+    let mut large_tree = MlsBinaryTree::new((0..101).collect()).expect("error creating tree");
 
     // Getting the direct path.
     let mut lt_diff = large_tree.empty_diff();
@@ -412,6 +468,22 @@ fn test_direct_path_manipulation() {
         .set_direct_path(0, vec![666, 999])
         .expect_err("no error setting direct path outside of tree.");
     assert_eq!(error, MlsBinaryTreeDiffError::PathLengthMismatch);
+
+    // Merging and creating a new, empty diff to ensure that the changes persist
+    // on merge.
+    let staged_diff = lt_diff.into();
+    large_tree
+        .merge_diff(staged_diff)
+        .expect("error merging diff");
+    let empty_diff = large_tree.empty_diff();
+    let direct_path = empty_diff
+        .direct_path(0)
+        .expect("error computing direct path for large tree.");
+    let direct_path_nodes = empty_diff
+        .deref_vec(direct_path)
+        .expect("error dereferencing direct path nodes.");
+    println!("direct path nodes: {:?}", direct_path_nodes);
+    assert_eq!(direct_path_nodes, vec![&1, &3, &7, &15, &31, &883]);
 }
 
 #[test]
@@ -536,7 +608,7 @@ fn test_subtree_root_copath_node() {
     let subtree_root_copath_node = diff
         .try_deref(subtree_root_copath_node_ref)
         .expect("error dereferencing");
-    assert_eq!(subtree_root_copath_node, &87);
+    assert_eq!(subtree_root_copath_node, &71);
 }
 
 #[test]

@@ -1,5 +1,4 @@
 //! This module defines the binary tree implementation used by OpenMLS.
-use std::hash::Hash;
 
 /// FIXME: Allowing dead code until there's an actual consumer for the binary
 /// tree API.
