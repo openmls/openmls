@@ -1,5 +1,6 @@
 use crate::group::errors::*;
 
+use crate::key_packages::KeyPackage;
 use crate::messages::proposals::{
     AddProposal, PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalOrRefType,
     ProposalReference, ProposalType, RemoveProposal, UpdateProposal,
@@ -89,7 +90,7 @@ impl StagedProposal {
         })
     }
     /// Returns the `Proposal` as a reference
-    pub(crate) fn proposal(&self) -> &Proposal {
+    pub fn proposal(&self) -> &Proposal {
         &self.proposal
     }
     /// Returns the `ProposalReference`.
@@ -97,7 +98,7 @@ impl StagedProposal {
         self.proposal_reference.clone()
     }
     /// Returns the `Sender` as a reference
-    pub(crate) fn sender(&self) -> &Sender {
+    pub fn sender(&self) -> &Sender {
         &self.sender
     }
 }
@@ -128,6 +129,7 @@ impl StagedProposalQueue {
         committed_proposals: Vec<ProposalOrRef>,
         proposal_store: &ProposalStore,
         sender: Sender,
+        update_path_key_package: Option<&KeyPackage>,
     ) -> Result<Self, StagedProposalQueueError> {
         // Feed the `proposals_by_reference` in a `HashMap` so that we can easily
         // extract then by reference later
@@ -179,6 +181,19 @@ impl StagedProposalQueue {
                 }
             };
             proposal_queue.add(queued_proposal);
+        }
+        // If it was full Commit, we add the new key package of the committer as an update
+        if let Some(key_package) = update_path_key_package {
+            let update_proposal = UpdateProposal {
+                key_package: key_package.clone(),
+            };
+            let staged_proposal = StagedProposal::from_proposal_and_sender(
+                ciphersuite,
+                backend,
+                Proposal::Update(update_proposal),
+                sender,
+            )?;
+            proposal_queue.add(staged_proposal);
         }
         Ok(proposal_queue)
     }

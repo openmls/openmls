@@ -117,9 +117,10 @@ impl MlsGroup {
 
                 Ok(match verified_member_message.plaintext().content() {
                     MlsPlaintextContentType::Application(application_message) => {
-                        ProcessedMessage::ApplicationMessage(
+                        ProcessedMessage::ApplicationMessage(ApplicationMessage::new(
                             application_message.as_slice().to_vec(),
-                        )
+                            *verified_member_message.plaintext().sender(),
+                        ))
                     }
                     MlsPlaintextContentType::Proposal(_proposal) => {
                         ProcessedMessage::ProposalMessage(Box::new(

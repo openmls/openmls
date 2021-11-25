@@ -67,6 +67,7 @@ impl MlsGroup {
             commit.proposals.as_slice().to_vec(),
             proposal_store,
             *mls_plaintext.sender(),
+            commit.path().as_ref().map(|path| &path.leaf_key_package),
         )
         .map_err(|_| StageCommitError::MissingProposal)?;
 
@@ -97,7 +98,10 @@ impl MlsGroup {
 
         // Check if we were removed from the group
         if apply_proposals_values.self_removed {
-            return Err(StageCommitError::SelfRemoved.into());
+            return Ok(StagedCommit {
+                staged_proposal_queue: proposal_queue,
+                state: None,
+            });
         }
 
         // Determine if Commit is own Commit
@@ -254,20 +258,24 @@ impl MlsGroup {
 
         Ok(StagedCommit {
             staged_proposal_queue: proposal_queue,
-            group_context: provisional_group_context,
-            epoch_secrets: provisional_epoch_secrets,
-            interim_transcript_hash,
-            secret_tree: RefCell::new(secret_tree),
-            original_nodes,
+            state: Some(StagedCommitState {
+                group_context: provisional_group_context,
+                epoch_secrets: provisional_epoch_secrets,
+                interim_transcript_hash,
+                secret_tree: RefCell::new(secret_tree),
+                original_nodes,
+            }),
         })
     }
 
-    /// Merges a [`StagedCommit`] into the group state.
+    /// Merges a [StagedCommit] into the group state.
     pub fn merge_commit(&mut self, staged_commit: StagedCommit) {
-        self.group_context = staged_commit.group_context;
-        self.epoch_secrets = staged_commit.epoch_secrets;
-        self.interim_transcript_hash = staged_commit.interim_transcript_hash;
-        self.secret_tree = staged_commit.secret_tree;
+        if let Some(state) = staged_commit.state {
+            self.group_context = state.group_context;
+            self.epoch_secrets = state.epoch_secrets;
+            self.interim_transcript_hash = state.interim_transcript_hash;
+            self.secret_tree = state.secret_tree;
+        }
     }
 
     /// This is temporary and will disappear when #424 is addressed.
@@ -275,7 +283,9 @@ impl MlsGroup {
     /// Rolls back the public tree nodes in case a Commit contained undesired proposals.
     pub fn cancel_commit(&mut self, staged_commit: StagedCommit) {
         let mut tree = self.tree.borrow_mut();
-        tree.nodes = staged_commit.original_nodes;
+        if let Some(state) = staged_commit.state {
+            tree.nodes = state.original_nodes;
+        }
     }
 }
 
@@ -283,11 +293,7 @@ impl MlsGroup {
 #[derive(Debug)]
 pub struct StagedCommit {
     staged_proposal_queue: StagedProposalQueue,
-    group_context: GroupContext,
-    epoch_secrets: EpochSecrets,
-    interim_transcript_hash: Vec<u8>,
-    secret_tree: RefCell<SecretTree>,
-    original_nodes: Vec<Node>,
+    state: Option<StagedCommitState>,
 }
 
 impl StagedCommit {
@@ -310,4 +316,20 @@ impl StagedCommit {
     pub fn psk_proposals(&self) -> impl Iterator<Item = StagedPskProposal> {
         self.staged_proposal_queue.psk_proposals()
     }
+
+    /// Returns `true` if the member was removed through a proposal covered by this Commit message
+    /// and `false` otherwise.
+    pub fn self_removed(&self) -> bool {
+        self.state.is_none()
+    }
+}
+
+/// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.
+#[derive(Debug)]
+pub(crate) struct StagedCommitState {
+    group_context: GroupContext,
+    epoch_secrets: EpochSecrets,
+    interim_transcript_hash: Vec<u8>,
+    secret_tree: RefCell<SecretTree>,
+    original_nodes: Vec<Node>,
 }

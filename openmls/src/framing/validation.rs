@@ -197,10 +197,10 @@ impl UnverifiedContextMessage {
         let (mut plaintext, credential_option) = unverified_message.into_parts();
 
         if plaintext.sender().is_member() {
+            // Add serialized context to plaintext
+            plaintext.set_context(serialized_context);
             // Verify the membership tag
             if plaintext.wire_format() != WireFormat::MlsCiphertext {
-                // Add serialized context to plaintext
-                plaintext.set_context(serialized_context);
                 // ValSem8
                 plaintext.verify_membership(backend, membership_key)?;
             }
@@ -315,8 +315,38 @@ impl VerifiedExternalMessage {
 
 /// Message that contains messages that are syntactically and semantically correct.
 /// [StagedCommit] and [StagedProposal] can be inspected for authorization purposes.
+#[derive(Debug)]
 pub enum ProcessedMessage {
-    ApplicationMessage(Vec<u8>),
+    ApplicationMessage(ApplicationMessage),
     ProposalMessage(Box<StagedProposal>),
     StagedCommitMessage(Box<StagedCommit>),
+}
+
+/// Application message received through a [ProcessedMessage].
+#[derive(Debug, PartialEq)]
+pub struct ApplicationMessage {
+    message: Vec<u8>,
+    sender: Sender,
+}
+
+impl ApplicationMessage {
+    /// Create a new [ApplicationMessage].
+    pub(crate) fn new(message: Vec<u8>, sender: Sender) -> Self {
+        Self { message, sender }
+    }
+
+    /// Get a reference to the message.
+    pub fn message(&self) -> &[u8] {
+        &self.message
+    }
+
+    /// Get a reference to the sender.
+    pub fn sender(&self) -> &Sender {
+        &self.sender
+    }
+
+    /// Get the message and the sender and consume the [ApplicationMessage].
+    pub fn into_parts(self) -> (Vec<u8>, Sender) {
+        (self.message, self.sender)
+    }
 }

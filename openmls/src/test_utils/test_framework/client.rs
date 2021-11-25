@@ -135,12 +135,20 @@ impl Client {
         let group_state = group_states
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
-        let events = group_state.process_message(message.clone(), &self.crypto)?;
-        for event in events {
-            if let GroupEvent::Error(e) = event {
-                return Err(ClientError::ErrorEvent(e));
+        let unverified_message = group_state.parse_message(message.clone(), &self.crypto)?;
+        let processed_message =
+            group_state.process_unverified_message(unverified_message, None, &self.crypto)?;
+
+        match processed_message {
+            ProcessedMessage::ApplicationMessage(_) => {}
+            ProcessedMessage::ProposalMessage(staged_proposal) => {
+                group_state.store_pending_proposal(*staged_proposal);
+            }
+            ProcessedMessage::StagedCommitMessage(staged_commit) => {
+                group_state.merge_staged_commit(*staged_commit)?;
             }
         }
+
         Ok(())
     }
 

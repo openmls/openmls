@@ -189,7 +189,6 @@ impl MlsGroup {
     ) -> Result<(), MlsGroupError> {
         let update_proposals = staged_proposal_queue.update_proposals();
         let tree = &self.tree();
-        let mut indexed_key_packages = tree.indexed_key_packages();
 
         let mut public_key_set = HashSet::new();
         for key_package in self.tree().key_packages() {
@@ -198,6 +197,7 @@ impl MlsGroup {
         }
 
         for update_proposal in update_proposals {
+            let mut indexed_key_packages = tree.indexed_key_packages();
             if let Some(existing_key_package) = indexed_key_packages
                 .find(|(index, _key_package)| {
                     &NodeIndex::from(update_proposal.sender().sender) == index

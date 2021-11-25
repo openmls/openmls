@@ -18,9 +18,6 @@ pub struct ManagedGroupConfig {
     pub(crate) number_of_resumption_secrets: usize,
     /// Flag to indicate the Ratchet Tree Extension should be used
     pub(crate) use_ratchet_tree_extension: bool,
-    /// Callbacks
-    #[serde(skip)]
-    pub(crate) callbacks: ManagedGroupCallbacks,
 }
 
 impl ManagedGroupConfig {
@@ -54,17 +51,6 @@ impl ManagedGroupConfig {
         self.use_ratchet_tree_extension
     }
 
-    /// Get a reference to the [`ManagedGroupConfig`] callbacks.
-    pub fn callbacks(&self) -> &ManagedGroupCallbacks {
-        &self.callbacks
-    }
-
-    /// Sets the callbacks
-    /// TODO #133: This will disappear once the new validation API is done
-    pub fn set_callbacks(&mut self, callbacks: &ManagedGroupCallbacks) {
-        self.callbacks = *callbacks;
-    }
-
     #[cfg(any(feature = "test-utils", test))]
     pub fn test_default() -> Self {
         Self::builder()
@@ -81,7 +67,6 @@ impl Default for ManagedGroupConfig {
             padding_size: 0,
             number_of_resumption_secrets: 0,
             use_ratchet_tree_extension: false,
-            callbacks: ManagedGroupCallbacks::default(),
         }
     }
 }
@@ -124,12 +109,6 @@ impl ManagedGroupConfigBuilder {
     /// Sets the `use_ratchet_tree_extension` property of the ManagedGroupConfig.
     pub fn use_ratchet_tree_extension(mut self, use_ratchet_tree_extension: bool) -> Self {
         self.config.use_ratchet_tree_extension = use_ratchet_tree_extension;
-        self
-    }
-
-    /// Sets the `callbacks` property of the ManagedGroupConfig.
-    pub fn callbacks(mut self, callbacks: ManagedGroupCallbacks) -> Self {
-        self.config.callbacks = callbacks;
         self
     }
 

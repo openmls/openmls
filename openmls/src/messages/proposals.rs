@@ -174,7 +174,7 @@ pub struct AddProposal {
 
 impl AddProposal {
     /// Get a reference to the key package in the proposal.
-    pub(crate) fn key_package(&self) -> &KeyPackage {
+    pub fn key_package(&self) -> &KeyPackage {
         &self.key_package
     }
 }
@@ -183,12 +183,12 @@ impl AddProposal {
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct UpdateProposal {
-    pub(crate) key_package: KeyPackage,
+    pub key_package: KeyPackage,
 }
 
 impl UpdateProposal {
     /// Get a reference to the key package in the proposal.
-    pub(crate) fn key_package(&self) -> &KeyPackage {
+    pub fn key_package(&self) -> &KeyPackage {
         &self.key_package
     }
 }
@@ -202,7 +202,7 @@ pub struct RemoveProposal {
 
 impl RemoveProposal {
     /// Get the `u32` index in this proposal.
-    pub(crate) fn removed(&self) -> u32 {
+    pub fn removed(&self) -> u32 {
         self.removed
     }
 }

@@ -48,10 +48,8 @@ impl ManagedGroup {
             aad: vec![],
             resumption_secret_store,
             active: true,
+            state_changed: true,
         };
-
-        // Since the state of the group was changed, call the auto-save function
-        managed_group.auto_save();
 
         Ok(managed_group)
     }
@@ -86,10 +84,8 @@ impl ManagedGroup {
             aad: vec![],
             resumption_secret_store,
             active: true,
+            state_changed: true,
         };
-
-        // Since the state of the group was changed, call the auto-save function
-        managed_group.auto_save();
 
         Ok(managed_group)
     }

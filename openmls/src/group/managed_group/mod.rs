@@ -1,18 +1,15 @@
 mod application;
-pub mod callbacks;
 pub mod config;
 mod creation;
 pub mod errors;
-pub mod events;
 mod exporting;
 mod membership;
-mod processing;
+pub mod processing;
 mod resumption;
 mod ser;
 #[cfg(test)]
 mod test_managed_group;
 mod updates;
-pub mod validation;
 
 use crate::credentials::CredentialBundle;
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
@@ -29,19 +26,16 @@ use crate::{
     tree::{index::LeafIndex, node::Node},
 };
 
-use std::collections::HashMap;
 use std::io::{Error, Read, Write};
 
 #[cfg(any(feature = "test-utils", test))]
 use std::cell::Ref;
 
-pub use callbacks::*;
 pub use config::*;
 pub use errors::{
     EmptyInputError, InvalidMessageError, ManagedGroupError, PendingProposalsError,
     UseAfterEviction,
 };
-pub use events::*;
 pub(crate) use resumption::ResumptionSecretStore;
 use ser::*;
 
@@ -97,6 +91,10 @@ pub struct ManagedGroup {
     // to `true` upon group creation and is set to `false` when the client gets evicted from the
     // group`.
     active: bool,
+    // A flag that indicates if the group state has changed and needs to be persisted again. The value
+    // is set to `true` whenever an the internal group state is change and is set to `false` when the
+    // state has been persisted.
+    state_changed: bool,
 }
 
 impl ManagedGroup {
@@ -112,7 +110,7 @@ impl ManagedGroup {
         self.managed_group_config = managed_group_config.clone();
 
         // Since the state of the group was changed, call the auto-save function
-        self.auto_save();
+        self.flag_state_change();
     }
 
     /// Gets the AAD used in the framing
@@ -125,7 +123,7 @@ impl ManagedGroup {
         self.aad = aad.to_vec();
 
         // Since the state of the group was changed, call the auto-save function
-        self.auto_save();
+        self.flag_state_change();
     }
 
     // === Advanced functions ===
@@ -166,18 +164,23 @@ impl ManagedGroup {
     // === Load & save ===
 
     /// Loads the state from persisted state
-    pub fn load<R: Read>(
-        reader: R,
-        callbacks: &ManagedGroupCallbacks,
-    ) -> Result<ManagedGroup, Error> {
+    pub fn load<R: Read>(reader: R) -> Result<ManagedGroup, Error> {
         let serialized_managed_group: SerializedManagedGroup = serde_json::from_reader(reader)?;
-        Ok(serialized_managed_group.into_managed_group(callbacks))
+        Ok(serialized_managed_group.into_managed_group())
     }
 
     /// Persists the state
-    pub fn save<W: Write>(&self, writer: &mut W) -> Result<(), Error> {
+    pub fn save<W: Write>(&mut self, writer: &mut W) -> Result<(), Error> {
         let serialized_managed_group = serde_json::to_string_pretty(self)?;
-        writer.write_all(&serialized_managed_group.into_bytes())
+        writer.write_all(&serialized_managed_group.into_bytes())?;
+        self.state_changed = false;
+        Ok(())
+    }
+
+    /// Returns `true` if the internal state has changed and needs to be persisted and
+    /// `false` otherwise. Calling [save()] resets the value to `false`.
+    pub fn state_changed(&self) -> bool {
+        self.state_changed
     }
 
     // === Extensions ===
@@ -230,84 +233,9 @@ impl ManagedGroup {
         Ok(msg)
     }
 
-    /// Validate all pending proposals. The function returns `true` only if all
-    /// proposals are valid.
-    fn validate_proposal(
-        &self,
-        proposal: &Proposal,
-        sender: LeafIndex,
-        indexed_members: &HashMap<LeafIndex, Credential>,
-    ) -> bool {
-        let sender = &indexed_members[&sender];
-        match proposal {
-            // Validate add proposals
-            Proposal::Add(add_proposal) => {
-                if let Some(validate_add) = self.managed_group_config.callbacks.validate_add {
-                    if !validate_add(self, sender, add_proposal.key_package.credential()) {
-                        return false;
-                    }
-                }
-            }
-            // Validate remove proposals
-            Proposal::Remove(remove_proposal) => {
-                if let Some(validate_remove) = self.managed_group_config.callbacks.validate_remove {
-                    if !validate_remove(
-                        self,
-                        sender,
-                        &indexed_members[&LeafIndex::from(remove_proposal.removed)],
-                    ) {
-                        return false;
-                    }
-                }
-            }
-            // Update proposals don't have validators
-            Proposal::Update(_) => {}
-            Proposal::PreSharedKey(_) => {}
-            Proposal::ReInit(_) => {}
-        }
-        true
-    }
-
-    /// Validates the inline proposals from a Commit message
-    fn validate_inline_proposals(
-        &self,
-        proposals: &[ProposalOrRef],
-        sender: LeafIndex,
-        indexed_members: &HashMap<LeafIndex, Credential>,
-    ) -> bool {
-        for proposal_or_ref in proposals {
-            match proposal_or_ref {
-                ProposalOrRef::Proposal(proposal) => {
-                    if !self.validate_proposal(proposal, sender, indexed_members) {
-                        return false;
-                    }
-                }
-                ProposalOrRef::Reference(_) => {}
-            }
-        }
-        true
-    }
-
     /// Auto-save function
-    fn auto_save(&self) {
-        if let Some(auto_save) = self.managed_group_config.callbacks.auto_save {
-            auto_save(self);
-        }
-    }
-
-    /// Return a list (LeafIndex, Credential)
-    fn indexed_members(&self) -> HashMap<LeafIndex, Credential> {
-        let mut indexed_members = HashMap::new();
-        let tree = self.group.tree();
-        let leaf_count = self.group.tree().leaf_count();
-        for index in 0..leaf_count.as_usize() {
-            let leaf_index = LeafIndex::from(index);
-            let leaf = &tree.nodes[leaf_index];
-            if let Some(leaf_node) = leaf.key_package() {
-                indexed_members.insert(leaf_index, leaf_node.credential().clone());
-            }
-        }
-        indexed_members
+    fn flag_state_change(&mut self) {
+        self.state_changed = true;
     }
 
     /// Group framing parameters

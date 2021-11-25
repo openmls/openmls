@@ -73,7 +73,7 @@ impl ManagedGroup {
         let mls_messages = self.plaintext_to_mls_message(commit, backend)?;
 
         // Since the state of the group was changed, call the auto-save function
-        self.auto_save();
+        self.flag_state_change();
 
         Ok((mls_messages, welcome))
     }
@@ -140,7 +140,7 @@ impl ManagedGroup {
         let mls_message = self.plaintext_to_mls_message(commit, backend)?;
 
         // Since the state of the group was changed, call the auto-save function
-        self.auto_save();
+        self.flag_state_change();
 
         Ok((mls_message, welcome_option))
     }
@@ -172,7 +172,7 @@ impl ManagedGroup {
         let mls_message = self.plaintext_to_mls_message(add_proposal, backend)?;
 
         // Since the state of the group was changed, call the auto-save function
-        self.auto_save();
+        self.flag_state_change();
 
         Ok(mls_message)
     }
@@ -203,7 +203,7 @@ impl ManagedGroup {
         let mls_message = self.plaintext_to_mls_message(remove_proposal, backend)?;
 
         // Since the state of the group was changed, call the auto-save function
-        self.auto_save();
+        self.flag_state_change();
 
         Ok(mls_message)
     }

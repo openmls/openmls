@@ -38,7 +38,7 @@ impl ManagedGroup {
         )?;
 
         // Since the state of the group was changed, call the auto-save function
-        self.auto_save();
+        self.flag_state_change();
 
         Ok(MlsMessageOut::Ciphertext(ciphertext))
     }

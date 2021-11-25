@@ -387,10 +387,7 @@ impl ContentType {
     pub(crate) fn is_handshake_message(&self) -> bool {
         self == &ContentType::Proposal || self == &ContentType::Commit
     }
-    /// Returns `true` if this is a proposal message and `false` otherwise.
-    pub(crate) fn is_proposal(&self) -> bool {
-        self == &ContentType::Proposal
-    }
+
     /// Returns `true` if this is a commit message and `false` otherwise.
     pub(crate) fn is_commit(&self) -> bool {
         self == &ContentType::Commit
@@ -634,11 +631,6 @@ impl VerifiableMlsPlaintext {
     /// Returns `true` if this is a commit message and `false` otherwise.
     pub fn is_commit(&self) -> bool {
         self.tbs.content_type.is_commit()
-    }
-
-    /// Returns `true` if this is a proposal and `false` otherwise.
-    pub(crate) fn is_proposal(&self) -> bool {
-        self.tbs.content_type.is_proposal()
     }
 
     /// Get the confirmation tag.
