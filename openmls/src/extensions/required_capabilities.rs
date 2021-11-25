@@ -20,7 +20,7 @@
 //! contains a `required_capabilities` extension that requires capabililities not
 //! supported by all current members.
 
-use tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU8};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, TlsVecU8};
 
 use crate::messages::proposals::ProposalType;
 
@@ -40,5 +40,15 @@ impl RequiredCapabilitiesExtension {
             extensions: extensions.into(),
             proposals: proposals.into(),
         }
+    }
+
+    /// Get a slice with the required extension types.
+    pub(crate) fn extensions(&self) -> &[ExtensionType] {
+        self.extensions.as_slice()
+    }
+
+    /// Get a slice with the required proposal types.
+    pub(crate) fn proposals(&self) -> &[ProposalType] {
+        self.proposals.as_slice()
     }
 }

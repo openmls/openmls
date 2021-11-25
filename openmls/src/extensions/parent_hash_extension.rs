@@ -18,7 +18,7 @@
 //! parent_hash matches the hash of the leaf's parent node when represented as a
 //! ParentNode struct.
 
-use tls_codec::{Size, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::{Deserialize, Serialize};
 

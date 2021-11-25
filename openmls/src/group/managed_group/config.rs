@@ -18,6 +18,8 @@ pub struct ManagedGroupConfig {
     pub(crate) number_of_resumption_secrets: usize,
     /// Flag to indicate the Ratchet Tree Extension should be used
     pub(crate) use_ratchet_tree_extension: bool,
+    /// Required capabilities (extensions and proposal types)
+    pub(crate) required_capabilities: RequiredCapabilitiesExtension,
 }
 
 impl ManagedGroupConfig {
@@ -67,6 +69,7 @@ impl Default for ManagedGroupConfig {
             padding_size: 0,
             number_of_resumption_secrets: 0,
             use_ratchet_tree_extension: false,
+            required_capabilities: RequiredCapabilitiesExtension::default(),
         }
     }
 }

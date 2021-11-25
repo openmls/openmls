@@ -130,17 +130,10 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     };
 
     // === Alice creates a group with the ratchet tree extension ===
-    let group_id = [1, 2, 3, 4];
-    let mut alice_group = MlsGroup::new(
-        &group_id,
-        ciphersuite.name(),
-        crypto,
-        alice_key_package_bundle,
-        config,
-        None, /* Initial PSK */
-        None, /* MLS version */
-    )
-    .unwrap();
+    let mut alice_group = MlsGroup::builder(GroupId::random(crypto), alice_key_package_bundle)
+        .with_config(config)
+        .build(crypto)
+        .expect("Error creating group.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group
@@ -208,17 +201,10 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         ..MlsGroupConfig::default()
     };
 
-    let group_id = [5, 6, 7, 8];
-    let mut alice_group = MlsGroup::new(
-        &group_id,
-        ciphersuite.name(),
-        crypto,
-        alice_key_package_bundle,
-        config,
-        None, /* Initial PSK */
-        None, /* MLS version */
-    )
-    .unwrap();
+    let mut alice_group = MlsGroup::builder(GroupId::random(crypto), alice_key_package_bundle)
+        .with_config(config)
+        .build(crypto)
+        .expect("Error creating group.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group

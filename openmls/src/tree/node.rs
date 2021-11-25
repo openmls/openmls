@@ -1,5 +1,5 @@
 use tls_codec::TlsByteVecU8;
-use tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
 use crate::ciphersuite::*;
 use crate::extensions::*;

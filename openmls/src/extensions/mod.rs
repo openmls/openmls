@@ -96,6 +96,21 @@ impl TryFrom<u16> for ExtensionType {
     }
 }
 
+impl ExtensionType {
+    /// Check whether an extension type is supported or not.
+    pub fn is_supported(&self) -> bool {
+        match self {
+            ExtensionType::Reserved
+            | ExtensionType::Capabilities
+            | ExtensionType::Lifetime
+            | ExtensionType::KeyId
+            | ExtensionType::ParentHash
+            | ExtensionType::RatchetTree
+            | ExtensionType::RequiredCapabilities => true,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 /// An extension can be one of the following elements.
 pub enum Extension {
@@ -255,6 +270,20 @@ impl Extension {
             Self::ParentHash(e) => Ok(e),
             _ => Err(ExtensionError::InvalidExtensionType(
                 "This is not a ParentHashExtension".into(),
+            )),
+        }
+    }
+
+    /// Get a reference to the `RequiredCapabilitiesExtension`.
+    /// Returns an `InvalidExtensionType` error if called on an `Extension`
+    /// that's not a `RequiredCapabilitiesExtension`.
+    pub fn as_required_capabilities_extension(
+        &self,
+    ) -> Result<&RequiredCapabilitiesExtension, ExtensionError> {
+        match self {
+            Self::RequiredCapabilities(e) => Ok(e),
+            _ => Err(ExtensionError::InvalidExtensionType(
+                "This is not a RequiredCapabilitiesExtension".into(),
             )),
         }
     }

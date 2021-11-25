@@ -379,17 +379,9 @@ fn unknown_sender() {
         .unwrap();
 
         // Alice creates a group
-        let group_id = [1, 2, 3, 4];
-        let mut group_alice = MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            crypto,
-            alice_key_package_bundle,
-            MlsGroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
-        )
-        .unwrap();
+        let mut group_alice = MlsGroup::builder(GroupId::random(crypto), alice_key_package_bundle)
+            .build(crypto)
+            .expect("Error creating group.");
 
         // Alice adds Bob
         let bob_add_proposal = group_alice
@@ -628,17 +620,9 @@ fn confirmation_tag_presence() {
         .unwrap();
 
         // Alice creates a group
-        let group_id = [1, 2, 3, 4];
-        let mut group_alice = MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            crypto,
-            alice_key_package_bundle,
-            MlsGroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
-        )
-        .unwrap();
+        let mut group_alice = MlsGroup::builder(GroupId::random(crypto), alice_key_package_bundle)
+            .build(crypto)
+            .expect("Error creating group.");
 
         // Alice adds Bob
         let bob_add_proposal = group_alice
@@ -722,17 +706,9 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
         .unwrap();
 
         // Alice creates a group
-        let group_id = [1, 2, 3, 4];
-        let mut group_alice = MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            crypto,
-            alice_key_package_bundle,
-            MlsGroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
-        )
-        .unwrap();
+        let mut group_alice = MlsGroup::builder(GroupId::random(crypto), alice_key_package_bundle)
+            .build(crypto)
+            .expect("Error creating group.");
 
         // Alice adds Bob
         let bob_add_proposal = group_alice

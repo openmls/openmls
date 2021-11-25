@@ -6,7 +6,7 @@ use std::{convert::TryFrom, env, fmt, fs::File, io::BufReader};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use crate::ciphersuite::{Ciphersuite, CiphersuiteName};
-use crate::extensions::ExtensionType;
+use crate::extensions::{ExtensionType, RequiredCapabilitiesExtension};
 
 pub mod errors;
 pub use errors::ConfigError;
@@ -223,4 +223,21 @@ impl CiphersuiteName {
         }
         false
     }
+}
+
+/// Check if all extension and proposal types are supported.
+pub(crate) fn check_required_capabilities_support(
+    required_capabilities: &RequiredCapabilitiesExtension,
+) -> Result<(), ConfigError> {
+    for extension in required_capabilities.extensions() {
+        if !extension.is_supported() {
+            return Err(ConfigError::UnsupportedProposalType);
+        }
+    }
+    for proposal in required_capabilities.proposals() {
+        if !proposal.is_supported() {
+            return Err(ConfigError::UnsupportedProposalType);
+        }
+    }
+    Ok(())
 }
