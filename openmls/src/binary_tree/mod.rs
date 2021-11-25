@@ -24,3 +24,6 @@ pub(crate) type MlsBinaryTreeError = ABinaryTreeError;
 pub(crate) type MlsBinaryTreeDiffError = ABinaryTreeDiffError;
 
 pub type LeafIndex = u32;
+
+/// A tree can be at most `2^32 - 1` nodes big.
+pub(crate) type TreeSize = u32;

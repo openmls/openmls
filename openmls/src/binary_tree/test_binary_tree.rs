@@ -512,10 +512,7 @@ fn test_subtree_root_position() {
     let error = diff
         .subtree_root_position(3, 0)
         .expect_err("no error when computing subtree root position outside of tree");
-    assert_eq!(
-        error,
-        MlsBinaryTreeDiffError::TreeError(TreeMathError::NodeNotInTree)
-    );
+    assert_eq!(error, MlsBinaryTreeDiffError::OutOfBounds);
 
     // Larger tree
     let tree = MlsBinaryTree::new((0..101).collect()).expect("error creating tree");
