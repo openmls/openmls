@@ -20,7 +20,7 @@
 //! contains a `required_capabilities` extension that requires capabililities not
 //! supported by all current members.
 
-use tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU8};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, TlsVecU8};
 
 use crate::messages::proposals::ProposalType;
 
