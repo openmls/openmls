@@ -280,6 +280,36 @@ fn test_diff_merging() {
 }
 
 #[test]
+fn test_leaf_addition_and_removal_errors() {
+    let tree = MlsBinaryTree::new((0..3).collect()).expect("error creating tree");
+    let mut diff = tree.empty_diff();
+
+    diff.remove_leaf().expect("error removing leaf");
+
+    // Should fail removing the last remaining leaf.
+    assert_eq!(
+        diff.remove_leaf()
+            .expect_err("no error trying to remove the last leaf in the diff"),
+        MlsBinaryTreeDiffError::TreeTooSmall
+    );
+
+    // Let's test what happens when the tree is getting too large.
+    let mut nodes: Vec<u32> = Vec::new();
+
+    unsafe {
+        nodes.set_len(NodeIndex::max_value() as usize);
+
+        let tree = MlsBinaryTree::new(nodes).expect("error creating tree");
+        let mut diff = tree.empty_diff();
+        assert_eq!(
+            diff.add_leaf(666, 667)
+                .expect_err("no error adding beyond u32 max"),
+            MlsBinaryTreeDiffError::TreeTooLarge
+        )
+    }
+}
+
+#[test]
 fn test_tree_navigation() {
     let tree = MlsBinaryTree::new((0..3).collect()).expect("error creating tree");
 
