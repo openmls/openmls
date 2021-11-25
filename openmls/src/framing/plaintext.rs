@@ -26,7 +26,7 @@ use crate::ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedS
 use super::*;
 use openmls_traits::OpenMlsCryptoProvider;
 use std::convert::TryFrom;
-use tls_codec::{Serialize, Size, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{Serialize, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize};
 
 /// `MLSPlaintext` is a framing structure for MLS messages. It can contain
 /// Proposals, Commits and application messages.

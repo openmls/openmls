@@ -7,13 +7,13 @@ use std::io::{Read, Write};
 
 use tls_codec::{TlsSliceU16, TlsSliceU8, TlsVecU8};
 
-impl tls_codec::Size for Ciphersuite {
+impl tls_codec::Size for &Ciphersuite {
     fn tls_serialized_len(&self) -> usize {
         CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256.tls_serialized_len()
     }
 }
 
-impl tls_codec::Serialize for Ciphersuite {
+impl tls_codec::Serialize for &Ciphersuite {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, ::tls_codec::Error> {
         self.name.tls_serialize(writer)
     }

@@ -16,7 +16,7 @@
 
 use std::io::Read;
 
-use tls_codec::{Size, TlsSerialize, TlsSize, TlsVecU8};
+use tls_codec::{TlsSerialize, TlsSize, TlsVecU8};
 
 use super::{CapabilitiesExtensionError, Deserialize, ExtensionType, Serialize};
 use crate::ciphersuite::CiphersuiteName;

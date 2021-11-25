@@ -22,7 +22,7 @@
 //!
 //! optional<Node> ratchet_tree<1..2^32-1>;
 //! ```
-use tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
 use super::{Deserialize, Serialize};
 use crate::tree::node::*;

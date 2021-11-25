@@ -4,7 +4,7 @@
 //! See `codec.rs` and `ciphersuites.rs` for internals.
 
 use crate::config::{Config, ConfigError, ProtocolVersion};
-use ::tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize};
+use ::tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 use openmls_traits::types::{HpkeAeadType, HpkeConfig, HpkeKdfType, HpkeKemType};
 use openmls_traits::{
     crypto::OpenMlsCrypto,

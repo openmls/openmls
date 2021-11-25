@@ -7,8 +7,7 @@ use openmls_traits::OpenMlsCryptoProvider;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use tls_codec::{
-    Serialize as TlsSerializeTrait, Size, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize,
-    TlsVecU32,
+    Serialize as TlsSerializeTrait, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32,
 };
 
 use super::errors::*;
