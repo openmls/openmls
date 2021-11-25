@@ -23,6 +23,7 @@ impl MlsGroup {
         if !Config::supported_versions().contains(&mls_version) {
             return Err(WelcomeError::UnsupportedMlsVersion);
         }
+
         let ciphersuite_name = welcome.ciphersuite();
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
 
@@ -78,37 +79,48 @@ impl MlsGroup {
             .aead_open(backend, welcome.encrypted_group_info(), &[], &welcome_nonce)
             .map_err(|_| WelcomeError::GroupInfoDecryptionFailure)?;
         let group_info = GroupInfo::tls_deserialize(&mut group_info_bytes.as_slice())?;
+
+        // Make sure that we can support the required capabilities in the group info.
+        let group_context_extensions = group_info.group_context_extensions();
+        let required_capabilities = group_context_extensions
+            .iter()
+            .find(|&extension| extension.extension_type() == ExtensionType::RequiredCapabilities);
+        if let Some(required_capabilities) = required_capabilities {
+            let required_capabilities =
+                required_capabilities.as_required_capabilities_extension()?;
+            check_required_capabilities_support(required_capabilities)?;
+            // Also check that our key package actually supports the extensions.
+            // Per spec the sender must have checked this. But you never know.
+            key_package_bundle
+                .key_package()
+                .check_extension_support(required_capabilities.extensions())?
+        }
+
         let path_secret_option = group_secrets.path_secret;
 
         // Build the ratchet tree
         // First check the extensions to see if the tree is in there.
-        let mut ratchet_tree_extensions = group_info
-            .extensions()
+        let mut ratchet_tree_extension = group_info
+            .other_extensions()
             .iter()
             .filter(|e| e.extension_type() == ExtensionType::RatchetTree)
-            .collect::<Vec<&Extension>>();
-
-        let ratchet_tree_extension = if ratchet_tree_extensions.is_empty() {
-            None
-        } else if ratchet_tree_extensions.len() == 1 {
-            let extension = ratchet_tree_extensions
-                .pop()
-                // Unwrappig here is safe because we know we only have one element
-                .unwrap()
-                .as_ratchet_tree_extension()
-                // Unwrapping here is safe, because we know the extension type already
-                .unwrap()
-                // We clone the nodes here upon extraction, so that we don't have to clone
-                // them later when we build the tree
-                .clone();
-            Some(extension)
-        } else {
+            .map(|e| e.as_ratchet_tree_extension().ok())
+            .collect::<Vec<Option<&RatchetTreeExtension>>>();
+        if ratchet_tree_extension.len() > 1 {
             // Throw an error if there is more than one ratchet tree extension.
             // This shouldn't be the case anyway, because extensions are checked
             // for uniqueness anyway when decoding them.
             // We have to see if this makes problems later as it's not something
             // required by the spec right now.
             return Err(WelcomeError::DuplicateRatchetTreeExtension);
+        }
+
+        let ratchet_tree_extension = if ratchet_tree_extension.is_empty() {
+            None
+        } else {
+            ratchet_tree_extension
+                .pop()
+                .ok_or(WelcomeError::UnknownError)?
         };
 
         // Set nodes either from the extension or from the `nodes_option`.
@@ -116,17 +128,14 @@ impl MlsGroup {
         // this group. Note that this is not strictly necessary. But there's
         // currently no other mechanism to enable the extension.
         let (nodes, enable_ratchet_tree_extension) = match ratchet_tree_extension {
-            Some(tree) => (tree.into_vector(), true),
-            None => {
-                if let Some(nodes) = nodes_option {
-                    (nodes, false)
-                } else {
-                    return Err(WelcomeError::MissingRatchetTree);
-                }
-            }
+            Some(tree) => (tree.as_slice(), true),
+            None => match nodes_option.as_ref() {
+                Some(n) => (n.as_slice(), false),
+                None => return Err(WelcomeError::MissingRatchetTree),
+            },
         };
 
-        let mut tree = RatchetTree::new_from_nodes(backend, key_package_bundle, &nodes)?;
+        let mut tree = RatchetTree::new_from_nodes(backend, key_package_bundle, nodes)?;
 
         // Verify tree hash
         let tree_hash = tree.tree_hash(backend);
@@ -179,9 +188,9 @@ impl MlsGroup {
             group_info.epoch(),
             tree_hash,
             group_info.confirmed_transcript_hash().to_vec(),
-            // TODO #483: Implement extensions
-            &[],
+            group_context_extensions,
         )?;
+
         // TODO #141: Implement PSK
         key_schedule.add_context(backend, &group_context)?;
         let epoch_secrets = key_schedule.epoch_secrets(backend, true)?;

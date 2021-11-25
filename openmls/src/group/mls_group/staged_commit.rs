@@ -171,15 +171,12 @@ impl MlsGroup {
             &self.interim_transcript_hash,
         )?;
 
-        // TODO #483: Implement extensions
-        let extensions: Vec<Extension> = Vec::new();
-
         let provisional_group_context = GroupContext::new(
             self.group_context.group_id.clone(),
             provisional_epoch,
             provisional_tree.tree_hash(backend),
             confirmed_transcript_hash.clone(),
-            &extensions,
+            self.group_context.extensions(),
         )?;
 
         // Create key schedule

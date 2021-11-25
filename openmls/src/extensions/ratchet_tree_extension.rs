@@ -40,7 +40,8 @@ impl RatchetTreeExtension {
         RatchetTreeExtension { tree: tree.into() }
     }
 
-    pub(crate) fn into_vector(self) -> Vec<Option<Node>> {
-        self.tree.into()
+    /// Get a slice of the nodes in tis tree.
+    pub(crate) fn as_slice(&self) -> &[Option<Node>] {
+        self.tree.as_slice()
     }
 }

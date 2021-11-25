@@ -6,8 +6,11 @@
 use crate::ciphersuite::CryptoError;
 use crate::config::ConfigError;
 use crate::credentials::CredentialError;
-use crate::framing::errors::ValidationError;
-use crate::framing::errors::{MlsCiphertextError, MlsPlaintextError, VerificationError};
+use crate::extensions::errors::ExtensionError;
+use crate::framing::errors::{
+    MlsCiphertextError, MlsPlaintextError, ValidationError, VerificationError,
+};
+use crate::key_packages::KeyPackageError;
 use crate::messages::errors::ProposalQueueError;
 use crate::schedule::errors::{KeyScheduleError, PskSecretError};
 use crate::tree::{treemath::TreeMathError, ParentHashError, TreeError};
@@ -46,11 +49,15 @@ implement_error! {
             MathError(TreeMathError) =
                 "An error occurred during a tree math operation.",
             PskError(PskError) =
-                "A PSK error occured.",
+                "A PSK error occurred.",
             CredentialError(CredentialError) =
                 "See [`CredentialError`](crate::credentials::CredentialError) for details.",
             TreeError(TreeError) =
                 "See [`TreeError`](crate::tree::TreeError) for details.",
+            KeyPackageError(KeyPackageError) =
+                "See [`KeyPackageError`] for details.",
+            ExtensionError(ExtensionError) =
+                "See [`ExtensionError`] for details.",
             ValidationError(ValidationError) =
                 "See [`ValidationError`](crate::framing::ValidationError) for details.",
             FramingValidationError(FramingValidationError) =
@@ -102,6 +109,10 @@ implement_error! {
                 "An error occurred in the key schedule.",
             PskError(PskError) =
                 "A PSK error occured.",
+            ExtensionError(ExtensionError) =
+                "See [`ExtensionError`] for details.",
+            KeyPackageError(KeyPackageError) =
+                "See [`KeyPackageError`] for details.",
         }
     }
 }
