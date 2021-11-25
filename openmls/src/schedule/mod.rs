@@ -129,7 +129,7 @@ use openmls_traits::types::HpkeKeyPair;
 use openmls_traits::OpenMlsCryptoProvider;
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
-use tls_codec::{Serialize as TlsSerializeTrait, Size, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize};
 
 pub mod codec;
 pub mod errors;

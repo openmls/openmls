@@ -23,8 +23,8 @@ pub use codec::*;
 pub use errors::*;
 use proposals::*;
 use tls_codec::{
-    Serialize as TlsSerializeTrait, Size, TlsByteVecU32, TlsByteVecU8, TlsDeserialize,
-    TlsSerialize, TlsSize, TlsVecU32,
+    Serialize as TlsSerializeTrait, TlsByteVecU32, TlsByteVecU8, TlsDeserialize, TlsSerialize,
+    TlsSize, TlsVecU32,
 };
 
 #[cfg(test)]

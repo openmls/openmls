@@ -5,6 +5,13 @@ use super::*;
 
 use std::io::{Read, Write};
 
+impl tls_codec::Size for &PreSharedKeyId {
+    #[inline]
+    fn tls_serialized_len(&self) -> usize {
+        (*self).tls_serialized_len()
+    }
+}
+
 impl tls_codec::Size for PreSharedKeyId {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
@@ -19,6 +26,7 @@ impl tls_codec::Size for PreSharedKeyId {
 }
 
 impl tls_codec::Serialize for PreSharedKeyId {
+    #[inline]
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, ::tls_codec::Error> {
         let mut written = self.psk_type.tls_serialize(writer)?;
         written += match &self.psk {
@@ -27,6 +35,13 @@ impl tls_codec::Serialize for PreSharedKeyId {
             Psk::Branch(branch_psk) => branch_psk.tls_serialize(writer)?,
         };
         self.psk_nonce.tls_serialize(writer).map(|l| l + written)
+    }
+}
+
+impl tls_codec::Serialize for &PreSharedKeyId {
+    #[inline]
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, ::tls_codec::Error> {
+        (*self).tls_serialize(writer)
     }
 }
 

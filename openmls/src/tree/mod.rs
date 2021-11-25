@@ -26,7 +26,7 @@ use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::HpkeCiphertext;
 use openmls_traits::OpenMlsCryptoProvider;
 use private_tree::PrivateTree;
-use tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
 use crate::schedule::{CommitSecret, PreSharedKeys};
 pub(crate) use serde::{

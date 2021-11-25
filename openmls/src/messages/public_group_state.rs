@@ -5,7 +5,7 @@
 //!
 //! [`OpenMLS Wiki`]: https://github.com/openmls/openmls/wiki/Signable
 use openmls_traits::OpenMlsCryptoProvider;
-use tls_codec::{Serialize, Size, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
+use tls_codec::{Serialize, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
 use crate::{
     ciphersuite::{

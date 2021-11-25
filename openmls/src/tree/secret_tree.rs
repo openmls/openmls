@@ -1,4 +1,4 @@
-use tls_codec::{Serialize, Size, TlsSerialize, TlsSize};
+use tls_codec::{Serialize, TlsSerialize, TlsSize};
 
 use crate::ciphersuite::*;
 use crate::framing::*;
