@@ -186,15 +186,17 @@ impl MlsGroup {
     pub fn validate_update_proposals(
         &self,
         staged_proposal_queue: &StagedProposalQueue,
+        path_key_package: Option<(LeafIndex, &KeyPackage)>,
     ) -> Result<(), MlsGroupError> {
-        let update_proposals = staged_proposal_queue.update_proposals();
-        let tree = &self.tree();
-
         let mut public_key_set = HashSet::new();
         for key_package in self.tree().key_packages() {
             let public_key = key_package.hpke_init_key().as_slice().to_vec();
             public_key_set.insert(public_key);
         }
+
+        // Check the update proposals from the proposal queue first
+        let update_proposals = staged_proposal_queue.update_proposals();
+        let tree = &self.tree();
 
         for update_proposal in update_proposals {
             let mut indexed_key_packages = tree.indexed_key_packages();
@@ -221,6 +223,30 @@ impl MlsGroup {
                     .as_slice();
                 // ValSem110
                 if public_key_set.contains(public_key) {
+                    return Err(ProposalValidationError::ExistingPublicKeyUpdateProposal.into());
+                }
+            } else {
+                return Err(ProposalValidationError::UnknownMember.into());
+            }
+        }
+
+        // Check the optional key package from the Commit's update path
+        // TODO #424: This won't be necessary anymore, we can just apply the proposals first
+        // and add a new fake Update proposal to the queue after that
+        if let Some((sender, key_package)) = path_key_package {
+            let mut indexed_key_packages = tree.indexed_key_packages();
+            if let Some(existing_key_package) = indexed_key_packages
+                .find(|(index, _key_package)| &NodeIndex::from(sender) == index)
+                .map(|(_index, key_package)| key_package)
+            {
+                // ValSem109
+                if key_package.credential().identity()
+                    != existing_key_package.credential().identity()
+                {
+                    return Err(ProposalValidationError::UpdateProposalIdentityMismatch.into());
+                }
+                // ValSem110
+                if public_key_set.contains(key_package.hpke_init_key().as_slice()) {
                     return Err(ProposalValidationError::ExistingPublicKeyUpdateProposal.into());
                 }
             } else {

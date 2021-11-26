@@ -22,6 +22,7 @@ implement_error! {
             InitSecretNotFound =
                 "Missing init secret when creating commit.",
             NoSignatureKey = "No signature key was found.",
+            LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
         }
         Complex {
             MlsCiphertextError(MlsCiphertextError) =

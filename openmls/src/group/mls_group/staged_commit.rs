@@ -1,3 +1,6 @@
+use mls_group::proposals::StagedProposal;
+
+use super::super::errors::*;
 use super::proposals::{
     ProposalStore, StagedAddProposal, StagedProposalQueue, StagedPskProposal, StagedRemoveProposal,
     StagedUpdateProposal,
@@ -39,6 +42,9 @@ impl MlsGroup {
     ) -> Result<StagedCommit, MlsGroupError> {
         let ciphersuite = self.ciphersuite();
 
+        // Extract the sender of the Commit message
+        let sender = *mls_plaintext.sender();
+
         // Verify epoch
         if mls_plaintext.epoch() != self.group_context.epoch {
             log::error!(
@@ -61,15 +67,25 @@ impl MlsGroup {
 
         // Build a queue with all proposals from the Commit and check that we have all
         // of the proposals by reference locally
-        let proposal_queue = StagedProposalQueue::from_committed_proposals(
+        let mut proposal_queue = StagedProposalQueue::from_committed_proposals(
             ciphersuite,
             backend,
             commit.proposals.as_slice().to_vec(),
             proposal_store,
-            *mls_plaintext.sender(),
-            commit.path().as_ref().map(|path| &path.leaf_key_package),
+            sender,
         )
         .map_err(|_| StageCommitError::MissingProposal)?;
+
+        // TODO #424: This won't be necessary anymore, we can just apply the proposals first
+        // and add a new fake Update proposal to the queue after that
+        let path_key_package = commit
+            .path()
+            .as_ref()
+            .map(|update_path| update_path.leaf_key_package.clone());
+
+        let sender_key_package_tuple = path_key_package
+            .as_ref()
+            .map(|key_package| (sender.to_leaf_index(), key_package));
 
         // Validate the staged proposals by doing the following checks:
 
@@ -86,7 +102,7 @@ impl MlsGroup {
         self.validate_remove_proposals(&proposal_queue)?;
         // ValSem109
         // ValSem110
-        self.validate_update_proposals(&proposal_queue)?;
+        self.validate_update_proposals(&proposal_queue, sender_key_package_tuple)?;
 
         // Create provisional tree and apply proposals
         let mut provisional_tree = self.tree.borrow_mut();
@@ -105,8 +121,8 @@ impl MlsGroup {
         }
 
         // Determine if Commit is own Commit
-        let sender = mls_plaintext.sender_index();
-        let is_own_commit = sender == provisional_tree.own_node_index();
+        let sender_index = sender.to_leaf_index();
+        let is_own_commit = sender_index == provisional_tree.own_node_index();
 
         let zero_commit_secret = CommitSecret::zero_secret(ciphersuite, self.mls_version);
         // Determine if Commit has a path
@@ -138,7 +154,7 @@ impl MlsGroup {
                 provisional_tree
                     .update_path(
                         backend,
-                        sender,
+                        sender_index,
                         &path,
                         &serialized_context,
                         apply_proposals_values.exclusion_list(),
@@ -228,7 +244,7 @@ impl MlsGroup {
         // Verify KeyPackage extensions
         if let Some(path) = &commit.path {
             if !is_own_commit {
-                let parent_hash = provisional_tree.set_parent_hashes(backend, sender);
+                let parent_hash = provisional_tree.set_parent_hashes(backend, sender_index);
                 if let Some(received_parent_hash) = path
                     .leaf_key_package
                     .extension_with_type(ExtensionType::ParentHash)
@@ -245,6 +261,17 @@ impl MlsGroup {
                     return Err(StageCommitError::NoParentHashExtension.into());
                 }
             }
+        }
+
+        // If there is a key package from the Commit's update path, add it to the proposal queue
+        // TODO #424: This won't be necessary anymore, we can just apply the proposals first
+        // and add a new fake Update proposal to the queue after that
+        if let Some(key_package) = path_key_package {
+            let proposal = Proposal::Update(UpdateProposal { key_package });
+            let staged_proposal =
+                StagedProposal::from_proposal_and_sender(ciphersuite, backend, proposal, sender)
+                    .map_err(|_| MlsGroupError::LibraryError)?;
+            proposal_queue.add(staged_proposal);
         }
 
         // Create a secret_tree, consuming the `encryption_secret` in the

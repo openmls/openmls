@@ -275,7 +275,6 @@ fn proposal_queue_order() {
             proposal_or_refs,
             &proposal_store,
             sender,
-            None,
         )
         .unwrap();
 
