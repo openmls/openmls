@@ -7,6 +7,7 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use crate::ciphersuite::{Ciphersuite, CiphersuiteName};
 use crate::extensions::{ExtensionType, RequiredCapabilitiesExtension};
+use crate::messages::proposals::ProposalType;
 
 pub mod errors;
 pub use errors::ConfigError;
@@ -57,6 +58,14 @@ lazy_static! {
                 protocol_versions: vec![ProtocolVersion::Mls10, ProtocolVersion::Mls10Draft11],
                 ciphersuites,
                 extensions: vec![ExtensionType::Capabilities, ExtensionType::Lifetime, ExtensionType::KeyId],
+                proposals: vec![
+                    ProposalType::Add,
+                    ProposalType::Update,
+                    ProposalType::Remove,
+                    ProposalType::Presharedkey,
+                    ProposalType::Reinit,
+                    ProposalType::GroupContextExtensions,
+                ],
                 constants,
             };
             config.into()
@@ -81,6 +90,7 @@ struct PersistentConfig {
     protocol_versions: Vec<ProtocolVersion>,
     ciphersuites: Vec<Ciphersuite>,
     extensions: Vec<ExtensionType>,
+    proposals: Vec<ProposalType>,
     constants: Constants,
 }
 
@@ -92,6 +102,7 @@ pub struct Config {
     protocol_versions: Vec<ProtocolVersion>,
     ciphersuites: Vec<Ciphersuite>,
     extensions: Vec<ExtensionType>,
+    proposals: Vec<ProposalType>,
     constants: Constants,
 }
 
@@ -102,6 +113,7 @@ impl From<PersistentConfig> for Config {
             protocol_versions: config.protocol_versions,
             ciphersuites: config.ciphersuites,
             extensions: config.extensions,
+            proposals: config.proposals,
             constants: config.constants,
         }
     }
@@ -111,6 +123,11 @@ impl Config {
     /// Get a list of the supported extension types.
     pub fn supported_extensions() -> &'static [ExtensionType] {
         &CONFIG.extensions
+    }
+
+    /// Get a list of the supported proposal types.
+    pub fn supported_proposals() -> &'static [ProposalType] {
+        &CONFIG.proposals
     }
 
     /// Get a list of the supported cipher suites.
