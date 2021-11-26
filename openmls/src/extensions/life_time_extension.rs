@@ -18,7 +18,7 @@
 //! uint64 not_before;
 //! uint64 not_after;
 //! ```
-use tls_codec::{Size, TlsSerialize, TlsSize};
+use tls_codec::{TlsSerialize, TlsSize};
 
 use super::{Deserialize, LifetimeExtensionError, Serialize};
 use crate::config::Config;

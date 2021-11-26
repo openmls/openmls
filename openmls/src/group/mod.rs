@@ -30,7 +30,7 @@ pub use managed_group::*;
 pub use mls_group::*;
 
 use tls_codec::TlsVecU32;
-use tls_codec::{Size, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize};
 
 #[derive(
     Hash, Eq, Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,

@@ -24,7 +24,8 @@ macro_rules! test_welcome_msg {
                 GroupEpoch(123),
                 vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
                 vec![1, 1, 1],
-                Vec::new(),
+                &Vec::new(),
+                &Vec::new(),
                 ConfirmationTag(Mac {
                     mac_value: vec![1, 2, 3, 4, 5].into(),
                 }),

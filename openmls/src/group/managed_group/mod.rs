@@ -270,6 +270,9 @@ impl ManagedGroup {
             Proposal::Update(_) => {}
             Proposal::PreSharedKey(_) => {}
             Proposal::ReInit(_) => {}
+            Proposal::ExternalInit(_) => unimplemented!("See #556"),
+            Proposal::AppAck(_) => unimplemented!("See #291"),
+            Proposal::GroupContextExtensions(_) => {}
         }
         true
     }

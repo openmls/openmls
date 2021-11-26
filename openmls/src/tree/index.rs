@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 use std::ops::{Index, IndexMut};
-use tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::*;
 
