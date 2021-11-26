@@ -306,6 +306,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         None,
         Some(&[ciphersuite.name()]),
         None,
+        None,
     ));
     let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
     let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
