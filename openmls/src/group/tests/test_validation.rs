@@ -19,6 +19,7 @@ use crate::{
         ManagedGroupError, MlsGroupError, WireFormat,
     },
     key_packages::{KeyPackage, KeyPackageBundle, KeyPackageError},
+    prelude::ProcessedMessage,
     tree::index::LeafIndex,
 };
 
@@ -147,6 +148,8 @@ fn test_valsem1() {
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
+    let original_message = serialized_message.clone();
+
     serialized_message[0] = WireFormat::MlsCiphertext as u8;
 
     let err = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
@@ -156,6 +159,10 @@ fn test_valsem1() {
         err,
         tls_codec::Error::DecodingError("Wrong wire format.".to_string())
     );
+
+    // Positive case
+    VerifiableMlsPlaintext::tls_deserialize(&mut original_message.as_slice())
+        .expect("Unexpected error.");
 
     // Test with MlsCiphertext
     let ValidationTestSetup {
@@ -175,6 +182,8 @@ fn test_valsem1() {
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
+    let original_message = serialized_message.clone();
+
     serialized_message[0] = WireFormat::MlsPlaintext as u8;
 
     let err = MlsCiphertext::tls_deserialize(&mut serialized_message.as_slice())
@@ -184,6 +193,9 @@ fn test_valsem1() {
         err,
         tls_codec::Error::DecodingError("Wrong wire format.".to_string())
     );
+
+    // Positive case
+    MlsCiphertext::tls_deserialize(&mut original_message.as_slice()).expect("Unexpected error.");
 }
 
 // ValSem2 Group id
@@ -209,6 +221,8 @@ fn test_valsem2() {
     let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
         .expect("Could not deserialize message.");
 
+    let original_message = plaintext.clone();
+
     plaintext.set_group_id(GroupId::from_slice(&[9, 9, 9]));
 
     let message_in = MlsMessageIn::from(plaintext);
@@ -223,6 +237,11 @@ fn test_valsem2() {
             FramingValidationError::WrongGroupId
         ))
     );
+
+    // Positive case
+    alice_group
+        .parse_message(MlsMessageIn::from(original_message), &backend)
+        .expect("Unexpected error.");
 }
 
 // ValSem3 Epoch
@@ -241,6 +260,26 @@ fn test_valsem3() {
         .add_members(&backend, &[bob_key_package])
         .expect("Could not add member.");
 
+    let unverified_message = alice_group
+        .parse_message(message.into(), &backend)
+        .expect("Could not parse message.");
+    let processed_message = alice_group
+        .process_unverified_message(unverified_message, None, &backend)
+        .expect("Could not process unverified message.");
+
+    if let ProcessedMessage::StagedCommitMessage(staged_commit) = processed_message {
+        alice_group
+            .merge_staged_commit(*staged_commit)
+            .expect("Could not merge Commit message.");
+    } else {
+        unreachable!("Expected StagedCommit.");
+    }
+
+    // Do a second Commit to increase the epoch number
+    let (message, _welcome) = alice_group
+        .self_update(&backend, None)
+        .expect("Could not add member.");
+
     let serialized_message = message
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -248,7 +287,26 @@ fn test_valsem3() {
     let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
         .expect("Could not deserialize message.");
 
+    let original_message = plaintext.clone();
+
+    // Set the epoch too high
     plaintext.set_epoch(GroupEpoch(100));
+
+    let message_in = MlsMessageIn::from(plaintext.clone());
+
+    let err = alice_group
+        .parse_message(message_in, &backend)
+        .expect_err("Could parse message despite wrong epoch.");
+
+    assert_eq!(
+        err,
+        ManagedGroupError::Group(MlsGroupError::FramingValidationError(
+            FramingValidationError::WrongEpoch
+        ))
+    );
+
+    // Set the epoch too low
+    plaintext.set_epoch(GroupEpoch(0));
 
     let message_in = MlsMessageIn::from(plaintext);
 
@@ -262,6 +320,11 @@ fn test_valsem3() {
             FramingValidationError::WrongEpoch
         ))
     );
+
+    // Positive case
+    alice_group
+        .parse_message(MlsMessageIn::from(original_message), &backend)
+        .expect("Unexpected error.");
 }
 
 // ValSem4 Sender: Member: check the member exists
@@ -287,6 +350,8 @@ fn test_valsem4() {
     let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
         .expect("Could not deserialize message.");
 
+    let original_message = plaintext.clone();
+
     plaintext.set_sender(Sender {
         sender_type: crate::prelude::SenderType::Member,
         sender: LeafIndex::from(100u32),
@@ -304,6 +369,11 @@ fn test_valsem4() {
             FramingValidationError::UnknownMember
         ))
     );
+
+    // Positive case
+    alice_group
+        .parse_message(MlsMessageIn::from(original_message), &backend)
+        .expect("Unexpected error.");
 }
 
 // ValSem5 Application messages must use ciphertext
@@ -329,6 +399,8 @@ fn test_valsem5() {
     let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
         .expect("Could not deserialize message.");
 
+    let original_message = plaintext.clone();
+
     plaintext.set_content_type(ContentType::Application);
     plaintext.set_content(MlsPlaintextContentType::Application(vec![1, 2, 3].into()));
 
@@ -344,6 +416,11 @@ fn test_valsem5() {
             ValidationError::UnencryptedApplicationMessage
         ))
     );
+
+    // Positive case
+    alice_group
+        .parse_message(MlsMessageIn::from(original_message), &backend)
+        .expect("Unexpected error.");
 }
 
 // ValSem6 Ciphertext: decryption needs to work
@@ -369,6 +446,8 @@ fn test_valsem6() {
     let mut ciphertext = MlsCiphertext::tls_deserialize(&mut serialized_message.as_slice())
         .expect("Could not deserialize message.");
 
+    let original_message = ciphertext.clone();
+
     ciphertext.set_ciphertext(vec![1, 2, 3]);
 
     let message_in = MlsMessageIn::from(ciphertext);
@@ -383,6 +462,11 @@ fn test_valsem6() {
             ValidationError::MlsCiphertextError(MlsCiphertextError::DecryptionError)
         ))
     );
+
+    // Positive case
+    alice_group
+        .parse_message(MlsMessageIn::from(original_message), &backend)
+        .expect("Unexpected error.");
 }
 
 // ValSem7 Membership tag presence
@@ -408,6 +492,8 @@ fn test_valsem7() {
     let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
         .expect("Could not deserialize message.");
 
+    let original_message = plaintext.clone();
+
     plaintext.unset_membership_tag();
 
     let message_in = MlsMessageIn::from(plaintext);
@@ -422,6 +508,11 @@ fn test_valsem7() {
             ValidationError::MissingMembershipTag
         ))
     );
+
+    // Positive case
+    alice_group
+        .parse_message(MlsMessageIn::from(original_message), &backend)
+        .expect("Unexpected error.");
 }
 
 // ValSem8 Membership tag verification
@@ -447,6 +538,8 @@ fn test_valsem8() {
     let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
         .expect("Could not deserialize message.");
 
+    let original_message = plaintext.clone();
+
     plaintext.set_membership_tag(MembershipTag(Mac::new(
         &backend,
         &Secret::default(),
@@ -471,6 +564,14 @@ fn test_valsem8() {
             ))
         ))
     );
+
+    // Positive case
+    let unverified_message = alice_group
+        .parse_message(MlsMessageIn::from(original_message), &backend)
+        .expect("Could not parse message.");
+    alice_group
+        .process_unverified_message(unverified_message, None, &backend)
+        .expect("Unexpected error.");
 }
 
 // ValSem9 Confirmation tag presence
@@ -496,6 +597,8 @@ fn test_valsem9() {
     let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
         .expect("Could not deserialize message.");
 
+    let original_message = plaintext.clone();
+
     plaintext.set_confirmation_tag(None);
 
     let message_in = MlsMessageIn::from(plaintext);
@@ -510,6 +613,11 @@ fn test_valsem9() {
             ValidationError::MissingConfirmationTag
         ))
     );
+
+    // Positive case
+    alice_group
+        .parse_message(MlsMessageIn::from(original_message), &backend)
+        .expect("Unexpected error.");
 }
 
 // ValSem10 Signature verification
@@ -534,6 +642,8 @@ fn test_valsem10() {
 
     let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
         .expect("Could not deserialize message.");
+
+    let original_message = plaintext.clone();
 
     let confirmation_tag = Some(
         plaintext
@@ -591,4 +701,12 @@ fn test_valsem10() {
             ValidationError::CredentialError(CredentialError::InvalidSignature)
         ))
     );
+
+    // Positive case
+    let unverified_message = alice_group
+        .parse_message(MlsMessageIn::from(original_message), &backend)
+        .expect("Could not parse message.");
+    alice_group
+        .process_unverified_message(unverified_message, None, &backend)
+        .expect("Unexpected error.");
 }
