@@ -184,14 +184,14 @@ impl OpenMlsCrypto for RustCrypto {
             AeadType::Aes256Gcm => {
                 let aes =
                     Aes256Gcm::new_from_slice(key).map_err(|_| CryptoError::CryptoLibraryError)?;
-                aes.encrypt(nonce.into(), Payload { msg: ct_tag, aad })
+                aes.decrypt(nonce.into(), Payload { msg: ct_tag, aad })
                     .map(|r| r.as_slice().into())
                     .map_err(|_| CryptoError::AeadDecryptionError)
             }
             AeadType::ChaCha20Poly1305 => {
                 let aes = ChaCha20Poly1305::new_from_slice(key)
                     .map_err(|_| CryptoError::CryptoLibraryError)?;
-                aes.encrypt(nonce.into(), Payload { msg: ct_tag, aad })
+                aes.decrypt(nonce.into(), Payload { msg: ct_tag, aad })
                     .map(|r| r.as_slice().into())
                     .map_err(|_| CryptoError::AeadDecryptionError)
             }
