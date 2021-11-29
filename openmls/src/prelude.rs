@@ -36,6 +36,9 @@ pub use crate::schedule::psk::{
 };
 pub use crate::utils::*;
 
+#[cfg(any(feature = "test-utils", test))]
+pub use crate::binary_tree::array_representation::kat_treemath::*;
+
 // Things we need for fuzzing (but not otherwise)
 #[cfg(fuzzing)]
 pub use crate::messages::proposals::Proposal;
