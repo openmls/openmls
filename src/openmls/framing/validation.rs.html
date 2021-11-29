@@ -320,6 +320,7 @@
 <span id="320">320</span>
 <span id="321">321</span>
 <span id="322">322</span>
+<span id="323">323</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages</span>
 <span class="doccomment">//! ```text</span>
 <span class="doccomment">//! parse_message(MlsMessageIn) -&gt; UnverifiedMessage</span>
@@ -637,6 +638,7 @@
 
 <span class="doccomment">/// Message that contains messages that are syntactically and semantically correct.</span>
 <span class="doccomment">/// [StagedCommit] and [StagedProposal] can be inspected for authorization purposes.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProcessedMessage</span> {
     <span class="ident">ApplicationMessage</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>),
     <span class="ident">ProposalMessage</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">StagedProposal</span><span class="op">&gt;</span>),

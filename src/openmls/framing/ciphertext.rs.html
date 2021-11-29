@@ -365,6 +365,13 @@
 <span id="365">365</span>
 <span id="366">366</span>
 <span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{
     <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Size</span>, <span class="ident">TlsByteSliceU16</span>, <span class="ident">TlsByteVecU16</span>, <span class="ident">TlsByteVecU32</span>, <span class="ident">TlsByteVecU8</span>,
@@ -660,7 +667,7 @@
         <span class="prelude-val">Ok</span>(<span class="ident">buffer</span>.<span class="ident">to_vec</span>())
     }
 
-    <span class="doccomment">/// Returns the `group_id` in the `MlsCiphertext`.</span>
+    <span class="doccomment">/// Get the `group_id` in the `MlsCiphertext`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">GroupId</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_id</span>
     }
@@ -670,14 +677,21 @@
         <span class="self">self</span>.<span class="ident">ciphertext</span>.<span class="ident">as_slice</span>()
     }
 
-    <span class="doccomment">/// Returns the `epoch` in the `MlsCiphertext`.</span>
+    <span class="doccomment">/// Get the `epoch` in the `MlsCiphertext`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">epoch</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">GroupEpoch</span> {
         <span class="self">self</span>.<span class="ident">epoch</span>
     }
 
+    <span class="doccomment">/// Set the wire format.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
     <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">set_wire_format</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">wire_format</span>: <span class="ident">WireFormat</span>) {
         <span class="self">self</span>.<span class="ident">wire_format</span> <span class="op">=</span> <span class="ident">wire_format</span>;
+    }
+
+    <span class="doccomment">/// Set the ciphertext.</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_ciphertext</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">ciphertext</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) {
+        <span class="self">self</span>.<span class="ident">ciphertext</span> <span class="op">=</span> <span class="ident">ciphertext</span>.<span class="ident">into</span>();
     }
 }
 
