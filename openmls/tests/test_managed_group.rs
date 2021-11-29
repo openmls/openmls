@@ -1,4 +1,7 @@
-use openmls::{group::EmptyInputError, prelude::*};
+use openmls::{
+    group::{EmptyInputError, InnerState},
+    prelude::*,
+};
 
 use lazy_static::lazy_static;
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -1096,9 +1099,9 @@ fn managed_group_operations() {
             );
 
             // Check that the state flag gets reset when saving
-            assert!(bob_group.state_changed());
+            assert_eq!(bob_group.state_changed(), InnerState::Changed);
             save(&mut bob_group);
-            assert!(!bob_group.state_changed());
+            assert_eq!(bob_group.state_changed(), InnerState::Persisted);
 
             // Re-load Bob's state from file
             let path = TEMP_DIR.path().join("test_managed_group_bob.json");

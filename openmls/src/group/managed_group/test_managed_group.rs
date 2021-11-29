@@ -2,6 +2,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMlsCryptoProvider};
 
 use crate::{
+    group::InnerState,
     prelude::*,
     test_utils::test_framework::{
         errors::ClientError, ActionType::Commit, CodecUse, ManagedTestSetup,
@@ -76,7 +77,7 @@ fn test_managed_group_persistence() {
     .unwrap();
 
     // Check the internal state has changed
-    assert!(alice_group.state_changed());
+    assert_eq!(alice_group.state_changed(), InnerState::Changed);
 
     let mut file_out = tempfile::NamedTempFile::new().expect("Could not create file");
     alice_group

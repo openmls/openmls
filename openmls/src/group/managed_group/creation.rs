@@ -43,7 +43,7 @@ impl ManagedGroup {
             aad: vec![],
             resumption_secret_store,
             active: true,
-            state_changed: true,
+            state_changed: InnerState::Changed,
         };
 
         Ok(managed_group)
@@ -79,7 +79,7 @@ impl ManagedGroup {
             aad: vec![],
             resumption_secret_store,
             active: true,
-            state_changed: true,
+            state_changed: InnerState::Changed,
         };
 
         Ok(managed_group)

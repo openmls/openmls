@@ -92,9 +92,9 @@ pub struct ManagedGroup {
     // group`.
     active: bool,
     // A flag that indicates if the group state has changed and needs to be persisted again. The value
-    // is set to `true` whenever an the internal group state is change and is set to `false` when the
-    // state has been persisted.
-    state_changed: bool,
+    // is set to `InnerState::Changed` whenever an the internal group state is change and is set to
+    // `InnerState::Persisted` once the state has been persisted.
+    state_changed: InnerState,
 }
 
 impl ManagedGroup {
@@ -173,13 +173,13 @@ impl ManagedGroup {
     pub fn save<W: Write>(&mut self, writer: &mut W) -> Result<(), Error> {
         let serialized_managed_group = serde_json::to_string_pretty(self)?;
         writer.write_all(&serialized_managed_group.into_bytes())?;
-        self.state_changed = false;
+        self.state_changed = InnerState::Persisted;
         Ok(())
     }
 
     /// Returns `true` if the internal state has changed and needs to be persisted and
     /// `false` otherwise. Calling [save()] resets the value to `false`.
-    pub fn state_changed(&self) -> bool {
+    pub fn state_changed(&self) -> InnerState {
         self.state_changed
     }
 
@@ -241,11 +241,17 @@ impl ManagedGroup {
 
     /// Arm the state changed flag function
     fn flag_state_change(&mut self) {
-        self.state_changed = true;
+        self.state_changed = InnerState::Changed;
     }
 
     /// Group framing parameters
     fn framing_parameters(&self) -> FramingParameters {
         FramingParameters::new(&self.aad, self.managed_group_config.wire_format)
     }
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum InnerState {
+    Changed,
+    Persisted,
 }

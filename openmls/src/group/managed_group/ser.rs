@@ -25,7 +25,7 @@ impl SerializedManagedGroup {
             aad: self.aad,
             resumption_secret_store: self.resumption_secret_store,
             active: self.active,
-            state_changed: false,
+            state_changed: InnerState::Persisted,
         }
     }
 }
