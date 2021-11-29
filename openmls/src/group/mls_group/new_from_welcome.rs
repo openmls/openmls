@@ -8,7 +8,7 @@ use crate::group::{mls_group::*, *};
 use crate::key_packages::*;
 use crate::messages::*;
 use crate::schedule::*;
-use crate::treesync::node::{Node, TreeSyncNode};
+use crate::treesync::node::Node;
 
 impl MlsGroup {
     pub(crate) fn new_from_welcome_internal(
@@ -126,16 +126,16 @@ impl MlsGroup {
             }
         };
 
-        let mut tree = TreeSync::from_nodes_with_secrets(
+        let tree = TreeSync::from_nodes_with_secrets(
             backend,
             ciphersuite,
             &nodes,
-            group_info.signer_index().into(),
+            group_info.signer_index(),
             path_secret_option,
             key_package_bundle,
         )?;
 
-        let group_members = tree.leaves()?;
+        let group_members = tree.full_leaves()?;
         let signer_key_package = group_members
             .get(&group_info.signer_index())
             .ok_or(WelcomeError::UnknownSender)?;
@@ -160,7 +160,7 @@ impl MlsGroup {
 
         let secret_tree = epoch_secrets
             .encryption_secret()
-            .create_secret_tree(tree.leaf_count().into());
+            .create_secret_tree(tree.leaf_count()?);
 
         let confirmation_tag = epoch_secrets
             .confirmation_key()
@@ -184,7 +184,7 @@ impl MlsGroup {
                 group_context,
                 epoch_secrets,
                 secret_tree: RefCell::new(secret_tree),
-                tree: RefCell::new(tree),
+                tree,
                 interim_transcript_hash,
                 use_ratchet_tree_extension: enable_ratchet_tree_extension,
                 mls_version,

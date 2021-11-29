@@ -1,12 +1,8 @@
-use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
+use openmls_traits::OpenMlsCryptoProvider;
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsByteVecU8, TlsVecU32};
 
-use crate::{
-    ciphersuite::CryptoError,
-    schedule::CommitSecret,
-    treesync::treekem::{UpdatePath, UpdatePathNode},
-};
+use crate::{ciphersuite::CryptoError, schedule::CommitSecret, treesync::treekem::UpdatePathNode};
 
 use super::TreeSyncNodeError;
 
@@ -18,7 +14,7 @@ use crate::{
 };
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub(crate) struct ParentNode {
+pub struct ParentNode {
     public_key: HpkePublicKey,
     parent_hash: TlsByteVecU8,
     unmerged_leaves: TlsVecU32<LeafIndex>,
@@ -157,34 +153,21 @@ impl ParentNode {
         Ok((path, update_path_nodes, commit_secret))
     }
 
-    /// Return the value of the node relevant for the parent hash and tree hash.
-    /// In case of MLS, this would be the node's HPKEPublicKey. TreeSync
-    /// can then gather everything necessary to build the `ParentHashInput`,
-    /// `LeafNodeHashInput` and `ParentNodeTreeHashInput` structs for a given node.
-    pub(crate) fn node_content(&self) -> &HpkePublicKey {
-        &self.public_key
-    }
-
     pub(crate) fn public_key(&self) -> &HpkePublicKey {
         &self.public_key
     }
 
-    pub(crate) fn private_key(&self) -> &Option<HpkePrivateKey> {
+    pub(in crate::treesync) fn private_key(&self) -> &Option<HpkePrivateKey> {
         &self.private_key_option
     }
 
-    pub(crate) fn set_private_key(&mut self, private_key: HpkePrivateKey) {
+    pub(in crate::treesync) fn set_private_key(&mut self, private_key: HpkePrivateKey) {
         self.private_key_option = Some(private_key)
     }
 
     /// Get the list of unmerged leaves.
-    pub(crate) fn unmerged_leaves(&self) -> &[LeafIndex] {
+    pub(in crate::treesync) fn unmerged_leaves(&self) -> &[LeafIndex] {
         self.unmerged_leaves.as_slice()
-    }
-
-    /// Clear the list of unmerged leaves.
-    fn clear_unmerged_leaves(&mut self) {
-        self.unmerged_leaves = Vec::new().into()
     }
 
     /// Add a `LeafIndex` to the node's list of unmerged leaves.
@@ -201,7 +184,7 @@ impl ParentNode {
         original_child_resolution: &[HpkePublicKey],
     ) -> Result<Vec<u8>, TreeSyncNodeError> {
         let parent_hash_input =
-            ParentHashInput::new(&self.public_key, &parent_hash, original_child_resolution);
+            ParentHashInput::new(&self.public_key, parent_hash, original_child_resolution);
         Ok(parent_hash_input.hash(backend, ciphersuite)?)
     }
 

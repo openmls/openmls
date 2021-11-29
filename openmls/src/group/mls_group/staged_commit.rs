@@ -56,7 +56,7 @@ impl MlsGroup {
         .map_err(|_| StageCommitError::MissingProposal)?;
 
         // Create provisional tree and apply proposals
-        let mut diff = self.tree().empty_diff();
+        let mut diff = self.tree().empty_diff()?;
 
         let apply_proposals_values = self
             .apply_staged_proposals(&mut diff, backend, &proposal_queue, own_key_packages)
@@ -69,7 +69,7 @@ impl MlsGroup {
 
         // Determine if Commit is own Commit
         let sender = mls_plaintext.sender_index();
-        let is_own_commit = sender == self.tree().own_leaf_index().into();
+        let is_own_commit = sender == self.tree().own_leaf_index();
 
         // Determine if Commit has a path
         let commit_secret = if let Some(path) = commit.path.clone() {
@@ -99,8 +99,8 @@ impl MlsGroup {
                     backend,
                     ciphersuite,
                     &path,
-                    sender.as_u32(),
-                    apply_proposals_values.exclusion_list(),
+                    sender,
+                    &apply_proposals_values.exclusion_list(),
                     &serialized_context,
                 )?;
 
@@ -109,7 +109,7 @@ impl MlsGroup {
                 diff.apply_received_update_path(
                     backend,
                     ciphersuite,
-                    sender.as_u32(),
+                    sender,
                     key_package,
                     plain_path,
                 )?;
@@ -196,10 +196,10 @@ impl MlsGroup {
         // process.
         let secret_tree = provisional_epoch_secrets
             .encryption_secret()
-            .create_secret_tree(diff.leaf_count().into());
+            .create_secret_tree(diff.leaf_count());
 
         // Make the diff a staged diff.
-        let staged_diff = diff.to_staged_diff(backend, ciphersuite)?;
+        let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
 
         Ok(StagedCommit {
             staged_proposal_queue: proposal_queue,

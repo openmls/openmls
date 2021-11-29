@@ -4,7 +4,7 @@ use crate::config::ProtocolVersion;
 use crate::extensions::*;
 use crate::group::*;
 use crate::schedule::psk::PreSharedKeys;
-use crate::schedule::{CommitSecret, JoinerSecret};
+use crate::schedule::JoinerSecret;
 use crate::treesync::treekem::UpdatePath;
 
 use openmls_traits::crypto::OpenMlsCrypto;
@@ -214,11 +214,6 @@ pub(crate) struct GroupInfo {
 }
 
 impl GroupInfo {
-    /// Get the tree hash as byte slice.
-    pub(crate) fn tree_hash(&self) -> &[u8] {
-        self.payload.tree_hash.as_slice()
-    }
-
     /// Get the signer index.
     pub(crate) fn signer_index(&self) -> LeafIndex {
         self.payload.signer_index

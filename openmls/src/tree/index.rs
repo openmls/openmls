@@ -1,5 +1,4 @@
 use std::convert::TryFrom;
-use std::ops::{Index, IndexMut};
 use tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::*;
@@ -118,53 +117,5 @@ impl TryFrom<NodeIndex> for LeafIndex {
         } else {
             Ok(LeafIndex((node_index.as_u32() + 1) / 2))
         }
-    }
-}
-
-// === Implement Index trait to index Vec<Node> with NodeIndex and LeafIndex ===
-
-impl Index<LeafIndex> for Vec<Node> {
-    type Output = Node;
-
-    /// This converts a `LeafIndex`, which points to a particular leaf in the
-    /// vector of leaves in a tree, to a `NodeIndex`, i.e. it makes it point the
-    /// same leaf, but in the array representing the tree as opposed to the one
-    /// only containing the leaves.
-    fn index(&self, leaf_index: LeafIndex) -> &Self::Output {
-        &self[NodeIndex::from(leaf_index).as_usize()]
-    }
-}
-
-impl IndexMut<LeafIndex> for Vec<Node> {
-    fn index_mut(&mut self, leaf_index: LeafIndex) -> &mut Self::Output {
-        &mut self[NodeIndex::from(leaf_index).as_usize()]
-    }
-}
-
-impl Index<NodeIndex> for Vec<Node> {
-    type Output = Node;
-
-    fn index(&self, node_index: NodeIndex) -> &Self::Output {
-        &self[node_index.as_usize()]
-    }
-}
-
-impl IndexMut<NodeIndex> for Vec<Node> {
-    fn index_mut(&mut self, node_index: NodeIndex) -> &mut Self::Output {
-        &mut self[node_index.as_usize()]
-    }
-}
-
-impl Index<&NodeIndex> for Vec<Node> {
-    type Output = Node;
-
-    fn index(&self, node_index: &NodeIndex) -> &Self::Output {
-        &self[node_index.as_usize()]
-    }
-}
-
-impl IndexMut<&NodeIndex> for Vec<Node> {
-    fn index_mut(&mut self, node_index: &NodeIndex) -> &mut Self::Output {
-        &mut self[node_index.as_usize()]
     }
 }

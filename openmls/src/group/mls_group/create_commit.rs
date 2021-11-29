@@ -1,5 +1,4 @@
-use lazy_static::__Deref;
-use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
+use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
     ciphersuite::signable::Signable,
@@ -7,11 +6,7 @@ use crate::{
     framing::*,
     group::{mls_group::*, *},
     messages::*,
-    treesync::{
-        diff::{TreeSyncDiff, UpdatePathResult},
-        node::parent_node::PlainUpdatePathNode,
-        treekem::PlaintextSecret,
-    },
+    treesync::{diff::TreeSyncDiff, treekem::PlaintextSecret},
 };
 
 use super::{
@@ -39,15 +34,15 @@ impl MlsGroup {
             backend,
             params.proposal_store(),
             params.inline_proposals(),
-            self.tree().own_leaf_index().into(),
-            self.tree().leaf_count().into(),
+            self.tree().own_leaf_index(),
+            self.tree().leaf_count()?,
         )?;
 
         let proposal_reference_list = proposal_queue.commit_list();
 
         let sender_index = self.sender_index();
         // Make a copy of the current tree to apply proposals safely
-        let mut diff: TreeSyncDiff = self.tree().deref().into();
+        let mut diff: TreeSyncDiff = self.tree().empty_diff()?;
 
         // Apply proposals to tree
         let apply_proposals_values =
@@ -83,7 +78,7 @@ impl MlsGroup {
                     self.ciphersuite(),
                     &path,
                     &serialized_group_context,
-                    apply_proposals_values.exclusion_list(),
+                    &apply_proposals_values.exclusion_list(),
                     key_package_bundle.key_package(),
                 )?;
                 (
@@ -110,7 +105,7 @@ impl MlsGroup {
         // Build MlsPlaintext
         let mut mls_plaintext = MlsPlaintext::new_commit(
             *params.framing_parameters(),
-            sender_index.into(),
+            sender_index,
             commit,
             params.credential_bundle(),
             &self.group_context,
@@ -137,7 +132,7 @@ impl MlsGroup {
         let provisional_group_context = GroupContext::new(
             self.group_context.group_id.clone(),
             provisional_epoch,
-            tree_hash,
+            tree_hash.clone(),
             confirmed_transcript_hash.clone(),
             &extensions,
         )?;
@@ -156,7 +151,7 @@ impl MlsGroup {
             &diff,
             &joiner_secret,
             apply_proposals_values.invitation_list,
-            plain_path_option.map(|vec| vec.as_slice()),
+            plain_path_option.as_deref(),
             &apply_proposals_values.presharedkeys,
             backend,
         )?;
@@ -227,26 +222,8 @@ impl MlsGroup {
                 .unwrap();
             // Encrypt group secrets
             let secrets = plaintext_secrets
-                .iter()
-                .map(
-                    |PlaintextSecret {
-                         public_key,
-                         group_secrets_bytes,
-                         key_package_hash,
-                     }| {
-                        let encrypted_group_secrets = backend.crypto().hpke_seal(
-                            ciphersuite.hpke_config(),
-                            public_key.as_slice(),
-                            &[],
-                            &[],
-                            group_secrets_bytes,
-                        );
-                        EncryptedGroupSecrets {
-                            key_package_hash: key_package_hash.clone().into(),
-                            encrypted_group_secrets,
-                        }
-                    },
-                )
+                .into_iter()
+                .map(|pts| pts.encrypt(backend, ciphersuite))
                 .collect();
             // Create welcome message
             let welcome = Welcome::new(

@@ -5,9 +5,9 @@ use openmls_traits::OpenMlsCryptoProvider;
 use crate::{
     binary_tree::LeafIndex,
     messages::proposals::{AddProposal, ProposalType},
-    prelude::{KeyPackage, KeyPackageBundle, KeyPackageBundlePayload},
+    prelude::{KeyPackageBundle, KeyPackageBundlePayload},
     schedule::{PreSharedKeyId, PreSharedKeys},
-    treesync::{diff::TreeSyncDiff, node::Node, TreeSyncError},
+    treesync::{diff::TreeSyncDiff, TreeSyncError},
 };
 
 use super::{
@@ -47,13 +47,13 @@ impl ApplyProposalsValues {
 impl MlsGroup {
     pub(crate) fn apply_proposals(
         &self,
-        // FIXME: We can probably just return the diff or the staged diff here.
         diff: &mut TreeSyncDiff,
-        backend: &impl OpenMlsCryptoProvider,
+        // FIXME: Keeping this here until the FIXME below is solved.
+        _backend: &impl OpenMlsCryptoProvider,
         proposal_queue: CreationProposalQueue,
         // FIXME: Should this be here? If it's my own update, I need to include
-        // a path anyway, so we can just filter out own updates, righ?
-        key_package_bundle_payload_option: Option<KeyPackageBundlePayload>,
+        // a path anyway, so we can just filter out own updates, right?
+        _key_package_bundle_payload_option: Option<KeyPackageBundlePayload>,
     ) -> Result<ApplyProposalsValues, TreeSyncError> {
         log::debug!("Applying proposal");
         let mut has_updates = false;
@@ -68,7 +68,7 @@ impl MlsGroup {
             // Check if this is our own update.
             diff.update_leaf(
                 update_proposal.key_package().clone(),
-                queued_proposal.sender().to_leaf_index().as_u32(),
+                queued_proposal.sender().to_leaf_index(),
             )?;
             // FIXME: Potentially process own update here (see comment above.)
         }
@@ -78,13 +78,12 @@ impl MlsGroup {
             has_removes = true;
             // Unwrapping here is safe because we know the proposal type
             let remove_proposal = &queued_proposal.proposal().as_remove().unwrap();
-            let removed = LeafIndex::from(remove_proposal.removed());
             // Check if we got removed from the group
-            if removed == self.tree().own_leaf_index() {
+            if remove_proposal.removed() == self.tree().own_leaf_index() {
                 self_removed = true;
             }
             // Blank the direct path of the removed member
-            diff.blank_leaf(removed)?;
+            diff.blank_leaf(remove_proposal.removed())?;
         }
 
         // Process adds
@@ -133,12 +132,12 @@ impl MlsGroup {
     /// current epoch `updates_key_package_bundles` is the list of own
     /// KeyPackageBundles corresponding to updates or commits sent in the
     /// current epoch
-    pub fn apply_staged_proposals(
+    pub(crate) fn apply_staged_proposals(
         &self,
         diff: &mut TreeSyncDiff,
-        backend: &impl OpenMlsCryptoProvider,
+        _backend: &impl OpenMlsCryptoProvider,
         proposal_queue: &StagedProposalQueue,
-        updates_key_package_bundles: &[KeyPackageBundle],
+        _updates_key_package_bundles: &[KeyPackageBundle],
     ) -> Result<ApplyProposalsValues, TreeSyncError> {
         log::debug!("Applying proposal");
         let mut has_updates = false;
@@ -153,7 +152,7 @@ impl MlsGroup {
             // Check if this is our own update.
             diff.update_leaf(
                 update_proposal.key_package().clone(),
-                queued_proposal.sender().to_leaf_index().as_u32(),
+                queued_proposal.sender().to_leaf_index(),
             )?;
             // FIXME: Potentially process own update here (see comment above.)
         }
@@ -163,13 +162,12 @@ impl MlsGroup {
             has_removes = true;
             // Unwrapping here is safe because we know the proposal type
             let remove_proposal = &queued_proposal.proposal().as_remove().unwrap();
-            let removed = LeafIndex::from(remove_proposal.removed());
             // Check if we got removed from the group
-            if removed == self.tree().own_leaf_index() {
+            if remove_proposal.removed() == self.tree().own_leaf_index() {
                 self_removed = true;
             }
             // Blank the direct path of the removed member
-            diff.blank_leaf(removed)?;
+            diff.blank_leaf(remove_proposal.removed())?;
         }
 
         // Process adds

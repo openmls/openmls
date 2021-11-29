@@ -14,7 +14,7 @@ use crate::{
     },
     extensions::Extension,
     group::{GroupEpoch, GroupId, MlsGroup},
-    tree::index::LeafIndex,
+    treesync::LeafIndex,
 };
 
 /// PublicGroupState as defined in the MLS specification as follows:
@@ -152,7 +152,7 @@ impl PublicGroupStateTbs {
 
         let group_id = mls_group.group_id().clone();
         let epoch = mls_group.context().epoch();
-        let tree_hash = mls_group.tree().tree_hash(backend).into();
+        let tree_hash = mls_group.tree().tree_hash().into();
         let interim_transcript_hash = mls_group.interim_transcript_hash().into();
         let extensions = mls_group.extensions().into();
 

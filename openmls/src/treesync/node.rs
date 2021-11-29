@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use tls_codec::TlsSliceU8;
 
 use crate::{
-    binary_tree::{LeafIndex, MlsBinaryTreeDiffError, MlsBinaryTreeError},
+    binary_tree::{LeafIndex, MlsBinaryTreeDiffError},
     ciphersuite::{Ciphersuite, HpkePrivateKey, HpkePublicKey},
     extensions::ExtensionType::ParentHash,
     treesync::hashes::{LeafNodeHashInput, ParentNodeTreeHashInput},
@@ -18,9 +18,15 @@ use self::{leaf_node::LeafNode, parent_node::ParentNode};
 use super::hashes::ParentHashError;
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub(crate) enum Node {
+pub enum Node {
     LeafNode(LeafNode),
     ParentNode(ParentNode),
+}
+
+impl From<TreeSyncNode> for Option<Node> {
+    fn from(tsn: TreeSyncNode) -> Self {
+        tsn.node
+    }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -37,12 +43,6 @@ impl From<Node> for TreeSyncNode {
             tree_hash: None,
             node: Some(node),
         }
-    }
-}
-
-impl Into<Option<Node>> for TreeSyncNode {
-    fn into(self) -> Option<Node> {
-        self.node
     }
 }
 
@@ -83,7 +83,7 @@ impl TreeSyncNode {
         // Check if I'm a leaf node.
         let hash = if let Some(leaf_index) = leaf_index_option {
             let key_package_option = match self.node.as_ref() {
-                Some(ref node) => Some(node.as_leaf_node()?),
+                Some(node) => Some(node.as_leaf_node()?),
                 None => None,
             }
             .map(|leaf_node| leaf_node.key_package());
@@ -91,7 +91,7 @@ impl TreeSyncNode {
             hash_input.hash(ciphersuite, backend)
         } else {
             let parent_node_option = match self.node.as_ref() {
-                Some(ref node) => Some(node.as_parent_node()?),
+                Some(node) => Some(node.as_parent_node()?),
                 None => None,
             };
             let hash_input = ParentNodeTreeHashInput::new(
@@ -109,14 +109,6 @@ impl TreeSyncNode {
 impl Node {
     pub(crate) fn as_leaf_node(&self) -> Result<&LeafNode, TreeSyncNodeError> {
         if let Node::LeafNode(ln) = self {
-            Ok(&ln)
-        } else {
-            Err(TreeSyncNodeError::AsLeafError)
-        }
-    }
-
-    pub(crate) fn as_leaf_node_mut(&mut self) -> Result<&mut LeafNode, TreeSyncNodeError> {
-        if let Node::LeafNode(ref mut ln) = self {
             Ok(ln)
         } else {
             Err(TreeSyncNodeError::AsLeafError)
@@ -187,8 +179,8 @@ implement_error! {
     }
 }
 
-impl Into<MlsBinaryTreeDiffError> for TreeSyncNodeError {
-    fn into(self) -> MlsBinaryTreeDiffError {
+impl From<TreeSyncNodeError> for MlsBinaryTreeDiffError {
+    fn from(_: TreeSyncNodeError) -> Self {
         MlsBinaryTreeDiffError::FoldingError
     }
 }

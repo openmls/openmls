@@ -3,7 +3,7 @@ use crate::group::errors::*;
 use crate::messages::proposals::{
     Proposal, ProposalOrRef, ProposalOrRefType, ProposalReference, ProposalType,
 };
-use crate::tree::index::LeafIndex;
+use crate::treesync::LeafIndex;
 use crate::{ciphersuite::*, framing::*};
 
 use openmls_traits::OpenMlsCryptoProvider;
@@ -295,8 +295,12 @@ impl<'a> CreationProposalQueue<'a> {
         proposal_store: &'a ProposalStore,
         inline_proposals: &'a [Proposal],
         own_index: LeafIndex,
-        tree_size: LeafIndex,
+        leaf_count: LeafIndex,
     ) -> Result<(Self, bool), CreationProposalQueueError> {
+        fn to_usize(leaf_index: LeafIndex) -> Result<usize, CreationProposalQueueError> {
+            usize::try_from(leaf_index).map_err(|_| CreationProposalQueueError::ArchitectureError)
+        }
+
         #[derive(Clone)]
         struct Member<'a> {
             updates: Vec<QueuedProposal<'a>>,
@@ -307,7 +311,7 @@ impl<'a> CreationProposalQueue<'a> {
                 updates: vec![],
                 removes: vec![],
             };
-            tree_size.as_usize()
+            to_usize(leaf_count)?
         ];
         let mut adds: HashSet<ProposalReference> = HashSet::new();
         let mut valid_proposals: HashSet<ProposalReference> = HashSet::new();
@@ -344,9 +348,11 @@ impl<'a> CreationProposalQueue<'a> {
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 ProposalType::Update => {
-                    let sender_index = queued_proposal.sender.sender.as_usize();
-                    if sender_index != own_index.as_usize() {
-                        members[sender_index].updates.push(queued_proposal.clone());
+                    let sender_index = queued_proposal.sender.sender;
+                    if sender_index != own_index {
+                        members[to_usize(sender_index)?]
+                            .updates
+                            .push(queued_proposal.clone());
                     } else {
                         contains_own_updates = true;
                     }
@@ -356,7 +362,7 @@ impl<'a> CreationProposalQueue<'a> {
                 ProposalType::Remove => {
                     let removed_index =
                         queued_proposal.proposal.as_remove().unwrap().removed as usize;
-                    if removed_index < tree_size.as_usize() {
+                    if removed_index < to_usize(leaf_count)? {
                         members[removed_index].updates.push(queued_proposal.clone());
                     }
                     let proposal_reference = queued_proposal.proposal_reference();

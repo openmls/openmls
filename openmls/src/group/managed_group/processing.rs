@@ -50,15 +50,17 @@ impl ManagedGroup {
                 (plaintext, None)
             }
         };
-        // Save the current member list for validation end events
-        let indexed_members = self.indexed_members();
         // See what kind of message it is
         match plaintext.content() {
             MlsPlaintextContentType::Proposal(ref proposal) => {
                 // Incoming proposals are validated against the application validation
                 // policy and then appended to the internal `pending_proposal` list.
                 // TODO #133: Semantic validation of proposals
-                if self.validate_proposal(proposal, plaintext.sender_index(), &indexed_members) {
+                if self.validate_proposal(
+                    proposal,
+                    plaintext.sender_index(),
+                    &self.indexed_members()?,
+                ) {
                     let staged_proposal =
                         StagedProposal::from_mls_plaintext(self.ciphersuite(), backend, plaintext)
                             .map_err(|_| InvalidMessageError::InvalidProposal)?;
@@ -75,7 +77,7 @@ impl ManagedGroup {
                 if !self.validate_inline_proposals(
                     commit.proposals.as_slice(),
                     plaintext.sender_index(),
-                    &indexed_members,
+                    &self.indexed_members()?,
                 ) {
                     return Err(ManagedGroupError::InvalidMessage(
                         InvalidMessageError::CommitWithInvalidProposals,
@@ -100,7 +102,7 @@ impl ManagedGroup {
                         if commit.has_path() {
                             events.push(GroupEvent::MemberUpdated(MemberUpdatedEvent::new(
                                 aad_option.unwrap_or_default().into(),
-                                indexed_members[&plaintext.sender_index()].clone(),
+                                self.indexed_members()?[&plaintext.sender_index()].clone(),
                             )));
                         }
 
@@ -142,7 +144,7 @@ impl ManagedGroup {
                                 InvalidMessageError::InvalidApplicationMessage,
                             ))?
                             .into(),
-                        indexed_members[&plaintext.sender_index()].clone(),
+                        self.indexed_members()?[&plaintext.sender_index()].clone(),
                         app_message.as_slice().to_vec(),
                     ),
                 ));

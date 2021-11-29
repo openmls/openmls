@@ -1,6 +1,7 @@
 use crate::ciphersuite::{AeadNonce, *};
 use crate::tree::{index::LeafIndex, secret_tree::*};
 
+use super::index::NodeIndex;
 use super::*;
 
 const OUT_OF_ORDER_TOLERANCE: u32 = 5;

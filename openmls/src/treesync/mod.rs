@@ -27,7 +27,7 @@ pub(crate) mod treekem;
 pub use crate::binary_tree::LeafIndex;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct TreeSync {
+pub struct TreeSync {
     tree: MlsBinaryTree<TreeSyncNode>,
     own_leaf_index: LeafIndex,
     tree_hash: Vec<u8>,
@@ -76,8 +76,8 @@ impl TreeSync {
 
     /// Create an empty diff based on this TreeSync instance all operations
     /// are created based on an initial, empty diff.
-    pub(crate) fn empty_diff(&self) -> TreeSyncDiff {
-        self.into()
+    pub(crate) fn empty_diff(&self) -> Result<TreeSyncDiff, TreeSyncError> {
+        Ok(self.try_into()?)
     }
 
     /// For use with a Welcome message.
@@ -96,9 +96,9 @@ impl TreeSync {
         // Return error if a given path secret doesn't imply that the direct
         // path isn't blank.
         if let Some(path_secret) = path_secret_option {
-            let mut diff = tree_sync.empty_diff();
+            let mut diff = tree_sync.empty_diff()?;
             diff.set_path_secrets(backend, ciphersuite, path_secret, sender_index)?;
-            let staged_diff = diff.to_staged_diff(backend, ciphersuite)?;
+            let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
             tree_sync.merge_diff(staged_diff)?;
         }
         Ok(tree_sync)
@@ -154,25 +154,25 @@ impl TreeSync {
                 tree_hash: vec![],
                 own_leaf_index: leaf_index,
             };
-            let diff = tree_sync.empty_diff();
+            let diff = tree_sync.empty_diff()?;
             // Verify all parent hashes.
             diff.verify_parent_hashes(backend, ciphersuite)?;
             // Make the diff into a staged diff. This is to compute the tree
             // hashes and poulate the tree hash caches.
-            let staged_diff = diff.to_staged_diff(backend, ciphersuite)?;
+            let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
             // Merge the diff.
             tree_sync.merge_diff(staged_diff)?;
             Ok(tree_sync)
         } else {
-            return Err(TreeSyncError::MissingKeyPackage);
+            Err(TreeSyncError::MissingKeyPackage)
         }
     }
 
-    pub(crate) fn leaf_count(&self) -> LeafIndex {
-        self.tree.leaf_count()
+    pub(crate) fn leaf_count(&self) -> Result<LeafIndex, TreeSyncError> {
+        Ok(self.tree.leaf_count()?)
     }
 
-    pub(crate) fn leaves(&self) -> Result<HashMap<LeafIndex, &KeyPackage>, TreeSyncError> {
+    pub(crate) fn full_leaves(&self) -> Result<HashMap<LeafIndex, &KeyPackage>, TreeSyncError> {
         let tsn_leaves: Vec<(usize, &TreeSyncNode)> = self
             .tree
             .leaves()?
@@ -191,11 +191,11 @@ impl TreeSync {
         Ok(leaves)
     }
 
-    pub(crate) fn export_nodes(&self) -> Vec<Option<Node>> {
+    pub(crate) fn export_nodes(&self) -> Vec<&Option<Node>> {
         self.tree
-            .export_nodes()
-            .drain(..)
-            .map(|ts_node| ts_node.into())
+            .nodes()
+            .iter()
+            .map(|ts_node| ts_node.node())
             .collect()
     }
 
@@ -210,7 +210,7 @@ impl TreeSync {
         let leaf = leaves
             .get(self.own_leaf_index as usize)
             .ok_or(TreeSyncError::LibraryError)?;
-        let leaf_node = leaf.node().ok_or(TreeSyncError::LibraryError)?;
+        let leaf_node = leaf.node().as_ref().ok_or(TreeSyncError::LibraryError)?;
         Ok(leaf_node.as_leaf_node()?.key_package())
     }
 }
@@ -221,6 +221,7 @@ implement_error! {
             LibraryError = "An inconsistency in the internal state of the tree was detected.",
             MissingKeyPackage = "Couldn't find our own key package in this tree.",
             DuplicateKeyPackage = "Found two KeyPackages with the same public key.",
+            OutOfBounds = "The given `LeafIndex` is outside of the tree.",
         }
         Complex {
             BinaryTreeError(MlsBinaryTreeError) = "An error occurred during an operation on the underlying binary tree.",

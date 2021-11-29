@@ -36,7 +36,7 @@ use serde::{
     ser::{SerializeStruct, Serializer},
     Deserialize, Deserializer, Serialize,
 };
-use std::cell::{Ref, RefCell};
+use std::cell::RefCell;
 use std::convert::TryFrom;
 use std::io::{Error, Read, Write};
 
@@ -55,7 +55,7 @@ pub struct MlsGroup {
     group_context: GroupContext,
     epoch_secrets: EpochSecrets,
     secret_tree: RefCell<SecretTree>,
-    tree: RefCell<TreeSync>,
+    tree: TreeSync,
     interim_transcript_hash: Vec<u8>,
     // Group config.
     // Set to true if the ratchet tree extension is added to the `GroupInfo`.
@@ -115,16 +115,14 @@ impl MlsGroup {
         key_schedule.add_context(backend, &group_context)?;
         let epoch_secrets = key_schedule.epoch_secrets(backend, true)?;
 
-        let secret_tree = epoch_secrets
-            .encryption_secret()
-            .create_secret_tree(crate::tree::index::LeafIndex::from(1u32));
+        let secret_tree = epoch_secrets.encryption_secret().create_secret_tree(1u32);
         let interim_transcript_hash = vec![];
         Ok(MlsGroup {
             ciphersuite,
             group_context,
             epoch_secrets,
             secret_tree: RefCell::new(secret_tree),
-            tree: RefCell::new(tree),
+            tree,
             interim_transcript_hash,
             use_ratchet_tree_extension: config.add_ratchet_tree_extension,
             mls_version: version,
@@ -169,7 +167,7 @@ impl MlsGroup {
         let proposal = Proposal::Add(add_proposal);
         MlsPlaintext::new_proposal(
             framing_parameters,
-            self.sender_index().into(),
+            self.sender_index(),
             proposal,
             credential_bundle,
             self.context(),
@@ -194,7 +192,7 @@ impl MlsGroup {
         let proposal = Proposal::Update(update_proposal);
         MlsPlaintext::new_proposal(
             framing_parameters,
-            self.sender_index().into(),
+            self.sender_index(),
             proposal,
             credential_bundle,
             self.context(),
@@ -216,12 +214,12 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsPlaintext, MlsGroupError> {
         let remove_proposal = RemoveProposal {
-            removed: removed_index.into(),
+            removed: removed_index,
         };
         let proposal = Proposal::Remove(remove_proposal);
         MlsPlaintext::new_proposal(
             framing_parameters,
-            self.sender_index().into(),
+            self.sender_index(),
             proposal,
             credential_bundle,
             self.context(),
@@ -246,7 +244,7 @@ impl MlsGroup {
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
         MlsPlaintext::new_proposal(
             framing_parameters,
-            self.sender_index().into(),
+            self.sender_index(),
             proposal,
             credential_bundle,
             self.context(),
@@ -266,7 +264,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsCiphertext, MlsGroupError> {
         let mls_plaintext = MlsPlaintext::new_application(
-            self.sender_index().into(),
+            self.sender_index(),
             aad,
             msg,
             credential_bundle,
@@ -290,7 +288,7 @@ impl MlsGroup {
             self.ciphersuite,
             backend,
             self.context(),
-            self.sender_index().into(),
+            self.sender_index(),
             Secrets {
                 epoch_secrets: self.epoch_secrets(),
                 secret_tree: &mut self.secret_tree_mut(),
@@ -324,9 +322,9 @@ impl MlsGroup {
         // Verify the signature on the plaintext.
         let tree = self.tree();
 
-        let leaves = tree.leaves()?;
+        let leaves = tree.full_leaves()?;
         let kp = leaves
-            .get(&verifiable.sender_index().as_u32())
+            .get(&verifiable.sender_index())
             .ok_or(MlsPlaintextError::UnknownSender)?;
         let credential = kp.credential();
         // Set the context if it has not been set already.
@@ -390,8 +388,8 @@ impl MlsGroup {
     }
 
     /// Returns the ratchet tree
-    pub fn tree(&self) -> Ref<TreeSync> {
-        self.tree.borrow()
+    pub fn tree(&self) -> &TreeSync {
+        &self.tree
     }
 
     /// Get the ciphersuite implementation used in this group.
@@ -415,7 +413,11 @@ impl MlsGroup {
     pub fn extensions(&self) -> Vec<Extension> {
         let extensions: Vec<Extension> = if self.use_ratchet_tree_extension {
             vec![Extension::RatchetTree(RatchetTreeExtension::new(
-                self.tree().export_nodes(),
+                self.tree()
+                    .export_nodes()
+                    .iter()
+                    .map(|&node_option| node_option.clone())
+                    .collect(),
             ))]
         } else {
             Vec::new()
@@ -443,7 +445,7 @@ impl MlsGroup {
 // Private and crate functions
 impl MlsGroup {
     pub(crate) fn sender_index(&self) -> LeafIndex {
-        self.tree.borrow().own_leaf_index().into()
+        self.tree.own_leaf_index()
     }
 
     pub(crate) fn epoch_secrets(&self) -> &EpochSecrets {

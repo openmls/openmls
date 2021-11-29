@@ -14,7 +14,7 @@ mod test_managed_group;
 mod updates;
 pub mod validation;
 
-use crate::credentials::CredentialBundle;
+use crate::{binary_tree::LeafIndex, credentials::CredentialBundle, treesync::node::Node};
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 
 use crate::{
@@ -26,7 +26,6 @@ use crate::{
     messages::{proposals::*, Welcome},
     prelude::KeyPackageBundlePayload,
     schedule::ResumptionSecret,
-    tree::{index::LeafIndex, node::Node},
 };
 
 use std::collections::HashMap;
@@ -150,7 +149,7 @@ impl ManagedGroup {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
         let tree = self.group.tree();
-        Ok(tree.own_key_package().credential().clone())
+        Ok(tree.own_leaf_node()?.credential().clone())
     }
 
     /// Get group ID
@@ -184,12 +183,12 @@ impl ManagedGroup {
 
     /// Export the Ratchet Tree
     pub fn export_ratchet_tree(&self) -> Vec<Option<Node>> {
-        self.group.tree().public_key_tree_copy()
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn export_path_secrets(&self) -> Ref<[crate::messages::PathSecret]> {
-        Ref::map(self.group.tree(), |tree| tree.private_tree().path_secrets())
+        self.group
+            .tree()
+            .export_nodes()
+            .iter()
+            .map(|&node_option| node_option.clone())
+            .collect()
     }
 
     #[cfg(any(feature = "test-utils", test))]
@@ -198,8 +197,8 @@ impl ManagedGroup {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub fn tree_hash(&self, backend: &impl OpenMlsCryptoProvider) -> Vec<u8> {
-        self.group.tree().tree_hash(backend)
+    pub fn tree_hash(&self, backend: &impl OpenMlsCryptoProvider) -> &[u8] {
+        self.group.tree().tree_hash()
     }
 
     #[cfg(any(feature = "test-utils", test))]
@@ -236,7 +235,7 @@ impl ManagedGroup {
         &self,
         proposal: &Proposal,
         sender: LeafIndex,
-        indexed_members: &HashMap<LeafIndex, Credential>,
+        indexed_members: &HashMap<LeafIndex, &Credential>,
     ) -> bool {
         let sender = &indexed_members[&sender];
         match proposal {
@@ -251,11 +250,7 @@ impl ManagedGroup {
             // Validate remove proposals
             Proposal::Remove(remove_proposal) => {
                 if let Some(validate_remove) = self.managed_group_config.callbacks.validate_remove {
-                    if !validate_remove(
-                        self,
-                        sender,
-                        &indexed_members[&LeafIndex::from(remove_proposal.removed)],
-                    ) {
+                    if !validate_remove(self, sender, indexed_members[&remove_proposal.removed]) {
                         return false;
                     }
                 }
@@ -273,7 +268,7 @@ impl ManagedGroup {
         &self,
         proposals: &[ProposalOrRef],
         sender: LeafIndex,
-        indexed_members: &HashMap<LeafIndex, Credential>,
+        indexed_members: &HashMap<LeafIndex, &Credential>,
     ) -> bool {
         for proposal_or_ref in proposals {
             match proposal_or_ref {
@@ -295,19 +290,13 @@ impl ManagedGroup {
         }
     }
 
-    /// Return a list (LeafIndex, Credential)
-    fn indexed_members(&self) -> HashMap<LeafIndex, Credential> {
-        let mut indexed_members = HashMap::new();
-        let tree = self.group.tree();
-        let leaf_count = self.group.tree().leaf_count();
-        for index in 0..leaf_count.as_usize() {
-            let leaf_index = LeafIndex::from(index);
-            let leaf = &tree.nodes[leaf_index];
-            if let Some(leaf_node) = leaf.key_package() {
-                indexed_members.insert(leaf_index, leaf_node.credential().clone());
-            }
+    /// Return a list `(LeafIndex, &KeyPackage)`
+    fn indexed_members(&self) -> Result<HashMap<LeafIndex, &Credential>, ManagedGroupError> {
+        let mut map = HashMap::new();
+        for (index, key_package) in self.group.tree().full_leaves()? {
+            map.insert(index, key_package.credential());
         }
-        indexed_members
+        Ok(map)
     }
 
     /// Group framing parameters

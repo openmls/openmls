@@ -60,18 +60,14 @@ impl ManagedGroup {
         // Check that the sender is a valid member of the tree
         // The sender index must be within the tree and the corresponding leaf node must not be blank
         let sender = plaintext.sender_index();
-        if sender > self.group.tree().leaf_count() || self.group.tree().nodes[sender].is_blank() {
-            return Err(ManagedGroupError::InvalidMessage(
+        let credential = self
+            .group
+            .tree()
+            .full_leaves()?
+            .get(&sender)
+            .ok_or(ManagedGroupError::InvalidMessage(
                 InvalidMessageError::UnknownSender,
-            ));
-        }
-
-        // Extract the credential
-        // Unwrapping here is safe, because we know the leaf node exists and is not blank
-        let credential = self.group.tree().nodes[sender]
-            .key_package
-            .as_ref()
-            .unwrap()
+            ))?
             .credential()
             .clone();
 

@@ -31,8 +31,8 @@ pub mod error;
 #[macro_use]
 pub mod test_utils;
 
-pub mod binary_tree;
-pub mod treesync;
+mod binary_tree;
+mod treesync;
 
 pub mod ciphersuite;
 pub mod config;
@@ -48,8 +48,6 @@ pub mod schedule;
 #[cfg(not(any(feature = "test-utils", test)))]
 mod schedule;
 pub mod tree;
-
-pub use crate::tree::node;
 
 /// Single place, re-exporting the most used public functions.
 pub mod prelude;

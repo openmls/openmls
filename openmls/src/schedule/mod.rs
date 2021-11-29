@@ -116,8 +116,8 @@
 
 use crate::framing::MlsPlaintextTbmPayload;
 use crate::messages::PathSecret;
-use crate::tree::index::LeafIndex;
 use crate::tree::secret_tree::SecretTree;
+use crate::treesync::LeafIndex;
 use crate::{ciphersuite::Mac, group::GroupContext, prelude::MembershipTag};
 use crate::{
     ciphersuite::{AeadKey, AeadNonce, Ciphersuite, Secret},
@@ -165,19 +165,6 @@ impl From<PathSecret> for CommitSecret {
 }
 
 impl CommitSecret {
-    pub(crate) fn new(
-        ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
-        path_secret: &Secret,
-    ) -> Self {
-        // FIXME: remove unwrap
-        let secret = path_secret
-            .kdf_expand_label(backend, "path", &[], ciphersuite.hash_length())
-            .unwrap();
-
-        Self { secret }
-    }
-
     /// Create a CommitSecret consisting of an all-zero string of length
     /// `hash_length`.
     pub(crate) fn zero_secret(ciphersuite: &'static Ciphersuite, version: ProtocolVersion) -> Self {
@@ -557,7 +544,7 @@ impl EncryptionSecret {
     /// `EpochSecrets`. The `encryption_secret` is replaced with `None` in the
     /// process, allowing us to achieve FS.
     pub(crate) fn create_secret_tree(self, treesize: LeafIndex) -> SecretTree {
-        SecretTree::new(self, treesize)
+        SecretTree::new(self, treesize.into())
     }
 
     pub(crate) fn consume_secret(self) -> Secret {

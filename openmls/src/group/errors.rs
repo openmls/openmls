@@ -211,6 +211,7 @@ implement_error! {
     pub enum CreationProposalQueueError {
         Simple {
             ProposalNotFound = "Not all proposals in the Commit were found locally.",
+            ArchitectureError = "Couldn't fit a `u32` into a `usize`.",
         }
         Complex {
             NotAProposal(StagedProposalError) = "The given MLS Plaintext was not a Proposal.",
