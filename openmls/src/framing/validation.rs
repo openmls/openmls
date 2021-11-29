@@ -315,6 +315,7 @@ impl VerifiedExternalMessage {
 
 /// Message that contains messages that are syntactically and semantically correct.
 /// [StagedCommit] and [StagedProposal] can be inspected for authorization purposes.
+#[derive(Debug)]
 pub enum ProcessedMessage {
     ApplicationMessage(Vec<u8>),
     ProposalMessage(Box<StagedProposal>),
