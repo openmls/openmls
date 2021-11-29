@@ -156,9 +156,10 @@ impl OpenMlsCrypto for RustCrypto {
                     .map_err(|_| CryptoError::CryptoLibraryError)
             }
             AeadType::ChaCha20Poly1305 => {
-                let aes = ChaCha20Poly1305::new_from_slice(key)
+                let chacha_poly = ChaCha20Poly1305::new_from_slice(key)
                     .map_err(|_| CryptoError::CryptoLibraryError)?;
-                aes.encrypt(nonce.into(), Payload { msg: data, aad })
+                chacha_poly
+                    .encrypt(nonce.into(), Payload { msg: data, aad })
                     .map(|r| r.as_slice().into())
                     .map_err(|_| CryptoError::CryptoLibraryError)
             }
@@ -189,9 +190,10 @@ impl OpenMlsCrypto for RustCrypto {
                     .map_err(|_| CryptoError::AeadDecryptionError)
             }
             AeadType::ChaCha20Poly1305 => {
-                let aes = ChaCha20Poly1305::new_from_slice(key)
+                let chacha_poly = ChaCha20Poly1305::new_from_slice(key)
                     .map_err(|_| CryptoError::CryptoLibraryError)?;
-                aes.decrypt(nonce.into(), Payload { msg: ct_tag, aad })
+                chacha_poly
+                    .decrypt(nonce.into(), Payload { msg: ct_tag, aad })
                     .map(|r| r.as_slice().into())
                     .map_err(|_| CryptoError::AeadDecryptionError)
             }
