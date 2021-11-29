@@ -761,7 +761,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
             .clone()
             .expect("There should have been a membership tag.");
         modified_membership_tag.0.mac_value[0] ^= 0xFF;
-        input_commit.set_membership_tag_test(modified_membership_tag);
+        input_commit.set_membership_tag(modified_membership_tag);
         let membership_error = group_alice
             .verify_membership_tag(crypto, &mut input_commit)
             .err()
