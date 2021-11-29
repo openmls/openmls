@@ -133,7 +133,7 @@ impl tls_codec::Serialize for Proposal {
 
 impl tls_codec::Deserialize for Proposal {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
-        let proposal_type = match ProposalType::try_from(u8::tls_deserialize(bytes)?) {
+        let proposal_type = match ProposalType::try_from(u16::tls_deserialize(bytes)?) {
             Ok(proposal_type) => proposal_type,
             Err(e) => {
                 return Err(tls_codec::Error::DecodingError(format!(
@@ -150,9 +150,15 @@ impl tls_codec::Deserialize for Proposal {
                 PreSharedKeyProposal::tls_deserialize(bytes)?,
             )),
             ProposalType::Reinit => Ok(Proposal::ReInit(ReInitProposal::tls_deserialize(bytes)?)),
-            ProposalType::ExternalInit => todo!(),
-            ProposalType::AppAck => todo!(),
-            ProposalType::GroupContextExtensions => todo!(),
+            ProposalType::ExternalInit => Err(tls_codec::Error::DecodingError(
+                "External Init is not supported yet in OpenMLS.".to_string(),
+            )),
+            ProposalType::AppAck => Err(tls_codec::Error::DecodingError(
+                "App ack is not supported yet in OpenMLS.".to_string(),
+            )),
+            ProposalType::GroupContextExtensions => Ok(Proposal::GroupContextExtensions(
+                GroupContextExtensionProposal::tls_deserialize(bytes)?,
+            )),
         }
     }
 }

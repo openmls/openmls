@@ -13,10 +13,23 @@ use tls_codec::{
 
 use super::errors::*;
 
+/// ## MLS Proposal Types
+///
+/// | Value            | Name                     | Recommended | Reference |
+/// |:=================|:=========================|:============|:==========|
+/// | 0x0000           | RESERVED                 | N/A         | RFC XXXX  |
+/// | 0x0001           | add                      | Y           | RFC XXXX  |
+/// | 0x0002           | update                   | Y           | RFC XXXX  |
+/// | 0x0003           | remove                   | Y           | RFC XXXX  |
+/// | 0x0004           | psk                      | Y           | RFC XXXX  |
+/// | 0x0005           | reinit                   | Y           | RFC XXXX  |
+/// | 0x0006           | external_init            | Y           | RFC XXXX  |
+/// | 0x0007           | app_ack                  | Y           | RFC XXXX  |
+/// | 0xff00  - 0xffff | Reserved for Private Use | N/A         | RFC XXXX  |
 #[derive(
     PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize, Serialize, Deserialize,
 )]
-#[repr(u8)]
+#[repr(u16)]
 pub enum ProposalType {
     Add = 1,
     Update = 2,
@@ -28,15 +41,18 @@ pub enum ProposalType {
     GroupContextExtensions = 8,
 }
 
-impl TryFrom<u8> for ProposalType {
+impl TryFrom<u16> for ProposalType {
     type Error = &'static str;
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
         match value {
             1 => Ok(ProposalType::Add),
             2 => Ok(ProposalType::Update),
             3 => Ok(ProposalType::Remove),
             4 => Ok(ProposalType::Presharedkey),
             5 => Ok(ProposalType::Reinit),
+            6 => Ok(ProposalType::ExternalInit),
+            7 => Ok(ProposalType::AppAck),
+            8 => Ok(ProposalType::GroupContextExtensions),
             _ => Err("Unknown proposal type."),
         }
     }

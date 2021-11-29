@@ -21,12 +21,14 @@ use tls_codec::{TlsSerialize, TlsSize, TlsVecU8};
 use super::{CapabilitiesExtensionError, Deserialize, ExtensionType, Serialize};
 use crate::ciphersuite::CiphersuiteName;
 use crate::config::{Config, ProtocolVersion};
+use crate::messages::proposals::ProposalType;
 
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize, TlsSize, TlsSerialize)]
 pub struct CapabilitiesExtension {
     versions: TlsVecU8<ProtocolVersion>,
     ciphersuites: TlsVecU8<CiphersuiteName>,
     extensions: TlsVecU8<ExtensionType>,
+    proposals: TlsVecU8<ProposalType>,
 }
 
 impl Default for CapabilitiesExtension {
@@ -35,6 +37,7 @@ impl Default for CapabilitiesExtension {
             versions: Config::supported_versions().into(),
             ciphersuites: Config::supported_ciphersuite_names().into(),
             extensions: Config::supported_extensions().into(),
+            proposals: Config::supported_proposals().into(),
         }
     }
 }
@@ -47,6 +50,7 @@ impl CapabilitiesExtension {
         versions: Option<&[ProtocolVersion]>,
         ciphersuites: Option<&[CiphersuiteName]>,
         extensions: Option<&[ExtensionType]>,
+        proposals: Option<&[ProposalType]>,
     ) -> Self {
         Self {
             versions: match versions {
@@ -60,6 +64,10 @@ impl CapabilitiesExtension {
             extensions: match extensions {
                 Some(e) => e.into(),
                 None => Config::supported_extensions().into(),
+            },
+            proposals: match proposals {
+                Some(p) => p.into(),
+                None => Config::supported_proposals().into(),
             },
         }
     }
@@ -108,11 +116,13 @@ impl tls_codec::Deserialize for CapabilitiesExtension {
         }
 
         let extensions = TlsVecU8::tls_deserialize(bytes)?;
+        let proposals = TlsVecU8::tls_deserialize(bytes)?;
 
         Ok(Self {
             versions,
             ciphersuites,
             extensions,
+            proposals,
         })
     }
 }

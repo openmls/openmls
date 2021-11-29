@@ -538,6 +538,7 @@ impl KeyPackageBundle {
                 None,
                 Some(ciphersuites),
                 None,
+                None,
             ))),
         };
 

@@ -99,6 +99,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     None,
                     Some(&[ciphersuite]),
                     None,
+                    None,
                 ));
                 let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
                 let mandatory_extensions: Vec<Extension> =

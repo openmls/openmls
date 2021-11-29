@@ -102,6 +102,7 @@ fn test_update_proposal_encoding() {
             None,
             Some(&[group_state.ciphersuite().name()]),
             None,
+            None,
         ));
         let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
         let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
@@ -158,6 +159,7 @@ fn test_add_proposal_encoding() {
         let capabilities_extension = Extension::Capabilities(CapabilitiesExtension::new(
             None,
             Some(&[group_state.ciphersuite().name()]),
+            None,
             None,
         ));
         let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
@@ -253,6 +255,7 @@ fn test_commit_encoding() {
         let capabilities_extension = Extension::Capabilities(CapabilitiesExtension::new(
             None,
             Some(&[group_state.ciphersuite().name()]),
+            None,
             None,
         ));
         let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));

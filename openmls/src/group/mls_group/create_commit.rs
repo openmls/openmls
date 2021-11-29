@@ -37,6 +37,13 @@ impl MlsGroup {
             self.tree().leaf_count(),
         )?;
 
+        // TODO: #581 Filter proposals by support
+        // 11.2:
+        // Proposals with a non-default proposal type MUST NOT be included in a commit
+        // unless the proposal type is supported by all the members of the group that will
+        // process the Commit (i.e., not including any members being added or removed by
+        // the Commit).
+
         let proposal_reference_list = proposal_queue.commit_list();
 
         let sender_index = self.sender_index();
