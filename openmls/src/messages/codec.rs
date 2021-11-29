@@ -150,8 +150,12 @@ impl tls_codec::Deserialize for Proposal {
                 PreSharedKeyProposal::tls_deserialize(bytes)?,
             )),
             ProposalType::Reinit => Ok(Proposal::ReInit(ReInitProposal::tls_deserialize(bytes)?)),
-            ProposalType::ExternalInit => todo!(),
-            ProposalType::AppAck => todo!(),
+            ProposalType::ExternalInit => Err(tls_codec::Error::DecodingError(
+                "External Init is not supported yet in OpenMLS.".to_string(),
+            )),
+            ProposalType::AppAck => Err(tls_codec::Error::DecodingError(
+                "App ack is not supported yet in OpenMLS.".to_string(),
+            )),
             ProposalType::GroupContextExtensions => Ok(Proposal::GroupContextExtensions(
                 GroupContextExtensionProposal::tls_deserialize(bytes)?,
             )),
