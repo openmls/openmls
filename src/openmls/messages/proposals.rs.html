@@ -359,6 +359,22 @@
 <span id="359">359</span>
 <span id="360">360</span>
 <span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite</span>::<span class="kw-2">*</span>, <span class="ident">config::ProtocolVersion</span>, <span class="ident">extensions::Extension</span>, <span class="ident">group::GroupId</span>,
     <span class="ident">key_packages</span>::<span class="kw-2">*</span>, <span class="ident">schedule::psk</span>::<span class="kw-2">*</span>,
@@ -374,10 +390,23 @@
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::errors</span>::<span class="kw-2">*</span>;
 
+<span class="doccomment">/// ## MLS Proposal Types</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// | Value            | Name                     | Recommended | Reference |</span>
+<span class="doccomment">/// |:=================|:=========================|:============|:==========|</span>
+<span class="doccomment">/// | 0x0000           | RESERVED                 | N/A         | RFC XXXX  |</span>
+<span class="doccomment">/// | 0x0001           | add                      | Y           | RFC XXXX  |</span>
+<span class="doccomment">/// | 0x0002           | update                   | Y           | RFC XXXX  |</span>
+<span class="doccomment">/// | 0x0003           | remove                   | Y           | RFC XXXX  |</span>
+<span class="doccomment">/// | 0x0004           | psk                      | Y           | RFC XXXX  |</span>
+<span class="doccomment">/// | 0x0005           | reinit                   | Y           | RFC XXXX  |</span>
+<span class="doccomment">/// | 0x0006           | external_init            | Y           | RFC XXXX  |</span>
+<span class="doccomment">/// | 0x0007           | app_ack                  | Y           | RFC XXXX  |</span>
+<span class="doccomment">/// | 0xff00  - 0xffff | Reserved for Private Use | N/A         | RFC XXXX  |</span>
 <span class="attribute">#[<span class="ident">derive</span>(
     <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>,
 )]</span>
-<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u8</span>)]</span>
+<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u16</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProposalType</span> {
     <span class="ident">Add</span> <span class="op">=</span> <span class="number">1</span>,
     <span class="ident">Update</span> <span class="op">=</span> <span class="number">2</span>,
@@ -389,15 +418,18 @@
     <span class="ident">GroupContextExtensions</span> <span class="op">=</span> <span class="number">8</span>,
 }
 
-<span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ProposalType</span> {
+<span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">u16</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ProposalType</span> {
     <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>;
-    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">value</span>: <span class="ident">u8</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">value</span>: <span class="ident">u16</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">value</span> {
             <span class="number">1</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalType::Add</span>),
             <span class="number">2</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalType::Update</span>),
             <span class="number">3</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalType::Remove</span>),
             <span class="number">4</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalType::Presharedkey</span>),
             <span class="number">5</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalType::Reinit</span>),
+            <span class="number">6</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalType::ExternalInit</span>),
+            <span class="number">7</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalType::AppAck</span>),
+            <span class="number">8</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalType::GroupContextExtensions</span>),
             <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="string">&quot;Unknown proposal type.&quot;</span>),
         }
     }

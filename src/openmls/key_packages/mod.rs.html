@@ -635,6 +635,7 @@
 <span id="635">635</span>
 <span id="636">636</span>
 <span id="637">637</span>
+<span id="638">638</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">log::error</span>;
 <span class="kw">use</span> <span class="ident">openmls_traits::crypto::OpenMlsCrypto</span>;
 <span class="kw">use</span> <span class="ident">openmls_traits::types::HpkeKeyPair</span>;
@@ -1174,6 +1175,7 @@
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">extensions</span>.<span class="ident">push</span>(<span class="ident">Extension::Capabilities</span>(<span class="ident">CapabilitiesExtension::new</span>(
                 <span class="prelude-val">None</span>,
                 <span class="prelude-val">Some</span>(<span class="ident">ciphersuites</span>),
+                <span class="prelude-val">None</span>,
                 <span class="prelude-val">None</span>,
             ))),
         };

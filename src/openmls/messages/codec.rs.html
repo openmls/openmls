@@ -156,6 +156,12 @@
 <span id="156">156</span>
 <span id="157">157</span>
 <span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Codec implementations for message structs.</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
@@ -291,7 +297,7 @@
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Deserialize</span> <span class="kw">for</span> <span class="ident">Proposal</span> {
     <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">proposal_type</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">ProposalType::try_from</span>(<span class="ident">u8::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>) {
+        <span class="kw">let</span> <span class="ident">proposal_type</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">ProposalType::try_from</span>(<span class="ident">u16::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>) {
             <span class="prelude-val">Ok</span>(<span class="ident">proposal_type</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">proposal_type</span>,
             <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::DecodingError</span>(<span class="macro">format!</span>(
@@ -308,9 +314,15 @@
                 <span class="ident">PreSharedKeyProposal::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>,
             )),
             <span class="ident">ProposalType::Reinit</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Proposal::ReInit</span>(<span class="ident">ReInitProposal::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>)),
-            <span class="ident">ProposalType::ExternalInit</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">todo!</span>(),
-            <span class="ident">ProposalType::AppAck</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">todo!</span>(),
-            <span class="ident">ProposalType::GroupContextExtensions</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">todo!</span>(),
+            <span class="ident">ProposalType::ExternalInit</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::DecodingError</span>(
+                <span class="string">&quot;External Init is not supported yet in OpenMLS.&quot;</span>.<span class="ident">to_string</span>(),
+            )),
+            <span class="ident">ProposalType::AppAck</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::DecodingError</span>(
+                <span class="string">&quot;App ack is not supported yet in OpenMLS.&quot;</span>.<span class="ident">to_string</span>(),
+            )),
+            <span class="ident">ProposalType::GroupContextExtensions</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Proposal::GroupContextExtensions</span>(
+                <span class="ident">GroupContextExtensionProposal::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>,
+            )),
         }
     }
 }

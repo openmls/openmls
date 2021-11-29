@@ -116,6 +116,16 @@
 <span id="116">116</span>
 <span id="117">117</span>
 <span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Capabilities Extension</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! &gt; Key Package Extension</span>
@@ -139,12 +149,14 @@
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">CapabilitiesExtensionError</span>, <span class="ident">Deserialize</span>, <span class="ident">ExtensionType</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite::CiphersuiteName</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config</span>::{<span class="ident">Config</span>, <span class="ident">ProtocolVersion</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::proposals::ProposalType</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsSerialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CapabilitiesExtension</span> {
     <span class="ident">versions</span>: <span class="ident">TlsVecU8</span><span class="op">&lt;</span><span class="ident">ProtocolVersion</span><span class="op">&gt;</span>,
     <span class="ident">ciphersuites</span>: <span class="ident">TlsVecU8</span><span class="op">&lt;</span><span class="ident">CiphersuiteName</span><span class="op">&gt;</span>,
     <span class="ident">extensions</span>: <span class="ident">TlsVecU8</span><span class="op">&lt;</span><span class="ident">ExtensionType</span><span class="op">&gt;</span>,
+    <span class="ident">proposals</span>: <span class="ident">TlsVecU8</span><span class="op">&lt;</span><span class="ident">ProposalType</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">CapabilitiesExtension</span> {
@@ -153,6 +165,7 @@
             <span class="ident">versions</span>: <span class="ident">Config::supported_versions</span>().<span class="ident">into</span>(),
             <span class="ident">ciphersuites</span>: <span class="ident">Config::supported_ciphersuite_names</span>().<span class="ident">into</span>(),
             <span class="ident">extensions</span>: <span class="ident">Config::supported_extensions</span>().<span class="ident">into</span>(),
+            <span class="ident">proposals</span>: <span class="ident">Config::supported_proposals</span>().<span class="ident">into</span>(),
         }
     }
 }
@@ -165,6 +178,7 @@
         <span class="ident">versions</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">ProtocolVersion</span>]<span class="op">&gt;</span>,
         <span class="ident">ciphersuites</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">CiphersuiteName</span>]<span class="op">&gt;</span>,
         <span class="ident">extensions</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">ExtensionType</span>]<span class="op">&gt;</span>,
+        <span class="ident">proposals</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">ProposalType</span>]<span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">versions</span>: <span class="kw">match</span> <span class="ident">versions</span> {
@@ -178,6 +192,10 @@
             <span class="ident">extensions</span>: <span class="kw">match</span> <span class="ident">extensions</span> {
                 <span class="prelude-val">Some</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">into</span>(),
                 <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Config::supported_extensions</span>().<span class="ident">into</span>(),
+            },
+            <span class="ident">proposals</span>: <span class="kw">match</span> <span class="ident">proposals</span> {
+                <span class="prelude-val">Some</span>(<span class="ident">p</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">p</span>.<span class="ident">into</span>(),
+                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Config::supported_proposals</span>().<span class="ident">into</span>(),
             },
         }
     }
@@ -226,11 +244,13 @@
         }
 
         <span class="kw">let</span> <span class="ident">extensions</span> <span class="op">=</span> <span class="ident">TlsVecU8::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">proposals</span> <span class="op">=</span> <span class="ident">TlsVecU8::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
             <span class="ident">versions</span>,
             <span class="ident">ciphersuites</span>,
             <span class="ident">extensions</span>,
+            <span class="ident">proposals</span>,
         })
     }
 }
