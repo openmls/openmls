@@ -12,7 +12,7 @@
 #[cfg(any(feature = "test-utils", test))]
 pub mod kat_treemath;
 
-pub mod diff;
+pub(crate) mod diff;
 pub(crate) mod tree;
 
 pub(super) mod treemath;

@@ -1,8 +1,5 @@
 //! This module defines the binary tree implementation used by OpenMLS.
 
-/// FIXME: Allowing dead code until there's an actual consumer for the binary
-/// tree API.
-#[allow(dead_code)]
 pub(crate) mod array_representation;
 
 #[cfg(test)]
@@ -20,8 +17,8 @@ pub(crate) type MlsBinaryTree<Node> = ABinaryTree<Node>;
 pub(crate) type MlsBinaryTreeDiff<'a, Node> = AbDiff<'a, Node>;
 pub(crate) type StagedMlsBinaryTreeDiff<Node> = StagedAbDiff<Node>;
 
-pub(crate) type MlsBinaryTreeError = ABinaryTreeError;
-pub(crate) type MlsBinaryTreeDiffError = ABinaryTreeDiffError;
+pub type MlsBinaryTreeError = ABinaryTreeError;
+pub type MlsBinaryTreeDiffError = ABinaryTreeDiffError;
 
 pub type LeafIndex = u32;
 
