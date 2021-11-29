@@ -293,7 +293,7 @@ impl MlsCiphertext {
         Ok(buffer.to_vec())
     }
 
-    /// Returns the `group_id` in the `MlsCiphertext`.
+    /// Get the `group_id` in the `MlsCiphertext`.
     pub fn group_id(&self) -> &GroupId {
         &self.group_id
     }
@@ -303,14 +303,21 @@ impl MlsCiphertext {
         self.ciphertext.as_slice()
     }
 
-    /// Returns the `epoch` in the `MlsCiphertext`.
+    /// Get the `epoch` in the `MlsCiphertext`.
     pub fn epoch(&self) -> GroupEpoch {
         self.epoch
     }
 
+    /// Set the wire format.
     #[cfg(test)]
     pub(super) fn set_wire_format(&mut self, wire_format: WireFormat) {
         self.wire_format = wire_format;
+    }
+
+    /// Set the ciphertext.
+    #[cfg(test)]
+    pub fn set_ciphertext(&mut self, ciphertext: Vec<u8>) {
+        self.ciphertext = ciphertext.into();
     }
 }
 

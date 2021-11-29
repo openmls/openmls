@@ -567,6 +567,12 @@ impl VerifiableMlsPlaintext {
         &self.tbs.sender
     }
 
+    /// Set the sender.
+    #[cfg(test)]
+    pub(crate) fn set_sender(&mut self, sender: Sender) {
+        self.tbs.sender = sender;
+    }
+
     /// Get the sender index as [`LeafIndex`].
     pub(crate) fn sender_index(&self) -> LeafIndex {
         self.tbs.sender.sender
@@ -593,9 +599,15 @@ impl VerifiableMlsPlaintext {
         self.tbs.serialized_context.is_some()
     }
 
-    /// Get the epoch of the message.
+    /// Get the epoch.
     pub fn epoch(&self) -> GroupEpoch {
         self.tbs.epoch()
+    }
+
+    /// Set the epoch.
+    #[cfg(test)]
+    pub(crate) fn set_epoch(&mut self, epoch: GroupEpoch) {
+        self.tbs.epoch = epoch;
     }
 
     /// Get the underlying MlsPlaintext data of the tbs object.
@@ -614,17 +626,20 @@ impl VerifiableMlsPlaintext {
         self.membership_tag.is_some()
     }
 
+    /// Get the membership tag.
     pub(crate) fn membership_tag(&self) -> &Option<MembershipTag> {
         &self.membership_tag
     }
 
+    /// Set the membership tag.
     #[cfg(test)]
-    pub(super) fn set_membership_tag_test(&mut self, tag: MembershipTag) {
+    pub fn set_membership_tag(&mut self, tag: MembershipTag) {
         self.membership_tag = Some(tag);
     }
 
+    /// Unset the membership tag.
     #[cfg(test)]
-    pub(super) fn unset_membership_tag(&mut self) {
+    pub fn unset_membership_tag(&mut self) {
         self.membership_tag = None;
     }
 
@@ -638,9 +653,38 @@ impl VerifiableMlsPlaintext {
         self.confirmation_tag.as_ref()
     }
 
+    /// Set the confirmation tag.
+    #[cfg(test)]
+    pub fn set_confirmation_tag(&mut self, confirmation_tag: Option<ConfirmationTag>) {
+        self.confirmation_tag = confirmation_tag;
+    }
+
     /// Get the content type
     pub fn content_type(&self) -> ContentType {
         self.tbs.content_type
+    }
+
+    /// Set the content type.
+    #[cfg(test)]
+    pub(crate) fn set_content_type(&mut self, content_type: ContentType) {
+        self.tbs.content_type = content_type;
+    }
+
+    /// Set the content.
+    #[cfg(test)]
+    pub(crate) fn set_content(&mut self, content: MlsPlaintextContentType) {
+        self.tbs.payload = content;
+    }
+
+    /// Get the signature.
+    pub fn signature(&self) -> &Signature {
+        &self.signature
+    }
+
+    /// Set the signature.
+    #[cfg(test)]
+    pub(crate) fn set_signature(&mut self, signature: Signature) {
+        self.signature = signature;
     }
 }
 

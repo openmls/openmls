@@ -209,6 +209,12 @@ impl ManagedGroup {
     pub fn print_tree(&self, message: &str) {
         _print_tree(&self.group.tree(), message)
     }
+
+    /// Get the underlying [MlsGroup].
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn group(&self) -> &MlsGroup {
+        &self.group
+    }
 }
 
 // Private methods of ManagedGroup

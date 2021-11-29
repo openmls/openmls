@@ -102,3 +102,10 @@ impl From<VerifiableMlsPlaintext> for MlsMessageIn {
         MlsMessageIn::Plaintext(plaintext)
     }
 }
+
+#[cfg(any(feature = "test-utils", test))]
+impl From<MlsCiphertext> for MlsMessageIn {
+    fn from(ciphertext: MlsCiphertext) -> Self {
+        MlsMessageIn::Ciphertext(ciphertext)
+    }
+}
