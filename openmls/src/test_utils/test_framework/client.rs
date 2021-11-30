@@ -6,7 +6,7 @@ use std::{cell::RefCell, collections::HashMap};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 
-use crate::{framing::MlsMessageIn, node::Node, prelude::*};
+use crate::{framing::MlsMessageIn, prelude::*, tree::node::Node};
 
 use super::{errors::ClientError, ActionType};
 

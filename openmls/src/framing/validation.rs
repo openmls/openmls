@@ -1,4 +1,5 @@
 //! # Validation steps for incoming messages
+//!
 //! ```text
 //! parse_message(MlsMessageIn) -> UnverifiedMessage
 //!

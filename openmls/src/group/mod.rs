@@ -22,8 +22,8 @@ use openmls_traits::OpenMlsCryptoProvider;
 pub(crate) use serde::{Deserialize, Serialize};
 
 pub use errors::{
-    CreateCommitError, ExporterError, FramingValidationError, MlsGroupError, StageCommitError,
-    WelcomeError,
+    CreateCommitError, ExporterError, FramingValidationError, MlsGroupError,
+    ProposalValidationError, StageCommitError, WelcomeError,
 };
 pub use group_context::*;
 pub use managed_group::*;

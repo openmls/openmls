@@ -44,6 +44,7 @@ impl<T> SignedStruct<T> for Signature {
 
 impl SignatureKeypair {
     /// Construct new [SignatureKeypair] from a private and a public key
+    #[cfg(test)]
     pub fn from_keys(private_key: SignaturePrivateKey, public_key: SignaturePublicKey) -> Self {
         Self {
             private_key,

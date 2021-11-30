@@ -1,6 +1,5 @@
+use crate::error::ErrorString;
 use mls_group::{create_commit_params::CreateCommitParams, proposals::StagedProposal};
-
-use crate::prelude::ErrorString;
 
 use super::*;
 
