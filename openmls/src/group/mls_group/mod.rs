@@ -4,6 +4,7 @@ use psk::{PreSharedKeys, PskSecret};
 pub mod create_commit;
 pub mod create_commit_params;
 mod new_from_welcome;
+pub mod process;
 pub mod proposals;
 pub mod staged_commit;
 #[cfg(test)]
@@ -14,9 +15,10 @@ mod test_duplicate_extension;
 mod test_mls_group;
 #[cfg(test)]
 mod test_proposals;
+pub mod validation;
 
 use crate::ciphersuite::signable::{Signable, Verifiable};
-use crate::config::Config;
+use crate::config::{check_required_capabilities_support, Config};
 use crate::credentials::{CredentialBundle, CredentialError};
 use crate::framing::*;
 use crate::group::*;
@@ -39,7 +41,9 @@ use std::io::{Error, Read, Write};
 use std::cell::RefMut;
 use tls_codec::Serialize as TlsSerializeTrait;
 
-use super::errors::{ExporterError, MlsGroupError, PskError};
+use super::errors::{
+    ExporterError, FramingValidationError, MlsGroupError, ProposalValidationError, PskError,
+};
 
 pub type CreateCommitResult =
     Result<(MlsPlaintext, Option<Welcome>, Option<KeyPackageBundle>), MlsGroupError>;
@@ -72,43 +76,88 @@ implement_persistence!(
     mls_version
 );
 
-/// Public `MlsGroup` functions.
-impl MlsGroup {
-    pub fn new(
-        id: &[u8],
-        ciphersuite_name: CiphersuiteName,
-        backend: &impl OpenMlsCryptoProvider,
-        key_package_bundle: KeyPackageBundle,
-        config: MlsGroupConfig,
-        psk_option: impl Into<Option<PskSecret>>,
-        version: impl Into<Option<ProtocolVersion>>,
-    ) -> Result<Self, MlsGroupError> {
-        debug!("Created group {:x?}", id);
-        trace!(" >>> with {:?}, {:?}", ciphersuite_name, config);
-        let group_id = GroupId { value: id.into() };
-        let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
-        let tree = RatchetTree::new(backend, key_package_bundle);
-        // TODO #483: Implement extensions
-        let extensions: Vec<Extension> = Vec::new();
+/// Builder for [`MlsGroup`].
+pub struct MlsGroupBuilder {
+    key_package_bundle: KeyPackageBundle,
+    group_id: GroupId,
+    config: Option<MlsGroupConfig>,
+    psk: Option<PskSecret>,
+    version: Option<ProtocolVersion>,
+    required_capabilities: Option<RequiredCapabilitiesExtension>,
+}
+
+impl MlsGroupBuilder {
+    /// Create a new [`MlsGroupBuilder`].
+    pub fn new(group_id: GroupId, key_package_bundle: KeyPackageBundle) -> Self {
+        Self {
+            key_package_bundle,
+            group_id,
+            config: None,
+            psk: None,
+            version: None,
+            required_capabilities: None,
+        }
+    }
+    /// Set the [`MlsGroupConfig`] of the [`MlsGroup`].
+    pub fn with_config(mut self, config: MlsGroupConfig) -> Self {
+        self.config = Some(config);
+        self
+    }
+    /// Set the [`PskSecret`] of the [`MlsGroup`].
+    pub fn with_psk(mut self, psk: PskSecret) -> Self {
+        self.psk = Some(psk);
+        self
+    }
+    /// Set the [`ProtocolVersion`] of the [`MlsGroup`].
+    pub fn with_version(mut self, version: ProtocolVersion) -> Self {
+        self.version = Some(version);
+        self
+    }
+    /// Set the [`RequiredCapabilitiesExtension`] of the [`MlsGroup`].
+    pub fn with_required_capabilities(
+        mut self,
+        required_capabilities: RequiredCapabilitiesExtension,
+    ) -> Self {
+        self.required_capabilities = Some(required_capabilities);
+        self
+    }
+
+    /// Build the [`MlsGroup`].
+    /// Any values that haven't been set in the builder are set to their default
+    /// values (which might be random).
+    ///
+    /// This function performs cryptographic operations and there requires an
+    /// [`OpenMlsCryptoProvider`].
+    pub fn build(self, backend: &impl OpenMlsCryptoProvider) -> Result<MlsGroup, MlsGroupError> {
+        let ciphersuite = self.key_package_bundle.key_package().ciphersuite();
+        let config = self.config.unwrap_or_default();
+        let required_capabilities = self.required_capabilities.unwrap_or_default();
+        let version = self.version.unwrap_or_default();
+
+        debug!("Created group {:x?}", self.group_id);
+        trace!(" >>> with {:?}, {:?}", ciphersuite, config);
+        let tree = RatchetTree::new(backend, self.key_package_bundle);
+
+        check_required_capabilities_support(&required_capabilities)?;
+        let required_capabilities = &[Extension::RequiredCapabilities(required_capabilities)];
 
         let group_context = GroupContext::create_initial_group_context(
             ciphersuite,
-            group_id,
+            self.group_id,
             tree.tree_hash(backend),
-            &extensions,
+            required_capabilities,
         )?;
         let commit_secret = tree.private_tree().commit_secret();
         // Derive an initial joiner secret based on the commit secret.
         // Derive an epoch secret from the joiner secret.
         // We use a random `InitSecret` for initialization.
-        let version = version.into().unwrap_or_default();
         let joiner_secret = JoinerSecret::new(
             backend,
             commit_secret,
             &InitSecret::random(ciphersuite, backend, version),
         );
 
-        let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_option);
+        let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, self.psk);
         key_schedule.add_context(backend, &group_context)?;
         let epoch_secrets = key_schedule.epoch_secrets(backend, true)?;
 
@@ -116,6 +165,7 @@ impl MlsGroup {
             .encryption_secret()
             .create_secret_tree(LeafIndex::from(1u32));
         let interim_transcript_hash = vec![];
+
         Ok(MlsGroup {
             ciphersuite,
             group_context,
@@ -126,6 +176,14 @@ impl MlsGroup {
             use_ratchet_tree_extension: config.add_ratchet_tree_extension,
             mls_version: version,
         })
+    }
+}
+
+/// Public [`MlsGroup`] functions.
+impl MlsGroup {
+    /// Get a builder for [`MlsGroup`].
+    pub fn builder(group_id: GroupId, key_package_bundle: KeyPackageBundle) -> MlsGroupBuilder {
+        MlsGroupBuilder::new(group_id, key_package_bundle)
     }
 
     // Join a group from a welcome message
@@ -155,11 +213,11 @@ impl MlsGroup {
     pub fn create_add_proposal(
         &self,
         framing_parameters: FramingParameters,
-
         credential_bundle: &CredentialBundle,
         joiner_key_package: KeyPackage,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsPlaintext, MlsGroupError> {
+        joiner_key_package.validate_required_capabilities(self.required_capabilities())?;
         let add_proposal = AddProposal {
             key_package: joiner_key_package,
         };
@@ -241,6 +299,45 @@ impl MlsGroup {
     ) -> Result<MlsPlaintext, MlsGroupError> {
         let presharedkey_proposal = PreSharedKeyProposal::new(psk);
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
+        MlsPlaintext::new_proposal(
+            framing_parameters,
+            self.sender_index(),
+            proposal,
+            credential_bundle,
+            self.context(),
+            self.epoch_secrets().membership_key(),
+            backend,
+        )
+        .map_err(|e| e.into())
+    }
+
+    /// Create a `GroupContextExtensions` proposal.
+    pub fn create_group_context_ext_proposal(
+        &self,
+        framing_parameters: FramingParameters,
+        credential_bundle: &CredentialBundle,
+        extensions: &[Extension],
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<MlsPlaintext, MlsGroupError> {
+        // Ensure that the group supports all the extensions that are wanted.
+        let required_extension = extensions
+            .iter()
+            .find(|extension| extension.extension_type() == ExtensionType::RequiredCapabilities);
+        if let Some(required_extension) = required_extension {
+            let required_capabilities = required_extension.as_required_capabilities_extension()?;
+            // Ensure we support all the capabilities.
+            check_required_capabilities_support(required_capabilities)?;
+            self.tree()
+                .own_key_package()
+                .validate_required_capabilities(required_capabilities)?;
+            // Ensure that all other key packages support all the required
+            // extensions as well.
+            for key_package in self.tree().key_packages() {
+                key_package.check_extension_support(required_capabilities.extensions())?;
+            }
+        }
+        let proposal = GroupContextExtensionProposal::new(extensions);
+        let proposal = Proposal::GroupContextExtensions(proposal);
         MlsPlaintext::new_proposal(
             framing_parameters,
             self.sender_index(),
@@ -413,15 +510,20 @@ impl MlsGroup {
     /// Get the groups extensions.
     /// Right now this is limited to the ratchet tree extension which is built
     /// on the fly when calling this function.
-    pub fn extensions(&self) -> Vec<Extension> {
-        let extensions: Vec<Extension> = if self.use_ratchet_tree_extension {
-            vec![Extension::RatchetTree(RatchetTreeExtension::new(
-                self.tree().public_key_tree_copy(),
-            ))]
-        } else {
-            Vec::new()
-        };
-        extensions
+    pub fn other_extensions(&self) -> Vec<Extension> {
+        vec![Extension::RatchetTree(RatchetTreeExtension::new(
+            self.tree().public_key_tree_copy(),
+        ))]
+    }
+
+    /// Get the group context extensions.
+    pub fn group_context_extensions(&self) -> &[Extension] {
+        self.group_context.extensions()
+    }
+
+    /// Get the required capabilities extension of this group.
+    pub fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {
+        self.group_context.required_capabilities()
     }
 
     /// Export the `PublicGroupState`

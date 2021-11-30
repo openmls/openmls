@@ -66,28 +66,22 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     let lifetime = LifetimeExtension::default();
 
     // Let's create a group
-    let group_id = GroupId::random(&crypto);
-    let config = MlsGroupConfig::default();
-    let mut group = MlsGroup::new(
-        group_id.as_slice(),
-        ciphersuite_name,
-        &crypto,
-        key_package_bundle,
-        config,
-        None,
-        ProtocolVersion::default(),
-    )
-    .unwrap();
+    let mut group = MlsGroup::builder(GroupId::random(&crypto), key_package_bundle)
+        .build(&crypto)
+        .expect("Could not create group.");
 
     let ratchet_tree = group.tree().public_key_tree_copy();
 
     // We can't easily get a "natural" GroupInfo, so we just create one here.
     let group_info = GroupInfoPayload::new(
-        group_id.clone(),
+        group.group_id().clone(),
         GroupEpoch(0),
         crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
         crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
-        vec![Extension::RatchetTree(RatchetTreeExtension::new(
+        &[Extension::RequiredCapabilities(
+            RequiredCapabilitiesExtension::default(),
+        )],
+        &[Extension::RatchetTree(RatchetTreeExtension::new(
             ratchet_tree.clone(),
         ))],
         ConfirmationTag(Mac {
@@ -132,7 +126,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
 
     let psk_proposal = PreSharedKeyProposal::new(psk_id);
     let reinit_proposal = ReInitProposal {
-        group_id,
+        group_id: group.group_id().clone(),
         version: ProtocolVersion::Mls10,
         ciphersuite: ciphersuite_name,
         extensions: vec![Extension::RatchetTree(RatchetTreeExtension::new(

@@ -15,6 +15,7 @@ implement_error! {
             InvalidSignature = "The key package signature is not valid.",
             LibraryError = "An unknown OpenMLS library error occurred.",
             DuplicateExtension = "Duplicate extensions are not allowed.",
+            UnsupportedExtension = "The key package does not support all required extensions.",
             NoCiphersuitesSupplied = "Creating a new key package requires at least one ciphersuite.",
             CiphersuiteMismatch = "The list of ciphersuites is not consistent with the capabilities extension.",
             CiphersuiteSignatureSchemeMismatch = "The ciphersuite does not match the signature scheme.",

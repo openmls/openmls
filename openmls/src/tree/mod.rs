@@ -26,7 +26,7 @@ use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::HpkeCiphertext;
 use openmls_traits::OpenMlsCryptoProvider;
 use private_tree::PrivateTree;
-use tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
 use crate::schedule::{CommitSecret, PreSharedKeys};
 pub(crate) use serde::{
@@ -173,6 +173,19 @@ impl RatchetTree {
         treemath::leaf_count(self.tree_size())
     }
 
+    /// Returns an iterator over references to key packages of non-blank leaf nodes
+    pub fn key_packages(&self) -> impl Iterator<Item = &KeyPackage> {
+        self.nodes.iter().filter_map(|node| node.key_package())
+    }
+
+    /// Returns an iterator over indexes and references to key packages of non-blank leaf nodes
+    pub fn indexed_key_packages(&self) -> impl Iterator<Item = (NodeIndex, &KeyPackage)> {
+        self.nodes.iter().enumerate().filter_map(|(index, node)| {
+            node.key_package()
+                .map(|key_package| (NodeIndex::from(index), key_package))
+        })
+    }
+
     /// Compute the resolution for a given node index. Leaves listed in the
     /// `exclusion_list` are subtracted from the final resolution.
     fn resolve(&self, index: NodeIndex, exclusion_list: &HashSet<&LeafIndex>) -> Vec<NodeIndex> {
@@ -265,6 +278,10 @@ impl RatchetTree {
     /// > intermediate nodes in the path above the leaf. The path is ordered
     /// > from the closest node to the leaf to the root; each node MUST be the
     /// > parent of its predecessor.
+    /// This function does the following checks:
+    ///  - ValSem202
+    ///  - ValSem203
+    ///  - ValSem204
     pub(crate) fn update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -284,6 +301,11 @@ impl RatchetTree {
             .expect("update_path: Error when computing direct path.");
         let sender_co_path = treemath::copath(sender, self.leaf_count())
             .expect("update_path: Error when computing copath.");
+
+        // ValSem202
+        if sender_direct_path.len() != update_path.nodes.len() {
+            return Err(TreeError::InvalidUpdatePath);
+        }
 
         // Find the position of the common ancestor in the sender's direct path
         let common_ancestor_sender_dirpath_index = &sender_direct_path
@@ -360,6 +382,7 @@ impl RatchetTree {
         );
 
         // Decrypt the secret and derive path secrets
+        // ValSem203
         let secret_bytes = backend
             .crypto()
             .hpke_open(
@@ -391,6 +414,7 @@ impl RatchetTree {
         let (_, common_public_keys) =
             update_path_public_keys.split_at(update_path_public_keys.len() - common_path.len());
 
+        // ValSem204
         if new_path_public_keys != common_public_keys {
             return Err(TreeError::InvalidUpdatePath);
         }

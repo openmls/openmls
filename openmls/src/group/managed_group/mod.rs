@@ -206,6 +206,12 @@ impl ManagedGroup {
     pub fn print_tree(&self, message: &str) {
         _print_tree(&self.group.tree(), message)
     }
+
+    /// Get the underlying [MlsGroup].
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn group(&self) -> &MlsGroup {
+        &self.group
+    }
 }
 
 // Private methods of ManagedGroup
@@ -264,6 +270,9 @@ impl ManagedGroup {
             Proposal::Update(_) => {}
             Proposal::PreSharedKey(_) => {}
             Proposal::ReInit(_) => {}
+            Proposal::ExternalInit(_) => unimplemented!("See #556"),
+            Proposal::AppAck(_) => unimplemented!("See #291"),
+            Proposal::GroupContextExtensions(_) => {}
         }
         true
     }

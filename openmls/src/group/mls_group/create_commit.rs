@@ -37,6 +37,13 @@ impl MlsGroup {
             self.tree().leaf_count(),
         )?;
 
+        // TODO: #581 Filter proposals by support
+        // 11.2:
+        // Proposals with a non-default proposal type MUST NOT be included in a commit
+        // unless the proposal type is supported by all the members of the group that will
+        // process the Commit (i.e., not including any members being added or removed by
+        // the Commit).
+
         let proposal_reference_list = proposal_queue.commit_list();
 
         let sender_index = self.sender_index();
@@ -104,16 +111,14 @@ impl MlsGroup {
         // Calculate tree hash
         let tree_hash = provisional_tree.tree_hash(backend);
 
-        // TODO #483: Implement extensions
-        let extensions: Vec<Extension> = Vec::new();
-
         // Calculate group context
+        println!("create commit ext: {:?}", self.group_context.extensions());
         let provisional_group_context = GroupContext::new(
             self.group_context.group_id.clone(),
             provisional_epoch,
             tree_hash.clone(),
             confirmed_transcript_hash.clone(),
-            &extensions,
+            self.group_context.extensions(),
         )?;
 
         let joiner_secret = JoinerSecret::new(
@@ -169,7 +174,7 @@ impl MlsGroup {
         // Check if new members were added an create welcome message
         if !plaintext_secrets.is_empty() {
             // Create the ratchet tree extension if necessary
-            let extensions: Vec<Extension> = if self.use_ratchet_tree_extension {
+            let other_extensions: Vec<Extension> = if self.use_ratchet_tree_extension {
                 vec![Extension::RatchetTree(RatchetTreeExtension::new(
                     provisional_tree.public_key_tree_copy(),
                 ))]
@@ -182,7 +187,8 @@ impl MlsGroup {
                 provisional_group_context.epoch,
                 tree_hash,
                 confirmed_transcript_hash,
-                extensions,
+                self.group_context_extensions(),
+                &other_extensions,
                 confirmation_tag,
                 sender_index,
             );

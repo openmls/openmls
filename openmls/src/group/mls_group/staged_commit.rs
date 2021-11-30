@@ -1,4 +1,7 @@
-use super::proposals::{ProposalStore, StagedProposal, StagedProposalQueue};
+use super::proposals::{
+    ProposalStore, StagedAddProposal, StagedProposalQueue, StagedPskProposal, StagedRemoveProposal,
+    StagedUpdateProposal,
+};
 use super::*;
 use core::fmt::Debug;
 
@@ -12,6 +15,20 @@ impl MlsGroup {
     ///  - Verifies the confirmation tag/membership tag
     /// Returns a [StagedCommit] that can be inspected and later merged
     /// into the group state with [merge_commit()]
+    /// This function does the following checks:
+    ///  - ValSem100
+    ///  - ValSem101
+    ///  - ValSem102
+    ///  - ValSem103
+    ///  - ValSem104
+    ///  - ValSem105
+    ///  - ValSem106
+    ///  - ValSem107
+    ///  - ValSem108
+    ///  - ValSem109
+    ///  - ValSem110
+    ///  - ValSem201
+    ///  - ValSem205
     pub fn stage_commit(
         &mut self,
         mls_plaintext: &MlsPlaintext,
@@ -52,6 +69,23 @@ impl MlsGroup {
             *mls_plaintext.sender(),
         )
         .map_err(|_| StageCommitError::MissingProposal)?;
+
+        // Validate the staged proposals by doing the following checks:
+
+        // ValSem100
+        // ValSem101
+        // ValSem102
+        // ValSem103
+        // ValSem104
+        // ValSem105
+        // ValSem106
+        self.validate_add_proposals(&proposal_queue)?;
+        // ValSem107
+        // ValSem108
+        self.validate_remove_proposals(&proposal_queue)?;
+        // ValSem109
+        // ValSem110
+        self.validate_update_proposals(&proposal_queue)?;
 
         // Create provisional tree and apply proposals
         let mut provisional_tree = self.tree.borrow_mut();
@@ -111,6 +145,7 @@ impl MlsGroup {
             }
         } else {
             if apply_proposals_values.path_required {
+                // ValSem201
                 return Err(StageCommitError::RequiredPathNotFound.into());
             }
             &zero_commit_secret
@@ -136,15 +171,12 @@ impl MlsGroup {
             &self.interim_transcript_hash,
         )?;
 
-        // TODO #483: Implement extensions
-        let extensions: Vec<Extension> = Vec::new();
-
         let provisional_group_context = GroupContext::new(
             self.group_context.group_id.clone(),
             provisional_epoch,
             provisional_tree.tree_hash(backend),
             confirmed_transcript_hash.clone(),
-            &extensions,
+            self.group_context.extensions(),
         )?;
 
         // Create key schedule
@@ -176,6 +208,7 @@ impl MlsGroup {
         )?;
 
         // Verify confirmation tag
+        // ValSem205
         let own_confirmation_tag = provisional_epoch_secrets
             .confirmation_key()
             .tag(backend, &confirmed_transcript_hash);
@@ -255,20 +288,23 @@ pub struct StagedCommit {
 }
 
 impl StagedCommit {
-    pub fn adds(&self) -> impl Iterator<Item = &StagedProposal> {
-        self.staged_proposal_queue
-            .filtered_by_type(ProposalType::Add)
+    /// Returns the Add proposals that are covered by the Commit message as in iterator over [StagedAddProposal].
+    pub fn add_proposals(&self) -> impl Iterator<Item = StagedAddProposal> {
+        self.staged_proposal_queue.add_proposals()
     }
-    pub fn removes(&self) -> impl Iterator<Item = &StagedProposal> {
-        self.staged_proposal_queue
-            .filtered_by_type(ProposalType::Remove)
+
+    /// Returns the Remove proposals that are covered by the Commit message as in iterator over [StagedRemoveProposal].
+    pub fn remove_proposals(&self) -> impl Iterator<Item = StagedRemoveProposal> {
+        self.staged_proposal_queue.remove_proposals()
     }
-    pub fn updates(&self) -> impl Iterator<Item = &StagedProposal> {
-        self.staged_proposal_queue
-            .filtered_by_type(ProposalType::Update)
+
+    /// Returns the Update proposals that are covered by the Commit message as in iterator over [StagedUpdateProposal].
+    pub fn update_proposals(&self) -> impl Iterator<Item = StagedUpdateProposal> {
+        self.staged_proposal_queue.update_proposals()
     }
-    pub fn psks(&self) -> impl Iterator<Item = &StagedProposal> {
-        self.staged_proposal_queue
-            .filtered_by_type(ProposalType::Presharedkey)
+
+    /// Returns the PresharedKey proposals that are covered by the Commit message as in iterator over [StagedPskProposal].
+    pub fn psk_proposals(&self) -> impl Iterator<Item = StagedPskProposal> {
+        self.staged_proposal_queue.psk_proposals()
     }
 }

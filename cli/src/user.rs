@@ -271,16 +271,10 @@ impl User {
             add_ratchet_tree_extension: true,
             ..Default::default()
         };
-        let mls_group = MlsGroup::new(
-            group_id,
-            CIPHERSUITE,
-            &self.crypto,
-            kpb,
-            config,
-            None, /* Initial PSK */
-            None, /* MLS version */
-        )
-        .unwrap();
+        let mls_group = MlsGroup::builder(GroupId::random(&self.crypto), kpb)
+            .with_config(config)
+            .build(&self.crypto)
+            .unwrap();
         let group = Group {
             group_id: group_id.to_vec(),
             group_name: name.clone(),

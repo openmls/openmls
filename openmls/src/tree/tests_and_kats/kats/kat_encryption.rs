@@ -151,18 +151,10 @@ fn group(
         Vec::new(),
     )
     .unwrap();
-    let group_id = [1, 2, 3, 4];
     (
-        MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            backend,
-            key_package_bundle,
-            MlsGroupConfig::default(),
-            None, /* Initial PSK */
-            ProtocolVersion::Mls10,
-        )
-        .unwrap(),
+        MlsGroup::builder(GroupId::random(backend), key_package_bundle)
+            .build(backend)
+            .expect("Error creating MlsGroup"),
         credential_bundle,
     )
 }
@@ -189,16 +181,9 @@ fn receiver_group(
         Vec::new(),
     )
     .unwrap();
-    MlsGroup::new(
-        group_id.as_slice(),
-        ciphersuite.name(),
-        backend,
-        key_package_bundle,
-        MlsGroupConfig::default(),
-        None, /* Initial PSK */
-        ProtocolVersion::Mls10,
-    )
-    .unwrap()
+    MlsGroup::builder(group_id.clone(), key_package_bundle)
+        .build(backend)
+        .expect("Error creating MlsGroup")
 }
 
 // XXX: we could be more creative in generating these messages.

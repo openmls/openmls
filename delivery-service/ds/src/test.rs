@@ -172,16 +172,9 @@ async fn test_group() {
     let group_aad = b"MyFirstGroup AAD";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
     let group_ciphersuite = key_package_bundles[0].key_package().ciphersuite_name();
-    let mut group = MlsGroup::new(
-        group_id,
-        group_ciphersuite,
-        crypto,
-        key_package_bundles.remove(0),
-        MlsGroupConfig::default(),
-        None, /* Initial PSK */
-        None, /* MLS version */
-    )
-    .unwrap();
+    let mut group = MlsGroup::builder(GroupId::from_slice(group_id), key_package_bundles.remove(0))
+        .build(crypto)
+        .unwrap();
 
     // === Client1 invites Client2 ===
     // First we need to get the key package for Client2 from the DS.

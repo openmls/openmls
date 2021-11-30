@@ -42,10 +42,10 @@ use super::*;
 
 /// Intermediate message that can be constructed either from a plaintext message or from ciphertext message.
 /// If it it constructed from a ciphertext message, the ciphertext message is decrypted first.
-/// Does the following checks:
-/// - Confirmation tag must be present for Commit messages
-/// - Membership tag must be present for member messages, if the original incoming message was not an MlsCiphertext
-/// - Ensures application messages were originally MlsCiphertext messages
+/// This function implements the following checks:
+///  - ValSem5
+///  - ValSem7
+///  - ValSem9
 pub struct DecryptedMessage {
     plaintext: VerifiableMlsPlaintext,
 }
@@ -85,19 +85,19 @@ impl DecryptedMessage {
     // - Membership tag must be present for member messages, if the original incoming message was not an MlsCiphertext
     // - Ensures application messages were originally MlsCiphertext messages
     fn from_plaintext(plaintext: VerifiableMlsPlaintext) -> Result<Self, ValidationError> {
-        // Unless the message was encrypted, the membership tag is required when the sender is a member
+        // ValSem7
         if plaintext.sender().is_member()
             && plaintext.wire_format() != WireFormat::MlsCiphertext
             && plaintext.membership_tag().is_none()
         {
             return Err(ValidationError::MissingMembershipTag);
         }
-        // Check that if the message is a commit the confirmation tag is present
+        // ValSem9
         if plaintext.content_type() == ContentType::Commit && plaintext.confirmation_tag().is_none()
         {
             return Err(ValidationError::MissingConfirmationTag);
         }
-        // Check that application messages are always encrypted
+        // ValSem5
         if plaintext.content_type() == ContentType::Application {
             if plaintext.wire_format() != WireFormat::MlsCiphertext {
                 return Err(ValidationError::UnencryptedApplicationMessage);
@@ -122,6 +122,11 @@ impl DecryptedMessage {
     /// Returns the content type
     pub fn content_type(&self) -> ContentType {
         self.plaintext.content_type()
+    }
+
+    /// Returns the plaintext
+    pub(crate) fn plaintext(&self) -> &VerifiableMlsPlaintext {
+        &self.plaintext
     }
 }
 
@@ -180,7 +185,8 @@ pub enum UnverifiedContextMessage {
 
 impl UnverifiedContextMessage {
     /// Constructs an [UnverifiedContextMessage] from an [UnverifiedMessage] and adds the serialized group context.
-    /// If the message is a an unencrypted member message, the membership tag is verified.
+    /// This function implements the following checks:
+    ///  - ValSem8
     pub(crate) fn from_unverified_message_with_context(
         unverified_message: UnverifiedMessage,
         serialized_context: Vec<u8>,
@@ -195,7 +201,7 @@ impl UnverifiedContextMessage {
             if plaintext.wire_format() != WireFormat::MlsCiphertext {
                 // Add serialized context to plaintext
                 plaintext.set_context(serialized_context);
-                // Verify the membership tag
+                // ValSem8
                 plaintext.verify_membership(backend, membership_key)?;
             }
         }
@@ -227,6 +233,8 @@ pub struct UnverifiedMemberMessage {
 impl UnverifiedMemberMessage {
     /// Verifies the signature on an [UnverifiedMemberMessage] and returns a [VerifiedMemberMessage] if the
     /// verification is successful.
+    /// This function implements the following checks:
+    ///  - ValSem10
     pub(crate) fn into_verified(
         self,
         backend: &impl OpenMlsCryptoProvider,
@@ -235,9 +243,11 @@ impl UnverifiedMemberMessage {
         // If a signature key is provided it will be used,
         // otherwise we take the key from the credential
         let verified_member_message = if let Some(signature_public_key) = signature_key {
+            // ValSem10
             self.plaintext
                 .verify_with_key(backend, signature_public_key)
         } else {
+            // ValSem10
             self.plaintext.verify(backend, &self.credential)
         }
         .map(|plaintext| VerifiedMemberMessage { plaintext })?;
@@ -254,11 +264,14 @@ pub struct UnverifiedExternalMessage {
 impl UnverifiedExternalMessage {
     /// Verifies the signature on an [UnverifiedExternalMessage] and returns a [VerifiedExternalMessage] if the
     /// verification is successful.
+    /// This function implements the following checks:
+    ///  - ValSem10
     pub(crate) fn into_verified(
         self,
         backend: &impl OpenMlsCryptoProvider,
         signature_key: &SignaturePublicKey,
     ) -> Result<VerifiedExternalMessage, ValidationError> {
+        // ValSem10
         match self.plaintext.verify_with_key(backend, signature_key) {
             Ok(plaintext) => Ok(VerifiedExternalMessage { plaintext }),
             Err(e) => Err(e.into()),
@@ -302,6 +315,7 @@ impl VerifiedExternalMessage {
 
 /// Message that contains messages that are syntactically and semantically correct.
 /// [StagedCommit] and [StagedProposal] can be inspected for authorization purposes.
+#[derive(Debug)]
 pub enum ProcessedMessage {
     ApplicationMessage(Vec<u8>),
     ProposalMessage(Box<StagedProposal>),

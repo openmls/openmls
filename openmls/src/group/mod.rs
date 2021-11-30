@@ -21,13 +21,16 @@ use openmls_traits::random::OpenMlsRand;
 use openmls_traits::OpenMlsCryptoProvider;
 pub(crate) use serde::{Deserialize, Serialize};
 
-pub use errors::{CreateCommitError, ExporterError, MlsGroupError, StageCommitError, WelcomeError};
+pub use errors::{
+    CreateCommitError, ExporterError, FramingValidationError, MlsGroupError, StageCommitError,
+    WelcomeError,
+};
 pub use group_context::*;
 pub use managed_group::*;
 pub use mls_group::*;
 
 use tls_codec::TlsVecU32;
-use tls_codec::{Size, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize};
 
 #[derive(
     Hash, Eq, Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,

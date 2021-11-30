@@ -81,6 +81,11 @@ impl tls_codec::Size for Proposal {
                 Proposal::Remove(remove) => remove.tls_serialized_len(),
                 Proposal::PreSharedKey(pre_shared_key) => pre_shared_key.tls_serialized_len(),
                 Proposal::ReInit(re_init) => re_init.tls_serialized_len(),
+                Proposal::ExternalInit(external_init) => external_init.tls_serialized_len(),
+                Proposal::AppAck(app_ack) => app_ack.tls_serialized_len(),
+                Proposal::GroupContextExtensions(group_context_extensions) => {
+                    group_context_extensions.tls_serialized_len()
+                }
             }
     }
 }
@@ -108,13 +113,27 @@ impl tls_codec::Serialize for Proposal {
                 let written = ProposalType::Reinit.tls_serialize(writer)?;
                 reinit.tls_serialize(writer).map(|l| l + written)
             }
+            Proposal::ExternalInit(external_init) => {
+                let written = ProposalType::ExternalInit.tls_serialize(writer)?;
+                external_init.tls_serialize(writer).map(|l| l + written)
+            }
+            Proposal::AppAck(app_ack) => {
+                let written = ProposalType::AppAck.tls_serialize(writer)?;
+                app_ack.tls_serialize(writer).map(|l| l + written)
+            }
+            Proposal::GroupContextExtensions(group_context_extensions) => {
+                let written = ProposalType::GroupContextExtensions.tls_serialize(writer)?;
+                group_context_extensions
+                    .tls_serialize(writer)
+                    .map(|l| l + written)
+            }
         }
     }
 }
 
 impl tls_codec::Deserialize for Proposal {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
-        let proposal_type = match ProposalType::try_from(u8::tls_deserialize(bytes)?) {
+        let proposal_type = match ProposalType::try_from(u16::tls_deserialize(bytes)?) {
             Ok(proposal_type) => proposal_type,
             Err(e) => {
                 return Err(tls_codec::Error::DecodingError(format!(
@@ -131,6 +150,15 @@ impl tls_codec::Deserialize for Proposal {
                 PreSharedKeyProposal::tls_deserialize(bytes)?,
             )),
             ProposalType::Reinit => Ok(Proposal::ReInit(ReInitProposal::tls_deserialize(bytes)?)),
+            ProposalType::ExternalInit => Err(tls_codec::Error::DecodingError(
+                "External Init is not supported yet in OpenMLS.".to_string(),
+            )),
+            ProposalType::AppAck => Err(tls_codec::Error::DecodingError(
+                "App ack is not supported yet in OpenMLS.".to_string(),
+            )),
+            ProposalType::GroupContextExtensions => Ok(Proposal::GroupContextExtensions(
+                GroupContextExtensionProposal::tls_deserialize(bytes)?,
+            )),
         }
     }
 }
