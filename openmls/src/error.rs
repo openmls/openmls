@@ -2,8 +2,6 @@
 //!
 //! Each module has their own errors it is returning. This module will defines
 //! helper macros and functions to define OpenMLS errors.
-//!
-//! TODO: define global enum with integer error codes for FFI usage.
 
 // Macro helpers
 
@@ -164,35 +162,5 @@ impl std::fmt::Display for ErrorString {
 impl ErrorString {
     pub(crate) fn _description(&self) -> String {
         self.0.clone()
-    }
-}
-
-/// A wrapper struct for an arbitrary error payload as byte vector. This can be
-/// used when additional data is provided to the error.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ErrorPayload(Vec<u8>);
-
-impl From<Vec<u8>> for ErrorPayload {
-    fn from(v: Vec<u8>) -> Self {
-        Self(v)
-    }
-}
-impl From<&[u8]> for ErrorPayload {
-    fn from(s: &[u8]) -> Self {
-        Self(s.to_vec())
-    }
-}
-
-impl std::error::Error for ErrorPayload {}
-
-impl std::fmt::Display for ErrorPayload {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_fmt(format_args!("{:?}", self.0))
-    }
-}
-
-impl ErrorPayload {
-    pub(crate) fn _description(&self) -> String {
-        format!("{:?}", self.0.clone())
     }
 }

@@ -1,5 +1,5 @@
 //! This module contains validation functions for incoming messages
-//! as defined in https://github.com/openmls/openmls/wiki/Message-validation
+//! as defined in <https://github.com/openmls/openmls/wiki/Message-validation>
 
 use std::collections::HashSet;
 

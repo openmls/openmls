@@ -38,7 +38,7 @@ pub use capabilities_extension::CapabilitiesExtension;
 pub use errors::*;
 pub use key_package_id_extension::KeyIdExtension;
 pub use life_time_extension::LifetimeExtension;
-pub(crate) use parent_hash_extension::ParentHashExtension;
+pub use parent_hash_extension::ParentHashExtension;
 pub use ratchet_tree_extension::RatchetTreeExtension;
 pub use required_capabilities::RequiredCapabilitiesExtension;
 

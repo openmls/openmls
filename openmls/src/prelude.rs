@@ -9,7 +9,6 @@ pub use crate::group::{
     ManagedGroupError, Removal, UpdatePolicy, WireFormat,
 };
 // Errors
-pub use crate::error::ErrorString;
 pub use crate::group::errors::{CreateCommitError, MlsGroupError, StageCommitError, WelcomeError};
 
 // Indexes

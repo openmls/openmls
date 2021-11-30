@@ -7,7 +7,7 @@ impl ManagedGroup {
     /// It checks for syntactic errors and makes some semantic checks as well.
     /// If the input is a [MlsCiphertext] message, it will be decrypted.
     /// Returns an [UnverifiedMessage] that can be inspected and later processed in
-    /// [self::process_unverified_message()].
+    /// [Self::process_unverified_message()].
     pub fn parse_message(
         &mut self,
         message: MlsMessageIn,

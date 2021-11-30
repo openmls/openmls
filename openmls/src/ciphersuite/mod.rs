@@ -35,7 +35,7 @@ mod signature;
 
 pub(crate) use aead::*;
 pub use ciphersuites::*;
-pub(crate) use errors::*;
+pub use errors::*;
 pub(crate) use hpke::*;
 pub(crate) use mac::*;
 pub(crate) use reuse_guard::*;
