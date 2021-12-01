@@ -255,6 +255,7 @@
 <span id="255">255</span>
 <span id="256">256</span>
 <span id="257">257</span>
+<span id="258">258</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS Group errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -279,6 +280,7 @@
             <span class="ident">InitSecretNotFound</span> <span class="op">=</span>
                 <span class="string">&quot;Missing init secret when creating commit.&quot;</span>,
             <span class="ident">NoSignatureKey</span> <span class="op">=</span> <span class="string">&quot;No signature key was found.&quot;</span>,
+            <span class="ident">LibraryError</span> <span class="op">=</span> <span class="string">&quot;An unrecoverable error has occurred due to a bug in the implementation.&quot;</span>,
         }
         <span class="ident">Complex</span> {
             <span class="ident">MlsCiphertextError</span>(<span class="ident">MlsCiphertextError</span>) <span class="op">=</span>

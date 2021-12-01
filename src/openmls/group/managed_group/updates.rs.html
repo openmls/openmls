@@ -178,8 +178,8 @@
         <span class="comment">// the configuration</span>
         <span class="kw">let</span> <span class="ident">mls_message</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">commit</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
 
-        <span class="comment">// Since the state of the group was changed, call the auto-save function</span>
-        <span class="self">self</span>.<span class="ident">auto_save</span>();
+        <span class="comment">// Since the state of the group might be changed, arm the state flag</span>
+        <span class="self">self</span>.<span class="ident">flag_state_change</span>();
 
         <span class="prelude-val">Ok</span>((<span class="ident">mls_message</span>, <span class="ident">welcome_option</span>))
     }
@@ -222,8 +222,8 @@
 
         <span class="kw">let</span> <span class="ident">mls_message</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">update_proposal</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
 
-        <span class="comment">// Since the state of the group was changed, call the auto-save function</span>
-        <span class="self">self</span>.<span class="ident">auto_save</span>();
+        <span class="comment">// Since the state of the group might be changed, arm the state flag</span>
+        <span class="self">self</span>.<span class="ident">flag_state_change</span>();
 
         <span class="prelude-val">Ok</span>(<span class="ident">mls_message</span>)
     }
