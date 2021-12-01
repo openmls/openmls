@@ -5,6 +5,16 @@ use crate::{
     prelude::KeyPackage,
 };
 
+#[cfg(test)]
+use openmls_traits::OpenMlsCryptoProvider;
+
+#[cfg(test)]
+use crate::{
+    ciphersuite::Ciphersuite,
+    credentials::{CredentialBundle, CredentialType::Basic},
+    key_packages::KeyPackageBundle,
+};
+
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct LeafNode {
     key_package: KeyPackage,
@@ -26,6 +36,30 @@ impl LeafNode {
 
     pub(crate) fn key_package(&self) -> &KeyPackage {
         &self.key_package
+    }
+
+    #[cfg(test)]
+    pub fn random(
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+    ) -> (Self, CredentialBundle) {
+        let cb = CredentialBundle::new(
+            "test".into(),
+            Basic,
+            ciphersuite.signature_scheme(),
+            backend,
+        )
+        .expect("error creating CB");
+        let kpb = KeyPackageBundle::new(&[ciphersuite.name()], &cb, backend, vec![])
+            .expect("error creating KPB");
+        let (kp, _leaf_secret, private_key) = kpb.into_parts();
+        (
+            LeafNode {
+                key_package: kp,
+                private_key_option: Some(private_key),
+            },
+            cb,
+        )
     }
 }
 

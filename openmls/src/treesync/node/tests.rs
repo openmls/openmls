@@ -1,16 +1,14 @@
 use openmls_traits::types::HpkeKeyPair;
+use openmls_traits::OpenMlsCryptoProvider;
 
+use crate::ciphersuite::Ciphersuite;
+use crate::credentials::{CredentialBundle, CredentialType::Basic};
+use crate::messages::PathSecret;
+use crate::prelude::KeyPackageBundle;
 use crate::{
     ciphersuite::{HpkePublicKey, Secret},
+    node::ParentNode,
     prelude::ProtocolVersion,
 };
 
-#[test]
-fn test_parent_node() {
-    let backend = OpenMlsRustCrypto::default();
-    // FIXME: use the macro here.
-    for ciphersuite in Config::supported_ciphersuites() {
-        let version = ProtocolVersion::default();
-        let secret = Secret::random(ciphersuite, backend, version);
-    }
-}
+use super::leaf_node::LeafNode;

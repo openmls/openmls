@@ -11,7 +11,7 @@ use crate::{
     messages::{
         proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret, PathSecretError,
     },
-    prelude::KeyPackage,
+    prelude::{KeyPackage, ProtocolVersion},
     schedule::{CommitSecret, JoinerSecret, PreSharedKeys},
 };
 
@@ -58,6 +58,7 @@ impl TreeSync {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &'static Ciphersuite,
+        version: ProtocolVersion,
         update_path: &UpdatePath,
         sender_leaf_index: LeafIndex,
         exclusion_list: &HashSet<&LeafIndex>,
@@ -80,6 +81,7 @@ impl TreeSync {
         let path_secret = PathSecret::decrypt(
             backend,
             ciphersuite,
+            version,
             ciphertext,
             decryption_key,
             group_context,

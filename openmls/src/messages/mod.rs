@@ -2,11 +2,15 @@ use crate::ciphersuite::{signable::*, *};
 use crate::config::ProtocolVersion;
 use crate::extensions::*;
 use crate::group::*;
+use crate::prelude::LeafIndex;
 use crate::schedule::psk::PreSharedKeys;
 use crate::schedule::JoinerSecret;
-use crate::tree::{index::*, *};
+use crate::tree::UpdatePath;
 
-use openmls_traits::{types::HpkeCiphertext, OpenMlsCryptoProvider};
+use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::types::{CryptoError as CryptoTraitError, HpkeCiphertext};
+
+use openmls_traits::OpenMlsCryptoProvider;
 
 use serde::{Deserialize, Serialize};
 
@@ -210,11 +214,6 @@ pub(crate) struct GroupInfo {
 }
 
 impl GroupInfo {
-    /// Get the tree hash as byte slice.
-    pub(crate) fn tree_hash(&self) -> &[u8] {
-        self.payload.tree_hash.as_slice()
-    }
-
     /// Get the signer index.
     pub(crate) fn signer_index(&self) -> LeafIndex {
         self.payload.signer_index
@@ -243,6 +242,11 @@ impl GroupInfo {
     /// Get the extensions.
     pub(crate) fn extensions(&self) -> &[Extension] {
         self.payload.extensions.as_slice()
+    }
+
+    /// Get the tree hash.
+    pub(crate) fn tree_hash(&self) -> &[u8] {
+        self.payload.tree_hash.as_slice()
     }
 
     /// Set the group info's extensions.
@@ -296,6 +300,86 @@ pub struct PathSecret {
 impl From<Secret> for PathSecret {
     fn from(path_secret: Secret) -> Self {
         Self { path_secret }
+    }
+}
+
+impl PathSecret {
+    /// Derives a node secret which in turn is used to derive an HpkeKeyPair.
+    pub(crate) fn derive_key_pair(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+    ) -> Result<(HpkePublicKey, HpkePrivateKey), CryptoError> {
+        let node_secret =
+            self.path_secret
+                .kdf_expand_label(backend, "node", &[], ciphersuite.hash_length())?;
+        let key_pair = backend
+            .crypto()
+            .derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice());
+
+        Ok((
+            HpkePublicKey::from(key_pair.public),
+            HpkePrivateKey::from(key_pair.private),
+        ))
+    }
+
+    /// Derives a path secret.
+    pub(crate) fn derive_path_secret(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+    ) -> Result<Self, PathSecretError> {
+        let path_secret =
+            self.path_secret
+                .kdf_expand_label(backend, "path", &[], ciphersuite.hash_length())?;
+        Ok(Self { path_secret })
+    }
+
+    pub(crate) fn encrypt(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+        public_key: &HpkePublicKey,
+        group_context: &[u8],
+    ) -> HpkeCiphertext {
+        backend.crypto().hpke_seal(
+            ciphersuite.hpke_config(),
+            public_key.as_slice(),
+            group_context,
+            &[],
+            self.path_secret.as_slice(),
+        )
+    }
+
+    /// This is used to turn the path secret into a commit secret.
+    pub(crate) fn secret(self) -> Secret {
+        self.path_secret
+    }
+
+    pub(crate) fn decrypt(
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &'static Ciphersuite,
+        version: ProtocolVersion,
+        ciphertext: &HpkeCiphertext,
+        private_key: &HpkePrivateKey,
+        group_context: &[u8],
+    ) -> Result<PathSecret, PathSecretError> {
+        let secret_bytes = backend.crypto().hpke_open(
+            ciphersuite.hpke_config(),
+            ciphertext,
+            private_key.as_slice(),
+            group_context,
+            &[],
+        )?;
+        let path_secret = Secret::from_slice(&secret_bytes, version, ciphersuite);
+        Ok(Self { path_secret })
+    }
+}
+
+implement_error! {
+    pub enum PathSecretError {
+        DecryptionError(CryptoTraitError) = "Error decrypting PathSecret.",
+        DerivationError(CryptoError) = "Error deriving PathSecret.",
     }
 }
 

@@ -26,6 +26,7 @@
 //! [`LibraryError`](TreeSyncError::LibraryError).
 
 use std::collections::HashMap;
+use std::convert::{TryFrom, TryInto};
 
 use openmls_traits::OpenMlsCryptoProvider;
 use serde::{Deserialize, Serialize};

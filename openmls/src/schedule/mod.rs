@@ -115,7 +115,8 @@
 //! ```
 
 use crate::framing::MlsPlaintextTbmPayload;
-use crate::tree::index::LeafIndex;
+use crate::messages::PathSecret;
+use crate::prelude::LeafIndex;
 use crate::tree::secret_tree::SecretTree;
 use crate::{ciphersuite::Mac, group::GroupContext, prelude::MembershipTag};
 use crate::{
@@ -151,6 +152,14 @@ impl Default for CommitSecret {
     fn default() -> Self {
         CommitSecret {
             secret: Secret::default(),
+        }
+    }
+}
+
+impl From<PathSecret> for CommitSecret {
+    fn from(path_secret: PathSecret) -> Self {
+        CommitSecret {
+            secret: path_secret.secret(),
         }
     }
 }
@@ -548,7 +557,7 @@ impl EncryptionSecret {
     /// `EpochSecrets`. The `encryption_secret` is replaced with `None` in the
     /// process, allowing us to achieve FS.
     pub(crate) fn create_secret_tree(self, treesize: LeafIndex) -> SecretTree {
-        SecretTree::new(self, treesize)
+        SecretTree::new(self, treesize.into())
     }
 
     pub(crate) fn consume_secret(self) -> Secret {

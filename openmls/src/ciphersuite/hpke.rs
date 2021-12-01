@@ -3,7 +3,7 @@
 use super::*;
 
 /// A simple wrapper for HPKE public keys using `Vec<u8>` for (de)serializing.
-#[derive(Debug, PartialEq, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Eq, Hash, PartialEq, Clone, Default, Serialize, Deserialize)]
 pub struct HpkePublicKey {
     value: Vec<u8>,
 }

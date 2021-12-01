@@ -82,6 +82,7 @@ impl ParentNode {
             private_key_option: None,
         }
     }
+
     /// Derives a path from the given path secret, where the `node_secret` of
     /// the first node is immediately derived from the given `path_secret`.
     /// Returns the resulting vector of `ParentNode`s, as well as the

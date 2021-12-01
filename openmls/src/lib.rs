@@ -31,7 +31,10 @@ pub mod error;
 #[macro_use]
 pub mod test_utils;
 
+#[allow(dead_code)]
 mod binary_tree;
+#[allow(dead_code)]
+mod treesync;
 
 pub mod ciphersuite;
 pub mod config;
