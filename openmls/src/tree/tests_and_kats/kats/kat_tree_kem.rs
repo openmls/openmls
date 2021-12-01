@@ -1,6 +1,6 @@
 //! TreeKEM test vectors
 //!
-//! See https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md
+//! See <https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md>
 //! for more description on the test vectors.
 //!
 //! The test vector describes a tree of `n` leaves adds a new leaf with
@@ -18,9 +18,9 @@ use crate::test_utils::{read, write};
 use crate::{
     ciphersuite::signable::Signable,
     credentials::{CredentialBundle, CredentialType},
-    node::Node,
     prelude::KeyPackageBundlePayload,
     test_utils::hex_to_bytes,
+    tree::node::Node,
 };
 use crate::{
     ciphersuite::Secret,

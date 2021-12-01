@@ -1,6 +1,6 @@
 //! # Known Answer Tests for encrypting to tree nodes
 //!
-//! See https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md
+//! See <https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md>
 //! for more description on the test vectors.
 //!
 //! ## Parameters:

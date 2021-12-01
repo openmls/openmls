@@ -1,6 +1,6 @@
 //! # Known Answer Tests for the key schedule
 //!
-//! See https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md
+//! See <https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md>
 //! for more description on the test vectors.
 //!
 //! If values are not present, they are encoded as empty strings.

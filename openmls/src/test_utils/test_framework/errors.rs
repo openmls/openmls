@@ -1,4 +1,4 @@
-use crate::{group::ErrorEvent, prelude::*};
+use crate::prelude::*;
 
 #[derive(Debug)]
 pub enum SetupError {
@@ -48,7 +48,6 @@ pub enum ClientError {
     InvalidMessage(MlsGroupError),
     ManagedGroupError(ManagedGroupError),
     GroupError(MlsGroupError),
-    ErrorEvent(ErrorEvent),
     TlsCodecError(tls_codec::Error),
     KeyPackageError(KeyPackageError),
     Unknown,

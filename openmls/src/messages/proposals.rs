@@ -199,7 +199,7 @@ pub struct AddProposal {
 
 impl AddProposal {
     /// Get a reference to the key package in the proposal.
-    pub(crate) fn key_package(&self) -> &KeyPackage {
+    pub fn key_package(&self) -> &KeyPackage {
         &self.key_package
     }
 }
@@ -213,7 +213,7 @@ pub struct UpdateProposal {
 
 impl UpdateProposal {
     /// Get a reference to the key package in the proposal.
-    pub(crate) fn key_package(&self) -> &KeyPackage {
+    pub fn key_package(&self) -> &KeyPackage {
         &self.key_package
     }
 }
@@ -227,7 +227,7 @@ pub struct RemoveProposal {
 
 impl RemoveProposal {
     /// Get the `u32` index in this proposal.
-    pub(crate) fn removed(&self) -> u32 {
+    pub fn removed(&self) -> u32 {
         self.removed
     }
 }

@@ -860,18 +860,16 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         )
         .expect("Error applying commit (Alice)");
     group_alice.merge_commit(staged_commit);
-    assert!(
-        group_bob
-            .stage_commit(
-                &mls_plaintext_commit,
-                &proposal_store,
-                &[],
-                None,
-                /* PSK fetcher */ &crypto,
-            )
-            .unwrap_err()
-            == MlsGroupError::StageCommitError(StageCommitError::SelfRemoved)
-    );
+    assert!(group_bob
+        .stage_commit(
+            &mls_plaintext_commit,
+            &proposal_store,
+            &[],
+            None,
+            /* PSK fetcher */ &crypto,
+        )
+        .expect("Could not stage commit.")
+        .self_removed());
     let staged_commit = group_charlie
         .stage_commit(
             &mls_plaintext_commit,

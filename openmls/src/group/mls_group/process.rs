@@ -10,7 +10,7 @@ impl MlsGroup {
     /// It checks for syntactic errors and makes some semantic checks as well.
     /// If the input is a [MlsCiphertext] message, it will be decrypted.
     /// Returns an [UnverifiedMessage] that can be inspected and later processed in
-    /// [self::process_unverified_message()].
+    /// [Self::process_unverified_message()].
     /// Checks the following semantic validation:
     ///  - ValSem2
     ///  - ValSem3
@@ -112,9 +112,10 @@ impl MlsGroup {
 
                 Ok(match verified_member_message.plaintext().content() {
                     MlsPlaintextContentType::Application(application_message) => {
-                        ProcessedMessage::ApplicationMessage(
+                        ProcessedMessage::ApplicationMessage(ApplicationMessage::new(
                             application_message.as_slice().to_vec(),
-                        )
+                            *verified_member_message.plaintext().sender(),
+                        ))
                     }
                     MlsPlaintextContentType::Proposal(_proposal) => {
                         ProcessedMessage::ProposalMessage(Box::new(

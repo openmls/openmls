@@ -1,4 +1,4 @@
-//! Builder for [CreateCommitParams] that is used in [create_commit()]
+//! Builder for [CreateCommitParams] that is used in [MlsGroup::create_commit()]
 
 use super::{proposals::ProposalStore, *};
 

@@ -89,7 +89,7 @@ impl StagedProposal {
         })
     }
     /// Returns the `Proposal` as a reference
-    pub(crate) fn proposal(&self) -> &Proposal {
+    pub fn proposal(&self) -> &Proposal {
         &self.proposal
     }
     /// Returns the `ProposalReference`.
@@ -97,7 +97,7 @@ impl StagedProposal {
         self.proposal_reference.clone()
     }
     /// Returns the `Sender` as a reference
-    pub(crate) fn sender(&self) -> &Sender {
+    pub fn sender(&self) -> &Sender {
         &self.sender
     }
 }
@@ -180,6 +180,7 @@ impl StagedProposalQueue {
             };
             proposal_queue.add(queued_proposal);
         }
+
         Ok(proposal_queue)
     }
 

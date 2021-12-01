@@ -24,7 +24,7 @@ pub(crate) use serde::{Deserialize, Serialize};
 
 pub use errors::{
     CreateCommitError, ExporterError, FramingValidationError, InterimTranscriptHashError,
-    MlsGroupError, StageCommitError, WelcomeError,
+    MlsGroupError, ProposalValidationError, StageCommitError, WelcomeError,
 };
 pub use group_context::*;
 pub use managed_group::*;
