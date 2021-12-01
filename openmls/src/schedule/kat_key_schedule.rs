@@ -378,12 +378,8 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
             return Err(KsTestVectorError::GroupContextMismatch);
         }
 
-        let serialized_group_context = group_context
-            .tls_serialize_detached()
-            .expect("Could not serialize group context.");
-
         key_schedule
-            .add_context(&crypto, &serialized_group_context)
+            .add_context(&crypto, &group_context_serialized)
             .unwrap();
 
         let epoch_secrets = key_schedule.epoch_secrets(&crypto, true).unwrap();

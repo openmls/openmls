@@ -54,6 +54,7 @@ impl PartialEq for Secret {
 impl Secret {
     /// Randomly sample a fresh `Secret`.
     /// This default random initialiser uses the default Secret length of `hash_length`.
+    /// The function can return a [`CryptoError`] if there is insufficient randomness.
     pub(crate) fn random(
         ciphersuite: &'static Ciphersuite,
         crypto: &impl OpenMlsCryptoProvider,

@@ -366,11 +366,11 @@ impl KeySchedule {
             return Err(KeyScheduleError::InvalidState(ErrorState::NotInit));
         }
 
-        let intermediate_secret = match &self.intermediate_secret {
-            Some(intermediate_secret) => intermediate_secret,
-            // We can return a library error here, because there must be a mistake in the state machine
-            None => return Err(KeyScheduleError::LibraryError),
-        };
+        // We can return a library error here, because there must be a mistake in the state machine
+        let intermediate_secret = self
+            .intermediate_secret
+            .as_ref()
+            .ok_or(KeyScheduleError::LibraryError)?;
 
         Ok(WelcomeSecret::new(backend, intermediate_secret)?)
     }
@@ -393,11 +393,11 @@ impl KeySchedule {
         }
         self.state = State::Context;
 
-        let intermediate_secret = match self.intermediate_secret.take() {
-            Some(intermediate_secret) => intermediate_secret,
-            // We can return a library error here, because there must be a mistake in the state machine
-            None => return Err(KeyScheduleError::LibraryError),
-        };
+        // We can return a library error here, because there must be a mistake in the state machine
+        let intermediate_secret = self
+            .intermediate_secret
+            .take()
+            .ok_or(KeyScheduleError::LibraryError)?;
 
         log_crypto!(
             trace,

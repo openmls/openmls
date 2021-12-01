@@ -53,11 +53,11 @@ impl SenderRatchet {
         if generation <= self.generation {
             let window_index =
                 (self.past_secrets.len() as u32 - (self.generation - generation) - 1) as usize;
-            let secret = match self.past_secrets.get(window_index) {
-                Some(secret) => secret,
-                // We return a library error because there must be a mistake in the implementation
-                None => return Err(SecretTreeError::LibraryError),
-            };
+            // We can return a library error here, because there must be a mistake in the implementation
+            let secret = self
+                .past_secrets
+                .get(window_index)
+                .ok_or(SecretTreeError::LibraryError)?;
             let ratchet_secrets = self.derive_key_nonce(ciphersuite, backend, secret, generation);
             Ok(ratchet_secrets)
         // If generation is in the future
@@ -66,11 +66,11 @@ impl SenderRatchet {
                 if self.past_secrets.len() == OUT_OF_ORDER_TOLERANCE as usize {
                     self.past_secrets.remove(0);
                 }
-                let last_secret = match self.past_secrets.last() {
-                    Some(secret) => secret,
-                    // We return a library error because there must be a mistake in the implementation
-                    None => return Err(SecretTreeError::LibraryError),
-                };
+                // We can return a library error here, because there must be a mistake in the implementation
+                let last_secret = self
+                    .past_secrets
+                    .last()
+                    .ok_or(SecretTreeError::LibraryError)?;
                 let new_secret = self.ratchet_secret(ciphersuite, backend, last_secret);
                 self.past_secrets.push(new_secret);
                 self.generation += 1;
