@@ -56,7 +56,7 @@ impl<T: Clone + Debug> StagedAbDiff<T> {
         self.diff
     }
 
-    /// Return the size of the diff.
+    /// Return the projected size of the tree after a merge with the diff.
     pub(super) fn size(&self) -> TreeSize {
         self.size
     }
@@ -125,8 +125,10 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
             return Err(ABinaryTreeDiffError::TreeTooLarge);
         }
         let original_size = self.size();
-        self.diff.insert(original_size, parent_node);
-        self.diff.insert(original_size + 1, new_leaf);
+        let previous_parent = self.diff.insert(original_size, parent_node);
+        debug_assert!(previous_parent.is_none());
+        let previous_leaf = self.diff.insert(original_size + 1, new_leaf);
+        debug_assert!(previous_leaf.is_none());
         // Increase size
         self.size += 2;
         Ok(self.leaf_count() - 1)
@@ -152,8 +154,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         new_leaf: T,
     ) -> Result<(), ABinaryTreeDiffError> {
         let node_index = to_node_index(leaf_index);
-        self.replace_node(node_index, new_leaf)?;
-        Ok(())
+        self.replace_node(node_index, new_leaf)
     }
 
     /// Obtain a [`NodeReference`] to the leaf with the given [`LeafIndex`].
@@ -359,7 +360,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
 
     /// Returns the leaf count of the diff.
     pub(crate) fn leaf_count(&self) -> LeafIndex {
-        (self.size() + 1) / 2
+        ((self.size() - 1) / 2) + 1
     }
 
     // Functions around individual [`NodeReference`]s
@@ -505,7 +506,8 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     fn replace_node(&mut self, node_index: NodeIndex, node: T) -> Result<(), ABinaryTreeDiffError> {
         // Check that we're not out of bounds.
         self.out_of_bounds(node_index)?;
-        self.diff.insert(node_index, node);
+        let previous_entry = self.diff.insert(node_index, node);
+        debug_assert!(previous_entry.is_some());
         Ok(())
     }
 
@@ -517,20 +519,10 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         if self.size() <= 1 {
             return Err(ABinaryTreeDiffError::TreeTooSmall);
         }
-        // Then check if the tree was extended before. If so, just remove the
-        // last node from the diff.
-        if self.size() > self.original_tree.size()? {
-            let removed = self.diff.remove(&(self.size() - 1));
-            // There should be a node here to remove.
-            debug_assert!(removed.is_some());
-        } else {
-            // If that is not the case, either the tree is of the same length as
-            // the diff, or the diff is already smaller. In both cases, we check
-            // if there is a node at the right edge to remove from the diff.
-            self.diff.remove(&(self.size() - 1));
-            // Regardless of the result, we decrease the size to signal that a
-            // node was removed from the diff.
-        }
+        let removed = self.diff.remove(&(self.size() - 1));
+        // There should be a node here to remove.
+        debug_assert!(removed.is_some());
+        // We decrease the size to signal that a node was removed from the diff.
         self.size -= 1;
         Ok(())
     }
@@ -563,12 +555,12 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         let node_index_1 = to_node_index(leaf_index_1);
         let node_index_2 = to_node_index(leaf_index_2);
 
-        self.out_of_bounds(node_index_1)?;
-        self.out_of_bounds(node_index_2)?;
-
         if leaf_index_1 == leaf_index_2 {
             return Err(ABinaryTreeDiffError::SameLeafError);
         }
+
+        self.out_of_bounds(node_index_1)?;
+        self.out_of_bounds(node_index_2)?;
 
         Ok(())
     }

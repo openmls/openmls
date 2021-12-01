@@ -7,7 +7,8 @@
 //! corresponding diff. While the tree is immutable safe for merging with a
 //! diff, the diff provides an API that allows mutation of parts of the tree, as
 //! well as its navigation using node references. Please see the documentation
-//! of the contained modules for more information.
+//! of the contained modules (especially [`tree`] and [`diff`]) for more
+//! information.
 
 #[cfg(any(feature = "test-utils", test))]
 pub mod kat_treemath;
