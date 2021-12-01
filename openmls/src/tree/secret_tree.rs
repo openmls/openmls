@@ -33,7 +33,7 @@ impl From<&ContentType> for SecretType {
 
 impl From<&MlsPlaintext> for SecretType {
     fn from(mls_plaintext: &MlsPlaintext) -> SecretType {
-        SecretType::from(mls_plaintext.content_type())
+        SecretType::from(&mls_plaintext.content_type())
     }
 }
 

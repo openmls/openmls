@@ -26,7 +26,7 @@ pub struct MemberAddedEvent {
 }
 
 impl MemberAddedEvent {
-    pub(crate) fn new(aad: Vec<u8>, sender: Credential, added_member: Credential) -> Self {
+    pub(crate) fn _new(aad: Vec<u8>, sender: Credential, added_member: Credential) -> Self {
         Self {
             aad,
             sender,
@@ -59,7 +59,7 @@ pub struct MemberRemovedEvent {
 }
 
 impl MemberRemovedEvent {
-    pub(crate) fn new(aad: Vec<u8>, removal: Removal) -> Self {
+    pub(crate) fn _new(aad: Vec<u8>, removal: Removal) -> Self {
         Self { aad, removal }
     }
 
@@ -111,7 +111,7 @@ pub struct PskReceivedEvent {
 }
 
 impl PskReceivedEvent {
-    pub(crate) fn new(aad: Vec<u8>, psk_id: PreSharedKeyId) -> Self {
+    pub(crate) fn _new(aad: Vec<u8>, psk_id: PreSharedKeyId) -> Self {
         Self { aad, psk_id }
     }
 
@@ -135,7 +135,7 @@ pub struct ReInitEvent {
 }
 
 impl ReInitEvent {
-    pub(crate) fn new(aad: Vec<u8>, re_init_proposal: ReInitProposal) -> Self {
+    pub(crate) fn _new(aad: Vec<u8>, re_init_proposal: ReInitProposal) -> Self {
         Self {
             aad,
             re_init_proposal,
@@ -227,7 +227,7 @@ pub enum Removal {
 }
 
 impl Removal {
-    pub(crate) fn new(
+    pub(crate) fn _new(
         own_credential: Credential,
         remover_credential: Credential,
         leaver_credential: Credential,

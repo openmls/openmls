@@ -4,7 +4,7 @@ use tls_codec::Serialize;
 
 use crate::{
     ciphersuite::{signable::Signable, AeadNonce},
-    group::{create_commit::Proposals, GroupEpoch},
+    group::{create_commit_params::CreateCommitParams, GroupEpoch},
     messages::{Commit, ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload},
     prelude::*,
     schedule::psk::*,
@@ -240,19 +240,18 @@ fn test_update_path() {
                 &crypto,
             )
             .expect("Could not create proposal.");
-        let epoch_proposals = &[&bob_add_proposal];
+        let proposal_store = ProposalStore::from_staged_proposal(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
+                .expect("Could not create StagedProposal."),
+        );
+        let params = CreateCommitParams::builder()
+            .framing_parameters(framing_parameters)
+            .credential_bundle(&alice_credential_bundle)
+            .proposal_store(&proposal_store)
+            .force_self_update(false)
+            .build();
         let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = alice_group
-            .create_commit(
-                framing_parameters,
-                &alice_credential_bundle,
-                Proposals {
-                    proposals_by_reference: epoch_proposals,
-                    proposals_by_value: &[],
-                },
-                false,
-                None,
-                &crypto,
-            )
+            .create_commit(params, &crypto)
             .expect("Error creating commit");
 
         let commit = match mls_plaintext_commit.content() {
@@ -269,7 +268,7 @@ fn test_update_path() {
         );
 
         let staged_commit = alice_group
-            .stage_commit(&mls_plaintext_commit, epoch_proposals, &[], None, &crypto)
+            .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, &crypto)
             .expect("error staging commit");
         alice_group.merge_commit(staged_commit);
         let ratchet_tree = alice_group.tree().public_key_tree_copy();
@@ -300,19 +299,18 @@ fn test_update_path() {
                 &crypto,
             )
             .expect("Could not create proposal.");
-        let (mls_plaintext_commit, _welcome_option, _kpb_option) = group_bob
-            .create_commit(
-                framing_parameters,
-                &bob_credential_bundle,
-                Proposals {
-                    proposals_by_reference: &[&update_proposal_bob],
-                    proposals_by_value: &[],
-                },
-                false, /* force self update */
-                None,
-                &crypto,
-            )
-            .unwrap();
+        let proposal_store = ProposalStore::from_staged_proposal(
+            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, update_proposal_bob)
+                .expect("Could not create StagedProposal."),
+        );
+        let params = CreateCommitParams::builder()
+            .framing_parameters(framing_parameters)
+            .credential_bundle(&bob_credential_bundle)
+            .proposal_store(&proposal_store)
+            .force_self_update(false)
+            .build();
+        let (mls_plaintext_commit, _welcome_option, _kpb_option) =
+            group_bob.create_commit(params, &crypto).unwrap();
 
         // Now we break Alice's HPKE ciphertext in Bob's commit by breaking
         // apart the commit, manipulating the ciphertexts and the piecing it
@@ -382,13 +380,8 @@ fn test_update_path() {
             )
             .expect("Could not add membership key");
 
-        let staged_commit_res = alice_group.stage_commit(
-            &broken_plaintext,
-            &[&update_proposal_bob],
-            &[],
-            None,
-            &crypto,
-        );
+        let staged_commit_res =
+            alice_group.stage_commit(&broken_plaintext, &proposal_store, &[], None, &crypto);
         assert_eq!(
             staged_commit_res.expect_err("Successful processing of a broken commit."),
             MlsGroupError::StageCommitError(StageCommitError::DecryptionFailure(
@@ -503,28 +496,35 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
             bob_key_package.clone(),
             &crypto,
         ).expect("Could not create proposal");
-    let epoch_proposals = &[&bob_add_proposal, &psk_proposal];
+
+    let mut proposal_store = ProposalStore::from_staged_proposal(
+        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
+            .expect("Could not create StagedProposal."),
+    );
+    proposal_store.add(
+        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, psk_proposal)
+            .expect("Could not create StagedProposal."));
     log::info!(" >>> Creating commit ...");
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .force_self_update(false)
+        .psk_fetcher_option(Some(psk_fetcher))
+        .build();
     let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
         .create_commit(
-            framing_parameters,
-            &alice_credential_bundle,
-            Proposals {
-                proposals_by_reference: epoch_proposals,
-                proposals_by_value: &[],
-            },
-            false,
-            Some(psk_fetcher),
-
+            params,
             &crypto,
         )
         .expect("Error creating commit");
 
     log::info!(" >>> Staging & merging commit ...");
+
     let staged_commit = alice_group
         .stage_commit(
             &mls_plaintext_commit,
-            epoch_proposals,
+            &proposal_store,
             &[],
             Some(psk_fetcher),
             &crypto,
@@ -555,19 +555,18 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
             &crypto,
         )
         .expect("Could not create proposal.");
+    let proposal_store = ProposalStore::from_staged_proposal(
+        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, update_proposal_bob)
+            .expect("Could not create StagedProposal."),
+    );
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&bob_credential_bundle)
+        .proposal_store(&proposal_store)
+        .force_self_update(false)
+        .build();
     let (_mls_plaintext_commit, _welcome_option, _kpb_option) = group_bob
-        .create_commit(
-            framing_parameters,
-            &bob_credential_bundle,
-            Proposals {
-                proposals_by_reference: &[&update_proposal_bob],
-                proposals_by_value: &[],
-            },
-            false, /* force self update */
-            None,
-
-            &crypto,
-        )
+        .create_commit(params, &crypto)
         .unwrap();
 
 });

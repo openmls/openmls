@@ -6,7 +6,7 @@
 
 use crate::{
     ciphersuite::signable::Signable,
-    group::{create_commit::Proposals, GroupEpoch, WireFormat},
+    group::{create_commit_params::CreateCommitParams, GroupEpoch, WireFormat},
     messages::{public_group_state::VerifiablePublicGroupState, Commit, GroupInfo, GroupSecrets},
     messages::{ConfirmationTag, GroupInfoPayload},
     node::Node,
@@ -158,19 +158,16 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
             &crypto,
         )
         .unwrap();
-    let (commit_pt, welcome_option, _option_kpb) = group
-        .create_commit(
-            framing_parameters,
-            &credential_bundle,
-            Proposals {
-                proposals_by_reference: &[&add_proposal_pt],
-                proposals_by_value: &[],
-            },
-            true,
-            None,
-            &crypto,
-        )
-        .unwrap();
+
+    let proposal_store = ProposalStore::from_staged_proposal(
+        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, add_proposal_pt.clone()).unwrap(),
+    );
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&credential_bundle)
+        .proposal_store(&proposal_store)
+        .build();
+    let (commit_pt, welcome_option, _option_kpb) = group.create_commit(params, &crypto).unwrap();
     let commit = if let MlsPlaintextContentType::Commit(commit) = commit_pt.content() {
         commit.clone()
     } else {
@@ -186,7 +183,12 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
             &crypto,
         )
         .unwrap();
-    let mls_plaintext_application = group.decrypt(&mls_ciphertext_application, &crypto).unwrap();
+    let verifiable_mls_plaintext_application =
+        group.decrypt(&mls_ciphertext_application, &crypto).unwrap();
+    // Sets the context implicitly.
+    let mls_plaintext_application = group
+        .verify(verifiable_mls_plaintext_application, &crypto)
+        .unwrap();
 
     let encryption_target = match random_u32() % 3 {
         0 => commit_pt.clone(),
@@ -233,7 +235,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
 }
 
 #[test]
-fn write_test_vectors() {
+fn write_test_vectors_msg() {
     let mut tests = Vec::new();
     const NUM_TESTS: usize = 100;
 
@@ -463,7 +465,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // MlsPlaintextApplication
-    let tv_mls_plaintext_application = hex_to_bytes(&tv.mls_plaintext_application);
+    let mut tv_mls_plaintext_application = hex_to_bytes(&tv.mls_plaintext_application);
+    // Fake the wire format so we can deserialize
+    tv_mls_plaintext_application[0] = WireFormat::MlsPlaintext as u8;
     let my_mls_plaintext_application =
         VerifiableMlsPlaintext::tls_deserialize(&mut tv_mls_plaintext_application.as_slice())
             .unwrap()
@@ -480,7 +484,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // MlsPlaintext(Proposal)
-    let tv_mls_plaintext_proposal = hex_to_bytes(&tv.mls_plaintext_proposal);
+    let mut tv_mls_plaintext_proposal = hex_to_bytes(&tv.mls_plaintext_proposal);
+    // Fake the wire format so we can deserialize
+    tv_mls_plaintext_proposal[0] = WireFormat::MlsPlaintext as u8;
     let my_mls_plaintext_proposal =
         VerifiableMlsPlaintext::tls_deserialize(&mut tv_mls_plaintext_proposal.as_slice())
             .unwrap()
@@ -497,7 +503,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // MlsPlaintext(Commit)
-    let tv_mls_plaintext_commit = hex_to_bytes(&tv.mls_plaintext_commit);
+    let mut tv_mls_plaintext_commit = hex_to_bytes(&tv.mls_plaintext_commit);
+    // Fake the wire format so we can deserialize
+    tv_mls_plaintext_commit[0] = WireFormat::MlsPlaintext as u8;
     let my_mls_plaintext_commit =
         VerifiableMlsPlaintext::tls_deserialize(&mut tv_mls_plaintext_commit.as_slice())
             .unwrap()

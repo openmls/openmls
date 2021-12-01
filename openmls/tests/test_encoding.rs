@@ -1,4 +1,6 @@
-use openmls::{ciphersuite::signable::Verifiable, group::create_commit::Proposals, prelude::*};
+use openmls::{
+    ciphersuite::signable::Verifiable, group::create_commit_params::CreateCommitParams, prelude::*,
+};
 pub mod utils;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
@@ -123,12 +125,13 @@ fn test_update_proposal_encoding() {
         let update_encoded = update
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
-        let update_decoded =
+        let mut update_decoded =
             match VerifiableMlsPlaintext::tls_deserialize(&mut update_encoded.as_slice()) {
                 Ok(a) => a,
                 Err(err) => panic!("Error decoding MPLSPlaintext Update: {:?}", err),
-            }
-            .set_context(&group_state.context().tls_serialize_detached().unwrap())
+            };
+        update_decoded.set_context(group_state.context().tls_serialize_detached().unwrap());
+        let update_decoded = update_decoded
             .verify(&crypto, credential_bundle.credential())
             .expect("Error verifying MlsPlaintext");
 
@@ -180,14 +183,13 @@ fn test_add_proposal_encoding() {
         let add_encoded = add
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
-        let add_decoded =
-            match VerifiableMlsPlaintext::tls_deserialize(&mut add_encoded.as_slice()) {
-                Ok(a) => a,
-                Err(err) => panic!("Error decoding MPLSPlaintext Add: {:?}", err),
-            }
-            .set_context(&group_state.context().tls_serialize_detached().unwrap())
-            .verify(&crypto, credential_bundle.credential())
-            .expect("Error verifying MlsPlaintext");
+        let add_decoded = match VerifiableMlsPlaintext::tls_deserialize(&mut add_encoded.as_slice())
+        {
+            Ok(a) => group_state
+                .verify(a, &crypto)
+                .expect("Error verifying MlsPlaintext"),
+            Err(err) => panic!("Error decoding MPLSPlaintext Add: {:?}", err),
+        };
 
         assert_eq!(add, add_decoded);
     }
@@ -222,12 +224,11 @@ fn test_remove_proposal_encoding() {
             .expect("Could not encode proposal.");
         let remove_decoded =
             match VerifiableMlsPlaintext::tls_deserialize(&mut remove_encoded.as_slice()) {
-                Ok(a) => a,
+                Ok(a) => group_state
+                    .verify(a, &crypto)
+                    .expect("Error verifying MlsPlaintext"),
                 Err(err) => panic!("Error decoding MPLSPlaintext Remove: {:?}", err),
-            }
-            .set_context(&group_state.context().tls_serialize_detached().unwrap())
-            .verify(&crypto, credential_bundle.credential())
-            .expect("Error verifying MlsPlaintext");
+            };
 
         assert_eq!(remove, remove_decoded);
     }
@@ -304,29 +305,34 @@ fn test_commit_encoding() {
             )
             .expect("Could not create proposal.");
 
-        let proposals = &[&add, &remove, &update];
-        let (commit, _welcome_option, _key_package_bundle_option) = group_state
-            .create_commit(
-                framing_parameters,
-                alice_credential_bundle,
-                Proposals {
-                    proposals_by_reference: proposals,
-                    proposals_by_value: &[],
-                },
-                true,
-                None,
-                &crypto,
-            )
-            .unwrap();
+        let mut proposal_store = ProposalStore::from_staged_proposal(
+            StagedProposal::from_mls_plaintext(group_state.ciphersuite(), &crypto, add)
+                .expect("Could not create StagedProposal."),
+        );
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(group_state.ciphersuite(), &crypto, remove)
+                .expect("Could not create StagedProposal."),
+        );
+        proposal_store.add(
+            StagedProposal::from_mls_plaintext(group_state.ciphersuite(), &crypto, update)
+                .expect("Could not create StagedProposal."),
+        );
+
+        let params = CreateCommitParams::builder()
+            .framing_parameters(framing_parameters)
+            .credential_bundle(alice_credential_bundle)
+            .proposal_store(&proposal_store)
+            .build();
+        let (commit, _welcome_option, _key_package_bundle_option) =
+            group_state.create_commit(params, &crypto).unwrap();
         let commit_encoded = commit.tls_serialize_detached().unwrap();
         let commit_decoded =
             match VerifiableMlsPlaintext::tls_deserialize(&mut commit_encoded.as_slice()) {
-                Ok(a) => a,
+                Ok(a) => group_state
+                    .verify(a, &crypto)
+                    .expect("Error verifying MlsPlaintext"),
                 Err(err) => panic!("Error decoding MPLSPlaintext Commit: {:?}", err),
-            }
-            .set_context(&group_state.context().tls_serialize_detached().unwrap())
-            .verify(&crypto, alice_credential_bundle.credential())
-            .expect("Error verifying MlsPlaintext");
+            };
 
         assert_eq!(commit, commit_decoded);
     }
@@ -366,25 +372,23 @@ fn test_welcome_message_encoding() {
             )
             .expect("Could not create proposal.");
 
-        let proposals = &[&add];
-        let (commit, welcome_option, key_package_bundle_option) = group_state
-            .create_commit(
-                framing_parameters,
-                credential_bundle,
-                Proposals {
-                    proposals_by_reference: proposals,
-                    proposals_by_value: &[],
-                },
-                true,
-                None,
-                &crypto,
-            )
-            .unwrap();
+        let proposal_store = ProposalStore::from_staged_proposal(
+            StagedProposal::from_mls_plaintext(group_state.ciphersuite(), &crypto, add)
+                .expect("Could not create StagedProposal."),
+        );
+
+        let params = CreateCommitParams::builder()
+            .framing_parameters(framing_parameters)
+            .credential_bundle(credential_bundle)
+            .proposal_store(&proposal_store)
+            .build();
+        let (commit, welcome_option, key_package_bundle_option) =
+            group_state.create_commit(params, &crypto).unwrap();
         // Alice applies the commit
         let staged_commit = group_state
             .stage_commit(
                 &commit,
-                proposals,
+                &proposal_store,
                 &[key_package_bundle_option.unwrap()],
                 None,
                 &crypto,

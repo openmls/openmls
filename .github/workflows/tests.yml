@@ -9,6 +9,7 @@ on:
     branches:
       - main
       - konrad/treesync
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
@@ -31,54 +32,41 @@ jobs:
       - uses: actions/checkout@v2
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-      - name: Setup MacOS
-        if: matrix.os == 'macos-latest'
+      - name: Tests debug build
         run: |
-          sudo rm -Rf /Library/Developer/CommandLineTools/SDKs/*
-          sudo xcode-select -s /Applications/Xcode_12.4.app
-          rustup target install aarch64-apple-darwin
-          rustup target install aarch64-apple-ios
-      - name: Tests
-        run: cargo test --verbose
-      - name: Apple Silicon Build
-        if: matrix.os == 'macos-latest'
+          cargo test --verbose
+      - name: Tests release build
         run: |
-          cargo build --target aarch64-apple-darwin --tests --verbose
-          cargo build --release --target aarch64-apple-darwin --tests --verbose
-      - name: iOS build
-        if: matrix.os == 'macos-latest'
-        run: |
-          cargo build --target aarch64-apple-ios --tests --verbose
-          cargo build --release --target aarch64-apple-ios --tests --verbose
-  cross-build:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        include:
-          # 32-bit Linux
-          - target: i686-unknown-linux-gnu
-            rust: stable
-            deps: sudo apt update && sudo apt install gcc-multilib
-          # wasm
-          - target: wasm32-unknown-unknown
-            rust: stable
-          # ARM64 Android
-          - target: aarch64-linux-android
-            rust: stable
-          # ARM64 iOS
-          - target: aarch64-apple-ios
-            rust: stable
-    steps:
-      - uses: actions/checkout@v1
-      - uses: actions-rs/toolchain@v1
+          cargo test --verbose --release
+        # Test 32 bit builds on windows
+      - name: Install rust target
+        if: matrix.os == 'windows-latest'
+        uses: actions-rs/toolchain@v1
         with:
-          toolchain: ${{ matrix.rust }}
-          target: ${{ matrix.target }}
+          toolchain: stable
           profile: minimal
           override: true
-      - run: ${{ matrix.deps }}
-      - run: cargo build --target ${{ matrix.target }}
-      - run: cargo build --target ${{ matrix.target }} --release
+          target: i686-pc-windows-msvc
+      - name: Tests 32bit windows release build
+        if: matrix.os == 'windows-latest'
+        run: |
+          cargo test --verbose --target i686-pc-windows-msvc
+          cargo test --verbose --release --target i686-pc-windows-msvc
+        # Test 32 bit builds on linux
+      - name: Install rust target
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+          target: i686-unknown-linux-gnu
+      - name: Tests 32bit linux debug build
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt update && sudo apt install gcc-multilib
+          cargo test --verbose --target i686-unknown-linux-gnu
+          cargo test --verbose --release --target i686-unknown-linux-gnu
   checks:
     runs-on: ubuntu-latest
     steps:

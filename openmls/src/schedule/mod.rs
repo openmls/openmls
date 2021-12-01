@@ -135,6 +135,9 @@ pub mod codec;
 pub mod errors;
 pub(crate) mod psk;
 
+#[cfg(test)]
+mod unit_tests;
+
 #[cfg(any(feature = "test-utils", test))]
 pub mod kat_key_schedule;
 
@@ -152,6 +155,12 @@ impl Default for CommitSecret {
         CommitSecret {
             secret: Secret::default(),
         }
+    }
+}
+
+impl From<Secret> for CommitSecret {
+    fn from(secret: Secret) -> Self {
+        Self { secret }
     }
 }
 
@@ -191,11 +200,6 @@ impl CommitSecret {
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn from_slice(b: &[u8]) -> Self {
-        Self { secret: b.into() }
-    }
 }
 
 /// The `InitSecret` is used to connect the next epoch to the current one.
@@ -203,6 +207,12 @@ impl CommitSecret {
 #[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct InitSecret {
     secret: Secret,
+}
+
+impl From<Secret> for InitSecret {
+    fn from(secret: Secret) -> Self {
+        Self { secret }
+    }
 }
 
 impl InitSecret {
@@ -235,11 +245,6 @@ impl InitSecret {
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn from_slice(b: &[u8]) -> Self {
-        Self { secret: b.into() }
     }
 }
 

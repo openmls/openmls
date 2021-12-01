@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use ::rand::rngs::OsRng;
 use ::rand::RngCore;
-use openmls::group::create_commit::Proposals;
+use openmls::group::create_commit_params::CreateCommitParams;
 use openmls::prelude::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::SignatureScheme;
@@ -62,6 +62,8 @@ impl TestClient {
 /// keystore, which holds the KeyPackages published by the clients.
 pub(crate) struct TestSetup {
     pub(crate) _key_store: RefCell<HashMap<(&'static str, CiphersuiteName), Vec<KeyPackage>>>,
+    // Clippy has a hard time figuring this one out
+    #[allow(dead_code)]
     pub clients: RefCell<HashMap<&'static str, RefCell<TestClient>>>,
 }
 
@@ -201,29 +203,34 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             }
             // Create the commit based on the previously compiled list of
             // proposals.
-            let (commit_mls_plaintext, welcome_option, key_package_bundle_option) = mls_group
-                .create_commit(
-                    framing_parameters,
-                    initial_credential_bundle,
-                    Proposals {
-                        proposals_by_reference: &(proposal_list
-                            .iter()
-                            .collect::<Vec<&MlsPlaintext>>()),
-                        proposals_by_value: &[],
-                    },
-                    true, /* Set this to true to populate the tree a little bit. */
-                    None, /* PSKs are not supported here */
-                    &crypto,
-                )
-                .unwrap();
+            let mut proposal_store = ProposalStore::new();
+            for proposal in proposal_list {
+                proposal_store.add(
+                    StagedProposal::from_mls_plaintext(
+                        &Ciphersuite::new(group_config.ciphersuite)
+                            .expect("Could not create ciphersuite."),
+                        &crypto,
+                        proposal,
+                    )
+                    .expect("Could not create staged proposal."),
+                );
+            }
+            let params = CreateCommitParams::builder()
+                .framing_parameters(framing_parameters)
+                .credential_bundle(initial_credential_bundle)
+                .proposal_store(&proposal_store)
+                .build();
+            let (commit_mls_plaintext, welcome_option, key_package_bundle_option) =
+                mls_group.create_commit(params, &crypto).unwrap();
             let welcome = welcome_option.unwrap();
             let key_package_bundle = key_package_bundle_option.unwrap();
+
             // Apply the commit to the initial group member's group state using
             // the key package bundle returned by the create_commit earlier.
             let staged_commit = mls_group
                 .stage_commit(
                     &commit_mls_plaintext,
-                    &(proposal_list.iter().collect::<Vec<&MlsPlaintext>>()),
+                    &proposal_store,
                     &[key_package_bundle],
                     None,
                     &crypto,

@@ -11,7 +11,7 @@ use std::convert::TryFrom;
 /// `MlsCiphertext` is the framing struct for an encrypted `MlsPlaintext`.
 /// This message format is meant to be sent to and received from the Delivery
 /// Service.
-#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
+#[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize)]
 pub struct MlsCiphertext {
     pub(crate) wire_format: WireFormat,
     pub(crate) group_id: GroupId,
@@ -48,7 +48,7 @@ impl MlsCiphertext {
         let mls_ciphertext_content_aad = MlsCiphertextContentAad {
             group_id: context.group_id().clone(),
             epoch: context.epoch(),
-            content_type: *mls_plaintext.content_type(),
+            content_type: mls_plaintext.content_type(),
             authenticated_data: mls_plaintext.authenticated_data().into(),
         };
         let mls_ciphertext_content_aad_bytes =
@@ -94,7 +94,7 @@ impl MlsCiphertext {
         let mls_sender_data_aad = MlsSenderDataAad::new(
             context.group_id().clone(),
             context.epoch(),
-            *mls_plaintext.content_type(),
+            mls_plaintext.content_type(),
         );
         // Serialize the sender data AAD
         let mls_sender_data_aad_bytes = mls_sender_data_aad.tls_serialize_detached()?;
@@ -115,7 +115,7 @@ impl MlsCiphertext {
             wire_format: WireFormat::MlsCiphertext,
             group_id: context.group_id().clone(),
             epoch: context.epoch(),
-            content_type: *mls_plaintext.content_type(),
+            content_type: mls_plaintext.content_type(),
             authenticated_data: mls_plaintext.authenticated_data().into(),
             encrypted_sender_data: encrypted_sender_data.into(),
             ciphertext: ciphertext.into(),
@@ -304,8 +304,8 @@ impl MlsCiphertext {
     }
 
     /// Returns the `epoch` in the `MlsCiphertext`.
-    pub fn epoch(&self) -> &GroupEpoch {
-        &self.epoch
+    pub fn epoch(&self) -> GroupEpoch {
+        self.epoch
     }
 
     #[cfg(test)]

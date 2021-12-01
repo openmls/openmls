@@ -7,7 +7,9 @@ use tls_codec::{Deserialize, Serialize};
 
 use super::*;
 
-use crate::{group::create_commit::Proposals, prelude::*};
+use crate::{
+    group::create_commit_params::CreateCommitParams, messages::proposals::ProposalType, prelude::*,
+};
 
 #[test]
 fn capabilities() {
@@ -144,23 +146,27 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     let bob_add_proposal = alice_group
         .create_add_proposal(framing_parameters, &alice_credential_bundle, bob_key_package.clone(), crypto)
         .expect("Could not create proposal.");
-    let proposals_by_reference = &[&bob_add_proposal];
+
+    let proposal_store = ProposalStore::from_staged_proposal(
+        StagedProposal::from_mls_plaintext(ciphersuite, crypto, bob_add_proposal)
+            .expect("Could not create StagedProposal."),
+    );
+
+    let params = CreateCommitParams::builder()
+            .framing_parameters(framing_parameters)
+            .credential_bundle(&alice_credential_bundle)
+            .proposal_store(&proposal_store)
+            .force_self_update(false)
+            .build();
     let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
         .create_commit(
-            framing_parameters,
-            &alice_credential_bundle,
-            Proposals {
-                proposals_by_reference,
-                proposals_by_value: &[],
-            },
-            false,
-            None,
+            params,
             crypto,
         )
         .expect("Error creating commit");
 
     let staged_commit = alice_group
-        .stage_commit(&mls_plaintext_commit, proposals_by_reference, &[], None, crypto)
+        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, crypto)
         .expect("error staging commit");
     alice_group.merge_commit(staged_commit);
 
@@ -218,23 +224,24 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     let bob_add_proposal = alice_group
         .create_add_proposal(framing_parameters, &alice_credential_bundle, bob_key_package.clone(), crypto)
         .expect("Could not create proposal.");
-    let proposals_by_reference = &[&bob_add_proposal];
+
+    let proposal_store = ProposalStore::from_staged_proposal(
+        StagedProposal::from_mls_plaintext(ciphersuite, crypto, bob_add_proposal)
+            .expect("Could not create staged proposal."),
+    );
+
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .force_self_update(false)
+        .build();
     let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
-        .create_commit(
-            framing_parameters,
-            &alice_credential_bundle,
-            Proposals {
-                proposals_by_reference,
-                proposals_by_value: &[],
-            },
-            false,
-            None,
-            crypto,
-        )
+        .create_commit(params, crypto)
         .expect("Error creating commit");
 
     let staged_commit = alice_group
-        .stage_commit(&mls_plaintext_commit, proposals_by_reference, &[], None, crypto)
+        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, crypto)
         .expect("error staging commit");
     alice_group.merge_commit(staged_commit);
 
@@ -253,3 +260,40 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         MlsGroupError::WelcomeError(WelcomeError::MissingRatchetTree)
     );
 });
+
+#[test]
+fn required_capabilities() {
+    // A required capabilities extension with the default values for openmls (none).
+    let extension_bytes = vec![0u8, 6, 0, 0, 0, 2, 0, 0];
+    let mut extension_bytes_mut = &extension_bytes[..];
+
+    let ext = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
+
+    // Check that decoding works
+    let required_capabilities = Extension::tls_deserialize(&mut extension_bytes_mut).unwrap();
+    assert_eq!(ext, required_capabilities);
+
+    // Encoding creates the expected bytes.
+    assert_eq!(
+        extension_bytes,
+        &required_capabilities.tls_serialize_detached().unwrap()[..]
+    );
+
+    // Build one with some content.
+    let required_capabilities = RequiredCapabilitiesExtension::new(
+        &[ExtensionType::KeyId, ExtensionType::RatchetTree],
+        &[ProposalType::Reinit],
+    );
+    let ext = Extension::RequiredCapabilities(required_capabilities);
+    let extension_bytes = vec![0u8, 6, 0, 0, 0, 7, 4, 0, 3, 0, 5, 1, 5];
+
+    // Test encoding and decoding
+    let encoded = ext
+        .tls_serialize_detached()
+        .expect("error encoding required capabilities extension");
+    let ext_decoded = Extension::tls_deserialize(&mut encoded.as_slice())
+        .expect("error decoding required capabilities extension");
+
+    assert_eq!(ext, ext_decoded);
+    assert_eq!(extension_bytes, encoded);
+}

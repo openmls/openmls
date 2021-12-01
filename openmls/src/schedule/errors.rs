@@ -1,3 +1,5 @@
+use crate::ciphersuite::CryptoError;
+
 implement_error! {
     pub enum ErrorState {
         NotInit = "Expected to be in initial state.",
@@ -15,9 +17,14 @@ implement_error! {
 
 implement_error! {
     pub enum PskSecretError {
-        TooManyKeys = "More than 2^16 PSKS were provided.",
-        DifferentLength = "The IDs and secrets vectors have different lengths.",
-        EncodingError = "Error serializing the PSK label.",
+        Simple {
+            TooManyKeys = "More than 2^16 PSKs were provided.",
+            DifferentLength = "The IDs and secrets vectors have different lengths.",
+            EncodingError = "Error serializing the PSK label.",
+        }
+        Complex {
+            CryptoError(CryptoError) = "See [`CryptoError`] for more details.",
+        }
     }
 }
 
