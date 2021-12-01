@@ -208,7 +208,7 @@ impl AddProposal {
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct UpdateProposal {
-    pub key_package: KeyPackage,
+    pub(crate) key_package: KeyPackage,
 }
 
 impl UpdateProposal {

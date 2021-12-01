@@ -250,6 +250,9 @@ impl ManagedGroup {
     }
 }
 
+/// `Enum` that indicates whether the inner group state has been modified since the last time it was persisted.
+/// `InnerState::Changed` indicates that the state has changed and that [`.save()`] should be called.
+/// `InnerState::Persisted` indicates that the state has not been modified and therefore doesn't need to be persisted.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum InnerState {
     Changed,
