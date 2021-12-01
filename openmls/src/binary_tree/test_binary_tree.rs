@@ -6,10 +6,6 @@ use super::array_representation::tree::NodeIndex;
 
 use super::array_representation::treemath::TreeMathError;
 
-// TODO:
-// * Write better comments on tests
-// * test programmatically, i.e. do loops over various tree sizes where possible
-
 #[test]
 fn test_tree_basics() {
     // Test tree creation: Wrong number of nodes.

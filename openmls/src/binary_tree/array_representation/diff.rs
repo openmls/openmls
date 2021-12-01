@@ -499,15 +499,15 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
 
     /// This function is used to place a node at the given index such that any
     /// previous node in the tree at the same position is replaced upon merging
-    /// the diff.
+    /// the diff. This function also overrides any previously made changes to
+    /// that node as part of modifying this diff.
     ///
     /// Returns an error if the given node index is larger than the current size
     /// of the diff.
     fn replace_node(&mut self, node_index: NodeIndex, node: T) -> Result<(), ABinaryTreeDiffError> {
         // Check that we're not out of bounds.
         self.out_of_bounds(node_index)?;
-        let previous_entry = self.diff.insert(node_index, node);
-        debug_assert!(previous_entry.is_some());
+        self.diff.insert(node_index, node);
         Ok(())
     }
 
@@ -520,8 +520,12 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
             return Err(ABinaryTreeDiffError::TreeTooSmall);
         }
         let removed = self.diff.remove(&(self.size() - 1));
+        if self.size() > self.original_tree.size()? {
+            // If the diff extended the tree, there should be a node to remove
+            // here.
+            debug_assert!(removed.is_some());
+        }
         // There should be a node here to remove.
-        debug_assert!(removed.is_some());
         // We decrease the size to signal that a node was removed from the diff.
         self.size -= 1;
         Ok(())
