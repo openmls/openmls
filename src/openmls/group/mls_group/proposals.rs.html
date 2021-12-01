@@ -630,8 +630,6 @@
 <span id="630">630</span>
 <span id="631">631</span>
 <span id="632">632</span>
-<span id="633">633</span>
-<span id="634">634</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::errors</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::proposals</span>::{
@@ -848,7 +846,7 @@
                 <span class="prelude-val">Some</span>(<span class="ident">p</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">p</span>.<span class="ident">proposal</span>.<span class="ident">is_type</span>(<span class="ident">proposal_type</span>),
                 <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">false</span>,
             })
-            .<span class="ident">map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">reference</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">get</span>(<span class="ident">reference</span>).<span class="ident">unwrap</span>())
+            .<span class="ident">filter_map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">reference</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">get</span>(<span class="ident">reference</span>))
     }
 
     <span class="doccomment">/// Returns an iterator over all `StagedProposal` in the queue  </span>
@@ -857,7 +855,7 @@
         <span class="comment">// Iterate over the reference to extract the proposals in the right order</span>
         <span class="self">self</span>.<span class="ident">proposal_references</span>
             .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">reference</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">get</span>(<span class="ident">reference</span>).<span class="ident">unwrap</span>())
+            .<span class="ident">filter_map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">reference</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">get</span>(<span class="ident">reference</span>))
     }
 
     <span class="doccomment">/// Returns an iterator over all Add proposals in the queue  </span>
@@ -1140,12 +1138,12 @@
 
         <span class="comment">// Parse proposals and build adds and member list</span>
         <span class="kw">for</span> <span class="ident">queued_proposal</span> <span class="kw">in</span> <span class="ident">queued_proposal_list</span> {
-            <span class="kw">match</span> <span class="ident">queued_proposal</span>.<span class="ident">proposal</span>.<span class="ident">proposal_type</span>() {
-                <span class="ident">ProposalType::Add</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="kw">match</span> <span class="ident">queued_proposal</span>.<span class="ident">proposal</span> {
+                <span class="ident">Proposal::Add</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="ident">adds</span>.<span class="ident">insert</span>(<span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>());
                     <span class="ident">proposal_pool</span>.<span class="ident">insert</span>(<span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>(), <span class="ident">queued_proposal</span>);
                 }
-                <span class="ident">ProposalType::Update</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">Proposal::Update</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="kw">let</span> <span class="ident">sender_index</span> <span class="op">=</span> <span class="ident">queued_proposal</span>.<span class="ident">sender</span>.<span class="ident">sender</span>.<span class="ident">as_usize</span>();
                     <span class="kw">if</span> <span class="ident">sender_index</span> <span class="op">!</span><span class="op">=</span> <span class="ident">own_index</span>.<span class="ident">as_usize</span>() {
                         <span class="ident">members</span>[<span class="ident">sender_index</span>].<span class="ident">updates</span>.<span class="ident">push</span>(<span class="ident">queued_proposal</span>.<span class="ident">clone</span>());
@@ -1155,26 +1153,25 @@
                     <span class="kw">let</span> <span class="ident">proposal_reference</span> <span class="op">=</span> <span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>();
                     <span class="ident">proposal_pool</span>.<span class="ident">insert</span>(<span class="ident">proposal_reference</span>, <span class="ident">queued_proposal</span>);
                 }
-                <span class="ident">ProposalType::Remove</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="kw">let</span> <span class="ident">removed_index</span> <span class="op">=</span>
-                        <span class="ident">queued_proposal</span>.<span class="ident">proposal</span>.<span class="ident">as_remove</span>().<span class="ident">unwrap</span>().<span class="ident">removed</span> <span class="kw">as</span> <span class="ident">usize</span>;
+                <span class="ident">Proposal::Remove</span>(<span class="ident">remove_proposal</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="kw">let</span> <span class="ident">removed_index</span> <span class="op">=</span> <span class="ident">remove_proposal</span>.<span class="ident">removed</span> <span class="kw">as</span> <span class="ident">usize</span>;
                     <span class="kw">if</span> <span class="ident">removed_index</span> <span class="op">&lt;</span> <span class="ident">tree_size</span>.<span class="ident">as_usize</span>() {
                         <span class="ident">members</span>[<span class="ident">removed_index</span>].<span class="ident">updates</span>.<span class="ident">push</span>(<span class="ident">queued_proposal</span>.<span class="ident">clone</span>());
                     }
                     <span class="kw">let</span> <span class="ident">proposal_reference</span> <span class="op">=</span> <span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>();
                     <span class="ident">proposal_pool</span>.<span class="ident">insert</span>(<span class="ident">proposal_reference</span>, <span class="ident">queued_proposal</span>);
                 }
-                <span class="ident">ProposalType::Presharedkey</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">Proposal::PreSharedKey</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="ident">valid_proposals</span>.<span class="ident">insert</span>(<span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>());
                     <span class="ident">proposal_pool</span>.<span class="ident">insert</span>(<span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>(), <span class="ident">queued_proposal</span>);
                 }
-                <span class="ident">ProposalType::Reinit</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">Proposal::ReInit</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="comment">// TODO #141: Only keep one ReInit</span>
                     <span class="ident">proposal_pool</span>.<span class="ident">insert</span>(<span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>(), <span class="ident">queued_proposal</span>);
                 }
-                <span class="ident">ProposalType::ExternalInit</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unimplemented!</span>(<span class="string">&quot;See #556&quot;</span>),
-                <span class="ident">ProposalType::AppAck</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unimplemented!</span>(<span class="string">&quot;See #291&quot;</span>),
-                <span class="ident">ProposalType::GroupContextExtensions</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">Proposal::ExternalInit</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unimplemented!</span>(<span class="string">&quot;See #556&quot;</span>),
+                <span class="ident">Proposal::AppAck</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unimplemented!</span>(<span class="string">&quot;See #291&quot;</span>),
+                <span class="ident">Proposal::GroupContextExtensions</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="comment">// TODO: Validate proposal?</span>
                     <span class="ident">proposal_pool</span>.<span class="ident">insert</span>(<span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>(), <span class="ident">queued_proposal</span>);
                 }
@@ -1183,15 +1180,15 @@
         <span class="comment">// Check for presence of Removes and delete Updates</span>
         <span class="kw">for</span> <span class="ident">member</span> <span class="kw">in</span> <span class="ident">members</span>.<span class="ident">iter_mut</span>() {
             <span class="comment">// Check if there are Removes</span>
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">member</span>.<span class="ident">removes</span>.<span class="ident">is_empty</span>() {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">last_remove</span>) <span class="op">=</span> <span class="ident">member</span>.<span class="ident">removes</span>.<span class="ident">last</span>() {
                 <span class="comment">// Delete all Updates when a Remove is found</span>
                 <span class="ident">member</span>.<span class="ident">updates</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
                 <span class="comment">// Only keep the last Remove</span>
-                <span class="ident">valid_proposals</span>.<span class="ident">insert</span>(<span class="ident">member</span>.<span class="ident">removes</span>.<span class="ident">last</span>().<span class="ident">unwrap</span>().<span class="ident">proposal_reference</span>());
+                <span class="ident">valid_proposals</span>.<span class="ident">insert</span>(<span class="ident">last_remove</span>.<span class="ident">proposal_reference</span>());
             }
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">member</span>.<span class="ident">updates</span>.<span class="ident">is_empty</span>() {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">last_update</span>) <span class="op">=</span> <span class="ident">member</span>.<span class="ident">updates</span>.<span class="ident">last</span>() {
                 <span class="comment">// Only keep the last Update</span>
-                <span class="ident">valid_proposals</span>.<span class="ident">insert</span>(<span class="ident">member</span>.<span class="ident">updates</span>.<span class="ident">last</span>().<span class="ident">unwrap</span>().<span class="ident">proposal_reference</span>());
+                <span class="ident">valid_proposals</span>.<span class="ident">insert</span>(<span class="ident">last_update</span>.<span class="ident">proposal_reference</span>());
             }
         }
         <span class="comment">// Only retain `adds` and `valid_proposals`</span>
@@ -1235,16 +1232,15 @@
         <span class="comment">// Iterate over the reference to extract the proposals in the right order</span>
         <span class="self">self</span>.<span class="ident">proposal_references</span>
             .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">proposal_reference</span><span class="op">|</span> {
-                <span class="comment">// Extract the proposal from the queue</span>
-                <span class="kw">let</span> <span class="ident">queued_proposal</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">queued_proposals</span>.<span class="ident">get</span>(<span class="ident">proposal_reference</span>).<span class="ident">unwrap</span>();
+            .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">proposal_reference</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">queued_proposals</span>.<span class="ident">get</span>(<span class="ident">proposal_reference</span>))
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">queued_proposal</span><span class="op">|</span> {
                 <span class="comment">// Differentiate the type of proposal</span>
                 <span class="kw">match</span> <span class="ident">queued_proposal</span>.<span class="ident">proposal_or_ref_type</span> {
                     <span class="ident">ProposalOrRefType::Proposal</span> <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="ident">ProposalOrRef::Proposal</span>(<span class="ident">queued_proposal</span>.<span class="ident">proposal</span>.<span class="ident">clone</span>())
                     }
                     <span class="ident">ProposalOrRefType::Reference</span> <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="ident">ProposalOrRef::Reference</span>(<span class="ident">proposal_reference</span>.<span class="ident">clone</span>())
+                        <span class="ident">ProposalOrRef::Reference</span>(<span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>.<span class="ident">clone</span>())
                     }
                 }
             })
@@ -1263,7 +1259,7 @@
                 <span class="prelude-val">Some</span>(<span class="ident">p</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">p</span>.<span class="ident">proposal</span>.<span class="ident">is_type</span>(<span class="ident">proposal_type</span>),
                 <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">false</span>,
             })
-            .<span class="ident">map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">reference</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">get</span>(<span class="ident">reference</span>).<span class="ident">unwrap</span>())
+            .<span class="ident">filter_map</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">reference</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">get</span>(<span class="ident">reference</span>))
     }
 }
 </code></pre></div>

@@ -71,13 +71,20 @@
 <span id="71">71</span>
 <span id="72">72</span>
 <span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Framing errors.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `MlsPlaintextError` and `MlsCiphertextError` are thrown on errors</span>
 <span class="doccomment">//! handling `MlsPlaintext` and `MlsCiphertext`.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credentials::CredentialError</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schedule::errors::MembershipKeyError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree::secret_tree::SecretTreeError</span>;
+<span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
 <span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
 
 <span class="macro">implement_error!</span> {
@@ -92,6 +99,8 @@
             <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span> <span class="string">&quot;TLS Codec error&quot;</span>,
             <span class="ident">CredentialError</span>(<span class="ident">CredentialError</span>) <span class="op">=</span> <span class="string">&quot;See [`CredentialError`](`crate::credentials::CredentialError`) for details.&quot;</span>,
             <span class="ident">VerificationError</span>(<span class="ident">VerificationError</span>) <span class="op">=</span> <span class="string">&quot;See [`VerificationError`](`VerificationError`) for details.&quot;</span>,
+            <span class="ident">MembershipKeyError</span>(<span class="ident">MembershipKeyError</span>) <span class="op">=</span> <span class="string">&quot;See [`MembershipKeyError`](`MembershipKeyError`) for details.&quot;</span>,
+            <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span> <span class="string">&quot;See [`CryptoError`](openmls_traits::types::CryptoError) for details.&quot;</span>,
         }
     }
 }
@@ -109,6 +118,7 @@
             <span class="ident">PlaintextError</span>(<span class="ident">MlsPlaintextError</span>) <span class="op">=</span> <span class="string">&quot;MlsPlaintext error&quot;</span>,
             <span class="ident">SecretTreeError</span>(<span class="ident">SecretTreeError</span>) <span class="op">=</span> <span class="string">&quot;SecretTree error&quot;</span>,
             <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span> <span class="string">&quot;TLS codec error&quot;</span>,
+            <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span> <span class="string">&quot;See [`CryptoError`](openmls_traits::types::CryptoError) for details.&quot;</span>,
         }
     }
 }

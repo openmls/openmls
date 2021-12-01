@@ -167,6 +167,16 @@
 <span id="167">167</span>
 <span id="168">168</span>
 <span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Ciphersuites for MLS</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This file contains the API to interact with ciphersuites.</span>
@@ -174,7 +184,7 @@
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config</span>::{<span class="ident">Config</span>, <span class="ident">ConfigError</span>, <span class="ident">ProtocolVersion</span>};
 <span class="kw">use</span> <span class="ident">::tls_codec</span>::{<span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
-<span class="kw">use</span> <span class="ident">openmls_traits::types</span>::{<span class="ident">HpkeAeadType</span>, <span class="ident">HpkeConfig</span>, <span class="ident">HpkeKdfType</span>, <span class="ident">HpkeKemType</span>};
+<span class="kw">use</span> <span class="ident">openmls_traits::types</span>::{<span class="ident">CryptoError</span>, <span class="ident">HpkeAeadType</span>, <span class="ident">HpkeConfig</span>, <span class="ident">HpkeKdfType</span>, <span class="ident">HpkeKemType</span>};
 <span class="kw">use</span> <span class="ident">openmls_traits</span>::{
     <span class="ident">crypto::OpenMlsCrypto</span>,
     <span class="ident">random::OpenMlsRand</span>,
@@ -192,7 +202,6 @@
 <span class="kw">mod</span> <span class="ident">aead</span>;
 <span class="kw">mod</span> <span class="ident">ciphersuites</span>;
 <span class="kw">mod</span> <span class="ident">codec</span>;
-<span class="kw">mod</span> <span class="ident">errors</span>;
 <span class="kw">mod</span> <span class="ident">hpke</span>;
 <span class="kw">mod</span> <span class="ident">kdf_label</span>;
 <span class="kw">mod</span> <span class="ident">mac</span>;
@@ -204,7 +213,6 @@
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">aead</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ciphersuites</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">hpke</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">mac</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">reuse_guard</span>::<span class="kw-2">*</span>;
@@ -243,7 +251,16 @@
 <span class="comment">// carry over anything we don&quot;t want to.</span>
 <span class="kw">impl</span> <span class="ident">Clone</span> <span class="kw">for</span> <span class="ident">Ciphersuite</span> {
     <span class="kw">fn</span> <span class="ident">clone</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="ident"><span class="self">Self</span>::new</span>(<span class="self">self</span>.<span class="ident">name</span>).<span class="ident">unwrap</span>()
+        <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">name</span>;
+        <span class="ident">Ciphersuite</span> {
+            <span class="ident">name</span>,
+            <span class="ident">signature_scheme</span>: <span class="ident">SignatureScheme::from</span>(<span class="ident">name</span>),
+            <span class="ident">hash</span>: <span class="ident">hash_from_suite</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>),
+            <span class="ident">aead</span>: <span class="ident">aead_from_suite</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>),
+            <span class="ident">hpke_kem</span>: <span class="self">self</span>.<span class="ident">hpke_kem</span>,
+            <span class="ident">hpke_kdf</span>: <span class="ident">hpke_kdf_from_suite</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>),
+            <span class="ident">hpke_aead</span>: <span class="ident">hpke_aead_from_suite</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>),
+        }
     }
 }
 
@@ -295,9 +312,12 @@
     }
 
     <span class="doccomment">/// Hash `payload` and return the digest.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>, <span class="ident">payload</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="comment">// XXX: remove unwrap</span>
-        <span class="ident">backend</span>.<span class="ident">crypto</span>().<span class="ident">hash</span>(<span class="self">self</span>.<span class="ident">hash</span>, <span class="ident">payload</span>).<span class="ident">unwrap</span>()
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hash</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">payload</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+        <span class="ident">backend</span>.<span class="ident">crypto</span>().<span class="ident">hash</span>(<span class="self">self</span>.<span class="ident">hash</span>, <span class="ident">payload</span>)
     }
 
     <span class="doccomment">/// Get the length of the used hash algorithm.</span>

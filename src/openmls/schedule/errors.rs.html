@@ -46,7 +46,40 @@
 <span id="46">46</span>
 <span id="47">47</span>
 <span id="48">48</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite::CryptoError</span>;
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
+<span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
 
 <span class="macro">implement_error!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ErrorState</span> {
@@ -58,8 +91,27 @@
 
 <span class="macro">implement_error!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KeyScheduleError</span> {
-        <span class="ident">InvalidState</span>(<span class="ident">ErrorState</span>) <span class="op">=</span>
-            <span class="string">&quot;The requested operation is not valid on the key schedule state.&quot;</span>,
+        <span class="ident">Simple</span> {
+            <span class="ident">LibraryError</span> <span class="op">=</span> <span class="string">&quot;An unrecoverable error has occurred due to a bug in the implementation.&quot;</span>,
+        }
+        <span class="ident">Complex</span> {
+            <span class="ident">InvalidState</span>(<span class="ident">ErrorState</span>) <span class="op">=</span>
+                <span class="string">&quot;The requested operation is not valid on the key schedule state.&quot;</span>,
+            <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`CryptoError`](openmls_traits::types::CryptoError) for details.&quot;</span>,
+        }
+    }
+}
+
+<span class="macro">implement_error!</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExporterError</span> {
+        <span class="ident">Simple</span> {}
+        <span class="ident">Complex</span> {
+            <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span>
+                <span class="string">&quot;TLS (de)serialization error occurred.&quot;</span>,
+            <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`CryptoError`](openmls_traits::types::CryptoError) for details.&quot;</span>,
+        }
     }
 }
 
@@ -72,6 +124,18 @@
         }
         <span class="ident">Complex</span> {
             <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span> <span class="string">&quot;See [`CryptoError`] for more details.&quot;</span>,
+        }
+    }
+}
+
+<span class="macro">implement_error!</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MembershipKeyError</span> {
+        <span class="ident">Simple</span> {}
+        <span class="ident">Complex</span> {
+            <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span>
+                <span class="string">&quot;TLS (de)serialization error occurred.&quot;</span>,
+            <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`CryptoError`](openmls_traits::types::CryptoError) for details.&quot;</span>,
         }
     }
 }

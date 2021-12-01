@@ -141,7 +141,33 @@
 <span id="141">141</span>
 <span id="142">142</span>
 <span id="143">143</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite</span>::{<span class="ident">AeadNonce</span>, <span class="kw-2">*</span>};
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+</pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! Functions in this module should never panic. However, if there is a bug in</span>
+<span class="doccomment">//! the implementation, a function will return an unrecoverable `LibraryError`.</span>
+<span class="doccomment">//! This means that some functions that are not expected to fail and throw an</span>
+<span class="doccomment">//! error, will still return a `Result` since they may throw a `LibraryError`.</span>
+
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite</span>::{<span class="ident">AeadNonce</span>, <span class="kw-2">*</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree</span>::{<span class="ident">index::LeafIndex</span>, <span class="ident">secret_tree</span>::<span class="kw-2">*</span>};
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
@@ -189,8 +215,12 @@
         <span class="kw">if</span> <span class="ident">generation</span> <span class="op">&lt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">generation</span> {
             <span class="kw">let</span> <span class="ident">window_index</span> <span class="op">=</span>
                 (<span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">u32</span> <span class="op">-</span> (<span class="self">self</span>.<span class="ident">generation</span> <span class="op">-</span> <span class="ident">generation</span>) <span class="op">-</span> <span class="number">1</span>) <span class="kw">as</span> <span class="ident">usize</span>;
-            <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">get</span>(<span class="ident">window_index</span>).<span class="ident">unwrap</span>().<span class="ident">clone</span>();
-            <span class="kw">let</span> <span class="ident">ratchet_secrets</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">derive_key_nonce</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">secret</span>, <span class="ident">generation</span>);
+            <span class="comment">// We can return a library error here, because there must be a mistake in the implementation</span>
+            <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="self">self</span>
+                .<span class="ident">past_secrets</span>
+                .<span class="ident">get</span>(<span class="ident">window_index</span>)
+                .<span class="ident">ok_or</span>(<span class="ident">SecretTreeError::LibraryError</span>)<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">ratchet_secrets</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">derive_key_nonce</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">secret</span>, <span class="ident">generation</span>);
             <span class="prelude-val">Ok</span>(<span class="ident">ratchet_secrets</span>)
         <span class="comment">// If generation is in the future</span>
         } <span class="kw">else</span> {
@@ -198,12 +228,20 @@
                 <span class="kw">if</span> <span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">OUT_OF_ORDER_TOLERANCE</span> <span class="kw">as</span> <span class="ident">usize</span> {
                     <span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">remove</span>(<span class="number">0</span>);
                 }
-                <span class="kw">let</span> <span class="ident">new_secret</span> <span class="op">=</span>
-                    <span class="self">self</span>.<span class="ident">ratchet_secret</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">last</span>().<span class="ident">unwrap</span>());
+                <span class="comment">// We can return a library error here, because there must be a mistake in the implementation</span>
+                <span class="kw">let</span> <span class="ident">last_secret</span> <span class="op">=</span> <span class="self">self</span>
+                    .<span class="ident">past_secrets</span>
+                    .<span class="ident">last</span>()
+                    .<span class="ident">ok_or</span>(<span class="ident">SecretTreeError::LibraryError</span>)<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">new_secret</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ratchet_secret</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">last_secret</span>);
                 <span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">push</span>(<span class="ident">new_secret</span>);
                 <span class="self">self</span>.<span class="ident">generation</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
             }
-            <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">last</span>().<span class="ident">unwrap</span>();
+            <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">last</span>() {
+                <span class="prelude-val">Some</span>(<span class="ident">secret</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">secret</span>,
+                <span class="comment">// We return a library error because there must be a mistake in the implementation</span>
+                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SecretTreeError::LibraryError</span>),
+            };
             <span class="kw">let</span> <span class="ident">ratchet_secrets</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">derive_key_nonce</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">secret</span>, <span class="ident">generation</span>);
             <span class="prelude-val">Ok</span>(<span class="ident">ratchet_secrets</span>)
         }

@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["CiphersuiteName","MLS ciphersuites."],["CryptoError",""]],"mod":[["signable",""]],"struct":[["Ciphersuite",""]]});
+initSidebarItems({"enum":[["CiphersuiteName","MLS ciphersuites."]],"mod":[["signable",""]],"struct":[["Ciphersuite",""]]});

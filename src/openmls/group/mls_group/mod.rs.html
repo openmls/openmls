@@ -641,7 +641,20 @@
 <span id="641">641</span>
 <span id="642">642</span>
 <span id="643">643</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">trace</span>};
+<span id="644">644</span>
+<span id="645">645</span>
+<span id="646">646</span>
+<span id="647">647</span>
+<span id="648">648</span>
+<span id="649">649</span>
+</pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! Functions in this module should never panic. However, if there is a bug in</span>
+<span class="doccomment">//! the implementation, a function will return an unrecoverable `LibraryError`.</span>
+<span class="doccomment">//! This means that some functions that are not expected to fail and throw an</span>
+<span class="doccomment">//! error, will still return a `Result` since they may throw a `LibraryError`.</span>
+
+<span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">trace</span>};
 <span class="kw">use</span> <span class="ident">psk</span>::{<span class="ident">PreSharedKeys</span>, <span class="ident">PskSecret</span>};
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">create_commit</span>;
@@ -779,7 +792,7 @@
 
         <span class="macro">debug!</span>(<span class="string">&quot;Created group {:x?}&quot;</span>, <span class="self">self</span>.<span class="ident">group_id</span>);
         <span class="macro">trace!</span>(<span class="string">&quot; &gt;&gt;&gt; with {:?}, {:?}&quot;</span>, <span class="ident">ciphersuite</span>, <span class="ident">config</span>);
-        <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="ident">RatchetTree::new</span>(<span class="ident">backend</span>, <span class="self">self</span>.<span class="ident">key_package_bundle</span>);
+        <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="ident">RatchetTree::new</span>(<span class="ident">backend</span>, <span class="self">self</span>.<span class="ident">key_package_bundle</span>)<span class="question-mark">?</span>;
 
         <span class="ident">check_required_capabilities_support</span>(<span class="kw-2">&amp;</span><span class="ident">required_capabilities</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">required_capabilities</span> <span class="op">=</span> <span class="kw-2">&amp;</span>[<span class="ident">Extension::RequiredCapabilities</span>(<span class="ident">required_capabilities</span>)];
@@ -787,7 +800,7 @@
         <span class="kw">let</span> <span class="ident">group_context</span> <span class="op">=</span> <span class="ident">GroupContext::create_initial_group_context</span>(
             <span class="ident">ciphersuite</span>,
             <span class="self">self</span>.<span class="ident">group_id</span>,
-            <span class="ident">tree</span>.<span class="ident">tree_hash</span>(<span class="ident">backend</span>),
+            <span class="ident">tree</span>.<span class="ident">tree_hash</span>(<span class="ident">backend</span>)<span class="question-mark">?</span>,
             <span class="ident">required_capabilities</span>,
         )<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">commit_secret</span> <span class="op">=</span> <span class="ident">tree</span>.<span class="ident">private_tree</span>().<span class="ident">commit_secret</span>();
@@ -797,11 +810,13 @@
         <span class="kw">let</span> <span class="ident">joiner_secret</span> <span class="op">=</span> <span class="ident">JoinerSecret::new</span>(
             <span class="ident">backend</span>,
             <span class="ident">commit_secret</span>,
-            <span class="kw-2">&amp;</span><span class="ident">InitSecret::random</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">version</span>),
-        );
+            <span class="kw-2">&amp;</span><span class="ident">InitSecret::random</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">version</span>)<span class="question-mark">?</span>,
+        )<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">key_schedule</span> <span class="op">=</span> <span class="ident">KeySchedule::init</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">joiner_secret</span>, <span class="self">self</span>.<span class="ident">psk</span>);
-        <span class="ident">key_schedule</span>.<span class="ident">add_context</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">group_context</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">serialized_group_context</span> <span class="op">=</span> <span class="ident">group_context</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">key_schedule</span> <span class="op">=</span> <span class="ident">KeySchedule::init</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">joiner_secret</span>, <span class="self">self</span>.<span class="ident">psk</span>)<span class="question-mark">?</span>;
+        <span class="ident">key_schedule</span>.<span class="ident">add_context</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">serialized_group_context</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">epoch_secrets</span> <span class="op">=</span> <span class="ident">key_schedule</span>.<span class="ident">epoch_secrets</span>(<span class="ident">backend</span>, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">secret_tree</span> <span class="op">=</span> <span class="ident">epoch_secrets</span>
@@ -1105,13 +1120,10 @@
             <span class="macro">log::error!</span>(<span class="string">&quot;Got a key that is larger than u16::MAX&quot;</span>);
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ExporterError::KeyLengthTooLong</span>.<span class="ident">into</span>());
         }
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">epoch_secrets</span>.<span class="ident">exporter_secret</span>().<span class="ident">derive_exported_secret</span>(
-            <span class="self">self</span>.<span class="ident">ciphersuite</span>(),
-            <span class="ident">backend</span>,
-            <span class="ident">label</span>,
-            <span class="ident">context</span>,
-            <span class="ident">key_length</span>,
-        ))
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>
+            .<span class="ident">epoch_secrets</span>
+            .<span class="ident">exporter_secret</span>()
+            .<span class="ident">derive_exported_secret</span>(<span class="self">self</span>.<span class="ident">ciphersuite</span>(), <span class="ident">backend</span>, <span class="ident">label</span>, <span class="ident">context</span>, <span class="ident">key_length</span>)<span class="question-mark">?</span>)
     }
 
     <span class="doccomment">/// Returns the authentication secret</span>
@@ -1175,7 +1187,7 @@
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PublicGroupState</span>, <span class="ident">CredentialError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">pgs_tbs</span> <span class="op">=</span> <span class="ident">PublicGroupStateTbs::new</span>(<span class="ident">backend</span>, <span class="self">self</span>);
+        <span class="kw">let</span> <span class="ident">pgs_tbs</span> <span class="op">=</span> <span class="ident">PublicGroupStateTbs::new</span>(<span class="ident">backend</span>, <span class="self">self</span>)<span class="question-mark">?</span>;
         <span class="ident">pgs_tbs</span>.<span class="ident">sign</span>(<span class="ident">backend</span>, <span class="ident">credential_bundle</span>)
     }
 
@@ -1232,12 +1244,12 @@
     <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     <span class="ident">mls_plaintext_commit_content</span>: <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextCommitContent</span>,
     <span class="ident">interim_transcript_hash</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">commit_content_bytes</span> <span class="op">=</span> <span class="ident">mls_plaintext_commit_content</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
     <span class="prelude-val">Ok</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash</span>(
         <span class="ident">backend</span>,
         <span class="kw-2">&amp;</span>[<span class="ident">interim_transcript_hash</span>, <span class="kw-2">&amp;</span><span class="ident">commit_content_bytes</span>].<span class="ident">concat</span>(),
-    ))
+    )<span class="question-mark">?</span>)
 }
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">update_interim_transcript_hash</span>(
@@ -1245,12 +1257,12 @@
     <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     <span class="ident">mls_plaintext_commit_auth_data</span>: <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextCommitAuthData</span>,
     <span class="ident">confirmed_transcript_hash</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">InterimTranscriptHashError</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">commit_auth_data_bytes</span> <span class="op">=</span> <span class="ident">mls_plaintext_commit_auth_data</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
     <span class="prelude-val">Ok</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash</span>(
         <span class="ident">backend</span>,
         <span class="kw-2">&amp;</span>[<span class="ident">confirmed_transcript_hash</span>, <span class="kw-2">&amp;</span><span class="ident">commit_auth_data_bytes</span>].<span class="ident">concat</span>(),
-    ))
+    )<span class="question-mark">?</span>)
 }
 
 <span class="kw">fn</span> <span class="ident">psk_output</span>(

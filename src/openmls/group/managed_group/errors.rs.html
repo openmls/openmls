@@ -94,6 +94,9 @@
 <span id="94">94</span>
 <span id="95">95</span>
 <span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS Managed Group errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -105,6 +108,7 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::framing::MlsCiphertextError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group</span>::{<span class="ident">CreateCommitError</span>, <span class="ident">ExporterError</span>, <span class="ident">MlsGroupError</span>, <span class="ident">StageCommitError</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude::ValidationError</span>;
+<span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
 <span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
 
 <span class="macro">implement_error!</span> {
@@ -137,6 +141,8 @@
             <span class="ident">CredentialError</span>(<span class="ident">CredentialError</span>) <span class="op">=</span> <span class="string">&quot;See [`CredentialError`](`crate::credentials::CredentialError`) for details&quot;</span>,
             <span class="ident">ValidationError</span>(<span class="ident">ValidationError</span>) <span class="op">=</span> <span class="string">&quot;See [`ValidationError`](`crate::framing::ValidationError`) for details&quot;</span>,
             <span class="ident">TlsCodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span> <span class="string">&quot;An error occured during TLS encoding/decoding.&quot;</span>,
+            <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`CryptoError`](openmls_traits::types::CryptoError) for details.&quot;</span>,
         }
     }
 }

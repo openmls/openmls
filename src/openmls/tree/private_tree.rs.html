@@ -257,6 +257,7 @@
 <span id="257">257</span>
 <span id="258">258</span>
 <span id="259">259</span>
+<span id="260">260</span>
 </pre><pre class="rust"><code><span class="doccomment">//! A data structure holding information about the leaf node in the tree that</span>
 <span class="doccomment">//! belongs to the current client.</span>
 
@@ -314,22 +315,22 @@
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>,
         <span class="ident">leaf_secret</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="comment">// let leaf_secret = key_package_bundle.leaf_secret();</span>
         <span class="comment">// let ciphersuite = key_package_bundle.key_package.ciphersuite();</span>
         <span class="kw">let</span> <span class="ident">leaf_node_secret</span> <span class="op">=</span> <span class="ident">derive_leaf_node_secret</span>(<span class="ident">leaf_secret</span>, <span class="ident">backend</span>);
         <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">backend</span>.<span class="ident">crypto</span>().<span class="ident">derive_hpke_keypair</span>(
             <span class="ident">leaf_secret</span>.<span class="ident">ciphersuite</span>().<span class="ident">hpke_config</span>(),
-            <span class="ident">leaf_node_secret</span>.<span class="ident">as_slice</span>(),
+            <span class="ident">leaf_node_secret</span><span class="question-mark">?</span>.<span class="ident">as_slice</span>(),
         );
 
-        <span class="self">Self</span> {
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
             <span class="ident">leaf_index</span>,
             <span class="ident">hpke_private_key</span>: <span class="prelude-val">Some</span>(<span class="ident">keypair</span>.<span class="ident">private</span>.<span class="ident">into</span>()),
             <span class="ident">path_keys</span>: <span class="ident">PathKeys::default</span>(),
             <span class="ident">commit_secret</span>: <span class="prelude-val">None</span>,
             <span class="ident">path_secrets</span>: <span class="ident">Vec::default</span>(),
-        }
+        })
     }
 
     <span class="doccomment">/// Creates a `PrivateTree` with a new private key, leaf secret and path</span>
@@ -340,14 +341,14 @@
         <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>,
         <span class="ident">leaf_secret</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>,
         <span class="ident">path</span>: <span class="kw-2">&amp;</span>[<span class="ident">NodeIndex</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> (<span class="self">Self</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HpkePublicKey</span><span class="op">&gt;</span>) {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">private_tree</span> <span class="op">=</span> <span class="ident">PrivateTree::from_leaf_secret</span>(<span class="ident">backend</span>, <span class="ident">leaf_index</span>, <span class="ident">leaf_secret</span>);
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HpkePublicKey</span><span class="op">&gt;</span>), <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">private_tree</span> <span class="op">=</span> <span class="ident">PrivateTree::from_leaf_secret</span>(<span class="ident">backend</span>, <span class="ident">leaf_index</span>, <span class="ident">leaf_secret</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Compute path secrets and generate keypairs</span>
         <span class="kw">let</span> <span class="ident">public_keys</span> <span class="op">=</span>
-            <span class="ident">private_tree</span>.<span class="ident">generate_path_secrets</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">leaf_secret</span>, <span class="ident">path</span>);
+            <span class="ident">private_tree</span>.<span class="ident">generate_path_secrets</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">leaf_secret</span>, <span class="ident">path</span>)<span class="question-mark">?</span>;
 
-        (<span class="ident">private_tree</span>, <span class="ident">public_keys</span>)
+        <span class="prelude-val">Ok</span>((<span class="ident">private_tree</span>, <span class="ident">public_keys</span>))
     }
 
     <span class="comment">// === Setter and Getter ===</span>
@@ -386,15 +387,17 @@
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">leaf_secret</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>,
         <span class="ident">path</span>: <span class="kw-2">&amp;</span>[<span class="ident">NodeIndex</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HpkePublicKey</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HpkePublicKey</span><span class="op">&gt;</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">path_secrets</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">path</span>.<span class="ident">is_empty</span>() {
             <span class="macro">vec!</span>[]
         } <span class="kw">else</span> {
-            <span class="comment">// FIXME: remove unwrap</span>
             <span class="macro">vec!</span>[<span class="ident">PathSecret</span> {
-                <span class="ident">path_secret</span>: <span class="ident">leaf_secret</span>
-                    .<span class="ident">kdf_expand_label</span>(<span class="ident">backend</span>, <span class="string">&quot;path&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>())
-                    .<span class="ident">unwrap</span>(),
+                <span class="ident">path_secret</span>: <span class="ident">leaf_secret</span>.<span class="ident">kdf_expand_label</span>(
+                    <span class="ident">backend</span>,
+                    <span class="string">&quot;path&quot;</span>,
+                    <span class="kw-2">&amp;</span>[],
+                    <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>(),
+                )<span class="question-mark">?</span>,
             }]
         };
 
@@ -416,7 +419,7 @@
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">start_secret</span>: <span class="ident">PathSecret</span>,
         <span class="ident">path</span>: <span class="kw-2">&amp;</span>[<span class="ident">NodeIndex</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HpkePublicKey</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HpkePublicKey</span><span class="op">&gt;</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">path_secrets</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">start_secret</span>];
         <span class="self">self</span>.<span class="ident">derive_path_secrets</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">path_secrets</span>, <span class="ident">path</span>)
     }
@@ -429,23 +432,22 @@
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">path_secrets</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PathSecret</span><span class="op">&gt;</span>,
         <span class="ident">path</span>: <span class="kw-2">&amp;</span>[<span class="ident">NodeIndex</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HpkePublicKey</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HpkePublicKey</span><span class="op">&gt;</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">hash_len</span> <span class="op">=</span> <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>();
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">path_secrets</span> <span class="op">=</span> <span class="ident">path_secrets</span>;
 
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">1</span>..<span class="ident">path</span>.<span class="ident">len</span>() {
-            <span class="comment">// FIXME: remove unwrap</span>
-            <span class="kw">let</span> <span class="ident">path_secret</span> <span class="op">=</span> <span class="ident">path_secrets</span>[<span class="ident">i</span> <span class="op">-</span> <span class="number">1</span>]
-                .<span class="ident">path_secret</span>
-                .<span class="ident">kdf_expand_label</span>(<span class="ident">backend</span>, <span class="string">&quot;path&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="ident">hash_len</span>)
-                .<span class="ident">unwrap</span>();
+            <span class="kw">let</span> <span class="ident">path_secret</span> <span class="op">=</span>
+                <span class="ident">path_secrets</span>[<span class="ident">i</span> <span class="op">-</span> <span class="number">1</span>]
+                    .<span class="ident">path_secret</span>
+                    .<span class="ident">kdf_expand_label</span>(<span class="ident">backend</span>, <span class="string">&quot;path&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="ident">hash_len</span>)<span class="question-mark">?</span>;
             <span class="ident">path_secrets</span>.<span class="ident">push</span>(<span class="ident">PathSecret</span> { <span class="ident">path_secret</span> });
         }
         <span class="self">self</span>.<span class="ident">path_secrets</span> <span class="op">=</span> <span class="ident">path_secrets</span>;
 
         <span class="comment">// Generate the Commit Secret</span>
-        <span class="self">self</span>.<span class="ident">generate_commit_secret</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>);
+        <span class="self">self</span>.<span class="ident">generate_commit_secret</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Generate keypair and return public keys</span>
         <span class="self">self</span>.<span class="ident">generate_path_keypairs</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">path</span>)
@@ -465,13 +467,14 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">path_secret</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">path_secrets</span>.<span class="ident">last</span>().<span class="ident">unwrap</span>();
         <span class="self">self</span>.<span class="ident">commit_secret</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">CommitSecret::new</span>(
             <span class="ident">ciphersuite</span>,
             <span class="ident">backend</span>,
             <span class="kw-2">&amp;</span><span class="ident">path_secret</span>.<span class="ident">path_secret</span>,
-        ));
+        )<span class="question-mark">?</span>);
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Generate HPKE key pairs for all path secrets in `path_secrets`.</span>
@@ -490,18 +493,17 @@
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">path</span>: <span class="kw-2">&amp;</span>[<span class="ident">NodeIndex</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HpkePublicKey</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HpkePublicKey</span><span class="op">&gt;</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">hash_len</span> <span class="op">=</span> <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">private_keys</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">public_keys</span> <span class="op">=</span> <span class="macro">vec!</span>[];
 
         <span class="comment">// Derive key pairs for all nodes in the direct path.</span>
         <span class="kw">for</span> <span class="ident">path_secret</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">path_secrets</span>.<span class="ident">iter</span>() {
-            <span class="comment">// FIXME: remove unwrap</span>
-            <span class="kw">let</span> <span class="ident">node_secret</span> <span class="op">=</span> <span class="ident">path_secret</span>
-                .<span class="ident">path_secret</span>
-                .<span class="ident">kdf_expand_label</span>(<span class="ident">backend</span>, <span class="string">&quot;node&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="ident">hash_len</span>)
-                .<span class="ident">unwrap</span>();
+            <span class="kw">let</span> <span class="ident">node_secret</span> <span class="op">=</span>
+                <span class="ident">path_secret</span>
+                    .<span class="ident">path_secret</span>
+                    .<span class="ident">kdf_expand_label</span>(<span class="ident">backend</span>, <span class="string">&quot;node&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="ident">hash_len</span>)<span class="question-mark">?</span>;
             <span class="kw">let</span> <span class="ident">keypair</span> <span class="op">=</span> <span class="ident">backend</span>
                 .<span class="ident">crypto</span>()
                 .<span class="ident">derive_hpke_keypair</span>(<span class="ident">ciphersuite</span>.<span class="ident">hpke_config</span>(), <span class="ident">node_secret</span>.<span class="ident">as_slice</span>());
@@ -513,7 +515,7 @@
         <span class="self">self</span>.<span class="ident">path_keys</span>.<span class="ident">add</span>(<span class="ident">private_keys</span>, <span class="ident">path</span>);
 
         <span class="comment">// Return public keys.</span>
-        <span class="ident">public_keys</span>
+        <span class="prelude-val">Ok</span>(<span class="ident">public_keys</span>)
     }
 }
 </code></pre></div>

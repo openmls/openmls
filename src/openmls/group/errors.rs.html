@@ -256,12 +256,33 @@
 <span id="256">256</span>
 <span id="257">257</span>
 <span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS Group errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
 <span class="doccomment">//! `CreateCommitError`.</span>
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite::CryptoError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config::ConfigError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credentials::CredentialError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::extensions::errors::ExtensionError</span>;
@@ -269,9 +290,10 @@
     <span class="ident">MlsCiphertextError</span>, <span class="ident">MlsPlaintextError</span>, <span class="ident">ValidationError</span>, <span class="ident">VerificationError</span>,
 };
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::key_packages::KeyPackageError</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::errors::ProposalQueueError</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::errors</span>::{<span class="ident">ProposalError</span>, <span class="ident">ProposalQueueError</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schedule::errors</span>::{<span class="ident">KeyScheduleError</span>, <span class="ident">PskSecretError</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree</span>::{<span class="ident">treemath::TreeMathError</span>, <span class="ident">ParentHashError</span>, <span class="ident">TreeError</span>};
+<span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
 <span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
 
 <span class="macro">implement_error!</span> {
@@ -302,7 +324,7 @@
             <span class="ident">CreationProposalQueueError</span>(<span class="ident">CreationProposalQueueError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`CreationProposalQueueError`](`crate::group::errors::CreationProposalQueueError`) for details.&quot;</span>,
             <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span>
-                <span class="string">&quot;Tls (de)serialization occurred.&quot;</span>,
+                <span class="string">&quot;TLS (de)serialization error occurred.&quot;</span>,
             <span class="ident">KeyScheduleError</span>(<span class="ident">KeyScheduleError</span>) <span class="op">=</span>
                 <span class="string">&quot;An error occurred in the key schedule.&quot;</span>,
             <span class="ident">MathError</span>(<span class="ident">TreeMathError</span>) <span class="op">=</span>
@@ -323,6 +345,12 @@
                 <span class="string">&quot;See [`FramingValidationError`](crate::group::FramingValidationError) for details.&quot;</span>,
             <span class="ident">ProposalValidationError</span>(<span class="ident">ProposalValidationError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`ProposalValidationError`](crate::group::ProposalValidationError) for details.&quot;</span>,
+            <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`CryptoError`](openmls_traits::types::CryptoError) for details.&quot;</span>,
+            <span class="ident">InterimTranscriptHashError</span>(<span class="ident">InterimTranscriptHashError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`InterimTranscriptHashError`](crate::group::InterimTranscriptHashError) for details.&quot;</span>,
+            <span class="ident">StagedProposalError</span>(<span class="ident">StagedProposalError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`StagedProposalError`](crate::group::StagedProposalError) for details.&quot;</span>,
         }
     }
 }
@@ -352,6 +380,7 @@
                 <span class="string">&quot;The sender key package is missing.&quot;</span>,
             <span class="ident">UnknownError</span> <span class="op">=</span>
                 <span class="string">&quot;An unknown error occurred.&quot;</span>,
+            <span class="ident">LibraryError</span> <span class="op">=</span> <span class="string">&quot;An unrecoverable error has occurred due to a bug in the implementation.&quot;</span>,
             }
         <span class="ident">Complex</span> {
             <span class="ident">ConfigError</span>(<span class="ident">ConfigError</span>) <span class="op">=</span>
@@ -360,8 +389,6 @@
                 <span class="string">&quot;Invalid ratchet tree in Welcome message.&quot;</span>,
             <span class="ident">ParentHashMismatch</span>(<span class="ident">ParentHashError</span>) <span class="op">=</span>
                 <span class="string">&quot;The parent hash verification failed.&quot;</span>,
-            <span class="ident">GroupSecretsDecryptionFailure</span>(<span class="ident">CryptoError</span>) <span class="op">=</span>
-                <span class="string">&quot;Unable to decrypt the EncryptedGroupSecrets.&quot;</span>,
             <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span>
                 <span class="string">&quot;Tls (de)serialization error occurred.&quot;</span>,
             <span class="ident">KeyScheduleError</span>(<span class="ident">KeyScheduleError</span>) <span class="op">=</span>
@@ -372,6 +399,10 @@
                 <span class="string">&quot;See [`ExtensionError`] for details.&quot;</span>,
             <span class="ident">KeyPackageError</span>(<span class="ident">KeyPackageError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`KeyPackageError`] for details.&quot;</span>,
+            <span class="ident">InterimTranscriptHashError</span>(<span class="ident">InterimTranscriptHashError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`InterimTranscriptHashError`] for details.&quot;</span>,
+            <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`CryptoError`](openmls_traits::types::CryptoError) for details.&quot;</span>,
         }
     }
 }
@@ -458,6 +489,7 @@
             <span class="ident">WrongContentType</span> <span class="op">=</span> <span class="string">&quot;API misuse. Only proposals can end up in the proposal queue&quot;</span>,
         }
         <span class="ident">Complex</span> {
+            <span class="ident">ProposalError</span>(<span class="ident">ProposalError</span>) <span class="op">=</span> <span class="string">&quot;A ProposalError occurred.&quot;</span>,
             <span class="ident">TlsCodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span> <span class="string">&quot;Error serializing&quot;</span>,
         }
     }
@@ -512,6 +544,18 @@
         <span class="ident">ExistingPublicKeyUpdateProposal</span> <span class="op">=</span> <span class="string">&quot;HPKE public key of the update proposal already existed in tree.&quot;</span>,
         <span class="ident">DuplicateMemberRemoval</span> <span class="op">=</span> <span class="string">&quot;Duplicate remove proposals for the same member.&quot;</span>,
         <span class="ident">UnknownMemberRemoval</span> <span class="op">=</span> <span class="string">&quot;The remove proposal referenced a non-existing member.&quot;</span>,
+    }
+}
+
+<span class="macro">implement_error!</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">InterimTranscriptHashError</span> {
+        <span class="ident">Simple</span> {}
+        <span class="ident">Complex</span> {
+            <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span>
+                <span class="string">&quot;TLS (de)serialization error occurred.&quot;</span>,
+            <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`CryptoError`](openmls_traits::types::CryptoError) for details.&quot;</span>,
+        }
     }
 }
 </code></pre></div>

@@ -1087,6 +1087,17 @@
 <span id="1087">1087</span>
 <span id="1088">1088</span>
 <span id="1089">1089</span>
+<span id="1090">1090</span>
+<span id="1091">1091</span>
+<span id="1092">1092</span>
+<span id="1093">1093</span>
+<span id="1094">1094</span>
+<span id="1095">1095</span>
+<span id="1096">1096</span>
+<span id="1097">1097</span>
+<span id="1098">1098</span>
+<span id="1099">1099</span>
+<span id="1100">1100</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module represents the key schedule as introduced in Section 8 of the</span>
 <span class="doccomment">//! MLS specification. The key schedule evolves in epochs, where in each epoch</span>
 <span class="doccomment">//! new key material is injected.</span>
@@ -1202,11 +1213,18 @@
 <span class="doccomment">//! | `membership_key`        | &quot;membership&quot;    |</span>
 <span class="doccomment">//! | `resumption_secret`     | &quot;resumption&quot;    |</span>
 <span class="doccomment">//! ```</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ### Don&#39;t Panic!</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! Functions in this module should never panic. However, if there is a bug in</span>
+<span class="doccomment">//! the implementation, a function will return an unrecoverable `LibraryError`.</span>
+<span class="doccomment">//! This means that some functions that are not expected to fail and throw an</span>
+<span class="doccomment">//! error, will still return a `Result` since they may throw a `LibraryError`.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::framing::MlsPlaintextTbmPayload</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree::index::LeafIndex</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree::secret_tree::SecretTree</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ciphersuite::Mac</span>, <span class="ident">group::GroupContext</span>, <span class="ident">prelude::MembershipTag</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ciphersuite::Mac</span>, <span class="ident">prelude::MembershipTag</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite</span>::{<span class="ident">AeadKey</span>, <span class="ident">AeadNonce</span>, <span class="ident">Ciphersuite</span>, <span class="ident">Secret</span>},
     <span class="ident">config::ProtocolVersion</span>,
@@ -1214,11 +1232,11 @@
 };
 
 <span class="kw">use</span> <span class="ident">openmls_traits::crypto::OpenMlsCrypto</span>;
-<span class="kw">use</span> <span class="ident">openmls_traits::types::HpkeKeyPair</span>;
+<span class="kw">use</span> <span class="ident">openmls_traits::types</span>::{<span class="ident">CryptoError</span>, <span class="ident">HpkeKeyPair</span>};
 <span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::cell::RefCell</span>;
-<span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
+<span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">codec</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">errors</span>;
@@ -1230,7 +1248,7 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">kat_key_schedule</span>;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">errors</span>::{<span class="ident">ErrorState</span>, <span class="ident">KeyScheduleError</span>, <span class="ident">PskSecretError</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">psk</span>::{<span class="ident">PreSharedKeyId</span>, <span class="ident">PreSharedKeys</span>, <span class="ident">PskSecret</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
@@ -1258,13 +1276,11 @@
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">path_secret</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="comment">// FIXME: remove unwrap</span>
-        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">path_secret</span>
-            .<span class="ident">kdf_expand_label</span>(<span class="ident">backend</span>, <span class="string">&quot;path&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>())
-            .<span class="ident">unwrap</span>();
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span>
+            <span class="ident">path_secret</span>.<span class="ident">kdf_expand_label</span>(<span class="ident">backend</span>, <span class="string">&quot;path&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>())<span class="question-mark">?</span>;
 
-        <span class="self">Self</span> { <span class="ident">secret</span> }
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span> { <span class="ident">secret</span> })
     }
 
     <span class="doccomment">/// Create a CommitSecret consisting of an all-zero string of length</span>
@@ -1281,7 +1297,8 @@
         <span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
-            <span class="ident">secret</span>: <span class="ident">Secret::random</span>(<span class="ident">ciphersuite</span>, <span class="ident">rng</span>, <span class="prelude-val">None</span> <span class="comment">/* MLS version */</span>),
+            <span class="ident">secret</span>: <span class="ident">Secret::random</span>(<span class="ident">ciphersuite</span>, <span class="ident">rng</span>, <span class="prelude-val">None</span> <span class="comment">/* MLS version */</span>)
+                .<span class="ident">expect</span>(<span class="string">&quot;Not enough randomness.&quot;</span>),
         }
     }
 
@@ -1306,11 +1323,13 @@
 
 <span class="kw">impl</span> <span class="ident">InitSecret</span> {
     <span class="doccomment">/// Derive an `InitSecret` from an `EpochSecret`.</span>
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>, <span class="ident">epoch_secret</span>: <span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="comment">// FIXME: remove unwrap</span>
-        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;init&quot;</span>).<span class="ident">unwrap</span>();
+    <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">epoch_secret</span>: <span class="ident">EpochSecret</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;init&quot;</span>)<span class="question-mark">?</span>;
         <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;Init secret: {:x?}&quot;</span>, <span class="ident">secret</span>);
-        <span class="ident">InitSecret</span> { <span class="ident">secret</span> }
+        <span class="prelude-val">Ok</span>(<span class="ident">InitSecret</span> { <span class="ident">secret</span> })
     }
 
     <span class="doccomment">/// Sample a fresh, random `InitSecret` for the creation of a new group.</span>
@@ -1318,10 +1337,10 @@
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="ident">InitSecret</span> {
-            <span class="ident">secret</span>: <span class="ident">Secret::random</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">version</span>),
-        }
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Ok</span>(<span class="ident">InitSecret</span> {
+            <span class="ident">secret</span>: <span class="ident">Secret::random</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">version</span>)<span class="question-mark">?</span>,
+        })
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
@@ -1352,16 +1371,13 @@
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">commit_secret_option</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">CommitSecret</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">init_secret</span>: <span class="kw-2">&amp;</span><span class="ident">InitSecret</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">intermediate_secret</span> <span class="op">=</span> <span class="ident">init_secret</span>
             .<span class="ident">secret</span>
-            .<span class="ident">hkdf_extract</span>(<span class="ident">backend</span>, <span class="ident">commit_secret_option</span>.<span class="ident">into</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">cs</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">cs</span>.<span class="ident">secret</span>));
-        <span class="comment">// FIXME: remove unwrap</span>
-        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">intermediate_secret</span>
-            .<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;joiner&quot;</span>)
-            .<span class="ident">unwrap</span>();
+            .<span class="ident">hkdf_extract</span>(<span class="ident">backend</span>, <span class="ident">commit_secret_option</span>.<span class="ident">into</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">cs</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">cs</span>.<span class="ident">secret</span>))<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">intermediate_secret</span>.<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;joiner&quot;</span>)<span class="question-mark">?</span>;
         <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;Joiner secret: {:x?}&quot;</span>, <span class="ident">secret</span>);
-        <span class="ident">JoinerSecret</span> { <span class="ident">secret</span> }
+        <span class="prelude-val">Ok</span>(<span class="ident">JoinerSecret</span> { <span class="ident">secret</span> })
     }
 
     <span class="doccomment">/// Set the config for the secret, i.e. cipher suite and MLS version.</span>
@@ -1392,7 +1408,7 @@
         <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
-            <span class="ident">secret</span>: <span class="ident">Secret::random</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">version</span>),
+            <span class="ident">secret</span>: <span class="ident">Secret::random</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">version</span>).<span class="ident">expect</span>(<span class="string">&quot;Not enough randomness.&quot;</span>),
         }
     }
 }
@@ -1418,7 +1434,7 @@
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">joiner_secret</span>: <span class="ident">JoinerSecret</span>,
         <span class="ident">psk</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PskSecret</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">KeyScheduleError</span><span class="op">&gt;</span> {
         <span class="macro">log::debug!</span>(
             <span class="string">&quot;Initializing the key schedule with {:?} ...&quot;</span>,
             <span class="ident">ciphersuite</span>.<span class="ident">name</span>()
@@ -1430,13 +1446,13 @@
         );
         <span class="kw">let</span> <span class="ident">psk</span> <span class="op">=</span> <span class="ident">psk</span>.<span class="ident">into</span>();
         <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;  {}&quot;</span>, <span class="kw">if</span> <span class="ident">psk</span>.<span class="ident">is_some</span>() { <span class="string">&quot;with PSK&quot;</span> } <span class="kw">else</span> { <span class="string">&quot;&quot;</span> });
-        <span class="kw">let</span> <span class="ident">intermediate_secret</span> <span class="op">=</span> <span class="ident">IntermediateSecret::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">joiner_secret</span>, <span class="ident">psk</span>);
-        <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="ident">intermediate_secret</span> <span class="op">=</span> <span class="ident">IntermediateSecret::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">joiner_secret</span>, <span class="ident">psk</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
             <span class="ident">ciphersuite</span>,
             <span class="ident">intermediate_secret</span>: <span class="prelude-val">Some</span>(<span class="ident">intermediate_secret</span>),
             <span class="ident">epoch_secret</span>: <span class="prelude-val">None</span>,
             <span class="ident">state</span>: <span class="ident">State::Initial</span>,
-        }
+        })
     }
 
     <span class="doccomment">/// Derive the welcome secret.</span>
@@ -1450,19 +1466,25 @@
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyScheduleError::InvalidState</span>(<span class="ident">ErrorState::NotInit</span>));
         }
 
-        <span class="prelude-val">Ok</span>(<span class="ident">WelcomeSecret::new</span>(
-            <span class="ident">backend</span>,
-            <span class="self">self</span>.<span class="ident">intermediate_secret</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>(),
-        ))
+        <span class="comment">// We can return a library error here, because there must be a mistake in the state machine</span>
+        <span class="kw">let</span> <span class="ident">intermediate_secret</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">intermediate_secret</span>
+            .<span class="ident">as_ref</span>()
+            .<span class="ident">ok_or</span>(<span class="ident">KeyScheduleError::LibraryError</span>)<span class="question-mark">?</span>;
+
+        <span class="prelude-val">Ok</span>(<span class="ident">WelcomeSecret::new</span>(<span class="ident">backend</span>, <span class="ident">intermediate_secret</span>)<span class="question-mark">?</span>)
     }
 
     <span class="doccomment">/// Add the group context to the key schedule.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">add_context</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">group_context</span>: <span class="kw-2">&amp;</span><span class="ident">GroupContext</span>,
+        <span class="ident">serialized_group_context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">KeyScheduleError</span><span class="op">&gt;</span> {
-        <span class="macro">log::trace!</span>(<span class="string">&quot;Adding context to key schedule. {:?}&quot;</span>, <span class="ident">group_context</span>);
+        <span class="macro">log::trace!</span>(
+            <span class="string">&quot;Adding context to key schedule. {:?}&quot;</span>,
+            <span class="ident">serialized_group_context</span>
+        );
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">state</span> <span class="op">!</span><span class="op">=</span> <span class="ident">State::Initial</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">intermediate_secret</span>.<span class="ident">is_none</span>() {
             <span class="macro">log::error!</span>(
                 <span class="string">&quot;Trying to add context to the key schedule while not in the initial state.&quot;</span>
@@ -1470,29 +1492,36 @@
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyScheduleError::InvalidState</span>(<span class="ident">ErrorState::NotInit</span>));
         }
         <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">State::Context</span>;
+
+        <span class="comment">// We can return a library error here, because there must be a mistake in the state machine</span>
+        <span class="kw">let</span> <span class="ident">intermediate_secret</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">intermediate_secret</span>
+            .<span class="ident">take</span>()
+            .<span class="ident">ok_or</span>(<span class="ident">KeyScheduleError::LibraryError</span>)<span class="question-mark">?</span>;
+
         <span class="macro">log_crypto!</span>(
             <span class="ident">trace</span>,
             <span class="string">&quot;  intermediate_secret: {:x?}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">intermediate_secret</span>.<span class="ident">as_ref</span>().<span class="ident">unwrap</span>().<span class="ident">secret</span>.<span class="ident">as_slice</span>()
+            <span class="ident">intermediate_secret</span>.<span class="ident">secret</span>.<span class="ident">as_slice</span>()
         );
 
         <span class="self">self</span>.<span class="ident">epoch_secret</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">EpochSecret::new</span>(
             <span class="self">self</span>.<span class="ident">ciphersuite</span>,
             <span class="ident">backend</span>,
-            <span class="self">self</span>.<span class="ident">intermediate_secret</span>.<span class="ident">take</span>().<span class="ident">unwrap</span>(),
-            <span class="ident">group_context</span>,
-        ));
+            <span class="ident">intermediate_secret</span>,
+            <span class="ident">serialized_group_context</span>,
+        )<span class="question-mark">?</span>);
         <span class="self">self</span>.<span class="ident">intermediate_secret</span> <span class="op">=</span> <span class="prelude-val">None</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Derive the epoch secrets.</span>
-    <span class="doccomment">/// If the `init_secret` argument is `true`, the init secret is derived and</span>
+    <span class="doccomment">/// If the `with_init_secret` argument is `true`, the init secret is derived and</span>
     <span class="doccomment">/// part of the `EpochSecrets`. Otherwise not.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">epoch_secrets</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">init_secret</span>: <span class="ident">bool</span>,
+        <span class="ident">with_init_secret</span>: <span class="ident">bool</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">EpochSecrets</span>, <span class="ident">KeyScheduleError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">state</span> <span class="op">!</span><span class="op">=</span> <span class="ident">State::Context</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">epoch_secret</span>.<span class="ident">is_none</span>() {
             <span class="macro">log::error!</span>(<span class="string">&quot;Trying to derive the epoch secrets while not in the right state.&quot;</span>);
@@ -1500,11 +1529,13 @@
         }
         <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">State::Done</span>;
 
-        <span class="prelude-val">Ok</span>(<span class="ident">EpochSecrets::new</span>(
-            <span class="ident">backend</span>,
-            <span class="self">self</span>.<span class="ident">epoch_secret</span>.<span class="ident">take</span>().<span class="ident">unwrap</span>(),
-            <span class="ident">init_secret</span>,
-        ))
+        <span class="kw">let</span> <span class="ident">epoch_secret</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">epoch_secret</span>.<span class="ident">take</span>() {
+            <span class="prelude-val">Some</span>(<span class="ident">epoch_secret</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">epoch_secret</span>,
+            <span class="comment">// We can return a library error here, because there must be a mistake in the state machine</span>
+            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyScheduleError::LibraryError</span>),
+        };
+
+        <span class="prelude-val">Ok</span>(<span class="ident">EpochSecrets::new</span>(<span class="ident">backend</span>, <span class="ident">epoch_secret</span>, <span class="ident">with_init_secret</span>)<span class="question-mark">?</span>)
     }
 }
 
@@ -1521,13 +1552,13 @@
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">joiner_secret</span>: <span class="kw-2">&amp;</span><span class="ident">JoinerSecret</span>,
         <span class="ident">psk</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PskSecret</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;PSK input: {:x?}&quot;</span>, <span class="ident">psk</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">secret</span>()));
         <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">joiner_secret</span>
             .<span class="ident">secret</span>
-            .<span class="ident">hkdf_extract</span>(<span class="ident">backend</span>, <span class="ident">psk</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">secret</span>()));
+            .<span class="ident">hkdf_extract</span>(<span class="ident">backend</span>, <span class="ident">psk</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">secret</span>()))<span class="question-mark">?</span>;
         <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;Intermediate secret: {:x?}&quot;</span>, <span class="ident">secret</span>);
-        <span class="self">Self</span> { <span class="ident">secret</span> }
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span> { <span class="ident">secret</span> })
     }
 }
 
@@ -1537,14 +1568,15 @@
 
 <span class="kw">impl</span> <span class="ident">WelcomeSecret</span> {
     <span class="doccomment">/// Derive a `WelcomeSecret` from to decrypt a `Welcome` message.</span>
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>, <span class="ident">intermediate_secret</span>: <span class="kw-2">&amp;</span><span class="ident">IntermediateSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="comment">// FIXME: remove unwrap</span>
+    <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">intermediate_secret</span>: <span class="kw-2">&amp;</span><span class="ident">IntermediateSecret</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">intermediate_secret</span>
             .<span class="ident">secret</span>
-            .<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;welcome&quot;</span>)
-            .<span class="ident">unwrap</span>();
+            .<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;welcome&quot;</span>)<span class="question-mark">?</span>;
         <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;Welcome secret: {:x?}&quot;</span>, <span class="ident">secret</span>);
-        <span class="ident">WelcomeSecret</span> { <span class="ident">secret</span> }
+        <span class="prelude-val">Ok</span>(<span class="ident">WelcomeSecret</span> { <span class="ident">secret</span> })
     }
 
     <span class="doccomment">/// Derive an `AeadKey` and an `AeadNonce` from the `WelcomeSecret`,</span>
@@ -1552,36 +1584,40 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">derive_welcome_key_nonce</span>(
         <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">AeadKey</span>, <span class="ident">AeadNonce</span>) {
-        <span class="kw">let</span> <span class="ident">welcome_nonce</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">derive_aead_nonce</span>(<span class="ident">backend</span>);
-        <span class="kw">let</span> <span class="ident">welcome_key</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">derive_aead_key</span>(<span class="ident">backend</span>);
-        (<span class="ident">welcome_key</span>, <span class="ident">welcome_nonce</span>)
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">AeadKey</span>, <span class="ident">AeadNonce</span>), <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">welcome_nonce</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">derive_aead_nonce</span>(<span class="ident">backend</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">welcome_key</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">derive_aead_key</span>(<span class="ident">backend</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>((<span class="ident">welcome_key</span>, <span class="ident">welcome_nonce</span>))
     }
 
     <span class="doccomment">/// Derive a new AEAD key from a `WelcomeSecret`.</span>
-    <span class="kw">fn</span> <span class="ident">derive_aead_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">AeadKey</span> {
+    <span class="kw">fn</span> <span class="ident">derive_aead_key</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AeadKey</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="macro">log::trace!</span>(
             <span class="string">&quot;WelcomeSecret.derive_aead_key with {}&quot;</span>,
             <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">ciphersuite</span>()
         );
-        <span class="kw">let</span> <span class="ident">aead_secret</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">secret</span>
-            .<span class="ident">hkdf_expand</span>(<span class="ident">backend</span>, <span class="string">b&quot;key&quot;</span>, <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">ciphersuite</span>().<span class="ident">aead_key_length</span>())
-            .<span class="ident">unwrap</span>();
-        <span class="ident">AeadKey::from_secret</span>(<span class="ident">aead_secret</span>)
+        <span class="kw">let</span> <span class="ident">aead_secret</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">hkdf_expand</span>(
+            <span class="ident">backend</span>,
+            <span class="string">b&quot;key&quot;</span>,
+            <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">ciphersuite</span>().<span class="ident">aead_key_length</span>(),
+        )<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="ident">AeadKey::from_secret</span>(<span class="ident">aead_secret</span>))
     }
 
     <span class="doccomment">/// Derive a new AEAD nonce from a `WelcomeSecret`.</span>
-    <span class="kw">fn</span> <span class="ident">derive_aead_nonce</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">AeadNonce</span> {
-        <span class="kw">let</span> <span class="ident">nonce_secret</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">secret</span>
-            .<span class="ident">hkdf_expand</span>(
-                <span class="ident">backend</span>,
-                <span class="string">b&quot;nonce&quot;</span>,
-                <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">ciphersuite</span>().<span class="ident">aead_nonce_length</span>(),
-            )
-            .<span class="ident">unwrap</span>();
-        <span class="ident">AeadNonce::from_secret</span>(<span class="ident">nonce_secret</span>)
+    <span class="kw">fn</span> <span class="ident">derive_aead_nonce</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AeadNonce</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">nonce_secret</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">hkdf_expand</span>(
+            <span class="ident">backend</span>,
+            <span class="string">b&quot;nonce&quot;</span>,
+            <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">ciphersuite</span>().<span class="ident">aead_nonce_length</span>(),
+        )<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="ident">AeadNonce::from_secret</span>(<span class="ident">nonce_secret</span>))
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
@@ -1603,20 +1639,16 @@
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">intermediate_secret</span>: <span class="ident">IntermediateSecret</span>,
-        <span class="ident">group_context</span>: <span class="kw-2">&amp;</span><span class="ident">GroupContext</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="comment">// FIXME: remove unwraps</span>
-        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">intermediate_secret</span>
-            .<span class="ident">secret</span>
-            .<span class="ident">kdf_expand_label</span>(
-                <span class="ident">backend</span>,
-                <span class="string">&quot;epoch&quot;</span>,
-                <span class="kw-2">&amp;</span><span class="ident">group_context</span>.<span class="ident">tls_serialize_detached</span>().<span class="ident">unwrap</span>(),
-                <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>(),
-            )
-            .<span class="ident">unwrap</span>();
+        <span class="ident">serialized_group_context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">intermediate_secret</span>.<span class="ident">secret</span>.<span class="ident">kdf_expand_label</span>(
+            <span class="ident">backend</span>,
+            <span class="string">&quot;epoch&quot;</span>,
+            <span class="ident">serialized_group_context</span>,
+            <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>(),
+        )<span class="question-mark">?</span>;
         <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;Epoch secret: {:x?}&quot;</span>, <span class="ident">secret</span>);
-        <span class="ident">EpochSecret</span> { <span class="ident">secret</span> }
+        <span class="prelude-val">Ok</span>(<span class="ident">EpochSecret</span> { <span class="ident">secret</span> })
     }
 }
 
@@ -1628,14 +1660,13 @@
 
 <span class="kw">impl</span> <span class="ident">EncryptionSecret</span> {
     <span class="doccomment">/// Derive an encryption secret from a reference to an `EpochSecret`.</span>
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>, <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="comment">// FIXME: remove unwrap</span>
-        <span class="ident">EncryptionSecret</span> {
-            <span class="ident">secret</span>: <span class="ident">epoch_secret</span>
-                .<span class="ident">secret</span>
-                .<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;encryption&quot;</span>)
-                .<span class="ident">unwrap</span>(),
-        }
+    <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Ok</span>(<span class="ident">EncryptionSecret</span> {
+            <span class="ident">secret</span>: <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;encryption&quot;</span>)<span class="question-mark">?</span>,
+        })
     }
 
     <span class="doccomment">/// Create a `SecretTree` from the `encryption_secret` contained in the</span>
@@ -1657,7 +1688,8 @@
         <span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">EncryptionSecret</span> {
-            <span class="ident">secret</span>: <span class="ident">Secret::random</span>(<span class="ident">ciphersuite</span>, <span class="ident">rng</span>, <span class="prelude-val">None</span> <span class="comment">/* MLS version */</span>),
+            <span class="ident">secret</span>: <span class="ident">Secret::random</span>(<span class="ident">ciphersuite</span>, <span class="ident">rng</span>, <span class="prelude-val">None</span> <span class="comment">/* MLS version */</span>)
+                .<span class="ident">expect</span>(<span class="string">&quot;Not enough randomness.&quot;</span>),
         }
     }
 
@@ -1689,13 +1721,12 @@
 
 <span class="kw">impl</span> <span class="ident">ExporterSecret</span> {
     <span class="doccomment">/// Derive an `ExporterSecret` from an `EpochSecret`.</span>
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>, <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="comment">// FIXME: remove unwrap</span>
-        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>
-            .<span class="ident">secret</span>
-            .<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;exporter&quot;</span>)
-            .<span class="ident">unwrap</span>();
-        <span class="ident">ExporterSecret</span> { <span class="ident">secret</span> }
+    <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;exporter&quot;</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="ident">ExporterSecret</span> { <span class="ident">secret</span> })
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
@@ -1713,16 +1744,14 @@
         <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">key_length</span>: <span class="ident">usize</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">context_hash</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">ciphersuite</span>.<span class="ident">hash</span>(<span class="ident">backend</span>, <span class="ident">context</span>);
-        <span class="comment">// FIXME: remove unwraps</span>
-        <span class="self">self</span>.<span class="ident">secret</span>
-            .<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="ident">label</span>)
-            .<span class="ident">unwrap</span>()
-            .<span class="ident">kdf_expand_label</span>(<span class="ident">backend</span>, <span class="ident">label</span>, <span class="ident">context_hash</span>, <span class="ident">key_length</span>)
-            .<span class="ident">unwrap</span>()
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">context_hash</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">ciphersuite</span>.<span class="ident">hash</span>(<span class="ident">backend</span>, <span class="ident">context</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>
+            .<span class="ident">secret</span>
+            .<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="ident">label</span>)<span class="question-mark">?</span>
+            .<span class="ident">kdf_expand_label</span>(<span class="ident">backend</span>, <span class="ident">label</span>, <span class="ident">context_hash</span>, <span class="ident">key_length</span>)<span class="question-mark">?</span>
             .<span class="ident">as_slice</span>()
-            .<span class="ident">to_vec</span>()
+            .<span class="ident">to_vec</span>())
     }
 }
 
@@ -1736,13 +1765,14 @@
 
 <span class="kw">impl</span> <span class="ident">AuthenticationSecret</span> {
     <span class="doccomment">/// Derive an `AuthenticationSecret` from an `EpochSecret`.</span>
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>, <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="comment">// FIXME: remove unwrap</span>
+    <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>
             .<span class="ident">secret</span>
-            .<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;authentication&quot;</span>)
-            .<span class="ident">unwrap</span>();
-        <span class="self">Self</span> { <span class="ident">secret</span> }
+            .<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;authentication&quot;</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span> { <span class="ident">secret</span> })
     }
 
     <span class="doccomment">/// ☣️ Get a copy of the secret bytes.</span>
@@ -1765,13 +1795,12 @@
 
 <span class="kw">impl</span> <span class="ident">ExternalSecret</span> {
     <span class="doccomment">/// Derive an `ExternalSecret` from an `EpochSecret`.</span>
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>, <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="comment">// FIXME: remove unwrap</span>
-        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>
-            .<span class="ident">secret</span>
-            .<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;external&quot;</span>)
-            .<span class="ident">unwrap</span>();
-        <span class="self">Self</span> { <span class="ident">secret</span> }
+    <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;external&quot;</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span> { <span class="ident">secret</span> })
     }
 
     <span class="doccomment">/// Derive the external keypair for External Commits</span>
@@ -1798,19 +1827,18 @@
 
 <span class="kw">impl</span> <span class="ident">ConfirmationKey</span> {
     <span class="doccomment">/// Derive an `ConfirmationKey` from an `EpochSecret`.</span>
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>, <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="macro">log::debug!</span>(<span class="string">&quot;Computing confirmation key.&quot;</span>);
         <span class="macro">log_crypto!</span>(
             <span class="ident">trace</span>,
             <span class="string">&quot;  epoch_secret {:x?}&quot;</span>,
             <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">as_slice</span>()
         );
-        <span class="comment">// FIXME: remove unwrap</span>
-        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>
-            .<span class="ident">secret</span>
-            .<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;confirm&quot;</span>)
-            .<span class="ident">unwrap</span>();
-        <span class="self">Self</span> { <span class="ident">secret</span> }
+        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;confirm&quot;</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span> { <span class="ident">secret</span> })
     }
 
     <span class="doccomment">/// Create a new confirmation tag.</span>
@@ -1825,11 +1853,15 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">confirmed_transcript_hash</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ConfirmationTag</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConfirmationTag</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="macro">log::debug!</span>(<span class="string">&quot;Computing confirmation tag.&quot;</span>);
         <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;  confirmation key {:x?}&quot;</span>, <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">as_slice</span>());
         <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;  transcript hash  {:x?}&quot;</span>, <span class="ident">confirmed_transcript_hash</span>);
-        <span class="ident">ConfirmationTag</span>(<span class="ident">Mac::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>, <span class="ident">confirmed_transcript_hash</span>))
+        <span class="prelude-val">Ok</span>(<span class="ident">ConfirmationTag</span>(<span class="ident">Mac::new</span>(
+            <span class="ident">backend</span>,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>,
+            <span class="ident">confirmed_transcript_hash</span>,
+        )<span class="question-mark">?</span>))
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
@@ -1852,13 +1884,12 @@
 
 <span class="kw">impl</span> <span class="ident">MembershipKey</span> {
     <span class="doccomment">/// Derive an `MembershipKey` from an `EpochSecret`.</span>
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>, <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="comment">// FIXME: remove unwrap</span>
-        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>
-            .<span class="ident">secret</span>
-            .<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;membership&quot;</span>)
-            .<span class="ident">unwrap</span>();
-        <span class="self">Self</span> { <span class="ident">secret</span> }
+    <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;membership&quot;</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span> { <span class="ident">secret</span> })
     }
 
     <span class="doccomment">/// Create a new membership tag.</span>
@@ -1872,12 +1903,12 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">tbm_payload</span>: <span class="ident">MlsPlaintextTbmPayload</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MembershipTag</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MembershipTag</span>, <span class="ident">MembershipKeyError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">MembershipTag</span>(<span class="ident">Mac::new</span>(
             <span class="ident">backend</span>,
             <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>,
             <span class="kw-2">&amp;</span><span class="ident">tbm_payload</span>.<span class="ident">into_bytes</span>()<span class="question-mark">?</span>,
-        )))
+        )<span class="question-mark">?</span>))
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
@@ -1900,13 +1931,12 @@
 
 <span class="kw">impl</span> <span class="ident">ResumptionSecret</span> {
     <span class="doccomment">/// Derive an `ResumptionSecret` from an `EpochSecret`.</span>
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>, <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="comment">// FIXME: remove unwrap</span>
-        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>
-            .<span class="ident">secret</span>
-            .<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;resumption&quot;</span>)
-            .<span class="ident">unwrap</span>();
-        <span class="self">Self</span> { <span class="ident">secret</span> }
+    <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;resumption&quot;</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span> { <span class="ident">secret</span> })
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
@@ -1935,13 +1965,12 @@
 
 <span class="kw">impl</span> <span class="ident">SenderDataSecret</span> {
     <span class="doccomment">/// Derive an `ExporterSecret` from an `EpochSecret`.</span>
-    <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>, <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="comment">// FIXME: remove unwrap</span>
-        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>
-            .<span class="ident">secret</span>
-            .<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;sender data&quot;</span>)
-            .<span class="ident">unwrap</span>();
-        <span class="ident">SenderDataSecret</span> { <span class="ident">secret</span> }
+    <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;sender data&quot;</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="ident">SenderDataSecret</span> { <span class="ident">secret</span> })
     }
 
     <span class="doccomment">/// Derive a new AEAD key from a `SenderDataSecret`.</span>
@@ -1949,23 +1978,19 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">ciphertext</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">AeadKey</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AeadKey</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ciphertext_sample</span> <span class="op">=</span> <span class="ident">ciphertext_sample</span>(<span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">ciphersuite</span>(), <span class="ident">ciphertext</span>);
         <span class="macro">log::debug!</span>(
             <span class="string">&quot;SenderDataSecret::derive_aead_key ciphertext sample: {:x?}&quot;</span>,
             <span class="ident">ciphertext_sample</span>
         );
-        <span class="comment">// FIXME: remove unwrap</span>
-        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">secret</span>
-            .<span class="ident">kdf_expand_label</span>(
-                <span class="ident">backend</span>,
-                <span class="string">&quot;key&quot;</span>,
-                <span class="ident">ciphertext_sample</span>,
-                <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">ciphersuite</span>().<span class="ident">aead_key_length</span>(),
-            )
-            .<span class="ident">unwrap</span>();
-        <span class="ident">AeadKey::from_secret</span>(<span class="ident">secret</span>)
+        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">kdf_expand_label</span>(
+            <span class="ident">backend</span>,
+            <span class="string">&quot;key&quot;</span>,
+            <span class="ident">ciphertext_sample</span>,
+            <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">ciphersuite</span>().<span class="ident">aead_key_length</span>(),
+        )<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="ident">AeadKey::from_secret</span>(<span class="ident">secret</span>))
     }
 
     <span class="doccomment">/// Derive a new AEAD nonce from a `SenderDataSecret`.</span>
@@ -1974,30 +1999,27 @@
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">ciphertext</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">AeadNonce</span> {
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AeadNonce</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ciphertext_sample</span> <span class="op">=</span> <span class="ident">ciphertext_sample</span>(<span class="ident">ciphersuite</span>, <span class="ident">ciphertext</span>);
         <span class="macro">log::debug!</span>(
             <span class="string">&quot;SenderDataSecret::derive_aead_nonce ciphertext sample: {:x?}&quot;</span>,
             <span class="ident">ciphertext_sample</span>
         );
-        <span class="comment">// FIXME: remove unwrap</span>
-        <span class="kw">let</span> <span class="ident">nonce_secret</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">secret</span>
-            .<span class="ident">kdf_expand_label</span>(
-                <span class="ident">backend</span>,
-                <span class="string">&quot;nonce&quot;</span>,
-                <span class="ident">ciphertext_sample</span>,
-                <span class="ident">ciphersuite</span>.<span class="ident">aead_nonce_length</span>(),
-            )
-            .<span class="ident">unwrap</span>();
-        <span class="ident">AeadNonce::from_secret</span>(<span class="ident">nonce_secret</span>)
+        <span class="kw">let</span> <span class="ident">nonce_secret</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">kdf_expand_label</span>(
+            <span class="ident">backend</span>,
+            <span class="string">&quot;nonce&quot;</span>,
+            <span class="ident">ciphertext_sample</span>,
+            <span class="ident">ciphersuite</span>.<span class="ident">aead_nonce_length</span>(),
+        )<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="ident">AeadNonce::from_secret</span>(<span class="ident">nonce_secret</span>))
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">random</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>, <span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span> {
-            <span class="ident">secret</span>: <span class="ident">Secret::random</span>(<span class="ident">ciphersuite</span>, <span class="ident">rng</span>, <span class="prelude-val">None</span> <span class="comment">/* MLS version */</span>),
+            <span class="ident">secret</span>: <span class="ident">Secret::random</span>(<span class="ident">ciphersuite</span>, <span class="ident">rng</span>, <span class="prelude-val">None</span> <span class="comment">/* MLS version */</span>)
+                .<span class="ident">expect</span>(<span class="string">&quot;Not enough randomness.&quot;</span>),
         }
     }
 
@@ -2125,13 +2147,13 @@
     }
 
     <span class="doccomment">/// Derive `EpochSecrets` from an `EpochSecret`.</span>
-    <span class="doccomment">/// If the `init_secret` argument is `true`, the init secret is derived and</span>
+    <span class="doccomment">/// If the `with_init_secret` argument is `true`, the init secret is derived and</span>
     <span class="doccomment">/// part of the `EpochSecrets`. Otherwise not.</span>
     <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">epoch_secret</span>: <span class="ident">EpochSecret</span>,
-        <span class="ident">init_secret</span>: <span class="ident">bool</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="ident">with_init_secret</span>: <span class="ident">bool</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="macro">log::debug!</span>(
             <span class="string">&quot;Computing EpochSecrets from epoch secret with {}&quot;</span>,
             <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">ciphersuite</span>()
@@ -2141,23 +2163,23 @@
             <span class="string">&quot;  epoch_secret: {:x?}&quot;</span>,
             <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">as_slice</span>()
         );
-        <span class="kw">let</span> <span class="ident">sender_data_secret</span> <span class="op">=</span> <span class="ident">SenderDataSecret::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
-        <span class="kw">let</span> <span class="ident">encryption_secret</span> <span class="op">=</span> <span class="ident">EncryptionSecret::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
-        <span class="kw">let</span> <span class="ident">exporter_secret</span> <span class="op">=</span> <span class="ident">ExporterSecret::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
-        <span class="kw">let</span> <span class="ident">authentication_secret</span> <span class="op">=</span> <span class="ident">AuthenticationSecret::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
-        <span class="kw">let</span> <span class="ident">external_secret</span> <span class="op">=</span> <span class="ident">ExternalSecret::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
-        <span class="kw">let</span> <span class="ident">confirmation_key</span> <span class="op">=</span> <span class="ident">ConfirmationKey::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
-        <span class="kw">let</span> <span class="ident">membership_key</span> <span class="op">=</span> <span class="ident">MembershipKey::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
-        <span class="kw">let</span> <span class="ident">resumption_secret</span> <span class="op">=</span> <span class="ident">ResumptionSecret::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>);
+        <span class="kw">let</span> <span class="ident">sender_data_secret</span> <span class="op">=</span> <span class="ident">SenderDataSecret::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">encryption_secret</span> <span class="op">=</span> <span class="ident">EncryptionSecret::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">exporter_secret</span> <span class="op">=</span> <span class="ident">ExporterSecret::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">authentication_secret</span> <span class="op">=</span> <span class="ident">AuthenticationSecret::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">external_secret</span> <span class="op">=</span> <span class="ident">ExternalSecret::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">confirmation_key</span> <span class="op">=</span> <span class="ident">ConfirmationKey::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">membership_key</span> <span class="op">=</span> <span class="ident">MembershipKey::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">resumption_secret</span> <span class="op">=</span> <span class="ident">ResumptionSecret::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">init_secret</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">init_secret</span> {
+        <span class="kw">let</span> <span class="ident">init_secret</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">with_init_secret</span> {
             <span class="macro">log::trace!</span>(<span class="string">&quot;  Computing init secret.&quot;</span>);
-            <span class="prelude-val">Some</span>(<span class="ident">InitSecret::new</span>(<span class="ident">backend</span>, <span class="ident">epoch_secret</span>))
+            <span class="prelude-val">Some</span>(<span class="ident">InitSecret::new</span>(<span class="ident">backend</span>, <span class="ident">epoch_secret</span>)<span class="question-mark">?</span>)
         } <span class="kw">else</span> {
             <span class="prelude-val">None</span>
         };
 
-        <span class="ident">EpochSecrets</span> {
+        <span class="prelude-val">Ok</span>(<span class="ident">EpochSecrets</span> {
             <span class="ident">init_secret</span>,
             <span class="ident">sender_data_secret</span>,
             <span class="ident">encryption_secret</span>: <span class="ident">RefCell::new</span>(<span class="ident">encryption_secret</span>),
@@ -2167,7 +2189,7 @@
             <span class="ident">confirmation_key</span>,
             <span class="ident">membership_key</span>,
             <span class="ident">resumption_secret</span>,
-        }
+        })
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>

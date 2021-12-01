@@ -33,6 +33,10 @@
 <span id="33">33</span>
 <span id="34">34</span>
 <span id="35">35</span>
+<span id="36">36</span>
+<span id="37">37</span>
+<span id="38">38</span>
+<span id="39">39</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// 9.2 Message framing</span>
@@ -56,16 +60,20 @@
     <span class="doccomment">/// HMAC-Hash(salt, IKM). For all supported ciphersuites this is the same</span>
     <span class="doccomment">/// HMAC that is also used in HKDF.</span>
     <span class="doccomment">/// Compute the HMAC on `salt` with key `ikm`.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>, <span class="ident">salt</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>, <span class="ident">ikm</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="ident">Mac</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">salt</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>,
+        <span class="ident">ikm</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Ok</span>(<span class="ident">Mac</span> {
             <span class="ident">mac_value</span>: <span class="ident">salt</span>
                 .<span class="ident">hkdf_extract</span>(
                     <span class="ident">backend</span>,
                     <span class="kw-2">&amp;</span><span class="ident">Secret::from_slice</span>(<span class="ident">ikm</span>, <span class="ident">salt</span>.<span class="ident">mls_version</span>, <span class="ident">salt</span>.<span class="ident">ciphersuite</span>),
-                )
+                )<span class="question-mark">?</span>
                 .<span class="ident">value</span>
                 .<span class="ident">into</span>(),
-        }
+        })
     }
 }
 </code></pre></div>

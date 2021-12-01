@@ -288,6 +288,8 @@
 <span id="288">288</span>
 <span id="289">289</span>
 <span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">crypto::OpenMlsCrypto</span>, <span class="ident">OpenMlsCryptoProvider</span>};
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -392,14 +394,15 @@
         <span class="kw">let</span> <span class="ident">confirmed_transcript_hash</span> <span class="op">=</span> <span class="ident">update_confirmed_transcript_hash</span>(
             <span class="ident">ciphersuite</span>,
             <span class="ident">backend</span>,
-            <span class="comment">// It is ok to use `unwrap()` here, because we know the MlsPlaintext contains a</span>
+            <span class="comment">// It is ok to a library error here, because we know the MlsPlaintext contains a</span>
             <span class="comment">// Commit</span>
-            <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextCommitContent::try_from</span>(<span class="kw-2">&amp;</span><span class="ident">mls_plaintext</span>).<span class="ident">unwrap</span>(),
+            <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextCommitContent::try_from</span>(<span class="kw-2">&amp;</span><span class="ident">mls_plaintext</span>)
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MlsGroupError::LibraryError</span>)<span class="question-mark">?</span>,
             <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">interim_transcript_hash</span>,
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Calculate tree hash</span>
-        <span class="kw">let</span> <span class="ident">tree_hash</span> <span class="op">=</span> <span class="ident">provisional_tree</span>.<span class="ident">tree_hash</span>(<span class="ident">backend</span>);
+        <span class="kw">let</span> <span class="ident">tree_hash</span> <span class="op">=</span> <span class="ident">provisional_tree</span>.<span class="ident">tree_hash</span>(<span class="ident">backend</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Calculate group context</span>
         <span class="macro">println!</span>(<span class="string">&quot;create commit ext: {:?}&quot;</span>, <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">extensions</span>());
@@ -417,7 +420,7 @@
             <span class="self">self</span>.<span class="ident">epoch_secrets</span>()
                 .<span class="ident">init_secret</span>()
                 .<span class="ident">ok_or</span>(<span class="ident">MlsGroupError::InitSecretNotFound</span>)<span class="question-mark">?</span>,
-        );
+        )<span class="question-mark">?</span>;
 
         <span class="comment">// Create group secrets for later use, so we can afterwards consume the</span>
         <span class="comment">// `joiner_secret`.</span>
@@ -440,16 +443,19 @@
                 <span class="kw-2">*</span><span class="ident">params</span>.<span class="ident">psk_fetcher_option</span>(),
                 <span class="kw-2">&amp;</span><span class="ident">apply_proposals_values</span>.<span class="ident">presharedkeys</span>,
             )<span class="question-mark">?</span>,
-        );
+        )<span class="question-mark">?</span>;
+
+        <span class="kw">let</span> <span class="ident">serialized_provisional_group_context</span> <span class="op">=</span>
+            <span class="ident">provisional_group_context</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">welcome_secret</span> <span class="op">=</span> <span class="ident">key_schedule</span>.<span class="ident">welcome</span>(<span class="ident">backend</span>)<span class="question-mark">?</span>;
-        <span class="ident">key_schedule</span>.<span class="ident">add_context</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">provisional_group_context</span>)<span class="question-mark">?</span>;
+        <span class="ident">key_schedule</span>.<span class="ident">add_context</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">serialized_provisional_group_context</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">provisional_epoch_secrets</span> <span class="op">=</span> <span class="ident">key_schedule</span>.<span class="ident">epoch_secrets</span>(<span class="ident">backend</span>, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Calculate the confirmation tag</span>
         <span class="kw">let</span> <span class="ident">confirmation_tag</span> <span class="op">=</span> <span class="ident">provisional_epoch_secrets</span>
             .<span class="ident">confirmation_key</span>()
-            .<span class="ident">tag</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">confirmed_transcript_hash</span>);
+            .<span class="ident">tag</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">confirmed_transcript_hash</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Set the confirmation tag</span>
         <span class="ident">mls_plaintext</span>.<span class="ident">set_confirmation_tag</span>(<span class="ident">confirmation_tag</span>.<span class="ident">clone</span>());
@@ -485,15 +491,13 @@
             <span class="kw">let</span> <span class="ident">group_info</span> <span class="op">=</span> <span class="ident">group_info</span>.<span class="ident">sign</span>(<span class="ident">backend</span>, <span class="ident">params</span>.<span class="ident">credential_bundle</span>())<span class="question-mark">?</span>;
 
             <span class="comment">// Encrypt GroupInfo object</span>
-            <span class="kw">let</span> (<span class="ident">welcome_key</span>, <span class="ident">welcome_nonce</span>) <span class="op">=</span> <span class="ident">welcome_secret</span>.<span class="ident">derive_welcome_key_nonce</span>(<span class="ident">backend</span>);
-            <span class="kw">let</span> <span class="ident">encrypted_group_info</span> <span class="op">=</span> <span class="ident">welcome_key</span>
-                .<span class="ident">aead_seal</span>(
-                    <span class="ident">backend</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">group_info</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>,
-                    <span class="kw-2">&amp;</span>[],
-                    <span class="kw-2">&amp;</span><span class="ident">welcome_nonce</span>,
-                )
-                .<span class="ident">unwrap</span>();
+            <span class="kw">let</span> (<span class="ident">welcome_key</span>, <span class="ident">welcome_nonce</span>) <span class="op">=</span> <span class="ident">welcome_secret</span>.<span class="ident">derive_welcome_key_nonce</span>(<span class="ident">backend</span>)<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">encrypted_group_info</span> <span class="op">=</span> <span class="ident">welcome_key</span>.<span class="ident">aead_seal</span>(
+                <span class="ident">backend</span>,
+                <span class="kw-2">&amp;</span><span class="ident">group_info</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>,
+                <span class="kw-2">&amp;</span>[],
+                <span class="kw-2">&amp;</span><span class="ident">welcome_nonce</span>,
+            )<span class="question-mark">?</span>;
             <span class="comment">// Encrypt group secrets</span>
             <span class="kw">let</span> <span class="ident">secrets</span> <span class="op">=</span> <span class="ident">plaintext_secrets</span>
                 .<span class="ident">iter</span>()
@@ -555,7 +559,7 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">plaintext_secrets</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="kw">for</span> (<span class="ident">index</span>, <span class="ident">add_proposal</span>) <span class="kw">in</span> <span class="ident">invited_members</span> {
             <span class="kw">let</span> <span class="ident">key_package</span> <span class="op">=</span> <span class="ident">add_proposal</span>.<span class="ident">key_package</span>;
-            <span class="kw">let</span> <span class="ident">key_package_hash</span> <span class="op">=</span> <span class="ident">key_package</span>.<span class="ident">hash</span>(<span class="ident">backend</span>);
+            <span class="kw">let</span> <span class="ident">key_package_hash</span> <span class="op">=</span> <span class="ident">key_package</span>.<span class="ident">hash</span>(<span class="ident">backend</span>)<span class="question-mark">?</span>;
 
             <span class="comment">// Compute the index of the common ancestor lowest in the</span>
             <span class="comment">// tree of our own leaf and the given index.</span>
