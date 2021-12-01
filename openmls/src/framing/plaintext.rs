@@ -492,7 +492,7 @@ pub struct VerifiableMlsPlaintext {
 impl VerifiableMlsPlaintext {
     /// Create a new [`VerifiableMlsPlaintext`] from a [`MlsPlaintextTbs`] and
     /// a [`Signature`].
-    pub fn new(
+    pub(crate) fn new(
         tbs: MlsPlaintextTbs,
         signature: Signature,
         confirmation_tag: impl Into<Option<ConfirmationTag>>,

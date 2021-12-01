@@ -178,6 +178,7 @@ impl CredentialBundle {
 
     /// Creates a new [CredentialBundle] from an identity, a [SignatureScheme] and a [SignatureKeypair].
     /// Note that only [BasicCredential] is currently supported.
+    #[cfg(test)]
     pub fn from_parts(
         identity: Vec<u8>,
         signature_scheme: SignatureScheme,

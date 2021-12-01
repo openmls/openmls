@@ -1,7 +1,7 @@
 //! # Known Answer Tests for the encoding and decoding of various structs of the
 //! MLS spec
 //!
-//! See https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md
+//! See <https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md>
 //! for more description on the test vectors.
 
 use crate::{
@@ -9,9 +9,9 @@ use crate::{
     group::{create_commit_params::CreateCommitParams, GroupEpoch, WireFormat},
     messages::{public_group_state::VerifiablePublicGroupState, Commit, GroupInfo, GroupSecrets},
     messages::{ConfirmationTag, GroupInfoPayload},
-    node::Node,
     prelude::*,
     test_utils::*,
+    tree::node::Node,
     utils::*,
 };
 

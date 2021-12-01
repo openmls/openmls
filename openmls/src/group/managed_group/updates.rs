@@ -8,9 +8,8 @@ impl ManagedGroup {
     /// A [`KeyPackageBundle`](crate::prelude::KeyPackageBundle) can optionally
     /// be provided. If not, a new one will be created on the fly.
     ///
-    /// If successful, it returns a `Vec` of
-    /// [`MlsMessage`] and an optional [`Welcome`] message if there were add
-    /// proposals in the queue of pending proposals.
+    /// If successful, it returns a tuple of [`MlsMessageOut`] and an optional [`Welcome`].
+    /// The [Welcome] is [Some] when the queue of pending proposals contained add proposals.
     pub fn self_update(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,

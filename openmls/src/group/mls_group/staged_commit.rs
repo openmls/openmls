@@ -17,7 +17,7 @@ impl MlsGroup {
     ///  - Initializes the key schedule for epoch rollover
     ///  - Verifies the confirmation tag/membership tag
     /// Returns a [StagedCommit] that can be inspected and later merged
-    /// into the group state with [merge_commit()]
+    /// into the group state with [MlsGroup::merge_commit()]
     /// This function does the following checks:
     ///  - ValSem100
     ///  - ValSem101

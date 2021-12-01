@@ -1,23 +1,23 @@
 //! # OpenMLS
 //!
-//! ## High-level API
+//! OpenMLS is an implementation of the [MLS RFC].
 //!
-//! See [ManagedGroup](`prelude::ManagedGroup`)
+//! The main entry point for most consumers should be the [ManagedGroup](prelude::ManagedGroup).
+//! It provides an safe, opinionated API for interacting with MLS groups.
 //!
-//! ## Low-level API
+//! ## Error handling
 //!
-//! See [MlsGroup](`prelude::MlsGroup`)
-//!
-//! ## Errors
+//! OpenMLS is panic-free.
+//! All functions that can potentially fail at some point return a [Result].
 //!
 //! Each module has an `errors.rs` defining module specific errors that are used
-//! within the crate. This exposes some of the
-//! module errors that are publicly relevant.
+//! within the crate. This exposes some of the module errors that are publicly relevant.
 //! All errors implement the [`Error`](`std::error::Error`) trait and
 //! [`PartialEq`](`std::cmp::PartialEq`).
 //!
-//! The high-level errors API in [`error`](`error`) are a different error
-//! representation as `u16` for C FFI APIs.
+//! See the [mod@error] module for more details.
+//!
+//! [MLS RFC]: https://datatracker.ietf.org/doc/draft-ietf-mls-protocol/
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![forbid(unsafe_code)]
 
@@ -45,8 +45,6 @@ pub mod schedule;
 #[cfg(not(any(feature = "test-utils", test)))]
 mod schedule;
 pub mod tree;
-
-pub use crate::tree::node;
 
 /// Single place, re-exporting the most used public functions.
 pub mod prelude;

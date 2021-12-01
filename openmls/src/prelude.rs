@@ -9,7 +9,6 @@ pub use crate::group::{
     WireFormat,
 };
 // Errors
-pub use crate::error::ErrorString;
 pub use crate::group::errors::{
     CreateCommitError, FramingValidationError, MlsGroupError, StageCommitError, WelcomeError,
 };

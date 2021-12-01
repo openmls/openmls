@@ -26,7 +26,7 @@ implement_error! {
             Config(ConfigError) =
                 "See [`ConfigError`](`crate::config::ConfigError`) for details",
             Group(MlsGroupError) =
-                "See [`GroupError`](`crate::group::GroupError`) for details",
+                "See [`MlsGroupError`](`crate::group::MlsGroupError`) for details",
             CreateCommit(CreateCommitError) =
                 "See [`CreateCommitError`](`crate::group::CreateCommitError`) for details",
             UseAfterEviction(UseAfterEviction) =
@@ -39,7 +39,7 @@ implement_error! {
                 "Empty input. Additional detail is provided.",
             InvalidMessage(InvalidMessageError) = "The message could not be processed.",
             CredentialError(CredentialError) = "See [`CredentialError`](`crate::credentials::CredentialError`) for details",
-            ValidationError(ValidationError) = "See [`ValidationError`](`crate::framing::validation::ValidationError`) for details",
+            ValidationError(ValidationError) = "See [`ValidationError`](`crate::framing::ValidationError`) for details",
             TlsCodecError(TlsCodecError) = "An error occured during TLS encoding/decoding.",
         }
     }
@@ -90,7 +90,7 @@ implement_error! {
             CommitError(StageCommitError) =
                 "See [`StageCommitError`](`crate::group::StageCommitError`) for details",
             GroupError(MlsGroupError) =
-                "See [`GroupError`](`crate::group::GroupError`) for details",
+                "See [`MlsGroupError`](`crate::group::MlsGroupError`) for details",
         }
     }
 }

@@ -42,7 +42,7 @@ implement_error! {
             ProposalQueueError(ProposalQueueError) =
                 "See [`ProposalQueueError`](`crate::messages::errors::ProposalQueueError`) for details.",
             CreationProposalQueueError(CreationProposalQueueError) =
-                "See [`CreationProposalQueueError`](`crate::messages::errors::CreationProposalQueueError`) for details.",
+                "See [`CreationProposalQueueError`](`crate::group::errors::CreationProposalQueueError`) for details.",
             CodecError(TlsCodecError) =
                 "Tls (de)serialization occurred.",
             KeyScheduleError(KeyScheduleError) =

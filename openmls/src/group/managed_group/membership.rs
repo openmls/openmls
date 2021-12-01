@@ -10,10 +10,9 @@ impl ManagedGroup {
     /// New members are added by providing a `KeyPackage` for each member.
     ///
     /// This operation results in a Commit with a `path`, i.e. it includes an
-    /// update of the committer's leaf `KeyPackage`.
+    /// update of the committer's leaf [KeyPackage].
     ///
-    /// If successful, it returns a `Vec` of
-    /// [`MlsMessage`] and a [`Welcome`] message.
+    /// If successful, it returns a tuple of [MlsMessageOut] and [Welcome].
     pub fn add_members(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -82,9 +81,8 @@ impl ManagedGroup {
     ///
     /// Members are removed by providing the index of their leaf in the tree.
     ///
-    /// If successful, it returns a `Vec` of
-    /// [`MlsMessage`] and an optional [`Welcome`] message if there were add
-    /// proposals in the queue of pending proposals.
+    /// If successful, it returns a tuple of [`MlsMessageOut`] and an optional [`Welcome`].
+    /// The [Welcome] is [Some] when the queue of pending proposals contained add proposals
     pub fn remove_members(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
