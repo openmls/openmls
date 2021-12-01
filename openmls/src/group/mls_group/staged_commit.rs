@@ -1,3 +1,6 @@
+use mls_group::proposals::StagedProposal;
+
+use super::super::errors::*;
 use super::proposals::{
     ProposalStore, StagedAddProposal, StagedProposalQueue, StagedPskProposal, StagedRemoveProposal,
     StagedUpdateProposal,
@@ -39,6 +42,9 @@ impl MlsGroup {
     ) -> Result<StagedCommit, MlsGroupError> {
         let ciphersuite = self.ciphersuite();
 
+        // Extract the sender of the Commit message
+        let sender = *mls_plaintext.sender();
+
         // Verify epoch
         if mls_plaintext.epoch() != self.group_context.epoch {
             log::error!(
@@ -61,14 +67,25 @@ impl MlsGroup {
 
         // Build a queue with all proposals from the Commit and check that we have all
         // of the proposals by reference locally
-        let proposal_queue = StagedProposalQueue::from_committed_proposals(
+        let mut proposal_queue = StagedProposalQueue::from_committed_proposals(
             ciphersuite,
             backend,
             commit.proposals.as_slice().to_vec(),
             proposal_store,
-            *mls_plaintext.sender(),
+            sender,
         )
         .map_err(|_| StageCommitError::MissingProposal)?;
+
+        // TODO #424: This won't be necessary anymore, we can just apply the proposals first
+        // and add a new fake Update proposal to the queue after that
+        let path_key_package = commit
+            .path()
+            .as_ref()
+            .map(|update_path| update_path.leaf_key_package.clone());
+
+        let sender_key_package_tuple = path_key_package
+            .as_ref()
+            .map(|key_package| (sender.to_leaf_index(), key_package));
 
         // Validate the staged proposals by doing the following checks:
 
@@ -85,7 +102,7 @@ impl MlsGroup {
         self.validate_remove_proposals(&proposal_queue)?;
         // ValSem109
         // ValSem110
-        self.validate_update_proposals(&proposal_queue)?;
+        self.validate_update_proposals(&proposal_queue, sender_key_package_tuple)?;
 
         // Create provisional tree and apply proposals
         let mut provisional_tree = self.tree.borrow_mut();
@@ -97,12 +114,15 @@ impl MlsGroup {
 
         // Check if we were removed from the group
         if apply_proposals_values.self_removed {
-            return Err(StageCommitError::SelfRemoved.into());
+            return Ok(StagedCommit {
+                staged_proposal_queue: proposal_queue,
+                state: None,
+            });
         }
 
         // Determine if Commit is own Commit
-        let sender = mls_plaintext.sender_index();
-        let is_own_commit = sender == provisional_tree.own_node_index();
+        let sender_index = sender.to_leaf_index();
+        let is_own_commit = sender_index == provisional_tree.own_node_index();
 
         let zero_commit_secret = CommitSecret::zero_secret(ciphersuite, self.mls_version);
         // Determine if Commit has a path
@@ -134,7 +154,7 @@ impl MlsGroup {
                 provisional_tree
                     .update_path(
                         backend,
-                        sender,
+                        sender_index,
                         &path,
                         &serialized_context,
                         apply_proposals_values.exclusion_list(),
@@ -224,7 +244,7 @@ impl MlsGroup {
         // Verify KeyPackage extensions
         if let Some(path) = &commit.path {
             if !is_own_commit {
-                let parent_hash = provisional_tree.set_parent_hashes(backend, sender);
+                let parent_hash = provisional_tree.set_parent_hashes(backend, sender_index);
                 if let Some(received_parent_hash) = path
                     .leaf_key_package
                     .extension_with_type(ExtensionType::ParentHash)
@@ -243,6 +263,17 @@ impl MlsGroup {
             }
         }
 
+        // If there is a key package from the Commit's update path, add it to the proposal queue
+        // TODO #424: This won't be necessary anymore, we can just apply the proposals first
+        // and add a new fake Update proposal to the queue after that
+        if let Some(key_package) = path_key_package {
+            let proposal = Proposal::Update(UpdateProposal { key_package });
+            let staged_proposal =
+                StagedProposal::from_proposal_and_sender(ciphersuite, backend, proposal, sender)
+                    .map_err(|_| MlsGroupError::LibraryError)?;
+            proposal_queue.add(staged_proposal);
+        }
+
         // Create a secret_tree, consuming the `encryption_secret` in the
         // process.
         let secret_tree = provisional_epoch_secrets
@@ -251,20 +282,24 @@ impl MlsGroup {
 
         Ok(StagedCommit {
             staged_proposal_queue: proposal_queue,
-            group_context: provisional_group_context,
-            epoch_secrets: provisional_epoch_secrets,
-            interim_transcript_hash,
-            secret_tree: RefCell::new(secret_tree),
-            original_nodes,
+            state: Some(StagedCommitState {
+                group_context: provisional_group_context,
+                epoch_secrets: provisional_epoch_secrets,
+                interim_transcript_hash,
+                secret_tree: RefCell::new(secret_tree),
+                original_nodes,
+            }),
         })
     }
 
-    /// Merges a [`StagedCommit`] into the group state.
+    /// Merges a [StagedCommit] into the group state.
     pub fn merge_commit(&mut self, staged_commit: StagedCommit) {
-        self.group_context = staged_commit.group_context;
-        self.epoch_secrets = staged_commit.epoch_secrets;
-        self.interim_transcript_hash = staged_commit.interim_transcript_hash;
-        self.secret_tree = staged_commit.secret_tree;
+        if let Some(state) = staged_commit.state {
+            self.group_context = state.group_context;
+            self.epoch_secrets = state.epoch_secrets;
+            self.interim_transcript_hash = state.interim_transcript_hash;
+            self.secret_tree = state.secret_tree;
+        }
     }
 
     /// This is temporary and will disappear when #424 is addressed.
@@ -272,7 +307,9 @@ impl MlsGroup {
     /// Rolls back the public tree nodes in case a Commit contained undesired proposals.
     pub fn cancel_commit(&mut self, staged_commit: StagedCommit) {
         let mut tree = self.tree.borrow_mut();
-        tree.nodes = staged_commit.original_nodes;
+        if let Some(state) = staged_commit.state {
+            tree.nodes = state.original_nodes;
+        }
     }
 }
 
@@ -280,11 +317,7 @@ impl MlsGroup {
 #[derive(Debug)]
 pub struct StagedCommit {
     staged_proposal_queue: StagedProposalQueue,
-    group_context: GroupContext,
-    epoch_secrets: EpochSecrets,
-    interim_transcript_hash: Vec<u8>,
-    secret_tree: RefCell<SecretTree>,
-    original_nodes: Vec<Node>,
+    state: Option<StagedCommitState>,
 }
 
 impl StagedCommit {
@@ -307,4 +340,20 @@ impl StagedCommit {
     pub fn psk_proposals(&self) -> impl Iterator<Item = StagedPskProposal> {
         self.staged_proposal_queue.psk_proposals()
     }
+
+    /// Returns `true` if the member was removed through a proposal covered by this Commit message
+    /// and `false` otherwise.
+    pub fn self_removed(&self) -> bool {
+        self.state.is_none()
+    }
+}
+
+/// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.
+#[derive(Debug)]
+pub(crate) struct StagedCommitState {
+    group_context: GroupContext,
+    epoch_secrets: EpochSecrets,
+    interim_transcript_hash: Vec<u8>,
+    secret_tree: RefCell<SecretTree>,
+    original_nodes: Vec<Node>,
 }

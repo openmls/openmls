@@ -133,7 +133,6 @@ impl Commit {
         self.path.is_some()
     }
 
-    #[cfg(any(feature = "test-utils", test))]
     pub fn path(&self) -> &Option<UpdatePath> {
         &self.path
     }
