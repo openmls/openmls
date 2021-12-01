@@ -16,7 +16,9 @@ fn test_hpke_seal_open() {
         let plaintext = &[1, 2, 3];
         let kp = crypto.crypto().derive_hpke_keypair(
             ciphersuite.hpke_config(),
-            Secret::random(ciphersuite, &crypto, None).as_slice(),
+            Secret::random(ciphersuite, &crypto, None)
+                .expect("Not enough randomness.")
+                .as_slice(),
         );
         let ciphertext =
             crypto

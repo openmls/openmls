@@ -90,7 +90,7 @@ impl ManagedGroup {
         let key_package_bundle = match key_package_bundle_option {
             Some(kpb) => kpb,
             None => {
-                KeyPackageBundlePayload::from_rekeyed_key_package(existing_key_package, backend)
+                KeyPackageBundlePayload::from_rekeyed_key_package(existing_key_package, backend)?
                     .sign(backend, &credential_bundle)?
             }
         };

@@ -55,22 +55,22 @@ impl PrivateTree {
         backend: &impl OpenMlsCryptoProvider,
         leaf_index: LeafIndex,
         leaf_secret: &Secret,
-    ) -> Self {
+    ) -> Result<Self, CryptoError> {
         // let leaf_secret = key_package_bundle.leaf_secret();
         // let ciphersuite = key_package_bundle.key_package.ciphersuite();
         let leaf_node_secret = derive_leaf_node_secret(leaf_secret, backend);
         let keypair = backend.crypto().derive_hpke_keypair(
             leaf_secret.ciphersuite().hpke_config(),
-            leaf_node_secret.as_slice(),
+            leaf_node_secret?.as_slice(),
         );
 
-        Self {
+        Ok(Self {
             leaf_index,
             hpke_private_key: Some(keypair.private.into()),
             path_keys: PathKeys::default(),
             commit_secret: None,
             path_secrets: Vec::default(),
-        }
+        })
     }
 
     /// Creates a `PrivateTree` with a new private key, leaf secret and path
@@ -81,14 +81,14 @@ impl PrivateTree {
         leaf_index: LeafIndex,
         leaf_secret: &Secret,
         path: &[NodeIndex],
-    ) -> (Self, Vec<HpkePublicKey>) {
-        let mut private_tree = PrivateTree::from_leaf_secret(backend, leaf_index, leaf_secret);
+    ) -> Result<(Self, Vec<HpkePublicKey>), CryptoError> {
+        let mut private_tree = PrivateTree::from_leaf_secret(backend, leaf_index, leaf_secret)?;
 
         // Compute path secrets and generate keypairs
         let public_keys =
-            private_tree.generate_path_secrets(ciphersuite, backend, leaf_secret, path);
+            private_tree.generate_path_secrets(ciphersuite, backend, leaf_secret, path)?;
 
-        (private_tree, public_keys)
+        Ok((private_tree, public_keys))
     }
 
     // === Setter and Getter ===
@@ -127,15 +127,17 @@ impl PrivateTree {
         backend: &impl OpenMlsCryptoProvider,
         leaf_secret: &Secret,
         path: &[NodeIndex],
-    ) -> Vec<HpkePublicKey> {
+    ) -> Result<Vec<HpkePublicKey>, CryptoError> {
         let path_secrets = if path.is_empty() {
             vec![]
         } else {
-            // FIXME: remove unwrap
             vec![PathSecret {
-                path_secret: leaf_secret
-                    .kdf_expand_label(backend, "path", &[], ciphersuite.hash_length())
-                    .unwrap(),
+                path_secret: leaf_secret.kdf_expand_label(
+                    backend,
+                    "path",
+                    &[],
+                    ciphersuite.hash_length(),
+                )?,
             }]
         };
 
@@ -157,7 +159,7 @@ impl PrivateTree {
         backend: &impl OpenMlsCryptoProvider,
         start_secret: PathSecret,
         path: &[NodeIndex],
-    ) -> Vec<HpkePublicKey> {
+    ) -> Result<Vec<HpkePublicKey>, CryptoError> {
         let path_secrets = vec![start_secret];
         self.derive_path_secrets(ciphersuite, backend, path_secrets, path)
     }
@@ -170,23 +172,22 @@ impl PrivateTree {
         backend: &impl OpenMlsCryptoProvider,
         path_secrets: Vec<PathSecret>,
         path: &[NodeIndex],
-    ) -> Vec<HpkePublicKey> {
+    ) -> Result<Vec<HpkePublicKey>, CryptoError> {
         let hash_len = ciphersuite.hash_length();
 
         let mut path_secrets = path_secrets;
 
         for i in 1..path.len() {
-            // FIXME: remove unwrap
-            let path_secret = path_secrets[i - 1]
-                .path_secret
-                .kdf_expand_label(backend, "path", &[], hash_len)
-                .unwrap();
+            let path_secret =
+                path_secrets[i - 1]
+                    .path_secret
+                    .kdf_expand_label(backend, "path", &[], hash_len)?;
             path_secrets.push(PathSecret { path_secret });
         }
         self.path_secrets = path_secrets;
 
         // Generate the Commit Secret
-        self.generate_commit_secret(ciphersuite, backend);
+        self.generate_commit_secret(ciphersuite, backend)?;
 
         // Generate keypair and return public keys
         self.generate_path_keypairs(ciphersuite, backend, path)
@@ -206,13 +207,14 @@ impl PrivateTree {
         &mut self,
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-    ) {
+    ) -> Result<(), CryptoError> {
         let path_secret = self.path_secrets.last().unwrap();
         self.commit_secret = Some(CommitSecret::new(
             ciphersuite,
             backend,
             &path_secret.path_secret,
-        ));
+        )?);
+        Ok(())
     }
 
     /// Generate HPKE key pairs for all path secrets in `path_secrets`.
@@ -231,18 +233,17 @@ impl PrivateTree {
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         path: &[NodeIndex],
-    ) -> Vec<HpkePublicKey> {
+    ) -> Result<Vec<HpkePublicKey>, CryptoError> {
         let hash_len = ciphersuite.hash_length();
         let mut private_keys = vec![];
         let mut public_keys = vec![];
 
         // Derive key pairs for all nodes in the direct path.
         for path_secret in self.path_secrets.iter() {
-            // FIXME: remove unwrap
-            let node_secret = path_secret
-                .path_secret
-                .kdf_expand_label(backend, "node", &[], hash_len)
-                .unwrap();
+            let node_secret =
+                path_secret
+                    .path_secret
+                    .kdf_expand_label(backend, "node", &[], hash_len)?;
             let keypair = backend
                 .crypto()
                 .derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice());
@@ -254,6 +255,6 @@ impl PrivateTree {
         self.path_keys.add(private_keys, path);
 
         // Return public keys.
-        public_keys
+        Ok(public_keys)
     }
 }

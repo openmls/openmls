@@ -53,7 +53,10 @@ async fn test_list_clients() {
     let client_key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite], &credential_bundle, crypto, vec![]).unwrap();
     let client_key_package = vec![(
-        client_key_package_bundle.key_package().hash(crypto),
+        client_key_package_bundle
+            .key_package()
+            .hash(crypto)
+            .unwrap(),
         client_key_package_bundle.key_package().clone(),
     )];
     let client_data = ClientInfo::new(client_name.to_string(), client_key_package.clone());
@@ -150,7 +153,7 @@ async fn test_group() {
         let client_data = ClientInfo::new(
             client_name.to_string(),
             vec![(
-                client_key_package.key_package().hash(crypto),
+                client_key_package.key_package().hash(crypto).unwrap(),
                 client_key_package.key_package().clone(),
             )],
         );

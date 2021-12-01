@@ -1,4 +1,7 @@
-use crate::{ciphersuite::CryptoError, credentials::CredentialError};
+use openmls_traits::types::CryptoError;
+use tls_codec::Error as TlsCodecError;
+
+use crate::credentials::CredentialError;
 
 implement_error! {
     pub enum TreeError {
@@ -9,20 +12,28 @@ implement_error! {
             NotAParentNode = "The node is not a parent node.",
         }
         Complex {
-            PathSecretDecryptionError(CryptoError) =
-                "Error while decrypting `PathSecret`.",
-                CredentialError(CredentialError) =
+            CredentialError(CredentialError) =
                     "See [`CredentialError`](`crate::credentials::CredentialError`) for details",
+            CodecError(TlsCodecError) =
+                    "TLS (de)serialization error occurred.",
+            CryptoError(CryptoError) =
+                    "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
         }
     }
 }
 
 implement_error! {
     pub enum ParentHashError {
-        EndedWithLeafNode = "The search for a valid child ended with a leaf node.",
-        AllChecksFailed = "All checks failed: Neither child has the right parent hash.",
-        InputNotParentNode = "The input node is not a parent node.",
-        NotAParentNode = "The node is not a parent node.",
-        EmptyParentNode = "The parent node was blank.",
+        Simple {
+            EndedWithLeafNode = "The search for a valid child ended with a leaf node.",
+            AllChecksFailed = "All checks failed: Neither child has the right parent hash.",
+            InputNotParentNode = "The input node is not a parent node.",
+            NotAParentNode = "The node is not a parent node.",
+            EmptyParentNode = "The parent node was blank.",
+        }
+        Complex {
+            CryptoError(CryptoError) =
+                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
+        }
     }
 }

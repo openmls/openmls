@@ -419,7 +419,7 @@ impl MlsClient for MlsClientImpl {
             add_ratchet_tree_extension: true,
             ..Default::default()
         };
-        let mut group = MlsGroup::builder(
+        let group = MlsGroup::builder(
             GroupId::from_slice(&create_group_request.group_id),
             key_package_bundle,
         )
@@ -467,10 +467,16 @@ impl MlsClient for MlsClientImpl {
         let key_package = key_package_bundle.key_package().clone();
         let mut transaction_id_map = self.transaction_id_map.lock().unwrap();
         let transaction_id = transaction_id_map.len() as u32;
-        transaction_id_map.insert(transaction_id, key_package.hash(&self.crypto_provider));
+        transaction_id_map.insert(
+            transaction_id,
+            key_package.hash(&self.crypto_provider).unwrap(),
+        );
 
         self.pending_key_packages.lock().unwrap().insert(
-            key_package_bundle.key_package().hash(&self.crypto_provider),
+            key_package_bundle
+                .key_package()
+                .hash(&self.crypto_provider)
+                .unwrap(),
             (key_package_bundle, credential_bundle),
         );
 

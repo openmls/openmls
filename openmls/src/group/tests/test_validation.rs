@@ -52,7 +52,10 @@ fn generate_key_package_bundle(
         .unwrap();
     let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, backend, extensions)?;
     let kp = kpb.key_package().clone();
-    backend.key_store().store(&kp.hash(backend), &kpb).unwrap();
+    backend
+        .key_store()
+        .store(&kp.hash(backend).expect("Could not hash KeyPackage."), &kpb)
+        .unwrap();
     Ok(kp)
 }
 
@@ -113,7 +116,9 @@ fn validation_test_setup(wire_format: WireFormat) -> ValidationTestSetup {
         &backend,
         &managed_group_config,
         group_id,
-        &alice_key_package.hash(&backend),
+        &alice_key_package
+            .hash(&backend)
+            .expect("Could not hash KeyPackage."),
     )
     .unwrap();
 
@@ -540,11 +545,10 @@ fn test_valsem8() {
 
     let original_message = plaintext.clone();
 
-    plaintext.set_membership_tag(MembershipTag(Mac::new(
-        &backend,
-        &Secret::default(),
-        &[1, 2, 3],
-    )));
+    plaintext.set_membership_tag(MembershipTag(
+        Mac::new(&backend, &Secret::default(), &[1, 2, 3])
+            .expect("Could not compute membership tag."),
+    ));
 
     let message_in = MlsMessageIn::from(plaintext);
 

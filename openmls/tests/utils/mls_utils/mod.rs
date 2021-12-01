@@ -252,7 +252,12 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                             .key_package_bundles
                             .borrow()
                             .iter()
-                            .any(|y| y.key_package().hash(&crypto) == x.key_package_hash.as_slice())
+                            .any(|y| {
+                                y.key_package()
+                                    .hash(&crypto)
+                                    .expect("Could not hash KeyPackage.")
+                                    == x.key_package_hash.as_slice()
+                            })
                     })
                     .unwrap();
                 let kpb_position = new_group_member
@@ -260,7 +265,10 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     .borrow()
                     .iter()
                     .position(|y| {
-                        y.key_package().hash(&crypto) == member_secret.key_package_hash.as_slice()
+                        y.key_package()
+                            .hash(&crypto)
+                            .expect("Could not hash KeyPackage.")
+                            == member_secret.key_package_hash.as_slice()
                     })
                     .unwrap();
                 let key_package_bundle = new_group_member

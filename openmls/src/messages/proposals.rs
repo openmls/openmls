@@ -183,9 +183,9 @@ impl ProposalReference {
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         proposal: &Proposal,
-    ) -> Result<Self, tls_codec::Error> {
+    ) -> Result<Self, ProposalError> {
         let encoded = proposal.tls_serialize_detached()?;
-        let value = ciphersuite.hash(backend, &encoded).into();
+        let value = ciphersuite.hash(backend, &encoded)?.into();
         Ok(Self { value })
     }
 }

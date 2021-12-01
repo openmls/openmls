@@ -9,6 +9,7 @@ pub enum SetupError {
     ClientNotInGroup,
     NoFreshKeyPackage,
     ClientError(ClientError),
+    KeyPackageError(KeyPackageError),
     Unknown,
 }
 
@@ -21,6 +22,12 @@ impl From<ClientError> for SetupError {
 impl From<ManagedGroupError> for SetupError {
     fn from(e: ManagedGroupError) -> Self {
         SetupError::ClientError(ClientError::ManagedGroupError(e))
+    }
+}
+
+impl From<KeyPackageError> for SetupError {
+    fn from(e: KeyPackageError) -> Self {
+        SetupError::KeyPackageError(e)
     }
 }
 
@@ -42,6 +49,7 @@ pub enum ClientError {
     ManagedGroupError(ManagedGroupError),
     GroupError(MlsGroupError),
     TlsCodecError(tls_codec::Error),
+    KeyPackageError(KeyPackageError),
     Unknown,
 }
 
@@ -66,5 +74,11 @@ impl From<MlsGroupError> for ClientError {
 impl From<tls_codec::Error> for ClientError {
     fn from(e: tls_codec::Error) -> Self {
         ClientError::TlsCodecError(e)
+    }
+}
+
+impl From<KeyPackageError> for ClientError {
+    fn from(e: KeyPackageError) -> Self {
+        ClientError::KeyPackageError(e)
     }
 }

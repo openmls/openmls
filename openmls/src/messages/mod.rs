@@ -377,12 +377,12 @@ impl GroupSecrets {
                 backend
                     .rand()
                     .random_vec(ciphersuite.hash_length())
-                    .unwrap(),
+                    .expect("Not enough randomness."),
             )),
             backend
                 .rand()
                 .random_vec(ciphersuite.hash_length())
-                .unwrap(),
+                .expect("Not enough randomness."),
         );
         let psks = PreSharedKeys {
             psks: vec![psk_id].into(),
@@ -391,7 +391,8 @@ impl GroupSecrets {
         GroupSecrets::new_encoded(
             &JoinerSecret::random(ciphersuite, backend, version),
             Some(&PathSecret {
-                path_secret: Secret::random(ciphersuite, backend, version),
+                path_secret: Secret::random(ciphersuite, backend, version)
+                    .expect("Not enough randomness."),
             }),
             &psks,
         )

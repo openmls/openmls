@@ -1,5 +1,9 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext, OpenMlsCryptoProvider};
+use openmls_traits::{
+    crypto::OpenMlsCrypto,
+    types::{CryptoError, HpkeCiphertext},
+    OpenMlsCryptoProvider,
+};
 use tls_codec::Serialize;
 
 use crate::{
@@ -92,7 +96,9 @@ fn test_failed_groupinfo_decryption() {
             // Generate receiver key pair.
             let receiver_key_pair = crypto.crypto().derive_hpke_keypair(
                 ciphersuite.hpke_config(),
-                Secret::random(ciphersuite, &crypto, None).as_slice(),
+                Secret::random(ciphersuite, &crypto, None)
+                    .expect("Not enough randomness.")
+                    .as_slice(),
             );
             let hpke_info = b"group info welcome test info";
             let hpke_aad = b"group info welcome test aad";
@@ -128,7 +134,11 @@ fn test_failed_groupinfo_decryption() {
             flip_last_byte(&mut encrypted_group_secrets);
 
             let broken_secrets = vec![EncryptedGroupSecrets {
-                key_package_hash: key_package_bundle.key_package.hash(&crypto).into(),
+                key_package_hash: key_package_bundle
+                    .key_package
+                    .hash(&crypto)
+                    .expect("Could not hash KeyPackage.")
+                    .into(),
                 encrypted_group_secrets,
             }];
 
@@ -161,7 +171,7 @@ fn test_failed_groupinfo_decryption() {
 
             assert_eq!(
                 error,
-                WelcomeError::GroupSecretsDecryptionFailure(CryptoError::HpkeDecryptionError)
+                WelcomeError::CryptoError(CryptoError::HpkeDecryptionError)
             )
         }
     }
@@ -370,7 +380,7 @@ fn test_update_path() {
         assert_eq!(
             staged_commit_res.expect_err("Successful processing of a broken commit."),
             MlsGroupError::StageCommitError(StageCommitError::DecryptionFailure(
-                TreeError::PathSecretDecryptionError(CryptoError::HpkeDecryptionError)
+                TreeError::CryptoError(CryptoError::HpkeDecryptionError)
             ))
         );
     }
@@ -436,13 +446,13 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
     // === Alice creates a group with a PSK ===
     let psk_id = vec![1u8, 2, 3];
 
-    let secret = Secret::random(ciphersuite,  &crypto, None /* MLS version */);
+    let secret = Secret::random(ciphersuite,  &crypto, None /* MLS version */).expect("Not enough randomness.");
     let external_psk_bundle = ExternalPskBundle::new(
         ciphersuite,
         &crypto,
         secret,
         psk_id,
-    );
+    ).expect("Could not create ExternalPskBundle.");
     let preshared_key_id = external_psk_bundle.to_presharedkey_id();
     let initial_psk = PskSecret::new(
         ciphersuite,

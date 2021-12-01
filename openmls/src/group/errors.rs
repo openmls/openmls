@@ -3,7 +3,6 @@
 //! `WelcomeError`, `StageCommitError`, `DecryptionError`, and
 //! `CreateCommitError`.
 
-use crate::ciphersuite::CryptoError;
 use crate::config::ConfigError;
 use crate::credentials::CredentialError;
 use crate::extensions::errors::ExtensionError;
@@ -11,9 +10,10 @@ use crate::framing::errors::{
     MlsCiphertextError, MlsPlaintextError, ValidationError, VerificationError,
 };
 use crate::key_packages::KeyPackageError;
-use crate::messages::errors::ProposalQueueError;
+use crate::messages::errors::{ProposalError, ProposalQueueError};
 use crate::schedule::errors::{KeyScheduleError, PskSecretError};
 use crate::tree::{treemath::TreeMathError, ParentHashError, TreeError};
+use openmls_traits::types::CryptoError;
 use tls_codec::Error as TlsCodecError;
 
 implement_error! {
@@ -44,7 +44,7 @@ implement_error! {
             CreationProposalQueueError(CreationProposalQueueError) =
                 "See [`CreationProposalQueueError`](`crate::group::errors::CreationProposalQueueError`) for details.",
             CodecError(TlsCodecError) =
-                "Tls (de)serialization occurred.",
+                "TLS (de)serialization error occurred.",
             KeyScheduleError(KeyScheduleError) =
                 "An error occurred in the key schedule.",
             MathError(TreeMathError) =
@@ -65,6 +65,12 @@ implement_error! {
                 "See [`FramingValidationError`](crate::group::FramingValidationError) for details.",
             ProposalValidationError(ProposalValidationError) =
                 "See [`ProposalValidationError`](crate::group::ProposalValidationError) for details.",
+            CryptoError(CryptoError) =
+                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
+            InterimTranscriptHashError(InterimTranscriptHashError) =
+                "See [`InterimTranscriptHashError`](crate::group::InterimTranscriptHashError) for details.",
+            StagedProposalError(StagedProposalError) =
+                "See [`StagedProposalError`](crate::group::StagedProposalError) for details.",
         }
     }
 }
@@ -94,6 +100,7 @@ implement_error! {
                 "The sender key package is missing.",
             UnknownError =
                 "An unknown error occurred.",
+            LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
             }
         Complex {
             ConfigError(ConfigError) =
@@ -102,8 +109,6 @@ implement_error! {
                 "Invalid ratchet tree in Welcome message.",
             ParentHashMismatch(ParentHashError) =
                 "The parent hash verification failed.",
-            GroupSecretsDecryptionFailure(CryptoError) =
-                "Unable to decrypt the EncryptedGroupSecrets.",
             CodecError(TlsCodecError) =
                 "Tls (de)serialization error occurred.",
             KeyScheduleError(KeyScheduleError) =
@@ -114,6 +119,10 @@ implement_error! {
                 "See [`ExtensionError`] for details.",
             KeyPackageError(KeyPackageError) =
                 "See [`KeyPackageError`] for details.",
+            InterimTranscriptHashError(InterimTranscriptHashError) =
+                "See [`InterimTranscriptHashError`] for details.",
+            CryptoError(CryptoError) =
+                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
         }
     }
 }
@@ -200,6 +209,7 @@ implement_error! {
             WrongContentType = "API misuse. Only proposals can end up in the proposal queue",
         }
         Complex {
+            ProposalError(ProposalError) = "A ProposalError occurred.",
             TlsCodecError(TlsCodecError) = "Error serializing",
         }
     }
@@ -254,5 +264,17 @@ implement_error! {
         ExistingPublicKeyUpdateProposal = "HPKE public key of the update proposal already existed in tree.",
         DuplicateMemberRemoval = "Duplicate remove proposals for the same member.",
         UnknownMemberRemoval = "The remove proposal referenced a non-existing member.",
+    }
+}
+
+implement_error! {
+    pub enum InterimTranscriptHashError {
+        Simple {}
+        Complex {
+            CodecError(TlsCodecError) =
+                "TLS (de)serialization error occurred.",
+            CryptoError(CryptoError) =
+                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
+        }
     }
 }

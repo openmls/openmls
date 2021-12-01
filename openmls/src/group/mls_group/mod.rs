@@ -1,3 +1,10 @@
+//! ### Don't Panic!
+//!
+//! Functions in this module should never panic. However, if there is a bug in
+//! the implementation, a function will return an unrecoverable `LibraryError`.
+//! This means that some functions that are not expected to fail and throw an
+//! error, will still return a `Result` since they may throw a `LibraryError`.
+
 use log::{debug, trace};
 use psk::{PreSharedKeys, PskSecret};
 
@@ -136,7 +143,7 @@ impl MlsGroupBuilder {
 
         debug!("Created group {:x?}", self.group_id);
         trace!(" >>> with {:?}, {:?}", ciphersuite, config);
-        let tree = RatchetTree::new(backend, self.key_package_bundle);
+        let tree = RatchetTree::new(backend, self.key_package_bundle)?;
 
         check_required_capabilities_support(&required_capabilities)?;
         let required_capabilities = &[Extension::RequiredCapabilities(required_capabilities)];
@@ -144,7 +151,7 @@ impl MlsGroupBuilder {
         let group_context = GroupContext::create_initial_group_context(
             ciphersuite,
             self.group_id,
-            tree.tree_hash(backend),
+            tree.tree_hash(backend)?,
             required_capabilities,
         )?;
         let commit_secret = tree.private_tree().commit_secret();
@@ -154,11 +161,13 @@ impl MlsGroupBuilder {
         let joiner_secret = JoinerSecret::new(
             backend,
             commit_secret,
-            &InitSecret::random(ciphersuite, backend, version),
-        );
+            &InitSecret::random(ciphersuite, backend, version)?,
+        )?;
 
-        let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, self.psk);
-        key_schedule.add_context(backend, &group_context)?;
+        let serialized_group_context = group_context.tls_serialize_detached()?;
+
+        let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, self.psk)?;
+        key_schedule.add_context(backend, &serialized_group_context)?;
         let epoch_secrets = key_schedule.epoch_secrets(backend, true)?;
 
         let secret_tree = epoch_secrets
@@ -462,13 +471,10 @@ impl MlsGroup {
             log::error!("Got a key that is larger than u16::MAX");
             return Err(ExporterError::KeyLengthTooLong.into());
         }
-        Ok(self.epoch_secrets.exporter_secret().derive_exported_secret(
-            self.ciphersuite(),
-            backend,
-            label,
-            context,
-            key_length,
-        ))
+        Ok(self
+            .epoch_secrets
+            .exporter_secret()
+            .derive_exported_secret(self.ciphersuite(), backend, label, context, key_length)?)
     }
 
     /// Returns the authentication secret
@@ -532,7 +538,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
     ) -> Result<PublicGroupState, CredentialError> {
-        let pgs_tbs = PublicGroupStateTbs::new(backend, self);
+        let pgs_tbs = PublicGroupStateTbs::new(backend, self)?;
         pgs_tbs.sign(backend, credential_bundle)
     }
 
@@ -589,12 +595,12 @@ pub(crate) fn update_confirmed_transcript_hash(
     backend: &impl OpenMlsCryptoProvider,
     mls_plaintext_commit_content: &MlsPlaintextCommitContent,
     interim_transcript_hash: &[u8],
-) -> Result<Vec<u8>, tls_codec::Error> {
+) -> Result<Vec<u8>, MlsGroupError> {
     let commit_content_bytes = mls_plaintext_commit_content.tls_serialize_detached()?;
     Ok(ciphersuite.hash(
         backend,
         &[interim_transcript_hash, &commit_content_bytes].concat(),
-    ))
+    )?)
 }
 
 pub(crate) fn update_interim_transcript_hash(
@@ -602,12 +608,12 @@ pub(crate) fn update_interim_transcript_hash(
     backend: &impl OpenMlsCryptoProvider,
     mls_plaintext_commit_auth_data: &MlsPlaintextCommitAuthData,
     confirmed_transcript_hash: &[u8],
-) -> Result<Vec<u8>, tls_codec::Error> {
+) -> Result<Vec<u8>, InterimTranscriptHashError> {
     let commit_auth_data_bytes = mls_plaintext_commit_auth_data.tls_serialize_detached()?;
     Ok(ciphersuite.hash(
         backend,
         &[confirmed_transcript_hash, &commit_auth_data_bytes].concat(),
-    ))
+    )?)
 }
 
 fn psk_output(

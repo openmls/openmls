@@ -214,7 +214,7 @@ impl StagedProposalQueue {
                 Some(p) => p.proposal.is_type(proposal_type),
                 None => false,
             })
-            .map(move |reference| self.get(reference).unwrap())
+            .filter_map(move |reference| self.get(reference))
     }
 
     /// Returns an iterator over all `StagedProposal` in the queue  
@@ -223,7 +223,7 @@ impl StagedProposalQueue {
         // Iterate over the reference to extract the proposals in the right order
         self.proposal_references
             .iter()
-            .map(move |reference| self.get(reference).unwrap())
+            .filter_map(move |reference| self.get(reference))
     }
 
     /// Returns an iterator over all Add proposals in the queue  
@@ -506,12 +506,12 @@ impl<'a> CreationProposalQueue<'a> {
 
         // Parse proposals and build adds and member list
         for queued_proposal in queued_proposal_list {
-            match queued_proposal.proposal.proposal_type() {
-                ProposalType::Add => {
+            match queued_proposal.proposal {
+                Proposal::Add(_) => {
                     adds.insert(queued_proposal.proposal_reference());
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
-                ProposalType::Update => {
+                Proposal::Update(_) => {
                     let sender_index = queued_proposal.sender.sender.as_usize();
                     if sender_index != own_index.as_usize() {
                         members[sender_index].updates.push(queued_proposal.clone());
@@ -521,26 +521,25 @@ impl<'a> CreationProposalQueue<'a> {
                     let proposal_reference = queued_proposal.proposal_reference();
                     proposal_pool.insert(proposal_reference, queued_proposal);
                 }
-                ProposalType::Remove => {
-                    let removed_index =
-                        queued_proposal.proposal.as_remove().unwrap().removed as usize;
+                Proposal::Remove(remove_proposal) => {
+                    let removed_index = remove_proposal.removed as usize;
                     if removed_index < tree_size.as_usize() {
                         members[removed_index].updates.push(queued_proposal.clone());
                     }
                     let proposal_reference = queued_proposal.proposal_reference();
                     proposal_pool.insert(proposal_reference, queued_proposal);
                 }
-                ProposalType::Presharedkey => {
+                Proposal::PreSharedKey(_) => {
                     valid_proposals.insert(queued_proposal.proposal_reference());
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
-                ProposalType::Reinit => {
+                Proposal::ReInit(_) => {
                     // TODO #141: Only keep one ReInit
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
-                ProposalType::ExternalInit => unimplemented!("See #556"),
-                ProposalType::AppAck => unimplemented!("See #291"),
-                ProposalType::GroupContextExtensions => {
+                Proposal::ExternalInit(_) => unimplemented!("See #556"),
+                Proposal::AppAck(_) => unimplemented!("See #291"),
+                Proposal::GroupContextExtensions(_) => {
                     // TODO: Validate proposal?
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
@@ -549,15 +548,15 @@ impl<'a> CreationProposalQueue<'a> {
         // Check for presence of Removes and delete Updates
         for member in members.iter_mut() {
             // Check if there are Removes
-            if !member.removes.is_empty() {
+            if let Some(last_remove) = member.removes.last() {
                 // Delete all Updates when a Remove is found
                 member.updates = Vec::new();
                 // Only keep the last Remove
-                valid_proposals.insert(member.removes.last().unwrap().proposal_reference());
+                valid_proposals.insert(last_remove.proposal_reference());
             }
-            if !member.updates.is_empty() {
+            if let Some(last_update) = member.updates.last() {
                 // Only keep the last Update
-                valid_proposals.insert(member.updates.last().unwrap().proposal_reference());
+                valid_proposals.insert(last_update.proposal_reference());
             }
         }
         // Only retain `adds` and `valid_proposals`
@@ -601,16 +600,15 @@ impl<'a> CreationProposalQueue<'a> {
         // Iterate over the reference to extract the proposals in the right order
         self.proposal_references
             .iter()
-            .map(|proposal_reference| {
-                // Extract the proposal from the queue
-                let queued_proposal = self.queued_proposals.get(proposal_reference).unwrap();
+            .filter_map(|proposal_reference| self.queued_proposals.get(proposal_reference))
+            .map(|queued_proposal| {
                 // Differentiate the type of proposal
                 match queued_proposal.proposal_or_ref_type {
                     ProposalOrRefType::Proposal => {
                         ProposalOrRef::Proposal(queued_proposal.proposal.clone())
                     }
                     ProposalOrRefType::Reference => {
-                        ProposalOrRef::Reference(proposal_reference.clone())
+                        ProposalOrRef::Reference(queued_proposal.proposal_reference.clone())
                     }
                 }
             })
@@ -629,6 +627,6 @@ impl<'a> CreationProposalQueue<'a> {
                 Some(p) => p.proposal.is_type(proposal_type),
                 None => false,
             })
-            .map(move |reference| self.get(reference).unwrap())
+            .filter_map(move |reference| self.get(reference))
     }
 }

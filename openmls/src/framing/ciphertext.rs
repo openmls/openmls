@@ -83,12 +83,12 @@ impl MlsCiphertext {
         let sender_data_key = secrets
             .epoch_secrets
             .sender_data_secret()
-            .derive_aead_key(backend, &ciphertext);
+            .derive_aead_key(backend, &ciphertext)?;
         // Derive initial nonce from the key schedule using the ciphertext.
         let sender_data_nonce = secrets
             .epoch_secrets
             .sender_data_secret()
-            .derive_aead_nonce(ciphersuite, backend, &ciphertext);
+            .derive_aead_nonce(ciphersuite, backend, &ciphertext)?;
         // Compute sender data nonce by xoring reuse guard and key schedule
         // nonce as per spec.
         let mls_sender_data_aad = MlsSenderDataAad::new(
@@ -139,13 +139,13 @@ impl MlsCiphertext {
         // Derive key from the key schedule using the ciphertext.
         let sender_data_key = epoch_secrets
             .sender_data_secret()
-            .derive_aead_key(backend, self.ciphertext.as_slice());
+            .derive_aead_key(backend, self.ciphertext.as_slice())?;
         // Derive initial nonce from the key schedule using the ciphertext.
         let sender_data_nonce = epoch_secrets.sender_data_secret().derive_aead_nonce(
             ciphersuite,
             backend,
             self.ciphertext.as_slice(),
-        );
+        )?;
         // Serialize sender data AAD
         let mls_sender_data_aad =
             MlsSenderDataAad::new(self.group_id.clone(), self.epoch, self.content_type);
