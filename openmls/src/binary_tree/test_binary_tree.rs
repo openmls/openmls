@@ -6,10 +6,6 @@ use super::array_representation::tree::NodeIndex;
 
 use super::array_representation::treemath::TreeMathError;
 
-// TODO:
-// * Write better comments on tests
-// * test programmatically, i.e. do loops over various tree sizes where possible
-
 #[test]
 fn test_tree_basics() {
     // Test tree creation: Wrong number of nodes.
@@ -27,11 +23,12 @@ fn test_tree_basics() {
     assert_eq!(tree1.size().expect("error computing size"), 3);
     assert_eq!(tree1.leaf_count().expect("error computing leaf count"), 2);
 
-    // Test tree creation: Too many nodes.
-    let len = NodeIndex::max_value() as usize + 2;
-    let mut nodes: Vec<u32> = Vec::new();
-
+    // Test tree creation: Too many nodes (only in cases where usize is 64 bit).
+    #[cfg(target_pointer_width = "64")]
     unsafe {
+        let len = NodeIndex::MAX as usize + 2;
+        let mut nodes: Vec<u32> = Vec::new();
+
         nodes.set_len(len);
 
         assert_eq!(
@@ -307,7 +304,7 @@ fn test_leaf_addition_and_removal_errors() {
     let mut nodes: Vec<u32> = Vec::new();
 
     unsafe {
-        nodes.set_len(NodeIndex::max_value() as usize);
+        nodes.set_len(NodeIndex::MAX as usize);
 
         let tree = MlsBinaryTree::new(nodes).expect("error creating tree");
         let mut diff = tree.empty_diff().expect("error creating empty diff");

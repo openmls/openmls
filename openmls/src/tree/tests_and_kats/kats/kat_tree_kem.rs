@@ -31,7 +31,7 @@ use crate::{
     tree::{treemath::*, CiphersuiteName, HashSet, LeafIndex, NodeIndex, RatchetTree, UpdatePath},
 };
 use crate::{
-    group::MlsMessageOut,
+    framing::MlsMessageOut,
     prelude::MlsPlaintextContentType,
     test_utils::{
         bytes_to_hex,
@@ -289,7 +289,7 @@ fn read_test_vector() {
 #[test]
 fn write_test_vector() {
     let mut tests = Vec::new();
-    const NUM_LEAVES: u32 = 20;
+    const NUM_LEAVES: u32 = 7;
 
     for ciphersuite in Config::supported_ciphersuites() {
         for n_leaves in 2..NUM_LEAVES {

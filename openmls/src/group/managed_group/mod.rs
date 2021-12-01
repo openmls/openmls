@@ -12,15 +12,16 @@ mod ser;
 #[cfg(test)]
 mod test_managed_group;
 mod updates;
+pub mod validation;
 
 use crate::credentials::CredentialBundle;
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 
 use crate::{
-    ciphersuite::signable::{Signable, Verifiable},
+    ciphersuite::signable::Signable,
     credentials::Credential,
     framing::*,
-    group::{mls_group::create_commit::Proposals, *},
+    group::*,
     key_packages::{KeyPackage, KeyPackageBundle},
     messages::{proposals::*, Welcome},
     prelude::KeyPackageBundlePayload,
@@ -44,7 +45,7 @@ pub use events::*;
 pub(crate) use resumption::ResumptionSecretStore;
 use ser::*;
 
-use tls_codec::Serialize;
+use super::proposals::{ProposalStore, StagedProposal};
 
 /// A `ManagedGroup` represents an [MlsGroup] with
 /// an easier, high-level API designed to be used in production. The API exposes
@@ -81,9 +82,9 @@ pub struct ManagedGroup {
     // the internal `MlsGroup` used for lower level operations. See `MlsGroup` for more
     // information.
     group: MlsGroup,
-    // A queue of incoming proposals from the DS for a given epoch. New proposals are added to the
-    // queue through `process_messages()`. The queue is emptied after every epoch change.
-    pending_proposals: Vec<MlsPlaintext>,
+    // A [ProposalStore] that stores incoming proposals from the DS within one epoch.
+    // The store is emptied after every epoch change.
+    proposal_store: ProposalStore,
     // Own `KeyPackageBundle`s that were created for update proposals or commits. The vector is
     // emptied after every epoch change.
     own_kpbs: Vec<KeyPackageBundle>,
@@ -157,9 +158,9 @@ impl ManagedGroup {
         self.group.group_id()
     }
 
-    /// Returns a list of proposal
-    pub fn pending_proposals(&self) -> &[MlsPlaintext] {
-        &self.pending_proposals
+    /// Returns an `Iterator` over staged proposals.
+    pub fn pending_proposals(&self) -> impl Iterator<Item = &StagedProposal> {
+        self.proposal_store.proposals()
     }
 
     // === Load & save ===
@@ -287,93 +288,6 @@ impl ManagedGroup {
         true
     }
 
-    /// Prepare the corresponding events for the proposals covered by the
-    /// Commit
-    fn prepare_events(
-        &self,
-        ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
-        proposals: &[ProposalOrRef],
-        sender: LeafIndex,
-        indexed_members: &HashMap<LeafIndex, Credential>,
-    ) -> Vec<GroupEvent> {
-        let mut events = Vec::new();
-        // We want to collect the events in the order specified by the committer.
-        // We convert the pending proposals to a list of references
-        let pending_proposals_list = self
-            .pending_proposals
-            .iter()
-            .collect::<Vec<&MlsPlaintext>>();
-        // Build a proposal queue for easier searching
-        let pending_proposals_queue = ProposalQueue::from_proposals_by_reference(
-            ciphersuite,
-            backend,
-            &pending_proposals_list,
-        );
-        for proposal_or_ref in proposals {
-            match proposal_or_ref {
-                ProposalOrRef::Proposal(proposal) => {
-                    events.push(self.prepare_proposal_event(proposal, sender, indexed_members));
-                }
-                ProposalOrRef::Reference(proposal_reference) => {
-                    if let Some(queued_proposal) = pending_proposals_queue.get(proposal_reference) {
-                        events.push(self.prepare_proposal_event(
-                            queued_proposal.proposal(),
-                            queued_proposal.sender().to_leaf_index(),
-                            indexed_members,
-                        ));
-                    }
-                }
-            }
-        }
-        events
-    }
-
-    /// Prepare the corresponding events for the pending proposal list.
-    fn prepare_proposal_event(
-        &self,
-        proposal: &Proposal,
-        sender: LeafIndex,
-        indexed_members: &HashMap<LeafIndex, Credential>,
-    ) -> GroupEvent {
-        let sender_credential = &indexed_members[&sender];
-        match proposal {
-            // Add proposals
-            Proposal::Add(add_proposal) => GroupEvent::MemberAdded(MemberAddedEvent::new(
-                self.aad.to_vec(),
-                sender_credential.clone(),
-                add_proposal.key_package.credential().clone(),
-            )),
-            // Update proposals
-            Proposal::Update(update_proposal) => {
-                GroupEvent::MemberUpdated(MemberUpdatedEvent::new(
-                    self.aad.to_vec(),
-                    update_proposal.key_package.credential().clone(),
-                ))
-            }
-            // Remove proposals
-            Proposal::Remove(remove_proposal) => {
-                let removal = Removal::new(
-                    indexed_members[&self.group.tree().own_node_index()].clone(),
-                    sender_credential.clone(),
-                    indexed_members[&LeafIndex::from(remove_proposal.removed)].clone(),
-                );
-
-                GroupEvent::MemberRemoved(MemberRemovedEvent::new(self.aad.to_vec(), removal))
-            }
-            // PSK proposals
-            Proposal::PreSharedKey(psk_proposal) => {
-                let psk_id = psk_proposal.psk().clone();
-
-                GroupEvent::PskReceived(PskReceivedEvent::new(self.aad.to_vec(), psk_id))
-            }
-            // ReInit proposals
-            Proposal::ReInit(reinit_proposal) => {
-                GroupEvent::ReInit(ReInitEvent::new(self.aad.to_vec(), reinit_proposal.clone()))
-            }
-        }
-    }
-
     /// Auto-save function
     fn auto_save(&self) {
         if let Some(auto_save) = self.managed_group_config.callbacks.auto_save {
@@ -399,85 +313,5 @@ impl ManagedGroup {
     /// Group framing parameters
     fn framing_parameters(&self) -> FramingParameters {
         FramingParameters::new(&self.aad, self.managed_group_config.wire_format)
-    }
-}
-
-/// Unified message type for input to the managed API
-#[derive(Debug, Clone)]
-pub enum MlsMessageIn<'a> {
-    /// An OpenMLS `MlsPlaintext`.
-    Plaintext(VerifiableMlsPlaintext<'a>),
-
-    /// An OpenMLS `MlsCiphertext`.
-    Ciphertext(MlsCiphertext),
-}
-
-#[cfg(any(feature = "test-utils", test))]
-impl<'a> MlsMessageIn<'a> {
-    pub fn group_id(&self) -> &[u8] {
-        match self {
-            MlsMessageIn::Ciphertext(m) => m.group_id().as_slice(),
-            MlsMessageIn::Plaintext(m) => m.group_id().as_slice(),
-        }
-    }
-}
-
-/// Unified message type for output by the managed API
-#[derive(PartialEq, Debug, Clone)]
-pub enum MlsMessageOut {
-    /// An OpenMLS `MlsPlaintext`.
-    Plaintext(MlsPlaintext),
-
-    /// An OpenMLS `MlsCiphertext`.
-    Ciphertext(MlsCiphertext),
-}
-
-impl From<MlsPlaintext> for MlsMessageOut {
-    fn from(mls_plaintext: MlsPlaintext) -> Self {
-        MlsMessageOut::Plaintext(mls_plaintext)
-    }
-}
-
-impl From<MlsCiphertext> for MlsMessageOut {
-    fn from(mls_ciphertext: MlsCiphertext) -> Self {
-        MlsMessageOut::Ciphertext(mls_ciphertext)
-    }
-}
-
-impl MlsMessageOut {
-    /// Get the group ID as plain byte vector.
-    pub fn group_id(&self) -> &[u8] {
-        match self {
-            MlsMessageOut::Ciphertext(m) => m.group_id().as_slice(),
-            MlsMessageOut::Plaintext(m) => m.group_id().as_slice(),
-        }
-    }
-
-    /// Get the epoch as plain u64.
-    pub fn epoch(&self) -> u64 {
-        match self {
-            MlsMessageOut::Ciphertext(m) => m.epoch.0,
-            MlsMessageOut::Plaintext(m) => m.epoch().0,
-        }
-    }
-
-    /// Returns `true` if this is a handshake message and `false` otherwise.
-    pub fn is_handshake_message(&self) -> bool {
-        match self {
-            MlsMessageOut::Ciphertext(m) => m.is_handshake_message(),
-            MlsMessageOut::Plaintext(m) => m.is_handshake_message(),
-        }
-    }
-}
-
-#[cfg(any(feature = "test-utils", test))]
-impl<'a> From<MlsMessageOut> for MlsMessageIn<'a> {
-    fn from(message: MlsMessageOut) -> Self {
-        match message {
-            MlsMessageOut::Plaintext(pt) => {
-                MlsMessageIn::Plaintext(VerifiableMlsPlaintext::from_plaintext(pt, None))
-            }
-            MlsMessageOut::Ciphertext(ct) => MlsMessageIn::Ciphertext(ct),
-        }
     }
 }

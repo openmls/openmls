@@ -6,9 +6,12 @@
 use clap::Parser;
 use openmls::{
     ciphersuite::signable::Verifiable,
-    group::tests::{
-        kat_messages::{self, MessagesTestVector},
-        kat_transcripts::{self, TranscriptTestVector},
+    group::{
+        create_commit_params::CreateCommitParams,
+        tests::{
+            kat_messages::{self, MessagesTestVector},
+            kat_transcripts::{self, TranscriptTestVector},
+        },
     },
     prelude::*,
     schedule::kat_key_schedule::{self, KeyScheduleTestVector},
@@ -18,8 +21,6 @@ use openmls::{
         kat_treemath,
     },
 };
-
-use openmls::group::mls_group::create_commit::Proposals;
 
 use serde::{self, Serialize};
 use std::{collections::HashMap, convert::TryFrom, fs::File, io::Write, sync::Mutex};
@@ -109,12 +110,10 @@ fn to_ciphersuite(cs: u32) -> Result<&'static Ciphersuite, Status> {
         .find(|cs| cs.name() == cs_name)
     {
         Some(ciphersuite) => Ok(ciphersuite),
-        None => {
-            return Err(tonic::Status::new(
-                tonic::Code::InvalidArgument,
-                "ciphersuite not supported by this configuration of OpenMLS",
-            ));
-        }
+        None => Err(tonic::Status::new(
+            tonic::Code::InvalidArgument,
+            "ciphersuite not supported by this configuration of OpenMLS",
+        )),
     }
 }
 
@@ -242,7 +241,7 @@ impl MlsClient for MlsClientImpl {
         let obj = request.get_ref();
         let (type_msg, _result) = match TestVectorType::try_from(obj.test_vector_type) {
             Ok(TestVectorType::TreeMath) => {
-                write(&format!("mlspp_treemath.json"), &obj.test_vector);
+                write(&"mlspp_treemath.json".to_string(), &obj.test_vector);
                 let kat_treemath = match serde_json::from_slice(&obj.test_vector) {
                     Ok(test_vector) => test_vector,
                     Err(_) => {
@@ -416,8 +415,10 @@ impl MlsClient for MlsClientImpl {
             vec![],
         )
         .unwrap();
-        let mut config = MlsGroupConfig::default();
-        config.add_ratchet_tree_extension = true;
+        let config = MlsGroupConfig {
+            add_ratchet_tree_extension: true,
+            ..Default::default()
+        };
         let group = MlsGroup::new(
             &create_group_request.group_id,
             ciphersuite,
@@ -427,7 +428,7 @@ impl MlsClient for MlsClientImpl {
             None,
             ProtocolVersion::default(),
         )
-        .map_err(|e| into_status(e))?;
+        .map_err(into_status)?;
 
         let wire_format = wire_format(create_group_request.encrypt_handshake);
 
@@ -496,12 +497,14 @@ impl MlsClient for MlsClientImpl {
             .secrets()
             .iter()
             .find_map(|egs| pending_key_packages.remove(egs.key_package_hash.as_slice()))
-            .ok_or(tonic::Status::new(
-                tonic::Code::NotFound,
-                "No key package could be found for the given Welcome message.",
-            ))?;
+            .ok_or_else(|| {
+                tonic::Status::new(
+                    tonic::Code::NotFound,
+                    "No key package could be found for the given Welcome message.",
+                )
+            })?;
         let group = MlsGroup::new_from_welcome(welcome, None, kpb, None, &self.crypto_provider)
-            .map_err(|e| into_status(e))?;
+            .map_err(into_status)?;
 
         let interop_group = InteropGroup {
             credential_bundle,
@@ -544,13 +547,9 @@ impl MlsClient for MlsClientImpl {
         let state_auth_request = request.get_ref();
 
         let groups = self.groups.lock().unwrap();
-        let interop_group =
-            groups
-                .get(state_auth_request.state_id as usize)
-                .ok_or(tonic::Status::new(
-                    tonic::Code::InvalidArgument,
-                    "unknown state_id",
-                ))?;
+        let interop_group = groups
+            .get(state_auth_request.state_id as usize)
+            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
 
         let state_auth_secret = interop_group.group.authentication_secret();
 
@@ -564,13 +563,9 @@ impl MlsClient for MlsClientImpl {
         let export_request = request.get_ref();
 
         let groups = self.groups.lock().unwrap();
-        let interop_group =
-            groups
-                .get(export_request.state_id as usize)
-                .ok_or(tonic::Status::new(
-                    tonic::Code::InvalidArgument,
-                    "unknown state_id",
-                ))?;
+        let interop_group = groups
+            .get(export_request.state_id as usize)
+            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
         let exported_secret = interop_group
             .group
             .export_secret(
@@ -579,7 +574,7 @@ impl MlsClient for MlsClientImpl {
                 &export_request.context,
                 export_request.key_length as usize,
             )
-            .map_err(|e| into_status(e))?;
+            .map_err(into_status)?;
 
         Ok(Response::new(ExportResponse { exported_secret }))
     }
@@ -591,13 +586,9 @@ impl MlsClient for MlsClientImpl {
         let protect_request = request.get_ref();
 
         let mut groups = self.groups.lock().unwrap();
-        let interop_group =
-            groups
-                .get_mut(protect_request.state_id as usize)
-                .ok_or(tonic::Status::new(
-                    tonic::Code::InvalidArgument,
-                    "unknown state_id",
-                ))?;
+        let interop_group = groups
+            .get_mut(protect_request.state_id as usize)
+            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
 
         let ciphertext = interop_group
             .group
@@ -608,7 +599,7 @@ impl MlsClient for MlsClientImpl {
                 10,
                 &self.crypto_provider,
             )
-            .map_err(|e| into_status(e))?
+            .map_err(into_status)?
             .tls_serialize_detached()
             .map_err(|_| Status::aborted("failed to serialize ciphertext"))?;
         Ok(Response::new(ProtectResponse { ciphertext }))
@@ -621,20 +612,20 @@ impl MlsClient for MlsClientImpl {
         let unprotect_request = request.get_ref();
 
         let mut groups = self.groups.lock().unwrap();
-        let interop_group =
-            groups
-                .get_mut(unprotect_request.state_id as usize)
-                .ok_or(tonic::Status::new(
-                    tonic::Code::InvalidArgument,
-                    "unknown state_id",
-                ))?;
+        let interop_group = groups
+            .get_mut(unprotect_request.state_id as usize)
+            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
 
         let message = MlsCiphertext::tls_deserialize(&mut unprotect_request.ciphertext.as_slice())
             .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-        let application_data = interop_group
+        let upt = interop_group
             .group
             .decrypt(&message, &self.crypto_provider)
-            .map_err(|e| into_status(e.into()))?
+            .map_err(into_status)?;
+        let application_data = interop_group
+            .group
+            .verify(upt, &self.crypto_provider)
+            .map_err(into_status)?
             .as_application_message()
             .map_err(|e| into_status(e.into()))?
             .to_vec();
@@ -658,10 +649,7 @@ impl MlsClient for MlsClientImpl {
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(add_proposal_request.state_id as usize)
-            .ok_or(tonic::Status::new(
-                tonic::Code::InvalidArgument,
-                "unknown state_id",
-            ))?;
+            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
 
         let key_package =
             KeyPackage::tls_deserialize(&mut add_proposal_request.key_package.as_slice())
@@ -675,7 +663,7 @@ impl MlsClient for MlsClientImpl {
                 key_package,
                 &self.crypto_provider,
             )
-            .map_err(|e| into_status(e))?;
+            .map_err(into_status)?;
 
         let proposal = match interop_group.wire_format {
             WireFormat::MlsPlaintext => proposal
@@ -701,10 +689,7 @@ impl MlsClient for MlsClientImpl {
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(update_proposal_request.state_id as usize)
-            .ok_or(tonic::Status::new(
-                tonic::Code::InvalidArgument,
-                "unknown state_id",
-            ))?;
+            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
         let key_package_bundle = KeyPackageBundle::new(
             &[interop_group.group.ciphersuite().name()],
             &interop_group.credential_bundle,
@@ -721,7 +706,7 @@ impl MlsClient for MlsClientImpl {
                 key_package_bundle.key_package().clone(),
                 &self.crypto_provider,
             )
-            .map_err(|e| into_status(e))?;
+            .map_err(into_status)?;
 
         interop_group.own_kpbs.push(key_package_bundle);
 
@@ -749,10 +734,7 @@ impl MlsClient for MlsClientImpl {
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(remove_proposal_request.state_id as usize)
-            .ok_or(tonic::Status::new(
-                tonic::Code::InvalidArgument,
-                "unknown state_id",
-            ))?;
+            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
 
         let framing_parameters = FramingParameters::new(&[], interop_group.wire_format);
 
@@ -764,7 +746,7 @@ impl MlsClient for MlsClientImpl {
                 LeafIndex::from(remove_proposal_request.removed as usize),
                 &self.crypto_provider,
             )
-            .map_err(|e| into_status(e))?;
+            .map_err(into_status)?;
 
         let proposal = match interop_group.wire_format {
             WireFormat::MlsCiphertext => interop_group
@@ -809,13 +791,9 @@ impl MlsClient for MlsClientImpl {
         let commit_request = request.get_ref();
 
         let mut groups = self.groups.lock().unwrap();
-        let interop_group =
-            groups
-                .get_mut(commit_request.state_id as usize)
-                .ok_or(tonic::Status::new(
-                    tonic::Code::InvalidArgument,
-                    "unknown state_id",
-                ))?;
+        let interop_group = groups
+            .get_mut(commit_request.state_id as usize)
+            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
 
         let mut proposal_plaintexts = Vec::new();
         for bytes in &commit_request.by_reference {
@@ -823,9 +801,13 @@ impl MlsClient for MlsClientImpl {
                 WireFormat::MlsCiphertext => {
                     let ct = MlsCiphertext::tls_deserialize(&mut bytes.as_slice())
                         .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-                    interop_group
+                    let upt = interop_group
                         .group
                         .decrypt(&ct, &self.crypto_provider)
+                        .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?;
+                    interop_group
+                        .group
+                        .verify(upt, &self.crypto_provider)
                         .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
                 }
                 WireFormat::MlsPlaintext => {
@@ -849,9 +831,13 @@ impl MlsClient for MlsClientImpl {
                 WireFormat::MlsCiphertext => {
                     let ct = MlsCiphertext::tls_deserialize(&mut bytes.as_slice())
                         .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-                    interop_group
+                    let upt = interop_group
                         .group
                         .decrypt(&ct, &self.crypto_provider)
+                        .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?;
+                    interop_group
+                        .group
+                        .verify(upt, &self.crypto_provider)
                         .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
                 }
                 WireFormat::MlsPlaintext => {
@@ -874,20 +860,30 @@ impl MlsClient for MlsClientImpl {
 
         let framing_parameters = FramingParameters::new(&[], interop_group.wire_format);
 
+        let mut proposal_store = ProposalStore::new();
+        for proposal in proposal_plaintexts {
+            if let Ok(staging_proposal) = StagedProposal::from_mls_plaintext(
+                interop_group.group.ciphersuite(),
+                &self.crypto_provider,
+                proposal,
+            ) {
+                proposal_store.add(staging_proposal);
+            } else {
+                return Err(Status::aborted("could not create staged proposal"));
+            }
+        }
+
+        let params = CreateCommitParams::builder()
+            .framing_parameters(framing_parameters)
+            .credential_bundle(&interop_group.credential_bundle)
+            .proposal_store(&proposal_store)
+            .force_self_update(false)
+            .build();
+
         let (commit, option_welcome, option_kpb) = interop_group
             .group
-            .create_commit(
-                framing_parameters,
-                &interop_group.credential_bundle,
-                Proposals {
-                    proposals_by_reference: &proposals_by_reference,
-                    proposals_by_value: &proposals_by_value,
-                },
-                false,
-                None,
-                &self.crypto_provider,
-            )
-            .map_err(|e| into_status(e))?;
+            .create_commit(params, &self.crypto_provider)
+            .map_err(into_status)?;
 
         if let Some(kpb) = option_kpb {
             interop_group.own_kpbs.push(kpb)
@@ -925,19 +921,20 @@ impl MlsClient for MlsClientImpl {
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(handle_commit_request.state_id as usize)
-            .ok_or(tonic::Status::new(
-                tonic::Code::InvalidArgument,
-                "unknown state_id",
-            ))?;
+            .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
 
         let commit = match interop_group.wire_format {
             WireFormat::MlsCiphertext => {
                 let ct =
                     MlsCiphertext::tls_deserialize(&mut handle_commit_request.commit.as_slice())
                         .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-                interop_group
+                let upt = interop_group
                     .group
                     .decrypt(&ct, &self.crypto_provider)
+                    .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?;
+                interop_group
+                    .group
+                    .verify(upt, &self.crypto_provider)
                     .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
             }
             WireFormat::MlsPlaintext => {
@@ -957,9 +954,13 @@ impl MlsClient for MlsClientImpl {
                 WireFormat::MlsCiphertext => {
                     let ct = MlsCiphertext::tls_deserialize(&mut bytes.as_slice())
                         .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-                    interop_group
+                    let upt = interop_group
                         .group
                         .decrypt(&ct, &self.crypto_provider)
+                        .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?;
+                    interop_group
+                        .group
+                        .verify(upt, &self.crypto_provider)
                         .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
                 }
                 WireFormat::MlsPlaintext => {
@@ -972,21 +973,28 @@ impl MlsClient for MlsClientImpl {
             };
             proposal_plaintexts.push(pt);
         }
-        let mut proposals_by_reference = Vec::new();
+        let mut proposal_store = ProposalStore::new();
         for proposal in &proposal_plaintexts {
-            proposals_by_reference.push(proposal);
+            proposal_store.add(
+                StagedProposal::from_mls_plaintext(
+                    interop_group.group.ciphersuite(),
+                    &self.crypto_provider,
+                    proposal.clone(),
+                )
+                .map_err(|_| Status::aborted("couldn't process proposal"))?,
+            )
         }
 
         let staged_commit = interop_group
             .group
             .stage_commit(
                 &commit,
-                &proposals_by_reference,
+                &proposal_store,
                 &interop_group.own_kpbs,
                 None,
                 &self.crypto_provider,
             )
-            .map_err(|e| into_status(e.into()))?;
+            .map_err(into_status)?;
         interop_group.group.merge_commit(staged_commit);
 
         Ok(Response::new(HandleCommitResponse {

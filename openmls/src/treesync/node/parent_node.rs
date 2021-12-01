@@ -11,6 +11,12 @@ use crate::{
     treesync::hashes::{ParentHashError, ParentHashInput},
 };
 
+#[cfg(test)]
+use crate::{
+    credentials::{CredentialBundle, CredentialType::Basic},
+    key_packages::KeyPackageBundle,
+};
+
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ParentNode {
     public_key: HpkePublicKey,
@@ -163,6 +169,24 @@ impl ParentNode {
     /// Get the parent hash value of this node.
     pub(crate) fn parent_hash(&self) -> &[u8] {
         self.parent_hash.as_slice()
+    }
+
+    #[cfg(test)]
+    pub fn random_with_private_key(
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &'static Ciphersuite,
+    ) -> Self {
+        use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeKeyPair};
+
+        use crate::{ciphersuite::Secret, prelude::ProtocolVersion};
+        let leaf_secret = Secret::random(ciphersuite, backend, ProtocolVersion::default());
+        let keypair = backend
+            .crypto()
+            .derive_hpke_keypair(ciphersuite.hpke_config(), leaf_secret.as_slice());
+        let pk: HpkePublicKey = keypair.public.into();
+        let sk: HpkePrivateKey = keypair.private.into();
+
+        (pk, sk).into()
     }
 }
 

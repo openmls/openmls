@@ -540,7 +540,7 @@ impl KeyPackageBundle {
     }
 
     #[cfg(test)]
-    pub fn into_parts(self) -> (KeyPackage, Secret, HpkePrivateKey) {
+    pub(crate) fn into_parts(self) -> (KeyPackage, Secret, HpkePrivateKey) {
         (self.key_package, self.leaf_secret, self.private_key)
     }
 }

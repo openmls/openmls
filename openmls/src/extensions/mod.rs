@@ -31,6 +31,7 @@ mod key_package_id_extension;
 mod life_time_extension;
 mod parent_hash_extension;
 mod ratchet_tree_extension;
+mod required_capabilities;
 use tls_codec::{Size, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize, TlsSliceU32};
 
 pub use capabilities_extension::CapabilitiesExtension;
@@ -39,6 +40,7 @@ pub use key_package_id_extension::KeyIdExtension;
 pub use life_time_extension::LifetimeExtension;
 pub(crate) use parent_hash_extension::ParentHashExtension;
 pub use ratchet_tree_extension::RatchetTreeExtension;
+pub use required_capabilities::RequiredCapabilitiesExtension;
 
 #[cfg(test)]
 mod test_extensions;
@@ -69,6 +71,7 @@ pub enum ExtensionType {
     KeyId = 3,
     ParentHash = 4,
     RatchetTree = 5,
+    RequiredCapabilities = 6,
 }
 
 impl TryFrom<u16> for ExtensionType {
@@ -110,6 +113,9 @@ pub enum Extension {
 
     /// A [`RatchetTreeExtension`]
     RatchetTree(RatchetTreeExtension),
+
+    /// A [`RequiredCapabilitiesExtension`]
+    RequiredCapabilities(RequiredCapabilitiesExtension),
 }
 
 impl tls_codec::Size for Extension {
@@ -123,6 +129,7 @@ impl tls_codec::Size for Extension {
             Extension::LifeTime(e) => e.tls_serialized_len(),
             Extension::ParentHash(e) => e.tls_serialized_len(),
             Extension::RatchetTree(e) => e.tls_serialized_len(),
+            Extension::RequiredCapabilities(e) => e.tls_serialized_len(),
         }
     }
 }
@@ -142,6 +149,7 @@ impl tls_codec::Serialize for Extension {
             Extension::LifeTime(e) => e.tls_serialize(&mut extension_data),
             Extension::ParentHash(e) => e.tls_serialize(&mut extension_data),
             Extension::RatchetTree(e) => e.tls_serialize(&mut extension_data),
+            Extension::RequiredCapabilities(e) => e.tls_serialize(&mut extension_data),
         }?;
         debug_assert_eq!(extension_data_written, extension_data_len);
         debug_assert_eq!(extension_data_written, extension_data.len());
@@ -177,6 +185,9 @@ impl tls_codec::Deserialize for Extension {
             ExtensionType::RatchetTree => {
                 Extension::RatchetTree(RatchetTreeExtension::tls_deserialize(&mut extension_data)?)
             }
+            ExtensionType::RequiredCapabilities => Extension::RequiredCapabilities(
+                RequiredCapabilitiesExtension::tls_deserialize(&mut extension_data)?,
+            ),
             ExtensionType::Reserved => {
                 return Err(tls_codec::Error::DecodingError(format!(
                     "{:?} is not a valid extension type",
@@ -256,6 +267,7 @@ impl Extension {
             Extension::LifeTime(_) => ExtensionType::Lifetime,
             Extension::ParentHash(_) => ExtensionType::ParentHash,
             Extension::RatchetTree(_) => ExtensionType::RatchetTree,
+            Extension::RequiredCapabilities(_) => ExtensionType::RequiredCapabilities,
         }
     }
 }

@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use ds_lib::{ClientKeyPackages, DsMlsMessage, GroupMessage, Message};
-use openmls::{group::create_commit::Proposals, prelude::*};
+use openmls::{group::create_commit_params::CreateCommitParams, prelude::*};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use super::{backend::Backend, conversation::Conversation, identity::Identity};
@@ -141,11 +141,21 @@ impl User {
                     };
                     let msg = match message {
                         DsMlsMessage::Ciphertext(ctxt) => {
-                            match group.decrypt(&ctxt, &self.crypto) {
+                            let verifiable_plaintext = match group.decrypt(&ctxt, &self.crypto) {
                                 Ok(msg) => msg,
                                 Err(e) => {
                                     log::error!(
                                         "Error decrypting MlsCiphertext: {:?} -  Dropping message.",
+                                        e
+                                    );
+                                    continue;
+                                }
+                            };
+                            match group.verify(verifiable_plaintext, &self.crypto) {
+                                Ok(msg) => msg,
+                                Err(e) => {
+                                    log::error!(
+                                        "Error verifying MlsPlaintext: {:?} -  Dropping message.",
                                         e
                                     );
                                     continue;
@@ -191,18 +201,28 @@ impl User {
                             group.pending_proposals.push(msg);
                         }
                         MlsPlaintextContentType::Commit(_commit) => {
-                            match group.mls_group.borrow_mut().stage_commit(
+                            let mut proposal_store = ProposalStore::new();
+                            for proposal in &group.pending_proposals {
+                                proposal_store.add(
+                                    StagedProposal::from_mls_plaintext(
+                                        Config::ciphersuite(CIPHERSUITE)
+                                            .map_err(|e| format!("{}", e))?,
+                                        &self.crypto,
+                                        proposal.clone(),
+                                    )
+                                    .map_err(|e| format!("{}", e))?,
+                                )
+                            }
+                            let mut mls_group = group.mls_group.borrow_mut();
+                            match mls_group.stage_commit(
                                 &msg,
-                                &(group
-                                    .pending_proposals
-                                    .iter()
-                                    .collect::<Vec<&MlsPlaintext>>()),
+                                &proposal_store,
                                 &[], // TODO: store key packages.
                                 None,
                                 &self.crypto,
                             ) {
                                 Ok(staged_commit) => {
-                                    group.mls_group.borrow_mut().merge_commit(staged_commit);
+                                    mls_group.merge_commit(staged_commit);
                                 }
                                 Err(e) => {
                                     let s = format!("Error applying commit: {:?}", e);
@@ -247,7 +267,10 @@ impl User {
         let mut group_aad = group_id.to_vec();
         group_aad.extend(b" AAD");
         let kpb = self.identity.borrow_mut().update(&self.crypto);
-        let config = MlsGroupConfig::default();
+        let config = MlsGroupConfig {
+            add_ratchet_tree_extension: true,
+            ..Default::default()
+        };
         let mls_group = MlsGroup::new(
             group_id,
             CIPHERSUITE,
@@ -308,27 +331,31 @@ impl User {
             .borrow()
             .create_add_proposal(framing_parameters, credentials, key_package, &self.crypto)
             .expect("Could not create proposal.");
-        let proposals = vec![&add_proposal];
+        let proposal_store = ProposalStore::from_staged_proposal(
+            StagedProposal::from_mls_plaintext(
+                Config::ciphersuite(CIPHERSUITE).map_err(|e| format!("{}", e))?,
+                &self.crypto,
+                add_proposal.clone(),
+            )
+            .map_err(|e| format!("{}", e))?,
+        );
+        let params = CreateCommitParams::builder()
+            .framing_parameters(framing_parameters)
+            .credential_bundle(credentials)
+            .proposal_store(&proposal_store)
+            .force_self_update(false)
+            .build();
         let (commit, welcome_msg, _kpb) = group
             .mls_group
             .borrow()
-            .create_commit(
-                framing_parameters,
-                credentials,
-                Proposals {
-                    proposals_by_reference: &proposals,
-                    proposals_by_value: &[],
-                },
-                false,
-                None,
-                &self.crypto,
-            )
+            .create_commit(params, &self.crypto)
             .expect("Error creating commit");
         let welcome_msg = welcome_msg.expect("Welcome message wasn't created by create_commit.");
+
         let staged_commit = group
             .mls_group
             .borrow_mut()
-            .stage_commit(&commit, &[&add_proposal], &[], None, &self.crypto)
+            .stage_commit(&commit, &proposal_store, &[], None, &self.crypto)
             .expect("error applying commit");
         group.mls_group.borrow_mut().merge_commit(staged_commit);
 
