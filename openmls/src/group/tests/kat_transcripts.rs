@@ -89,7 +89,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
     let framing_parameters = FramingParameters::new(&aad, WireFormat::MlsPlaintext);
     let mut commit = MlsPlaintext::new_commit(
         framing_parameters,
-        LeafIndex::from(random_u32()),
+        random_u32(),
         Commit {
             proposals: vec![].into(),
             path: None,

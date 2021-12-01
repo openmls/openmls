@@ -9,9 +9,9 @@ use crate::{
     group::{create_commit_params::CreateCommitParams, GroupEpoch, WireFormat},
     messages::{public_group_state::VerifiablePublicGroupState, Commit, GroupInfo, GroupSecrets},
     messages::{ConfirmationTag, GroupInfoPayload},
-    node::Node,
     prelude::*,
     test_utils::*,
+    treesync::node::Node,
     utils::*,
 };
 
@@ -79,7 +79,12 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     )
     .unwrap();
 
-    let ratchet_tree = group.tree().public_key_tree_copy();
+    let ratchet_tree: Vec<Option<Node>> = group
+        .tree()
+        .export_nodes()
+        .iter()
+        .map(|&node| node.clone())
+        .collect();
 
     // We can't easily get a "natural" GroupInfo, so we just create one here.
     let group_info = GroupInfoPayload::new(
@@ -97,7 +102,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
                 .unwrap()
                 .into(),
         }),
-        LeafIndex::from(random_u32()),
+        random_u32(),
     );
     let group_info = group_info.sign(&crypto, &credential_bundle).unwrap();
     let group_secrets =

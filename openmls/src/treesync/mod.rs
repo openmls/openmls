@@ -1,5 +1,29 @@
-//! This module contains the functionality required to synchronize a tree across
-//! multiple parties.
+//! This module implements the ratchet tree component of MLS.
+//!
+//! # About
+//!
+//! This module provides the [`TreeSync`] struct, which contains the state
+//! shared between a group of MLS clients in the shape of a tree, where each
+//! non-blank leaf corresponds to one group member. The functions provided by
+//! its implementation allow the creation of a [`TreeSyncDiff`] instance, which
+//! in turn can be mutably operated on and merged back into the original
+//! [`TreeSync`] instance.
+//!
+//! The submodules of this module define the nodes of the tree ([`nodes`]),
+//! helper functions and structs for the algorithms used to sync the tree across
+//! the group ([`hashes`]) and the diff functionality ([`diff`]).
+//!
+//! Finally, this module contains the [`treekem`] module, which allows the
+//! encryption and decryption of updates to the tree.
+//!
+//! # Don't Panic!
+//!
+//! Functions in this module should never panic. However, if there is a bug in
+//! the implementation, a function will return an unrecoverable
+//! [`LibraryError`](TreeSyncError::LibraryError). This means that some
+//! functions that are not expected to fail and throw an error, will still
+//! return a [`Result`] since they may throw a
+//! [`LibraryError`](TreeSyncError::LibraryError).
 
 use std::collections::HashMap;
 
@@ -16,16 +40,48 @@ use crate::{
 
 use self::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff, TreeSyncDiffError},
-    node::{Node, TreeSyncNode, TreeSyncNodeError},
+    node::{Node, NodeError},
+    treesync_node::{TreeSyncNode, TreeSyncNodeError},
 };
 
 pub(crate) mod diff;
 mod hashes;
 pub(crate) mod node;
 pub(crate) mod treekem;
+pub(crate) mod treesync_node;
 
 pub use crate::binary_tree::LeafIndex;
 
+#[cfg(any(feature = "test-utils", test))]
+pub mod tests_and_kats;
+
+/// The [`TreeSync`] struct holds an [`MlsBinaryTree`] instance, which contains
+/// the state that is synced across the group, as well as the [`LeafIndex`]
+/// pointing to the leaf of this group member and the current hash of the tree.
+///
+/// It follows the same pattern of tree and diff as the underlying
+/// [`MlsBinaryTree`], where the [`TreeSync`] instance is immutable safe for
+/// merging a [`TreeSyncDiff`], which can be created, staged and merged (see
+/// [`TreeSyncDiff`]).
+///
+/// [`TreeSync`] instance guarantee a few invariants that are checked upon
+/// creating a new instance from an imported set of nodes, as well as when
+/// merging a diff.
+///
+/// FIXME: Extend and implement the following list.
+/// * validity/consistency of unmerged leaves in all parent nodes
+/// * uniqueness of public keys in the tree
+/// * uniqueness of (identity, endpoint_id) tuples in the tree
+/// * validity of all parent hashes in the tree
+/// * validity of all key packages in the tree
+///   * support for the ciphersuite, support of required extensions, etc.
+/// * tree size is below u32::MAX
+/// * our own leaf is not blank
+/// * our own leaf index points to inside of the tree
+/// * we have a private key for our own leaf
+/// * our direct path has private keys according to the unmerged leaves in the nodes
+/// * there are private keys only in our leaf and our direct path
+/// * the tree hash is non-empty
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TreeSync {
     tree: MlsBinaryTree<TreeSyncNode>,
@@ -34,8 +90,10 @@ pub struct TreeSync {
 }
 
 impl TreeSync {
-    /// Create a new tree from a `KeyPackageBundle` and return the resulting
-    /// `CommitSecret`.
+    /// Create a new tree from a `KeyPackageBundle`.
+    ///
+    /// Returns the resulting [`TreeSync`] instance, as well as the
+    /// corresponding [`CommitSecret`].
     pub(crate) fn new(
         backend: &impl OpenMlsCryptoProvider,
         key_package_bundle: KeyPackageBundle,
@@ -58,13 +116,16 @@ impl TreeSync {
         ))
     }
 
-    /// Return the tree hash of the root node.
+    /// Return the tree hash of the root node of the tree.
     pub(crate) fn tree_hash(&self) -> &[u8] {
         self.tree_hash.as_slice()
     }
 
-    /// Merge the given diff into the `TreeSync` instance, refreshing the
-    /// `tree_has` value in the process.
+    /// Merge the given diff into this `TreeSync` instance, refreshing the
+    /// `tree_hash` value in the process.
+    ///
+    /// Returns an error if the merging process of the underlying
+    /// [`MlsBinaryTree`] fails.
     pub(crate) fn merge_diff(
         &mut self,
         tree_sync_diff: StagedTreeSyncDiff,
@@ -74,50 +135,65 @@ impl TreeSync {
         Ok(self.tree.merge_diff(diff)?)
     }
 
-    /// Create an empty diff based on this TreeSync instance all operations
-    /// are created based on an initial, empty diff.
+    /// Create an empty diff based on this [`TreeSync`] instance all operations
+    /// are created based on an initial, empty [`TreeSyncDiff`].
+    ///
+    /// This function should not fail and only returns a [`Result`], because it
+    /// might throw a [LibraryError](TreeSyncError::LibraryError).
     pub(crate) fn empty_diff(&self) -> Result<TreeSyncDiff, TreeSyncError> {
         Ok(self.try_into()?)
     }
 
-    /// For use with a Welcome message.
+    /// Create a new [`TreeSync`] instance from a given slice of `Option<Node>`,
+    /// as well as a `LeafIndex` representing the source of the node slice and
+    /// the `KeyPackageBundle` representing this client in the group. If a
+    /// [`PathSecret`] is passed via `path_secret_option`, it will derive the
+    /// private keys in the nodes of the direct path of the sender that it
+    /// shares with this client.
+    ///
+    /// Returns the new [`TreeSync`] instance or an error if one of the
+    /// invariants is not true (see [`TreeSync`]).
     pub(crate) fn from_nodes_with_secrets(
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
         node_options: &[Option<Node>],
         sender_index: LeafIndex,
-        path_secret_option: Option<PathSecret>,
+        path_secret_option: impl Into<Option<PathSecret>>,
         key_package_bundle: KeyPackageBundle,
-    ) -> Result<Self, TreeSyncError> {
+    ) -> Result<(Self, Option<CommitSecret>), TreeSyncError> {
         let mut tree_sync =
             Self::from_nodes(backend, ciphersuite, node_options, key_package_bundle)?;
 
         // If there is no path secret, the direct path has to be blank. FIXME:
         // Return error if a given path secret doesn't imply that the direct
         // path isn't blank.
-        if let Some(path_secret) = path_secret_option {
+        let commit_secret = if let Some(path_secret) = path_secret_option.into() {
             let mut diff = tree_sync.empty_diff()?;
-            diff.set_path_secrets(backend, ciphersuite, path_secret, sender_index)?;
+            let commit_secret =
+                diff.set_path_secrets(backend, ciphersuite, path_secret, sender_index)?;
             let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
             tree_sync.merge_diff(staged_diff)?;
-        }
-        Ok(tree_sync)
+            Some(commit_secret)
+        } else {
+            None
+        };
+        Ok((tree_sync, commit_secret))
     }
 
-    /// FIXME: When implementing external commits, we will probably have to
-    /// enable a state, where we have a tree without secrets.
-    pub(crate) fn from_nodes(
+    /// A helper function that generates a [`TreeSync`] instance from the given
+    /// slice of nodes. It verifies that the [`KeyPackage`] of the given
+    /// [`KeyPackageBundle`] is present in the tree and that the invariants
+    /// documented in [`TreeSync`] hold.
+    fn from_nodes(
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
         node_options: &[Option<Node>],
         key_package_bundle: KeyPackageBundle,
     ) -> Result<Self, TreeSyncError> {
-        // FIXME: We need to not only set the private key of the leaf node, but
-        // also (potentially) compute the path based on a path secret. FIXME: We
-        // might want to verify some more things here, such as the validity of
-        // the leaf indices in the unmerged leaves or the uniqueness of public
-        // keys in the tree. We are building on those properties in other
-        // functions.
+        // FIXME: We might want to verify some more things here, such as the
+        // validity of the leaf indices in the unmerged leaves or the uniqueness
+        // of public keys in the tree. We are building on those properties in
+        // other functions.
         let mut ts_nodes: Vec<TreeSyncNode> = Vec::new();
         let mut own_index_option = None;
         let own_key_package = key_package_bundle.key_package;
@@ -168,10 +244,20 @@ impl TreeSync {
         }
     }
 
+    /// Returns the number of leaves in the tree.
+    ///
+    /// This function should not fail and only returns a [`Result`], because it
+    /// might throw a [LibraryError](TreeSyncError::LibraryError).
     pub(crate) fn leaf_count(&self) -> Result<LeafIndex, TreeSyncError> {
         Ok(self.tree.leaf_count()?)
     }
 
+    /// Returns a [`HashMap`] mapping leaf indices to the corresponding
+    /// [`KeyPackage`] instances in the leaves. The map only contains full
+    /// nodes.
+    ///
+    /// This function should not fail and only returns a [`Result`], because it
+    /// might throw a [LibraryError](TreeSyncError::LibraryError).
     pub(crate) fn full_leaves(&self) -> Result<HashMap<LeafIndex, &KeyPackage>, TreeSyncError> {
         let tsn_leaves: Vec<(usize, &TreeSyncNode)> = self
             .tree
@@ -191,6 +277,9 @@ impl TreeSync {
         Ok(leaves)
     }
 
+    /// Returns the nodes in the tree ordered according to the
+    /// array-representation of the underlying binary tree. FIXME: It would be
+    /// much nicer to return a slice here, but I don't know how.
     pub(crate) fn export_nodes(&self) -> Vec<&Option<Node>> {
         self.tree
             .nodes()
@@ -199,13 +288,17 @@ impl TreeSync {
             .collect()
     }
 
+    /// Returns the leaf index of this client.
     pub(crate) fn own_leaf_index(&self) -> LeafIndex {
         self.own_leaf_index
     }
 
+    /// Returns the [`KeyPackage`] of this client.
+    ///
+    /// This function should not fail and only returns a [`Result`], because it
+    /// might throw a [LibraryError](TreeSyncError::LibraryError).
     pub(crate) fn own_leaf_node(&self) -> Result<&KeyPackage, TreeSyncError> {
-        // Our own leaf should be insider of the tree and never blank. FIXME:
-        // This should be ensured by the verification routine.
+        // Our own leaf should be insider of the tree and never blank.
         let leaves = self.tree.leaves()?;
         let leaf = leaves
             .get(self.own_leaf_index as usize)
@@ -226,6 +319,7 @@ implement_error! {
         Complex {
             BinaryTreeError(MlsBinaryTreeError) = "An error occurred during an operation on the underlying binary tree.",
             TreeSyncNodeError(TreeSyncNodeError) = "An error occurred during an operation on the underlying binary tree.",
+            NodeTypeError(NodeError) = "We found a node with an unexpected type.",
             TreeSyncDiffError(TreeSyncDiffError) = "An error while trying to apply a diff.",
             DerivationError(PathSecretError) = "Error while deriving commit secret for new tree.",
         }

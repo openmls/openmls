@@ -126,7 +126,9 @@ impl MlsGroup {
             }
         };
 
-        let tree = TreeSync::from_nodes_with_secrets(
+        // Commit secret is ignored when joining a group, since we already have
+        // the joiner_secret.
+        let (tree, _commit_secret_option) = TreeSync::from_nodes_with_secrets(
             backend,
             ciphersuite,
             &nodes,

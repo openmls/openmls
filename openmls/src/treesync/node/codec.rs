@@ -1,6 +1,8 @@
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{
+    TlsByteSliceU8, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize, TlsSliceU32, TlsVecU32,
+};
 
-use crate::prelude::KeyPackage;
+use crate::{ciphersuite::HpkePublicKey, prelude::KeyPackage};
 
 use super::{leaf_node::LeafNode, parent_node::ParentNode, Node};
 
@@ -88,5 +90,49 @@ impl tls_codec::Size for &LeafNode {
 impl tls_codec::Serialize for &LeafNode {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         self.key_package().tls_serialize(writer)
+    }
+}
+
+// Implementations for `ParentNode`
+
+impl tls_codec::Size for ParentNode {
+    fn tls_serialized_len(&self) -> usize {
+        let parent_hash = TlsByteSliceU8(self.parent_hash());
+        let unmerged_leaves = TlsSliceU32(self.unmerged_leaves());
+        self.public_key().tls_serialized_len()
+            + parent_hash.tls_serialized_len()
+            + unmerged_leaves.tls_serialized_len()
+    }
+}
+
+impl tls_codec::Size for &ParentNode {
+    fn tls_serialized_len(&self) -> usize {
+        let parent_hash = TlsByteSliceU8(self.parent_hash());
+        let unmerged_leaves = TlsSliceU32(self.unmerged_leaves());
+        self.public_key().tls_serialized_len()
+            + parent_hash.tls_serialized_len()
+            + unmerged_leaves.tls_serialized_len()
+    }
+}
+
+impl tls_codec::Serialize for &ParentNode {
+    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        let parent_hash = TlsByteSliceU8(self.parent_hash());
+        let unmerged_leaves = TlsSliceU32(self.unmerged_leaves());
+        let mut written = self.public_key().tls_serialize(writer)?;
+        written += parent_hash.tls_serialize(writer)?;
+        unmerged_leaves.tls_serialize(writer).map(|l| l + written)
+    }
+}
+
+impl tls_codec::Deserialize for ParentNode {
+    fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>
+    where
+        Self: Sized,
+    {
+        let public_key = HpkePublicKey::tls_deserialize(bytes)?;
+        let parent_hash = TlsByteVecU8::tls_deserialize(bytes)?;
+        let unmerged_leaves = TlsVecU32::tls_deserialize(bytes)?;
+        Ok(Self::new(public_key, parent_hash, unmerged_leaves))
     }
 }

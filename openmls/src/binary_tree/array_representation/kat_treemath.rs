@@ -33,10 +33,13 @@
 //! * `sibling[i]` is the node index of the sibling of the node with index `i`
 //!   in a tree with `n_leaves` leaves
 
+use crate::binary_tree::LeafIndex;
 #[cfg(test)]
 use crate::test_utils::*;
 
-use crate::tree::{index::*, treemath::*};
+use super::treemath::*;
+
+use super::tree::to_node_index;
 
 use serde::{self, Deserialize, Serialize};
 
@@ -54,7 +57,7 @@ pub struct TreeMathTestVector {
 macro_rules! convert {
     ($r:expr) => {
         match $r {
-            Ok(i) => Some(i.as_u32()),
+            Ok(i) => Some(i),
             Err(_) => None,
         }
     };
@@ -63,7 +66,7 @@ macro_rules! convert {
 #[cfg(any(feature = "test-utils", test))]
 pub fn generate_test_vector(n_leaves: u32) -> TreeMathTestVector {
     let leaves = LeafIndex::from(n_leaves);
-    let n_nodes = node_width(leaves.as_usize()) as u32;
+    let n_nodes = node_width(leaves as usize) as u32;
     let mut test_vector = TreeMathTestVector {
         n_leaves,
         n_nodes,
@@ -75,19 +78,13 @@ pub fn generate_test_vector(n_leaves: u32) -> TreeMathTestVector {
     };
 
     for i in 0..n_leaves {
-        test_vector.root.push(root(LeafIndex::from(i + 1)).as_u32());
+        test_vector.root.push(root(to_node_index(i + 1)));
     }
     for i in 0..n_nodes {
-        test_vector.left.push(convert!(left(NodeIndex::from(i))));
-        test_vector
-            .right
-            .push(convert!(right(NodeIndex::from(i), leaves)));
-        test_vector
-            .parent
-            .push(convert!(parent(NodeIndex::from(i), leaves)));
-        test_vector
-            .sibling
-            .push(convert!(sibling(NodeIndex::from(i), leaves)));
+        test_vector.left.push(convert!(left(i)));
+        test_vector.right.push(convert!(right(i, n_nodes)));
+        test_vector.parent.push(convert!(parent(i, n_nodes)));
+        test_vector.sibling.push(convert!(sibling(i, n_nodes)));
     }
 
     test_vector
@@ -109,27 +106,27 @@ fn write_test_vectors() {
 pub fn run_test_vector(test_vector: TreeMathTestVector) -> Result<(), TmTestVectorError> {
     let n_leaves = test_vector.n_leaves as usize;
     let n_nodes = node_width(n_leaves);
-    let leaves = LeafIndex::from(n_leaves);
-    if test_vector.n_nodes != node_width(leaves.as_usize()) as u32 {
+    let leaves = n_leaves as u32;
+    if test_vector.n_nodes != node_width(n_leaves) as u32 {
         return Err(TmTestVectorError::TreeSizeMismatch);
     }
     for i in 0..n_leaves {
-        if test_vector.root[i] != root(LeafIndex::from(i + 1)).as_u32() {
+        if test_vector.root[i] != root(to_node_index(i as u32 + 1)) {
             return Err(TmTestVectorError::RootIndexMismatch);
         }
     }
 
     for i in 0..n_nodes {
-        if test_vector.left[i] != convert!(left(NodeIndex::from(i))) {
+        if test_vector.left[i] != convert!(left(i as u32)) {
             return Err(TmTestVectorError::LeftIndexMismatch);
         }
-        if test_vector.right[i] != convert!(right(NodeIndex::from(i), leaves)) {
+        if test_vector.right[i] != convert!(right(i as u32, leaves)) {
             return Err(TmTestVectorError::RightIndexMismatch);
         }
-        if test_vector.parent[i] != convert!(parent(NodeIndex::from(i), leaves)) {
+        if test_vector.parent[i] != convert!(parent(i as u32, leaves)) {
             return Err(TmTestVectorError::ParentIndexMismatch);
         }
-        if test_vector.sibling[i] != convert!(sibling(NodeIndex::from(i), leaves)) {
+        if test_vector.sibling[i] != convert!(sibling(i as u32, leaves)) {
             return Err(TmTestVectorError::SiblingIndexMismatch);
         }
     }

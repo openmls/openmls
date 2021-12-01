@@ -55,37 +55,10 @@ implement_error! {
     }
 }
 
+#[derive(TlsSerialize, TlsSize)]
 pub struct LeafNodeHashInput<'a> {
     pub(crate) leaf_index: &'a LeafIndex,
     pub(crate) key_package: Option<&'a KeyPackage>,
-}
-
-// FIXME: These explicit implementations shouldn't be necessary.
-impl<'a> tls_codec::Size for LeafNodeHashInput<'a> {
-    fn tls_serialized_len(&self) -> usize {
-        self.leaf_index.tls_serialized_len()
-            + match self.key_package {
-                Some(kp) => kp.tls_serialized_len(),
-                None => {
-                    let none: Option<KeyPackage> = None;
-                    none.tls_serialized_len()
-                }
-            }
-    }
-}
-
-impl<'a> tls_codec::Serialize for LeafNodeHashInput<'a> {
-    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, TlsCodecError> {
-        let written = self.leaf_index.tls_serialize(writer)?;
-        match self.key_package {
-            Some(kp) => kp.tls_serialize(writer),
-            None => {
-                let none: Option<KeyPackage> = None;
-                none.tls_serialize(writer)
-            }
-        }
-        .map(|l| l + written)
-    }
 }
 
 impl<'a> LeafNodeHashInput<'a> {

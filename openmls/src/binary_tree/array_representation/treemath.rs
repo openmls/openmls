@@ -182,7 +182,7 @@ pub(super) fn leaf_count(number_of_nodes: NodeIndex) -> NodeIndex {
     (number_of_nodes + 1) / 2
 }
 
-#[cfg(test)]
+#[cfg(any(feature = "test-utils", test))]
 pub(super) fn parent(index: NodeIndex, size: NodeIndex) -> Result<NodeIndex, TreeMathError> {
     node_in_tree(index, size)?;
     unsafe_parent(index, size)
@@ -223,6 +223,15 @@ pub(super) fn descendants_alt(x: NodeIndex, size: NodeIndex) -> Vec<NodeIndex> {
             descendants_alt(right_child, size),
         ]
         .concat()
+    }
+}
+
+#[cfg(any(feature = "test-utils", test))]
+pub(crate) fn node_width(n: usize) -> usize {
+    if n == 0 {
+        0
+    } else {
+        2 * (n - 1) + 1
     }
 }
 

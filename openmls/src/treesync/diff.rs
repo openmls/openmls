@@ -1,3 +1,22 @@
+//! This module provides the diff functionality for [`TreeSync`].
+//!
+//! # About
+//!
+//! This module provides the [`TreeSyncDiff`] struct, that allows mutable
+//! operations on otherwise immutable [`TreeSync`] instances. It also provides
+//! the [`StagedTreeSyncDiff`] struct, which has to be created from a
+//! [`TreeSyncDiff`] before it can be merged in to the original [`TreeSync`]
+//! instance.
+//!
+//!
+//! # Don't Panic!
+//!
+//! Functions in this module should never panic. However, if there is a bug in
+//! the implementation, a function will return an unrecoverable
+//! [`LibraryError`](TreeSyncDiffError::LibraryError). This means that some
+//! functions that are not expected to fail and throw an error, will still
+//! return a [`Result`] since they may throw a
+//! [`LibraryError`](TreeSyncDiffError::LibraryError).
 use openmls_traits::OpenMlsCryptoProvider;
 
 use std::{collections::HashSet, convert::TryFrom};
@@ -5,8 +24,9 @@ use std::{collections::HashSet, convert::TryFrom};
 use super::{
     node::{
         parent_node::{ParentNode, ParentNodeError, PlainUpdatePathNode},
-        Node, TreeSyncNode, TreeSyncNodeError,
+        {Node, NodeError},
     },
+    treesync_node::{TreeSyncNode, TreeSyncNodeError},
     TreeSync,
 };
 
@@ -398,14 +418,15 @@ impl<'a> TreeSyncDiff<'a> {
 
     /// Sets the path secrets, but doesn't otherwise touch the nodes. This
     /// function also checks that the derived public keys match the existing
-    /// public keys.
+    /// public keys. Returns the `CommitSecret` resulting from the path
+    /// derivation.
     pub(super) fn set_path_secrets(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
         mut path_secret: PathSecret,
         sender_index: LeafIndex,
-    ) -> Result<(), TreeSyncDiffError> {
+    ) -> Result<CommitSecret, TreeSyncDiffError> {
         let subtree_path = self.diff.subtree_path(self.own_leaf_index, sender_index)?;
         for node_ref in subtree_path {
             let tsn = self.diff.try_deref_mut(node_ref)?;
@@ -433,7 +454,7 @@ impl<'a> TreeSyncDiff<'a> {
                 // leaves, go to the next node.
             }
         }
-        Ok(())
+        Ok(path_secret.into())
     }
 
     /// A helper function that filters the unmerged leaves of the given node
@@ -761,7 +782,8 @@ implement_error! {
             NoPrivateKeyFound = "Couldn't find a fitting private key in the filtered resolution of the given leaf index.",
         }
         Complex {
-            TreeSyncNodeError(TreeSyncNodeError) = "We found a node with an unexpected type.",
+            NodeTypeError(NodeError) = "We found a node with an unexpected type.",
+            TreeSyncNodeError(TreeSyncNodeError) = "Error computing tree hash.",
             TreeDiffError(MlsBinaryTreeDiffError) = "An error occurred while operating on the diff.",
             CredentialError(CredentialError) = "An error occurred while signing a `KeyPackage`.",
             CryptoError(CryptoError) = "An error occurred during key derivation.",

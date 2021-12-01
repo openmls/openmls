@@ -87,11 +87,13 @@ use crate::{
     messages::proposals::Proposal,
     schedule::{EncryptionSecret, MembershipKey, SenderDataSecret},
     test_utils::*,
-    tree::index::LeafIndex,
     tree::secret_tree::{SecretTree, SecretType},
-    tree::*,
     utils::random_u64,
 };
+
+use crate::{binary_tree::LeafIndex, ciphersuite::Secret};
+
+use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};
 
 use itertools::izip;
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -135,8 +137,6 @@ fn group(
     ciphersuite: &Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) -> (MlsGroup, CredentialBundle) {
-    use openmls_traits::types::SignatureScheme;
-
     let credential_bundle = CredentialBundle::new(
         "Kreator".into(),
         CredentialType::Basic,
@@ -173,8 +173,6 @@ fn receiver_group(
     backend: &impl OpenMlsCryptoProvider,
     group_id: &GroupId,
 ) -> MlsGroup {
-    use openmls_traits::types::SignatureScheme;
-
     let credential_bundle = CredentialBundle::new(
         "Receiver".into(),
         CredentialType::Basic,
@@ -210,6 +208,8 @@ fn build_handshake_messages(
     backend: &impl OpenMlsCryptoProvider,
 ) -> (Vec<u8>, Vec<u8>) {
     use tls_codec::Serialize;
+
+    use crate::{ciphersuite::Secret, messages::proposals::RemoveProposal};
 
     let epoch = GroupEpoch(random_u64());
     group.context_mut().set_epoch(epoch);
@@ -315,8 +315,8 @@ pub fn generate_test_vector(
     let encryption_secret_bytes = encryption_secret.as_slice().to_vec();
     let sender_data_secret = SenderDataSecret::random(ciphersuite, &crypto);
     let sender_data_secret_bytes = sender_data_secret.as_slice();
-    let mut secret_tree = SecretTree::new(encryption_secret, LeafIndex::from(n_leaves));
-    let group_secret_tree = SecretTree::new(encryption_secret_group, LeafIndex::from(n_leaves));
+    let mut secret_tree = SecretTree::new(encryption_secret, n_leaves.into());
+    let group_secret_tree = SecretTree::new(encryption_secret_group, n_leaves.into());
 
     // Create sender_data_key/secret
     let ciphertext = crypto.rand().random_vec(77).unwrap();
@@ -348,7 +348,7 @@ pub fn generate_test_vector(
                 .secret_for_decryption(
                     ciphersuite,
                     &crypto,
-                    leaf,
+                    leaf.into(),
                     SecretType::ApplicationSecret,
                     generation,
                 )
@@ -370,7 +370,7 @@ pub fn generate_test_vector(
                 .secret_for_decryption(
                     ciphersuite,
                     &crypto,
-                    leaf,
+                    leaf.into(),
                     SecretType::HandshakeSecret,
                     generation,
                 )
@@ -424,6 +424,8 @@ fn write_test_vectors() {
 pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestVectorError> {
     use tls_codec::{Deserialize, Serialize};
 
+    use crate::ciphersuite::CiphersuiteName;
+
     let crypto = OpenMlsRustCrypto::default();
     let n_leaves = test_vector.n_leaves;
     if n_leaves != test_vector.leaves.len() as u32 {
@@ -449,7 +451,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
             ProtocolVersion::default(),
             ciphersuite,
         ),
-        LeafIndex::from(n_leaves),
+        n_leaves.into(),
     );
     log::debug!("Secret tree: {:?}", secret_tree);
     let sender_data_secret = SenderDataSecret::from_slice(
@@ -494,7 +496,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
             }
             return Err(EncTestVectorError::InvalidLeafSequenceHandshake);
         }
-        let leaf_index = LeafIndex::from(leaf_index);
+        let leaf_index = leaf_index as u32;
 
         for (generation, application, handshake) in
             izip!((0..leaf.generations), &leaf.application, &leaf.handshake,)
@@ -504,7 +506,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
                 .secret_for_decryption(
                     ciphersuite,
                     &crypto,
-                    leaf_index,
+                    leaf_index.into(),
                     SecretType::ApplicationSecret,
                     generation,
                 )
@@ -576,7 +578,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
                 .secret_for_decryption(
                     ciphersuite,
                     &crypto,
-                    leaf_index,
+                    leaf_index.into(),
                     SecretType::HandshakeSecret,
                     generation,
                 )
@@ -630,7 +632,7 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
                 .secret_for_decryption(
                     ciphersuite,
                     &crypto,
-                    leaf_index,
+                    leaf_index.into(),
                     SecretType::HandshakeSecret,
                     generation,
                 )
@@ -691,7 +693,7 @@ fn read_test_vectors() {
 
     // mlspp test vectors
     let tv_files = [
-        /* 
+        /*
         mlspp test vectors are not compatible for now because thei don't implement
         the new wire_format field in framing yet. This is tracked in #495.
         "test_vectors/mlspp/mlspp_encryption_1_10.json",

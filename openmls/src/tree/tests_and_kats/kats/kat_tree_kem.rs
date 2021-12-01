@@ -12,23 +12,23 @@
 //! Some more points
 //! * update path with empty exclusion list.
 
-use crate::ciphersuite::Ciphersuite;
 #[cfg(test)]
 use crate::test_utils::{read, write};
 use crate::{
     ciphersuite::signable::Signable,
     credentials::{CredentialBundle, CredentialType},
-    node::Node,
     prelude::KeyPackageBundlePayload,
+    schedule::CommitSecret,
     test_utils::hex_to_bytes,
+    treesync::{node::Node, treekem::UpdatePath},
 };
 use crate::{
-    ciphersuite::Secret,
-    config::Config,
-    config::ProtocolVersion,
-    key_packages::KeyPackage,
+    ciphersuite::Secret, config::Config, config::ProtocolVersion, key_packages::KeyPackage,
     messages::PathSecret,
-    tree::{treemath::*, CiphersuiteName, HashSet, LeafIndex, NodeIndex, RatchetTree, UpdatePath},
+};
+use crate::{
+    ciphersuite::{Ciphersuite, CiphersuiteName},
+    treesync::TreeSync,
 };
 use crate::{
     group::MlsMessageOut,
@@ -41,7 +41,10 @@ use crate::{
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use serde::{self, Deserialize, Serialize};
-use std::convert::TryFrom;
+use std::{
+    collections::{HashMap, HashSet},
+    convert::TryFrom,
+};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerializeTrait, TlsVecU32};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -109,16 +112,36 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     .sign(&crypto, &credential_bundle)
     .unwrap();
 
-    // Check tree hashes.
-    let mut tree_before = RatchetTree::new_from_nodes(
-        &crypto,
-        my_key_package_bundle,
-        ratchet_tree_before.as_slice(),
+    let start_secret: PathSecret = Secret::from_slice(
+        hex_to_bytes(&test_vector.my_path_secret).as_slice(),
+        ProtocolVersion::default(),
+        ciphersuite,
     )
-    .unwrap();
+    .into();
+
+    // Create the tree (including private values). This checks parent hashes as
+    // well.
+    let (mut tree_before, commit_secret_option_before) = if let Ok((tree, commit_secret_option)) =
+        TreeSync::from_nodes_with_secrets(
+            &crypto,
+            ciphersuite,
+            ratchet_tree_before.as_slice(),
+            test_vector.add_sender,
+            start_secret.clone(),
+            my_key_package_bundle,
+        ) {
+        (tree, commit_secret_option)
+    } else {
+        if cfg!(test) {
+            panic!("Parent hash mismatch in the 'before' tree.");
+        }
+        return Err(TreeKemTestVectorError::BeforeParentHashMismatch);
+    };
+
     crate::utils::_print_tree(&tree_before, "Tree before");
 
-    if hex_to_bytes(&test_vector.tree_hash_before) != tree_before.tree_hash(&crypto) {
+    // Check tree hashes.
+    if hex_to_bytes(&test_vector.tree_hash_before) != tree_before.tree_hash() {
         if cfg!(test) {
             panic!("Tree hash mismatch in the 'before' tree.");
         }
@@ -137,79 +160,39 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     )
     .sign(&crypto, &credential_bundle)
     .unwrap();
-    let tree_after = RatchetTree::new_from_nodes(
-        &crypto,
-        my_key_package_bundle,
-        ratchet_tree_after.as_slice(),
-    )
-    .unwrap();
+
+    // Create the "after" tree. This check parent hashes as well.
+    let (tree_after, commit_secret_option_after) = if let Ok((tree, commit_secret_option)) =
+        TreeSync::from_nodes_with_secrets(
+            &crypto,
+            ciphersuite,
+            ratchet_tree_after.as_slice(),
+            test_vector.add_sender,
+            start_secret,
+            my_key_package_bundle,
+        ) {
+        (tree, commit_secret_option)
+    } else {
+        if cfg!(test) {
+            panic!("Parent hash mismatch in the 'after' tree.");
+        }
+        return Err(TreeKemTestVectorError::AfterParentHashMismatch);
+    };
+
     crate::utils::_print_tree(&tree_after, "Tree after");
 
-    if hex_to_bytes(&test_vector.tree_hash_after) != tree_after.tree_hash(&crypto) {
+    if hex_to_bytes(&test_vector.tree_hash_after) != tree_after.tree_hash() {
         if cfg!(test) {
             panic!("Tree hash mismatch in the 'after' tree.");
         }
         return Err(TreeKemTestVectorError::AfterTreeHashMismatch);
     }
 
-    // Verify parent hashes
-    if tree_before.verify_parent_hashes(&crypto).is_err() {
-        if cfg!(test) {
-            panic!("Parent hash mismatch in the 'before' tree.");
-        }
-        return Err(TreeKemTestVectorError::BeforeParentHashMismatch);
-    }
-    if tree_after.verify_parent_hashes(&crypto).is_err() {
-        if cfg!(test) {
-            panic!("Parent hash mismatch in the 'after' tree.");
-        }
-        return Err(TreeKemTestVectorError::AfterParentHashMismatch);
-    }
-
-    // Initialize private portion of the RatchetTree
-    let add_sender = test_vector.add_sender;
-    log::trace!(
-        "Add sender index: {:?}",
-        NodeIndex::from(LeafIndex::from(add_sender))
-    );
-    log::trace!(
-        "Test client index: {:?}",
-        NodeIndex::from(tree_before.own_node_index())
-    );
-    log::trace!(
-        "Updater index: {:?}",
-        NodeIndex::from(LeafIndex::from(test_vector.update_sender))
-    );
-    let common_ancestor = common_ancestor_index(
-        NodeIndex::from(LeafIndex::from(add_sender)),
-        NodeIndex::from(tree_before.own_node_index()),
-    );
-    log::trace!("Common ancestor: {:?}", common_ancestor);
-    let path = parent_direct_path(common_ancestor, tree_before.leaf_count()).unwrap();
-    log::trace!("path: {:?}", path);
-    let start_secret: PathSecret = Secret::from_slice(
-        hex_to_bytes(&test_vector.my_path_secret).as_slice(),
-        ProtocolVersion::default(),
-        ciphersuite,
-    )
-    .into();
-
-    tree_before
-        .private_tree_mut()
-        .continue_path_secrets(ciphersuite, &crypto, start_secret, &path);
-
     // Check if the root secrets match up.
-    let root_secret_after_add: PathSecret = Secret::from_slice(
-        hex_to_bytes(&test_vector.root_secret_after_add).as_slice(),
-        ProtocolVersion::default(),
-        ciphersuite,
-    )
-    .into();
-
-    if &root_secret_after_add
-        != tree_before
-            .path_secret(root(tree_before.leaf_count()))
-            .unwrap()
+    if hex_to_bytes(&test_vector.root_secret_after_add).as_slice()
+        != commit_secret_option_before
+            .expect("didn't get a commit secret from tree before")
+            .as_slice()
     {
         if cfg!(test) {
             panic!("Root secret mismatch in the 'before' tree.");
@@ -217,33 +200,44 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
         return Err(TreeKemTestVectorError::BeforeRootSecretMismatch);
     }
 
-    // Apply the update path
     let update_path =
         UpdatePath::tls_deserialize(&mut hex_to_bytes(&test_vector.update_path).as_slice())
-            .unwrap();
-    log::trace!("UpdatePath: {:?}", update_path);
+            .expect("error deserializing");
     let group_context = hex_to_bytes(&test_vector.update_group_context);
-    let _commit_secret = tree_before
-        .update_path(
+
+    // Decrypt update path
+    let (path, commit_secret) = tree_before
+        .decrypt_path(
             &crypto,
-            LeafIndex::from(test_vector.update_sender),
+            ciphersuite,
             &update_path,
+            test_vector.update_sender,
+            &HashSet::new(),
             &group_context,
-            HashSet::new(),
         )
-        .unwrap();
+        .expect("error decrypting update path");
+
+    let mut diff = tree_before.empty_diff().expect("error creating diff");
+    diff.apply_received_update_path(
+        &crypto,
+        ciphersuite,
+        test_vector.update_sender,
+        update_path.leaf_key_package(),
+        path,
+    )
+    .expect("error applying update path");
+
+    let staged_diff = diff
+        .into_staged_diff(&crypto, ciphersuite)
+        .expect("error creating staged diff");
+    tree_before
+        .merge_diff(staged_diff)
+        .expect("error merging diff after applying update path");
 
     // Rename to avoid confusion.
     let tree_after = tree_before;
-    let root_secret_after = tree_after.private_tree().path_secrets().last().unwrap();
-    let root_secret_after_update: PathSecret = Secret::from_slice(
-        hex_to_bytes(&test_vector.root_secret_after_update).as_slice(),
-        ProtocolVersion::default(),
-        ciphersuite,
-    )
-    .into();
 
-    if &root_secret_after_update != root_secret_after {
+    if hex_to_bytes(&test_vector.root_secret_after_update).as_slice() != commit_secret.as_slice() {
         if cfg!(test) {
             log::error!(
                 "expected root secret: {}",
@@ -251,9 +245,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
             );
             log::error!(
                 "got root secret:      {}",
-                crate::test_utils::bytes_to_hex(
-                    &root_secret_after.tls_serialize_detached().unwrap()
-                )
+                crate::test_utils::bytes_to_hex(&commit_secret.as_slice())
             );
             panic!("Root secret mismatch in the 'after' tree.");
         }
@@ -265,7 +257,14 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
         TlsVecU32::<Option<Node>>::tls_deserialize(&mut ratchet_tree_after_bytes.as_slice())
             .expect("Error decoding ratchet tree");
 
-    if tree_after.public_key_tree_copy() != ratchet_tree_after.as_slice() {
+    if tree_after
+        .export_nodes()
+        .iter()
+        .map(|&node| node.clone())
+        .collect::<Vec<Option<Node>>>()
+        .as_slice()
+        != ratchet_tree_after.as_slice()
+    {
         if cfg!(test) {
             panic!("Ratchet tree mismatch in the after the update.");
         }
@@ -307,7 +306,6 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 
     use crate::{
-        extensions::RatchetTreeExtension,
         prelude::{KeyPackageBundle, ManagedGroupConfig},
         test_utils::test_framework::CodecUse,
     };
@@ -419,126 +417,131 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     let addee_groups = addee.groups.borrow();
     let addee_group = addee_groups.get(&group_id).unwrap();
 
-    let path_secrets = addee_group.export_path_secrets();
+    // FIXME: This is going to be tricky. I'm going to have to write some
+    // functions that allow the creation of larger treesync groups, so that I
+    // can create this test vector. Ideally in such a way that the higher-level
+    // test framework can build on functions in this one.
+    todo!()
+    //let path_secrets = addee_group.export_path_secrets();
 
-    let root_secret_after_add = path_secrets.last().unwrap().clone();
-    let my_path_secret = path_secrets.first().unwrap().clone();
+    //let root_secret_after_add = path_secrets.last().unwrap().clone();
+    //let my_path_secret = path_secrets.first().unwrap().clone();
 
-    drop(path_secrets);
+    //drop(path_secrets);
 
-    let ratchet_tree_before = RatchetTreeExtension::new(addee_group.export_ratchet_tree())
-        .tls_serialize_detached()
-        .expect("error serializing ratchet tree extension");
+    //let ratchet_tree_before = RatchetTreeExtension::new(addee_group.export_ratchet_tree())
+    //    .tls_serialize_detached()
+    //    .expect("error serializing ratchet tree extension");
 
-    let tree_hash_before = addee_group.tree_hash(&crypto);
+    //let tree_hash_before = addee_group.tree_hash(&crypto);
 
-    drop(addee_groups);
-    drop(addee);
+    //drop(addee_groups);
+    //drop(addee);
 
-    let mut updater_id = group.random_group_member();
-    while updater_id == addee_id {
-        updater_id = group.random_group_member();
-    }
+    //let mut updater_id = group.random_group_member();
+    //while updater_id == addee_id {
+    //    updater_id = group.random_group_member();
+    //}
 
-    let (updater_index, _) = group
-        .members
-        .iter()
-        .find(|(_, id)| id == &updater_id)
-        .unwrap()
-        .clone();
+    //let (updater_index, _) = group
+    //    .members
+    //    .iter()
+    //    .find(|(_, id)| id == &updater_id)
+    //    .unwrap()
+    //    .clone();
 
-    let updater = clients.get(&updater_id).unwrap().borrow();
-    let mut updater_groups = updater.groups.borrow_mut();
-    let updater_group = updater_groups.get_mut(&group_id).unwrap();
-    let group_context = updater_group
-        .export_group_context()
-        .tls_serialize_detached()
-        .expect("error serializing group context");
+    //let updater = clients.get(&updater_id).unwrap().borrow();
+    //let mut updater_groups = updater.groups.borrow_mut();
+    //let updater_group = updater_groups.get_mut(&group_id).unwrap();
+    //let group_context = updater_group
+    //    .export_group_context()
+    //    .tls_serialize_detached()
+    //    .expect("error serializing group context");
 
-    let (message, _) = updater_group.self_update(&updater.crypto, None).unwrap();
+    //let (message, _) = updater_group.self_update(&updater.crypto, None).unwrap();
 
-    let update_path = match message {
-        MlsMessageOut::Plaintext(ref pt) => match pt.content() {
-            MlsPlaintextContentType::Commit(commit) => commit.path().as_ref().unwrap().clone(),
-            _ => panic!("The message should not be anything but a commit."),
-        },
-        _ => panic!("The message should not be a ciphertext."),
-    };
+    //let update_path = match message {
+    //    MlsMessageOut::Plaintext(ref pt) => match pt.content() {
+    //        MlsPlaintextContentType::Commit(commit) => commit.path().as_ref().unwrap().clone(),
+    //        _ => panic!("The message should not be anything but a commit."),
+    //    },
+    //    _ => panic!("The message should not be a ciphertext."),
+    //};
 
-    // Drop all the borrows as not to cause problems when having the setup
-    // distribute to members.
-    drop(updater_groups);
-    drop(updater);
-    drop(adder);
-    drop(clients);
+    //// Drop all the borrows as not to cause problems when having the setup
+    //// distribute to members.
+    //drop(updater_groups);
+    //drop(updater);
+    //drop(adder);
+    //drop(clients);
 
-    setup
-        .distribute_to_members(&updater_id, group, &message)
-        .unwrap();
+    //setup
+    //    .distribute_to_members(&updater_id, group, &message)
+    //    .unwrap();
 
-    // The update was sent, now we get the right state variables again
-    let clients = setup.clients.borrow();
-    let addee = clients.get(&addee_id).unwrap().borrow();
-    let addee_groups = addee.groups.borrow();
-    let addee_group = addee_groups.get(&group_id).unwrap();
-    let mut tree = addee_group.export_ratchet_tree();
+    //// The update was sent, now we get the right state variables again
+    //let clients = setup.clients.borrow();
+    //let addee = clients.get(&addee_id).unwrap().borrow();
+    //let addee_groups = addee.groups.borrow();
+    //let addee_group = addee_groups.get(&group_id).unwrap();
+    //let mut tree = addee_group.export_ratchet_tree();
 
-    let own_node = tree
-        .drain(..)
-        .find(|node_option| {
-            if let Some(node) = node_option {
-                if let Some(key_package) = node.key_package() {
-                    if key_package.credential().identity() == addee_id {
-                        return true;
-                    }
-                }
-            }
-            false
-        })
-        .unwrap();
+    //let own_node = tree
+    //    .drain(..)
+    //    .find(|node_option| {
+    //        if let Some(node) = node_option {
+    //            if let Some(key_package) = node.key_package() {
+    //                if key_package.credential().identity() == addee_id {
+    //                    return true;
+    //                }
+    //            }
+    //        }
+    //        false
+    //    })
+    //    .unwrap();
 
-    let my_key_package_after = own_node.as_ref().unwrap().key_package().unwrap();
+    //let my_key_package_after = own_node.as_ref().unwrap().key_package().unwrap();
 
-    assert_eq!(&my_key_package, my_key_package_after);
+    //assert_eq!(&my_key_package, my_key_package_after);
 
-    let path_secrets_after_update = addee_group.export_path_secrets();
-    let root_secret_after_update = path_secrets_after_update.last().unwrap();
+    //let path_secrets_after_update = addee_group.export_path_secrets();
+    //let root_secret_after_update = path_secrets_after_update.last().unwrap();
 
-    let ratchet_tree_after = RatchetTreeExtension::new(addee_group.export_ratchet_tree())
-        .tls_serialize_detached()
-        .expect("error serializing ratchet tree extension");
-    let tree_hash_after = addee_group.tree_hash(&crypto);
+    //let ratchet_tree_after = RatchetTreeExtension::new(addee_group.export_ratchet_tree())
+    //    .tls_serialize_detached()
+    //    .expect("error serializing ratchet tree extension");
+    //let tree_hash_after = addee_group.tree_hash(&crypto);
 
-    TreeKemTestVector {
-        cipher_suite: ciphersuite.name() as u16,
+    //TreeKemTestVector {
+    //    cipher_suite: ciphersuite.name() as u16,
 
-        // Chosen by the generator
-        ratchet_tree_before: bytes_to_hex(&ratchet_tree_before),
+    //    // Chosen by the generator
+    //    ratchet_tree_before: bytes_to_hex(&ratchet_tree_before),
 
-        add_sender: adder_index as u32,
-        my_leaf_secret: bytes_to_hex(my_leaf_secret.as_slice()),
+    //    add_sender: adder_index as u32,
+    //    my_leaf_secret: bytes_to_hex(my_leaf_secret.as_slice()),
 
-        my_key_package: bytes_to_hex(
-            &my_key_package
-                .tls_serialize_detached()
-                .expect("error serializing key package"),
-        ),
-        my_path_secret: bytes_to_hex(my_path_secret.path_secret.as_slice()),
+    //    my_key_package: bytes_to_hex(
+    //        &my_key_package
+    //            .tls_serialize_detached()
+    //            .expect("error serializing key package"),
+    //    ),
+    //    my_path_secret: bytes_to_hex(my_path_secret.path_secret.as_slice()),
 
-        // Computed values
-        update_sender: updater_index as u32,
-        update_path: bytes_to_hex(
-            &update_path
-                .tls_serialize_detached()
-                .expect("error serializing update path"),
-        ),
-        update_group_context: bytes_to_hex(&group_context),
-        tree_hash_before: bytes_to_hex(&tree_hash_before),
-        root_secret_after_add: bytes_to_hex(root_secret_after_add.path_secret.as_slice()),
-        root_secret_after_update: bytes_to_hex(root_secret_after_update.path_secret.as_slice()),
-        ratchet_tree_after: bytes_to_hex(&ratchet_tree_after),
-        tree_hash_after: bytes_to_hex(&tree_hash_after),
-    }
+    //    // Computed values
+    //    update_sender: updater_index as u32,
+    //    update_path: bytes_to_hex(
+    //        &update_path
+    //            .tls_serialize_detached()
+    //            .expect("error serializing update path"),
+    //    ),
+    //    update_group_context: bytes_to_hex(&group_context),
+    //    tree_hash_before: bytes_to_hex(&tree_hash_before),
+    //    root_secret_after_add: bytes_to_hex(root_secret_after_add.path_secret.as_slice()),
+    //    root_secret_after_update: bytes_to_hex(root_secret_after_update.path_secret.as_slice()),
+    //    ratchet_tree_after: bytes_to_hex(&ratchet_tree_after),
+    //    tree_hash_after: bytes_to_hex(&tree_hash_after),
+    //}
 }
 
 implement_error! {

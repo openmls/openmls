@@ -6,7 +6,7 @@ use std::{cell::RefCell, collections::HashMap};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 
-use crate::{group::MlsMessageIn, node::Node, prelude::*};
+use crate::{group::MlsMessageIn, prelude::*, treesync::node::Node};
 
 use super::{errors::ClientError, ActionType};
 
@@ -153,17 +153,12 @@ impl Client {
     ) -> Result<Vec<(usize, Credential)>, ClientError> {
         let groups = self.groups.borrow();
         let group = groups.get(group_id).ok_or(ClientError::NoMatchingGroup)?;
-        let mut members = vec![];
-        let tree = group.export_ratchet_tree();
-        for (index, leaf) in tree.iter().enumerate() {
-            if index % 2 == 0 {
-                if let Some(leaf_node) = leaf {
-                    let key_package = leaf_node.key_package().unwrap();
-                    members.push((index / 2, key_package.credential().clone()));
-                }
-            }
-        }
-        Ok(members)
+        let members = group.members().expect("error getting members");
+        Ok(members
+            .iter()
+            .map(|&cred| cred.clone())
+            .enumerate()
+            .collect())
     }
 
     /// Have the client either propose or commit (depending on the
@@ -247,7 +242,7 @@ impl Client {
             ActionType::Proposal => {
                 let mut messages = Vec::new();
                 for &target_index in target_indices {
-                    let message = group.propose_remove_member(&self.crypto, target_index)?;
+                    let message = group.propose_remove_member(&self.crypto, target_index as u32)?;
                     messages.push(message);
                 }
                 (messages, None)

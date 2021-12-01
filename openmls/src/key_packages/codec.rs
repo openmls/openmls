@@ -9,6 +9,22 @@ impl tls_codec::Size for KeyPackage {
         self.encoded.len() + self.signature.tls_serialized_len()
     }
 }
+
+impl tls_codec::Size for &KeyPackage {
+    #[inline]
+    fn tls_serialized_len(&self) -> usize {
+        self.encoded.len() + self.signature.tls_serialized_len()
+    }
+}
+
+impl tls_codec::Serialize for &KeyPackage {
+    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        let written = writer.write(&self.encoded)?;
+        debug_assert_eq!(written, self.encoded.len());
+        self.signature.tls_serialize(writer).map(|l| l + written)
+    }
+}
+
 impl tls_codec::Serialize for KeyPackage {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         let written = writer.write(&self.encoded)?;
