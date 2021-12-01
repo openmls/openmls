@@ -2,17 +2,15 @@ use std::collections::HashSet;
 
 use tls_codec::{Error as TlsCodecError, Size, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
-use openmls_traits::{
-    crypto::OpenMlsCrypto,
-    types::{CryptoError, HpkeCiphertext},
-    OpenMlsCryptoProvider,
-};
+use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext, OpenMlsCryptoProvider};
 pub(crate) use serde::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::LeafIndex,
     ciphersuite::{Ciphersuite, HpkePublicKey},
-    messages::{proposals::AddProposal, GroupSecrets, PathSecret, PathSecretError},
+    messages::{
+        proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret, PathSecretError,
+    },
     prelude::KeyPackage,
     schedule::{CommitSecret, JoinerSecret, PreSharedKeys},
 };
@@ -20,7 +18,7 @@ use crate::{
 use super::{
     diff::TreeSyncDiff,
     node::parent_node::{ParentNode, ParentNodeError, PlainUpdatePathNode},
-    TreeSync, TreeSyncDiffError,
+    TreeSync, TreeSyncDiffError, TreeSyncError,
 };
 
 impl TreeSync {
@@ -30,11 +28,11 @@ impl TreeSync {
         ciphersuite: &Ciphersuite,
         path: &[PlainUpdatePathNode],
         group_context: &[u8],
-        exclusion_list: HashSet<&LeafIndex>,
+        exclusion_list: &HashSet<&LeafIndex>,
         key_package: &KeyPackage,
     ) -> Result<UpdatePath, TreeKemError> {
         let copath_resolutions = self
-            .empty_diff()
+            .empty_diff()?
             .copath_resolutions(self.own_leaf_index, exclusion_list)?;
         // Make sure that the lists have the same length.
         if path.len() != copath_resolutions.len() {
@@ -62,10 +60,10 @@ impl TreeSync {
         ciphersuite: &'static Ciphersuite,
         update_path: &UpdatePath,
         sender_leaf_index: LeafIndex,
-        exclusion_list: HashSet<&LeafIndex>,
+        exclusion_list: &HashSet<&LeafIndex>,
         group_context: &[u8],
     ) -> Result<(Vec<ParentNode>, CommitSecret), TreeKemError> {
-        let diff = self.empty_diff();
+        let diff = self.empty_diff()?;
         let path_position = diff.subtree_root_position(sender_leaf_index)?;
         let update_path_node = update_path
             .nodes()
@@ -142,9 +140,8 @@ pub(crate) struct PlaintextSecret {
 
 impl PlaintextSecret {
     /// Prepare the `GroupSecrets` for a number of `invited_members` based on a
-    /// provisional `RatchetTree`. If there are `path_secrets` in the
-    /// provisional tree, we need to include a `path_secret` into the
-    /// `GroupSecrets`.
+    /// `TreeSyncDiff`. If a slice of [`PlainUpdatePathNode`] is given, they are
+    /// included in the [`GroupSecrets`] of the path.
     pub(crate) fn from_plain_update_path(
         diff: &TreeSyncDiff,
         joiner_secret: &JoinerSecret,
@@ -183,6 +180,24 @@ impl PlaintextSecret {
         }
         Ok(plaintext_secrets)
     }
+
+    pub(crate) fn encrypt(
+        self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+    ) -> EncryptedGroupSecrets {
+        let encrypted_group_secrets = backend.crypto().hpke_seal(
+            ciphersuite.hpke_config(),
+            self.public_key.as_slice(),
+            &[],
+            &[],
+            &self.group_secrets_bytes,
+        );
+        EncryptedGroupSecrets {
+            key_package_hash: self.key_package_hash.into(),
+            encrypted_group_secrets,
+        }
+    }
 }
 
 /// 7.7. Update Paths
@@ -202,14 +217,6 @@ pub struct UpdatePath {
 }
 
 impl UpdatePath {
-    /// Create a new update path.
-    fn new(leaf_key_package: KeyPackage, nodes: Vec<UpdatePathNode>) -> Self {
-        Self {
-            leaf_key_package,
-            nodes: nodes.into(),
-        }
-    }
-
     fn nodes(&self) -> &TlsVecU32<UpdatePathNode> {
         &self.nodes
     }
@@ -229,7 +236,8 @@ implement_error! {
             PathSecretNotFound = "Couldn't find the path secret to encrypt for one of the new members.",
         }
         Complex {
-            TreeSyncError(TreeSyncDiffError) = "Error while retrieving public keys from the tree.",
+            TreeSyncError(TreeSyncError) = "Error while creating treesync diff.",
+            TreeSyncDiffError(TreeSyncDiffError) = "Error while retrieving public keys from the tree.",
             PathSecretError(PathSecretError) = "Error decrypting PathSecret.",
             PathDerivationError(ParentNodeError) = "Error deriving path from PathSecret.",
             EncodingError(TlsCodecError) = "Error while encoding GroupSecrets.",

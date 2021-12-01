@@ -6,14 +6,14 @@ use crate::{
 };
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub(crate) struct LeafNode {
+pub struct LeafNode {
     key_package: KeyPackage,
     private_key_option: Option<HpkePrivateKey>,
 }
 
 impl LeafNode {
     pub(crate) fn public_key(&self) -> &HpkePublicKey {
-        &self.key_package.hpke_init_key()
+        self.key_package.hpke_init_key()
     }
 
     pub(crate) fn private_key(&self) -> &Option<HpkePrivateKey> {

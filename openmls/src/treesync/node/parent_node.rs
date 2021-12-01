@@ -1,71 +1,22 @@
-use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
+use openmls_traits::OpenMlsCryptoProvider;
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsByteVecU8, TlsVecU32};
 
-use crate::{
-    ciphersuite::CryptoError,
-    schedule::CommitSecret,
-    treesync::treekem::{UpdatePath, UpdatePathNode},
-};
-
-use super::TreeSyncNodeError;
+use crate::{ciphersuite::CryptoError, schedule::CommitSecret, treesync::treekem::UpdatePathNode};
 
 use crate::{
     binary_tree::LeafIndex,
     ciphersuite::{Ciphersuite, HpkePrivateKey, HpkePublicKey},
     messages::{PathSecret, PathSecretError},
-    treesync::hashes::ParentHashInput,
+    treesync::hashes::{ParentHashError, ParentHashInput},
 };
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub(crate) struct ParentNode {
+pub struct ParentNode {
     public_key: HpkePublicKey,
     parent_hash: TlsByteVecU8,
     unmerged_leaves: TlsVecU32<LeafIndex>,
     private_key_option: Option<HpkePrivateKey>,
-}
-
-impl tls_codec::Deserialize for ParentNode {
-    fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error>
-    where
-        Self: Sized,
-    {
-        let public_key = HpkePublicKey::tls_deserialize(bytes)?;
-        let parent_hash = TlsByteVecU8::tls_deserialize(bytes)?;
-        let unmerged_leaves = TlsVecU32::tls_deserialize(bytes)?;
-        Ok(Self {
-            public_key,
-            parent_hash,
-            unmerged_leaves,
-            private_key_option: None,
-        })
-    }
-}
-
-impl tls_codec::Size for ParentNode {
-    fn tls_serialized_len(&self) -> usize {
-        self.public_key.tls_serialized_len()
-            + self.parent_hash.tls_serialized_len()
-            + self.unmerged_leaves.tls_serialized_len()
-    }
-}
-
-impl tls_codec::Size for &ParentNode {
-    fn tls_serialized_len(&self) -> usize {
-        self.public_key.tls_serialized_len()
-            + self.parent_hash.tls_serialized_len()
-            + self.unmerged_leaves.tls_serialized_len()
-    }
-}
-
-impl tls_codec::Serialize for &ParentNode {
-    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        let mut written = self.public_key.tls_serialize(writer)?;
-        written += self.parent_hash.tls_serialize(writer)?;
-        self.unmerged_leaves
-            .tls_serialize(writer)
-            .map(|l| l + written)
-    }
 }
 
 impl From<(HpkePublicKey, HpkePrivateKey)> for ParentNode {
@@ -119,6 +70,18 @@ impl PlainUpdatePathNode {
 }
 
 impl ParentNode {
+    pub(super) fn new(
+        public_key: HpkePublicKey,
+        parent_hash: TlsByteVecU8,
+        unmerged_leaves: TlsVecU32<u32>,
+    ) -> Self {
+        Self {
+            public_key,
+            parent_hash,
+            unmerged_leaves,
+            private_key_option: None,
+        }
+    }
     /// Derives a path from the given path secret, where the `node_secret` of
     /// the first node is immediately derived from the given `path_secret`.
     /// Returns the resulting vector of `ParentNode`s, as well as the
@@ -157,34 +120,21 @@ impl ParentNode {
         Ok((path, update_path_nodes, commit_secret))
     }
 
-    /// Return the value of the node relevant for the parent hash and tree hash.
-    /// In case of MLS, this would be the node's HPKEPublicKey. TreeSync
-    /// can then gather everything necessary to build the `ParentHashInput`,
-    /// `LeafNodeHashInput` and `ParentNodeTreeHashInput` structs for a given node.
-    pub(crate) fn node_content(&self) -> &HpkePublicKey {
-        &self.public_key
-    }
-
     pub(crate) fn public_key(&self) -> &HpkePublicKey {
         &self.public_key
     }
 
-    pub(crate) fn private_key(&self) -> &Option<HpkePrivateKey> {
+    pub(in crate::treesync) fn private_key(&self) -> &Option<HpkePrivateKey> {
         &self.private_key_option
     }
 
-    pub(crate) fn set_private_key(&mut self, private_key: HpkePrivateKey) {
+    pub(in crate::treesync) fn set_private_key(&mut self, private_key: HpkePrivateKey) {
         self.private_key_option = Some(private_key)
     }
 
     /// Get the list of unmerged leaves.
-    pub(crate) fn unmerged_leaves(&self) -> &[LeafIndex] {
+    pub(in crate::treesync) fn unmerged_leaves(&self) -> &[LeafIndex] {
         self.unmerged_leaves.as_slice()
-    }
-
-    /// Clear the list of unmerged leaves.
-    fn clear_unmerged_leaves(&mut self) {
-        self.unmerged_leaves = Vec::new().into()
     }
 
     /// Add a `LeafIndex` to the node's list of unmerged leaves.
@@ -199,9 +149,9 @@ impl ParentNode {
         ciphersuite: &Ciphersuite,
         parent_hash: &[u8],
         original_child_resolution: &[HpkePublicKey],
-    ) -> Result<Vec<u8>, TreeSyncNodeError> {
+    ) -> Result<Vec<u8>, ParentNodeError> {
         let parent_hash_input =
-            ParentHashInput::new(&self.public_key, &parent_hash, original_child_resolution);
+            ParentHashInput::new(&self.public_key, parent_hash, original_child_resolution);
         Ok(parent_hash_input.hash(backend, ciphersuite)?)
     }
 
@@ -223,6 +173,7 @@ implement_error! {
         Complex {
             CryptoError(CryptoError) = "An error occurred during key derivation.",
             DerivationError(PathSecretError) = "An error occurred during key derivation.",
+            ParentHashError(ParentHashError) = "Error while computing parent hash.",
         }
     }
 }
