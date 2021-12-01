@@ -113,7 +113,6 @@
 <span id="113">113</span>
 <span id="114">114</span>
 <span id="115">115</span>
-<span id="116">116</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">mls_group::create_commit_params::CreateCommitParams</span>;
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
@@ -124,9 +123,8 @@
     <span class="doccomment">/// A [`KeyPackageBundle`](crate::prelude::KeyPackageBundle) can optionally</span>
     <span class="doccomment">/// be provided. If not, a new one will be created on the fly.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// If successful, it returns a `Vec` of</span>
-    <span class="doccomment">/// [`MlsMessage`] and an optional [`Welcome`] message if there were add</span>
-    <span class="doccomment">/// proposals in the queue of pending proposals.</span>
+    <span class="doccomment">/// If successful, it returns a tuple of [`MlsMessageOut`] and an optional [`Welcome`].</span>
+    <span class="doccomment">/// The [Welcome] is [Some] when the queue of pending proposals contained add proposals.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">self_update</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,

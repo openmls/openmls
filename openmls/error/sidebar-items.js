@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["ErrorPayload","A wrapper struct for an arbitrary error payload as byte vector. This can be used when additional data is provided to the error."],["ErrorString","A wrapper struct for an error string. This can be used when no complex error variant is needed."]]});
+initSidebarItems({"struct":[["ErrorString","A wrapper struct for an error string. This can be used when no complex error variant is needed."]]});

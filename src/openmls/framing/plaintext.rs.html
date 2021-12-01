@@ -1378,7 +1378,7 @@
 <span class="kw">impl</span> <span class="ident">VerifiableMlsPlaintext</span> {
     <span class="doccomment">/// Create a new [`VerifiableMlsPlaintext`] from a [`MlsPlaintextTbs`] and</span>
     <span class="doccomment">/// a [`Signature`].</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">tbs</span>: <span class="ident">MlsPlaintextTbs</span>,
         <span class="ident">signature</span>: <span class="ident">Signature</span>,
         <span class="ident">confirmation_tag</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ConfirmationTag</span><span class="op">&gt;</span><span class="op">&gt;</span>,

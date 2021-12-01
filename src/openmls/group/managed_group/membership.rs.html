@@ -245,8 +245,6 @@
 <span id="245">245</span>
 <span id="246">246</span>
 <span id="247">247</span>
-<span id="248">248</span>
-<span id="249">249</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">mls_group::create_commit_params::CreateCommitParams</span>;
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
@@ -259,10 +257,9 @@
     <span class="doccomment">/// New members are added by providing a `KeyPackage` for each member.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// This operation results in a Commit with a `path`, i.e. it includes an</span>
-    <span class="doccomment">/// update of the committer&#39;s leaf `KeyPackage`.</span>
+    <span class="doccomment">/// update of the committer&#39;s leaf [KeyPackage].</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// If successful, it returns a `Vec` of</span>
-    <span class="doccomment">/// [`MlsMessage`] and a [`Welcome`] message.</span>
+    <span class="doccomment">/// If successful, it returns a tuple of [MlsMessageOut] and [Welcome].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_members</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
@@ -331,9 +328,8 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Members are removed by providing the index of their leaf in the tree.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// If successful, it returns a `Vec` of</span>
-    <span class="doccomment">/// [`MlsMessage`] and an optional [`Welcome`] message if there were add</span>
-    <span class="doccomment">/// proposals in the queue of pending proposals.</span>
+    <span class="doccomment">/// If successful, it returns a tuple of [`MlsMessageOut`] and an optional [`Welcome`].</span>
+    <span class="doccomment">/// The [Welcome] is [Some] when the queue of pending proposals contained add proposals</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_members</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,

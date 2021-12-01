@@ -2,7 +2,7 @@
 It checks for syntactic errors and makes some semantic checks as well.
 If the input is a <a href="../../framing/ciphertext/struct.MlsCiphertext.html" title="MlsCiphertext">MlsCiphertext</a> message, it will be decrypted.
 Returns an <a href="../../framing/validation/struct.UnverifiedMessage.html" title="UnverifiedMessage">UnverifiedMessage</a> that can be inspected and later processed in
-[self::process_unverified_message()].
+<a href="struct.MlsGroup.html#method.process_unverified_message" title="Self::process_unverified_message()">Self::process_unverified_message()</a>.
 Checks the following semantic validation:</p>
 <ul>
 <li>ValSem2</li>
@@ -40,7 +40,7 @@ This function does the following:</p>
 <li>Initializes the key schedule for epoch rollover</li>
 <li>Verifies the confirmation tag/membership tag
 Returns a <a href="staged_commit/struct.StagedCommit.html" title="StagedCommit">StagedCommit</a> that can be inspected and later merged
-into the group state with [merge_commit()]
+into the group state with <a href="struct.MlsGroup.html#method.merge_commit" title="MlsGroup::merge_commit()">MlsGroup::merge_commit()</a>
 This function does the following checks:</li>
 <li>ValSem100</li>
 <li>ValSem101</li>
