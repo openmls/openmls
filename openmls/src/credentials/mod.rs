@@ -5,7 +5,10 @@ pub use errors::*;
 #[cfg(test)]
 mod tests;
 
-use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};
+use openmls_traits::{
+    types::{CryptoError, SignatureScheme},
+    OpenMlsCryptoProvider,
+};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 #[cfg(test)]

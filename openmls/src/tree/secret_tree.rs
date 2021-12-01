@@ -12,6 +12,7 @@ implement_error! {
         TooDistantInThePast = "Generation is too old to be processed.",
         TooDistantInTheFuture = "Generation is too far in the future to be processed.",
         IndexOutOfBounds = "Index out of bounds",
+        LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
     }
 }
 

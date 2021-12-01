@@ -65,7 +65,10 @@ fn generate_key_package_bundle(
         .unwrap();
     let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, backend, extensions)?;
     let kp = kpb.key_package().clone();
-    backend.key_store().store(&kp.hash(backend), &kpb).unwrap();
+    backend
+        .key_store()
+        .store(&kp.hash(backend).expect("Could not hash KeyPackage."), &kpb)
+        .unwrap();
     Ok(kp)
 }
 
@@ -190,7 +193,9 @@ fn managed_group_operations() {
                 &crypto,
                 &managed_group_config,
                 group_id,
-                &alice_key_package.hash(&crypto),
+                &alice_key_package
+                    .hash(&crypto)
+                    .expect("Could not hash KeyPackage."),
             )
             .unwrap();
 
@@ -788,7 +793,9 @@ fn test_empty_input_errors() {
         &crypto,
         &managed_group_config,
         group_id,
-        &alice_key_package.hash(&crypto),
+        &alice_key_package
+            .hash(&crypto)
+            .expect("Could not hash KeyPackage."),
     )
     .unwrap();
 
@@ -860,7 +867,9 @@ fn managed_group_ratchet_tree_extension() {
                 &crypto,
                 &managed_group_config,
                 group_id.clone(),
-                &alice_key_package.hash(&crypto),
+                &alice_key_package
+                    .hash(&crypto)
+                    .expect("Could not hash KeyPackage."),
             )
             .unwrap();
 
@@ -919,7 +928,9 @@ fn managed_group_ratchet_tree_extension() {
                 &crypto,
                 &managed_group_config,
                 group_id,
-                &alice_key_package.hash(&crypto),
+                &alice_key_package
+                    .hash(&crypto)
+                    .expect("Could not hash KeyPackage."),
             )
             .unwrap();
 

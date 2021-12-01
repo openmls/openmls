@@ -57,7 +57,7 @@ impl Client {
         let kp = kpb.key_package().clone();
         self.crypto
             .key_store()
-            .store(&kp.hash(&self.crypto), &kpb)
+            .store(&kp.hash(&self.crypto)?, &kpb)
             .unwrap();
         Ok(kp)
     }
@@ -92,13 +92,13 @@ impl Client {
         let key_package = kpb.key_package().clone();
         self.crypto
             .key_store()
-            .store(&key_package.hash(&self.crypto), &kpb)
+            .store(&key_package.hash(&self.crypto)?, &kpb)
             .unwrap();
         let group_state = ManagedGroup::new(
             &self.crypto,
             &managed_group_config,
             group_id.clone(),
-            &key_package.hash(&self.crypto),
+            &key_package.hash(&self.crypto)?,
         )?;
         self.groups.borrow_mut().insert(group_id, group_state);
         Ok(())

@@ -23,6 +23,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{random::OpenMlsRand, types::HpkeKeyPair, OpenMlsCryptoProvider};
 use rand::{rngs::OsRng, RngCore};
 use serde::{self, Deserialize, Serialize};
+use tls_codec::Serialize as TlsSerialize;
 
 use super::{errors::KsTestVectorError, PskSecret};
 use super::{CommitSecret, PreSharedKeyId};
@@ -111,13 +112,15 @@ fn generate(
     }
     let psk_secret = PskSecret::new(ciphersuite, &crypto, &psk_ids, &psks).unwrap();
 
-    let joiner_secret = JoinerSecret::new(&crypto, &commit_secret, init_secret);
+    let joiner_secret = JoinerSecret::new(&crypto, &commit_secret, init_secret)
+        .expect("Could not create JoinerSecret.");
     let mut key_schedule = KeySchedule::init(
         ciphersuite,
         &crypto,
         joiner_secret.clone(),
         Some(psk_secret.clone()),
-    );
+    )
+    .expect("Could not create KeySchedule.");
     let welcome_secret = key_schedule.welcome(&crypto).unwrap();
 
     let confirmed_transcript_hash = crypto.rand().random_vec(ciphersuite.hash_length()).unwrap();
@@ -131,7 +134,13 @@ fn generate(
     )
     .unwrap();
 
-    key_schedule.add_context(&crypto, &group_context).unwrap();
+    let serialized_group_context = group_context
+        .tls_serialize_detached()
+        .expect("Could not serialize group context.");
+
+    key_schedule
+        .add_context(&crypto, &serialized_group_context)
+        .unwrap();
     let epoch_secrets = key_schedule.epoch_secrets(&crypto, true).unwrap();
 
     // Calculate external HPKE key pair
@@ -163,7 +172,8 @@ pub fn generate_test_vector(
     let crypto = OpenMlsRustCrypto::default();
 
     // Set up setting.
-    let mut init_secret = InitSecret::random(ciphersuite, &crypto, ProtocolVersion::default());
+    let mut init_secret = InitSecret::random(ciphersuite, &crypto, ProtocolVersion::default())
+        .expect("Not enough randomness.");
     let initial_init_secret = init_secret.clone();
     let group_id = crypto.rand().random_vec(16).unwrap();
 
@@ -320,7 +330,8 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
         // let psk = Vec::new();
         let psk_secret = PskSecret::new(ciphersuite, &crypto, &psk_ids, &psks).unwrap();
 
-        let joiner_secret = JoinerSecret::new(&crypto, &commit_secret, &init_secret);
+        let joiner_secret = JoinerSecret::new(&crypto, &commit_secret, &init_secret)
+            .expect("Could not create JoinerSecret.");
         if hex_to_bytes(&epoch.joiner_secret) != joiner_secret.as_slice() {
             if cfg!(test) {
                 panic!("Joiner secret mismatch");
@@ -333,7 +344,8 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
             &crypto,
             joiner_secret.clone(),
             Some(psk_secret),
-        );
+        )
+        .expect("Could not create KeySchedule.");
         let welcome_secret = key_schedule.welcome(&crypto).unwrap();
 
         if hex_to_bytes(&epoch.welcome_secret) != welcome_secret.as_slice() {
@@ -366,7 +378,13 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
             return Err(KsTestVectorError::GroupContextMismatch);
         }
 
-        key_schedule.add_context(&crypto, &group_context).unwrap();
+        let serialized_group_context = group_context
+            .tls_serialize_detached()
+            .expect("Could not serialize group context.");
+
+        key_schedule
+            .add_context(&crypto, &serialized_group_context)
+            .unwrap();
 
         let epoch_secrets = key_schedule.epoch_secrets(&crypto, true).unwrap();
 

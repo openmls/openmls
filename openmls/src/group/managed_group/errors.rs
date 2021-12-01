@@ -9,6 +9,7 @@ use crate::error::ErrorString;
 use crate::framing::MlsCiphertextError;
 use crate::group::{CreateCommitError, ExporterError, MlsGroupError, StageCommitError};
 use crate::prelude::ValidationError;
+use openmls_traits::types::CryptoError;
 use tls_codec::Error as TlsCodecError;
 
 implement_error! {
@@ -41,6 +42,8 @@ implement_error! {
             CredentialError(CredentialError) = "See [`CredentialError`](`crate::credentials::CredentialError`) for details",
             ValidationError(ValidationError) = "See [`ValidationError`](`crate::framing::validation::ValidationError`) for details",
             TlsCodecError(TlsCodecError) = "An error occured during TLS encoding/decoding.",
+            CryptoError(CryptoError) =
+                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
         }
     }
 }

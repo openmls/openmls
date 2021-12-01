@@ -180,7 +180,7 @@ impl ManagedTestSetup {
         let key_package = client.get_fresh_key_package(&[ciphersuite.name()])?;
         self.waiting_for_welcome
             .borrow_mut()
-            .insert(key_package.hash(&client.crypto), client.identity.clone());
+            .insert(key_package.hash(&client.crypto)?, client.identity.clone());
         Ok(key_package)
     }
 

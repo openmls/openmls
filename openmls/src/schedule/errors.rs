@@ -1,4 +1,5 @@
-use crate::ciphersuite::CryptoError;
+use openmls_traits::types::CryptoError;
+use tls_codec::Error as TlsCodecError;
 
 implement_error! {
     pub enum ErrorState {
@@ -10,8 +11,27 @@ implement_error! {
 
 implement_error! {
     pub enum KeyScheduleError {
-        InvalidState(ErrorState) =
-            "The requested operation is not valid on the key schedule state.",
+        Simple {
+            LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
+        }
+        Complex {
+            InvalidState(ErrorState) =
+                "The requested operation is not valid on the key schedule state.",
+            CryptoError(CryptoError) =
+                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
+        }
+    }
+}
+
+implement_error! {
+    pub enum ExporterError {
+        Simple {}
+        Complex {
+            CodecError(TlsCodecError) =
+                "TLS (de)serialization error occurred.",
+            CryptoError(CryptoError) =
+                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
+        }
     }
 }
 
@@ -24,6 +44,18 @@ implement_error! {
         }
         Complex {
             CryptoError(CryptoError) = "See [`CryptoError`] for more details.",
+        }
+    }
+}
+
+implement_error! {
+    pub enum MembershipKeyError {
+        Simple {}
+        Complex {
+            CodecError(TlsCodecError) =
+                "TLS (de)serialization error occurred.",
+            CryptoError(CryptoError) =
+                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
         }
     }
 }

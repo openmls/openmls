@@ -94,7 +94,7 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
         bob_key_package_bundle.key_package(),
         welcome.secrets(),
         &crypto,
-    ).expect("JoinerSecret not found");
+    ).expect("Could not hash KeyPackage.").expect("JoinerSecret not found");
 
     let group_secrets_bytes = crypto
         .crypto()
@@ -114,12 +114,12 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
         &crypto,
         joiner_secret,
         psk_output(ciphersuite, &crypto, None, &group_secrets.psks).expect("Could not extract PSKs"),
-    );
+    ).expect("Could not create KeySchedule.");
 
     // Derive welcome key & noce from the key schedule
     let (welcome_key, welcome_nonce) = key_schedule
         .welcome(&crypto).expect("Expected a WelcomeSecret")
-        .derive_welcome_key_nonce(&crypto);
+        .derive_welcome_key_nonce(&crypto).expect("Could not derive welcome nonce.");
 
     let group_info_bytes = welcome_key
         .aead_open(&crypto, welcome.encrypted_group_info(), &[], &welcome_nonce)

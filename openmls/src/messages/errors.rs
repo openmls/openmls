@@ -1,4 +1,17 @@
+use openmls_traits::types::CryptoError;
 use tls_codec::Error as TlsCodecError;
+
+implement_error! {
+    pub enum ProposalError {
+        Simple {}
+        Complex {
+            CodecError(TlsCodecError) =
+                "TLS (de)serialization error occurred.",
+            CryptoError(CryptoError) =
+                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
+        }
+    }
+}
 
 implement_error! {
     pub enum ProposalQueueError {

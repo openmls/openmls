@@ -123,11 +123,16 @@ impl MlsGroup {
                     .iter()
                     .find(|kpb| kpb.key_package() == kp)
                     .ok_or(StageCommitError::MissingOwnKeyPackage)?;
-                // We can unwrap here, because we know there was a path and thus
-                // a new commit secret must have been set.
-                provisional_tree
-                    .replace_private_tree(backend, own_kpb, &serialized_context)
-                    .unwrap()
+
+                if let Some(commit_secret) =
+                    provisional_tree.replace_private_tree(backend, own_kpb, &serialized_context)
+                {
+                    commit_secret
+                } else {
+                    // We can return a library error here, because we know there was a path and thus
+                    // a new commit secret must have been set.
+                    return Err(MlsGroupError::LibraryError);
+                }
             } else {
                 // Collect the new leaves' indexes so we can filter them out in the resolution
                 // later.
@@ -157,7 +162,7 @@ impl MlsGroup {
             self.epoch_secrets
                 .init_secret()
                 .ok_or(StageCommitError::InitSecretNotFound)?,
-        );
+        )?;
 
         // Create provisional group state
         let mut provisional_epoch = self.group_context.epoch;
@@ -166,15 +171,16 @@ impl MlsGroup {
         let confirmed_transcript_hash = update_confirmed_transcript_hash(
             ciphersuite,
             backend,
-            // It is ok to use `unwrap()` here, because we know the MlsPlaintext contains a Commit
-            &MlsPlaintextCommitContent::try_from(mls_plaintext).unwrap(),
+            // It is ok to use return a library error here, because we know the MlsPlaintext contains a Commit
+            &MlsPlaintextCommitContent::try_from(mls_plaintext)
+                .map_err(|_| MlsGroupError::LibraryError)?,
             &self.interim_transcript_hash,
         )?;
 
         let provisional_group_context = GroupContext::new(
             self.group_context.group_id.clone(),
             provisional_epoch,
-            provisional_tree.tree_hash(backend),
+            provisional_tree.tree_hash(backend)?,
             confirmed_transcript_hash.clone(),
             self.group_context.extensions(),
         )?;
@@ -190,8 +196,12 @@ impl MlsGroup {
                 psk_fetcher_option,
                 &apply_proposals_values.presharedkeys,
             )?,
-        );
-        key_schedule.add_context(backend, &provisional_group_context)?;
+        )?;
+
+        let serialized_provisional_group_context =
+            provisional_group_context.tls_serialize_detached()?;
+
+        key_schedule.add_context(backend, &serialized_provisional_group_context)?;
         let provisional_epoch_secrets = key_schedule.epoch_secrets(backend, true)?;
 
         let mls_plaintext_commit_auth_data = MlsPlaintextCommitAuthData::try_from(mls_plaintext)
@@ -211,7 +221,7 @@ impl MlsGroup {
         // ValSem205
         let own_confirmation_tag = provisional_epoch_secrets
             .confirmation_key()
-            .tag(backend, &confirmed_transcript_hash);
+            .tag(backend, &confirmed_transcript_hash)?;
         if &own_confirmation_tag != received_confirmation_tag {
             // FIXME: reset nodes. This should get fixed with the tree rewrite.
             provisional_tree.nodes = original_nodes;
@@ -224,7 +234,7 @@ impl MlsGroup {
         // Verify KeyPackage extensions
         if let Some(path) = &commit.path {
             if !is_own_commit {
-                let parent_hash = provisional_tree.set_parent_hashes(backend, sender);
+                let parent_hash = provisional_tree.set_parent_hashes(backend, sender)?;
                 if let Some(received_parent_hash) = path
                     .leaf_key_package
                     .extension_with_type(ExtensionType::ParentHash)

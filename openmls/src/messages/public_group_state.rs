@@ -4,7 +4,7 @@
 //! the `MlsPlaintext` and as described in the [`OpenMLS Wiki`].
 //!
 //! [`OpenMLS Wiki`]: https://github.com/openmls/openmls/wiki/Signable
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{types::CryptoError, OpenMlsCryptoProvider};
 use tls_codec::{Serialize, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
 use crate::{
@@ -148,7 +148,10 @@ pub(crate) struct PublicGroupStateTbs {
 impl PublicGroupStateTbs {
     /// Creates a new `PublicGroupStateTbs` struct from the current internal state
     /// of the group.
-    pub(crate) fn new(backend: &impl OpenMlsCryptoProvider, mls_group: &MlsGroup) -> Self {
+    pub(crate) fn new(
+        backend: &impl OpenMlsCryptoProvider,
+        mls_group: &MlsGroup,
+    ) -> Result<Self, CryptoError> {
         let ciphersuite = mls_group.ciphersuite();
         let external_pub = mls_group
             .epoch_secrets()
@@ -158,11 +161,11 @@ impl PublicGroupStateTbs {
 
         let group_id = mls_group.group_id().clone();
         let epoch = mls_group.context().epoch();
-        let tree_hash = mls_group.tree().tree_hash(backend).into();
+        let tree_hash = mls_group.tree().tree_hash(backend)?.into();
         let interim_transcript_hash = mls_group.interim_transcript_hash().into();
         let other_extensions = mls_group.other_extensions().into();
 
-        PublicGroupStateTbs {
+        Ok(PublicGroupStateTbs {
             group_id,
             epoch,
             tree_hash,
@@ -172,7 +175,7 @@ impl PublicGroupStateTbs {
             external_pub: external_pub.into(),
             ciphersuite: ciphersuite.name(),
             signer_index: mls_group.tree().own_node_index(),
-        }
+        })
     }
 }
 

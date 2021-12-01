@@ -37,7 +37,10 @@ fn generate_key_package_bundle(
     let kp = kpb.key_package().clone();
     key_store
         .key_store()
-        .store(&kp.hash(key_store), &kpb)
+        .store(
+            &kp.hash(key_store).expect("Could not hash KeyPackage."),
+            &kpb,
+        )
         .unwrap();
     Ok(kp)
 }
@@ -71,7 +74,9 @@ fn test_managed_group_persistence() {
         &crypto,
         &managed_group_config,
         group_id,
-        &alice_key_package.hash(&crypto),
+        &alice_key_package
+            .hash(&crypto)
+            .expect("Could not hash KeyPackage."),
     )
     .unwrap();
 
@@ -152,7 +157,9 @@ fn remover() {
         crypto,
         &managed_group_config,
         group_id,
-        &alice_key_package.hash(crypto),
+        &alice_key_package
+            .hash(crypto)
+            .expect("Could not hash KeyPackage."),
     )
     .unwrap();
 
@@ -254,7 +261,7 @@ ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
         crypto,
         &managed_group_config,
         group_id,
-        &alice_key_package.hash(crypto),
+        &alice_key_package.hash(crypto).expect("Could not hash KeyPackage."),
     )
     .unwrap();
 

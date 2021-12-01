@@ -15,6 +15,8 @@ mod updates;
 pub mod validation;
 
 use crate::credentials::CredentialBundle;
+#[cfg(any(feature = "test-utils", test))]
+use openmls_traits::types::CryptoError;
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 
 use crate::{
@@ -198,7 +200,7 @@ impl ManagedGroup {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub fn tree_hash(&self, backend: &impl OpenMlsCryptoProvider) -> Vec<u8> {
+    pub fn tree_hash(&self, backend: &impl OpenMlsCryptoProvider) -> Result<Vec<u8>, CryptoError> {
         self.group.tree().tree_hash(backend)
     }
 

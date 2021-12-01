@@ -107,7 +107,9 @@ fn proposal_queue_functions() {
             proposal_add_alice1,
             &alice_credential_bundle,
             &group_context,
-            &MembershipKey::from_secret(Secret::random(ciphersuite, &crypto, None)),
+            &MembershipKey::from_secret(
+                Secret::random(ciphersuite, &crypto, None).expect("Not enough randomness."),
+            ),
             &crypto,
         )
         .expect("Could not create proposal.");
@@ -117,7 +119,9 @@ fn proposal_queue_functions() {
             proposal_add_alice2,
             &alice_credential_bundle,
             &group_context,
-            &MembershipKey::from_secret(Secret::random(ciphersuite, &crypto, None)),
+            &MembershipKey::from_secret(
+                Secret::random(ciphersuite, &crypto, None).expect("Not enough randomness."),
+            ),
             &crypto,
         )
         .expect("Could not create proposal.");
@@ -127,7 +131,9 @@ fn proposal_queue_functions() {
             proposal_add_bob1,
             &alice_credential_bundle,
             &group_context,
-            &MembershipKey::from_secret(Secret::random(ciphersuite, &crypto, None)),
+            &MembershipKey::from_secret(
+                Secret::random(ciphersuite, &crypto, None).expect("Not enough randomness."),
+            ),
             &crypto,
         )
         .expect("Could not create proposal.");
@@ -223,11 +229,10 @@ fn proposal_queue_order() {
             proposal_add_alice1.clone(),
             &alice_credential_bundle,
             &group_context,
-            &MembershipKey::from_secret(Secret::random(
-                ciphersuite,
-                &crypto,
-                None, /* MLS version */
-            )),
+            &MembershipKey::from_secret(
+                Secret::random(ciphersuite, &crypto, None /* MLS version */)
+                    .expect("Not enough randomness."),
+            ),
             &crypto,
         )
         .expect("Could not create proposal.");
@@ -237,11 +242,10 @@ fn proposal_queue_order() {
             proposal_add_bob1.clone(),
             &alice_credential_bundle,
             &group_context,
-            &MembershipKey::from_secret(Secret::random(
-                ciphersuite,
-                &crypto,
-                None, /* MLS version */
-            )),
+            &MembershipKey::from_secret(
+                Secret::random(ciphersuite, &crypto, None /* MLS version */)
+                    .expect("Not enough randomness."),
+            ),
             &crypto,
         )
         .expect("Could not create proposal.");

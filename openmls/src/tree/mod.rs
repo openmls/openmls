@@ -23,7 +23,7 @@ pub use hashes::*;
 use index::*;
 use node::*;
 use openmls_traits::crypto::OpenMlsCrypto;
-use openmls_traits::types::HpkeCiphertext;
+use openmls_traits::types::{CryptoError, HpkeCiphertext};
 use openmls_traits::OpenMlsCryptoProvider;
 use private_tree::PrivateTree;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
@@ -65,7 +65,10 @@ implement_persistence!(RatchetTree, mls_version, nodes, private_tree);
 
 impl RatchetTree {
     /// Create a new `RatchetTree` with only the "self" member as first node.
-    pub(crate) fn new(backend: &impl OpenMlsCryptoProvider, kpb: KeyPackageBundle) -> RatchetTree {
+    pub(crate) fn new(
+        backend: &impl OpenMlsCryptoProvider,
+        kpb: KeyPackageBundle,
+    ) -> Result<RatchetTree, CryptoError> {
         // Create an initial, empty tree
         let mut tree = Self {
             ciphersuite: kpb.key_package().ciphersuite(),
@@ -75,8 +78,8 @@ impl RatchetTree {
         };
         // Add our own node
         let (index, _credential) = tree.add_node(kpb.key_package());
-        tree.private_tree = PrivateTree::from_leaf_secret(backend, index, kpb.leaf_secret());
-        tree
+        tree.private_tree = PrivateTree::from_leaf_secret(backend, index, kpb.leaf_secret())?;
+        Ok(tree)
     }
 
     pub fn ciphersuite(&self) -> &'static Ciphersuite {
@@ -124,7 +127,7 @@ impl RatchetTree {
 
         let own_node_index = own_node_index.ok_or(TreeError::InvalidArguments)?;
         let private_tree =
-            PrivateTree::from_leaf_secret(backend, own_node_index, kpb.leaf_secret());
+            PrivateTree::from_leaf_secret(backend, own_node_index, kpb.leaf_secret())?;
 
         Ok(Self {
             ciphersuite: kpb.leaf_secret().ciphersuite(),
@@ -383,16 +386,13 @@ impl RatchetTree {
 
         // Decrypt the secret and derive path secrets
         // ValSem203
-        let secret_bytes = backend
-            .crypto()
-            .hpke_open(
-                self.ciphersuite.hpke_config(),
-                hpke_ciphertext,
-                private_key.as_slice(),
-                group_context,
-                &[],
-            )
-            .map_err(|_| CryptoError::HpkeDecryptionError)?;
+        let secret_bytes = backend.crypto().hpke_open(
+            self.ciphersuite.hpke_config(),
+            hpke_ciphertext,
+            private_key.as_slice(),
+            group_context,
+            &[],
+        )?;
         let path_secret =
             Secret::from_slice(&secret_bytes, ProtocolVersion::default(), self.ciphersuite).into();
         // Derive new path secrets and generate keypairs
@@ -401,7 +401,7 @@ impl RatchetTree {
             backend,
             path_secret,
             &common_path,
-        );
+        )?;
 
         // Extract public keys from UpdatePath
         let update_path_public_keys: Vec<HpkePublicKey> = update_path
@@ -424,7 +424,7 @@ impl RatchetTree {
         self.merge_public_keys(&new_path_public_keys, &common_path)?;
         self.nodes[sender] = Node::new_leaf(Some(update_path.leaf_key_package.clone()));
         // Calculate and set the parent hashes
-        self.set_parent_hashes(backend, sender);
+        self.set_parent_hashes(backend, sender)?;
 
         // TODO: Do we really want to return the commit secret here?
 
@@ -466,7 +466,8 @@ impl RatchetTree {
 
         // Replace the init key in the current KeyPackage
         let key_package_bundle_unsigned =
-            KeyPackageBundlePayload::from_rekeyed_key_package(own_key_package, backend);
+            KeyPackageBundlePayload::from_rekeyed_key_package(own_key_package, backend)
+                .expect("Not enough randomness.");
         // FIXME: #419 THIS IS UNNECESSARY
         let key_package_bundle = key_package_bundle_unsigned.sign(backend, credential_bundle)?;
 
@@ -480,11 +481,11 @@ impl RatchetTree {
                 key_package_bundle.leaf_secret(),
                 group_context,
                 Some(new_leaves_indexes), /* with update path */
-            )
+            )?
             .ok_or(TreeError::InvalidTree)?;
 
         // Compute the parent hash extension and update the KeyPackage and sign it
-        let parent_hash = self.set_parent_hashes(backend, own_index);
+        let parent_hash = self.set_parent_hashes(backend, own_index)?;
         let mut key_package_bundle_unsigned = key_package_bundle.unsigned();
         key_package_bundle_unsigned.update_parent_hash(&parent_hash);
         let key_package_bundle = key_package_bundle_unsigned.sign(backend, credential_bundle)?;
@@ -508,7 +509,7 @@ impl RatchetTree {
         key_package: &KeyPackage,
         group_context: &[u8],
         new_leaves_indexes_option: Option<HashSet<&LeafIndex>>,
-    ) -> Option<UpdatePath> {
+    ) -> Result<Option<UpdatePath>, CryptoError> {
         let own_index = self.own_node_index();
         // Update own leaf node with the new values
         self.nodes[own_index] = Node::new_leaf(Some(key_package.clone()));
@@ -517,8 +518,8 @@ impl RatchetTree {
             leaf_secret,
             group_context,
             new_leaves_indexes_option,
-        );
-        update_path_nodes.map(|nodes| UpdatePath::new(key_package.clone(), nodes))
+        )?;
+        Ok(update_path_nodes.map(|nodes| UpdatePath::new(key_package.clone(), nodes)))
     }
 
     /// Replace the private tree with a new one based on the
@@ -529,7 +530,7 @@ impl RatchetTree {
         leaf_secret: &Secret,
         group_context: &[u8],
         new_leaves_indexes_option: Option<HashSet<&LeafIndex>>,
-    ) -> Option<Vec<UpdatePathNode>> {
+    ) -> Result<Option<Vec<UpdatePathNode>>, CryptoError> {
         // Compute the direct path and keypairs along it
         let own_index = self.own_node_index();
         let direct_path_root = treemath::leaf_direct_path(own_index, self.leaf_count())
@@ -541,13 +542,13 @@ impl RatchetTree {
             own_index,
             leaf_secret,
             &direct_path_root,
-        );
+        )?;
         self.private_tree = private_tree;
 
         self.merge_public_keys(&new_public_keys, &direct_path_root)
             .unwrap();
 
-        self.set_parent_hashes(backend, own_index);
+        self.set_parent_hashes(backend, own_index)?;
         if let Some(new_leaves_indexes) = new_leaves_indexes_option {
             let update_path_nodes = self
                 .encrypt_to_copath(
@@ -557,9 +558,9 @@ impl RatchetTree {
                     new_leaves_indexes,
                 )
                 .unwrap();
-            Some(update_path_nodes)
+            Ok(Some(update_path_nodes))
         } else {
-            None
+            Ok(None)
         }
     }
 
@@ -785,7 +786,7 @@ impl RatchetTree {
                 };
                 // Update the private tree with new values
                 self.private_tree =
-                    PrivateTree::from_leaf_secret(backend, sender_index, own_kpb.leaf_secret());
+                    PrivateTree::from_leaf_secret(backend, sender_index, own_kpb.leaf_secret())?;
             }
         }
 
@@ -894,7 +895,7 @@ impl RatchetTree {
                 };
                 // Update the private tree with new values
                 self.private_tree =
-                    PrivateTree::from_leaf_secret(backend, sender_index, own_kpb.leaf_secret());
+                    PrivateTree::from_leaf_secret(backend, sender_index, own_kpb.leaf_secret())?;
             }
         }
 
