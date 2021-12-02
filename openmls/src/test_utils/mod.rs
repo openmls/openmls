@@ -83,11 +83,7 @@ pub fn hex_to_bytes_option(hex: Option<String>) -> Vec<u8> {
 ))]
 pub use evercrypt_backend::OpenMlsEvercrypt;
 
-#[cfg(any(
-    not(target_arch = "x86_64"),
-    target_os = "macos",
-    target_family = "wasm"
-))]
+// This backend is currently used on all platforms
 pub use openmls_rust_crypto::OpenMlsRustCrypto;
 
 // === Backends ===
