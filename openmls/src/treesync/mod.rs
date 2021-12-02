@@ -83,6 +83,7 @@ pub mod tests_and_kats;
 /// * there are private keys only in our leaf and our direct path
 /// * the tree hash is non-empty
 #[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
 pub struct TreeSync {
     tree: MlsBinaryTree<TreeSyncNode>,
     own_leaf_index: LeafIndex,
@@ -305,6 +306,24 @@ impl TreeSync {
             .ok_or(TreeSyncError::LibraryError)?;
         let leaf_node = leaf.node().as_ref().ok_or(TreeSyncError::LibraryError)?;
         Ok(leaf_node.as_leaf_node()?.key_package())
+    }
+
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn public_key_tree(&self) -> Vec<Option<Node>> {
+        self.tree
+            .nodes()
+            .iter()
+            .map(|ts_node| ts_node.node().clone())
+            .collect()
+    }
+
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn public_key_tree_copy(&self) -> Vec<Option<Node>> {
+        self.tree
+            .nodes()
+            .iter()
+            .map(|ts_node| ts_node.node().clone())
+            .collect()
     }
 }
 

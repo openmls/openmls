@@ -60,7 +60,6 @@ impl StagedTreeSyncDiff {
 pub(crate) struct TreeSyncDiff<'a> {
     diff: MlsBinaryTreeDiff<'a, TreeSyncNode>,
     own_leaf_index: LeafIndex,
-    node_keys: HashSet<HpkePublicKey>,
 }
 
 impl<'a> TryFrom<&'a TreeSync> for TreeSyncDiff<'a> {
@@ -69,7 +68,6 @@ impl<'a> TryFrom<&'a TreeSync> for TreeSyncDiff<'a> {
     fn try_from(tree_sync: &'a TreeSync) -> Result<Self, Self::Error> {
         Ok(TreeSyncDiff {
             diff: MlsBinaryTreeDiff::try_from(&tree_sync.tree)?,
-            node_keys: HashSet::new(),
             own_leaf_index: tree_sync.own_leaf_index,
         })
     }
@@ -98,14 +96,6 @@ impl<'a> TreeSyncDiff<'a> {
         Ok(())
     }
 
-    fn unique_key(&self, node: &Node) -> Result<(), TreeSyncDiffError> {
-        if self.node_keys.contains(node.public_key()) {
-            Err(TreeSyncDiffError::PublicKeyCollision)
-        } else {
-            Ok(())
-        }
-    }
-
     pub(crate) fn leaf_count(&self) -> LeafIndex {
         self.diff.leaf_count()
     }
@@ -118,24 +108,6 @@ impl<'a> TreeSyncDiff<'a> {
         leaf_index: LeafIndex,
     ) -> Result<(), TreeSyncDiffError> {
         let node = Node::LeafNode(leaf_node.into());
-        // Check if the key of the new leaf is unique in the
-        // tree.
-        self.unique_key(&node)?;
-
-        // Add the new key to the key map and remove the old one.
-        self.node_keys.insert(node.public_key().clone());
-        let node_ref = self.diff.leaf(leaf_index)?;
-        // Can't update a blank leaf.
-        let old_leaf = self
-            .diff
-            .try_deref(node_ref)?
-            .node()
-            .as_ref()
-            .ok_or(TreeSyncDiffError::UpdateBlank)?;
-        let removed = self.node_keys.remove(old_leaf.public_key());
-        // The old key has to have been in the node map.
-        debug_assert!(removed);
-
         self.diff.replace_leaf(leaf_index, node.into())?;
         // This effectively wipes the tree hashes in the direct path.
         self.diff
@@ -153,12 +125,6 @@ impl<'a> TreeSyncDiff<'a> {
         leaf_node: KeyPackage,
     ) -> Result<LeafIndex, TreeSyncDiffError> {
         let node = Node::LeafNode(leaf_node.into());
-        // Check if the key of the new leaf is unique in the
-        // tree.
-        self.unique_key(&node)?;
-
-        self.node_keys.insert(node.public_key().clone());
-
         // Find a free leaf and fill it with the new key package.
         let leaf_refs = self.diff.leaves()?;
         let mut leaf_index_option = None;
@@ -195,17 +161,6 @@ impl<'a> TreeSyncDiff<'a> {
     /// After blanking the leaf and its direct path, the diff is trimmed, i.e.
     /// leafs are removed until the right-most leaf in the tree is non-blank.
     pub(crate) fn blank_leaf(&mut self, leaf_index: LeafIndex) -> Result<(), TreeSyncDiffError> {
-        let node_ref = self.diff.leaf(leaf_index)?;
-        let old_leaf = self
-            .diff
-            .try_deref(node_ref)?
-            .node()
-            .as_ref()
-            .ok_or(TreeSyncDiffError::RedundantBlank)?;
-        let removed = self.node_keys.remove(old_leaf.public_key());
-        // The old key has to have been in the node map.
-        debug_assert!(removed);
-
         self.diff.replace_leaf(leaf_index, TreeSyncNode::blank())?;
         // This also erases any cached tree hash in the direct path.
         self.diff
@@ -257,21 +212,6 @@ impl<'a> TreeSyncDiff<'a> {
         }
 
         let node = Node::LeafNode(key_package_bundle.key_package().clone().into());
-        // Check if the key of the new leaf is unique in the
-        // tree.
-        self.unique_key(&node)?;
-
-        // Remove the key of the old leaf from the key map.
-        let node_ref = self.diff.leaf(self.own_leaf_index)?;
-        let old_leaf = self
-            .diff
-            .try_deref(node_ref)?
-            .node()
-            .as_ref()
-            .ok_or(TreeSyncDiffError::RedundantBlank)?;
-        let removed = self.node_keys.remove(old_leaf.public_key());
-        // The old key has to have been in the node map.
-        debug_assert!(removed);
 
         // Replace the leaf.
         self.diff.replace_leaf(self.own_leaf_index, node.into())?;
@@ -295,11 +235,12 @@ impl<'a> TreeSyncDiff<'a> {
         let path_secret = leaf_path_secret.derive_path_secret(backend, ciphersuite)?;
 
         let path_length = self.diff.direct_path(self.own_leaf_index)?.len();
+        println!("path length instruction (should be 0): {:?}", path_length);
 
         let (path, update_path_nodes, commit_secret) =
             ParentNode::derive_path(backend, ciphersuite, path_secret, path_length)?;
+        println!("length of derived path (should be 0): {:?}", path.len());
 
-        // This also adds the public keys to the diff's key map.
         let parent_hash =
             self.process_update_path(backend, ciphersuite, self.own_leaf_index, path)?;
 
@@ -307,21 +248,6 @@ impl<'a> TreeSyncDiff<'a> {
         let key_package_bundle = key_package_bundle_payload.sign(backend, credential_bundle)?;
 
         let node = Node::LeafNode(key_package_bundle.key_package().clone().into());
-        // Check if the key of the new leaf is unique in the
-        // tree.
-        self.unique_key(&node)?;
-
-        // Remove the key of the old leaf from the key map.
-        let node_ref = self.diff.leaf(self.own_leaf_index)?;
-        let old_leaf = self
-            .diff
-            .try_deref(node_ref)?
-            .node()
-            .as_ref()
-            .ok_or(TreeSyncDiffError::RedundantBlank)?;
-        let removed = self.node_keys.remove(old_leaf.public_key());
-        // The old key has to have been in the node map.
-        debug_assert!(removed);
 
         // Replace the leaf.
         self.diff.replace_leaf(self.own_leaf_index, node.into())?;
@@ -341,11 +267,6 @@ impl<'a> TreeSyncDiff<'a> {
         key_package: &KeyPackage,
         path: Vec<ParentNode>,
     ) -> Result<(), TreeSyncDiffError> {
-        let node = Node::LeafNode(key_package.clone().into());
-        // Check if the key of the new leaf is unique in the
-        // tree.
-        self.unique_key(&node)?;
-
         let parent_hash =
             self.process_update_path(backend, ciphersuite, sender_leaf_index, path)?;
         // Verify the parent hash.
@@ -360,18 +281,6 @@ impl<'a> TreeSyncDiff<'a> {
         {
             return Err(TreeSyncDiffError::ParentHashMismatch);
         };
-
-        // Remove the key of the old leaf from the key map.
-        let node_ref = self.diff.leaf(sender_leaf_index)?;
-        let old_leaf = self
-            .diff
-            .try_deref(node_ref)?
-            .node()
-            .as_ref()
-            .ok_or(TreeSyncDiffError::RedundantBlank)?;
-        let removed = self.node_keys.remove(old_leaf.public_key());
-        // The old key has to have been in the node map.
-        debug_assert!(removed);
 
         // Replace the leaf.
         self.diff.replace_leaf(
@@ -393,22 +302,10 @@ impl<'a> TreeSyncDiff<'a> {
     ) -> Result<Vec<u8>, TreeSyncDiffError> {
         // Compute the parent hash.
         let parent_hash = self.set_parent_hashes(backend, ciphersuite, &mut path, leaf_index)?;
-        // Check that the public keys are unique in the tree.
-        let mut direct_path = Vec::new();
-        for node in path {
-            let node = Node::ParentNode(node);
-            self.unique_key(&node)?;
-            direct_path.push(node.into());
-        }
-
-        // Remove the keys from the old direct path from the node_map.
-        for node_ref in self.diff.direct_path(leaf_index)? {
-            if let Some(node) = self.diff.try_deref(node_ref)?.node() {
-                let removed = self.node_keys.remove(node.public_key());
-                // The old key has to have been in the node map.
-                debug_assert!(removed);
-            }
-        }
+        let direct_path: Vec<TreeSyncNode> = path
+            .into_iter()
+            .map(|parent_node| Node::ParentNode(parent_node).into())
+            .collect();
 
         // Set the direct path. Note, that the nodes here don't have a tree hash
         // set.
@@ -565,8 +462,19 @@ impl<'a> TreeSyncDiff<'a> {
         excluded_indices: &HashSet<&LeafIndex>,
     ) -> Result<Vec<Vec<HpkePublicKey>>, TreeSyncDiffError> {
         let leaf = self.diff.leaf(leaf_index)?;
+
+        // If we're the only node in the tree, there's no copath.
+        if leaf == self.diff.root() {
+            return Ok(vec![]);
+        }
+
+        // We want the full path here, including the leaf itself, but not the
+        // root.
         let mut full_path = vec![leaf];
         let mut direct_path = self.diff.direct_path(leaf_index)?;
+        if direct_path.len() >= 1 {
+            direct_path.pop();
+        }
         full_path.append(&mut direct_path);
 
         let mut copath_resolutions = Vec::new();

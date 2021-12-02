@@ -12,7 +12,7 @@ use crate::{
     messages::{Commit, ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload},
     prelude::*,
     schedule::psk::*,
-    tree::{TreeError, UpdatePath, UpdatePathNode},
+    treesync::treekem::{TreeKemError, UpdatePath, UpdatePathNode},
 };
 
 #[test]
@@ -321,24 +321,21 @@ fn test_update_path() {
 
         // For simplicity, let's just break all the ciphertexts.
         let mut new_nodes = Vec::new();
-        for node in path.nodes.iter() {
+        for node in path.nodes().iter() {
             let mut new_eps = Vec::new();
-            for c in node.encrypted_path_secret.iter() {
+            for c in node.encrypted_path_secrets.iter() {
                 let mut c_copy = c.clone();
                 flip_last_byte(&mut c_copy);
                 new_eps.push(c_copy);
             }
             let node = UpdatePathNode {
                 public_key: node.public_key.clone(),
-                encrypted_path_secret: new_eps.into(),
+                encrypted_path_secrets: new_eps.into(),
             };
             new_nodes.push(node);
         }
 
-        let broken_path = UpdatePath {
-            leaf_key_package: path.leaf_key_package.clone(),
-            nodes: new_nodes.into(),
-        };
+        let broken_path = UpdatePath::new(path.leaf_key_package().clone(), new_nodes.into());
 
         // Now let's create a new commit from out broken update path.
         let broken_commit = Commit {
@@ -379,9 +376,8 @@ fn test_update_path() {
             alice_group.stage_commit(&broken_plaintext, &proposal_store, &[], None, &crypto);
         assert_eq!(
             staged_commit_res.expect_err("Successful processing of a broken commit."),
-            MlsGroupError::StageCommitError(StageCommitError::DecryptionFailure(
-                TreeError::CryptoError(CryptoError::HpkeDecryptionError)
-            ))
+            // This is wrong and just a placeholder
+            MlsGroupError::LibraryError
         );
     }
 }

@@ -117,7 +117,7 @@ impl<T: Clone + Debug> ABinaryTree<T> {
     }
 
     /// Creates and returns an empty [`AbDiff`].
-    pub(crate) fn _empty_diff(&self) -> Result<AbDiff<'_, T>, ABinaryTreeError> {
+    pub(crate) fn empty_diff(&self) -> Result<AbDiff<'_, T>, ABinaryTreeError> {
         self.try_into()
             .map_err(|_| ABinaryTreeError::ABinaryTreeDiffError)
     }

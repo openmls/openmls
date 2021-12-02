@@ -10,7 +10,7 @@ fn test_ratchet_generations() {
     let crypto = &OpenMlsRustCrypto::default();
 
     for ciphersuite in Config::supported_ciphersuites() {
-        let leaf0 = LeafIndex::from(0usize);
+        let leaf0 = 0u32.into();
         let secret = Secret::random(ciphersuite, crypto, Config::supported_versions()[0])
             .expect("Not enough randomness.");
         let mut linear_ratchet = SenderRatchet::new(leaf0, &secret);

@@ -7,6 +7,7 @@ use tls_codec::{Deserialize, Serialize};
 use crate::framing::*;
 use crate::prelude::KeyPackageBundle;
 use crate::prelude::_print_tree;
+use crate::tree::secret_tree::SecretTree;
 use crate::{
     ciphersuite::signable::{Signable, Verifiable},
     config::*,
@@ -124,7 +125,7 @@ fn codec_ciphertext() {
             .epoch_secrets(&crypto, false)
             .expect("Could not generte epoch secrets");
 
-        let mut secret_tree = SecretTree::new(epoch_secrets.encryption_secret(), LeafIndex(1));
+        let mut secret_tree = SecretTree::new(epoch_secrets.encryption_secret(), 1u32.into());
 
         let orig = MlsCiphertext::try_from_plaintext(
             &plaintext,
@@ -211,7 +212,7 @@ fn wire_format_checks() {
             .epoch_secrets(&crypto, false)
             .expect("Could not generte epoch secrets");
 
-        let mut secret_tree = SecretTree::new(epoch_secrets.encryption_secret(), LeafIndex(1));
+        let mut secret_tree = SecretTree::new(epoch_secrets.encryption_secret(), 1u32.into());
 
         let mut ciphertext = MlsCiphertext::try_from_plaintext(
             &plaintext,
@@ -465,12 +466,7 @@ fn unknown_sender() {
 
         // Alice removes Bob
         let bob_remove_proposal = group_alice
-            .create_remove_proposal(
-                framing_parameters,
-                &alice_credential_bundle,
-                LeafIndex::from(1usize),
-                crypto,
-            )
+            .create_remove_proposal(framing_parameters, &alice_credential_bundle, 1u32, crypto)
             .expect("Could not create proposal.");
 
         proposal_store.empty();
@@ -510,7 +506,7 @@ fn unknown_sender() {
         // Alice sends a message with a sender that points to a blank leaf
         // Expected result: MlsCiphertextError::UnknownSender
 
-        let bogus_sender = LeafIndex::from(1usize);
+        let bogus_sender = 1u32;
         let bogus_sender_message = MlsPlaintext::new_application(
             bogus_sender,
             &[],
@@ -529,7 +525,7 @@ fn unknown_sender() {
             ciphersuite,
             crypto,
             group_alice.context(),
-            LeafIndex::from(1usize),
+            1u32,
             Secrets {
                 epoch_secrets: group_alice.epoch_secrets(),
                 secret_tree: &mut group_alice.secret_tree_mut(),
@@ -549,7 +545,7 @@ fn unknown_sender() {
 
         // Alice sends a message with a sender that is outside of the group
         // Expected result: MlsCiphertextError::GenerationOutOfBound
-        let bogus_sender = LeafIndex::from(100usize);
+        let bogus_sender = 100u32;
         let bogus_sender_message = MlsPlaintext::new_application(
             bogus_sender,
             &[],
@@ -563,17 +559,15 @@ fn unknown_sender() {
         )
         .expect("Could not create new MlsPlaintext.");
 
-        let mut secret_tree = SecretTree::new(
-            EncryptionSecret::random(ciphersuite, crypto),
-            LeafIndex::from(100usize),
-        );
+        let mut secret_tree =
+            SecretTree::new(EncryptionSecret::random(ciphersuite, crypto), 100u32.into());
 
         let enc_message = MlsCiphertext::try_from_plaintext(
             &bogus_sender_message,
             ciphersuite,
             crypto,
             group_alice.context(),
-            LeafIndex::from(99usize),
+            99u32,
             Secrets {
                 epoch_secrets: group_alice.epoch_secrets(),
                 secret_tree: &mut secret_tree,

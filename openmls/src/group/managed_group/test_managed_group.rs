@@ -428,7 +428,7 @@ fn test_invalid_plaintext() {
     match &mut msg_invalid_sender {
         MlsMessageOut::Plaintext(pt) => pt.set_sender(Sender {
             sender_type: pt.sender().sender_type,
-            sender: LeafIndex::from(group.members.len() + 1),
+            sender: LeafIndex::from(group.members.len() as u32 + 1u32),
         }),
         MlsMessageOut::Ciphertext(_) => panic!("This should be a plaintext!"),
     };

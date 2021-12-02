@@ -66,7 +66,7 @@ impl<T: Clone + Debug> StagedAbDiff<T> {
 /// can be used to access the node at that position or to navigate to other,
 /// neighbouring nodes via the [`AbDiff::sibling()`], [`AbDiff::left_child()`]
 /// and [`AbDiff::right_child()`] functions of the [`AbDiff`].
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct NodeReference {
     node_index: NodeIndex,
 }

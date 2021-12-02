@@ -34,10 +34,6 @@ impl TreeSync {
         let copath_resolutions = self
             .empty_diff()?
             .copath_resolutions(self.own_leaf_index, exclusion_list)?;
-        // Make sure that the lists have the same length.
-        if path.len() != copath_resolutions.len() {
-            return Err(TreeKemError::PathLengthError);
-        }
 
         let mut update_path_nodes = Vec::new();
         // Encrypt the secrets
@@ -217,12 +213,20 @@ pub struct UpdatePath {
 }
 
 impl UpdatePath {
-    fn nodes(&self) -> &TlsVecU32<UpdatePathNode> {
+    pub(crate) fn nodes(&self) -> &TlsVecU32<UpdatePathNode> {
         &self.nodes
     }
 
     pub(crate) fn leaf_key_package(&self) -> &KeyPackage {
         &self.leaf_key_package
+    }
+
+    #[cfg(test)]
+    pub fn new(leaf_key_package: KeyPackage, nodes: TlsVecU32<UpdatePathNode>) -> Self {
+        Self {
+            leaf_key_package,
+            nodes,
+        }
     }
 }
 

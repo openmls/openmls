@@ -274,7 +274,7 @@ fn read_test_vectors() {
 pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestVectorError> {
     use tls_codec::{Deserialize, Serialize};
 
-    use crate::ciphersuite::HpkePublicKey;
+    use crate::{ciphersuite::HpkePublicKey, messages::PathSecret};
 
     let ciphersuite =
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
@@ -307,12 +307,12 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
     for (i, epoch) in test_vector.epochs.iter().enumerate() {
         log::debug!("  Epoch {:?}", i);
         let tree_hash = hex_to_bytes(&epoch.tree_hash);
-        let commit_secret = hex_to_bytes(&epoch.commit_secret);
-        let commit_secret = CommitSecret::from(Secret::from_slice(
-            &commit_secret,
+        let secret = hex_to_bytes(&epoch.commit_secret);
+        let commit_secret = CommitSecret::from(PathSecret::from(Secret::from_slice(
+            &secret,
             ProtocolVersion::default(),
             ciphersuite,
-        ));
+        )));
         log::trace!("    CommitSecret from tve {:?}", epoch.commit_secret);
         let mut psks = Vec::new();
         let mut psk_ids = Vec::new();

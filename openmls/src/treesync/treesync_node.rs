@@ -13,6 +13,7 @@ use super::Node;
 use crate::treesync::hashes::ParentHashError;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
 /// This intermediate struct on top of `Option<Node>` allows us to cache tree
 /// hash values.
 pub(crate) struct TreeSyncNode {

@@ -6,6 +6,7 @@ use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMls
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
+    binary_tree::LeafIndex,
     ciphersuite::{Ciphersuite, CiphersuiteName, Mac, Secret},
     credentials::{Credential, CredentialBundle, CredentialError, CredentialType},
     extensions::Extension,
@@ -20,7 +21,6 @@ use crate::{
     },
     key_packages::{KeyPackage, KeyPackageBundle, KeyPackageError},
     prelude::ProcessedMessage,
-    tree::index::LeafIndex,
 };
 
 // Helper function to generate a CredentialBundle
@@ -359,7 +359,7 @@ fn test_valsem4() {
 
     plaintext.set_sender(Sender {
         sender_type: crate::prelude::SenderType::Member,
-        sender: LeafIndex::from(100u32),
+        sender: 100u32,
     });
 
     let message_in = MlsMessageIn::from(plaintext);

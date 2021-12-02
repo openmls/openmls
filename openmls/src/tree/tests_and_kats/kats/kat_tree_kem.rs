@@ -287,21 +287,21 @@ fn read_test_vector() {
     }
 }
 
-#[test]
-fn write_test_vector() {
-    let mut tests = Vec::new();
-    const NUM_LEAVES: u32 = 7;
-
-    for ciphersuite in Config::supported_ciphersuites() {
-        for n_leaves in 2..NUM_LEAVES {
-            log::trace!(" Creating test vector with {:?} leaves ...", n_leaves);
-            let test = generate_test_vector(n_leaves, ciphersuite);
-            tests.push(test);
-        }
-    }
-
-    write("test_vectors/kat_tree_kem_openmls-new.json", &tests);
-}
+//#[test]
+//fn write_test_vector() {
+//    let mut tests = Vec::new();
+//    const NUM_LEAVES: u32 = 7;
+//
+//    for ciphersuite in Config::supported_ciphersuites() {
+//        for n_leaves in 2..NUM_LEAVES {
+//            log::trace!(" Creating test vector with {:?} leaves ...", n_leaves);
+//            let test = generate_test_vector(n_leaves, ciphersuite);
+//            tests.push(test);
+//        }
+//    }
+//
+//    write("test_vectors/kat_tree_kem_openmls-new.json", &tests);
+//}
 
 #[cfg(any(feature = "test-utils", test))]
 pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) -> TreeKemTestVector {

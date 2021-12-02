@@ -194,7 +194,7 @@ fn build_handshake_messages(
 ) -> (Vec<u8>, Vec<u8>) {
     use tls_codec::Serialize;
 
-    use crate::{ciphersuite::Secret, messages::proposals::RemoveProposal};
+    use crate::messages::proposals::RemoveProposal;
 
     let epoch = GroupEpoch(random_u64());
     group.context_mut().set_epoch(epoch);

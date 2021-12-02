@@ -184,25 +184,6 @@ fn invalid_inputs() {
 }
 
 #[test]
-fn test_node_in_tree() {
-    let tests = [(0u32, 2u32), (1, 2), (2, 2), (5, 5), (8, 5)];
-    for test in tests.iter() {
-        node_in_tree(test.0.into(), test.1.into()).unwrap();
-    }
-}
-
-#[test]
-fn test_node_not_in_tree() {
-    let tests = [(3u32, 2u32), (13, 7)];
-    for test in tests.iter() {
-        assert_eq!(
-            node_in_tree(test.0.into(), test.1.into()),
-            Err(TreeMathError::NodeNotInTree)
-        );
-    }
-}
-
-#[test]
 fn test_leaf_in_tree() {
     let tests = [(0u32, 2u32), (1, 2), (4, 5), (9, 10)];
     for test in tests.iter() {

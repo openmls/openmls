@@ -171,8 +171,6 @@ implement_error! {
         Complex {
             PlaintextSignatureFailure(VerificationError) =
                 "MlsPlaintext signature is invalid.",
-            DecryptionFailure(TreeError) =
-                "A matching EncryptedPathSecret failed to decrypt.",
             CodecError(TlsCodecError) =
                 "Tls (de)serialization error occurred.",
             KeyScheduleError(KeyScheduleError) =
