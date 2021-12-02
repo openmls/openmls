@@ -24,7 +24,8 @@ macro_rules! test_welcome_msg {
                 GroupEpoch(123),
                 vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
                 vec![1, 1, 1],
-                Vec::new(),
+                &Vec::new(),
+                &Vec::new(),
                 ConfirmationTag(Mac {
                     mac_value: vec![1, 2, 3, 4, 5].into(),
                 }),
@@ -50,7 +51,9 @@ macro_rules! test_welcome_msg {
             // Generate receiver key pair.
             let receiver_key_pair = crypto.crypto().derive_hpke_keypair(
                 $ciphersuite.hpke_config(),
-                Secret::random($ciphersuite, &crypto, None).as_slice(),
+                Secret::random($ciphersuite, &crypto, None)
+                    .expect("Not enough randomness.")
+                    .as_slice(),
             );
             let hpke_info = b"group info welcome test info";
             let hpke_aad = b"group info welcome test aad";

@@ -28,7 +28,7 @@ pub(crate) fn level(index: NodeIndex) -> usize {
         return 0;
     }
     let mut k = 0;
-    while ((x >> k) & 0x01) == 1 {
+    while ((x as u64 >> k) & 0x01) == 1 {
         k += 1;
     }
     k
@@ -73,9 +73,11 @@ pub(crate) fn right(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, Tree
 
 // The parent here might be beyond the right edge of the tree.
 pub(crate) fn parent_step(x: usize) -> usize {
+    // We need to use u64 for some of the operations where usize is too small on 32bit platforms
     let k = level(NodeIndex::from(x));
-    let b = (x >> (k + 1)) & 0x01;
-    (x | (1 << k)) ^ (b << (k + 1))
+    let b = (x as u64 >> (k + 1)) & 0x01;
+    let res = (x as u64 | (1 << k)) ^ (b << (k + 1));
+    res as usize
 }
 
 // This function is only safe to use if index <= size.
@@ -153,20 +155,24 @@ pub(crate) fn descendants(x: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
 /// Returns the list of nodes that are descendants of a given parent node,
 /// including the parent node itself
 /// (Alternative, easier to verify implementation)
+
 #[cfg(test)]
-pub(crate) fn descendants_alt(x: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
-    if level(x) == 0 {
+pub(crate) fn descendants_alt(
+    x: NodeIndex,
+    size: LeafIndex,
+) -> Result<Vec<NodeIndex>, TreeMathError> {
+    Ok(if level(x) == 0 {
         vec![x]
     } else {
-        let left_child = left(x).unwrap();
-        let right_child = right(x, size).unwrap();
+        let left_child = left(x)?;
+        let right_child = right(x, size)?;
         [
-            descendants_alt(left_child, size),
+            descendants_alt(left_child, size)?,
             vec![x],
-            descendants_alt(right_child, size),
+            descendants_alt(right_child, size)?,
         ]
         .concat()
-    }
+    })
 }
 
 #[test]

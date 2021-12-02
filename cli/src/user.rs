@@ -62,7 +62,12 @@ impl User {
     /// Get the key packages fo this user.
     pub fn key_packages(&self) -> Vec<(Vec<u8>, KeyPackage)> {
         vec![(
-            self.identity.borrow().kpb.key_package().hash(&self.crypto),
+            self.identity
+                .borrow()
+                .kpb
+                .key_package()
+                .hash(&self.crypto)
+                .unwrap(),
             self.identity.borrow().kpb.key_package().clone(),
         )]
     }
@@ -267,18 +272,14 @@ impl User {
         let mut group_aad = group_id.to_vec();
         group_aad.extend(b" AAD");
         let kpb = self.identity.borrow_mut().update(&self.crypto);
-        let mut config = MlsGroupConfig::default();
-        config.add_ratchet_tree_extension = true;
-        let mls_group = MlsGroup::new(
-            group_id,
-            CIPHERSUITE,
-            &self.crypto,
-            kpb,
-            config,
-            None, /* Initial PSK */
-            None, /* MLS version */
-        )
-        .unwrap();
+        let config = MlsGroupConfig {
+            add_ratchet_tree_extension: true,
+            ..Default::default()
+        };
+        let mls_group = MlsGroup::builder(GroupId::from_slice(group_id), kpb)
+            .with_config(config)
+            .build(&self.crypto)
+            .unwrap();
         let group = Group {
             group_id: group_id.to_vec(),
             group_name: name.clone(),

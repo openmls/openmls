@@ -156,9 +156,10 @@ impl OpenMlsCrypto for RustCrypto {
                     .map_err(|_| CryptoError::CryptoLibraryError)
             }
             AeadType::ChaCha20Poly1305 => {
-                let aes = ChaCha20Poly1305::new_from_slice(key)
+                let chacha_poly = ChaCha20Poly1305::new_from_slice(key)
                     .map_err(|_| CryptoError::CryptoLibraryError)?;
-                aes.encrypt(nonce.into(), Payload { msg: data, aad })
+                chacha_poly
+                    .encrypt(nonce.into(), Payload { msg: data, aad })
                     .map(|r| r.as_slice().into())
                     .map_err(|_| CryptoError::CryptoLibraryError)
             }
@@ -184,14 +185,15 @@ impl OpenMlsCrypto for RustCrypto {
             AeadType::Aes256Gcm => {
                 let aes =
                     Aes256Gcm::new_from_slice(key).map_err(|_| CryptoError::CryptoLibraryError)?;
-                aes.encrypt(nonce.into(), Payload { msg: ct_tag, aad })
+                aes.decrypt(nonce.into(), Payload { msg: ct_tag, aad })
                     .map(|r| r.as_slice().into())
                     .map_err(|_| CryptoError::AeadDecryptionError)
             }
             AeadType::ChaCha20Poly1305 => {
-                let aes = ChaCha20Poly1305::new_from_slice(key)
+                let chacha_poly = ChaCha20Poly1305::new_from_slice(key)
                     .map_err(|_| CryptoError::CryptoLibraryError)?;
-                aes.encrypt(nonce.into(), Payload { msg: ct_tag, aad })
+                chacha_poly
+                    .decrypt(nonce.into(), Payload { msg: ct_tag, aad })
                     .map(|r| r.as_slice().into())
                     .map_err(|_| CryptoError::AeadDecryptionError)
             }
@@ -251,8 +253,12 @@ impl OpenMlsCrypto for RustCrypto {
                 }
                 let mut sig = [0u8; ed25519_dalek::SIGNATURE_LENGTH];
                 sig.clone_from_slice(signature);
-                k.verify_strict(data, &ed25519_dalek::Signature::new(sig))
-                    .map_err(|_| CryptoError::InvalidSignature)
+                k.verify_strict(
+                    data,
+                    &ed25519_dalek::Signature::from_bytes(&sig)
+                        .map_err(|_| CryptoError::CryptoLibraryError)?,
+                )
+                .map_err(|_| CryptoError::InvalidSignature)
             }
             _ => Err(CryptoError::UnsupportedSignatureScheme),
         }

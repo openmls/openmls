@@ -12,7 +12,7 @@
 //! opaque key_id<0..2^16-1>;
 //! ```
 
-use tls_codec::{Size, TlsByteVecU16, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsByteVecU16, TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::{Deserialize, Serialize};
 

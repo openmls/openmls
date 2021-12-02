@@ -11,7 +11,8 @@ fn test_ratchet_generations() {
 
     for ciphersuite in Config::supported_ciphersuites() {
         let leaf0 = LeafIndex::from(0usize);
-        let secret = Secret::random(ciphersuite, crypto, Config::supported_versions()[0]);
+        let secret = Secret::random(ciphersuite, crypto, Config::supported_versions()[0])
+            .expect("Not enough randomness.");
         let mut linear_ratchet = SenderRatchet::new(leaf0, &secret);
         let mut testratchet = SenderRatchet::new(leaf0, &secret);
 

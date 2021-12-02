@@ -1,3 +1,6 @@
+use openmls_traits::types::CryptoError;
+use tls_codec::Error as TlsCodecError;
+
 implement_error! {
     pub enum ErrorState {
         NotInit = "Expected to be in initial state.",
@@ -8,16 +11,52 @@ implement_error! {
 
 implement_error! {
     pub enum KeyScheduleError {
-        InvalidState(ErrorState) =
-            "The requested operation is not valid on the key schedule state.",
+        Simple {
+            LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
+        }
+        Complex {
+            InvalidState(ErrorState) =
+                "The requested operation is not valid on the key schedule state.",
+            CryptoError(CryptoError) =
+                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
+        }
+    }
+}
+
+implement_error! {
+    pub enum ExporterError {
+        Simple {}
+        Complex {
+            CodecError(TlsCodecError) =
+                "TLS (de)serialization error occurred.",
+            CryptoError(CryptoError) =
+                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
+        }
     }
 }
 
 implement_error! {
     pub enum PskSecretError {
-        TooManyKeys = "More than 2^16 PSKS were provided.",
-        DifferentLength = "The IDs and secrets vectors have different lengths.",
-        EncodingError = "Error serializing the PSK label.",
+        Simple {
+            TooManyKeys = "More than 2^16 PSKs were provided.",
+            DifferentLength = "The IDs and secrets vectors have different lengths.",
+            EncodingError = "Error serializing the PSK label.",
+        }
+        Complex {
+            CryptoError(CryptoError) = "See [`CryptoError`] for more details.",
+        }
+    }
+}
+
+implement_error! {
+    pub enum MembershipKeyError {
+        Simple {}
+        Complex {
+            CodecError(TlsCodecError) =
+                "TLS (de)serialization error occurred.",
+            CryptoError(CryptoError) =
+                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
+        }
     }
 }
 

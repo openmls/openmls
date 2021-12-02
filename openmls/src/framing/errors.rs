@@ -4,7 +4,9 @@
 //! handling `MlsPlaintext` and `MlsCiphertext`.
 
 use crate::credentials::CredentialError;
+use crate::schedule::errors::MembershipKeyError;
 use crate::tree::secret_tree::SecretTreeError;
+use openmls_traits::types::CryptoError;
 use tls_codec::Error as TlsCodecError;
 
 implement_error! {
@@ -19,6 +21,8 @@ implement_error! {
             CodecError(TlsCodecError) = "TLS Codec error",
             CredentialError(CredentialError) = "See [`CredentialError`](`crate::credentials::CredentialError`) for details.",
             VerificationError(VerificationError) = "See [`VerificationError`](`VerificationError`) for details.",
+            MembershipKeyError(MembershipKeyError) = "See [`MembershipKeyError`](`MembershipKeyError`) for details.",
+            CryptoError(CryptoError) = "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
         }
     }
 }
@@ -36,6 +40,7 @@ implement_error! {
             PlaintextError(MlsPlaintextError) = "MlsPlaintext error",
             SecretTreeError(SecretTreeError) = "SecretTree error",
             CodecError(TlsCodecError) = "TLS codec error",
+            CryptoError(CryptoError) = "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
         }
     }
 }
@@ -48,6 +53,26 @@ implement_error! {
         }
         Complex {
             CredentialError(CredentialError) = "Credential error",
+        }
+    }
+}
+
+implement_error! {
+    pub enum ValidationError {
+        Simple {
+            NotAnApplicationMessage = "The MlsPlaintext message is not an application message.",
+            UnencryptedApplicationMessage = "The MlsPlaintext contains an application message but was not encrypted.",
+            UnknownSender = "Sender is not part of the group",
+            MissingMembershipTag = "The membership tag is missing.",
+            MissingConfirmationTag = "The confirmation tag is missing.",
+            WrongWireFormat = "Wrong wire format.",
+            LibraryError = "A library error occured",
+        }
+        Complex {
+            CodecError(TlsCodecError) = "TLS Codec error",
+            CredentialError(CredentialError) = "See [`CredentialError`](`crate::credentials::CredentialError`) for details.",
+            MlsPlaintextError(MlsPlaintextError) = "See [`MlsPlaintextError`](`MlsPlaintextError`) for details.",
+            MlsCiphertextError(MlsCiphertextError) = "See [`MlsCiphertextError`](`MlsCiphertextError`) for details.",
         }
     }
 }

@@ -62,6 +62,8 @@ impl TestClient {
 /// keystore, which holds the KeyPackages published by the clients.
 pub(crate) struct TestSetup {
     pub(crate) _key_store: RefCell<HashMap<(&'static str, CiphersuiteName), Vec<KeyPackage>>>,
+    // Clippy has a hard time figuring this one out
+    #[allow(dead_code)]
     pub clients: RefCell<HashMap<&'static str, RefCell<TestClient>>>,
 }
 
@@ -96,6 +98,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 let capabilities_extension = Extension::Capabilities(CapabilitiesExtension::new(
                     None,
                     Some(&[ciphersuite]),
+                    None,
                     None,
                 ));
                 let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
@@ -151,16 +154,13 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             .get(&group_config.ciphersuite)
             .unwrap();
         // Initialize the group state for the initial member.
-        let mls_group = MlsGroup::new(
-            &group_id.to_be_bytes(),
-            group_config.ciphersuite,
-            &crypto,
+        let mls_group = MlsGroup::builder(
+            GroupId::from_slice(&group_id.to_be_bytes()),
             initial_key_package_bundle,
-            group_config.config,
-            None, /* Initial PSK */
-            None, /* MLS version */
         )
-        .unwrap();
+        .with_config(group_config.config)
+        .build(&crypto)
+        .expect("Error creating new MlsGroup");
         let mut proposal_list = Vec::new();
         let group_aad = b"";
         // Framing parameters
@@ -252,7 +252,12 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                             .key_package_bundles
                             .borrow()
                             .iter()
-                            .any(|y| y.key_package().hash(&crypto) == x.key_package_hash.as_slice())
+                            .any(|y| {
+                                y.key_package()
+                                    .hash(&crypto)
+                                    .expect("Could not hash KeyPackage.")
+                                    == x.key_package_hash.as_slice()
+                            })
                     })
                     .unwrap();
                 let kpb_position = new_group_member
@@ -260,7 +265,10 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     .borrow()
                     .iter()
                     .position(|y| {
-                        y.key_package().hash(&crypto) == member_secret.key_package_hash.as_slice()
+                        y.key_package()
+                            .hash(&crypto)
+                            .expect("Could not hash KeyPackage.")
+                            == member_secret.key_package_hash.as_slice()
                     })
                     .unwrap();
                 let key_package_bundle = new_group_member

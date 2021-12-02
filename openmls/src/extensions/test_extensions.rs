@@ -7,13 +7,16 @@ use tls_codec::{Deserialize, Serialize};
 
 use super::*;
 
-use crate::{group::create_commit_params::CreateCommitParams, prelude::*};
+use crate::{
+    group::create_commit_params::CreateCommitParams, messages::proposals::ProposalType, prelude::*,
+};
 
 #[test]
 fn capabilities() {
     // A capabilities extension with the default values for openmls.
     let extension_bytes = [
-        0u8, 1, 0, 0, 0, 17, 2, 1, 200, 6, 0, 1, 0, 2, 0, 3, 6, 0, 1, 0, 2, 0, 3,
+        0u8, 1, 0, 0, 0, 30, 2, 1, 200, 6, 0, 1, 0, 2, 0, 3, 6, 0, 1, 0, 2, 0, 3, 12, 0, 1, 0, 2,
+        0, 3, 0, 4, 0, 5, 0, 8,
     ];
     let mut extension_bytes_mut = &extension_bytes[..];
 
@@ -128,17 +131,10 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     };
 
     // === Alice creates a group with the ratchet tree extension ===
-    let group_id = [1, 2, 3, 4];
-    let mut alice_group = MlsGroup::new(
-        &group_id,
-        ciphersuite.name(),
-        crypto,
-        alice_key_package_bundle,
-        config,
-        None, /* Initial PSK */
-        None, /* MLS version */
-    )
-    .unwrap();
+    let mut alice_group = MlsGroup::builder(GroupId::random(crypto), alice_key_package_bundle)
+        .with_config(config)
+        .build(crypto)
+        .expect("Error creating group.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group
@@ -206,17 +202,10 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         ..MlsGroupConfig::default()
     };
 
-    let group_id = [5, 6, 7, 8];
-    let mut alice_group = MlsGroup::new(
-        &group_id,
-        ciphersuite.name(),
-        crypto,
-        alice_key_package_bundle,
-        config,
-        None, /* Initial PSK */
-        None, /* MLS version */
-    )
-    .unwrap();
+    let mut alice_group = MlsGroup::builder(GroupId::random(crypto), alice_key_package_bundle)
+        .with_config(config)
+        .build(crypto)
+        .expect("Error creating group.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group
@@ -258,3 +247,40 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         MlsGroupError::WelcomeError(WelcomeError::MissingRatchetTree)
     );
 });
+
+#[test]
+fn required_capabilities() {
+    // A required capabilities extension with the default values for openmls (none).
+    let extension_bytes = vec![0u8, 6, 0, 0, 0, 2, 0, 0];
+    let mut extension_bytes_mut = &extension_bytes[..];
+
+    let ext = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
+
+    // Check that decoding works
+    let required_capabilities = Extension::tls_deserialize(&mut extension_bytes_mut).unwrap();
+    assert_eq!(ext, required_capabilities);
+
+    // Encoding creates the expected bytes.
+    assert_eq!(
+        extension_bytes,
+        &required_capabilities.tls_serialize_detached().unwrap()[..]
+    );
+
+    // Build one with some content.
+    let required_capabilities = RequiredCapabilitiesExtension::new(
+        &[ExtensionType::KeyId, ExtensionType::RatchetTree],
+        &[ProposalType::Reinit],
+    );
+    let ext = Extension::RequiredCapabilities(required_capabilities);
+    let extension_bytes = vec![0u8, 6, 0, 0, 0, 8, 4, 0, 3, 0, 5, 2, 0, 5];
+
+    // Test encoding and decoding
+    let encoded = ext
+        .tls_serialize_detached()
+        .expect("error encoding required capabilities extension");
+    let ext_decoded = Extension::tls_deserialize(&mut encoded.as_slice())
+        .expect("error decoding required capabilities extension");
+
+    assert_eq!(ext, ext_decoded);
+    assert_eq!(extension_bytes, encoded);
+}

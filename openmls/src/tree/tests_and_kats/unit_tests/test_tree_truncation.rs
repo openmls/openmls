@@ -4,9 +4,9 @@ use crate::{
     ciphersuite::Ciphersuite,
     credentials::{CredentialBundle, CredentialType},
     group::ManagedGroupConfig,
-    node::{Node, NodeType},
     prelude::{KeyPackageBundle, LeafIndex},
     test_utils::test_framework::{ActionType, CodecUse, ManagedTestSetup},
+    tree::node::{Node, NodeType},
     tree::RatchetTree,
 };
 

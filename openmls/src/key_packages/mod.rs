@@ -1,5 +1,6 @@
 use log::error;
 use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::types::CryptoError;
 use openmls_traits::types::HpkeKeyPair;
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsCryptoProvider;
@@ -11,6 +12,7 @@ use crate::ciphersuite::signable::Verifiable;
 use crate::ciphersuite::*;
 use crate::config::{Config, ProtocolVersion};
 use crate::credentials::*;
+use crate::extensions::RequiredCapabilitiesExtension;
 use crate::extensions::{
     CapabilitiesExtension, Extension, ExtensionError, ExtensionType, LifetimeExtension,
     ParentHashExtension,
@@ -94,6 +96,11 @@ impl KeyPackagePayload {
     pub fn add_extension(&mut self, extension: Extension) {
         self.remove_extension(extension.extension_type());
         self.extensions.push(extension);
+    }
+
+    /// Get extensions of the KeyPackage.
+    pub fn extensions(&self) -> &[Extension] {
+        self.extensions.as_slice()
     }
 }
 
@@ -187,10 +194,9 @@ impl KeyPackage {
     }
 
     /// Compute the hash of the encoding of this key package.
-    pub fn hash(&self, backend: &impl OpenMlsCryptoProvider) -> Vec<u8> {
-        // FIXME: remove unwrap
-        let bytes = self.tls_serialize_detached().unwrap();
-        self.payload.ciphersuite.hash(backend, &bytes)
+    pub fn hash(&self, backend: &impl OpenMlsCryptoProvider) -> Result<Vec<u8>, KeyPackageError> {
+        let bytes = self.tls_serialize_detached()?;
+        Ok(self.payload.ciphersuite.hash(backend, &bytes)?)
     }
 
     /// Get the ID of this key package as byte slice.
@@ -209,9 +215,41 @@ impl KeyPackage {
         self.payload.extensions.as_slice()
     }
 
+    /// Check whether the this key package supports all the required extensions
+    /// in the provided list.
+    pub fn check_extension_support(
+        &self,
+        required_extensions: &[ExtensionType],
+    ) -> Result<(), KeyPackageError> {
+        let my_extension_types = self.extensions().iter().map(|ext| ext.extension_type());
+        for required in required_extensions.iter() {
+            if !my_extension_types.clone().any(|e| &e == required) {
+                return Err(KeyPackageError::UnsupportedExtension);
+            }
+        }
+        Ok(())
+    }
+
     /// Get a reference to the credential.
     pub fn credential(&self) -> &Credential {
         &self.payload.credential
+    }
+
+    /// Check that all extensions that are required, are supported by this key
+    /// package.
+    pub(crate) fn validate_required_capabilities<'a>(
+        &self,
+        required_capabilities: impl Into<Option<&'a RequiredCapabilitiesExtension>>,
+    ) -> Result<(), KeyPackageError> {
+        if let Some(required_capabilities) = required_capabilities.into() {
+            let my_extension_types = self.extensions().iter().map(|e| e.extension_type());
+            for required_extension in required_capabilities.extensions() {
+                if !my_extension_types.clone().any(|e| &e == required_extension) {
+                    return Err(KeyPackageError::UnsupportedExtension);
+                }
+            }
+        }
+        Ok(())
     }
 }
 
@@ -292,12 +330,12 @@ impl KeyPackageBundlePayload {
     pub(crate) fn from_rekeyed_key_package(
         key_package: &KeyPackage,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Self {
+    ) -> Result<Self, CryptoError> {
         let leaf_secret = Secret::random(
             key_package.ciphersuite(),
             backend,
             key_package.protocol_version(),
-        );
+        )?;
         Self::from_key_package_and_leaf_secret(leaf_secret, key_package, backend)
     }
 
@@ -308,19 +346,19 @@ impl KeyPackageBundlePayload {
         leaf_secret: Secret,
         key_package: &KeyPackage,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Self {
+    ) -> Result<Self, CryptoError> {
         let leaf_node_secret = derive_leaf_node_secret(&leaf_secret, backend);
         let key_pair = backend.crypto().derive_hpke_keypair(
             key_package.ciphersuite().hpke_config(),
-            leaf_node_secret.as_slice(),
+            leaf_node_secret?.as_slice(),
         );
         let key_package_payload =
             KeyPackagePayload::from_key_package(key_package, key_pair.public.into());
-        Self {
+        Ok(Self {
             key_package_payload,
             private_key: key_pair.private.into(),
             leaf_secret,
-        }
+        })
     }
 
     /// Update the parent hash extension of this key package.
@@ -422,8 +460,8 @@ impl KeyPackageBundle {
             return Err(KeyPackageError::CiphersuiteSignatureSchemeMismatch);
         }
         debug_assert!(!ciphersuites.is_empty());
-        let ciphersuite = Config::ciphersuite(ciphersuites[0]).unwrap();
-        let leaf_secret = Secret::random(ciphersuite, backend, version);
+        let ciphersuite = Config::ciphersuite(ciphersuites[0])?;
+        let leaf_secret = Secret::random(ciphersuite, backend, version)?;
         Self::new_from_leaf_secret(
             ciphersuites,
             backend,
@@ -489,7 +527,7 @@ impl KeyPackageBundle {
             .find(|e| e.extension_type() == ExtensionType::Capabilities)
         {
             Some(extension) => {
-                let capabilities_extension = extension.as_capabilities_extension().unwrap();
+                let capabilities_extension = extension.as_capabilities_extension()?;
                 if capabilities_extension.ciphersuites() != ciphersuites {
                     let error = KeyPackageError::CiphersuiteMismatch;
                     error!(
@@ -503,6 +541,7 @@ impl KeyPackageBundle {
             None => extensions.push(Extension::Capabilities(CapabilitiesExtension::new(
                 None,
                 Some(ciphersuites),
+                None,
                 None,
             ))),
         };
@@ -558,11 +597,11 @@ impl KeyPackageBundle {
             return Err(error);
         }
 
-        let ciphersuite = Config::ciphersuite(ciphersuites[0]).unwrap();
+        let ciphersuite = Config::ciphersuite(ciphersuites[0])?;
         let leaf_node_secret = derive_leaf_node_secret(&leaf_secret, backend);
         let keypair = backend
             .crypto()
-            .derive_hpke_keypair(ciphersuite.hpke_config(), leaf_node_secret.as_slice());
+            .derive_hpke_keypair(ciphersuite.hpke_config(), leaf_node_secret?.as_slice());
         Self::new_with_keypair(
             ciphersuites,
             backend,
@@ -597,7 +636,6 @@ impl KeyPackageBundle {
 pub(crate) fn derive_leaf_node_secret(
     leaf_secret: &Secret,
     backend: &impl OpenMlsCryptoProvider,
-) -> Secret {
-    // FIXME: remove unwrap
-    leaf_secret.derive_secret(backend, "node").unwrap()
+) -> Result<Secret, CryptoError> {
+    leaf_secret.derive_secret(backend, "node")
 }

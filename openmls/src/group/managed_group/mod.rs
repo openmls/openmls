@@ -1,24 +1,25 @@
 mod application;
-pub mod callbacks;
 pub mod config;
 mod creation;
 pub mod errors;
-pub mod events;
 mod exporting;
 mod membership;
-mod processing;
+pub mod processing;
 mod resumption;
 mod ser;
 #[cfg(test)]
 mod test_managed_group;
 mod updates;
-pub mod validation;
 
+use crate::credentials::CredentialBundle;
 use crate::{binary_tree::LeafIndex, credentials::CredentialBundle, treesync::node::Node};
+#[cfg(any(feature = "test-utils", test))]
+use openmls_traits::types::CryptoError;
+
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 
 use crate::{
-    ciphersuite::signable::{Signable, Verifiable},
+    ciphersuite::signable::Signable,
     credentials::Credential,
     framing::*,
     group::*,
@@ -28,19 +29,16 @@ use crate::{
     schedule::ResumptionSecret,
 };
 
-use std::collections::HashMap;
 use std::io::{Error, Read, Write};
 
 #[cfg(any(feature = "test-utils", test))]
 use std::cell::Ref;
 
-pub use callbacks::*;
 pub use config::*;
 pub use errors::{
     EmptyInputError, InvalidMessageError, ManagedGroupError, PendingProposalsError,
     UseAfterEviction,
 };
-pub use events::*;
 pub(crate) use resumption::ResumptionSecretStore;
 use ser::*;
 
@@ -96,6 +94,10 @@ pub struct ManagedGroup {
     // to `true` upon group creation and is set to `false` when the client gets evicted from the
     // group`.
     active: bool,
+    // A flag that indicates if the group state has changed and needs to be persisted again. The value
+    // is set to `InnerState::Changed` whenever an the internal group state is change and is set to
+    // `InnerState::Persisted` once the state has been persisted.
+    state_changed: InnerState,
 }
 
 impl ManagedGroup {
@@ -110,8 +112,8 @@ impl ManagedGroup {
     pub fn set_configuration(&mut self, managed_group_config: &ManagedGroupConfig) {
         self.managed_group_config = managed_group_config.clone();
 
-        // Since the state of the group was changed, call the auto-save function
-        self.auto_save();
+        // Since the state of the group might be changed, arm the state flag
+        self.flag_state_change();
     }
 
     /// Gets the AAD used in the framing
@@ -123,8 +125,8 @@ impl ManagedGroup {
     pub fn set_aad(&mut self, aad: &[u8]) {
         self.aad = aad.to_vec();
 
-        // Since the state of the group was changed, call the auto-save function
-        self.auto_save();
+        // Since the state of the group might be changed, arm the state flag
+        self.flag_state_change();
     }
 
     // === Advanced functions ===
@@ -165,18 +167,23 @@ impl ManagedGroup {
     // === Load & save ===
 
     /// Loads the state from persisted state
-    pub fn load<R: Read>(
-        reader: R,
-        callbacks: &ManagedGroupCallbacks,
-    ) -> Result<ManagedGroup, Error> {
+    pub fn load<R: Read>(reader: R) -> Result<ManagedGroup, Error> {
         let serialized_managed_group: SerializedManagedGroup = serde_json::from_reader(reader)?;
-        Ok(serialized_managed_group.into_managed_group(callbacks))
+        Ok(serialized_managed_group.into_managed_group())
     }
 
     /// Persists the state
-    pub fn save<W: Write>(&self, writer: &mut W) -> Result<(), Error> {
+    pub fn save<W: Write>(&mut self, writer: &mut W) -> Result<(), Error> {
         let serialized_managed_group = serde_json::to_string_pretty(self)?;
-        writer.write_all(&serialized_managed_group.into_bytes())
+        writer.write_all(&serialized_managed_group.into_bytes())?;
+        self.state_changed = InnerState::Persisted;
+        Ok(())
+    }
+
+    /// Returns `true` if the internal state has changed and needs to be persisted and
+    /// `false` otherwise. Calling [save()] resets the value to `false`.
+    pub fn state_changed(&self) -> InnerState {
+        self.state_changed
     }
 
     // === Extensions ===
@@ -205,6 +212,12 @@ impl ManagedGroup {
     pub fn print_tree(&self, message: &str) {
         _print_tree(&self.group.tree(), message)
     }
+
+    /// Get the underlying [MlsGroup].
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn group(&self) -> &MlsGroup {
+        &self.group
+    }
 }
 
 // Private methods of ManagedGroup
@@ -229,74 +242,9 @@ impl ManagedGroup {
         Ok(msg)
     }
 
-    /// Validate all pending proposals. The function returns `true` only if all
-    /// proposals are valid.
-    fn validate_proposal(
-        &self,
-        proposal: &Proposal,
-        sender: LeafIndex,
-        indexed_members: &HashMap<LeafIndex, &Credential>,
-    ) -> bool {
-        let sender = &indexed_members[&sender];
-        match proposal {
-            // Validate add proposals
-            Proposal::Add(add_proposal) => {
-                if let Some(validate_add) = self.managed_group_config.callbacks.validate_add {
-                    if !validate_add(self, sender, add_proposal.key_package.credential()) {
-                        return false;
-                    }
-                }
-            }
-            // Validate remove proposals
-            Proposal::Remove(remove_proposal) => {
-                if let Some(validate_remove) = self.managed_group_config.callbacks.validate_remove {
-                    if !validate_remove(self, sender, indexed_members[&remove_proposal.removed]) {
-                        return false;
-                    }
-                }
-            }
-            // Update proposals don't have validators
-            Proposal::Update(_) => {}
-            Proposal::PreSharedKey(_) => {}
-            Proposal::ReInit(_) => {}
-        }
-        true
-    }
-
-    /// Validates the inline proposals from a Commit message
-    fn validate_inline_proposals(
-        &self,
-        proposals: &[ProposalOrRef],
-        sender: LeafIndex,
-        indexed_members: &HashMap<LeafIndex, &Credential>,
-    ) -> bool {
-        for proposal_or_ref in proposals {
-            match proposal_or_ref {
-                ProposalOrRef::Proposal(proposal) => {
-                    if !self.validate_proposal(proposal, sender, indexed_members) {
-                        return false;
-                    }
-                }
-                ProposalOrRef::Reference(_) => {}
-            }
-        }
-        true
-    }
-
-    /// Auto-save function
-    fn auto_save(&self) {
-        if let Some(auto_save) = self.managed_group_config.callbacks.auto_save {
-            auto_save(self);
-        }
-    }
-
-    /// Return a list `(LeafIndex, &KeyPackage)`
-    fn indexed_members(&self) -> Result<HashMap<LeafIndex, &Credential>, ManagedGroupError> {
-        let mut map = HashMap::new();
-        for (index, key_package) in self.group.tree().full_leaves()? {
-            map.insert(index, key_package.credential());
-        }
-        Ok(map)
+    /// Arm the state changed flag function
+    fn flag_state_change(&mut self) {
+        self.state_changed = InnerState::Changed;
     }
 
     /// Group framing parameters
@@ -305,82 +253,11 @@ impl ManagedGroup {
     }
 }
 
-/// Unified message type for input to the managed API
-#[derive(Debug, Clone)]
-pub enum MlsMessageIn {
-    /// An OpenMLS `MlsPlaintext`.
-    Plaintext(VerifiableMlsPlaintext),
-
-    /// An OpenMLS `MlsCiphertext`.
-    Ciphertext(MlsCiphertext),
-}
-
-#[cfg(any(feature = "test-utils", test))]
-impl MlsMessageIn {
-    pub fn group_id(&self) -> &[u8] {
-        match self {
-            MlsMessageIn::Ciphertext(m) => m.group_id().as_slice(),
-            MlsMessageIn::Plaintext(m) => m.group_id().as_slice(),
-        }
-    }
-}
-
-/// Unified message type for output by the managed API
-#[derive(PartialEq, Debug, Clone)]
-pub enum MlsMessageOut {
-    /// An OpenMLS `MlsPlaintext`.
-    Plaintext(MlsPlaintext),
-
-    /// An OpenMLS `MlsCiphertext`.
-    Ciphertext(MlsCiphertext),
-}
-
-impl From<MlsPlaintext> for MlsMessageOut {
-    fn from(mls_plaintext: MlsPlaintext) -> Self {
-        MlsMessageOut::Plaintext(mls_plaintext)
-    }
-}
-
-impl From<MlsCiphertext> for MlsMessageOut {
-    fn from(mls_ciphertext: MlsCiphertext) -> Self {
-        MlsMessageOut::Ciphertext(mls_ciphertext)
-    }
-}
-
-impl MlsMessageOut {
-    /// Get the group ID as plain byte vector.
-    pub fn group_id(&self) -> &[u8] {
-        match self {
-            MlsMessageOut::Ciphertext(m) => m.group_id().as_slice(),
-            MlsMessageOut::Plaintext(m) => m.group_id().as_slice(),
-        }
-    }
-
-    /// Get the epoch as plain u64.
-    pub fn epoch(&self) -> u64 {
-        match self {
-            MlsMessageOut::Ciphertext(m) => m.epoch.0,
-            MlsMessageOut::Plaintext(m) => m.epoch().0,
-        }
-    }
-
-    /// Returns `true` if this is a handshake message and `false` otherwise.
-    pub fn is_handshake_message(&self) -> bool {
-        match self {
-            MlsMessageOut::Ciphertext(m) => m.is_handshake_message(),
-            MlsMessageOut::Plaintext(m) => m.is_handshake_message(),
-        }
-    }
-}
-
-#[cfg(any(feature = "test-utils", test))]
-impl From<MlsMessageOut> for MlsMessageIn {
-    fn from(message: MlsMessageOut) -> Self {
-        match message {
-            MlsMessageOut::Plaintext(pt) => {
-                MlsMessageIn::Plaintext(VerifiableMlsPlaintext::from_plaintext(pt, None))
-            }
-            MlsMessageOut::Ciphertext(ct) => MlsMessageIn::Ciphertext(ct),
-        }
-    }
+/// `Enum` that indicates whether the inner group state has been modified since the last time it was persisted.
+/// `InnerState::Changed` indicates that the state has changed and that [`.save()`] should be called.
+/// `InnerState::Persisted` indicates that the state has not been modified and therefore doesn't need to be persisted.
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum InnerState {
+    Changed,
+    Persisted,
 }

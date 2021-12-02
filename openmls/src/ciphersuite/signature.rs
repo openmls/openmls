@@ -43,6 +43,15 @@ impl<T> SignedStruct<T> for Signature {
 }
 
 impl SignatureKeypair {
+    /// Construct new [SignatureKeypair] from a private and a public key
+    #[cfg(test)]
+    pub fn from_keys(private_key: SignaturePrivateKey, public_key: SignaturePublicKey) -> Self {
+        Self {
+            private_key,
+            public_key,
+        }
+    }
+
     /// Get the private and public key objects
     pub fn into_tuple(self) -> (SignaturePrivateKey, SignaturePublicKey) {
         (self.private_key, self.public_key)
@@ -104,6 +113,7 @@ impl SignaturePublicKey {
             signature_scheme,
         })
     }
+
     /// Verify a `Signature` on the `payload` byte slice with the key pair's
     /// public key.
     pub fn verify(
@@ -125,6 +135,11 @@ impl SignaturePublicKey {
                 signature.value.as_slice(),
             )
             .map_err(|_| CryptoError::InvalidSignature)
+    }
+
+    /// Returns the bytes of the signature public key.
+    pub fn as_slice(&self) -> &[u8] {
+        &self.value
     }
 }
 

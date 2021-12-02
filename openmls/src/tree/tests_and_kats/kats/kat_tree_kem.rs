@@ -1,6 +1,6 @@
 //! TreeKEM test vectors
 //!
-//! See https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md
+//! See <https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md>
 //! for more description on the test vectors.
 //!
 //! The test vector describes a tree of `n` leaves adds a new leaf with
@@ -31,7 +31,7 @@ use crate::{
     treesync::TreeSync,
 };
 use crate::{
-    group::MlsMessageOut,
+    framing::MlsMessageOut,
     prelude::MlsPlaintextContentType,
     test_utils::{
         bytes_to_hex,
@@ -109,6 +109,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
         &my_key_package,
         &crypto,
     )
+    .expect("Coul not create KeyPackage.")
     .sign(&crypto, &credential_bundle)
     .unwrap();
 
@@ -158,6 +159,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
         &my_key_package,
         &crypto,
     )
+    .expect("Coul not create KeyPackage.")
     .sign(&crypto, &credential_bundle)
     .unwrap();
 
@@ -288,7 +290,7 @@ fn read_test_vector() {
 #[test]
 fn write_test_vector() {
     let mut tests = Vec::new();
-    const NUM_LEAVES: u32 = 20;
+    const NUM_LEAVES: u32 = 7;
 
     for ciphersuite in Config::supported_ciphersuites() {
         for n_leaves in 2..NUM_LEAVES {
@@ -395,7 +397,11 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     let kpb: KeyPackageBundle = addee
         .crypto
         .key_store()
-        .read(&my_key_package.hash(&crypto))
+        .read(
+            &my_key_package
+                .hash(&crypto)
+                .expect("Could not hash KeyPackage."),
+        )
         .unwrap();
     let my_leaf_secret = kpb.leaf_secret();
 

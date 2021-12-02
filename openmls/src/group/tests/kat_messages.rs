@@ -1,7 +1,7 @@
 //! # Known Answer Tests for the encoding and decoding of various structs of the
 //! MLS spec
 //!
-//! See https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md
+//! See <https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md>
 //! for more description on the test vectors.
 
 use crate::{
@@ -66,18 +66,9 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     let lifetime = LifetimeExtension::default();
 
     // Let's create a group
-    let group_id = GroupId::random(&crypto);
-    let config = MlsGroupConfig::default();
-    let mut group = MlsGroup::new(
-        group_id.as_slice(),
-        ciphersuite_name,
-        &crypto,
-        key_package_bundle,
-        config,
-        None,
-        ProtocolVersion::default(),
-    )
-    .unwrap();
+    let mut group = MlsGroup::builder(GroupId::random(&crypto), key_package_bundle)
+        .build(&crypto)
+        .expect("Could not create group.");
 
     let ratchet_tree: Vec<Option<Node>> = group
         .tree()
@@ -88,11 +79,14 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
 
     // We can't easily get a "natural" GroupInfo, so we just create one here.
     let group_info = GroupInfoPayload::new(
-        group_id.clone(),
+        group.group_id().clone(),
         GroupEpoch(0),
         crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
         crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
-        vec![Extension::RatchetTree(RatchetTreeExtension::new(
+        &[Extension::RequiredCapabilities(
+            RequiredCapabilitiesExtension::default(),
+        )],
+        &[Extension::RatchetTree(RatchetTreeExtension::new(
             ratchet_tree.clone(),
         ))],
         ConfirmationTag(Mac {
@@ -137,7 +131,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
 
     let psk_proposal = PreSharedKeyProposal::new(psk_id);
     let reinit_proposal = ReInitProposal {
-        group_id,
+        group_id: group.group_id().clone(),
         version: ProtocolVersion::Mls10,
         ciphersuite: ciphersuite_name,
         extensions: vec![Extension::RatchetTree(RatchetTreeExtension::new(
@@ -470,7 +464,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // MlsPlaintextApplication
-    let tv_mls_plaintext_application = hex_to_bytes(&tv.mls_plaintext_application);
+    let mut tv_mls_plaintext_application = hex_to_bytes(&tv.mls_plaintext_application);
+    // Fake the wire format so we can deserialize
+    tv_mls_plaintext_application[0] = WireFormat::MlsPlaintext as u8;
     let my_mls_plaintext_application =
         VerifiableMlsPlaintext::tls_deserialize(&mut tv_mls_plaintext_application.as_slice())
             .unwrap()
@@ -487,7 +483,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // MlsPlaintext(Proposal)
-    let tv_mls_plaintext_proposal = hex_to_bytes(&tv.mls_plaintext_proposal);
+    let mut tv_mls_plaintext_proposal = hex_to_bytes(&tv.mls_plaintext_proposal);
+    // Fake the wire format so we can deserialize
+    tv_mls_plaintext_proposal[0] = WireFormat::MlsPlaintext as u8;
     let my_mls_plaintext_proposal =
         VerifiableMlsPlaintext::tls_deserialize(&mut tv_mls_plaintext_proposal.as_slice())
             .unwrap()
@@ -504,7 +502,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     }
 
     // MlsPlaintext(Commit)
-    let tv_mls_plaintext_commit = hex_to_bytes(&tv.mls_plaintext_commit);
+    let mut tv_mls_plaintext_commit = hex_to_bytes(&tv.mls_plaintext_commit);
+    // Fake the wire format so we can deserialize
+    tv_mls_plaintext_commit[0] = WireFormat::MlsPlaintext as u8;
     let my_mls_plaintext_commit =
         VerifiableMlsPlaintext::tls_deserialize(&mut tv_mls_plaintext_commit.as_slice())
             .unwrap()

@@ -22,7 +22,7 @@
 //!
 //! optional<Node> ratchet_tree<1..2^32-1>;
 //! ```
-use tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
 use super::{Deserialize, Serialize};
 use crate::treesync::node::Node;
@@ -40,7 +40,8 @@ impl RatchetTreeExtension {
         RatchetTreeExtension { tree: tree.into() }
     }
 
-    pub(crate) fn into_vector(self) -> Vec<Option<Node>> {
-        self.tree.into()
+    /// Get a slice of the nodes in tis tree.
+    pub(crate) fn as_slice(&self) -> &[Option<Node>] {
+        self.tree.as_slice()
     }
 }

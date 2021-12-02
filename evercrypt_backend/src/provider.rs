@@ -89,9 +89,9 @@ fn hmac_from_hash(hash_type: HashType) -> HmacMode {
 impl OpenMlsCrypto for EvercryptProvider {
     /// Returns an error if the `signature_scheme` is not supported by evercrypt.
     fn supports(&self, signature_scheme: SignatureScheme) -> Result<(), CryptoError> {
-        if signature_mode(signature_scheme).is_err() {
-            Err(CryptoError::UnsupportedSignatureScheme)
-        } else if hash_from_signature(signature_scheme).is_err() {
+        if signature_mode(signature_scheme).is_err()
+            || hash_from_signature(signature_scheme).is_err()
+        {
             Err(CryptoError::UnsupportedSignatureScheme)
         } else {
             Ok(())
@@ -472,8 +472,8 @@ fn der_encode(raw_signature: &[u8]) -> Result<Vec<u8>, CryptoError> {
         .get(P256_SCALAR_LENGTH..2 * P256_SCALAR_LENGTH)
         .ok_or(CryptoError::SignatureEncodingError)?;
 
-    let length_r = scalar_length(&r)?;
-    let length_s = scalar_length(&s)?;
+    let length_r = scalar_length(r)?;
+    let length_s = scalar_length(s)?;
 
     // The overall length is
     // 1 for the sequence tag
@@ -497,8 +497,8 @@ fn der_encode(raw_signature: &[u8]) -> Result<Vec<u8>, CryptoError> {
         .write_u8((4 + length_r + length_s) as u8)
         .map_err(|_| CryptoError::SignatureEncodingError)?;
 
-    encode_scalar(&r, &mut encoded_signature)?;
-    encode_scalar(&s, &mut encoded_signature)?;
+    encode_scalar(r, &mut encoded_signature)?;
+    encode_scalar(s, &mut encoded_signature)?;
 
     Ok(encoded_signature)
 }
@@ -654,7 +654,7 @@ fn test_der_decoding() {
 
     // Now we tamper with the original signature to make the decoding fail in
     // various ways.
-    let original_bytes = signature.clone();
+    let original_bytes = signature;
 
     // Wrong sequence tag
     let mut wrong_sequence_tag = original_bytes.clone();

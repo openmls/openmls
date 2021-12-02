@@ -26,7 +26,7 @@ use crate::ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedS
 use super::*;
 use openmls_traits::OpenMlsCryptoProvider;
 use std::convert::TryFrom;
-use tls_codec::{Serialize, Size, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{Serialize, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize};
 
 /// `MLSPlaintext` is a framing structure for MLS messages. It can contain
 /// Proposals, Commits and application messages.
@@ -249,8 +249,8 @@ impl MlsPlaintext {
     }
 
     /// Get the content type of this message.
-    pub(crate) fn content_type(&self) -> &ContentType {
-        &self.content_type
+    pub(crate) fn content_type(&self) -> ContentType {
+        self.content_type
     }
 
     /// Get the sender of this message.
@@ -261,6 +261,11 @@ impl MlsPlaintext {
     /// Get the sender leaf index of this message.
     pub fn sender_index(&self) -> LeafIndex {
         self.sender.to_leaf_index()
+    }
+
+    /// Get the membership tag of this message.
+    pub fn membership_tag(&self) -> Option<&MembershipTag> {
+        self.membership_tag.as_ref()
     }
 
     /// Adds a membership tag to this `MlsPlaintext`. The membership_tag is
@@ -382,10 +387,7 @@ impl ContentType {
     pub(crate) fn is_handshake_message(&self) -> bool {
         self == &ContentType::Proposal || self == &ContentType::Commit
     }
-    /// Returns `true` if this is a proposal message and `false` otherwise.
-    pub(crate) fn is_proposal(&self) -> bool {
-        self == &ContentType::Proposal
-    }
+
     /// Returns `true` if this is a commit message and `false` otherwise.
     pub(crate) fn is_commit(&self) -> bool {
         self == &ContentType::Commit
@@ -490,7 +492,7 @@ pub struct VerifiableMlsPlaintext {
 impl VerifiableMlsPlaintext {
     /// Create a new [`VerifiableMlsPlaintext`] from a [`MlsPlaintextTbs`] and
     /// a [`Signature`].
-    pub fn new(
+    pub(crate) fn new(
         tbs: MlsPlaintextTbs,
         signature: Signature,
         confirmation_tag: impl Into<Option<ConfirmationTag>>,
@@ -565,15 +567,26 @@ impl VerifiableMlsPlaintext {
         &self.tbs.sender
     }
 
+    /// Set the sender.
+    #[cfg(test)]
+    pub(crate) fn set_sender(&mut self, sender: Sender) {
+        self.tbs.sender = sender;
+    }
+
     /// Get the sender index as [`LeafIndex`].
     pub(crate) fn sender_index(&self) -> LeafIndex {
         self.tbs.sender.sender
     }
 
     /// Get the group id as [`GroupId`].
-    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn group_id(&self) -> &GroupId {
         &self.tbs.group_id
+    }
+
+    /// Set the group id.
+    #[cfg(test)]
+    pub(crate) fn set_group_id(&mut self, group_id: GroupId) {
+        self.tbs.group_id = group_id;
     }
 
     /// Set the serialized context before verifying the signature.
@@ -586,9 +599,15 @@ impl VerifiableMlsPlaintext {
         self.tbs.serialized_context.is_some()
     }
 
-    /// Get the epoch of the message.
+    /// Get the epoch.
     pub fn epoch(&self) -> GroupEpoch {
         self.tbs.epoch()
+    }
+
+    /// Set the epoch.
+    #[cfg(test)]
+    pub(crate) fn set_epoch(&mut self, epoch: GroupEpoch) {
+        self.tbs.epoch = epoch;
     }
 
     /// Get the underlying MlsPlaintext data of the tbs object.
@@ -607,34 +626,65 @@ impl VerifiableMlsPlaintext {
         self.membership_tag.is_some()
     }
 
-    #[cfg(test)]
-    pub(super) fn membership_tag(&self) -> &Option<MembershipTag> {
+    /// Get the membership tag.
+    pub(crate) fn membership_tag(&self) -> &Option<MembershipTag> {
         &self.membership_tag
     }
 
+    /// Set the membership tag.
     #[cfg(test)]
-    pub(super) fn set_membership_tag_test(&mut self, tag: MembershipTag) {
+    pub fn set_membership_tag(&mut self, tag: MembershipTag) {
         self.membership_tag = Some(tag);
     }
 
+    /// Unset the membership tag.
     #[cfg(test)]
-    pub(super) fn unset_membership_tag(&mut self) {
+    pub fn unset_membership_tag(&mut self) {
         self.membership_tag = None;
     }
 
     /// Returns `true` if this is a commit message and `false` otherwise.
-    pub(crate) fn is_commit(&self) -> bool {
+    pub fn is_commit(&self) -> bool {
         self.tbs.content_type.is_commit()
     }
 
-    /// Returns `true` if this is a proposal and `false` otherwise.
-    pub(crate) fn is_proposal(&self) -> bool {
-        self.tbs.content_type.is_proposal()
+    /// Get the confirmation tag.
+    pub fn confirmation_tag(&self) -> Option<&ConfirmationTag> {
+        self.confirmation_tag.as_ref()
     }
 
-    /// Get the confirmation tag.
-    pub(crate) fn confirmation_tag(&self) -> Option<&ConfirmationTag> {
-        self.confirmation_tag.as_ref()
+    /// Set the confirmation tag.
+    #[cfg(test)]
+    pub fn set_confirmation_tag(&mut self, confirmation_tag: Option<ConfirmationTag>) {
+        self.confirmation_tag = confirmation_tag;
+    }
+
+    /// Get the content type
+    pub fn content_type(&self) -> ContentType {
+        self.tbs.content_type
+    }
+
+    /// Set the content type.
+    #[cfg(test)]
+    pub(crate) fn set_content_type(&mut self, content_type: ContentType) {
+        self.tbs.content_type = content_type;
+    }
+
+    /// Set the content.
+    #[cfg(test)]
+    pub(crate) fn set_content(&mut self, content: MlsPlaintextContentType) {
+        self.tbs.payload = content;
+    }
+
+    /// Get the signature.
+    pub fn signature(&self) -> &Signature {
+        &self.signature
+    }
+
+    /// Set the signature.
+    #[cfg(test)]
+    pub(crate) fn set_signature(&mut self, signature: Signature) {
+        self.signature = signature;
     }
 }
 

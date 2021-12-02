@@ -1,7 +1,8 @@
 use crate::group::errors::*;
 
 use crate::messages::proposals::{
-    Proposal, ProposalOrRef, ProposalOrRefType, ProposalReference, ProposalType,
+    AddProposal, PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalOrRefType,
+    ProposalReference, ProposalType, RemoveProposal, UpdateProposal,
 };
 use crate::treesync::LeafIndex;
 use crate::{ciphersuite::*, framing::*};
@@ -88,7 +89,7 @@ impl StagedProposal {
         })
     }
     /// Returns the `Proposal` as a reference
-    pub(crate) fn proposal(&self) -> &Proposal {
+    pub fn proposal(&self) -> &Proposal {
         &self.proposal
     }
     /// Returns the `ProposalReference`.
@@ -96,7 +97,7 @@ impl StagedProposal {
         self.proposal_reference.clone()
     }
     /// Returns the `Sender` as a reference
-    pub(crate) fn sender(&self) -> &Sender {
+    pub fn sender(&self) -> &Sender {
         &self.sender
     }
 }
@@ -118,7 +119,9 @@ pub struct StagedProposalQueue {
 
 impl StagedProposalQueue {
     /// Returns a new `StagedProposalQueue` from proposals that were committed and
-    /// don't need filtering
+    /// don't need filtering.
+    /// This functions does the following checks:
+    ///  - ValSem200
     pub(crate) fn from_committed_proposals(
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
@@ -143,21 +146,41 @@ impl StagedProposalQueue {
         // Iterate over the committed proposals and insert the proposals in the queue
         for proposal_or_ref in committed_proposals.into_iter() {
             let queued_proposal = match proposal_or_ref {
-                ProposalOrRef::Proposal(proposal) => StagedProposal::from_proposal_and_sender(
-                    ciphersuite,
-                    backend,
-                    proposal,
-                    sender,
-                )?,
+                ProposalOrRef::Proposal(proposal) => {
+                    // ValSem200
+                    if let Proposal::Remove(ref remove_proposal) = proposal {
+                        if remove_proposal.removed() == sender.sender.as_u32() {
+                            return Err(StagedProposalQueueError::SelfRemoval);
+                        }
+                    }
+
+                    StagedProposal::from_proposal_and_sender(
+                        ciphersuite,
+                        backend,
+                        proposal,
+                        sender,
+                    )?
+                }
                 ProposalOrRef::Reference(ref proposal_reference) => {
                     match proposals_by_reference_queue.get(proposal_reference) {
-                        Some(queued_proposal) => queued_proposal.clone(),
+                        Some(staged_proposal) => {
+                            // ValSem200
+                            if let Proposal::Remove(ref remove_proposal) = staged_proposal.proposal
+                            {
+                                if remove_proposal.removed() == sender.sender.as_u32() {
+                                    return Err(StagedProposalQueueError::SelfRemoval);
+                                }
+                            }
+
+                            staged_proposal.clone()
+                        }
                         None => return Err(StagedProposalQueueError::ProposalNotFound),
                     }
                 }
             };
             proposal_queue.add(queued_proposal);
         }
+
         Ok(proposal_queue)
     }
 
@@ -191,7 +214,152 @@ impl StagedProposalQueue {
                 Some(p) => p.proposal.is_type(proposal_type),
                 None => false,
             })
-            .map(move |reference| self.get(reference).unwrap())
+            .filter_map(move |reference| self.get(reference))
+    }
+
+    /// Returns an iterator over all `StagedProposal` in the queue
+    /// in the order of the the Commit message
+    pub(crate) fn staged_proposals(&self) -> impl Iterator<Item = &StagedProposal> {
+        // Iterate over the reference to extract the proposals in the right order
+        self.proposal_references
+            .iter()
+            .filter_map(move |reference| self.get(reference))
+    }
+
+    /// Returns an iterator over all Add proposals in the queue
+    /// in the order of the the Commit message
+    pub fn add_proposals(&self) -> impl Iterator<Item = StagedAddProposal> {
+        self.staged_proposals().filter_map(|staged_proposal| {
+            if let Proposal::Add(add_proposal) = staged_proposal.proposal() {
+                let sender = staged_proposal.sender();
+                Some(StagedAddProposal {
+                    add_proposal,
+                    sender,
+                })
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Returns an iterator over all Remove proposals in the queue
+    /// in the order of the the Commit message
+    pub fn remove_proposals(&self) -> impl Iterator<Item = StagedRemoveProposal> {
+        self.staged_proposals().filter_map(|staged_proposal| {
+            if let Proposal::Remove(remove_proposal) = staged_proposal.proposal() {
+                let sender = staged_proposal.sender();
+                Some(StagedRemoveProposal {
+                    remove_proposal,
+                    sender,
+                })
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Returns an iterator over all Update in the queue
+    /// in the order of the the Commit message
+    pub fn update_proposals(&self) -> impl Iterator<Item = StagedUpdateProposal> {
+        self.staged_proposals().filter_map(|staged_proposal| {
+            if let Proposal::Update(update_proposal) = staged_proposal.proposal() {
+                let sender = staged_proposal.sender();
+                Some(StagedUpdateProposal {
+                    update_proposal,
+                    sender,
+                })
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Returns an iterator over all PresharedKey proposals in the queue
+    /// in the order of the the Commit message
+    pub fn psk_proposals(&self) -> impl Iterator<Item = StagedPskProposal> {
+        self.staged_proposals().filter_map(|staged_proposal| {
+            if let Proposal::PreSharedKey(psk_proposal) = staged_proposal.proposal() {
+                let sender = staged_proposal.sender();
+                Some(StagedPskProposal {
+                    psk_proposal,
+                    sender,
+                })
+            } else {
+                None
+            }
+        })
+    }
+}
+
+/// A staged Add proposal
+pub struct StagedAddProposal<'a> {
+    add_proposal: &'a AddProposal,
+    sender: &'a Sender,
+}
+
+impl<'a> StagedAddProposal<'a> {
+    /// Returns a reference to the proposal
+    pub fn add_proposal(&self) -> &AddProposal {
+        self.add_proposal
+    }
+
+    /// Returns a reference to the sender
+    pub fn sender(&self) -> &Sender {
+        self.sender
+    }
+}
+
+/// A staged Remove proposal
+pub struct StagedRemoveProposal<'a> {
+    remove_proposal: &'a RemoveProposal,
+    sender: &'a Sender,
+}
+
+impl<'a> StagedRemoveProposal<'a> {
+    /// Returns a reference to the proposal
+    pub fn remove_proposal(&self) -> &RemoveProposal {
+        self.remove_proposal
+    }
+
+    /// Returns a reference to the sender
+    pub fn sender(&self) -> &Sender {
+        self.sender
+    }
+}
+
+/// A staged Update proposal
+pub struct StagedUpdateProposal<'a> {
+    update_proposal: &'a UpdateProposal,
+    sender: &'a Sender,
+}
+
+impl<'a> StagedUpdateProposal<'a> {
+    /// Returns a reference to the proposal
+    pub fn update_proposal(&self) -> &UpdateProposal {
+        self.update_proposal
+    }
+
+    /// Returns a reference to the sender
+    pub fn sender(&self) -> &Sender {
+        self.sender
+    }
+}
+
+/// A staged PresharedKey proposal
+pub struct StagedPskProposal<'a> {
+    psk_proposal: &'a PreSharedKeyProposal,
+    sender: &'a Sender,
+}
+
+impl<'a> StagedPskProposal<'a> {
+    /// Returns a reference to the proposal
+    pub fn psk_proposal(&self) -> &PreSharedKeyProposal {
+        self.psk_proposal
+    }
+
+    /// Returns a reference to the sender
+    pub fn sender(&self) -> &Sender {
+        self.sender
     }
 }
 
@@ -342,38 +510,41 @@ impl<'a> CreationProposalQueue<'a> {
 
         // Parse proposals and build adds and member list
         for queued_proposal in queued_proposal_list {
-            match queued_proposal.proposal.proposal_type() {
-                ProposalType::Add => {
+            match queued_proposal.proposal {
+                Proposal::Add(_) => {
                     adds.insert(queued_proposal.proposal_reference());
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
-                ProposalType::Update => {
-                    let sender_index = queued_proposal.sender.sender;
-                    if sender_index != own_index {
-                        members[to_usize(sender_index)?]
-                            .updates
-                            .push(queued_proposal.clone());
+                Proposal::Update(_) => {
+                    let sender_index = queued_proposal.sender.sender.as_usize();
+                    if sender_index != own_index.as_usize() {
+                        members[sender_index].updates.push(queued_proposal.clone());
                     } else {
                         contains_own_updates = true;
                     }
                     let proposal_reference = queued_proposal.proposal_reference();
                     proposal_pool.insert(proposal_reference, queued_proposal);
                 }
-                ProposalType::Remove => {
-                    let removed_index =
-                        queued_proposal.proposal.as_remove().unwrap().removed as usize;
-                    if removed_index < to_usize(leaf_count)? {
+                Proposal::Remove(remove_proposal) => {
+                    let removed_index = remove_proposal.removed as usize;
+                    if removed_index < tree_size.as_usize() {
                         members[removed_index].updates.push(queued_proposal.clone());
                     }
                     let proposal_reference = queued_proposal.proposal_reference();
                     proposal_pool.insert(proposal_reference, queued_proposal);
                 }
-                ProposalType::Presharedkey => {
+                Proposal::PreSharedKey(_) => {
                     valid_proposals.insert(queued_proposal.proposal_reference());
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
-                ProposalType::Reinit => {
+                Proposal::ReInit(_) => {
                     // TODO #141: Only keep one ReInit
+                    proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
+                }
+                Proposal::ExternalInit(_) => unimplemented!("See #556"),
+                Proposal::AppAck(_) => unimplemented!("See #291"),
+                Proposal::GroupContextExtensions(_) => {
+                    // TODO: Validate proposal?
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
             }
@@ -381,15 +552,15 @@ impl<'a> CreationProposalQueue<'a> {
         // Check for presence of Removes and delete Updates
         for member in members.iter_mut() {
             // Check if there are Removes
-            if !member.removes.is_empty() {
+            if let Some(last_remove) = member.removes.last() {
                 // Delete all Updates when a Remove is found
                 member.updates = Vec::new();
                 // Only keep the last Remove
-                valid_proposals.insert(member.removes.last().unwrap().proposal_reference());
+                valid_proposals.insert(last_remove.proposal_reference());
             }
-            if !member.updates.is_empty() {
+            if let Some(last_update) = member.updates.last() {
                 // Only keep the last Update
-                valid_proposals.insert(member.updates.last().unwrap().proposal_reference());
+                valid_proposals.insert(last_update.proposal_reference());
             }
         }
         // Only retain `adds` and `valid_proposals`
@@ -433,16 +604,15 @@ impl<'a> CreationProposalQueue<'a> {
         // Iterate over the reference to extract the proposals in the right order
         self.proposal_references
             .iter()
-            .map(|proposal_reference| {
-                // Extract the proposal from the queue
-                let queued_proposal = self.queued_proposals.get(proposal_reference).unwrap();
+            .filter_map(|proposal_reference| self.queued_proposals.get(proposal_reference))
+            .map(|queued_proposal| {
                 // Differentiate the type of proposal
                 match queued_proposal.proposal_or_ref_type {
                     ProposalOrRefType::Proposal => {
                         ProposalOrRef::Proposal(queued_proposal.proposal.clone())
                     }
                     ProposalOrRefType::Reference => {
-                        ProposalOrRef::Reference(proposal_reference.clone())
+                        ProposalOrRef::Reference(queued_proposal.proposal_reference.clone())
                     }
                 }
             })
@@ -461,6 +631,6 @@ impl<'a> CreationProposalQueue<'a> {
                 Some(p) => p.proposal.is_type(proposal_type),
                 None => false,
             })
-            .map(move |reference| self.get(reference).unwrap())
+            .filter_map(move |reference| self.get(reference))
     }
 }
