@@ -121,7 +121,7 @@ fn test_node_references() {
     assert_eq!(diff.is_leaf(leaf_reference), true);
 
     let leaf = diff
-        .try_deref(leaf_reference)
+        .node(leaf_reference)
         .expect("error dereferencing valid node reference");
 
     assert_eq!(leaf, &0);
@@ -138,7 +138,7 @@ fn test_node_references() {
     let leaf_reference = diff.leaf(0).expect("error obtaining leaf reference.");
 
     let leaf_mut = diff
-        .try_deref_mut(leaf_reference)
+        .node_mut(leaf_reference)
         .expect("error dereferencing valid node reference");
 
     assert_eq!(leaf_mut, &1);
@@ -148,7 +148,7 @@ fn test_node_references() {
     let leaf_reference = diff.leaf(0).expect("error obtaining leaf reference.");
 
     let leaf = diff
-        .try_deref(leaf_reference)
+        .node(leaf_reference)
         .expect("error dereferencing valid node reference");
 
     assert_eq!(leaf, &2);
@@ -160,9 +160,7 @@ fn test_node_references() {
     // root
     let root_ref = diff.root();
 
-    let root = diff
-        .try_deref(root_ref)
-        .expect("error dereferencing root ref");
+    let root = diff.node(root_ref).expect("error dereferencing root ref");
     assert_eq!(root, &2);
 
     // Leaf addition.
@@ -173,7 +171,7 @@ fn test_node_references() {
     let leaf_reference = diff.leaf(1).expect("error obtaining leaf reference.");
 
     let leaf = diff
-        .try_deref(leaf_reference)
+        .node(leaf_reference)
         .expect("error dereferencing valid node reference");
 
     assert_eq!(leaf, &4);
@@ -183,9 +181,7 @@ fn test_node_references() {
 
     let root_ref = diff.root();
 
-    let root = diff
-        .try_deref(root_ref)
-        .expect("error dereferencing root ref");
+    let root = diff.node(root_ref).expect("error dereferencing root ref");
     assert_eq!(root, &0);
 
     // Now, root should not be a leaf.
@@ -224,14 +220,8 @@ fn test_diff_merging() {
 
     let first_leaf = leaves.first().expect("leaf vector is empty");
     let last_leaf = leaves.last().expect("leaf vector is empty");
-    assert_eq!(
-        diff.try_deref(*first_leaf).expect("error dereferencing"),
-        &2
-    );
-    assert_eq!(
-        diff.try_deref(*last_leaf).expect("error dereferencing"),
-        &999
-    );
+    assert_eq!(diff.node(*first_leaf).expect("error dereferencing"), &2);
+    assert_eq!(diff.node(*last_leaf).expect("error dereferencing"), &999);
     assert_eq!(leaves.len(), diff.leaf_count() as usize);
 
     // Remove some of them again
@@ -247,14 +237,8 @@ fn test_diff_merging() {
 
     let first_leaf = leaves.first().expect("leaf vector is empty");
     let last_leaf = leaves.last().expect("leaf vector is empty");
-    assert_eq!(
-        diff.try_deref(*first_leaf).expect("error dereferencing"),
-        &2
-    );
-    assert_eq!(
-        diff.try_deref(*last_leaf).expect("error dereferencing"),
-        &799
-    );
+    assert_eq!(diff.node(*first_leaf).expect("error dereferencing"), &2);
+    assert_eq!(diff.node(*last_leaf).expect("error dereferencing"), &799);
     assert_eq!(leaves.len(), diff.leaf_count() as usize);
 
     let staged_diff = diff.into();
@@ -329,24 +313,20 @@ fn test_tree_navigation() {
         .left_child(root_ref)
         .expect("error finding left child of node");
 
-    assert_eq!(diff.try_deref(left_child).expect("error dereferencing"), &0);
+    assert_eq!(diff.node(left_child).expect("error dereferencing"), &0);
 
     let right_child = diff
         .right_child(root_ref)
         .expect("error finding right child of node");
 
-    assert_eq!(
-        diff.try_deref(right_child).expect("error dereferencing"),
-        &2
-    );
+    assert_eq!(diff.node(right_child).expect("error dereferencing"), &2);
 
     let right_child_sibling = diff
         .sibling(right_child)
         .expect("failed to navigate to sibling of right child");
     assert_eq!(
-        diff.try_deref(right_child_sibling)
-            .expect("error dereferencing"),
-        diff.try_deref(left_child).expect("error dereferencing")
+        diff.node(right_child_sibling).expect("error dereferencing"),
+        diff.node(left_child).expect("error dereferencing")
     );
 
     // Error cases
@@ -397,7 +377,7 @@ fn test_direct_path_manipulation() {
     assert_eq!(st_diff.tree_size(), 1);
     assert_eq!(
         st_diff
-            .try_deref(st_diff.leaf(0).expect("error getting leaf reference"))
+            .node(st_diff.leaf(0).expect("error getting leaf reference"))
             .expect("error dereferencing"),
         &0
     );
@@ -410,7 +390,7 @@ fn test_direct_path_manipulation() {
     assert_eq!(st_diff.tree_size(), 1);
     assert_eq!(
         st_diff
-            .try_deref(st_diff.leaf(0).expect("error getting leaf reference"))
+            .node(st_diff.leaf(0).expect("error getting leaf reference"))
             .expect("error dereferencing"),
         &0
     );
@@ -612,7 +592,7 @@ fn test_subtree_root_copath_node() {
         .subtree_root_copath_node(0, 1)
         .expect("error computing subtree root");
     assert_eq!(
-        diff.try_deref(subtree_root_copath_node)
+        diff.node(subtree_root_copath_node)
             .expect("error dereferencing"),
         &2
     );
@@ -634,11 +614,11 @@ fn test_subtree_root_copath_node() {
         .subtree_root_copath_node(0, 49)
         .expect("error computing subtree root");
     let subtree_root_copath_node = diff
-        .try_deref(subtree_root_copath_node_ref)
+        .node(subtree_root_copath_node_ref)
         .expect("error dereferencing");
     let direct_path = diff.direct_path(49).expect("error computing direct path");
     let direct_path_node = diff
-        .try_deref(direct_path[direct_path.len() - 2])
+        .node(direct_path[direct_path.len() - 2])
         .expect("error dereferencing");
     assert_eq!(subtree_root_copath_node, direct_path_node);
 
@@ -647,7 +627,7 @@ fn test_subtree_root_copath_node() {
         .subtree_root_copath_node(0, 10)
         .expect("error computing subtree root");
     let subtree_root_copath_node = diff
-        .try_deref(subtree_root_copath_node_ref)
+        .node(subtree_root_copath_node_ref)
         .expect("error dereferencing");
     assert_eq!(subtree_root_copath_node, &23);
 
@@ -655,7 +635,7 @@ fn test_subtree_root_copath_node() {
         .subtree_root_copath_node(42, 34)
         .expect("error computing subtree root");
     let subtree_root_copath_node = diff
-        .try_deref(subtree_root_copath_node_ref)
+        .node(subtree_root_copath_node_ref)
         .expect("error dereferencing");
     assert_eq!(subtree_root_copath_node, &71);
 }
@@ -673,7 +653,7 @@ fn test_subtree_path() {
         .subtree_path(0, 0)
         .expect("error computing subtree path");
     let node = diff
-        .try_deref(*subtree_path.first().unwrap())
+        .node(*subtree_path.first().unwrap())
         .expect("error dereferencing");
     assert_eq!(node, &0);
 
@@ -687,7 +667,7 @@ fn test_subtree_path() {
         .subtree_path(0, 1)
         .expect("error computing subtree path");
     assert_eq!(
-        diff.try_deref(*subtree_path.first().unwrap())
+        diff.node(*subtree_path.first().unwrap())
             .expect("error dereferencing"),
         &1
     );
@@ -708,9 +688,9 @@ fn test_subtree_path() {
         .subtree_path(0, 49)
         .expect("error computing subtree path");
     assert_eq!(
-        diff.try_deref(*subtree_path.first().unwrap())
+        diff.node(*subtree_path.first().unwrap())
             .expect("error dereferencing"),
-        diff.try_deref(diff.root()).expect("error dereferencing")
+        diff.node(diff.root()).expect("error dereferencing")
     );
 
     // Subtree root position of leaves in the same half of the tree.
@@ -740,7 +720,7 @@ fn test_diff_iter() {
     let mut node_set = HashSet::new();
 
     for node_ref in diff.iter() {
-        let node = diff.try_deref(node_ref).expect("error dereferencing");
+        let node = diff.node(node_ref).expect("error dereferencing");
         node_set.insert(node);
     }
 
@@ -782,7 +762,7 @@ fn test_diff_mutable_access_after_manipulation() {
         .expect("error getting direct path references");
     for node_ref in &direct_path_refs {
         let node_mut = diff
-            .try_deref_mut(*node_ref)
+            .node_mut(*node_ref)
             .expect("error dereferencing mutably");
         *node_mut = 888;
     }

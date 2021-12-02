@@ -368,7 +368,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// bounds of the tree. This can happen, for example, if the node was
     /// removed while shrinking the diff after the creation of the
     /// [`NodeReference`].
-    pub(crate) fn try_deref(&self, node_ref: NodeId) -> Result<&T, ABinaryTreeDiffError> {
+    pub(crate) fn node(&self, node_ref: NodeId) -> Result<&T, ABinaryTreeDiffError> {
         self.node_by_index(node_ref.node_index)
     }
 
@@ -377,10 +377,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// node outside of the bounds of the tree. This can happen, for example, if
     /// the node was removed while shrinking the diff after the creation of the
     /// [`NodeReference`].
-    pub(crate) fn try_deref_mut(
-        &mut self,
-        node_ref: NodeId,
-    ) -> Result<&mut T, ABinaryTreeDiffError> {
+    pub(crate) fn node_mut(&mut self, node_ref: NodeId) -> Result<&mut T, ABinaryTreeDiffError> {
         self.node_mut_by_index(node_ref.node_index)
     }
 
@@ -561,7 +558,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     pub fn deref_vec(&self, node_ref_vec: Vec<NodeId>) -> Result<Vec<&T>, ABinaryTreeDiffError> {
         let mut node_vec = Vec::new();
         for node_ref in node_ref_vec {
-            let node = self.try_deref(node_ref)?;
+            let node = self.node(node_ref)?;
             node_vec.push(node);
         }
         Ok(node_vec)
