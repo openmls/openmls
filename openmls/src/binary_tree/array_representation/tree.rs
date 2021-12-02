@@ -132,7 +132,7 @@ impl<T: Clone + Debug> ABinaryTree<T> {
     pub(crate) fn merge_diff(&mut self, diff: StagedAbDiff<T>) -> Result<(), ABinaryTreeError> {
         // The diff size should fit into a 32 bit usize.
         let diff_size =
-            usize::try_from(diff.size()).map_err(|_| ABinaryTreeError::ArchitectureError)?;
+            usize::try_from(diff.tree_size()).map_err(|_| ABinaryTreeError::ArchitectureError)?;
         // If the size of the diff is smaller than the tree, truncate the tree
         // to the size of the diff.
         self.nodes.truncate(diff_size);

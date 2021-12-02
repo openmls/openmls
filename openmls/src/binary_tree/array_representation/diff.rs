@@ -57,7 +57,7 @@ impl<T: Clone + Debug> StagedAbDiff<T> {
     }
 
     /// Return the projected size of the tree after a merge with the diff.
-    pub(super) fn size(&self) -> TreeSize {
+    pub(super) fn tree_size(&self) -> TreeSize {
         self.size
     }
 }
@@ -121,10 +121,10 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         new_leaf: T,
     ) -> Result<LeafIndex, ABinaryTreeDiffError> {
         // Prevent the tree from becoming too large.
-        if self.size() >= NodeIndex::MAX - 1 {
+        if self.tree_size() >= NodeIndex::MAX - 1 {
             return Err(ABinaryTreeDiffError::TreeTooLarge);
         }
-        let original_size = self.size();
+        let original_size = self.tree_size();
         let previous_parent = self.diff.insert(original_size, parent_node);
         debug_assert!(previous_parent.is_none());
         let previous_leaf = self.diff.insert(original_size + 1, new_leaf);
@@ -193,7 +193,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         leaf_index: LeafIndex,
     ) -> Result<Vec<NodeReference>, ABinaryTreeDiffError> {
         let node_index = to_node_index(leaf_index);
-        let direct_path_indices = direct_path(node_index, self.size())?;
+        let direct_path_indices = direct_path(node_index, self.tree_size())?;
         let mut direct_path = Vec::new();
         for node_index in direct_path_indices {
             let node_ref = NodeReference::try_from_node_index(self, node_index)?;
@@ -211,7 +211,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         node: &T,
     ) -> Result<(), ABinaryTreeDiffError> {
         let node_index = to_node_index(leaf_index);
-        let direct_path = direct_path(node_index, self.size())?;
+        let direct_path = direct_path(node_index, self.tree_size())?;
         for node_index in &direct_path {
             self.replace_node(*node_index, node.clone())?;
         }
@@ -230,7 +230,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         path: Vec<T>,
     ) -> Result<(), ABinaryTreeDiffError> {
         let node_index = to_node_index(leaf_index);
-        let direct_path = direct_path(node_index, self.size())?;
+        let direct_path = direct_path(node_index, self.tree_size())?;
         if path.len() != direct_path.len() {
             return Err(ABinaryTreeDiffError::PathLengthMismatch);
         }
@@ -264,7 +264,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
 
         let subtree_root_node_index =
             lowest_common_ancestor(to_node_index(leaf_index_1), to_node_index(leaf_index_2));
-        let leaf_index_1_direct_path = direct_path(to_node_index(leaf_index_1), self.size())?;
+        let leaf_index_1_direct_path = direct_path(to_node_index(leaf_index_1), self.tree_size())?;
 
         leaf_index_1_direct_path
             .iter()
@@ -294,7 +294,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         let copath_node_index = if leaf_index_2 < leaf_index_1 {
             left(subtree_root_node_index)?
         } else {
-            right(subtree_root_node_index, self.size())?
+            right(subtree_root_node_index, self.tree_size())?
         };
 
         NodeReference::try_from_node_index(self, copath_node_index)
@@ -318,7 +318,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         self.out_of_bounds(node_index_2)?;
 
         let lca = lowest_common_ancestor(node_index_1, node_index_2);
-        let direct_path_indices = direct_path(lca, self.size())?;
+        let direct_path_indices = direct_path(lca, self.tree_size())?;
         let mut full_path = vec![NodeReference::try_from_node_index(self, lca)?];
         for node_index in direct_path_indices {
             let node_ref = NodeReference::try_from_node_index(self, node_index)?;
@@ -346,7 +346,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// [LibraryError](ABinaryTreeError::LibraryError).
     pub(crate) fn export_nodes(&self) -> Result<Vec<T>, ABinaryTreeDiffError> {
         let mut nodes = Vec::new();
-        for node_index in 0..self.size() {
+        for node_index in 0..self.tree_size() {
             let node = self.node_by_index(node_index)?;
             nodes.push(node.clone());
         }
@@ -354,13 +354,13 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     }
 
     /// Returns the size of the diff.
-    pub(in crate::binary_tree) fn size(&self) -> NodeIndex {
+    pub(in crate::binary_tree) fn tree_size(&self) -> NodeIndex {
         self.size
     }
 
     /// Returns the leaf count of the diff.
     pub(crate) fn leaf_count(&self) -> LeafIndex {
-        ((self.size() - 1) / 2) + 1
+        ((self.tree_size() - 1) / 2) + 1
     }
 
     // Functions around individual [`NodeReference`]s
@@ -390,7 +390,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// Return a [`NodeReference`] to the root node of the diff. Since the diff
     /// always consists of at least one node, this operation cannot fail.
     pub(crate) fn root(&self) -> NodeReference {
-        let root_index = root(self.size());
+        let root_index = root(self.tree_size());
         // We create the reference directly instead of via self.new_reference,
         // since due to the minimum tree size of one node, the root is always
         // within bounds.
@@ -412,7 +412,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         &self,
         node_ref: NodeReference,
     ) -> Result<NodeReference, ABinaryTreeDiffError> {
-        let sibling_index = sibling(node_ref.node_index, self.size())?;
+        let sibling_index = sibling(node_ref.node_index, self.tree_size())?;
         NodeReference::try_from_node_index(self, sibling_index)
     }
 
@@ -434,7 +434,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         &self,
         node_ref: NodeReference,
     ) -> Result<NodeReference, ABinaryTreeDiffError> {
-        let right_child_index = right(node_ref.node_index, self.size())?;
+        let right_child_index = right(node_ref.node_index, self.tree_size())?;
         NodeReference::try_from_node_index(self, right_child_index)
     }
 
@@ -516,11 +516,11 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// small (i.e. < 1 node).
     fn remove_node(&mut self) -> Result<(), ABinaryTreeDiffError> {
         // First make sure that the tree isn't getting too small.
-        if self.size() <= 1 {
+        if self.tree_size() <= 1 {
             return Err(ABinaryTreeDiffError::TreeTooSmall);
         }
-        let removed = self.diff.remove(&(self.size() - 1));
-        if self.size() > self.original_tree.size()? {
+        let removed = self.diff.remove(&(self.tree_size() - 1));
+        if self.tree_size() > self.original_tree.size()? {
             // If the diff extended the tree, there should be a node to remove
             // here.
             debug_assert!(removed.is_some());
@@ -539,7 +539,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// Returns an error if the given leaf is out of bounds. Otherwise returns
     /// nothing.
     fn out_of_bounds(&self, node_index: NodeIndex) -> Result<(), ABinaryTreeDiffError> {
-        if node_index >= self.size() {
+        if node_index >= self.tree_size() {
             return Err(ABinaryTreeDiffError::OutOfBounds);
         }
         Ok(())

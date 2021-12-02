@@ -154,7 +154,7 @@ fn test_node_references() {
     assert_eq!(leaf, &2);
 
     // Diff size
-    assert_eq!(diff.size(), 1);
+    assert_eq!(diff.tree_size(), 1);
     assert_eq!(diff.leaf_count(), 1);
 
     // root
@@ -178,7 +178,7 @@ fn test_node_references() {
 
     assert_eq!(leaf, &4);
 
-    assert_eq!(diff.size(), 3);
+    assert_eq!(diff.tree_size(), 3);
     assert_eq!(diff.leaf_count(), 2);
 
     let root_ref = diff.root();
@@ -394,7 +394,7 @@ fn test_direct_path_manipulation() {
         .set_direct_path_to_node(0, &1)
         .expect("error setting direct path in small tree.");
     // Nothing should have changed.
-    assert_eq!(st_diff.size(), 1);
+    assert_eq!(st_diff.tree_size(), 1);
     assert_eq!(
         st_diff
             .try_deref(st_diff.leaf(0).expect("error getting leaf reference"))
@@ -407,7 +407,7 @@ fn test_direct_path_manipulation() {
         .set_direct_path(0, vec![])
         .expect("error setting direct path in small tree.");
     // Nothing should have changed.
-    assert_eq!(st_diff.size(), 1);
+    assert_eq!(st_diff.tree_size(), 1);
     assert_eq!(
         st_diff
             .try_deref(st_diff.leaf(0).expect("error getting leaf reference"))
