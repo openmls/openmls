@@ -23,9 +23,10 @@ fn setup(ciphersuite: &Ciphersuite, len: usize) -> (KeyPackageBundle, LeafIndex,
         ciphersuite.signature_scheme(),
         &crypto,
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
     let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, &crypto, vec![]).unwrap();
+        KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, &crypto, vec![])
+            .expect("An unexpected error occurred.");
     let own_index = LeafIndex::from(0u32);
     let direct_path = generate_path_u8(len);
 
@@ -44,8 +45,14 @@ fn test_private_tree(
     let path_index = 15;
     let index = direct_path[path_index];
     let public_key = &public_keys[path_index];
-    let private_key = private_tree.path_keys().get(index).unwrap();
-    let data = crypto.rand().random_vec(55).unwrap();
+    let private_key = private_tree
+        .path_keys()
+        .get(index)
+        .expect("An unexpected error occurred.");
+    let data = crypto
+        .rand()
+        .random_vec(55)
+        .expect("An unexpected error occurred.");
     let info = b"PrivateTree Test Info";
     let aad = b"PrivateTree Test AAD";
 
