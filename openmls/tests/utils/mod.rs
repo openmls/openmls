@@ -1,8 +1,8 @@
 //! A framework to create integration tests of the "raw" mls_group API.
- 
+
 pub use openmls_traits::OpenMlsCryptoProvider;
-pub use rstest_reuse::{self, *};
 pub use rstest::*;
+pub use rstest_reuse::{self, *};
 pub mod mls_utils;
 
 #[allow(unused_macros)]
@@ -43,14 +43,17 @@ pub use openmls_rust_crypto::OpenMlsRustCrypto;
     target_family = "wasm"
 ))]
 #[template]
-#[rstest(ciphersuite, backend, 
+#[rstest(ciphersuite, backend,
     case(&Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519).unwrap(), &OpenMlsRustCrypto::default()),
     case(&Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256).unwrap(), &OpenMlsRustCrypto::default()),
     case(&Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519).unwrap(), &OpenMlsRustCrypto::default()),
   )
 ]
-fn ciphersuites_and_backends(#[case] ciphersuite: &Ciphersuite, #[case] backend: &impl OpenMlsCryptoProvider) {}
-
+fn ciphersuites_and_backends(
+    #[case] ciphersuite: &Ciphersuite,
+    #[case] backend: &impl OpenMlsCryptoProvider,
+) {
+}
 
 #[cfg(all(
     target_arch = "x86_64",
@@ -58,11 +61,14 @@ fn ciphersuites_and_backends(#[case] ciphersuite: &Ciphersuite, #[case] backend:
     not(target_family = "wasm")
 ))]
 #[template]
-#[rstest(ciphersuite, backend, 
+#[rstest(ciphersuite, backend,
     case(&Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519).unwrap(), &OpenMlsEvercrypt::default()),
     case(&Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256).unwrap(), &OpenMlsEvercrypt::default()),
     case(&Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519).unwrap(), &OpenMlsEvercrypt::default()),
   )
 ]
-fn ciphersuites_and_backends(#[case] ciphersuite: &Ciphersuite, #[case] backend: &impl OpenMlsCryptoProvider) {}
-
+fn ciphersuites_and_backends(
+    #[case] ciphersuite: &Ciphersuite,
+    #[case] backend: &impl OpenMlsCryptoProvider,
+) {
+}
