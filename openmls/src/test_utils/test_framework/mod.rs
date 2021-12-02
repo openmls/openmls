@@ -26,7 +26,7 @@ use crate::framing::MlsMessageIn;
 /// We allow dead code here due to the following issue:
 /// https://github.com/rust-lang/rust/issues/46379, which would otherwise create
 /// a lot of unused code warnings.
-use crate::{node::Node, prelude::*};
+use crate::{prelude::*, tree::node::Node};
 use ::rand::{rngs::OsRng, RngCore};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::key_store::OpenMlsKeyStore;
@@ -180,7 +180,7 @@ impl ManagedTestSetup {
         let key_package = client.get_fresh_key_package(&[ciphersuite.name()])?;
         self.waiting_for_welcome
             .borrow_mut()
-            .insert(key_package.hash(&client.crypto), client.identity.clone());
+            .insert(key_package.hash(&client.crypto)?, client.identity.clone());
         Ok(key_package)
     }
 

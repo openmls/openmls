@@ -252,20 +252,24 @@ pub(crate) fn descendants(x: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
 /// Returns the list of nodes that are descendants of a given parent node,
 /// including the parent node itself
 /// (Alternative, easier to verify implementation)
+
 #[cfg(test)]
-pub(crate) fn descendants_alt(x: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
-    if level(x) == 0 {
+pub(crate) fn descendants_alt(
+    x: NodeIndex,
+    size: LeafIndex,
+) -> Result<Vec<NodeIndex>, TreeMathError> {
+    Ok(if level(x) == 0 {
         vec![x]
     } else {
-        let left_child = left(x).unwrap();
-        let right_child = right(x, size).unwrap();
+        let left_child = left(x)?;
+        let right_child = right(x, size)?;
         [
-            descendants_alt(left_child, size),
+            descendants_alt(left_child, size)?,
             vec![x],
-            descendants_alt(right_child, size),
+            descendants_alt(right_child, size)?,
         ]
         .concat()
-    }
+    })
 }
 
 #[test]

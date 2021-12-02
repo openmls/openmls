@@ -4,7 +4,9 @@
 //! handling `MlsPlaintext` and `MlsCiphertext`.
 
 use crate::credentials::CredentialError;
+use crate::schedule::errors::MembershipKeyError;
 use crate::tree::secret_tree::SecretTreeError;
+use openmls_traits::types::CryptoError;
 use tls_codec::Error as TlsCodecError;
 
 implement_error! {
@@ -19,6 +21,8 @@ implement_error! {
             CodecError(TlsCodecError) = "TLS Codec error",
             CredentialError(CredentialError) = "See [`CredentialError`](`crate::credentials::CredentialError`) for details.",
             VerificationError(VerificationError) = "See [`VerificationError`](`VerificationError`) for details.",
+            MembershipKeyError(MembershipKeyError) = "See [`MembershipKeyError`](`MembershipKeyError`) for details.",
+            CryptoError(CryptoError) = "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
         }
     }
 }
@@ -36,6 +40,7 @@ implement_error! {
             PlaintextError(MlsPlaintextError) = "MlsPlaintext error",
             SecretTreeError(SecretTreeError) = "SecretTree error",
             CodecError(TlsCodecError) = "TLS codec error",
+            CryptoError(CryptoError) = "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
         }
     }
 }

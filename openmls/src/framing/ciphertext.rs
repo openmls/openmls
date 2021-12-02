@@ -83,12 +83,12 @@ impl MlsCiphertext {
         let sender_data_key = secrets
             .epoch_secrets
             .sender_data_secret()
-            .derive_aead_key(backend, &ciphertext);
+            .derive_aead_key(backend, &ciphertext)?;
         // Derive initial nonce from the key schedule using the ciphertext.
         let sender_data_nonce = secrets
             .epoch_secrets
             .sender_data_secret()
-            .derive_aead_nonce(ciphersuite, backend, &ciphertext);
+            .derive_aead_nonce(ciphersuite, backend, &ciphertext)?;
         // Compute sender data nonce by xoring reuse guard and key schedule
         // nonce as per spec.
         let mls_sender_data_aad = MlsSenderDataAad::new(
@@ -139,13 +139,13 @@ impl MlsCiphertext {
         // Derive key from the key schedule using the ciphertext.
         let sender_data_key = epoch_secrets
             .sender_data_secret()
-            .derive_aead_key(backend, self.ciphertext.as_slice());
+            .derive_aead_key(backend, self.ciphertext.as_slice())?;
         // Derive initial nonce from the key schedule using the ciphertext.
         let sender_data_nonce = epoch_secrets.sender_data_secret().derive_aead_nonce(
             ciphersuite,
             backend,
             self.ciphertext.as_slice(),
-        );
+        )?;
         // Serialize sender data AAD
         let mls_sender_data_aad =
             MlsSenderDataAad::new(self.group_id.clone(), self.epoch, self.content_type);
@@ -293,7 +293,7 @@ impl MlsCiphertext {
         Ok(buffer.to_vec())
     }
 
-    /// Returns the `group_id` in the `MlsCiphertext`.
+    /// Get the `group_id` in the `MlsCiphertext`.
     pub fn group_id(&self) -> &GroupId {
         &self.group_id
     }
@@ -303,14 +303,21 @@ impl MlsCiphertext {
         self.ciphertext.as_slice()
     }
 
-    /// Returns the `epoch` in the `MlsCiphertext`.
+    /// Get the `epoch` in the `MlsCiphertext`.
     pub fn epoch(&self) -> GroupEpoch {
         self.epoch
     }
 
+    /// Set the wire format.
     #[cfg(test)]
     pub(super) fn set_wire_format(&mut self, wire_format: WireFormat) {
         self.wire_format = wire_format;
+    }
+
+    /// Set the ciphertext.
+    #[cfg(test)]
+    pub fn set_ciphertext(&mut self, ciphertext: Vec<u8>) {
+        self.ciphertext = ciphertext.into();
     }
 }
 

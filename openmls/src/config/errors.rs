@@ -10,6 +10,8 @@ implement_error! {
         UnsupportedMlsVersion = "MLS version is not supported by this configuration.",
         UnsupportedCiphersuite = "Ciphersuite is not supported by this configuration.",
         UnsupportedSignatureScheme = "Signature scheme is not supported by this configuration.",
+        UnsupportedProposalType = "Unsupported, required proposal type.",
+        UnsupportedExtensionsType = "Unsupported, required extension type.",
         IncompatibleMlsVersion = "Operation on incompatible MLS versions.",
         IncompatibleCiphersuite = "Operation on incompatible cipher suites.",
         LibraryError = "Library error",

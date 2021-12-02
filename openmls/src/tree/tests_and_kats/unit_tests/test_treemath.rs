@@ -50,7 +50,7 @@ fn test_tree_hash() {
         let kbp = create_identity(b"Tree creator", ciphersuite.name());
 
         // Initialise tree
-        let mut tree = RatchetTree::new(&crypto, kbp);
+        let mut tree = RatchetTree::new(&crypto, kbp).expect("Could not create PrivateTree.");
         let tree_hash = tree.tree_hash(&crypto);
         println!("Tree hash: {:?}", tree_hash);
 
@@ -74,6 +74,7 @@ fn verify_descendants() {
             assert_eq!(
                 descendants(NodeIndex::from(node), LeafIndex::from(size)),
                 descendants_alt(NodeIndex::from(node), LeafIndex::from(size))
+                    .expect("Error when computing descendants occurred.")
             );
         }
     }

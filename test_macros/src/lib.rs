@@ -58,10 +58,7 @@ fn impl_ciphersuite_tests(
             Expr::Path(p) => p.path.segments.last().unwrap().ident.to_string(),
             _ => panic!("Unexpected input"),
         };
-        let test_name = Ident::new(
-            &format!("{}_{}", test_name.to_string(), param_name),
-            Span::call_site(),
-        );
+        let test_name = Ident::new(&format!("{}_{}", test_name, param_name), Span::call_site());
         quote! {
             #[test]
             #test_attribute

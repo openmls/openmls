@@ -3,6 +3,9 @@
 //! `KeyPackageError` are thrown on errors handling `KeyPackage`s and
 //! `KeyPackageBundle`s.
 
+use openmls_traits::types::CryptoError;
+use tls_codec::Error as TlsCodecError;
+
 use crate::{config::ConfigError, credentials::CredentialError, extensions::ExtensionError};
 
 implement_error! {
@@ -15,6 +18,7 @@ implement_error! {
             InvalidSignature = "The key package signature is not valid.",
             LibraryError = "An unknown OpenMLS library error occurred.",
             DuplicateExtension = "Duplicate extensions are not allowed.",
+            UnsupportedExtension = "The key package does not support all required extensions.",
             NoCiphersuitesSupplied = "Creating a new key package requires at least one ciphersuite.",
             CiphersuiteMismatch = "The list of ciphersuites is not consistent with the capabilities extension.",
             CiphersuiteSignatureSchemeMismatch = "The ciphersuite does not match the signature scheme.",
@@ -26,6 +30,10 @@ implement_error! {
                 "See [`ConfigError`](crate::config::ConfigError`) for details.",
             CredentialError(CredentialError) =
                 "See [`CredentialError`](crate::credentials::CredentialError`) for details.",
+            CodecError(TlsCodecError) =
+                "TLS (de)serialization error occurred.",
+            CryptoError(CryptoError) =
+                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
         }
     }
 }

@@ -5,12 +5,13 @@ pub use crate::group::MlsGroup;
 pub use crate::group::MlsGroupConfig;
 pub use crate::group::{
     proposals::{ProposalStore, StagedProposal},
-    GroupEvent, InvalidMessageError, ManagedGroup, ManagedGroupCallbacks, ManagedGroupConfig,
-    ManagedGroupError, Removal, UpdatePolicy, WireFormat,
+    InvalidMessageError, ManagedGroup, ManagedGroupConfig, ManagedGroupError, UpdatePolicy,
+    WireFormat,
 };
 // Errors
-pub use crate::error::ErrorString;
-pub use crate::group::errors::{CreateCommitError, MlsGroupError, StageCommitError, WelcomeError};
+pub use crate::group::errors::{
+    CreateCommitError, FramingValidationError, MlsGroupError, StageCommitError, WelcomeError,
+};
 
 // Indexes
 pub use crate::tree::index::LeafIndex;
@@ -28,7 +29,7 @@ pub use crate::key_packages::*;
 pub use crate::key_store::*;
 pub use crate::messages::{
     proposals::{
-        AddProposal, PreSharedKeyProposal, ReInitProposal, RemoveProposal, UpdateProposal,
+        AddProposal, PreSharedKeyProposal, Proposal, ReInitProposal, RemoveProposal, UpdateProposal,
     },
     Welcome,
 };
@@ -39,10 +40,6 @@ pub use crate::utils::*;
 
 #[cfg(any(feature = "test-utils", test))]
 pub use crate::binary_tree::array_representation::kat_treemath::*;
-
-// Things we need for fuzzing (but not otherwise)
-#[cfg(fuzzing)]
-pub use crate::messages::proposals::Proposal;
 
 // TLS codec traits
 pub use tls_codec::{

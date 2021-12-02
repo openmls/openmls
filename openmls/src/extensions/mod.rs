@@ -38,7 +38,7 @@ pub use capabilities_extension::CapabilitiesExtension;
 pub use errors::*;
 pub use key_package_id_extension::KeyIdExtension;
 pub use life_time_extension::LifetimeExtension;
-pub(crate) use parent_hash_extension::ParentHashExtension;
+pub use parent_hash_extension::ParentHashExtension;
 pub use ratchet_tree_extension::RatchetTreeExtension;
 pub use required_capabilities::RequiredCapabilitiesExtension;
 
@@ -92,6 +92,21 @@ impl TryFrom<u16> for ExtensionType {
                 "{} is an unkown extension type",
                 a
             ))),
+        }
+    }
+}
+
+impl ExtensionType {
+    /// Check whether an extension type is supported or not.
+    pub fn is_supported(&self) -> bool {
+        match self {
+            ExtensionType::Reserved
+            | ExtensionType::Capabilities
+            | ExtensionType::Lifetime
+            | ExtensionType::KeyId
+            | ExtensionType::ParentHash
+            | ExtensionType::RatchetTree
+            | ExtensionType::RequiredCapabilities => true,
         }
     }
 }
@@ -255,6 +270,20 @@ impl Extension {
             Self::ParentHash(e) => Ok(e),
             _ => Err(ExtensionError::InvalidExtensionType(
                 "This is not a ParentHashExtension".into(),
+            )),
+        }
+    }
+
+    /// Get a reference to the `RequiredCapabilitiesExtension`.
+    /// Returns an `InvalidExtensionType` error if called on an `Extension`
+    /// that's not a `RequiredCapabilitiesExtension`.
+    pub fn as_required_capabilities_extension(
+        &self,
+    ) -> Result<&RequiredCapabilitiesExtension, ExtensionError> {
+        match self {
+            Self::RequiredCapabilities(e) => Ok(e),
+            _ => Err(ExtensionError::InvalidExtensionType(
+                "This is not a RequiredCapabilitiesExtension".into(),
             )),
         }
     }
