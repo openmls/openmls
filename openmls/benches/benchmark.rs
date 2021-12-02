@@ -24,7 +24,7 @@ fn criterion_kp_bundle(c: &mut Criterion) {
                             ciphersuite.signature_scheme(),
                             crypto,
                         )
-                        .unwrap()
+                        .expect("An unexpected error occurred.")
                     },
                     |credential_bundle: CredentialBundle| {
                         let crypto = &OpenMlsRustCrypto::default();
@@ -34,7 +34,7 @@ fn criterion_kp_bundle(c: &mut Criterion) {
                             crypto,
                             Vec::new(),
                         )
-                        .unwrap();
+                        .expect("An unexpected error occurred.");
                     },
                 );
             },

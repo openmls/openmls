@@ -21,7 +21,7 @@ fn test_psks() {
             .iter()
             .map(|_| {
                 Secret::from_slice(
-                    &prng.random_vec(55).unwrap(),
+                    &prng.random_vec(55).expect("An unexpected error occurred."),
                     Config::supported_versions()[0],
                     ciphersuite,
                 )
@@ -30,8 +30,8 @@ fn test_psks() {
         let psk_ids = &vec![0u8; 33]
             .iter()
             .map(|_| {
-                let id = prng.random_vec(12).unwrap();
-                let nonce = prng.random_vec(17).unwrap();
+                let id = prng.random_vec(12).expect("An unexpected error occurred.");
+                let nonce = prng.random_vec(17).expect("An unexpected error occurred.");
                 PreSharedKeyId::new(
                     PskType::External,
                     Psk::External(ExternalPsk::new(id)),

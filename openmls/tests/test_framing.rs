@@ -35,7 +35,10 @@ fn padding() {
     let test_setup = setup(test_setup_config);
 
     let test_clients = test_setup.clients.borrow();
-    let alice = test_clients.get("alice").unwrap().borrow();
+    let alice = test_clients
+        .get("alice")
+        .expect("An unexpected error occurred.")
+        .borrow();
 
     for padding_size in 0..50 {
         // Create a message in each group and test the padding.
@@ -43,7 +46,7 @@ fn padding() {
             let credential_bundle = alice
                 .credential_bundles
                 .get(&group_state.ciphersuite().name())
-                .unwrap();
+                .expect("An unexpected error occurred.");
             for _ in 0..10 {
                 let message = randombytes(random_usize() % 1000);
                 let aad = randombytes(random_usize() % 1000);
@@ -55,7 +58,7 @@ fn padding() {
                         padding_size,
                         &crypto,
                     )
-                    .unwrap();
+                    .expect("An unexpected error occurred.");
                 let ciphertext = mls_ciphertext.ciphertext();
                 let length = ciphertext.len();
                 let overflow = if padding_size > 0 {

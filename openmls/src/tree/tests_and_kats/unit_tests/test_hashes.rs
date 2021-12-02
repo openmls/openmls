@@ -19,10 +19,10 @@ fn test_parent_hash() {
                 ciphersuite.signature_scheme(),
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
             let key_package_bundle =
                 KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, &crypto, vec![])
-                    .unwrap();
+                    .expect("An unexpected error occurred.");
 
             // We build a leaf node from the key packages
             let leaf_node = Node {
@@ -42,7 +42,8 @@ fn test_parent_hash() {
         // The first key package bundle is used for the tree holder
         let key_package_bundle = key_package_bundles.remove(0);
 
-        let mut tree = RatchetTree::new_from_nodes(&crypto, key_package_bundle, &nodes).unwrap();
+        let mut tree = RatchetTree::new_from_nodes(&crypto, key_package_bundle, &nodes)
+            .expect("An unexpected error occurred.");
 
         assert!(tree.verify_parent_hashes(&crypto).is_ok());
 

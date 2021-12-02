@@ -23,8 +23,11 @@ fn test_pre_shared_key_proposal_codec() {
         psk_nonce: vec![1, 2, 3].into(),
     };
     let orig = PreSharedKeyProposal::new(psk);
-    let encoded = orig.tls_serialize_detached().unwrap();
-    let decoded = PreSharedKeyProposal::tls_deserialize(&mut encoded.as_slice()).unwrap();
+    let encoded = orig
+        .tls_serialize_detached()
+        .expect("An unexpected error occurred.");
+    let decoded = PreSharedKeyProposal::tls_deserialize(&mut encoded.as_slice())
+        .expect("An unexpected error occurred.");
     assert_eq!(decoded, orig);
 
     // External
@@ -34,8 +37,11 @@ fn test_pre_shared_key_proposal_codec() {
         psk_nonce: vec![1, 2, 3].into(),
     };
     let orig = PreSharedKeyProposal::new(psk);
-    let encoded = orig.tls_serialize_detached().unwrap();
-    let decoded = PreSharedKeyProposal::tls_deserialize(&mut encoded.as_slice()).unwrap();
+    let encoded = orig
+        .tls_serialize_detached()
+        .expect("An unexpected error occurred.");
+    let decoded = PreSharedKeyProposal::tls_deserialize(&mut encoded.as_slice())
+        .expect("An unexpected error occurred.");
     assert_eq!(decoded, orig);
 
     // Branch
@@ -48,8 +54,11 @@ fn test_pre_shared_key_proposal_codec() {
         psk_nonce: vec![1, 2, 3].into(),
     };
     let orig = PreSharedKeyProposal::new(psk);
-    let encoded = orig.tls_serialize_detached().unwrap();
-    let decoded = PreSharedKeyProposal::tls_deserialize(&mut encoded.as_slice()).unwrap();
+    let encoded = orig
+        .tls_serialize_detached()
+        .expect("An unexpected error occurred.");
+    let decoded = PreSharedKeyProposal::tls_deserialize(&mut encoded.as_slice())
+        .expect("An unexpected error occurred.");
     assert_eq!(decoded, orig);
 }
 /// Test the encoding for ReInitProposal, that also covers some of the
@@ -64,8 +73,11 @@ fn test_reinit_proposal_codec() {
             ciphersuite: *ciphersuite_name,
             extensions: vec![].into(),
         };
-        let encoded = orig.tls_serialize_detached().unwrap();
-        let decoded = ReInitProposal::tls_deserialize(&mut encoded.as_slice()).unwrap();
+        let encoded = orig
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred.");
+        let decoded = ReInitProposal::tls_deserialize(&mut encoded.as_slice())
+            .expect("An unexpected error occurred.");
         assert_eq!(decoded, orig);
     }
 }
