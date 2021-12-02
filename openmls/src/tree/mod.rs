@@ -1,6 +1,7 @@
 use crate::ciphersuite::signable::Signable;
 use crate::config::{Config, ProtocolVersion};
 use crate::credentials::*;
+use crate::group::proposals::{CreationProposalQueue, StagedProposalQueue};
 use crate::key_packages::*;
 use crate::messages::proposals::*;
 use crate::messages::PathSecret;
@@ -720,6 +721,115 @@ impl RatchetTree {
         added_members
     }
 
+    /// Applies a list of staged proposals from a Commit to the tree.
+    /// `proposal_queue` is the queue of proposals received or sent in the
+    /// current epoch `updates_key_package_bundles` is the list of own
+    /// KeyPackageBundles corresponding to updates or commits sent in the
+    /// current epoch
+    pub fn apply_staged_proposals(
+        &mut self,
+        backend: &impl OpenMlsCryptoProvider,
+        proposal_queue: &StagedProposalQueue,
+        updates_key_package_bundles: &[KeyPackageBundle],
+    ) -> Result<ApplyProposalsValues, TreeError> {
+        log::debug!("Applying proposal");
+        let mut has_updates = false;
+        let mut has_removes = false;
+        let mut self_removed = false;
+
+        // Process updates first
+        for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Update) {
+            has_updates = true;
+            // Unwrapping here is safe because we know the proposal type
+            let update_proposal = &queued_proposal.proposal().as_update().unwrap();
+            let sender_index = queued_proposal.sender().to_leaf_index();
+            // Prepare leaf node
+            let leaf_node = Node::new_leaf(Some(update_proposal.key_package().clone()));
+            // Blank the direct path of that leaf node
+            self.blank_member(sender_index);
+            // Replace the leaf node
+            self.nodes[sender_index] = leaf_node;
+            // Check if it is a self-update
+            if sender_index == self.own_node_index() {
+                let own_kpb = match updates_key_package_bundles
+                    .iter()
+                    .find(|&kpb| kpb.key_package() == update_proposal.key_package())
+                {
+                    Some(kpb) => kpb,
+                    // We lost the KeyPackageBundle apparently
+                    None => return Err(TreeError::InvalidArguments),
+                };
+                // Update the private tree with new values
+                self.private_tree =
+                    PrivateTree::from_leaf_secret(backend, sender_index, own_kpb.leaf_secret());
+            }
+        }
+
+        // Process removes
+        for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Remove) {
+            has_removes = true;
+            // Unwrapping here is safe because we know the proposal type
+            let remove_proposal = &queued_proposal.proposal().as_remove().unwrap();
+            let removed = LeafIndex::from(remove_proposal.removed());
+            // Check if we got removed from the group
+            if removed == self.own_node_index() {
+                self_removed = true;
+            }
+            // Blank the direct path of the removed member
+            self.blank_member(removed);
+        }
+
+        // Process adds
+        let add_proposals: Vec<AddProposal> = proposal_queue
+            .filtered_by_type(ProposalType::Add)
+            .map(|queued_proposal| {
+                let proposal = &queued_proposal.proposal();
+                // Unwrapping here is safe because we know the proposal type
+                proposal.as_add().unwrap()
+            })
+            .collect();
+
+        // Extract KeyPackages from proposals
+        let key_packages: Vec<&KeyPackage> =
+            add_proposals.iter().map(|a| a.key_package()).collect();
+        // Add new members to tree
+        let added_members = self.add_nodes(&key_packages);
+
+        // Prepare invitations
+        let mut invitation_list = Vec::new();
+        for (i, added) in added_members.iter().enumerate() {
+            invitation_list.push((added.0, add_proposals.get(i).unwrap().clone()));
+        }
+
+        // Process PSK proposals
+        let psks: Vec<PreSharedKeyId> = proposal_queue
+            .filtered_by_type(ProposalType::Presharedkey)
+            .map(|queued_proposal| {
+                // FIXME: remove unwrap
+                // Unwrapping here is safe because we know the proposal type
+                let psk_proposal = queued_proposal.proposal().as_presharedkey().unwrap();
+                psk_proposal.into_psk_id()
+            })
+            .collect();
+
+        let presharedkeys = PreSharedKeys { psks: psks.into() };
+
+        // Determine if Commit needs a path field
+        let path_required = has_updates || has_removes;
+
+        // If members were removed, truncate the tree.
+        if has_removes {
+            self.trim_tree()
+        }
+
+        Ok(ApplyProposalsValues {
+            path_required,
+            self_removed,
+            invitation_list,
+            presharedkeys,
+        })
+    }
+
     /// Applies a list of proposals from a Commit to the tree.
     /// `proposal_queue` is the queue of proposals received or sent in the
     /// current epoch `updates_key_package_bundles` is the list of own
@@ -728,7 +838,7 @@ impl RatchetTree {
     pub fn apply_proposals(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        proposal_queue: ProposalQueue,
+        proposal_queue: CreationProposalQueue,
         updates_key_package_bundles: &[KeyPackageBundle],
     ) -> Result<ApplyProposalsValues, TreeError> {
         log::debug!("Applying proposal");
@@ -873,7 +983,7 @@ impl RatchetTree {
     }
 }
 
-/// This struct contain the return vallues of the `apply_proposals()` function
+/// This struct contain the return values of the `apply_proposals()` function
 pub struct ApplyProposalsValues {
     pub path_required: bool,
     pub self_removed: bool,

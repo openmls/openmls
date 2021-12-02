@@ -22,7 +22,7 @@
 //! group states.
 
 #![allow(dead_code)]
-use crate::group::MlsMessageIn;
+use crate::framing::MlsMessageIn;
 /// We allow dead code here due to the following issue:
 /// https://github.com/rust-lang/rust/issues/46379, which would otherwise create
 /// a lot of unused code warnings.
@@ -196,9 +196,9 @@ impl ManagedTestSetup {
             CodecUse::SerializedMessages => {
                 let serialized_welcome = welcome
                     .tls_serialize_detached()
-                    .map_err(|e| ClientError::TlsCodecError(e))?;
+                    .map_err(ClientError::TlsCodecError)?;
                 Welcome::tls_deserialize(&mut serialized_welcome.as_slice())
-                    .map_err(|e| ClientError::TlsCodecError(e))?
+                    .map_err(ClientError::TlsCodecError)?
             }
             CodecUse::StructMessages => welcome,
         };
@@ -487,7 +487,7 @@ impl ManagedTestSetup {
             return Err(SetupError::ClientNotInGroup);
         }
         let (messages, welcome_option) =
-            remover.remove_members(action_type, &group.group_id, &target_indices)?;
+            remover.remove_members(action_type, &group.group_id, target_indices)?;
         for message in &messages {
             self.distribute_to_members(remover_id, group, message)?;
         }

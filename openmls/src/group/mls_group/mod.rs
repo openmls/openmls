@@ -2,18 +2,23 @@ use log::{debug, trace};
 use psk::{PreSharedKeys, PskSecret};
 
 pub mod create_commit;
+pub mod create_commit_params;
 mod new_from_welcome;
+pub mod proposals;
 pub mod staged_commit;
+#[cfg(test)]
+mod test_create_commit_params;
 #[cfg(test)]
 mod test_duplicate_extension;
 #[cfg(test)]
 mod test_mls_group;
+#[cfg(test)]
+mod test_proposals;
 
 use crate::ciphersuite::signable::{Signable, Verifiable};
 use crate::config::Config;
 use crate::credentials::{CredentialBundle, CredentialError};
 use crate::framing::*;
-use crate::group::mls_group::create_commit::Proposals;
 use crate::group::*;
 use crate::key_packages::*;
 use crate::messages::public_group_state::{PublicGroupState, PublicGroupStateTbs};
@@ -83,7 +88,7 @@ impl MlsGroup {
         let group_id = GroupId { value: id.into() };
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
         let tree = RatchetTree::new(backend, key_package_bundle);
-        // TODO #186: Implement extensions
+        // TODO #483: Implement extensions
         let extensions: Vec<Extension> = Vec::new();
 
         let group_context = GroupContext::create_initial_group_context(
@@ -248,34 +253,6 @@ impl MlsGroup {
         .map_err(|e| e.into())
     }
 
-    // === ===
-
-    // 11.2. Commit
-    // opaque ProposalID<0..255>;
-    //
-    // struct {
-    //     ProposalID proposals<0..2^32-1>;
-    //     optional<UpdatePath> path;
-    // } Commit;
-    pub fn create_commit(
-        &self,
-        framing_parameters: FramingParameters,
-        credential_bundle: &CredentialBundle,
-        proposals: Proposals,
-        force_self_update: bool,
-        psk_fetcher_option: Option<PskFetcher>,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> CreateCommitResult {
-        self.create_commit_internal(
-            framing_parameters,
-            credential_bundle,
-            proposals,
-            force_self_update,
-            psk_fetcher_option,
-            backend,
-        )
-    }
-
     // Create application message
     pub fn create_application_message(
         &mut self,
@@ -283,7 +260,6 @@ impl MlsGroup {
         msg: &[u8],
         credential_bundle: &CredentialBundle,
         padding_size: usize,
-
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsCiphertext, MlsGroupError> {
         let mls_plaintext = MlsPlaintext::new_application(
@@ -326,56 +302,55 @@ impl MlsGroup {
         &mut self,
         mls_ciphertext: &MlsCiphertext,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsPlaintext, MlsGroupError> {
-        let mls_plaintext = mls_ciphertext.to_plaintext(
+    ) -> Result<VerifiableMlsPlaintext, MlsGroupError> {
+        Ok(mls_ciphertext.to_plaintext(
             self.ciphersuite(),
             backend,
             &self.epoch_secrets,
             &mut self.secret_tree.borrow_mut(),
-        )?;
-        self.verify(mls_plaintext, backend)
+        )?)
     }
 
-    /// Verify a [`VerifiableMlsPlaintext`] and get the [`MlsPlaintext`].
+    /// Set the context of the [`VerifiableMlsPlaintext`] (if it has not been
+    /// set already), verify it and return the [`MlsPlaintext`].
     pub fn verify(
         &self,
-        verifiable: VerifiableMlsPlaintext,
+        mut verifiable: VerifiableMlsPlaintext,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsPlaintext, MlsGroupError> {
         // Verify the signature on the plaintext.
         let tree = self.tree();
 
-        let node = &tree.nodes[verifiable.sender_index()];
+        let node = &tree
+            .nodes
+            .get(NodeIndex::from(verifiable.sender_index()).as_usize())
+            .ok_or(MlsPlaintextError::UnknownSender)?;
         let credential = if let Some(kp) = node.key_package.as_ref() {
             kp.credential()
         } else {
             return Err(MlsPlaintextError::UnknownSender.into());
         };
-
-        let serialized_context = self.context().tls_serialize_detached()?;
+        // Set the context if it has not been set already.
+        if !verifiable.has_context() {
+            verifiable.set_context(self.context().tls_serialize_detached()?);
+        }
 
         // TODO: what about the tags?
         verifiable
-            .set_context(&serialized_context)
             .verify(backend, credential)
             .map_err(|e| MlsPlaintextError::from(e).into())
     }
 
-    /// Verify the membership tag an MlsPlaintext
+    /// Set the context of the `UnverifiedMlsPlaintext` and verify its
+    /// membership tag.
     pub fn verify_membership_tag(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-        mls_plaintext: &MlsPlaintext,
+        verifiable_mls_plaintext: &mut VerifiableMlsPlaintext,
     ) -> Result<(), MlsGroupError> {
-        let serialized_context = self.context().tls_serialize_detached()?;
-
-        mls_plaintext
-            .verify_membership(
-                backend,
-                &serialized_context,
-                self.epoch_secrets().membership_key(),
-            )
-            .map_err(|_| MlsPlaintextError::InvalidSignature.into())
+        verifiable_mls_plaintext.set_context(self.context().tls_serialize_detached()?);
+        Ok(verifiable_mls_plaintext
+            .verify_membership(backend, self.epoch_secrets().membership_key())?)
     }
 
     /// Exporter

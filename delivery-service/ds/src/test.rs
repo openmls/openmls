@@ -1,6 +1,6 @@
 use super::*;
 use actix_web::{dev::Body, http::StatusCode, test, web, web::Bytes, App};
-use openmls::group::create_commit::Proposals;
+use openmls::group::create_commit_params::CreateCommitParams;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::SignatureScheme;
 use tls_codec::{TlsByteVecU8, TlsVecU16};
@@ -219,24 +219,27 @@ async fn test_group() {
             crypto,
         )
         .unwrap();
-    let proposals_by_reference = &[&client2_add_proposal];
-    let (commit, welcome_msg, _kpb) = group
-        .create_commit(
-            framing_parameters,
-            &credentials[0],
-            Proposals {
-                proposals_by_reference,
-                proposals_by_value: &[],
-            },
-            false,
-            None,
+
+    let proposal_store = ProposalStore::from_staged_proposal(
+        StagedProposal::from_mls_plaintext(
+            Config::ciphersuite(group_ciphersuite).expect("Unsupported ciphersuite."),
             crypto,
+            client2_add_proposal,
         )
+        .expect("Could not create StagedProposal."),
+    );
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&credentials[0])
+        .proposal_store(&proposal_store)
+        .force_self_update(false)
+        .build();
+    let (commit, welcome_msg, _kpb) = group
+        .create_commit(params, crypto)
         .expect("Error creating commit");
     let welcome_msg = welcome_msg.expect("Welcome message wasn't created by create_commit.");
-    let epoch_proposals = &[&client2_add_proposal];
     let staged_commit = group
-        .stage_commit(&commit, epoch_proposals, &[], None, crypto)
+        .stage_commit(&commit, &proposal_store, &[], None, crypto)
         .expect("error applying commit");
     group.merge_commit(staged_commit);
 
@@ -339,6 +342,9 @@ async fn test_group() {
     let mls_plaintext = group
         .decrypt(&mls_ciphertext, crypto)
         .expect("Error decrypting MlsCiphertext");
+    let mls_plaintext = group
+        .verify(mls_plaintext, crypto)
+        .expect("Error verifying plaintext");
     assert_eq!(
         client2_message,
         mls_plaintext.as_application_message().unwrap()

@@ -1,3 +1,5 @@
+use mls_group::{create_commit_params::CreateCommitParams, proposals::StagedProposal};
+
 use crate::prelude::ErrorString;
 
 use super::*;
@@ -23,37 +25,28 @@ impl ManagedGroup {
             // If it is a ciphertext we decrypt it and return the plaintext message
             MlsMessageIn::Ciphertext(ciphertext) => {
                 let aad = ciphertext.authenticated_data.clone();
-                (self.group.decrypt(&ciphertext, backend)?, Some(aad))
+                let unverified_plaintext = self.group.decrypt(&ciphertext, backend)?;
+                let plaintext = self.group.verify(unverified_plaintext, backend)?;
+                (plaintext, Some(aad))
             }
             // If it is a plaintext message we have to verify it first
-            MlsMessageIn::Plaintext(unverified_plaintext) => {
-                // Get the proper context to verify the signature on the plaintext
-                let context = self
-                    .group
-                    .context()
-                    .tls_serialize_detached()
-                    .map_err(MlsGroupError::CodecError)?;
-                let members = self.indexed_members();
-                let credential = members
-                    .get(&unverified_plaintext.sender_index())
-                    .ok_or(InvalidMessageError::UnknownSender)?;
-                // Verify the signature
-                let plaintext: MlsPlaintext = unverified_plaintext
-                    .set_context(&context)
-                    .verify(backend, credential)?;
+            MlsMessageIn::Plaintext(mut verifiable_plaintext) => {
                 // Verify membership tag
                 // TODO #106: Support external senders
-                if plaintext.is_proposal()
-                    && plaintext.sender().is_member()
+                if verifiable_plaintext.is_proposal()
+                    && verifiable_plaintext.sender().is_member()
                     && self
                         .group
-                        .verify_membership_tag(backend, &plaintext)
+                        // This sets the context implicitly.
+                        .verify_membership_tag(backend, &mut verifiable_plaintext)
                         .is_err()
                 {
                     return Err(ManagedGroupError::InvalidMessage(
                         InvalidMessageError::MembershipTagMismatch,
                     ));
                 }
+                // Verify the signature
+                let plaintext: MlsPlaintext = self.group.verify(verifiable_plaintext, backend)?;
                 (plaintext, None)
             }
         };
@@ -66,7 +59,10 @@ impl ManagedGroup {
                 // policy and then appended to the internal `pending_proposal` list.
                 // TODO #133: Semantic validation of proposals
                 if self.validate_proposal(proposal, plaintext.sender_index(), &indexed_members) {
-                    self.pending_proposals.push(plaintext);
+                    let staged_proposal =
+                        StagedProposal::from_mls_plaintext(self.ciphersuite(), backend, plaintext)
+                            .map_err(|_| InvalidMessageError::InvalidProposal)?;
+                    self.proposal_store.add(staged_proposal);
                 } else {
                     // The proposal was invalid
                     return Err(ManagedGroupError::InvalidMessage(
@@ -87,26 +83,17 @@ impl ManagedGroup {
                 }
                 // If all proposals were valid, we continue with staging the Commit
                 // message
-                let proposals = &self
-                    .pending_proposals
-                    .iter()
-                    .collect::<Vec<&MlsPlaintext>>();
                 // TODO #141
-                match self
-                    .group
-                    .stage_commit(&plaintext, proposals, &self.own_kpbs, None, backend)
-                {
+                match self.group.stage_commit(
+                    &plaintext,
+                    &self.proposal_store,
+                    &self.own_kpbs,
+                    None,
+                    backend,
+                ) {
                     Ok(staged_commit) => {
-                        // Since the Commit was applied without errors, we can merge it and collect
-                        // all proposals from the Commit and generate events
+                        // Since the Commit was applied without errors, we can merge it
                         self.group.merge_commit(staged_commit);
-                        events.append(&mut self.prepare_events(
-                            self.ciphersuite(),
-                            backend,
-                            commit.proposals.as_slice(),
-                            plaintext.sender_index(),
-                            &indexed_members,
-                        ));
 
                         // If a Commit has an update path, it is additionally to be treated
                         // like a commited UpdateProposal.
@@ -123,19 +110,11 @@ impl ManagedGroup {
                             .add(self.group.context().epoch(), resumption_secret.clone());
                         // We don't need the pending proposals and key package bundles any
                         // longer
-                        self.pending_proposals.clear();
+                        self.proposal_store.empty();
                         self.own_kpbs.clear();
                     }
                     Err(stage_commit_error) => match stage_commit_error {
                         MlsGroupError::StageCommitError(StageCommitError::SelfRemoved) => {
-                            // Prepare events
-                            events.append(&mut self.prepare_events(
-                                self.ciphersuite(),
-                                backend,
-                                commit.proposals.as_slice(),
-                                plaintext.sender_index(),
-                                &indexed_members,
-                            ));
                             // The group is no longer active
                             self.active = false;
                         }
@@ -184,8 +163,6 @@ impl ManagedGroup {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
-        // Include pending proposals into Commit
-        let messages_to_commit: Vec<&MlsPlaintext> = self.pending_proposals.iter().collect();
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
@@ -195,17 +172,12 @@ impl ManagedGroup {
 
         // Create Commit over all pending proposals
         // TODO #141
-        let (commit, welcome_option, kpb_option) = self.group.create_commit(
-            self.framing_parameters(),
-            &credential_bundle,
-            Proposals {
-                proposals_by_reference: &messages_to_commit,
-                proposals_by_value: &[],
-            },
-            true,
-            None,
-            backend,
-        )?;
+        let params = CreateCommitParams::builder()
+            .framing_parameters(self.framing_parameters())
+            .credential_bundle(&credential_bundle)
+            .proposal_store(&self.proposal_store)
+            .build();
+        let (commit, welcome_option, kpb_option) = self.group.create_commit(params, backend)?;
 
         // If it was a full Commit, we have to save the KeyPackageBundle for later
         if let Some(kpb) = kpb_option {

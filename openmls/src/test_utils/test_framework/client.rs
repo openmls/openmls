@@ -6,7 +6,7 @@ use std::{cell::RefCell, collections::HashMap};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 
-use crate::{group::MlsMessageIn, node::Node, prelude::*};
+use crate::{framing::MlsMessageIn, node::Node, prelude::*};
 
 use super::{errors::ClientError, ActionType};
 
@@ -131,9 +131,9 @@ impl Client {
     /// messages.
     pub fn receive_messages_for_group(&self, message: &MlsMessageIn) -> Result<(), ClientError> {
         let mut group_states = self.groups.borrow_mut();
-        let group_id = GroupId::from_slice(message.group_id());
+        let group_id = message.group_id();
         let group_state = group_states
-            .get_mut(&group_id)
+            .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
         let events = group_state.process_message(message.clone(), &self.crypto)?;
         for event in events {

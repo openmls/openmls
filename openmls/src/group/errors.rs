@@ -35,6 +35,8 @@ implement_error! {
                 "See [`ExporterError`](`ExporterError`) for details.",
             ProposalQueueError(ProposalQueueError) =
                 "See [`ProposalQueueError`](`crate::messages::errors::ProposalQueueError`) for details.",
+            CreationProposalQueueError(CreationProposalQueueError) =
+                "See [`CreationProposalQueueError`](`crate::messages::errors::CreationProposalQueueError`) for details.",
             CodecError(TlsCodecError) =
                 "Tls (de)serialization occurred.",
             KeyScheduleError(KeyScheduleError) =
@@ -168,6 +170,39 @@ implement_error! {
         Complex {
             PskSecretError(PskSecretError) =
                 "An error occured when concatenating the PSKs.",
+        }
+    }
+}
+
+implement_error! {
+    pub enum StagedProposalError {
+        Simple {
+            WrongContentType = "API misuse. Only proposals can end up in the proposal queue",
+        }
+        Complex {
+            TlsCodecError(TlsCodecError) = "Error serializing",
+        }
+    }
+}
+
+implement_error! {
+    pub enum StagedProposalQueueError {
+        Simple {
+            ProposalNotFound = "Not all proposals in the Commit were found locally.",
+        }
+        Complex {
+            NotAProposal(StagedProposalError) = "The given MLS Plaintext was not a Proposal.",
+        }
+    }
+}
+
+implement_error! {
+    pub enum CreationProposalQueueError {
+        Simple {
+            ProposalNotFound = "Not all proposals in the Commit were found locally.",
+        }
+        Complex {
+            NotAProposal(StagedProposalError) = "The given MLS Plaintext was not a Proposal.",
         }
     }
 }

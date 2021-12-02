@@ -17,7 +17,7 @@ impl ManagedGroup {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
-        if !self.pending_proposals.is_empty() {
+        if !self.proposal_store.is_empty() {
             return Err(ManagedGroupError::PendingProposalsExist(
                 PendingProposalsError::Exists,
             ));

@@ -17,19 +17,23 @@ pub mod ciphertext;
 #[doc(hidden)]
 pub mod codec;
 pub mod errors;
+pub mod message;
 pub mod plaintext;
 pub mod sender;
+pub mod validation;
 pub use ciphertext::*;
 pub use errors::*;
+pub use message::*;
 pub use plaintext::*;
 pub use sender::*;
+pub use validation::*;
 
 #[cfg(test)]
 mod test_framing;
 
 /// This struct is used to group common framing parameters
 /// in order to reduce the number of arguments in function calls.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct FramingParameters<'a> {
     aad: &'a [u8],
     wire_format: WireFormat,
