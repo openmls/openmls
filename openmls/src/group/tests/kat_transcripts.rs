@@ -336,7 +336,7 @@ pub fn run_test_vector(
 }
 
 #[apply(backends)]
-fn read_test_vectors(backend: &impl OpenMlsCryptoProvider) {
+fn read_test_vectors_transcript(backend: &impl OpenMlsCryptoProvider) {
     let tests: Vec<TranscriptTestVector> = read("test_vectors/kat_transcripts.json");
 
     for test_vector in tests {

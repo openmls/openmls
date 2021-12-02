@@ -687,7 +687,7 @@ pub fn run_test_vector(
 }
 
 #[apply(backends)]
-fn read_test_vectors(backend: &impl OpenMlsCryptoProvider) {
+fn read_test_vectors_encryption(backend: &impl OpenMlsCryptoProvider) {
     let tests: Vec<EncryptionTestVector> = read("test_vectors/kat_encryption_openmls.json");
 
     for test_vector in tests {

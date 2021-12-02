@@ -294,7 +294,7 @@ pub fn run_test_vector(
 }
 
 #[apply(backends)]
-fn read_test_vectors(backend: &impl OpenMlsCryptoProvider) {
+fn read_test_vectors_tree_kem(backend: &impl OpenMlsCryptoProvider) {
     let tests: Vec<TreeKemTestVector> = read("test_vectors/kat_tree_kem_openmls.json");
 
     for test_vector in tests {
