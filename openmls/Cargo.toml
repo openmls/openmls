@@ -27,6 +27,8 @@ getrandom = { version = "0.2", features = ["js"] }
 itertools = { version = "0.10", optional = true }
 openmls_rust_crypto = { version = "0.1", path = "../openmls_rust_crypto", optional = true }
 evercrypt_backend = { version = "0.1", path = "../evercrypt_backend", optional = true }
+rstest = "^0.11"
+rstest_reuse = "^0.1"
 
 [features]
 default = []
@@ -39,11 +41,10 @@ content-debug = [] # ☣️ Enable logging of sensitive message content
 criterion = "^0.3"
 pretty_env_logger = "0.4"
 itertools = "0.10"
-test_macros = { path = "../test_macros" }
 openmls = { path = ".", features = ["test-utils"] }
 tempfile = "3"
-rstest = "0.11.0"
-rstest_reuse = "0.1.3"
+rstest = "^0.11"
+rstest_reuse = "^0.1"
 
 # x64 targets get evercrypt compiled into dev-dependencies.
 [target.'cfg(target_arch = "x86_64")'.dev-dependencies.openmls]

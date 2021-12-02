@@ -12,7 +12,6 @@ use crate::{
     prelude::*,
     test_utils::*,
     tree::node::Node,
-    utils::*,
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;

@@ -1,6 +1,16 @@
 //! Test utilities
 #![allow(dead_code)]
 
+pub use openmls_traits::OpenMlsCryptoProvider;
+pub use rstest::*;
+pub use rstest_reuse::{self, *};
+
+pub use crate::{
+    ciphersuite::{Ciphersuite, CiphersuiteName},
+    config::Config,
+    utils::*,
+};
+
 use serde::{self, de::DeserializeOwned, Serialize};
 use std::{
     fs::File,
@@ -35,7 +45,7 @@ pub(crate) fn read<T: DeserializeOwned>(file_name: &str) -> T {
 }
 
 /// Convert `bytes` to a hex string.
-pub(crate) fn bytes_to_hex(bytes: &[u8]) -> String {
+pub fn bytes_to_hex(bytes: &[u8]) -> String {
     let mut hex = String::new();
     for &b in bytes {
         hex += &format!("{:02X}", b);
@@ -44,7 +54,7 @@ pub(crate) fn bytes_to_hex(bytes: &[u8]) -> String {
 }
 
 /// Convert a hex string to a byte vector.
-pub(crate) fn hex_to_bytes(hex: &str) -> Vec<u8> {
+pub fn hex_to_bytes(hex: &str) -> Vec<u8> {
     assert!(hex.len() % 2 == 0);
     let mut bytes = Vec::new();
     for i in 0..(hex.len() / 2) {
@@ -57,27 +67,101 @@ pub(crate) fn hex_to_bytes(hex: &str) -> Vec<u8> {
 
 /// Convert a hex string to a byte vector.
 /// If the input is `None`, this returns an empty vector.
-pub(crate) fn hex_to_bytes_option(hex: Option<String>) -> Vec<u8> {
+pub fn hex_to_bytes_option(hex: Option<String>) -> Vec<u8> {
     match hex {
         Some(s) => hex_to_bytes(&s),
         None => vec![],
     }
 }
 
-#[allow(unused_macros)]
-macro_rules! ctest_ciphersuites {
-    ($name:ident, test($param_name:ident: $t:ty) $body:block) => {
-        test_macros::ctest!(
-            $name
-            [
-                CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-                CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256,
-                CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-            ]
-            {
-                fn test($param_name: $t) $body
-                test(param)
-            }
-        );
-    };
+// === Define backend per platform ===
+
+#[cfg(all(
+    target_arch = "x86_64",
+    not(target_os = "macos"),
+    not(target_family = "wasm")
+))]
+pub use evercrypt_backend::OpenMlsEvercrypt;
+
+#[cfg(any(
+    not(target_arch = "x86_64"),
+    target_os = "macos",
+    target_family = "wasm"
+))]
+pub use openmls_rust_crypto::OpenMlsRustCrypto;
+
+// === Backends ===
+
+#[cfg(any(
+    not(target_arch = "x86_64"),
+    target_os = "macos",
+    target_family = "wasm"
+))]
+#[template]
+#[rstest(backend,
+    case(&OpenMlsRustCrypto::default()),
+  )
+]
+pub fn backends(backend: &impl OpenMlsCryptoProvider) {}
+
+#[cfg(all(
+    target_arch = "x86_64",
+    not(target_os = "macos"),
+    not(target_family = "wasm")
+))]
+#[template]
+#[template]
+#[rstest(backend,
+    case(&OpenMlsRustCrypto::default()),
+    case(&OpenMlsEvercrypt::default()),
+  )
+]
+pub fn backends(backend: &impl OpenMlsCryptoProvider) {}
+
+// === Ciphersuites ===
+
+#[template]
+#[rstest(ciphersuite,
+    case(Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519).expect("Ciphersuite not supported.")),
+    case(Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256).expect("Ciphersuite not supported.")),
+    case(Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519).expect("Ciphersuite not supported.")),
+  )
+]
+pub fn ciphersuites(ciphersuite: &'static Ciphersuite) {}
+
+// === Ciphersuites & backends ===
+
+#[cfg(any(
+    not(target_arch = "x86_64"),
+    target_os = "macos",
+    target_family = "wasm"
+))]
+#[template]
+#[rstest(ciphersuite, backend,
+    case(Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519).expect("Ciphersuite not supported."), &OpenMlsRustCrypto::default()),
+    case(Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256).expect("Ciphersuite not supported."), &OpenMlsRustCrypto::default()),
+    case(Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519).expect("Ciphersuite not supported."), &OpenMlsRustCrypto::default()),
+  )
+]
+pub fn ciphersuites_and_backends(
+    ciphersuite: &'static Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+) {
 }
+
+#[cfg(all(
+    target_arch = "x86_64",
+    not(target_os = "macos"),
+    not(target_family = "wasm")
+))]
+#[template]
+#[rstest(ciphersuite, backend,
+    case(Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519).expect("Ciphersuite not supported."), &OpenMlsRustCrypto::default()),
+    case(Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256).expect("Ciphersuite not supported."), &OpenMlsRustCrypto::default()),
+    case(Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519).expect("Ciphersuite not supported."), &OpenMlsRustCrypto::default()),
+    case(Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519).expect("Ciphersuite not supported."), &OpenMlsEvercrypt::default()),
+    case(Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256).expect("Ciphersuite not supported."), &OpenMlsEvercrypt::default()),
+    case(Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519).expect("Ciphersuite not supported."), &OpenMlsEvercrypt::default()),
+  )
+]
+pub fn ciphersuites_and_backends(ciphersuite: &Ciphersuite, backend: &impl OpenMlsCryptoProvider) {}

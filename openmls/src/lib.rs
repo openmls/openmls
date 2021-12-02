@@ -21,6 +21,8 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![forbid(unsafe_code)]
 
+pub use rstest_reuse;
+
 #[macro_use]
 mod utils;
 
