@@ -1,3 +1,10 @@
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 10%
+
 ignore:
   - "delivery-service/**/*"  # ignore PoC DS server and lib
   - "cli/**/*"  # ignore PoC cli

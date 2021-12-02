@@ -10,10 +10,9 @@ impl ManagedGroup {
     /// New members are added by providing a `KeyPackage` for each member.
     ///
     /// This operation results in a Commit with a `path`, i.e. it includes an
-    /// update of the committer's leaf `KeyPackage`.
+    /// update of the committer's leaf [KeyPackage].
     ///
-    /// If successful, it returns a `Vec` of
-    /// [`MlsMessage`] and a [`Welcome`] message.
+    /// If successful, it returns a tuple of [MlsMessageOut] and [Welcome].
     pub fn add_members(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -72,8 +71,8 @@ impl ManagedGroup {
         // the configuration
         let mls_messages = self.plaintext_to_mls_message(commit, backend)?;
 
-        // Since the state of the group was changed, call the auto-save function
-        self.auto_save();
+        // Since the state of the group might be changed, arm the state flag
+        self.flag_state_change();
 
         Ok((mls_messages, welcome))
     }
@@ -82,9 +81,8 @@ impl ManagedGroup {
     ///
     /// Members are removed by providing the index of their leaf in the tree.
     ///
-    /// If successful, it returns a `Vec` of
-    /// [`MlsMessage`] and an optional [`Welcome`] message if there were add
-    /// proposals in the queue of pending proposals.
+    /// If successful, it returns a tuple of [`MlsMessageOut`] and an optional [`Welcome`].
+    /// The [Welcome] is [Some] when the queue of pending proposals contained add proposals
     pub fn remove_members(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -139,8 +137,8 @@ impl ManagedGroup {
         // the configuration
         let mls_message = self.plaintext_to_mls_message(commit, backend)?;
 
-        // Since the state of the group was changed, call the auto-save function
-        self.auto_save();
+        // Since the state of the group might be changed, arm the state flag
+        self.flag_state_change();
 
         Ok((mls_message, welcome_option))
     }
@@ -171,8 +169,8 @@ impl ManagedGroup {
 
         let mls_message = self.plaintext_to_mls_message(add_proposal, backend)?;
 
-        // Since the state of the group was changed, call the auto-save function
-        self.auto_save();
+        // Since the state of the group might be changed, arm the state flag
+        self.flag_state_change();
 
         Ok(mls_message)
     }
@@ -202,8 +200,8 @@ impl ManagedGroup {
 
         let mls_message = self.plaintext_to_mls_message(remove_proposal, backend)?;
 
-        // Since the state of the group was changed, call the auto-save function
-        self.auto_save();
+        // Since the state of the group might be changed, arm the state flag
+        self.flag_state_change();
 
         Ok(mls_message)
     }

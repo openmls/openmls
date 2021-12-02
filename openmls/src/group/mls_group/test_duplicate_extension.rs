@@ -47,19 +47,12 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
         ..MlsGroupConfig::default()
     };
 
-    let group_id = [5, 6, 7, 8];
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
 
-    let mut alice_group = MlsGroup::new(
-        &group_id,
-        ciphersuite.name(),
-        &crypto,
-        alice_key_package_bundle,
-        config,
-        None, /* Initial PSK */
-        None, /* MLS version */
-    )
-    .unwrap();
+    let mut alice_group = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
+        .with_config(config)
+        .build(&crypto)
+        .expect("Error creating group.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group
@@ -101,7 +94,7 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
         bob_key_package_bundle.key_package(),
         welcome.secrets(),
         &crypto,
-    ).expect("JoinerSecret not found");
+    ).expect("Could not hash KeyPackage.").expect("JoinerSecret not found");
 
     let group_secrets_bytes = crypto
         .crypto()
@@ -121,12 +114,12 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
         &crypto,
         joiner_secret,
         psk_output(ciphersuite, &crypto, None, &group_secrets.psks).expect("Could not extract PSKs"),
-    );
+    ).expect("Could not create KeySchedule.");
 
     // Derive welcome key & noce from the key schedule
     let (welcome_key, welcome_nonce) = key_schedule
         .welcome(&crypto).expect("Expected a WelcomeSecret")
-        .derive_welcome_key_nonce(&crypto);
+        .derive_welcome_key_nonce(&crypto).expect("Could not derive welcome nonce.");
 
     let group_info_bytes = welcome_key
         .aead_open(&crypto, welcome.encrypted_group_info(), &[], &welcome_nonce)
@@ -134,9 +127,9 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
     let mut group_info = GroupInfo::tls_deserialize(&mut group_info_bytes.as_slice()).expect("Could not decode GroupInfo");
 
     // Duplicate extensions
-    let extensions = group_info.extensions();
+    let extensions = group_info.other_extensions();
     let duplicate_extensions = vec![extensions[0].clone(), extensions[0].clone()];
-    group_info.set_extensions(duplicate_extensions);
+    group_info.set_other_extensions(duplicate_extensions);
 
     // Put everything back together
     let group_info = group_info.re_sign(&bob_credential_bundle, &crypto).expect("Error re-signing GroupInfo");

@@ -1,6 +1,6 @@
 //! # Known Answer Tests for the transcript hashes
 //!
-//! See https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md
+//! See <https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md>
 //! for more description on the test vectors.
 
 use std::convert::TryFrom;
@@ -58,16 +58,14 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
         crypto.rand().random_vec(ciphersuite.hash_length()).unwrap();
     let interim_transcript_hash_before =
         crypto.rand().random_vec(ciphersuite.hash_length()).unwrap();
-    let membership_key = MembershipKey::from_secret(Secret::random(
-        ciphersuite,
-        &crypto,
-        None, /* MLS version */
-    ));
-    let confirmation_key = ConfirmationKey::from_secret(Secret::random(
-        ciphersuite,
-        &crypto,
-        None, /* MLS version */
-    ));
+    let membership_key = MembershipKey::from_secret(
+        Secret::random(ciphersuite, &crypto, None /* MLS version */)
+            .expect("Not enough randomness."),
+    );
+    let confirmation_key = ConfirmationKey::from_secret(
+        Secret::random(ciphersuite, &crypto, None /* MLS version */)
+            .expect("Not enough randomness."),
+    );
 
     // Build plaintext commit message.
     let credential_bundle = CredentialBundle::new(
@@ -107,7 +105,9 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
         &interim_transcript_hash_before,
     )
     .expect("Error updating confirmed transcript hash");
-    let confirmation_tag = confirmation_key.tag(&crypto, &confirmed_transcript_hash_after);
+    let confirmation_tag = confirmation_key
+        .tag(&crypto, &confirmed_transcript_hash_after)
+        .expect("Could not compute confirmation tag.");
     commit.set_confirmation_tag(confirmation_tag);
 
     let interim_transcript_hash_after = update_interim_transcript_hash(
@@ -245,7 +245,9 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
     let confirmed_transcript_hash_after =
         hex_to_bytes(&test_vector.confirmed_transcript_hash_after);
 
-    let my_confirmation_tag = confirmation_key.tag(&crypto, &confirmed_transcript_hash_after);
+    let my_confirmation_tag = confirmation_key
+        .tag(&crypto, &confirmed_transcript_hash_after)
+        .expect("Could not compute confirmation tag.");
     if &my_confirmation_tag
         != commit
             .confirmation_tag()

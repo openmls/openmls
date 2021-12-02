@@ -109,10 +109,15 @@ fn codec_ciphertext() {
             &crypto,
             JoinerSecret::random(ciphersuite, &crypto, ProtocolVersion::default()),
             None, // PSK
-        );
+        )
+        .expect("Could not create KeySchedule.");
+
+        let serialized_group_context = group_context
+            .tls_serialize_detached()
+            .expect("Could not serialize group context.");
 
         key_schedule
-            .add_context(&crypto, &group_context)
+            .add_context(&crypto, &serialized_group_context)
             .expect("Could not add context to key schedule");
 
         let epoch_secrets = key_schedule
@@ -191,10 +196,15 @@ fn wire_format_checks() {
             &crypto,
             JoinerSecret::random(ciphersuite, &crypto, ProtocolVersion::default()),
             None, // PSK
-        );
+        )
+        .expect("Could not create KeySchedule.");
+
+        let serialized_group_context = group_context
+            .tls_serialize_detached()
+            .expect("Could not serialize group context.");
 
         key_schedule
-            .add_context(&crypto, &group_context)
+            .add_context(&crypto, &serialized_group_context)
             .expect("Could not add context to key schedule");
 
         let epoch_secrets = key_schedule
@@ -276,11 +286,10 @@ fn membership_tag() {
         .unwrap();
         let group_context =
             GroupContext::new(GroupId::random(crypto), GroupEpoch(1), vec![], vec![], &[]).unwrap();
-        let membership_key = MembershipKey::from_secret(Secret::random(
-            ciphersuite,
-            crypto,
-            None, /* MLS version */
-        ));
+        let membership_key = MembershipKey::from_secret(
+            Secret::random(ciphersuite, crypto, None /* MLS version */)
+                .expect("Not enough randomness."),
+        );
         let mut mls_plaintext = MlsPlaintext::new_application(
             LeafIndex::from(2u32),
             &[1, 2, 3],
@@ -379,17 +388,9 @@ fn unknown_sender() {
         .unwrap();
 
         // Alice creates a group
-        let group_id = [1, 2, 3, 4];
-        let mut group_alice = MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            crypto,
-            alice_key_package_bundle,
-            MlsGroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
-        )
-        .unwrap();
+        let mut group_alice = MlsGroup::builder(GroupId::random(crypto), alice_key_package_bundle)
+            .build(crypto)
+            .expect("Error creating group.");
 
         // Alice adds Bob
         let bob_add_proposal = group_alice
@@ -516,7 +517,9 @@ fn unknown_sender() {
             &[1, 2, 3],
             &alice_credential_bundle,
             group_alice.context(),
-            &MembershipKey::from_secret(Secret::random(ciphersuite, crypto, None)),
+            &MembershipKey::from_secret(
+                Secret::random(ciphersuite, crypto, None).expect("Not enough randomness."),
+            ),
             crypto,
         )
         .expect("Could not create new MlsPlaintext.");
@@ -553,7 +556,9 @@ fn unknown_sender() {
             &[1, 2, 3],
             &alice_credential_bundle,
             group_alice.context(),
-            &MembershipKey::from_secret(Secret::random(ciphersuite, crypto, None)),
+            &MembershipKey::from_secret(
+                Secret::random(ciphersuite, crypto, None).expect("Not enough randomness."),
+            ),
             crypto,
         )
         .expect("Could not create new MlsPlaintext.");
@@ -628,17 +633,9 @@ fn confirmation_tag_presence() {
         .unwrap();
 
         // Alice creates a group
-        let group_id = [1, 2, 3, 4];
-        let mut group_alice = MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            crypto,
-            alice_key_package_bundle,
-            MlsGroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
-        )
-        .unwrap();
+        let mut group_alice = MlsGroup::builder(GroupId::random(crypto), alice_key_package_bundle)
+            .build(crypto)
+            .expect("Error creating group.");
 
         // Alice adds Bob
         let bob_add_proposal = group_alice
@@ -722,17 +719,9 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
         .unwrap();
 
         // Alice creates a group
-        let group_id = [1, 2, 3, 4];
-        let mut group_alice = MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            crypto,
-            alice_key_package_bundle,
-            MlsGroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
-        )
-        .unwrap();
+        let mut group_alice = MlsGroup::builder(GroupId::random(crypto), alice_key_package_bundle)
+            .build(crypto)
+            .expect("Error creating group.");
 
         // Alice adds Bob
         let bob_add_proposal = group_alice
@@ -785,7 +774,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
             .clone()
             .expect("There should have been a membership tag.");
         modified_membership_tag.0.mac_value[0] ^= 0xFF;
-        input_commit.set_membership_tag_test(modified_membership_tag);
+        input_commit.set_membership_tag(modified_membership_tag);
         let membership_error = group_alice
             .verify_membership_tag(crypto, &mut input_commit)
             .err()

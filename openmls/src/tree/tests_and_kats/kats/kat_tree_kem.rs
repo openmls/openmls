@@ -1,6 +1,6 @@
 //! TreeKEM test vectors
 //!
-//! See https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md
+//! See <https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md>
 //! for more description on the test vectors.
 //!
 //! The test vector describes a tree of `n` leaves adds a new leaf with
@@ -18,9 +18,9 @@ use crate::test_utils::{read, write};
 use crate::{
     ciphersuite::signable::Signable,
     credentials::{CredentialBundle, CredentialType},
-    node::Node,
     prelude::KeyPackageBundlePayload,
     test_utils::hex_to_bytes,
+    tree::node::Node,
 };
 use crate::{
     ciphersuite::Secret,
@@ -106,6 +106,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
         &my_key_package,
         &crypto,
     )
+    .expect("Coul not create KeyPackage.")
     .sign(&crypto, &credential_bundle)
     .unwrap();
 
@@ -118,7 +119,9 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     .unwrap();
     crate::utils::_print_tree(&tree_before, "Tree before");
 
-    if hex_to_bytes(&test_vector.tree_hash_before) != tree_before.tree_hash(&crypto) {
+    if hex_to_bytes(&test_vector.tree_hash_before)
+        != tree_before.tree_hash(&crypto).expect("Could not hash.")
+    {
         if cfg!(test) {
             panic!("Tree hash mismatch in the 'before' tree.");
         }
@@ -135,6 +138,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
         &my_key_package,
         &crypto,
     )
+    .expect("Coul not create KeyPackage.")
     .sign(&crypto, &credential_bundle)
     .unwrap();
     let tree_after = RatchetTree::new_from_nodes(
@@ -145,7 +149,9 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     .unwrap();
     crate::utils::_print_tree(&tree_after, "Tree after");
 
-    if hex_to_bytes(&test_vector.tree_hash_after) != tree_after.tree_hash(&crypto) {
+    if hex_to_bytes(&test_vector.tree_hash_after)
+        != tree_after.tree_hash(&crypto).expect("Could not hash.")
+    {
         if cfg!(test) {
             panic!("Tree hash mismatch in the 'after' tree.");
         }
@@ -196,7 +202,8 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
 
     tree_before
         .private_tree_mut()
-        .continue_path_secrets(ciphersuite, &crypto, start_secret, &path);
+        .continue_path_secrets(ciphersuite, &crypto, start_secret, &path)
+        .expect("Could not continue path secrets.");
 
     // Check if the root secrets match up.
     let root_secret_after_add: PathSecret = Secret::from_slice(
@@ -397,7 +404,11 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     let kpb: KeyPackageBundle = addee
         .crypto
         .key_store()
-        .read(&my_key_package.hash(&crypto))
+        .read(
+            &my_key_package
+                .hash(&crypto)
+                .expect("Could not hash KeyPackage."),
+        )
         .unwrap();
     let my_leaf_secret = kpb.leaf_secret();
 
@@ -430,7 +441,9 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         .tls_serialize_detached()
         .expect("error serializing ratchet tree extension");
 
-    let tree_hash_before = addee_group.tree_hash(&crypto);
+    let tree_hash_before = addee_group
+        .tree_hash(&crypto)
+        .expect("Could not compute tree hash.");
 
     drop(addee_groups);
     drop(addee);
@@ -507,7 +520,9 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     let ratchet_tree_after = RatchetTreeExtension::new(addee_group.export_ratchet_tree())
         .tls_serialize_detached()
         .expect("error serializing ratchet tree extension");
-    let tree_hash_after = addee_group.tree_hash(&crypto);
+    let tree_hash_after = addee_group
+        .tree_hash(&crypto)
+        .expect("Could not compute tree hash.");
 
     TreeKemTestVector {
         cipher_suite: ciphersuite.name() as u16,

@@ -1,5 +1,9 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext, OpenMlsCryptoProvider};
+use openmls_traits::{
+    crypto::OpenMlsCrypto,
+    types::{CryptoError, HpkeCiphertext},
+    OpenMlsCryptoProvider,
+};
 use tls_codec::Serialize;
 
 use crate::{
@@ -35,17 +39,9 @@ fn test_mls_group_persistence() {
     .unwrap();
 
     // Alice creates a group
-    let group_id = [1, 2, 3, 4];
-    let alice_group = MlsGroup::new(
-        &group_id,
-        ciphersuite.name(),
-        &crypto,
-        alice_key_package_bundle,
-        MlsGroupConfig::default(),
-        None, /* Initial PSK */
-        None, /* MLS version */
-    )
-    .unwrap();
+    let alice_group = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
+        .build(&crypto)
+        .expect("Error creating group.");
 
     let mut file_out = tempfile::NamedTempFile::new().expect("Could not create file");
     alice_group
@@ -87,7 +83,8 @@ fn test_failed_groupinfo_decryption() {
                 epoch,
                 tree_hash,
                 confirmed_transcript_hash,
-                extensions,
+                &Vec::new(),
+                &extensions,
                 confirmation_tag,
                 signer_index,
             );
@@ -99,7 +96,9 @@ fn test_failed_groupinfo_decryption() {
             // Generate receiver key pair.
             let receiver_key_pair = crypto.crypto().derive_hpke_keypair(
                 ciphersuite.hpke_config(),
-                Secret::random(ciphersuite, &crypto, None).as_slice(),
+                Secret::random(ciphersuite, &crypto, None)
+                    .expect("Not enough randomness.")
+                    .as_slice(),
             );
             let hpke_info = b"group info welcome test info";
             let hpke_aad = b"group info welcome test aad";
@@ -135,7 +134,11 @@ fn test_failed_groupinfo_decryption() {
             flip_last_byte(&mut encrypted_group_secrets);
 
             let broken_secrets = vec![EncryptedGroupSecrets {
-                key_package_hash: key_package_bundle.key_package.hash(&crypto).into(),
+                key_package_hash: key_package_bundle
+                    .key_package
+                    .hash(&crypto)
+                    .expect("Could not hash KeyPackage.")
+                    .into(),
                 encrypted_group_secrets,
             }];
 
@@ -168,7 +171,7 @@ fn test_failed_groupinfo_decryption() {
 
             assert_eq!(
                 error,
-                WelcomeError::GroupSecretsDecryptionFailure(CryptoError::HpkeDecryptionError)
+                WelcomeError::CryptoError(CryptoError::HpkeDecryptionError)
             )
         }
     }
@@ -219,17 +222,9 @@ fn test_update_path() {
         let bob_key_package = bob_key_package_bundle.key_package();
 
         // === Alice creates a group ===
-        let group_id = [1, 2, 3, 4];
-        let mut alice_group = MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            &crypto,
-            alice_key_package_bundle,
-            MlsGroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
-        )
-        .unwrap();
+        let mut alice_group = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
+            .build(&crypto)
+            .expect("Error creating group.");
 
         // === Alice adds Bob ===
         let bob_add_proposal = alice_group
@@ -385,7 +380,7 @@ fn test_update_path() {
         assert_eq!(
             staged_commit_res.expect_err("Successful processing of a broken commit."),
             MlsGroupError::StageCommitError(StageCommitError::DecryptionFailure(
-                TreeError::PathSecretDecryptionError(CryptoError::HpkeDecryptionError)
+                TreeError::CryptoError(CryptoError::HpkeDecryptionError)
             ))
         );
     }
@@ -449,16 +444,15 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group with a PSK ===
-    let group_id = [1, 2, 3, 4];
     let psk_id = vec![1u8, 2, 3];
 
-    let secret = Secret::random(ciphersuite,  &crypto, None /* MLS version */);
+    let secret = Secret::random(ciphersuite,  &crypto, None /* MLS version */).expect("Not enough randomness.");
     let external_psk_bundle = ExternalPskBundle::new(
         ciphersuite,
         &crypto,
         secret,
         psk_id,
-    );
+    ).expect("Could not create ExternalPskBundle.");
     let preshared_key_id = external_psk_bundle.to_presharedkey_id();
     let initial_psk = PskSecret::new(
         ciphersuite,
@@ -466,17 +460,10 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         &[preshared_key_id.clone()],
         &[external_psk_bundle.secret().clone()],
     ).expect("Could not create PskSecret");
-    let mut alice_group = MlsGroup::new(
-        &group_id,
-        ciphersuite.name(),
-
-        &crypto,
-        alice_key_package_bundle,
-        MlsGroupConfig::default(),
-        Some(initial_psk),
-        None, /* MLS version */
-    )
-    .unwrap();
+    let mut alice_group = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
+        .with_psk(initial_psk)
+        .build(&crypto)
+        .expect("Error creating group.");
 
     // === Alice creates a PSK proposal ===
     log::info!(" >>> Creating psk proposal ...");

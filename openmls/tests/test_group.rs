@@ -59,17 +59,9 @@ fn create_commit_optional_path() {
         assert!(alice_update_key_package.verify(&crypto,).is_ok());
 
         // Alice creates a group
-        let group_id = [1, 2, 3, 4];
-        let mut group_alice = MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            &crypto,
-            alice_key_package_bundle,
-            MlsGroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
-        )
-        .unwrap();
+        let mut group_alice = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
+            .build(&crypto)
+            .expect("Error creating MlsGroup.");
 
         // Alice proposes to add Bob with forced self-update
         // Even though there are only Add Proposals, this should generated a path field
@@ -257,17 +249,9 @@ fn basic_group_setup() {
         .unwrap();
 
         // Alice creates a group
-        let group_id = [1, 2, 3, 4];
-        let group_alice = MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            &crypto,
-            alice_key_package_bundle,
-            MlsGroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
-        )
-        .expect("Could not create group.");
+        let group_alice = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
+            .build(&crypto)
+            .expect("Error creating MlsGroup.");
 
         // Alice adds Bob
         let bob_add_proposal = group_alice
@@ -322,6 +306,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         None,
         Some(&[ciphersuite.name()]),
         None,
+        None,
     ));
     let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
     let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
@@ -345,17 +330,9 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group ===
-    let group_id = [1, 2, 3, 4];
-    let mut group_alice = MlsGroup::new(
-        &group_id,
-        ciphersuite.name(),
-        &crypto,
-        alice_key_package_bundle,
-        MlsGroupConfig::default(),
-        None, /* Initial PSK */
-        None, /* MLS version */
-    )
-    .expect("Could not create group.");
+    let mut group_alice = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
+        .build(&crypto)
+        .expect("Error creating MlsGroup.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = group_alice
@@ -883,18 +860,16 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         )
         .expect("Error applying commit (Alice)");
     group_alice.merge_commit(staged_commit);
-    assert!(
-        group_bob
-            .stage_commit(
-                &mls_plaintext_commit,
-                &proposal_store,
-                &[],
-                None,
-                /* PSK fetcher */ &crypto,
-            )
-            .unwrap_err()
-            == MlsGroupError::StageCommitError(StageCommitError::SelfRemoved)
-    );
+    assert!(group_bob
+        .stage_commit(
+            &mls_plaintext_commit,
+            &proposal_store,
+            &[],
+            None,
+            /* PSK fetcher */ &crypto,
+        )
+        .expect("Could not stage commit.")
+        .self_removed());
     let staged_commit = group_charlie
         .stage_commit(
             &mls_plaintext_commit,

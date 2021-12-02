@@ -2,6 +2,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMlsCryptoProvider};
 
 use crate::{
+    group::InnerState,
     prelude::*,
     test_utils::test_framework::{
         errors::ClientError, ActionType::Commit, CodecUse, ManagedTestSetup,
@@ -37,7 +38,10 @@ fn generate_key_package_bundle(
     let kp = kpb.key_package().clone();
     key_store
         .key_store()
-        .store(&kp.hash(key_store), &kpb)
+        .store(
+            &kp.hash(key_store).expect("Could not hash KeyPackage."),
+            &kpb,
+        )
         .unwrap();
     Ok(kp)
 }
@@ -67,13 +71,18 @@ fn test_managed_group_persistence() {
 
     // === Alice creates a group ===
 
-    let alice_group = ManagedGroup::new(
+    let mut alice_group = ManagedGroup::new(
         &crypto,
         &managed_group_config,
         group_id,
-        &alice_key_package.hash(&crypto),
+        &alice_key_package
+            .hash(&crypto)
+            .expect("Could not hash KeyPackage."),
     )
     .unwrap();
+
+    // Check the internal state has changed
+    assert_eq!(alice_group.state_changed(), InnerState::Changed);
 
     let mut file_out = tempfile::NamedTempFile::new().expect("Could not create file");
     alice_group
@@ -83,8 +92,8 @@ fn test_managed_group_persistence() {
     let file_in = file_out
         .reopen()
         .expect("Error re-opening serialized group state file");
-    let alice_group_deserialized = ManagedGroup::load(file_in, &ManagedGroupCallbacks::default())
-        .expect("Could not deserialize managed group");
+    let alice_group_deserialized =
+        ManagedGroup::load(file_in).expect("Could not deserialize managed group");
 
     assert_eq!(
         (
@@ -145,26 +154,39 @@ fn remover() {
             .unwrap();
 
     // Define the managed group configuration
-    let mut managed_group_config = ManagedGroupConfig::default();
+    let managed_group_config = ManagedGroupConfig::default();
 
     // === Alice creates a group ===
     let mut alice_group = ManagedGroup::new(
         crypto,
         &managed_group_config,
         group_id,
-        &alice_key_package.hash(crypto),
+        &alice_key_package
+            .hash(crypto)
+            .expect("Could not hash KeyPackage."),
     )
     .unwrap();
 
     // === Alice adds Bob ===
-    let (queued_message, welcome) = match alice_group.add_members(crypto, &[bob_key_package]) {
-        Ok((qm, welcome)) => (qm, welcome),
-        Err(e) => panic!("Could not add member to group: {:?}", e),
-    };
+    let (queued_message, welcome) = alice_group
+        .add_members(crypto, &[bob_key_package])
+        .expect("Could not add member to group.");
 
-    alice_group
-        .process_message(queued_message.into(), crypto)
-        .expect("Process message error");
+    let unverified_message = alice_group
+        .parse_message(queued_message.into(), crypto)
+        .expect("Could not parse message.");
+
+    let alice_processed_message = alice_group
+        .process_unverified_message(unverified_message, None, crypto)
+        .expect("Could not process unverified message.");
+
+    if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+        alice_group
+            .merge_staged_commit(*staged_commit)
+            .expect("Could not merge StagedCommit");
+    } else {
+        unreachable!("Expected a StagedCommit.");
+    }
 
     let mut bob_group = ManagedGroup::new_from_welcome(
         crypto,
@@ -180,15 +202,34 @@ fn remover() {
         Err(e) => panic!("Could not add member to group: {:?}", e),
     };
 
-    alice_group
-        .process_message(queued_messages.clone().into(), crypto)
-        .expect("The group is no longer active");
-    bob_group
-        .process_message(queued_messages.into(), crypto)
-        .expect("The group is no longer active");
+    let unverified_message = alice_group
+        .parse_message(queued_messages.clone().into(), crypto)
+        .expect("Could not parse message.");
+    let alice_processed_message = alice_group
+        .process_unverified_message(unverified_message, None, crypto)
+        .expect("Could not process unverified message.");
+    if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+        alice_group
+            .merge_staged_commit(*staged_commit)
+            .expect("Could not merge StagedCommit");
+    } else {
+        unreachable!("Expected a StagedCommit.");
+    }
 
-    let charlie_callbacks = ManagedGroupCallbacks::default();
-    managed_group_config.set_callbacks(&charlie_callbacks);
+    let unverified_message = bob_group
+        .parse_message(queued_messages.into(), crypto)
+        .expect("Could not parse message.");
+    let bob_processed_message = bob_group
+        .process_unverified_message(unverified_message, None, crypto)
+        .expect("Could not process unverified message.");
+    if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
+        bob_group
+            .merge_staged_commit(*staged_commit)
+            .expect("Could not merge StagedCommit");
+    } else {
+        unreachable!("Expected a StagedCommit.");
+    }
+
     let mut charlie_group = ManagedGroup::new_from_welcome(
         crypto,
         &managed_group_config,
@@ -203,17 +244,62 @@ fn remover() {
         .propose_remove_member(crypto, 1)
         .expect("Could not propose removal");
 
-    charlie_group
-        .process_message(queued_messages.into(), crypto)
-        .expect("Could not process messages");
+    let unverified_message = charlie_group
+        .parse_message(queued_messages.into(), crypto)
+        .expect("Could not parse message.");
+    let charlie_processed_message = charlie_group
+        .process_unverified_message(unverified_message, None, crypto)
+        .expect("Could not process unverified message.");
 
+    // Check that we received the correct proposals
+    if let ProcessedMessage::ProposalMessage(staged_proposal) = charlie_processed_message {
+        if let Proposal::Remove(ref remove_proposal) = staged_proposal.proposal() {
+            // Check that Bob was removed
+            // TODO #541: Replace this with the adequate API call
+            assert_eq!(remove_proposal.removed(), 1u32);
+            // Store proposal
+            charlie_group.store_pending_proposal(*staged_proposal.clone());
+        } else {
+            unreachable!("Expected a Proposal.");
+        }
+
+        // Check that Alice removed Charlie
+        // TODO #541: Replace this with the adequate API call
+        assert_eq!(
+            staged_proposal.sender().to_leaf_index(),
+            LeafIndex::from(0u32)
+        );
+    } else {
+        unreachable!("Expected a StagedProposal.");
+    }
+
+    // Charlie commits
     let (queued_messages, _welcome) = charlie_group
-        .process_pending_proposals(crypto)
+        .commit_to_pending_proposals(crypto)
         .expect("Could not commit proposal");
 
-    let _events = charlie_group
-        .process_message(queued_messages.into(), crypto)
-        .expect("Could not process messages");
+    let unverified_message = charlie_group
+        .parse_message(queued_messages.into(), crypto)
+        .expect("Could not parse message.");
+    let charlie_processed_message = charlie_group
+        .process_unverified_message(unverified_message, None, crypto)
+        .expect("Could not process unverified message.");
+
+    // Check that we receive the correct proposal
+    if let ProcessedMessage::StagedCommitMessage(staged_commit) = charlie_processed_message {
+        let remove = staged_commit
+            .remove_proposals()
+            .next()
+            .expect("Expected a proposal.");
+        // Check that Bob was removed
+        // TODO #541: Replace this with the adequate API call
+        assert_eq!(remove.remove_proposal().removed(), 1u32);
+        // Check that Alice removed Bob
+        // TODO #541: Replace this with the adequate API call
+        assert_eq!(remove.sender().to_leaf_index(), LeafIndex::from(0u32));
+    } else {
+        unreachable!("Expected a StagedCommit.");
+    }
 
     // TODO #524: Check that Alice removed Bob
 }
@@ -254,7 +340,7 @@ ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
         crypto,
         &managed_group_config,
         group_id,
-        &alice_key_package.hash(crypto),
+        &alice_key_package.hash(crypto).expect("Could not hash KeyPackage."),
     )
     .unwrap();
 
@@ -316,6 +402,9 @@ fn test_invalid_plaintext() {
     drop(clients);
 
     // Tamper with the message such that signature verification fails
+    // Once #574 is addressed the new function from there should be used to manipulate the signature.
+    // Right now the membership tag is verified first, wihich yields `VerificationError::InvalidMembershipTag`
+    // error instead of a `CredentialError:InvalidSignature`.
     let mut msg_invalid_signature = mls_message.clone();
     if let MlsMessageOut::Plaintext(ref mut pt) = msg_invalid_signature {
         pt.invalidate_signature()
@@ -326,8 +415,10 @@ fn test_invalid_plaintext() {
         .expect_err("No error when distributing message with invalid signature.");
 
     assert_eq!(
-        ClientError::ManagedGroupError(ManagedGroupError::Group(MlsGroupError::MlsPlaintextError(
-            MlsPlaintextError::CredentialError(CredentialError::InvalidSignature)
+        ClientError::ManagedGroupError(ManagedGroupError::Group(MlsGroupError::ValidationError(
+            ValidationError::MlsPlaintextError(MlsPlaintextError::VerificationError(
+                VerificationError::InvalidMembershipTag
+            ))
         ))),
         error
     );
@@ -347,9 +438,9 @@ fn test_invalid_plaintext() {
         .expect_err("No error when distributing message with invalid signature.");
 
     assert_eq!(
-        ClientError::ManagedGroupError(ManagedGroupError::Group(MlsGroupError::MlsPlaintextError(
-            MlsPlaintextError::UnknownSender
-        ))),
+        ClientError::ManagedGroupError(ManagedGroupError::Group(
+            MlsGroupError::FramingValidationError(FramingValidationError::UnknownMember)
+        )),
         error
     );
 }

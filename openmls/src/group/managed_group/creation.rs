@@ -27,15 +27,10 @@ impl ManagedGroup {
             add_ratchet_tree_extension: managed_group_config.use_ratchet_tree_extension,
             ..Default::default()
         };
-        let group = MlsGroup::new(
-            group_id.as_slice(),
-            key_package_bundle.key_package().ciphersuite_name(),
-            backend,
-            key_package_bundle,
-            group_config,
-            None, /* Initial PSK */
-            None, /* MLS version */
-        )?;
+        let group = MlsGroup::builder(group_id, key_package_bundle)
+            .with_config(group_config)
+            .with_required_capabilities(managed_group_config.required_capabilities.clone())
+            .build(backend)?;
 
         let resumption_secret_store =
             ResumptionSecretStore::new(managed_group_config.number_of_resumption_secrets);
@@ -48,10 +43,8 @@ impl ManagedGroup {
             aad: vec![],
             resumption_secret_store,
             active: true,
+            state_changed: InnerState::Changed,
         };
-
-        // Since the state of the group was changed, call the auto-save function
-        managed_group.auto_save();
 
         Ok(managed_group)
     }
@@ -86,10 +79,8 @@ impl ManagedGroup {
             aad: vec![],
             resumption_secret_store,
             active: true,
+            state_changed: InnerState::Changed,
         };
-
-        // Since the state of the group was changed, call the auto-save function
-        managed_group.auto_save();
 
         Ok(managed_group)
     }

@@ -124,6 +124,6 @@ As a reviewer always keep in mind the following principles
   - Is the code maintainable after these changes?
   - Are there any security issues with these changes?
   - Are all code changes tested?
-  - Do the changes affect performance?
+  - Do the changes effect performance?
   - Look at the interdiff for second and subsequent reviews.
 - Ask if more information is needed to understand and judge the changes.

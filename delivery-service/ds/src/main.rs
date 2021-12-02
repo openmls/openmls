@@ -311,7 +311,7 @@ async fn main() -> std::io::Result<()> {
         8080
     };
     let ip = "127.0.0.1";
-    let addr = format!("{}:{}", ip, port.to_string());
+    let addr = format!("{}:{}", ip, port);
     log::info!("Listening on: {}", addr);
 
     // Start the server.

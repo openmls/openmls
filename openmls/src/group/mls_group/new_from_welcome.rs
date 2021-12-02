@@ -23,6 +23,7 @@ impl MlsGroup {
         if !Config::supported_versions().contains(&mls_version) {
             return Err(WelcomeError::UnsupportedMlsVersion);
         }
+
         let ciphersuite_name = welcome.ciphersuite();
         let ciphersuite = Config::ciphersuite(ciphersuite_name)?;
 
@@ -31,7 +32,7 @@ impl MlsGroup {
             key_package_bundle.key_package(),
             welcome.secrets(),
             backend,
-        ) {
+        )? {
             egs
         } else {
             return Err(WelcomeError::JoinerSecretNotFound);
@@ -42,16 +43,13 @@ impl MlsGroup {
             return Err(e);
         }
 
-        let group_secrets_bytes = backend
-            .crypto()
-            .hpke_open(
-                ciphersuite.hpke_config(),
-                &egs.encrypted_group_secrets,
-                key_package_bundle.private_key().as_slice(),
-                &[],
-                &[],
-            )
-            .map_err(|_| CryptoError::HpkeDecryptionError)?;
+        let group_secrets_bytes = backend.crypto().hpke_open(
+            ciphersuite.hpke_config(),
+            &egs.encrypted_group_secrets,
+            key_package_bundle.private_key().as_slice(),
+            &[],
+            &[],
+        )?;
         let group_secrets = GroupSecrets::tls_deserialize(&mut group_secrets_bytes.as_slice())?
             .config(ciphersuite, mls_version);
         let joiner_secret = group_secrets.joiner_secret;
@@ -67,48 +65,59 @@ impl MlsGroup {
                 psk_fetcher_option,
                 &group_secrets.psks,
             )?,
-        );
+        )?;
 
         // Derive welcome key & nonce from the key schedule
         let (welcome_key, welcome_nonce) = key_schedule
             .welcome(backend)?
-            .derive_welcome_key_nonce(backend);
+            .derive_welcome_key_nonce(backend)?;
 
         let group_info_bytes = welcome_key
             .aead_open(backend, welcome.encrypted_group_info(), &[], &welcome_nonce)
             .map_err(|_| WelcomeError::GroupInfoDecryptionFailure)?;
         let group_info = GroupInfo::tls_deserialize(&mut group_info_bytes.as_slice())?;
+
+        // Make sure that we can support the required capabilities in the group info.
+        let group_context_extensions = group_info.group_context_extensions();
+        let required_capabilities = group_context_extensions
+            .iter()
+            .find(|&extension| extension.extension_type() == ExtensionType::RequiredCapabilities);
+        if let Some(required_capabilities) = required_capabilities {
+            let required_capabilities =
+                required_capabilities.as_required_capabilities_extension()?;
+            check_required_capabilities_support(required_capabilities)?;
+            // Also check that our key package actually supports the extensions.
+            // Per spec the sender must have checked this. But you never know.
+            key_package_bundle
+                .key_package()
+                .check_extension_support(required_capabilities.extensions())?
+        }
+
         let path_secret_option = group_secrets.path_secret;
 
         // Build the ratchet tree
         // First check the extensions to see if the tree is in there.
-        let mut ratchet_tree_extensions = group_info
-            .extensions()
+        let mut ratchet_tree_extension = group_info
+            .other_extensions()
             .iter()
             .filter(|e| e.extension_type() == ExtensionType::RatchetTree)
-            .collect::<Vec<&Extension>>();
-
-        let ratchet_tree_extension = if ratchet_tree_extensions.is_empty() {
-            None
-        } else if ratchet_tree_extensions.len() == 1 {
-            let extension = ratchet_tree_extensions
-                .pop()
-                // Unwrappig here is safe because we know we only have one element
-                .unwrap()
-                .as_ratchet_tree_extension()
-                // Unwrapping here is safe, because we know the extension type already
-                .unwrap()
-                // We clone the nodes here upon extraction, so that we don't have to clone
-                // them later when we build the tree
-                .clone();
-            Some(extension)
-        } else {
+            .map(|e| e.as_ratchet_tree_extension().ok())
+            .collect::<Vec<Option<&RatchetTreeExtension>>>();
+        if ratchet_tree_extension.len() > 1 {
             // Throw an error if there is more than one ratchet tree extension.
             // This shouldn't be the case anyway, because extensions are checked
             // for uniqueness anyway when decoding them.
             // We have to see if this makes problems later as it's not something
             // required by the spec right now.
             return Err(WelcomeError::DuplicateRatchetTreeExtension);
+        }
+
+        let ratchet_tree_extension = if ratchet_tree_extension.is_empty() {
+            None
+        } else {
+            ratchet_tree_extension
+                .pop()
+                .ok_or(WelcomeError::UnknownError)?
         };
 
         // Set nodes either from the extension or from the `nodes_option`.
@@ -116,20 +125,17 @@ impl MlsGroup {
         // this group. Note that this is not strictly necessary. But there's
         // currently no other mechanism to enable the extension.
         let (nodes, enable_ratchet_tree_extension) = match ratchet_tree_extension {
-            Some(tree) => (tree.into_vector(), true),
-            None => {
-                if let Some(nodes) = nodes_option {
-                    (nodes, false)
-                } else {
-                    return Err(WelcomeError::MissingRatchetTree);
-                }
-            }
+            Some(tree) => (tree.as_slice(), true),
+            None => match nodes_option.as_ref() {
+                Some(n) => (n.as_slice(), false),
+                None => return Err(WelcomeError::MissingRatchetTree),
+            },
         };
 
-        let mut tree = RatchetTree::new_from_nodes(backend, key_package_bundle, &nodes)?;
+        let mut tree = RatchetTree::new_from_nodes(backend, key_package_bundle, nodes)?;
 
         // Verify tree hash
-        let tree_hash = tree.tree_hash(backend);
+        let tree_hash = tree.tree_hash(backend)?;
         if tree_hash != group_info.tree_hash() {
             return Err(WelcomeError::TreeHashMismatch);
         }
@@ -153,16 +159,21 @@ impl MlsGroup {
                 tree.own_node_index().into(),
                 NodeIndex::from(group_info.signer_index()),
             );
-            // We can unwrap here, because, upon closer inspection,
-            // `dirpath_long` will never throw an error.
+            // We can throw a library error here, because, upon closer inspection,
+            // `parent_direct_path` will never throw an error.
             let common_path =
-                treemath::parent_direct_path(common_ancestor_index, tree.leaf_count()).unwrap();
+                treemath::parent_direct_path(common_ancestor_index, tree.leaf_count())
+                    .map_err(|_| WelcomeError::LibraryError)?;
 
             // Update the private tree.
             let private_tree = tree.private_tree_mut();
             // Derive path secrets and generate keypairs
-            let new_public_keys =
-                private_tree.continue_path_secrets(ciphersuite, backend, path_secret, &common_path);
+            let new_public_keys = private_tree.continue_path_secrets(
+                ciphersuite,
+                backend,
+                path_secret,
+                &common_path,
+            )?;
 
             // Validate public keys
             if tree
@@ -179,11 +190,12 @@ impl MlsGroup {
             group_info.epoch(),
             tree_hash,
             group_info.confirmed_transcript_hash().to_vec(),
-            // TODO #483: Implement extensions
-            &[],
+            group_context_extensions,
         )?;
+
+        let serialized_group_context = group_context.tls_serialize_detached()?;
         // TODO #141: Implement PSK
-        key_schedule.add_context(backend, &group_context)?;
+        key_schedule.add_context(backend, &serialized_group_context)?;
         let epoch_secrets = key_schedule.epoch_secrets(backend, true)?;
 
         let secret_tree = epoch_secrets
@@ -192,7 +204,7 @@ impl MlsGroup {
 
         let confirmation_tag = epoch_secrets
             .confirmation_key()
-            .tag(backend, group_context.confirmed_transcript_hash.as_slice());
+            .tag(backend, group_context.confirmed_transcript_hash.as_slice())?;
         let interim_transcript_hash = update_interim_transcript_hash(
             ciphersuite,
             backend,
@@ -226,12 +238,12 @@ impl MlsGroup {
         key_package: &KeyPackage,
         welcome_secrets: &[EncryptedGroupSecrets],
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Option<EncryptedGroupSecrets> {
+    ) -> Result<Option<EncryptedGroupSecrets>, KeyPackageError> {
         for egs in welcome_secrets {
-            if key_package.hash(backend).as_slice() == egs.key_package_hash.as_slice() {
-                return Some(egs.clone());
+            if key_package.hash(backend)?.as_slice() == egs.key_package_hash.as_slice() {
+                return Ok(Some(egs.clone()));
             }
         }
-        None
+        Ok(None)
     }
 }

@@ -54,22 +54,26 @@ impl PartialEq for Secret {
 impl Secret {
     /// Randomly sample a fresh `Secret`.
     /// This default random initialiser uses the default Secret length of `hash_length`.
+    /// The function can return a [`CryptoError`] if there is insufficient randomness.
     pub(crate) fn random(
         ciphersuite: &'static Ciphersuite,
         crypto: &impl OpenMlsCryptoProvider,
         version: impl Into<Option<ProtocolVersion>>,
-    ) -> Self {
+    ) -> Result<Self, CryptoError> {
         let mls_version = version.into().unwrap_or_default();
         log::trace!(
             "Creating a new random secret for {:?} and {:?}",
             ciphersuite.name,
             mls_version
         );
-        Secret {
-            value: crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
+        Ok(Secret {
+            value: crypto
+                .rand()
+                .random_vec(ciphersuite.hash_length())
+                .map_err(|_| CryptoError::InsufficientRandomness)?,
             mls_version,
             ciphersuite,
-        }
+        })
     }
 
     /// Create an all zero secret.
@@ -99,7 +103,7 @@ impl Secret {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ikm_option: impl Into<Option<&'a Secret>>,
-    ) -> Self {
+    ) -> Result<Self, CryptoError> {
         log::trace!("HKDF extract with {:?}", self.ciphersuite.name);
         log_crypto!(trace, "  salt: {:x?}", self.value);
         let zero_secret = Self::zero(self.ciphersuite, self.mls_version);
@@ -122,23 +126,15 @@ impl Secret {
             ikm.ciphersuite
         );
 
-        Self {
-            // XXX: we unwrap here because the two crypto backends we have right
-            //      now won't throw an error here. This shouldn't be necessary
-            //      when introducing the crypto object. In that case this
-            //      module has to ensure to check that the backend supports
-            //      all required functions before doing anything.
-            value: backend
-                .crypto()
-                .hkdf_extract(
-                    self.ciphersuite.hash,
-                    self.value.as_slice(),
-                    ikm.value.as_slice(),
-                )
-                .unwrap(),
+        Ok(Self {
+            value: backend.crypto().hkdf_extract(
+                self.ciphersuite.hash,
+                self.value.as_slice(),
+                ikm.value.as_slice(),
+            )?,
             mls_version: self.mls_version,
             ciphersuite: self.ciphersuite,
-        }
+        })
     }
 
     /// HKDF expand where `self` is `prk`.

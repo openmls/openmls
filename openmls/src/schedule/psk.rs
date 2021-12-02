@@ -105,17 +105,17 @@ impl ExternalPskBundle {
         backend: &impl OpenMlsCryptoProvider,
         secret: Secret,
         psk_id: Vec<u8>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, CryptoError> {
+        Ok(Self {
             secret,
             nonce: backend
                 .rand()
                 .random_vec(ciphersuite.hash_length())
-                .unwrap(),
+                .map_err(|_| CryptoError::InsufficientRandomness)?,
             external_psk: ExternalPsk {
                 psk_id: psk_id.into(),
             },
-        }
+        })
     }
     /// Return the `PreSharedKeyID`
     pub fn to_presharedkey_id(&self) -> PreSharedKeyId {
@@ -299,7 +299,7 @@ impl PskSecret {
         let mut psk_secret = Secret::zero(ciphersuite, mls_version);
         for ((index, psk), psk_id) in psks.iter().enumerate().zip(psk_ids.iter()) {
             let zero_secret = Secret::zero(ciphersuite, mls_version);
-            let psk_extracted = zero_secret.hkdf_extract(backend, psk);
+            let psk_extracted = zero_secret.hkdf_extract(backend, psk)?;
             let psk_label = PskLabel::new(psk_id, index as u16, num_psks)
                 .tls_serialize_detached()
                 .map_err(|_| PskSecretError::EncodingError)?;
@@ -310,7 +310,7 @@ impl PskSecret {
                 &psk_label,
                 ciphersuite.hash_length(),
             )?;
-            psk_secret = psk_input.hkdf_extract(backend, &psk_secret);
+            psk_secret = psk_input.hkdf_extract(backend, &psk_secret)?;
         }
         Ok(Self { secret: psk_secret })
     }
@@ -326,7 +326,8 @@ impl PskSecret {
         rng: &impl OpenMlsCryptoProvider,
     ) -> Self {
         Self {
-            secret: Secret::random(ciphersuite, rng, None /* MLS version */),
+            secret: Secret::random(ciphersuite, rng, None /* MLS version */)
+                .expect("Not enough randomness."),
         }
     }
 
