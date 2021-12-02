@@ -1,6 +1,8 @@
 use openmls::{group::create_commit_params::CreateCommitParams, prelude::*};
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::OpenMlsCryptoProvider;
+use rstest_reuse::{self, *};
+
+mod utils;
+use utils::*;
 
 #[test]
 fn create_commit_optional_path() {
@@ -206,78 +208,75 @@ fn create_commit_optional_path() {
     }
 }
 
-#[test]
-fn basic_group_setup() {
-    let crypto = OpenMlsRustCrypto::default();
-    for ciphersuite in Config::supported_ciphersuites() {
-        let group_aad = b"Alice's test group";
-        // Framing parameters
-        let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+#[apply(ciphersuites_and_backends)]
+fn basic_group_setup(ciphersuite: &Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let group_aad = b"Alice's test group";
+    // Framing parameters
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
 
-        // Define credential bundles
-        let alice_credential_bundle = CredentialBundle::new(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-            &crypto,
-        )
-        .unwrap();
-        let bob_credential_bundle = CredentialBundle::new(
-            "Bob".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-            &crypto,
-        )
-        .unwrap();
+    // Define credential bundles
+    let alice_credential_bundle = CredentialBundle::new(
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+        backend,
+    )
+    .unwrap();
+    let bob_credential_bundle = CredentialBundle::new(
+        "Bob".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+        backend,
+    )
+    .unwrap();
 
-        // Generate KeyPackages
-        let bob_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
-            &bob_credential_bundle,
-            &crypto,
-            Vec::new(),
-        )
-        .unwrap();
-        let bob_key_package = bob_key_package_bundle.key_package();
+    // Generate KeyPackages
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &bob_credential_bundle,
+        backend,
+        Vec::new(),
+    )
+    .unwrap();
+    let bob_key_package = bob_key_package_bundle.key_package();
 
-        let alice_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
+    let alice_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &alice_credential_bundle,
+        backend,
+        Vec::new(),
+    )
+    .unwrap();
+
+    // Alice creates a group
+    let group_alice = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+        .build(backend)
+        .expect("Error creating MlsGroup.");
+
+    // Alice adds Bob
+    let bob_add_proposal = group_alice
+        .create_add_proposal(
+            framing_parameters,
             &alice_credential_bundle,
-            &crypto,
-            Vec::new(),
+            bob_key_package.clone(),
+            backend,
         )
-        .unwrap();
+        .expect("Could not create proposal.");
 
-        // Alice creates a group
-        let group_alice = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
-            .build(&crypto)
-            .expect("Error creating MlsGroup.");
+    let proposal_store = ProposalStore::from_staged_proposal(
+        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create StagedProposal."),
+    );
 
-        // Alice adds Bob
-        let bob_add_proposal = group_alice
-            .create_add_proposal(
-                framing_parameters,
-                &alice_credential_bundle,
-                bob_key_package.clone(),
-                &crypto,
-            )
-            .expect("Could not create proposal.");
-
-        let proposal_store = ProposalStore::from_staged_proposal(
-            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
-                .expect("Could not create StagedProposal."),
-        );
-
-        let params = CreateCommitParams::builder()
-            .framing_parameters(framing_parameters)
-            .credential_bundle(&alice_credential_bundle)
-            .proposal_store(&proposal_store)
-            .build();
-        let _commit = match group_alice.create_commit(params /* PSK fetcher */, &crypto) {
-            Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {:?}", e),
-        };
-    }
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .build();
+    let _commit = match group_alice.create_commit(params /* PSK fetcher */, backend) {
+        Ok(c) => c,
+        Err(e) => panic!("Error creating commit: {:?}", e),
+    };
 }
 
 fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuite: &Ciphersuite) {

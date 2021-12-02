@@ -42,6 +42,8 @@ itertools = "0.10"
 test_macros = { path = "../test_macros" }
 openmls = { path = ".", features = ["test-utils"] }
 tempfile = "3"
+rstest = "0.11.0"
+rstest_reuse = "0.1.3"
 
 # x64 targets get evercrypt compiled into dev-dependencies.
 [target.'cfg(target_arch = "x86_64")'.dev-dependencies.openmls]
