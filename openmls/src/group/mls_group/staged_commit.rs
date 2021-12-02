@@ -1,12 +1,10 @@
 use crate::treesync::diff::StagedTreeSyncDiff;
 
 use super::proposals::{ProposalStore, StagedProposal, StagedProposalQueue};
-use mls_group::proposals::StagedProposal;
 
 use super::super::errors::*;
 use super::proposals::{
-    ProposalStore, StagedAddProposal, StagedProposalQueue, StagedPskProposal, StagedRemoveProposal,
-    StagedUpdateProposal,
+    StagedAddProposal, StagedPskProposal, StagedRemoveProposal, StagedUpdateProposal,
 };
 use super::*;
 use core::fmt::Debug;
@@ -84,7 +82,7 @@ impl MlsGroup {
         let path_key_package = commit
             .path()
             .as_ref()
-            .map(|update_path| update_path.leaf_key_package.clone());
+            .map(|update_path| update_path.leaf_key_package().clone());
 
         let sender_key_package_tuple = path_key_package
             .as_ref()
@@ -249,36 +247,18 @@ impl MlsGroup {
             return Err(StageCommitError::ConfirmationTagMismatch.into());
         }
 
-        // Verify KeyPackage extensions
-        if let Some(path) = &commit.path {
-            if !is_own_commit {
-                let parent_hash = provisional_tree.set_parent_hashes(backend, sender_index)?;
-                if let Some(received_parent_hash) = path
-                    .leaf_key_package
-                    .extension_with_type(ExtensionType::ParentHash)
-                {
-                    let parent_hash_extension =
-                        match received_parent_hash.as_parent_hash_extension() {
-                            Ok(phe) => phe,
-                            Err(_) => return Err(StageCommitError::NoParentHashExtension.into()),
-                        };
-                    if parent_hash != parent_hash_extension.parent_hash() {
-                        return Err(StageCommitError::ParentHashMismatch.into());
-                    }
-                } else {
-                    return Err(StageCommitError::NoParentHashExtension.into());
-                }
-            }
-        }
-
         // If there is a key package from the Commit's update path, add it to the proposal queue
         // TODO #424: This won't be necessary anymore, we can just apply the proposals first
         // and add a new fake Update proposal to the queue after that
         if let Some(key_package) = path_key_package {
             let proposal = Proposal::Update(UpdateProposal { key_package });
-            let staged_proposal =
-                StagedProposal::from_proposal_and_sender(ciphersuite, backend, proposal, sender)
-                    .map_err(|_| MlsGroupError::LibraryError)?;
+            let staged_proposal = StagedProposal::from_proposal_and_sender(
+                ciphersuite,
+                backend,
+                proposal,
+                *mls_plaintext.sender(),
+            )
+            .map_err(|_| MlsGroupError::LibraryError)?;
             proposal_queue.add(staged_proposal);
         }
 
@@ -293,11 +273,13 @@ impl MlsGroup {
 
         Ok(StagedCommit {
             staged_proposal_queue: proposal_queue,
-            group_context: provisional_group_context,
-            epoch_secrets: provisional_epoch_secrets,
-            interim_transcript_hash,
-            secret_tree: RefCell::new(secret_tree),
-            staged_diff,
+            state: Some(StagedCommitState {
+                group_context: provisional_group_context,
+                epoch_secrets: provisional_epoch_secrets,
+                interim_transcript_hash,
+                secret_tree: RefCell::new(secret_tree),
+                staged_diff,
+            }),
         })
     }
 

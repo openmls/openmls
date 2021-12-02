@@ -17,7 +17,7 @@
 //! functions that are not expected to fail and throw an error, will still
 //! return a [`Result`] since they may throw a
 //! [`LibraryError`](TreeSyncDiffError::LibraryError).
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{types::CryptoError, OpenMlsCryptoProvider};
 
 use std::{collections::HashSet, convert::TryFrom};
 
@@ -35,7 +35,7 @@ use crate::{
         array_representation::diff::NodeReference, LeafIndex, MlsBinaryTreeDiff,
         MlsBinaryTreeDiffError, StagedMlsBinaryTreeDiff,
     },
-    ciphersuite::{signable::Signable, Ciphersuite, CryptoError, HpkePrivateKey, HpkePublicKey},
+    ciphersuite::{signable::Signable, Ciphersuite, HpkePrivateKey, HpkePublicKey},
     credentials::{CredentialBundle, CredentialError},
     extensions::ExtensionType,
     messages::{PathSecret, PathSecretError},

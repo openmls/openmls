@@ -174,7 +174,7 @@ impl PublicGroupStateTbs {
             other_extensions,
             external_pub: external_pub.into(),
             ciphersuite: ciphersuite.name(),
-            signer_index: mls_group.tree().own_node_index(),
+            signer_index: mls_group.tree().own_leaf_index(),
         })
     }
 }

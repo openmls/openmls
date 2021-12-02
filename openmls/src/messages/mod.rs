@@ -312,7 +312,7 @@ impl PathSecret {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
-    ) -> Result<(HpkePublicKey, HpkePrivateKey), CryptoError> {
+    ) -> Result<(HpkePublicKey, HpkePrivateKey), CryptoTraitError> {
         let node_secret =
             self.path_secret
                 .kdf_expand_label(backend, "node", &[], ciphersuite.hash_length())?;
@@ -381,7 +381,6 @@ impl PathSecret {
 implement_error! {
     pub enum PathSecretError {
         DecryptionError(CryptoTraitError) = "Error decrypting PathSecret.",
-        DerivationError(CryptoError) = "Error deriving PathSecret.",
     }
 }
 

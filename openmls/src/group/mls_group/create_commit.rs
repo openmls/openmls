@@ -69,7 +69,7 @@ impl MlsGroup {
                 let key_package_bundle_payload = KeyPackageBundlePayload::from_rekeyed_key_package(
                     self.tree().own_leaf_node()?,
                     backend,
-                );
+                )?;
 
                 // If path is needed, compute path values
                 let (key_package_bundle, path, commit_secret) = diff.apply_own_update_path(

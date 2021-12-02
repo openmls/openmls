@@ -1,5 +1,5 @@
 use std::convert::TryFrom;
-use tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::*;
 

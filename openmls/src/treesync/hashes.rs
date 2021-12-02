@@ -1,6 +1,6 @@
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{types::CryptoError, OpenMlsCryptoProvider};
 use tls_codec::{
-    Error as TlsCodecError, Serialize, Size, TlsSerialize, TlsSize, TlsSliceU32, TlsSliceU8,
+    Error as TlsCodecError, Serialize, TlsSerialize, TlsSize, TlsSliceU32, TlsSliceU8,
 };
 
 use crate::{
@@ -36,7 +36,7 @@ impl<'a> ParentHashInput<'a> {
         ciphersuite: &Ciphersuite,
     ) -> Result<Vec<u8>, ParentHashError> {
         let payload = self.tls_serialize_detached()?;
-        Ok(ciphersuite.hash(backend, &payload))
+        Ok(ciphersuite.hash(backend, &payload)?)
     }
 }
 
@@ -51,6 +51,7 @@ implement_error! {
         }
         Complex {
             CodecError(TlsCodecError) = "Error while serializing payload for parent hash.",
+            HashError(CryptoError) = "Error while hashing payload.",
         }
     }
 }
@@ -68,7 +69,11 @@ impl<'a> LeafNodeHashInput<'a> {
             key_package,
         }
     }
-    pub fn hash(&self, ciphersuite: &Ciphersuite, backend: &impl OpenMlsCryptoProvider) -> Vec<u8> {
+    pub fn hash(
+        &self,
+        ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Vec<u8>, CryptoError> {
         let payload = self.tls_serialize_detached().unwrap();
         ciphersuite.hash(backend, &payload)
     }
@@ -97,7 +102,7 @@ impl<'a> ParentNodeTreeHashInput<'a> {
         &self,
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Vec<u8> {
+    ) -> Result<Vec<u8>, CryptoError> {
         let payload = self.tls_serialize_detached().unwrap();
         ciphersuite.hash(backend, &payload)
     }

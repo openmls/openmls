@@ -1,8 +1,9 @@
+use openmls_traits::types::CryptoError;
 use openmls_traits::OpenMlsCryptoProvider;
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsByteVecU8, TlsVecU32};
 
-use crate::{ciphersuite::CryptoError, schedule::CommitSecret, treesync::treekem::UpdatePathNode};
+use crate::{schedule::CommitSecret, treesync::treekem::UpdatePathNode};
 
 use crate::{
     binary_tree::LeafIndex,

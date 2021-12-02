@@ -147,7 +147,7 @@ impl MlsGroupBuilder {
 
         debug!("Created group {:x?}", self.group_id);
         trace!(" >>> with {:?}, {:?}", ciphersuite, config);
-        let (tree, commit_secret) = TreeSync::new(backend, key_package_bundle)?;
+        let (tree, commit_secret) = TreeSync::new(backend, self.key_package_bundle)?;
 
         check_required_capabilities_support(&required_capabilities)?;
         let required_capabilities = &[Extension::RequiredCapabilities(required_capabilities)];
@@ -155,7 +155,7 @@ impl MlsGroupBuilder {
         let group_context = GroupContext::create_initial_group_context(
             ciphersuite,
             self.group_id,
-            tree.tree_hash(backend)?,
+            tree.tree_hash().to_vec(),
             required_capabilities,
         )?;
         // Derive an initial joiner secret based on the commit secret.
@@ -163,7 +163,7 @@ impl MlsGroupBuilder {
         // We use a random `InitSecret` for initialization.
         let joiner_secret = JoinerSecret::new(
             backend,
-            commit_secret,
+            &commit_secret,
             &InitSecret::random(ciphersuite, backend, version)?,
         )?;
 
@@ -338,11 +338,11 @@ impl MlsGroup {
             // Ensure we support all the capabilities.
             check_required_capabilities_support(required_capabilities)?;
             self.tree()
-                .own_key_package()
+                .own_leaf_node()?
                 .validate_required_capabilities(required_capabilities)?;
             // Ensure that all other key packages support all the required
             // extensions as well.
-            for key_package in self.tree().key_packages() {
+            for (_index, key_package) in self.tree().full_leaves()? {
                 key_package.check_extension_support(required_capabilities.extensions())?;
             }
         }

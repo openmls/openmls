@@ -149,7 +149,7 @@ impl StagedProposalQueue {
                 ProposalOrRef::Proposal(proposal) => {
                     // ValSem200
                     if let Proposal::Remove(ref remove_proposal) = proposal {
-                        if remove_proposal.removed() == sender.sender.as_u32() {
+                        if remove_proposal.removed() == sender.sender {
                             return Err(StagedProposalQueueError::SelfRemoval);
                         }
                     }
@@ -167,7 +167,7 @@ impl StagedProposalQueue {
                             // ValSem200
                             if let Proposal::Remove(ref remove_proposal) = staged_proposal.proposal
                             {
-                                if remove_proposal.removed() == sender.sender.as_u32() {
+                                if remove_proposal.removed() == sender.sender {
                                     return Err(StagedProposalQueueError::SelfRemoval);
                                 }
                             }
@@ -516,9 +516,11 @@ impl<'a> CreationProposalQueue<'a> {
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::Update(_) => {
-                    let sender_index = queued_proposal.sender.sender.as_usize();
-                    if sender_index != own_index.as_usize() {
-                        members[sender_index].updates.push(queued_proposal.clone());
+                    let sender_index = queued_proposal.sender.sender;
+                    if sender_index != own_index {
+                        members[to_usize(sender_index)?]
+                            .updates
+                            .push(queued_proposal.clone());
                     } else {
                         contains_own_updates = true;
                     }
@@ -526,9 +528,11 @@ impl<'a> CreationProposalQueue<'a> {
                     proposal_pool.insert(proposal_reference, queued_proposal);
                 }
                 Proposal::Remove(remove_proposal) => {
-                    let removed_index = remove_proposal.removed as usize;
-                    if removed_index < tree_size.as_usize() {
-                        members[removed_index].updates.push(queued_proposal.clone());
+                    let removed_index = remove_proposal.removed;
+                    if removed_index < leaf_count {
+                        members[to_usize(removed_index)?]
+                            .updates
+                            .push(queued_proposal.clone());
                     }
                     let proposal_reference = queued_proposal.proposal_reference();
                     proposal_pool.insert(proposal_reference, queued_proposal);

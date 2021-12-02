@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use tls_codec::{Error as TlsCodecError, Size, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
+use tls_codec::{Error as TlsCodecError, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext, OpenMlsCryptoProvider};
 pub(crate) use serde::{Deserialize, Serialize};
@@ -11,7 +11,7 @@ use crate::{
     messages::{
         proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret, PathSecretError,
     },
-    prelude::KeyPackage,
+    prelude::{KeyPackage, KeyPackageError},
     schedule::{CommitSecret, JoinerSecret, PreSharedKeys},
 };
 
@@ -153,7 +153,7 @@ impl PlaintextSecret {
         let mut plaintext_secrets = vec![];
         for (leaf_index, add_proposal) in invited_members {
             let key_package = add_proposal.key_package;
-            let key_package_hash = key_package.hash(backend);
+            let key_package_hash = key_package.hash(backend)?;
 
             let direct_path_position = diff.subtree_root_position(leaf_index)?;
 
@@ -241,6 +241,7 @@ implement_error! {
             PathSecretError(PathSecretError) = "Error decrypting PathSecret.",
             PathDerivationError(ParentNodeError) = "Error deriving path from PathSecret.",
             EncodingError(TlsCodecError) = "Error while encoding GroupSecrets.",
+            KeyPackageError(KeyPackageError) = "Error while hashing KeyPackage.",
         }
     }
 }

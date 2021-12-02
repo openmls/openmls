@@ -12,9 +12,7 @@ mod test_managed_group;
 mod updates;
 
 use crate::credentials::CredentialBundle;
-use crate::{binary_tree::LeafIndex, credentials::CredentialBundle, treesync::node::Node};
-#[cfg(any(feature = "test-utils", test))]
-use openmls_traits::types::CryptoError;
+use crate::{binary_tree::LeafIndex, treesync::node::Node};
 
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 
@@ -30,9 +28,6 @@ use crate::{
 };
 
 use std::io::{Error, Read, Write};
-
-#[cfg(any(feature = "test-utils", test))]
-use std::cell::Ref;
 
 pub use config::*;
 pub use errors::{

@@ -125,7 +125,7 @@ use crate::framing::MlsPlaintextTbmPayload;
 use crate::messages::PathSecret;
 use crate::tree::secret_tree::SecretTree;
 use crate::treesync::LeafIndex;
-use crate::{ciphersuite::Mac, group::GroupContext, prelude::MembershipTag};
+use crate::{ciphersuite::Mac, prelude::MembershipTag};
 use crate::{
     ciphersuite::{AeadKey, AeadNonce, Ciphersuite, Secret},
     config::ProtocolVersion,

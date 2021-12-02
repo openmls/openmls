@@ -56,8 +56,10 @@ impl MlsGroup {
         if sender.is_member() {
             let sender_index = sender.to_leaf_index();
 
-            credential = self.tree().nodes[sender_index]
-                .key_package
+            credential = self
+                .tree()
+                .full_leaves()?
+                .get(&sender_index)
                 .as_ref()
                 .map(|key_package| key_package.credential().clone());
         }

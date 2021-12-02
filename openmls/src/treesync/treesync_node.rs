@@ -1,4 +1,4 @@
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{types::CryptoError, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use tls_codec::TlsSliceU8;
 
@@ -77,7 +77,7 @@ impl TreeSyncNode {
             }
             .map(|leaf_node| leaf_node.key_package());
             let hash_input = LeafNodeHashInput::new(&leaf_index, key_package_option);
-            hash_input.hash(ciphersuite, backend)
+            hash_input.hash(ciphersuite, backend)?
         } else {
             let parent_node_option = match self.node.as_ref() {
                 Some(node) => Some(node.as_parent_node()?),
@@ -88,7 +88,7 @@ impl TreeSyncNode {
                 TlsSliceU8(&left_hash),
                 TlsSliceU8(&right_hash),
             );
-            hash_input.hash(ciphersuite, backend)
+            hash_input.hash(ciphersuite, backend)?
         };
         self.tree_hash = Some(hash.clone());
         Ok(hash)
@@ -103,6 +103,7 @@ implement_error! {
         Complex {
             ParentHashError(ParentHashError) = "Error while computing parent hash.",
             NodeTypeError(NodeError) = "We found a node with an unexpected type.",
+            HashError(CryptoError) = "Error while hashing payload.",
         }
     }
 }
