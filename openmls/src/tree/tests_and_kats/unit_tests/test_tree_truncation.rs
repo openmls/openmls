@@ -27,10 +27,10 @@ fn test_trim() {
                 ciphersuite.signature_scheme(),
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
             let key_package_bundle =
                 KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, &crypto, vec![])
-                    .unwrap();
+                    .expect("An unexpected error occurred.");
 
             // We build a leaf node from the key packages
             let leaf_node = Node {
@@ -51,7 +51,8 @@ fn test_trim() {
         println!("final number of nodes: {:?}", nodes.len());
 
         let key_package_bundle = key_package_bundles.remove(0);
-        let mut tree = RatchetTree::new_from_nodes(&crypto, key_package_bundle, &nodes).unwrap();
+        let mut tree = RatchetTree::new_from_nodes(&crypto, key_package_bundle, &nodes)
+            .expect("An unexpected error occurred.");
 
         let size_untrimmed = tree.tree_size();
         println!("size untrimmed: {:?}", size_untrimmed);
@@ -88,17 +89,19 @@ fn test_truncation_after_removal() {
 
         let group_id = setup
             .create_random_group(number_of_clients, Ciphersuite::default())
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
         let mut groups = setup.groups.borrow_mut();
-        let group = groups.get_mut(&group_id).unwrap();
+        let group = groups
+            .get_mut(&group_id)
+            .expect("An unexpected error occurred.");
 
         // Get the id of the member at index 0
         let (_, remover_id) = group
             .members
             .iter()
             .find(|(index, _)| *index == 0)
-            .unwrap()
+            .expect("An unexpected error occurred.")
             .clone();
 
         // Remove the rightmost 2 members in the tree
@@ -131,17 +134,19 @@ fn test_truncation_after_update() {
 
         let group_id = setup
             .create_random_group(number_of_clients, Ciphersuite::default())
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
         let mut groups = setup.groups.borrow_mut();
-        let group = groups.get_mut(&group_id).unwrap();
+        let group = groups
+            .get_mut(&group_id)
+            .expect("An unexpected error occurred.");
 
         // Get the id of the member at index 0
         let (_, updater_id) = group
             .members
             .iter()
             .find(|(index, _)| *index == 0)
-            .unwrap()
+            .expect("An unexpected error occurred.")
             .clone();
 
         // Remove the rightmost 2 members in the tree

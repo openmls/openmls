@@ -53,12 +53,12 @@ impl Client {
             &self.crypto,
             mandatory_extensions,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let kp = kpb.key_package().clone();
         self.crypto
             .key_store()
             .store(&kp.hash(&self.crypto)?, &kpb)
-            .unwrap();
+            .expect("An unexpected error occurred.");
         Ok(kp)
     }
 
@@ -88,12 +88,12 @@ impl Client {
             &self.crypto,
             mandatory_extensions,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let key_package = kpb.key_package().clone();
         self.crypto
             .key_store()
             .store(&key_package.hash(&self.crypto)?, &kpb)
-            .unwrap();
+            .expect("An unexpected error occurred.");
         let group_state = ManagedGroup::new(
             &self.crypto,
             &managed_group_config,
@@ -166,7 +166,9 @@ impl Client {
         for (index, leaf) in tree.iter().enumerate() {
             if index % 2 == 0 {
                 if let Some(leaf_node) = leaf {
-                    let key_package = leaf_node.key_package().unwrap();
+                    let key_package = leaf_node
+                        .key_package()
+                        .expect("An unexpected error occurred.");
                     members.push((index / 2, key_package.credential().clone()));
                 }
             }

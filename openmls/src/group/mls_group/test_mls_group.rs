@@ -27,7 +27,7 @@ fn test_mls_group_persistence() {
         ciphersuite.signature_scheme(),
         &crypto,
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
@@ -36,7 +36,7 @@ fn test_mls_group_persistence() {
         &crypto,
         Vec::new(),
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     // Alice creates a group
     let alice_group = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
@@ -59,7 +59,10 @@ fn test_mls_group_persistence() {
 
 /// This function flips the last byte of the ciphertext.
 pub fn flip_last_byte(ctxt: &mut HpkeCiphertext) {
-    let mut last_bits = ctxt.ciphertext.pop().unwrap();
+    let mut last_bits = ctxt
+        .ciphertext
+        .pop()
+        .expect("An unexpected error occurred.");
     last_bits ^= 0xff;
     ctxt.ciphertext.push(last_bits);
 }
@@ -117,7 +120,7 @@ fn test_failed_groupinfo_decryption() {
                 ciphersuite.signature_scheme(),
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
             let group_info = group_info
                 .sign(&crypto, &alice_credential_bundle)
                 .expect("Error signing group info");
@@ -128,7 +131,7 @@ fn test_failed_groupinfo_decryption() {
                 &crypto,
                 vec![],
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             // Mess with the ciphertext by flipping the last byte.
             flip_last_byte(&mut encrypted_group_secrets);
@@ -146,11 +149,13 @@ fn test_failed_groupinfo_decryption() {
             let encrypted_group_info = welcome_key
                 .aead_seal(
                     &crypto,
-                    &group_info.tls_serialize_detached().unwrap(),
+                    &group_info
+                        .tls_serialize_detached()
+                        .expect("An unexpected error occurred."),
                     &[],
                     &welcome_nonce,
                 )
-                .unwrap();
+                .expect("An unexpected error occurred.");
 
             // Now build the welcome message.
             let broken_welcome = Welcome::new(
@@ -194,14 +199,14 @@ fn test_update_path() {
             ciphersuite.signature_scheme(),
             &crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let bob_credential_bundle = CredentialBundle::new(
             "Bob".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
             &crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         // Generate KeyPackages
         let alice_key_package_bundle = KeyPackageBundle::new(
@@ -210,7 +215,7 @@ fn test_update_path() {
             &crypto,
             Vec::new(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         let bob_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
@@ -218,7 +223,7 @@ fn test_update_path() {
             &crypto,
             Vec::new(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let bob_key_package = bob_key_package_bundle.key_package();
 
         // === Alice creates a group ===
@@ -269,13 +274,13 @@ fn test_update_path() {
         let ratchet_tree = alice_group.tree().public_key_tree_copy();
 
         let group_bob = MlsGroup::new_from_welcome(
-            welcome_bundle_alice_bob_option.unwrap(),
+            welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
             Some(ratchet_tree),
             bob_key_package_bundle,
             None,
             &crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         // === Bob updates and commits ===
         let bob_update_key_package_bundle = KeyPackageBundle::new(
@@ -284,7 +289,7 @@ fn test_update_path() {
             &crypto,
             Vec::new(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         let update_proposal_bob = group_bob
             .create_update_proposal(
@@ -304,8 +309,9 @@ fn test_update_path() {
             .proposal_store(&proposal_store)
             .force_self_update(false)
             .build();
-        let (mls_plaintext_commit, _welcome_option, _kpb_option) =
-            group_bob.create_commit(params, &crypto).unwrap();
+        let (mls_plaintext_commit, _welcome_option, _kpb_option) = group_bob
+            .create_commit(params, &crypto)
+            .expect("An unexpected error occurred.");
 
         // Now we break Alice's HPKE ciphertext in Bob's commit by breaking
         // apart the commit, manipulating the ciphertexts and the piecing it
@@ -317,7 +323,7 @@ fn test_update_path() {
 
         let commit = commit.clone();
 
-        let path = commit.path.unwrap();
+        let path = commit.path.expect("An unexpected error occurred.");
 
         // For simplicity, let's just break all the ciphertexts.
         let mut new_nodes = Vec::new();
@@ -356,16 +362,22 @@ fn test_update_path() {
         )
         .expect("Could not create plaintext.");
 
-        broken_plaintext
-            .set_confirmation_tag(mls_plaintext_commit.confirmation_tag().cloned().unwrap());
+        broken_plaintext.set_confirmation_tag(
+            mls_plaintext_commit
+                .confirmation_tag()
+                .cloned()
+                .expect("An unexpected error occurred."),
+        );
 
         println!(
             "Confirmation tag: {:?}",
             broken_plaintext.confirmation_tag()
         );
 
-        let serialized_context =
-            &group_bob.group_context.tls_serialize_detached().unwrap() as &[u8];
+        let serialized_context = &group_bob
+            .group_context
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred.") as &[u8];
 
         broken_plaintext
             .set_membership_tag(
@@ -409,7 +421,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         }
     }
 
-    let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
+    let ciphersuite = Config::ciphersuite(ciphersuite_name).expect("An unexpected error occurred.");
 
     // Basic group setup.
     let group_aad = b"Alice's test group";
@@ -423,7 +435,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
 
         &crypto,
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
     let bob_credential_bundle = CredentialBundle::new(
         "Bob".into(),
         CredentialType::Basic,
@@ -431,16 +443,16 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
 
         &crypto,
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
     let alice_key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle,  &crypto, Vec::new())
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
     let bob_key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle,  &crypto, Vec::new())
-            .unwrap();
+            .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group with a PSK ===
@@ -521,7 +533,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
     let ratchet_tree = alice_group.tree().public_key_tree_copy();
 
     let group_bob = MlsGroup::new_from_welcome(
-        welcome_bundle_alice_bob_option.unwrap(),
+        welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,
         Some(psk_fetcher),
@@ -532,7 +544,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
     // === Bob updates and commits ===
     let bob_update_key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle,  &crypto, Vec::new())
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
     let update_proposal_bob = group_bob
         .create_update_proposal(
@@ -554,6 +566,6 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         .build();
     let (_mls_plaintext_commit, _welcome_option, _kpb_option) = group_bob
         .create_commit(params, &crypto)
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
 });
