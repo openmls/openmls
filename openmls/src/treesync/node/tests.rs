@@ -1,10 +1,12 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::HpkeKeyPair;
 use openmls_traits::OpenMlsCryptoProvider;
+use tls_codec::{Deserialize, Serialize};
 
 use crate::ciphersuite::Ciphersuite;
 use crate::credentials::{CredentialBundle, CredentialType::Basic};
 use crate::messages::PathSecret;
+use crate::prelude::ExtensionType::ParentHash;
 use crate::prelude::KeyPackageBundle;
 use crate::{
     ciphersuite::{HpkePublicKey, Secret},
@@ -13,6 +15,7 @@ use crate::{
 
 use super::leaf_node::LeafNode;
 use super::parent_node::ParentNode;
+use super::{Node, NodeError};
 
 #[test]
 fn test_leaf_node() {
@@ -50,6 +53,56 @@ fn test_leaf_node() {
             .as_slice(),
         private_key_bytes
     );
+
+    // `Node` enum
+    let mut node = Node::LeafNode(leaf_node.clone());
+
+    assert_eq!(node.public_key(), kp.hpke_init_key());
+    assert_eq!(
+        node.private_key()
+            .as_ref()
+            .expect("error retrieving leaf private key")
+            .as_slice(),
+        private_key_bytes
+    );
+    assert_eq!(
+        node.as_leaf_node()
+            .expect("error casting node in to leaf node"),
+        &leaf_node
+    );
+
+    assert_eq!(
+        node.as_parent_node()
+            .expect_err("no error casting node to wrong type"),
+        NodeError::AsParentError
+    );
+
+    assert_eq!(
+        node.as_parent_node_mut()
+            .expect_err("no error casting node to wrong type"),
+        NodeError::AsParentError
+    );
+
+    // Codec
+    // Verify that we still have a private key
+    assert!(leaf_node.private_key().is_some());
+    let serialized_leaf = (&leaf_node)
+        .tls_serialize_detached()
+        .expect("error serializing leaf node");
+    let deserialized_node = LeafNode::tls_deserialize(&mut serialized_leaf.as_slice())
+        .expect("error deserializing leaf node");
+    // This should now be the same node as before, but without a private key.
+    let leaf_without_sk: LeafNode = kp.into();
+    assert_eq!(leaf_without_sk, deserialized_node);
+
+    // Node codec
+    let serialized_node = node
+        .tls_serialize_detached()
+        .expect("error serializing node");
+    let deserialized_node =
+        Node::tls_deserialize(&mut serialized_node.as_slice()).expect("error deserializing node");
+    // This should now be the same node as before, but without a private key.
+    assert_eq!(deserialized_node, Node::LeafNode(leaf_without_sk));
 }
 
 #[test]
@@ -67,6 +120,7 @@ fn test_parent_node() {
         &backend,
     )
     .expect("error creating CB");
+
     let kpb = KeyPackageBundle::new(&[ciphersuite.name()], &cb, &backend, vec![])
         .expect("error creating KPB");
     let (kp, _leaf_secret, private_key) = kpb.into_parts();
@@ -110,10 +164,62 @@ fn test_parent_node() {
     let parent_hash = parent_node
         .compute_parent_hash(&backend, ciphersuite, &[], &[])
         .expect("error computing parent hash");
-    assert!(!parent_hash.is_empty())
-}
+    assert!(!parent_hash.is_empty());
 
-#[test]
-fn test_node() {
-    todo!()
+    // `Node` enum
+    let mut node = Node::ParentNode(parent_node.clone());
+
+    assert_eq!(node.public_key(), kp.hpke_init_key());
+    assert_eq!(
+        node.private_key()
+            .as_ref()
+            .expect("error retrieving leaf private key")
+            .as_slice(),
+        private_key_bytes
+    );
+    assert_eq!(
+        node.parent_hash()
+            .expect("error getting parent hash from parent node"),
+        parent_node.parent_hash()
+    );
+
+    assert_eq!(
+        node.as_parent_node()
+            .expect("error casting node in to parent node"),
+        &parent_node
+    );
+
+    assert_eq!(
+        node.as_parent_node_mut()
+            .expect("error casting node in to parent node"),
+        &parent_node
+    );
+
+    assert_eq!(
+        node.as_leaf_node()
+            .expect_err("no error casting node to wrong type"),
+        NodeError::AsLeafError
+    );
+
+    // Codec
+
+    // Verify that we still have a private key
+    assert!(parent_node.private_key().is_some());
+    let serialized_parent = (&parent_node)
+        .tls_serialize_detached()
+        .expect("error serializing parent node");
+    let deserialized_node = ParentNode::tls_deserialize(&mut serialized_parent.as_slice())
+        .expect("error deserializing parent node");
+    // This should now be the same node as before, but without a private key.
+    let parent_without_sk: ParentNode = kp.hpke_init_key().clone().into();
+    assert_eq!(parent_without_sk, deserialized_node);
+
+    // Node codec
+    let serialized_node = node
+        .tls_serialize_detached()
+        .expect("error serializing node");
+    let deserialized_node =
+        Node::tls_deserialize(&mut serialized_node.as_slice()).expect("error deserializing node");
+    // This should now be the same node as before, but without a private key.
+    assert_eq!(deserialized_node, Node::ParentNode(parent_without_sk));
 }
