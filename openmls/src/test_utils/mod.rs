@@ -76,10 +76,13 @@ pub fn hex_to_bytes_option(hex: Option<String>) -> Vec<u8> {
 
 // === Define backend per platform ===
 
+// For now we only use Evercrypt on specific platforms and only if the feature was enabled
+
 #[cfg(all(
     target_arch = "x86_64",
     not(target_os = "macos"),
-    not(target_family = "wasm")
+    not(target_family = "wasm"),
+    feature = "evercrypt",
 ))]
 pub use evercrypt_backend::OpenMlsEvercrypt;
 
@@ -91,7 +94,8 @@ pub use openmls_rust_crypto::OpenMlsRustCrypto;
 #[cfg(any(
     not(target_arch = "x86_64"),
     target_os = "macos",
-    target_family = "wasm"
+    target_family = "wasm",
+    not(feature = "evercrypt")
 ))]
 #[template]
 #[rstest(backend,
@@ -100,10 +104,13 @@ pub use openmls_rust_crypto::OpenMlsRustCrypto;
 ]
 pub fn backends(backend: &impl OpenMlsCryptoProvider) {}
 
+// For now we only use Evercrypt on specific platforms and only if the feature was enabled
+
 #[cfg(all(
     target_arch = "x86_64",
     not(target_os = "macos"),
-    not(target_family = "wasm")
+    not(target_family = "wasm"),
+    feature = "evercrypt",
 ))]
 #[template]
 #[template]
@@ -115,6 +122,8 @@ pub fn backends(backend: &impl OpenMlsCryptoProvider) {}
 pub fn backends(backend: &impl OpenMlsCryptoProvider) {}
 
 // === Ciphersuites ===
+
+// For now we support all ciphersuites, regardless of the backend
 
 #[template]
 #[rstest(ciphersuite,
@@ -130,7 +139,8 @@ pub fn ciphersuites(ciphersuite: &'static Ciphersuite) {}
 #[cfg(any(
     not(target_arch = "x86_64"),
     target_os = "macos",
-    target_family = "wasm"
+    target_family = "wasm",
+    not(feature = "evercrypt"),
 ))]
 #[template]
 #[rstest(ciphersuite, backend,
@@ -145,10 +155,13 @@ pub fn ciphersuites_and_backends(
 ) {
 }
 
+// For now we only use Evercrypt on specific platforms and only if the feature was enabled
+
 #[cfg(all(
     target_arch = "x86_64",
     not(target_os = "macos"),
-    not(target_family = "wasm")
+    not(target_family = "wasm"),
+    feature = "evercrypt",
 ))]
 #[template]
 #[rstest(ciphersuite, backend,
