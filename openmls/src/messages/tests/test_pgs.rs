@@ -8,12 +8,12 @@ use crate::{
     group::{
         create_commit_params::CreateCommitParams,
         proposals::{ProposalStore, StagedProposal},
-        WireFormat,
+        GroupId, WireFormat,
     },
     key_packages::KeyPackageBundle,
     messages::{
         public_group_state::{PublicGroupState, VerifiablePublicGroupState},
-        LeafIndex, MlsGroup, MlsGroupConfig,
+        LeafIndex, MlsGroup,
     },
     prelude::FramingParameters,
 };
@@ -34,14 +34,14 @@ fn test_pgs() {
             ciphersuite.signature_scheme(),
             &crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let bob_credential_bundle = CredentialBundle::new(
             "Bob".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
             &crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         // Generate KeyPackages
         let bob_key_package_bundle = KeyPackageBundle::new(
@@ -50,7 +50,7 @@ fn test_pgs() {
             &crypto,
             Vec::new(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let bob_key_package = bob_key_package_bundle.key_package();
 
         let alice_key_package_bundle = KeyPackageBundle::new(
@@ -59,20 +59,12 @@ fn test_pgs() {
             &crypto,
             Vec::new(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         // Alice creates a group
-        let group_id = [1, 2, 3, 4];
-        let mut group_alice = MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            &crypto,
-            alice_key_package_bundle,
-            MlsGroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
-        )
-        .expect("Could not create group.");
+        let mut group_alice = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
+            .build(&crypto)
+            .expect("Could not create group.");
 
         // Alice adds Bob
         let bob_add_proposal = group_alice

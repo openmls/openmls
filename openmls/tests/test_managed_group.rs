@@ -1,4 +1,7 @@
-use openmls::{group::EmptyInputError, prelude::*};
+use openmls::{
+    group::{EmptyInputError, InnerState},
+    prelude::*,
+};
 
 use lazy_static::lazy_static;
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -8,27 +11,6 @@ use std::fs::File;
 lazy_static! {
     static ref TEMP_DIR: tempfile::TempDir =
         tempfile::tempdir().expect("Error creating temp directory");
-}
-
-/// Validator function for AddProposals
-/// `(managed_group: &ManagedGroup, sender: &Credential, added_member:
-/// &Credential) -> bool`
-fn validate_add(
-    _managed_group: &ManagedGroup,
-    _sender: &Credential,
-    _added_member: &Credential,
-) -> bool {
-    true
-}
-/// Validator function for RemoveProposals
-/// `(managed_group: &ManagedGroup, sender: &Credential, removed_member:
-/// &Credential) -> bool`
-fn validate_remove(
-    _managed_group: &ManagedGroup,
-    _sender: &Credential,
-    _removed_member: &Credential,
-) -> bool {
-    true
 }
 
 fn own_identity(managed_group: &ManagedGroup) -> Vec<u8> {
@@ -49,7 +31,7 @@ fn generate_credential_bundle(
     backend
         .key_store()
         .store(credential.signature_key(), &cb)
-        .unwrap();
+        .expect("An unexpected error occurred.");
     Ok(credential)
 }
 
@@ -62,16 +44,19 @@ fn generate_key_package_bundle(
     let credential_bundle = backend
         .key_store()
         .read(credential.signature_key())
-        .unwrap();
+        .expect("An unexpected error occurred.");
     let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, backend, extensions)?;
     let kp = kpb.key_package().clone();
-    backend.key_store().store(&kp.hash(backend), &kpb).unwrap();
+    backend
+        .key_store()
+        .store(&kp.hash(backend).expect("Could not hash KeyPackage."), &kpb)
+        .expect("An unexpected error occurred.");
     Ok(kp)
 }
 
-/// Auto-save
+/// Save the group state
 /// `(managed_group: &ManagedGroup)`
-fn auto_save(managed_group: &ManagedGroup) {
+fn save(managed_group: &mut ManagedGroup) {
     let name = String::from_utf8(own_identity(managed_group))
         .expect("Could not create name from identity")
         .to_lowercase();
@@ -124,7 +109,7 @@ fn crypto() -> impl OpenMlsCryptoProvider {
 ///  - Charlie removes Bob
 ///  - Alice removes Charlie and adds Bob
 ///  - Bob leaves
-///  - Test auto-save
+///  - Test saving the group state
 #[test]
 fn managed_group_operations() {
     let crypto = crypto();
@@ -139,7 +124,7 @@ fn managed_group_operations() {
                 ciphersuite.signature_scheme(),
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             let bob_credential = generate_credential_bundle(
                 "Bob".into(),
@@ -147,7 +132,7 @@ fn managed_group_operations() {
                 ciphersuite.signature_scheme(),
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             let charlie_credential = generate_credential_bundle(
                 "Charlie".into(),
@@ -155,7 +140,7 @@ fn managed_group_operations() {
                 ciphersuite.signature_scheme(),
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             // Generate KeyPackages
             let alice_key_package = generate_key_package_bundle(
@@ -164,7 +149,7 @@ fn managed_group_operations() {
                 vec![],
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             let bob_key_package = generate_key_package_bundle(
                 &[ciphersuite.name()],
@@ -172,17 +157,12 @@ fn managed_group_operations() {
                 vec![],
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             // Define the managed group configuration
 
-            let callbacks = ManagedGroupCallbacks::new()
-                .with_validate_add(validate_add)
-                .with_validate_remove(validate_remove)
-                .with_auto_save(auto_save);
             let managed_group_config = ManagedGroupConfig::builder()
                 .wire_format(wire_format)
-                .callbacks(callbacks)
                 .build();
 
             // === Alice creates a group ===
@@ -190,43 +170,56 @@ fn managed_group_operations() {
                 &crypto,
                 &managed_group_config,
                 group_id,
-                &alice_key_package.hash(&crypto),
+                &alice_key_package
+                    .hash(&crypto)
+                    .expect("Could not hash KeyPackage."),
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             // === Alice adds Bob ===
-            let (queued_messages, welcome) =
+            let (queued_message, welcome) =
                 match alice_group.add_members(&crypto, &[bob_key_package]) {
                     Ok((qm, welcome)) => (qm, welcome),
                     Err(e) => panic!("Could not add member to group: {:?}", e),
                 };
 
-            let mut events = alice_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
+            let unverified_message = alice_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
 
-            // Check that we received the correct events
+            // Check that Alice is the sender of the message
+            assert_eq!(
+                unverified_message
+                    .credential()
+                    .expect("Expected a credential."),
+                &alice_credential
+            );
 
-            // Since the add also triggered an update, we expect this to be the
-            // last event in the queue. We expect this update to be from alice.
-            match events.pop().expect("Expected an event to be returned") {
-                GroupEvent::MemberUpdated(member_updated_event) => {
-                    assert_eq!(member_updated_event.updated_member(), &alice_credential);
-                }
-                _ => unreachable!("Expected a MemberUpdated event"),
+            let alice_processed_message = alice_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
+
+            // Check that we received the correct proposals
+            if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+                let add = staged_commit
+                    .add_proposals()
+                    .next()
+                    .expect("Expected a proposal.");
+                // Check that Bob was added
+                assert_eq!(
+                    add.add_proposal().key_package().credential(),
+                    &bob_credential
+                );
+                // Check that Alice added Bob
+                // TODO #575: Replace this with the adequate API call
+                assert_eq!(add.sender().to_leaf_index(), LeafIndex::from(0u32));
+                // Merge staged Commit
+                alice_group
+                    .merge_staged_commit(*staged_commit)
+                    .expect("Could not merge Commit.");
+            } else {
+                unreachable!("Expected a StagedCommit.");
             }
-            // Finally, we expect the event queue to contain an even reflecting
-            // the fact that bob was indeed added by alice.
-            // TODO 524: Inspect the staged Commit
-            /*
-            match events.pop().expect("Expected an event to be returned") {
-                GroupEvent::MemberAdded(member_added_event) => {
-                    assert_eq!(member_added_event.sender(), &alice_credential);
-                    assert_eq!(member_added_event.added_member(), &bob_credential);
-                }
-                _ => unreachable!("Expected a MemberAdded event"),
-            }
-            */
 
             // Check that the group now has two members
             assert_eq!(alice_group.members().len(), 2);
@@ -258,43 +251,76 @@ fn managed_group_operations() {
             let queued_message = alice_group
                 .create_message(&crypto, message_alice)
                 .expect("Error creating application message");
-            let events = bob_group
-                .process_message(queued_message.into(), &crypto)
-                .expect("The group is no longer active");
 
-            // Check that we received the correct event
-            match events.last().expect("Expected an event to be returned") {
-                GroupEvent::ApplicationMessage(application_message_event) => {
-                    assert_eq!(application_message_event.sender(), &alice_credential);
-                    assert_eq!(application_message_event.message(), message_alice);
-                }
-                _ => unreachable!("Expected an ApplicationMessage event"),
+            let unverified_message = bob_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let processed_message = bob_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
+
+            // Check that we received the correct message
+            if let ProcessedMessage::ApplicationMessage(application_message) = processed_message {
+                // Check the message
+                assert_eq!(application_message.message(), message_alice);
+                // Check that Alice sent the message
+                // TODO #575: Replace this with the adequate API call
+                assert_eq!(
+                    application_message.sender().to_leaf_index(),
+                    LeafIndex::from(0u32)
+                );
+            } else {
+                unreachable!("Expected an ApplicationMessage.");
             }
 
             // === Bob updates and commits ===
-            let (queued_messages, welcome_option) = match bob_group.self_update(&crypto, None) {
+            let (queued_message, welcome_option) = match bob_group.self_update(&crypto, None) {
                 Ok(qm) => qm,
                 Err(e) => panic!("Error performing self-update: {:?}", e),
             };
-            let alice_events = alice_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
-            let bob_events = bob_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
 
-            // Check that the events are equal
-            assert_eq!(alice_events, bob_events);
+            let unverified_message = alice_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let alice_processed_message = alice_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
+            let unverified_message = bob_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let bob_processed_message = bob_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
 
-            // Check that we received the correct event
-            match alice_events
-                .last()
-                .expect("Expected an event to be returned")
-            {
-                GroupEvent::MemberUpdated(member_updated_event) => {
-                    assert_eq!(member_updated_event.updated_member(), &bob_credential);
-                }
-                _ => unreachable!("Expected an ApplicationMessage event"),
+            // Check that we received the correct proposals
+            if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+                let update = staged_commit
+                    .update_proposals()
+                    .next()
+                    .expect("Expected a proposal.");
+                // Check that Bob updated
+                assert_eq!(
+                    update.update_proposal().key_package().credential(),
+                    &bob_credential
+                );
+                // Check that Alice added Bob
+                // TODO #575: Replace this with the adequate API call
+                assert_eq!(update.sender().to_leaf_index(), LeafIndex::from(1u32));
+                // Merge staged Commit
+                alice_group
+                    .merge_staged_commit(*staged_commit)
+                    .expect("Could not merge Commit.");
+            } else {
+                unreachable!("Expected a StagedCommit.");
+            }
+
+            // Merge Commit
+            if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
+                bob_group
+                    .merge_staged_commit(*staged_commit)
+                    .expect("Could not merge StagedCommit");
+            } else {
+                unreachable!("Expected a StagedCommit.");
             }
 
             // Check we didn't receive a Welcome message
@@ -313,41 +339,101 @@ fn managed_group_operations() {
             );
 
             // === Alice updates and commits ===
-            let queued_messages = match alice_group.propose_self_update(&crypto, None) {
+            let queued_message = match alice_group.propose_self_update(&crypto, None) {
                 Ok(qm) => qm,
                 Err(e) => panic!("Error performing self-update: {:?}", e),
             };
-            alice_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
-            bob_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
+            let unverified_message = alice_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let alice_processed_message = alice_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
+            let unverified_message = bob_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let bob_processed_message = bob_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
 
-            let (queued_messages, _welcome_option) =
-                match alice_group.process_pending_proposals(&crypto) {
+            // Check that we received the correct proposals
+            if let ProcessedMessage::ProposalMessage(staged_proposal) = alice_processed_message {
+                if let Proposal::Update(ref update_proposal) = staged_proposal.proposal() {
+                    // Check that Alice updated
+                    assert_eq!(
+                        update_proposal.key_package().credential(),
+                        &alice_credential
+                    );
+                    // Store proposal
+                    alice_group.store_pending_proposal(*staged_proposal.clone());
+                } else {
+                    unreachable!("Expected a Proposal.");
+                }
+
+                // Check that Alice added bob
+                // TODO #575: Replace this with the adequate API call
+                assert_eq!(
+                    staged_proposal.sender().to_leaf_index(),
+                    LeafIndex::from(0u32)
+                );
+            } else {
+                unreachable!("Expected a StagedProposal.");
+            }
+
+            // Merge Commit
+            if let ProcessedMessage::ProposalMessage(staged_proposal) = bob_processed_message {
+                bob_group.store_pending_proposal(*staged_proposal);
+            } else {
+                unreachable!("Expected a StagedProposal.");
+            }
+
+            let (queued_message, _welcome_option) =
+                match alice_group.commit_to_pending_proposals(&crypto) {
                     Ok(qm) => qm,
                     Err(e) => panic!("Error performing self-update: {:?}", e),
                 };
-            let alice_events = alice_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
-            let bob_events = bob_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
+            let unverified_message = alice_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let alice_processed_message = alice_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
+            let unverified_message = bob_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let bob_processed_message = bob_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
 
-            // Check that the events are equel
-            assert_eq!(alice_events, bob_events);
+            // Check that we received the correct proposals
+            if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+                let update = staged_commit
+                    .update_proposals()
+                    .next()
+                    .expect("Expected a proposal.");
+                // Check that Alice updated
+                assert_eq!(
+                    update.update_proposal().key_package().credential(),
+                    &alice_credential
+                );
+                // Check that Alice added Bob
+                // TODO #575: Replace this with the adequate API call
+                assert_eq!(update.sender().to_leaf_index(), LeafIndex::from(0u32));
+                // Merge staged Commit
+                alice_group
+                    .merge_staged_commit(*staged_commit)
+                    .expect("Could not merge Commit.");
+            } else {
+                unreachable!("Expected a StagedCommit.");
+            }
 
-            // Check that we received the correct event
-            match alice_events
-                .last()
-                .expect("Expected an event to be returned")
-            {
-                GroupEvent::MemberUpdated(member_updated_event) => {
-                    assert_eq!(member_updated_event.updated_member(), &alice_credential);
-                }
-                _ => unreachable!("Expected a MemberUpdated event"),
+            // Merge Commit
+            if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
+                bob_group
+                    .merge_staged_commit(*staged_commit)
+                    .expect("Could not merge StagedCommit");
+            } else {
+                unreachable!("Expected a StagedCommit.");
             }
 
             // Check that both groups have the same state
@@ -369,20 +455,44 @@ fn managed_group_operations() {
                 vec![],
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
-            let (queued_messages, welcome) =
+            let (queued_message, welcome) =
                 match bob_group.add_members(&crypto, &[charlie_key_package]) {
                     Ok((qm, welcome)) => (qm, welcome),
                     Err(e) => panic!("Could not add member to group: {:?}", e),
                 };
 
-            alice_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
-            bob_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
+            let unverified_message = alice_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let alice_processed_message = alice_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
+            let unverified_message = bob_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let bob_processed_message = bob_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
+
+            // Merge Commit
+            if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+                alice_group
+                    .merge_staged_commit(*staged_commit)
+                    .expect("Could not merge StagedCommit");
+            } else {
+                unreachable!("Expected a StagedCommit.");
+            }
+
+            // Merge Commit
+            if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
+                bob_group
+                    .merge_staged_commit(*staged_commit)
+                    .expect("Could not merge StagedCommit");
+            } else {
+                unreachable!("Expected a StagedCommit.");
+            }
 
             let mut charlie_group = ManagedGroup::new_from_welcome(
                 &crypto,
@@ -413,27 +523,72 @@ fn managed_group_operations() {
             let queued_message = charlie_group
                 .create_message(&crypto, message_charlie)
                 .expect("Error creating application message");
-            alice_group
-                .process_message(queued_message.clone().into(), &crypto)
-                .expect("The group is no longer active");
-            bob_group
-                .process_message(queued_message.into(), &crypto)
-                .expect("The group is no longer active");
+
+            let unverified_message = alice_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let _alice_processed_message = alice_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
+            let unverified_message = bob_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let _bob_processed_message = bob_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
 
             // === Charlie updates and commits ===
-            let (queued_messages, welcome_option) = match charlie_group.self_update(&crypto, None) {
+            let (queued_message, welcome_option) = match charlie_group.self_update(&crypto, None) {
                 Ok(qm) => qm,
                 Err(e) => panic!("Error performing self-update: {:?}", e),
             };
-            alice_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
-            bob_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
-            charlie_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
+
+            let unverified_message = alice_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let alice_processed_message = alice_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
+            let unverified_message = bob_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let bob_processed_message = bob_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
+            let unverified_message = charlie_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let charlie_processed_message = charlie_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
+
+            // Merge Commit
+            if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+                alice_group
+                    .merge_staged_commit(*staged_commit)
+                    .expect("Could not merge StagedCommit");
+            } else {
+                unreachable!("Expected a StagedCommit.");
+            }
+
+            // Merge Commit
+            if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
+                bob_group
+                    .merge_staged_commit(*staged_commit)
+                    .expect("Could not merge StagedCommit");
+            } else {
+                unreachable!("Expected a StagedCommit.");
+            }
+
+            // Merge Commit
+            if let ProcessedMessage::StagedCommitMessage(staged_commit) = charlie_processed_message
+            {
+                charlie_group
+                    .merge_staged_commit(*staged_commit)
+                    .expect("Could not merge StagedCommit");
+            } else {
+                unreachable!("Expected a StagedCommit.");
+            }
 
             // Check we didn't receive a Welcome message
             assert!(welcome_option.is_none());
@@ -459,65 +614,81 @@ fn managed_group_operations() {
             );
 
             // === Charlie removes Bob ===
-            let (queued_messages, welcome_option) =
-                match charlie_group.remove_members(&crypto, &[1]) {
-                    Ok(qm) => qm,
-                    Err(e) => panic!("Could not remove member from group: {:?}", e),
-                };
+            let (queued_message, welcome_option) = charlie_group
+                .remove_members(&crypto, &[1])
+                .expect("Could not remove member from group.");
 
             // Check that Bob's group is still active
             assert!(bob_group.is_active());
 
-            let _alice_events = alice_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
-            let _bob_events = bob_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
-            charlie_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
+            let unverified_message = alice_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let alice_processed_message = alice_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
+            let unverified_message = bob_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let bob_processed_message = bob_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
+            let unverified_message = charlie_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let charlie_processed_message = charlie_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
 
-            // Check that we receive the correct event for Alice
-            // TODO 524: Inspect the staged Commit
-            /*
-            match alice_events
-                .first()
-                .expect("Expected an event to be returned")
-            {
-                GroupEvent::MemberRemoved(member_removed_event) => {
-                    match member_removed_event.removal() {
-                        Removal::TheyWereRemovedBy(leaver, remover) => {
-                            assert_eq!(remover, &charlie_credential);
-                            assert_eq!(leaver, &bob_credential);
-                        }
-                        _ => {
-                            unreachable!("We should not be here")
-                        }
-                    }
-                }
-                _ => unreachable!("Expected a MemberRemoved event"),
+            // Check that we receive the correct proposal for Alice
+            if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+                let remove = staged_commit
+                    .remove_proposals()
+                    .next()
+                    .expect("Expected a proposal.");
+                // Check that Bob was removed
+                // TODO #575: Replace this with the adequate API call
+                assert_eq!(remove.remove_proposal().removed(), 1u32);
+                // Check that Charlie removed Bob
+                // TODO #575: Replace this with the adequate API call
+                assert_eq!(remove.sender().to_leaf_index(), LeafIndex::from(2u32));
+                // Merge staged Commit
+                alice_group
+                    .merge_staged_commit(*staged_commit)
+                    .expect("Could not merge Commit.");
+            } else {
+                unreachable!("Expected a StagedCommit.");
             }
 
-
-            // Check that we receive the correct event for Bob
-            match bob_events
-                .first()
-                .expect("Expected an event to be returned")
-            {
-                GroupEvent::MemberRemoved(member_removed_event) => {
-                    match member_removed_event.removal() {
-                        Removal::WeWereRemovedBy(remover) => {
-                            assert_eq!(remover, &charlie_credential);
-                        }
-                        _ => {
-                            unreachable!("We should not be here")
-                        }
-                    }
-                }
-                _ => unreachable!("Expected a MemberRemoved event"),
+            // Check that we receive the correct proposal for Alice
+            if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
+                let remove = staged_commit
+                    .remove_proposals()
+                    .next()
+                    .expect("Expected a proposal.");
+                // Check that Bob was removed
+                // TODO #575: Replace this with the adequate API call
+                assert_eq!(remove.remove_proposal().removed(), 1u32);
+                // Check that Charlie removed Bob
+                // TODO #575: Replace this with the adequate API call
+                assert_eq!(remove.sender().to_leaf_index(), LeafIndex::from(2u32));
+                // Merge staged Commit
+                bob_group
+                    .merge_staged_commit(*staged_commit)
+                    .expect("Could not merge Commit.");
+            } else {
+                unreachable!("Expected a StagedCommit.");
             }
-            */
+
+            // Merge Commit
+            if let ProcessedMessage::StagedCommitMessage(staged_commit) = charlie_processed_message
+            {
+                charlie_group
+                    .merge_staged_commit(*staged_commit)
+                    .expect("Could not merge StagedCommit");
+            } else {
+                unreachable!("Expected a StagedCommit.");
+            }
 
             // Check we didn't receive a Welcome message
             assert!(welcome_option.is_none());
@@ -553,40 +724,166 @@ fn managed_group_operations() {
                 vec![],
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             // Create RemoveProposal and process it
-            let queued_messages = alice_group
+            let queued_message = alice_group
                 .propose_remove_member(&crypto, 2)
                 .expect("Could not create proposal to remove Charlie");
-            alice_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
-            charlie_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
+            let unverified_message = alice_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let alice_processed_message = alice_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
+
+            // Check that we received the correct proposals
+            if let ProcessedMessage::ProposalMessage(staged_proposal) = alice_processed_message {
+                if let Proposal::Remove(ref remove_proposal) = staged_proposal.proposal() {
+                    // Check that Charlie was removed
+                    // TODO #575: Replace this with the adequate API call
+                    assert_eq!(remove_proposal.removed(), 2u32);
+                    // Store proposal
+                    alice_group.store_pending_proposal(*staged_proposal.clone());
+                } else {
+                    unreachable!("Expected a Proposal.");
+                }
+
+                // Check that Alice removed Charlie
+                // TODO #575: Replace this with the adequate API call
+                assert_eq!(
+                    staged_proposal.sender().to_leaf_index(),
+                    LeafIndex::from(0u32)
+                );
+            } else {
+                unreachable!("Expected a StagedProposal.");
+            }
+
+            let unverified_message = charlie_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let charlie_processed_message = charlie_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
+
+            // Check that we received the correct proposals
+            if let ProcessedMessage::ProposalMessage(staged_proposal) = charlie_processed_message {
+                if let Proposal::Remove(ref remove_proposal) = staged_proposal.proposal() {
+                    // Check that Charlie was removed
+                    // TODO #575: Replace this with the adequate API call
+                    assert_eq!(remove_proposal.removed(), 2u32);
+                    // Store proposal
+                    charlie_group.store_pending_proposal(*staged_proposal.clone());
+                } else {
+                    unreachable!("Expected a Proposal.");
+                }
+
+                // Check that Alice removed Charlie
+                // TODO #575: Replace this with the adequate API call
+                assert_eq!(
+                    staged_proposal.sender().to_leaf_index(),
+                    LeafIndex::from(0u32)
+                );
+            } else {
+                unreachable!("Expected a StagedProposal.");
+            }
 
             // Create AddProposal and process it
-            let queued_messages = alice_group
+            let queued_message = alice_group
                 .propose_add_member(&crypto, &bob_key_package)
                 .expect("Could not create proposal to add Bob");
-            alice_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
-            charlie_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
+            let unverified_message = alice_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let alice_processed_message = alice_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
+
+            // Check that we received the correct proposals
+            if let ProcessedMessage::ProposalMessage(staged_proposal) = alice_processed_message {
+                if let Proposal::Add(add_proposal) = staged_proposal.proposal() {
+                    // Check that Bob was added
+                    assert_eq!(add_proposal.key_package().credential(), &bob_credential);
+                } else {
+                    unreachable!("Expected an AddProposal.");
+                }
+
+                // Check that Alice added Bob
+                // TODO #575: Replace this with the adequate API call
+                assert_eq!(
+                    staged_proposal.sender().to_leaf_index(),
+                    LeafIndex::from(0u32)
+                );
+                // Store proposal
+                alice_group.store_pending_proposal(*staged_proposal);
+            } else {
+                unreachable!("Expected a StagedProposal.");
+            }
+
+            let unverified_message = charlie_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let charlie_processed_message = charlie_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
+
+            // Check that we received the correct proposals
+            if let ProcessedMessage::ProposalMessage(staged_proposal) = charlie_processed_message {
+                if let Proposal::Add(add_proposal) = staged_proposal.proposal() {
+                    // Check that Bob was added
+                    assert_eq!(add_proposal.key_package().credential(), &bob_credential);
+                } else {
+                    unreachable!("Expected an AddProposal.");
+                }
+
+                // Check that Alice added Bob
+                // TODO #575: Replace this with the adequate API call
+                assert_eq!(
+                    staged_proposal.sender().to_leaf_index(),
+                    LeafIndex::from(0u32)
+                );
+                // Store proposal
+                charlie_group.store_pending_proposal(*staged_proposal);
+            } else {
+                unreachable!("Expected a StagedProposal.");
+            }
 
             // Commit to the proposals and process it
-            let (queued_messages, welcome_option) = alice_group
-                .process_pending_proposals(&crypto)
+            let (queued_message, welcome_option) = alice_group
+                .commit_to_pending_proposals(&crypto)
                 .expect("Could not flush proposals");
-            alice_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
-            charlie_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
+
+            let unverified_message = alice_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let alice_processed_message = alice_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
+            let unverified_message = charlie_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let charlie_processed_message = charlie_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
+
+            // Merge Commit
+            if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+                alice_group
+                    .merge_staged_commit(*staged_commit)
+                    .expect("Could not merge StagedCommit");
+            } else {
+                unreachable!("Expected a StagedCommit.");
+            }
+
+            // Merge Commit
+            if let ProcessedMessage::StagedCommitMessage(staged_commit) = charlie_processed_message
+            {
+                charlie_group
+                    .merge_staged_commit(*staged_commit)
+                    .expect("Could not merge StagedCommit");
+            } else {
+                unreachable!("Expected a StagedCommit.");
+            }
 
             // Make sure the group contains two members
             assert_eq!(alice_group.members().len(), 2);
@@ -621,86 +918,135 @@ fn managed_group_operations() {
             assert_eq!(members[0].identity(), b"Alice");
             assert_eq!(members[1].identity(), b"Bob");
 
-            // === lice sends a message to the group ===
+            // === Alice sends a message to the group ===
             let message_alice = b"Hi, I'm Alice!";
             let queued_message = alice_group
                 .create_message(&crypto, message_alice)
                 .expect("Error creating application message");
-            bob_group
-                .process_message(queued_message.clone().into(), &crypto)
-                .expect("The group is no longer active");
+            let unverified_message = bob_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let bob_processed_message = bob_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
+
+            // Check that we received the correct message
+            if let ProcessedMessage::ApplicationMessage(application_message) = bob_processed_message
+            {
+                // Check the message
+                assert_eq!(application_message.message(), message_alice);
+                // Check that Alice sent the message
+                // TODO #575: Replace this with the adequate API call
+                assert_eq!(
+                    application_message.sender().to_leaf_index(),
+                    LeafIndex::from(0u32)
+                );
+            } else {
+                unreachable!("Expected an ApplicationMessage.");
+            }
 
             // === Bob leaves the group ===
 
-            let queued_messages = bob_group
+            let queued_message = bob_group
                 .leave_group(&crypto)
                 .expect("Could not leave group");
 
-            alice_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
-            bob_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
+            let unverified_message = alice_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let alice_processed_message = alice_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
+            let unverified_message = bob_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let bob_processed_message = bob_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
+
+            // Store proposal
+            if let ProcessedMessage::ProposalMessage(staged_proposal) = alice_processed_message {
+                // Store proposal
+                alice_group.store_pending_proposal(*staged_proposal);
+            } else {
+                unreachable!("Expected a StagedProposal.");
+            }
+
+            // Store proposal
+            if let ProcessedMessage::ProposalMessage(staged_proposal) = bob_processed_message {
+                // Store proposal
+                bob_group.store_pending_proposal(*staged_proposal);
+            } else {
+                unreachable!("Expected a StagedProposal.");
+            }
 
             // Should fail because you cannot remove yourself from a group
             assert_eq!(
-                bob_group.process_pending_proposals(&crypto,),
+                bob_group.commit_to_pending_proposals(&crypto,),
                 Err(ManagedGroupError::Group(MlsGroupError::CreateCommitError(
                     CreateCommitError::CannotRemoveSelf
                 )))
             );
 
-            let (queued_messages, _welcome_option) = alice_group
-                .process_pending_proposals(&crypto)
-                .expect("Could not commit to proposals");
+            let (queued_message, _welcome_option) = alice_group
+                .commit_to_pending_proposals(&crypto)
+                .expect("Could not commit to proposals.");
 
             // Check that Bob's group is still active
             assert!(bob_group.is_active());
 
-            let _alice_events = alice_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
-            let _bob_events = bob_group
-                .process_message(queued_messages.clone().into(), &crypto)
-                .expect("The group is no longer active");
+            let unverified_message = alice_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let alice_processed_message = alice_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
 
-            // Check that we receive the correct event for Bob
-            // TODO 524: Inspect the staged Commit
-            /*
-            match alice_events
-                .first()
-                .expect("Expected an event to be returned")
-            {
-                GroupEvent::MemberRemoved(member_removed_event) => {
-                    match member_removed_event.removal() {
-                        Removal::TheyLeft(leaver) => {
-                            assert_eq!(leaver, &bob_credential);
-                        }
-                        _ => {
-                            unreachable!("We should not be here")
-                        }
-                    }
-                }
-                _ => unreachable!("Expected a MemberRemoved event"),
+            // Check that we received the correct proposals
+            if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+                let remove = staged_commit
+                    .remove_proposals()
+                    .next()
+                    .expect("Expected a proposal.");
+                // Check that Bob was removed
+                assert_eq!(remove.remove_proposal().removed(), 1u32);
+                // Check that Bob removed himself
+                // TODO #575: Replace this with the adequate API call
+                assert_eq!(remove.sender().to_leaf_index(), LeafIndex::from(1u32));
+                // Merge staged Commit
+                alice_group
+                    .merge_staged_commit(*staged_commit)
+                    .expect("Could not merge Commit.");
+            } else {
+                unreachable!("Expected a StagedCommit.");
             }
 
-            // Check that we receive the correct event for Bob
-            match bob_events
-                .first()
-                .expect("Expected an event to be returned")
-            {
-                GroupEvent::MemberRemoved(member_removed_event) => {
-                    match member_removed_event.removal() {
-                        Removal::WeLeft => {}
-                        _ => {
-                            unreachable!("We should not be here")
-                        }
-                    }
-                }
-                _ => unreachable!("Expected a MemberRemoved event"),
+            let unverified_message = bob_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let bob_processed_message = bob_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
+
+            // Check that we received the correct proposals
+            if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
+                let remove = staged_commit
+                    .remove_proposals()
+                    .next()
+                    .expect("Expected a proposal.");
+                // Check that Bob was removed
+                assert_eq!(remove.remove_proposal().removed(), 1u32);
+                // Check that Bob removed himself
+                // TODO #575: Replace this with the adequate API call
+                assert_eq!(remove.sender().to_leaf_index(), LeafIndex::from(1u32));
+                assert!(staged_commit.self_removed());
+                // Merge staged Commit
+                bob_group
+                    .merge_staged_commit(*staged_commit)
+                    .expect("Could not merge Commit.");
+            } else {
+                unreachable!("Expected a StagedCommit.");
             }
-            */
 
             // Check that Bob's group is no longer active
             assert!(!bob_group.is_active());
@@ -712,7 +1058,7 @@ fn managed_group_operations() {
             let members = alice_group.members();
             assert_eq!(members[0].identity(), b"Alice");
 
-            // === Auto-save ===
+            // === Save the group state ===
 
             // Create a new KeyPackageBundle for Bob
             let bob_key_package = generate_key_package_bundle(
@@ -721,18 +1067,30 @@ fn managed_group_operations() {
                 vec![],
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             // Add Bob to the group
-            let (queued_messages, welcome) = alice_group
+            let (queued_message, welcome) = alice_group
                 .add_members(&crypto, &[bob_key_package])
                 .expect("Could not add Bob");
 
-            alice_group
-                .process_message(queued_messages.into(), &crypto)
-                .expect("Could not process messages");
+            let unverified_message = alice_group
+                .parse_message(queued_message.clone().into(), &crypto)
+                .expect("Could not parse message.");
+            let alice_processed_message = alice_group
+                .process_unverified_message(unverified_message, None, &crypto)
+                .expect("Could not process unverified message.");
 
-            let bob_group = ManagedGroup::new_from_welcome(
+            // Merge Commit
+            if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+                alice_group
+                    .merge_staged_commit(*staged_commit)
+                    .expect("Could not merge StagedCommit");
+            } else {
+                unreachable!("Expected a StagedCommit.");
+            }
+
+            let mut bob_group = ManagedGroup::new_from_welcome(
                 &crypto,
                 &managed_group_config,
                 welcome,
@@ -745,11 +1103,15 @@ fn managed_group_operations() {
                 bob_group.export_secret(&crypto, "before load", &[], 32)
             );
 
+            // Check that the state flag gets reset when saving
+            assert_eq!(bob_group.state_changed(), InnerState::Changed);
+            save(&mut bob_group);
+            assert_eq!(bob_group.state_changed(), InnerState::Persisted);
+
             // Re-load Bob's state from file
             let path = TEMP_DIR.path().join("test_managed_group_bob.json");
             let file = File::open(path).expect("Could not open file");
-            let bob_group = ManagedGroup::load(file, managed_group_config.callbacks())
-                .expect("Could not load group from file");
+            let bob_group = ManagedGroup::load(file).expect("Could not load group from file");
 
             // Make sure the state is still the same
             assert_eq!(
@@ -773,12 +1135,12 @@ fn test_empty_input_errors() {
         ciphersuite.signature_scheme(),
         &crypto,
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
     let alice_key_package =
         generate_key_package_bundle(&[ciphersuite.name()], &alice_credential, vec![], &crypto)
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
     // Define the managed group configuration
     let managed_group_config = ManagedGroupConfig::test_default();
@@ -788,9 +1150,11 @@ fn test_empty_input_errors() {
         &crypto,
         &managed_group_config,
         group_id,
-        &alice_key_package.hash(&crypto),
+        &alice_key_package
+            .hash(&crypto)
+            .expect("Could not hash KeyPackage."),
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     assert_eq!(
         alice_group
@@ -823,7 +1187,7 @@ fn managed_group_ratchet_tree_extension() {
                 ciphersuite.signature_scheme(),
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             let bob_credential = generate_credential_bundle(
                 "Bob".into(),
@@ -831,7 +1195,7 @@ fn managed_group_ratchet_tree_extension() {
                 ciphersuite.signature_scheme(),
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             // Generate KeyPackages
             let alice_key_package = generate_key_package_bundle(
@@ -840,7 +1204,7 @@ fn managed_group_ratchet_tree_extension() {
                 vec![],
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             let bob_key_package = generate_key_package_bundle(
                 &[ciphersuite.name()],
@@ -848,7 +1212,7 @@ fn managed_group_ratchet_tree_extension() {
                 vec![],
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             let managed_group_config = ManagedGroupConfig::builder()
                 .wire_format(wire_format)
@@ -860,12 +1224,14 @@ fn managed_group_ratchet_tree_extension() {
                 &crypto,
                 &managed_group_config,
                 group_id.clone(),
-                &alice_key_package.hash(&crypto),
+                &alice_key_package
+                    .hash(&crypto)
+                    .expect("Could not hash KeyPackage."),
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             // === Alice adds Bob ===
-            let (_queued_messages, welcome) =
+            let (_queued_message, welcome) =
                 match alice_group.add_members(&crypto, &[bob_key_package.clone()]) {
                     Ok((qm, welcome)) => (qm, welcome),
                     Err(e) => panic!("Could not add member to group: {:?}", e),
@@ -885,7 +1251,7 @@ fn managed_group_ratchet_tree_extension() {
                 ciphersuite.signature_scheme(),
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             let bob_credential = generate_credential_bundle(
                 "Bob".into(),
@@ -893,7 +1259,7 @@ fn managed_group_ratchet_tree_extension() {
                 ciphersuite.signature_scheme(),
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             // Generate KeyPackages
             let alice_key_package = generate_key_package_bundle(
@@ -902,7 +1268,7 @@ fn managed_group_ratchet_tree_extension() {
                 vec![],
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             let bob_key_package = generate_key_package_bundle(
                 &[ciphersuite.name()],
@@ -910,7 +1276,7 @@ fn managed_group_ratchet_tree_extension() {
                 vec![],
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             let managed_group_config = ManagedGroupConfig::test_default();
 
@@ -919,12 +1285,14 @@ fn managed_group_ratchet_tree_extension() {
                 &crypto,
                 &managed_group_config,
                 group_id,
-                &alice_key_package.hash(&crypto),
+                &alice_key_package
+                    .hash(&crypto)
+                    .expect("Could not hash KeyPackage."),
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             // === Alice adds Bob ===
-            let (_queued_messages, welcome) =
+            let (_queued_message, welcome) =
                 match alice_group.add_members(&crypto, &[bob_key_package]) {
                     Ok((qm, welcome)) => (qm, welcome),
                     Err(e) => panic!("Could not add member to group: {:?}", e),

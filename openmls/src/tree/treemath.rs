@@ -252,20 +252,24 @@ pub(crate) fn descendants(x: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
 /// Returns the list of nodes that are descendants of a given parent node,
 /// including the parent node itself
 /// (Alternative, easier to verify implementation)
+
 #[cfg(test)]
-pub(crate) fn descendants_alt(x: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
-    if level(x) == 0 {
+pub(crate) fn descendants_alt(
+    x: NodeIndex,
+    size: LeafIndex,
+) -> Result<Vec<NodeIndex>, TreeMathError> {
+    Ok(if level(x) == 0 {
         vec![x]
     } else {
-        let left_child = left(x).unwrap();
-        let right_child = right(x, size).unwrap();
+        let left_child = left(x)?;
+        let right_child = right(x, size)?;
         [
-            descendants_alt(left_child, size),
+            descendants_alt(left_child, size)?,
             vec![x],
-            descendants_alt(right_child, size),
+            descendants_alt(right_child, size)?,
         ]
         .concat()
-    }
+    })
 }
 
 #[test]
@@ -280,7 +284,7 @@ fn invalid_inputs() {
 fn test_node_in_tree() {
     let tests = [(0u32, 2u32), (1, 2), (2, 2), (5, 5), (8, 5)];
     for test in tests.iter() {
-        node_in_tree(test.0.into(), test.1.into()).unwrap();
+        node_in_tree(test.0.into(), test.1.into()).expect("An unexpected error occurred.");
     }
 }
 
@@ -299,7 +303,7 @@ fn test_node_not_in_tree() {
 fn test_leaf_in_tree() {
     let tests = [(0u32, 2u32), (1, 2), (4, 5), (9, 10)];
     for test in tests.iter() {
-        leaf_in_tree(test.0.into(), test.1.into()).unwrap();
+        leaf_in_tree(test.0.into(), test.1.into()).expect("An unexpected error occurred.");
     }
 }
 

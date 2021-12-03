@@ -19,7 +19,8 @@ fn test_dir_path() {
         for i in (0..size / 2).step_by(2) {
             let leaf_index = LeafIndex::try_from(i).expect("Could not create LeafIndex");
             let tree_size = LeafIndex::from(size);
-            let leaf_dir_path = treemath::leaf_direct_path(leaf_index, tree_size).unwrap();
+            let leaf_dir_path = treemath::leaf_direct_path(leaf_index, tree_size)
+                .expect("An unexpected error occurred.");
             let parent_node = treemath::parent(NodeIndex::from(leaf_index), tree_size)
                 .expect("Could not calculate parent node");
             let parent_direct_path = treemath::parent_direct_path(parent_node, tree_size)
@@ -42,15 +43,16 @@ fn test_tree_hash() {
             signature_scheme,
             &crypto,
         )
-        .unwrap();
-        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, &crypto, Vec::new()).unwrap()
+        .expect("An unexpected error occurred.");
+        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, &crypto, Vec::new())
+            .expect("An unexpected error occurred.")
     }
 
     for ciphersuite in Config::supported_ciphersuites() {
         let kbp = create_identity(b"Tree creator", ciphersuite.name());
 
         // Initialise tree
-        let mut tree = RatchetTree::new(&crypto, kbp);
+        let mut tree = RatchetTree::new(&crypto, kbp).expect("Could not create PrivateTree.");
         let tree_hash = tree.tree_hash(&crypto);
         println!("Tree hash: {:?}", tree_hash);
 
@@ -74,6 +76,7 @@ fn verify_descendants() {
             assert_eq!(
                 descendants(NodeIndex::from(node), LeafIndex::from(size)),
                 descendants_alt(NodeIndex::from(node), LeafIndex::from(size))
+                    .expect("Error when computing descendants occurred.")
             );
         }
     }

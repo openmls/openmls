@@ -8,9 +8,8 @@ impl ManagedGroup {
     /// A [`KeyPackageBundle`](crate::prelude::KeyPackageBundle) can optionally
     /// be provided. If not, a new one will be created on the fly.
     ///
-    /// If successful, it returns a `Vec` of
-    /// [`MlsMessage`] and an optional [`Welcome`] message if there were add
-    /// proposals in the queue of pending proposals.
+    /// If successful, it returns a tuple of [`MlsMessageOut`] and an optional [`Welcome`].
+    /// The [Welcome] is [Some] when the queue of pending proposals contained add proposals.
     pub fn self_update(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -64,8 +63,8 @@ impl ManagedGroup {
         // the configuration
         let mls_message = self.plaintext_to_mls_message(commit, backend)?;
 
-        // Since the state of the group was changed, call the auto-save function
-        self.auto_save();
+        // Since the state of the group might be changed, arm the state flag
+        self.flag_state_change();
 
         Ok((mls_message, welcome_option))
     }
@@ -91,7 +90,7 @@ impl ManagedGroup {
         let key_package_bundle = match key_package_bundle_option {
             Some(kpb) => kpb,
             None => {
-                KeyPackageBundlePayload::from_rekeyed_key_package(existing_key_package, backend)
+                KeyPackageBundlePayload::from_rekeyed_key_package(existing_key_package, backend)?
                     .sign(backend, &credential_bundle)?
             }
         };
@@ -108,8 +107,8 @@ impl ManagedGroup {
 
         let mls_message = self.plaintext_to_mls_message(update_proposal, backend)?;
 
-        // Since the state of the group was changed, call the auto-save function
-        self.auto_save();
+        // Since the state of the group might be changed, arm the state flag
+        self.flag_state_change();
 
         Ok(mls_message)
     }

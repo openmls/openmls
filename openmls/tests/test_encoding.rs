@@ -56,22 +56,27 @@ fn test_application_message_encoding() {
     let crypto = OpenMlsRustCrypto::default();
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
-    let alice = test_clients.get("alice").unwrap().borrow();
+    let alice = test_clients
+        .get("alice")
+        .expect("An unexpected error occurred.")
+        .borrow();
 
     // Create a message in each group and test the padding.
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let credential_bundle = alice
             .credential_bundles
             .get(&group_state.ciphersuite().name())
-            .unwrap();
+            .expect("An unexpected error occurred.");
         for _ in 0..100 {
             // Test encoding/decoding of Application messages.
             let message = randombytes(random_usize() % 1000);
             let aad = randombytes(random_usize() % 1000);
             let encrypted_message = group_state
                 .create_application_message(&aad, &message, credential_bundle, 0, &crypto)
-                .unwrap();
-            let encrypted_message_bytes = encrypted_message.tls_serialize_detached().unwrap();
+                .expect("An unexpected error occurred.");
+            let encrypted_message_bytes = encrypted_message
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred.");
             let encrypted_message_decoded =
                 match MlsCiphertext::tls_deserialize(&mut encrypted_message_bytes.as_slice()) {
                     Ok(a) => a,
@@ -88,7 +93,10 @@ fn test_update_proposal_encoding() {
     let crypto = OpenMlsRustCrypto::default();
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
-    let alice = test_clients.get("alice").unwrap().borrow();
+    let alice = test_clients
+        .get("alice")
+        .expect("An unexpected error occurred.")
+        .borrow();
     // Framing parameters
     let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
 
@@ -96,11 +104,12 @@ fn test_update_proposal_encoding() {
         let credential_bundle = alice
             .credential_bundles
             .get(&group_state.ciphersuite().name())
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
         let capabilities_extension = Extension::Capabilities(CapabilitiesExtension::new(
             None,
             Some(&[group_state.ciphersuite().name()]),
+            None,
             None,
         ));
         let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
@@ -112,7 +121,7 @@ fn test_update_proposal_encoding() {
             &crypto,
             mandatory_extensions,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         let update = group_state
             .create_update_proposal(
@@ -130,7 +139,12 @@ fn test_update_proposal_encoding() {
                 Ok(a) => a,
                 Err(err) => panic!("Error decoding MPLSPlaintext Update: {:?}", err),
             };
-        update_decoded.set_context(group_state.context().tls_serialize_detached().unwrap());
+        update_decoded.set_context(
+            group_state
+                .context()
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        );
         let update_decoded = update_decoded
             .verify(&crypto, credential_bundle.credential())
             .expect("Error verifying MlsPlaintext");
@@ -145,7 +159,10 @@ fn test_add_proposal_encoding() {
     let crypto = OpenMlsRustCrypto::default();
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
-    let alice = test_clients.get("alice").unwrap().borrow();
+    let alice = test_clients
+        .get("alice")
+        .expect("An unexpected error occurred.")
+        .borrow();
     // Framing parameters
     let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
 
@@ -153,11 +170,12 @@ fn test_add_proposal_encoding() {
         let credential_bundle = alice
             .credential_bundles
             .get(&group_state.ciphersuite().name())
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
         let capabilities_extension = Extension::Capabilities(CapabilitiesExtension::new(
             None,
             Some(&[group_state.ciphersuite().name()]),
+            None,
             None,
         ));
         let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
@@ -169,7 +187,7 @@ fn test_add_proposal_encoding() {
             &crypto,
             mandatory_extensions,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         // Adds
         let add = group_state
@@ -201,7 +219,10 @@ fn test_remove_proposal_encoding() {
     let crypto = OpenMlsRustCrypto::default();
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
-    let alice = test_clients.get("alice").unwrap().borrow();
+    let alice = test_clients
+        .get("alice")
+        .expect("An unexpected error occurred.")
+        .borrow();
     // Framing parameters
     let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
 
@@ -209,7 +230,7 @@ fn test_remove_proposal_encoding() {
         let credential_bundle = alice
             .credential_bundles
             .get(&group_state.ciphersuite().name())
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
         let remove = group_state
             .create_remove_proposal(
@@ -240,7 +261,10 @@ fn test_commit_encoding() {
     let crypto = OpenMlsRustCrypto::default();
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
-    let alice = test_clients.get("alice").unwrap().borrow();
+    let alice = test_clients
+        .get("alice")
+        .expect("An unexpected error occurred.")
+        .borrow();
     // Framing parameters
     let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
 
@@ -248,11 +272,12 @@ fn test_commit_encoding() {
         let alice_credential_bundle = alice
             .credential_bundles
             .get(&group_state.ciphersuite().name())
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
         let capabilities_extension = Extension::Capabilities(CapabilitiesExtension::new(
             None,
             Some(&[group_state.ciphersuite().name()]),
+            None,
             None,
         ));
         let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
@@ -264,7 +289,7 @@ fn test_commit_encoding() {
             &crypto,
             mandatory_extensions.clone(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         // Create a few proposals to put into the commit
 
@@ -283,9 +308,9 @@ fn test_commit_encoding() {
             ._key_store
             .borrow_mut()
             .get_mut(&("charlie", group_state.ciphersuite().name()))
-            .unwrap()
+            .expect("An unexpected error occurred.")
             .pop()
-            .unwrap();
+            .expect("An unexpected error occurred.");
         let add = group_state
             .create_add_proposal(
                 framing_parameters,
@@ -323,9 +348,12 @@ fn test_commit_encoding() {
             .credential_bundle(alice_credential_bundle)
             .proposal_store(&proposal_store)
             .build();
-        let (commit, _welcome_option, _key_package_bundle_option) =
-            group_state.create_commit(params, &crypto).unwrap();
-        let commit_encoded = commit.tls_serialize_detached().unwrap();
+        let (commit, _welcome_option, _key_package_bundle_option) = group_state
+            .create_commit(params, &crypto)
+            .expect("An unexpected error occurred.");
+        let commit_encoded = commit
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred.");
         let commit_decoded =
             match VerifiableMlsPlaintext::tls_deserialize(&mut commit_encoded.as_slice()) {
                 Ok(a) => group_state
@@ -343,7 +371,10 @@ fn test_welcome_message_encoding() {
     let crypto = OpenMlsRustCrypto::default();
     let test_setup = create_encoding_test_setup();
     let test_clients = test_setup.clients.borrow();
-    let alice = test_clients.get("alice").unwrap().borrow();
+    let alice = test_clients
+        .get("alice")
+        .expect("An unexpected error occurred.")
+        .borrow();
     // Framing parameters
     let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
 
@@ -351,7 +382,7 @@ fn test_welcome_message_encoding() {
         let credential_bundle = alice
             .credential_bundles
             .get(&group_state.ciphersuite().name())
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
         // Create a few proposals to put into the commit
 
@@ -360,9 +391,9 @@ fn test_welcome_message_encoding() {
             ._key_store
             .borrow_mut()
             .get_mut(&("charlie", group_state.ciphersuite().name()))
-            .unwrap()
+            .expect("An unexpected error occurred.")
             .pop()
-            .unwrap();
+            .expect("An unexpected error occurred.");
         let add = group_state
             .create_add_proposal(
                 framing_parameters,
@@ -382,14 +413,15 @@ fn test_welcome_message_encoding() {
             .credential_bundle(credential_bundle)
             .proposal_store(&proposal_store)
             .build();
-        let (commit, welcome_option, key_package_bundle_option) =
-            group_state.create_commit(params, &crypto).unwrap();
+        let (commit, welcome_option, key_package_bundle_option) = group_state
+            .create_commit(params, &crypto)
+            .expect("An unexpected error occurred.");
         // Alice applies the commit
         let staged_commit = group_state
             .stage_commit(
                 &commit,
                 &proposal_store,
-                &[key_package_bundle_option.unwrap()],
+                &[key_package_bundle_option.expect("An unexpected error occurred.")],
                 None,
                 &crypto,
             )
@@ -398,9 +430,11 @@ fn test_welcome_message_encoding() {
 
         // Welcome messages
 
-        let welcome = welcome_option.unwrap();
+        let welcome = welcome_option.expect("An unexpected error occurred.");
 
-        let welcome_encoded = welcome.tls_serialize_detached().unwrap();
+        let welcome_encoded = welcome
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred.");
         let welcome_decoded = match Welcome::tls_deserialize(&mut welcome_encoded.as_slice()) {
             Ok(a) => a,
             Err(err) => panic!("Error decoding Welcome message: {:?}", err),
@@ -408,11 +442,14 @@ fn test_welcome_message_encoding() {
 
         assert_eq!(welcome, welcome_decoded);
 
-        let charlie = test_clients.get("charlie").unwrap().borrow();
+        let charlie = test_clients
+            .get("charlie")
+            .expect("An unexpected error occurred.")
+            .borrow();
 
         let charlie_key_package_bundle = charlie
             .find_key_package_bundle(&charlie_key_package, &crypto)
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
         // This makes Charlie decode the internals of the Welcome message, for
         // example the RatchetTreeExtension.

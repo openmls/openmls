@@ -24,7 +24,8 @@ macro_rules! test_welcome_msg {
                 GroupEpoch(123),
                 vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
                 vec![1, 1, 1],
-                Vec::new(),
+                &Vec::new(),
+                &Vec::new(),
                 ConfirmationTag(Mac {
                     mac_value: vec![1, 2, 3, 4, 5].into(),
                 }),
@@ -38,7 +39,7 @@ macro_rules! test_welcome_msg {
                 $ciphersuite.signature_scheme(),
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
             let group_info = group_info
                 .sign(&crypto, &credential_bundle)
                 .expect("Error signing GroupInfo");
@@ -50,7 +51,9 @@ macro_rules! test_welcome_msg {
             // Generate receiver key pair.
             let receiver_key_pair = crypto.crypto().derive_hpke_keypair(
                 $ciphersuite.hpke_config(),
-                Secret::random($ciphersuite, &crypto, None).as_slice(),
+                Secret::random($ciphersuite, &crypto, None)
+                    .expect("Not enough randomness.")
+                    .as_slice(),
             );
             let hpke_info = b"group info welcome test info";
             let hpke_aad = b"group info welcome test aad";
@@ -71,11 +74,13 @@ macro_rules! test_welcome_msg {
             let encrypted_group_info = welcome_key
                 .aead_seal(
                     &crypto,
-                    &group_info.tls_serialize_detached().unwrap(),
+                    &group_info
+                        .tls_serialize_detached()
+                        .expect("An unexpected error occurred."),
                     &[],
                     &welcome_nonce,
                 )
-                .unwrap();
+                .expect("An unexpected error occurred.");
 
             // Now build the welcome message.
             let msg = Welcome::new(
@@ -86,9 +91,12 @@ macro_rules! test_welcome_msg {
             );
 
             // Encode, decode and re-assemble
-            let msg_encoded = msg.tls_serialize_detached().unwrap();
+            let msg_encoded = msg
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred.");
             println!("encoded msg: {:?}", msg_encoded);
-            let msg_decoded = Welcome::tls_deserialize(&mut msg_encoded.as_slice()).unwrap();
+            let msg_decoded = Welcome::tls_deserialize(&mut msg_encoded.as_slice())
+                .expect("An unexpected error occurred.");
 
             // Check that the welcome message is the same
             assert_eq!(msg_decoded.version, $version);
@@ -120,20 +128,22 @@ macro_rules! test_welcome_msg {
 
 test_welcome_msg!(
     test_welcome_MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-    Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519).unwrap(),
+    Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519)
+        .expect("An unexpected error occurred."),
     Config::supported_versions()[0]
 );
 
 test_welcome_msg!(
     test_welcome_MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
     Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519)
-        .unwrap(),
+        .expect("An unexpected error occurred."),
     Config::supported_versions()[0]
 );
 
 test_welcome_msg!(
     test_welcome_MLS10_128_DHKEMP256_AES128GCM_SHA256_P256,
-    Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256).unwrap(),
+    Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256)
+        .expect("An unexpected error occurred."),
     Config::supported_versions()[0]
 );
 

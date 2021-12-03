@@ -3,13 +3,17 @@
 //! `WelcomeError`, `StageCommitError`, `DecryptionError`, and
 //! `CreateCommitError`.
 
-use crate::ciphersuite::CryptoError;
 use crate::config::ConfigError;
 use crate::credentials::CredentialError;
-use crate::framing::errors::{MlsCiphertextError, MlsPlaintextError, VerificationError};
-use crate::messages::errors::ProposalQueueError;
+use crate::extensions::errors::ExtensionError;
+use crate::framing::errors::{
+    MlsCiphertextError, MlsPlaintextError, ValidationError, VerificationError,
+};
+use crate::key_packages::KeyPackageError;
+use crate::messages::errors::{ProposalError, ProposalQueueError};
 use crate::schedule::errors::{KeyScheduleError, PskSecretError};
 use crate::tree::{treemath::TreeMathError, ParentHashError, TreeError};
+use openmls_traits::types::CryptoError;
 use tls_codec::Error as TlsCodecError;
 
 implement_error! {
@@ -17,6 +21,8 @@ implement_error! {
         Simple {
             InitSecretNotFound =
                 "Missing init secret when creating commit.",
+            NoSignatureKey = "No signature key was found.",
+            LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
         }
         Complex {
             MlsCiphertextError(MlsCiphertextError) =
@@ -36,19 +42,35 @@ implement_error! {
             ProposalQueueError(ProposalQueueError) =
                 "See [`ProposalQueueError`](`crate::messages::errors::ProposalQueueError`) for details.",
             CreationProposalQueueError(CreationProposalQueueError) =
-                "See [`CreationProposalQueueError`](`crate::messages::errors::CreationProposalQueueError`) for details.",
+                "See [`CreationProposalQueueError`](`crate::group::errors::CreationProposalQueueError`) for details.",
             CodecError(TlsCodecError) =
-                "Tls (de)serialization occurred.",
+                "TLS (de)serialization error occurred.",
             KeyScheduleError(KeyScheduleError) =
                 "An error occurred in the key schedule.",
             MathError(TreeMathError) =
                 "An error occurred during a tree math operation.",
             PskError(PskError) =
-                "A PSK error occured.",
+                "A PSK error occurred.",
             CredentialError(CredentialError) =
                 "See [`CredentialError`](crate::credentials::CredentialError) for details.",
             TreeError(TreeError) =
                 "See [`TreeError`](crate::tree::TreeError) for details.",
+            KeyPackageError(KeyPackageError) =
+                "See [`KeyPackageError`] for details.",
+            ExtensionError(ExtensionError) =
+                "See [`ExtensionError`] for details.",
+            ValidationError(ValidationError) =
+                "See [`ValidationError`](crate::framing::ValidationError) for details.",
+            FramingValidationError(FramingValidationError) =
+                "See [`FramingValidationError`](crate::group::FramingValidationError) for details.",
+            ProposalValidationError(ProposalValidationError) =
+                "See [`ProposalValidationError`](crate::group::ProposalValidationError) for details.",
+            CryptoError(CryptoError) =
+                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
+            InterimTranscriptHashError(InterimTranscriptHashError) =
+                "See [`InterimTranscriptHashError`](crate::group::InterimTranscriptHashError) for details.",
+            StagedProposalError(StagedProposalError) =
+                "See [`StagedProposalError`](crate::group::StagedProposalError) for details.",
         }
     }
 }
@@ -78,6 +100,7 @@ implement_error! {
                 "The sender key package is missing.",
             UnknownError =
                 "An unknown error occurred.",
+            LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
             }
         Complex {
             ConfigError(ConfigError) =
@@ -86,14 +109,20 @@ implement_error! {
                 "Invalid ratchet tree in Welcome message.",
             ParentHashMismatch(ParentHashError) =
                 "The parent hash verification failed.",
-            GroupSecretsDecryptionFailure(CryptoError) =
-                "Unable to decrypt the EncryptedGroupSecrets.",
             CodecError(TlsCodecError) =
                 "Tls (de)serialization error occurred.",
             KeyScheduleError(KeyScheduleError) =
                 "An error occurred in the key schedule.",
             PskError(PskError) =
                 "A PSK error occured.",
+            ExtensionError(ExtensionError) =
+                "See [`ExtensionError`] for details.",
+            KeyPackageError(KeyPackageError) =
+                "See [`KeyPackageError`] for details.",
+            InterimTranscriptHashError(InterimTranscriptHashError) =
+                "See [`InterimTranscriptHashError`] for details.",
+            CryptoError(CryptoError) =
+                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
         }
     }
 }
@@ -180,6 +209,7 @@ implement_error! {
             WrongContentType = "API misuse. Only proposals can end up in the proposal queue",
         }
         Complex {
+            ProposalError(ProposalError) = "A ProposalError occurred.",
             TlsCodecError(TlsCodecError) = "Error serializing",
         }
     }
@@ -189,6 +219,7 @@ implement_error! {
     pub enum StagedProposalQueueError {
         Simple {
             ProposalNotFound = "Not all proposals in the Commit were found locally.",
+            SelfRemoval = "The sender of a Commit tried to remove themselves.",
         }
         Complex {
             NotAProposal(StagedProposalError) = "The given MLS Plaintext was not a Proposal.",
@@ -203,6 +234,47 @@ implement_error! {
         }
         Complex {
             NotAProposal(StagedProposalError) = "The given MLS Plaintext was not a Proposal.",
+        }
+    }
+}
+
+implement_error! {
+    pub enum FramingValidationError {
+        WrongGroupId = "Message group ID differs from the group's group ID.",
+        WrongEpoch = "Message epoch differs from the group's epoch.",
+        UnknownMember = "The sender could not be matched to a member of the group.",
+        UnencryptedApplicationMessage = "Application messages must always be encrypted.",
+        NonMemberApplicationMessage = "An application message was sent from an external sender.",
+        MissingMembershipTag = "Membership tag is missing.",
+        MissingConfirmationTag = "Confirmation tag is missing.",
+    }
+}
+
+implement_error! {
+    pub enum ProposalValidationError {
+        UnknownMember = "The sender could not be matched to a member of the group.",
+        DuplicateIdentityAddProposal = "Found two add proposals with the same identity.",
+        DuplicateSignatureKeyAddProposal = "Found two add proposals with the same signature key.",
+        DuplicatePublicKeyAddProposal = "Found two add proposals with the same HPKE public key.",
+        ExistingIdentityAddProposal = "Identity of the add proposal already existed in tree.",
+        ExistingSignatureKeyAddProposal = "Signature key of the add proposal already existed in tree.",
+        ExistingPublicKeyAddProposal = "HPKE public key of the add proposal already existed in tree.",
+        UpdateProposalIdentityMismatch = "The identity of the update proposal did not match the existing identity.",
+        ExistingSignatureKeyUpdateProposal = "Signature key of the update proposal already existed in tree.",
+        ExistingPublicKeyUpdateProposal = "HPKE public key of the update proposal already existed in tree.",
+        DuplicateMemberRemoval = "Duplicate remove proposals for the same member.",
+        UnknownMemberRemoval = "The remove proposal referenced a non-existing member.",
+    }
+}
+
+implement_error! {
+    pub enum InterimTranscriptHashError {
+        Simple {}
+        Complex {
+            CodecError(TlsCodecError) =
+                "TLS (de)serialization error occurred.",
+            CryptoError(CryptoError) =
+                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
         }
     }
 }

@@ -1,7 +1,7 @@
 //! # Known Answer Tests for treemath
 //!
 //! This test file generates and read test vectors for tree math.
-//! See https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md
+//! See <https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md>
 //! for more description on the test vectors.
 //!
 //! ## Parameter:

@@ -24,16 +24,18 @@ fn codec_plaintext() {
             ciphersuite.signature_scheme(),
             &crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let sender = Sender {
             sender_type: SenderType::Member,
             sender: LeafIndex::from(2u32),
         };
         let group_context =
             GroupContext::new(GroupId::random(&crypto), GroupEpoch(1), vec![], vec![], &[])
-                .unwrap();
+                .expect("An unexpected error occurred.");
 
-        let serialized_context = group_context.tls_serialize_detached().unwrap();
+        let serialized_context = group_context
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred.");
         let signature_input = MlsPlaintextTbs::new(
             WireFormat::MlsPlaintext,
             GroupId::random(&crypto),
@@ -50,12 +52,15 @@ fn codec_plaintext() {
             .sign(&crypto, &credential_bundle)
             .expect("Signing failed.");
 
-        let enc = orig.tls_serialize_detached().unwrap();
-        let mut copy = VerifiableMlsPlaintext::tls_deserialize(&mut enc.as_slice()).unwrap();
+        let enc = orig
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred.");
+        let mut copy = VerifiableMlsPlaintext::tls_deserialize(&mut enc.as_slice())
+            .expect("An unexpected error occurred.");
         copy.set_context(serialized_context);
         let copy = copy
             .verify(&crypto, credential_bundle.credential())
-            .unwrap();
+            .expect("An unexpected error occurred.");
         assert_eq!(orig, copy);
         assert!(!orig.is_handshake_message());
     }
@@ -73,7 +78,7 @@ fn codec_ciphertext() {
             ciphersuite.signature_scheme(),
             &crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let sender = Sender {
             sender_type: SenderType::Member,
             sender: LeafIndex::from(0u32),
@@ -85,9 +90,11 @@ fn codec_ciphertext() {
             vec![],
             &[],
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
-        let serialized_context = group_context.tls_serialize_detached().unwrap();
+        let serialized_context = group_context
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred.");
         let signature_input = MlsPlaintextTbs::new(
             WireFormat::MlsCiphertext,
             GroupId::random(&crypto),
@@ -109,10 +116,15 @@ fn codec_ciphertext() {
             &crypto,
             JoinerSecret::random(ciphersuite, &crypto, ProtocolVersion::default()),
             None, // PSK
-        );
+        )
+        .expect("Could not create KeySchedule.");
+
+        let serialized_group_context = group_context
+            .tls_serialize_detached()
+            .expect("Could not serialize group context.");
 
         key_schedule
-            .add_context(&crypto, &group_context)
+            .add_context(&crypto, &serialized_group_context)
             .expect("Could not add context to key schedule");
 
         let epoch_secrets = key_schedule
@@ -135,8 +147,11 @@ fn codec_ciphertext() {
         )
         .expect("Could not encrypt MlsPlaintext.");
 
-        let enc = orig.tls_serialize_detached().unwrap();
-        let copy = MlsCiphertext::tls_deserialize(&mut enc.as_slice()).unwrap();
+        let enc = orig
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred.");
+        let copy = MlsCiphertext::tls_deserialize(&mut enc.as_slice())
+            .expect("An unexpected error occurred.");
 
         assert_eq!(orig, copy);
         assert!(!orig.is_handshake_message());
@@ -155,7 +170,7 @@ fn wire_format_checks() {
             ciphersuite.signature_scheme(),
             &crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let sender = Sender {
             sender_type: SenderType::Member,
             sender: LeafIndex::from(0u32),
@@ -167,9 +182,11 @@ fn wire_format_checks() {
             vec![],
             &[],
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
-        let serialized_context = group_context.tls_serialize_detached().unwrap();
+        let serialized_context = group_context
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred.");
         let signature_input = MlsPlaintextTbs::new(
             WireFormat::MlsCiphertext,
             GroupId::random(&crypto),
@@ -191,10 +208,15 @@ fn wire_format_checks() {
             &crypto,
             JoinerSecret::random(ciphersuite, &crypto, ProtocolVersion::default()),
             None, // PSK
-        );
+        )
+        .expect("Could not create KeySchedule.");
+
+        let serialized_group_context = group_context
+            .tls_serialize_detached()
+            .expect("Could not serialize group context.");
 
         key_schedule
-            .add_context(&crypto, &group_context)
+            .add_context(&crypto, &serialized_group_context)
             .expect("Could not add context to key schedule");
 
         let epoch_secrets = key_schedule
@@ -273,14 +295,14 @@ fn membership_tag() {
             ciphersuite.signature_scheme(),
             crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let group_context =
-            GroupContext::new(GroupId::random(crypto), GroupEpoch(1), vec![], vec![], &[]).unwrap();
-        let membership_key = MembershipKey::from_secret(Secret::random(
-            ciphersuite,
-            crypto,
-            None, /* MLS version */
-        ));
+            GroupContext::new(GroupId::random(crypto), GroupEpoch(1), vec![], vec![], &[])
+                .expect("An unexpected error occurred.");
+        let membership_key = MembershipKey::from_secret(
+            Secret::random(ciphersuite, crypto, None /* MLS version */)
+                .expect("Not enough randomness."),
+        );
         let mut mls_plaintext = MlsPlaintext::new_application(
             LeafIndex::from(2u32),
             &[1, 2, 3],
@@ -290,8 +312,10 @@ fn membership_tag() {
             &membership_key,
             crypto,
         )
-        .unwrap();
-        let serialized_context: Vec<u8> = group_context.tls_serialize_detached().unwrap();
+        .expect("An unexpected error occurred.");
+        let serialized_context: Vec<u8> = group_context
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred.");
 
         let verifiable_mls_plaintext = VerifiableMlsPlaintext::from_plaintext(
             mls_plaintext.clone(),
@@ -335,21 +359,21 @@ fn unknown_sender() {
             ciphersuite.signature_scheme(),
             crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let bob_credential_bundle = CredentialBundle::new(
             "Bob".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
             crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let charlie_credential_bundle = CredentialBundle::new(
             "Charlie".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
             crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         // Generate KeyPackages
         let bob_key_package_bundle = KeyPackageBundle::new(
@@ -358,7 +382,7 @@ fn unknown_sender() {
             crypto,
             Vec::new(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let bob_key_package = bob_key_package_bundle.key_package();
 
         let charlie_key_package_bundle = KeyPackageBundle::new(
@@ -367,7 +391,7 @@ fn unknown_sender() {
             crypto,
             Vec::new(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let charlie_key_package = charlie_key_package_bundle.key_package();
 
         let alice_key_package_bundle = KeyPackageBundle::new(
@@ -376,20 +400,12 @@ fn unknown_sender() {
             crypto,
             Vec::new(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         // Alice creates a group
-        let group_id = [1, 2, 3, 4];
-        let mut group_alice = MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            crypto,
-            alice_key_package_bundle,
-            MlsGroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
-        )
-        .unwrap();
+        let mut group_alice = MlsGroup::builder(GroupId::random(crypto), alice_key_package_bundle)
+            .build(crypto)
+            .expect("Error creating group.");
 
         // Alice adds Bob
         let bob_add_proposal = group_alice
@@ -454,7 +470,7 @@ fn unknown_sender() {
         group_alice.merge_commit(staged_commit);
 
         let mut group_charlie = MlsGroup::new_from_welcome(
-            welcome_option.unwrap(),
+            welcome_option.expect("An unexpected error occurred."),
             Some(group_alice.tree().public_key_tree_copy()),
             charlie_key_package_bundle,
             None,
@@ -496,7 +512,7 @@ fn unknown_sender() {
             .stage_commit(
                 &commit,
                 &proposal_store,
-                &[kpb_option.unwrap()],
+                &[kpb_option.expect("An unexpected error occurred.")],
                 None,
                 crypto,
             )
@@ -516,7 +532,9 @@ fn unknown_sender() {
             &[1, 2, 3],
             &alice_credential_bundle,
             group_alice.context(),
-            &MembershipKey::from_secret(Secret::random(ciphersuite, crypto, None)),
+            &MembershipKey::from_secret(
+                Secret::random(ciphersuite, crypto, None).expect("Not enough randomness."),
+            ),
             crypto,
         )
         .expect("Could not create new MlsPlaintext.");
@@ -553,7 +571,9 @@ fn unknown_sender() {
             &[1, 2, 3],
             &alice_credential_bundle,
             group_alice.context(),
-            &MembershipKey::from_secret(Secret::random(ciphersuite, crypto, None)),
+            &MembershipKey::from_secret(
+                Secret::random(ciphersuite, crypto, None).expect("Not enough randomness."),
+            ),
             crypto,
         )
         .expect("Could not create new MlsPlaintext.");
@@ -600,14 +620,14 @@ fn confirmation_tag_presence() {
             ciphersuite.signature_scheme(),
             crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let bob_credential_bundle = CredentialBundle::new(
             "Bob".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
             crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         // Generate KeyPackages
         let bob_key_package_bundle = KeyPackageBundle::new(
@@ -616,7 +636,7 @@ fn confirmation_tag_presence() {
             crypto,
             Vec::new(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let bob_key_package = bob_key_package_bundle.key_package();
 
         let alice_key_package_bundle = KeyPackageBundle::new(
@@ -625,20 +645,12 @@ fn confirmation_tag_presence() {
             crypto,
             Vec::new(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         // Alice creates a group
-        let group_id = [1, 2, 3, 4];
-        let mut group_alice = MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            crypto,
-            alice_key_package_bundle,
-            MlsGroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
-        )
-        .unwrap();
+        let mut group_alice = MlsGroup::builder(GroupId::random(crypto), alice_key_package_bundle)
+            .build(crypto)
+            .expect("Error creating group.");
 
         // Alice adds Bob
         let bob_add_proposal = group_alice
@@ -683,7 +695,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
         let crypto = &OpenMlsRustCrypto::default();
 
         log::info!("Testing ciphersuite {:?}", ciphersuite_name);
-        let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
+        let ciphersuite = Config::ciphersuite(ciphersuite_name).expect("An unexpected error occurred.");
         let group_aad = b"Alice's test group";
         let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
 
@@ -694,14 +706,14 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
             ciphersuite.signature_scheme(),
             crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let bob_credential_bundle = CredentialBundle::new(
             "Bob".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
             crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         // Generate KeyPackages
         let bob_key_package_bundle = KeyPackageBundle::new(
@@ -710,7 +722,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
             crypto,
             Vec::new(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let bob_key_package = bob_key_package_bundle.key_package();
 
         let alice_key_package_bundle = KeyPackageBundle::new(
@@ -719,20 +731,12 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
             crypto,
             Vec::new(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         // Alice creates a group
-        let group_id = [1, 2, 3, 4];
-        let mut group_alice = MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            crypto,
-            alice_key_package_bundle,
-            MlsGroupConfig::default(),
-            None, /* Initial PSK */
-            None, /* MLS version */
-        )
-        .unwrap();
+        let mut group_alice = MlsGroup::builder(GroupId::random(crypto), alice_key_package_bundle)
+            .build(crypto)
+            .expect("Error creating group.");
 
         // Alice adds Bob
         let bob_add_proposal = group_alice
@@ -759,10 +763,10 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
             .create_commit(params, crypto)
             .expect("Error creating Commit");
 
-        let original_encoded_commit = commit.tls_serialize_detached().unwrap();
+        let original_encoded_commit = commit.tls_serialize_detached().expect("An unexpected error occurred.");
         let mut input_commit =
             VerifiableMlsPlaintext::tls_deserialize(&mut original_encoded_commit.as_slice())
-                .unwrap();
+                .expect("An unexpected error occurred.");
         let original_input_commit = input_commit.clone();
 
         // Remove membership tag.
@@ -785,7 +789,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
             .clone()
             .expect("There should have been a membership tag.");
         modified_membership_tag.0.mac_value[0] ^= 0xFF;
-        input_commit.set_membership_tag_test(modified_membership_tag);
+        input_commit.set_membership_tag(modified_membership_tag);
         let membership_error = group_alice
             .verify_membership_tag(crypto, &mut input_commit)
             .err()
@@ -802,16 +806,16 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
             .verify(original_input_commit, crypto)
             .expect("Error verifying valid commit message");
         assert_eq!(
-            decoded_commit.tls_serialize_detached().unwrap(),
+            decoded_commit.tls_serialize_detached().expect("An unexpected error occurred."),
             original_encoded_commit
         );
 
         // Tamper with signature.
         let good_signature = commit.signature().clone();
         commit.invalidate_signature();
-        let encoded_commit = commit.tls_serialize_detached().unwrap();
+        let encoded_commit = commit.tls_serialize_detached().expect("An unexpected error occurred.");
         let input_commit =
-            VerifiableMlsPlaintext::tls_deserialize(&mut encoded_commit.as_slice()).unwrap();
+            VerifiableMlsPlaintext::tls_deserialize(&mut encoded_commit.as_slice()).expect("An unexpected error occurred.");
         let decoded_commit = group_alice.verify(input_commit, crypto);
         assert_eq!(
             decoded_commit
@@ -824,7 +828,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
 
         // Fix commit
         commit.set_signature(good_signature);
-        commit.set_membership_tag_test(good_membership_tag.unwrap());
+        commit.set_membership_tag_test(good_membership_tag.expect("An unexpected error occurred."));
 
         // Remove confirmation tag.
         let good_confirmation_tag = commit.confirmation_tag().cloned();
@@ -845,7 +849,7 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
             .expect("There should have been a membership tag.");
         modified_confirmation_tag.0.mac_value[0] ^= 0xFF;
         commit.set_confirmation_tag(modified_confirmation_tag);
-        let serialized_group_before = serde_json::to_string(&group_alice).unwrap();
+        let serialized_group_before = serde_json::to_string(&group_alice).expect("An unexpected error occurred.");
 
         proposal_store.empty();
         proposal_store.add(
@@ -860,20 +864,20 @@ ctest_ciphersuites!(invalid_plaintext_signature,test (ciphersuite_name: Ciphersu
             error,
             MlsGroupError::StageCommitError(StageCommitError::ConfirmationTagMismatch)
         );
-        let serialized_group_after = serde_json::to_string(&group_alice).unwrap();
+        let serialized_group_after = serde_json::to_string(&group_alice).expect("An unexpected error occurred.");
         assert_eq!(serialized_group_before, serialized_group_after);
 
         // Fix commit again and stage it.
-        commit.set_confirmation_tag(good_confirmation_tag.unwrap());
-        let encoded_commit = commit.tls_serialize_detached().unwrap();
+        commit.set_confirmation_tag(good_confirmation_tag.expect("An unexpected error occurred."));
+        let encoded_commit = commit.tls_serialize_detached().expect("An unexpected error occurred.");
         let input_commit =
-            VerifiableMlsPlaintext::tls_deserialize(&mut encoded_commit.as_slice()).unwrap();
+            VerifiableMlsPlaintext::tls_deserialize(&mut encoded_commit.as_slice()).expect("An unexpected error occurred.");
         let decoded_commit = group_alice
             .verify(input_commit, crypto)
             .expect("Error verifying commit");
         assert_eq!(
             original_encoded_commit,
-            decoded_commit.tls_serialize_detached().unwrap()
+            decoded_commit.tls_serialize_detached().expect("An unexpected error occurred.")
         );
 
         proposal_store.empty();

@@ -4,8 +4,8 @@
 //! See `codec.rs` and `ciphersuites.rs` for internals.
 
 use crate::config::{Config, ConfigError, ProtocolVersion};
-use ::tls_codec::{Size, TlsDeserialize, TlsSerialize, TlsSize};
-use openmls_traits::types::{HpkeAeadType, HpkeConfig, HpkeKdfType, HpkeKemType};
+use ::tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use openmls_traits::types::{CryptoError, HpkeAeadType, HpkeConfig, HpkeKdfType, HpkeKemType};
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     random::OpenMlsRand,
@@ -23,7 +23,6 @@ use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU16, TlsByteVecU32, Tl
 mod aead;
 mod ciphersuites;
 mod codec;
-mod errors;
 mod hpke;
 mod kdf_label;
 mod mac;
@@ -35,7 +34,6 @@ pub(crate) mod signature;
 
 pub(crate) use aead::*;
 pub use ciphersuites::*;
-pub(crate) use errors::*;
 pub(crate) use hpke::*;
 pub(crate) use mac::*;
 pub(crate) use reuse_guard::*;
@@ -74,7 +72,16 @@ impl std::fmt::Display for Ciphersuite {
 // carry over anything we don"t want to.
 impl Clone for Ciphersuite {
     fn clone(&self) -> Self {
-        Self::new(self.name).unwrap()
+        let name = self.name;
+        Ciphersuite {
+            name,
+            signature_scheme: SignatureScheme::from(name),
+            hash: hash_from_suite(&name),
+            aead: aead_from_suite(&name),
+            hpke_kem: self.hpke_kem,
+            hpke_kdf: hpke_kdf_from_suite(&name),
+            hpke_aead: hpke_aead_from_suite(&name),
+        }
     }
 }
 
@@ -126,9 +133,12 @@ impl Ciphersuite {
     }
 
     /// Hash `payload` and return the digest.
-    pub(crate) fn hash(&self, backend: &impl OpenMlsCryptoProvider, payload: &[u8]) -> Vec<u8> {
-        // XXX: remove unwrap
-        backend.crypto().hash(self.hash, payload).unwrap()
+    pub(crate) fn hash(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        payload: &[u8],
+    ) -> Result<Vec<u8>, CryptoError> {
+        backend.crypto().hash(self.hash, payload)
     }
 
     /// Get the length of the used hash algorithm.

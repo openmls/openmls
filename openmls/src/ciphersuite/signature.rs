@@ -153,6 +153,10 @@ impl SignaturePublicKey {
     pub fn signature_scheme(&self) -> SignatureScheme {
         self.signature_scheme
     }
+    /// Returns the bytes of the signature public key.
+    pub fn as_slice(&self) -> &[u8] {
+        &self.value
+    }
 }
 
 impl SignaturePrivateKey {

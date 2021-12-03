@@ -1,6 +1,6 @@
 //! # Known Answer Tests for encrypting to tree nodes
 //!
-//! See https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md
+//! See <https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md>
 //! for more description on the test vectors.
 //!
 //! ## Parameters:
@@ -143,26 +143,18 @@ fn group(
         SignatureScheme::from(ciphersuite.name()),
         backend,
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
     let key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite.name()],
         &credential_bundle,
         backend,
         Vec::new(),
     )
-    .unwrap();
-    let group_id = [1, 2, 3, 4];
+    .expect("An unexpected error occurred.");
     (
-        MlsGroup::new(
-            &group_id,
-            ciphersuite.name(),
-            backend,
-            key_package_bundle,
-            MlsGroupConfig::default(),
-            None, /* Initial PSK */
-            ProtocolVersion::Mls10,
-        )
-        .unwrap(),
+        MlsGroup::builder(GroupId::random(backend), key_package_bundle)
+            .build(backend)
+            .expect("Error creating MlsGroup"),
         credential_bundle,
     )
 }
@@ -181,24 +173,17 @@ fn receiver_group(
         SignatureScheme::from(ciphersuite.name()),
         backend,
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
     let key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite.name()],
         &credential_bundle,
         backend,
         Vec::new(),
     )
-    .unwrap();
-    MlsGroup::new(
-        group_id.as_slice(),
-        ciphersuite.name(),
-        backend,
-        key_package_bundle,
-        MlsGroupConfig::default(),
-        None, /* Initial PSK */
-        ProtocolVersion::Mls10,
-    )
-    .unwrap()
+    .expect("An unexpected error occurred.");
+    MlsGroup::builder(group_id.clone(), key_package_bundle)
+        .build(backend)
+        .expect("Error creating MlsGroup")
 }
 
 // XXX: we could be more creative in generating these messages.
@@ -213,11 +198,10 @@ fn build_handshake_messages(
 
     let epoch = GroupEpoch(random_u64());
     group.context_mut().set_epoch(epoch);
-    let membership_key = MembershipKey::from_secret(Secret::random(
-        group.ciphersuite(),
-        backend,
-        None, /* MLS version */
-    ));
+    let membership_key = MembershipKey::from_secret(
+        Secret::random(group.ciphersuite(), backend, None /* MLS version */)
+            .expect("Not enough randomness."),
+    );
     let framing_parameters = FramingParameters::new(&[1, 2, 3, 4], WireFormat::MlsCiphertext);
     let mut plaintext = MlsPlaintext::new_proposal(
         framing_parameters,
@@ -228,7 +212,7 @@ fn build_handshake_messages(
         &membership_key,
         backend,
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
     plaintext.remove_membership_tag();
     let ciphertext = MlsCiphertext::try_from_plaintext(
         &plaintext,
@@ -244,8 +228,12 @@ fn build_handshake_messages(
     )
     .expect("Could not create MlsCiphertext");
     (
-        plaintext.tls_serialize_detached().unwrap(),
-        ciphertext.tls_serialize_detached().unwrap(),
+        plaintext
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred."),
+        ciphertext
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred."),
     )
 }
 
@@ -260,11 +248,10 @@ fn build_application_messages(
 
     let epoch = GroupEpoch(random_u64());
     group.context_mut().set_epoch(epoch);
-    let membership_key = MembershipKey::from_secret(Secret::random(
-        group.ciphersuite(),
-        backend,
-        None, /* MLS version */
-    ));
+    let membership_key = MembershipKey::from_secret(
+        Secret::random(group.ciphersuite(), backend, None /* MLS version */)
+            .expect("Not enough randomness."),
+    );
     let mut plaintext = MlsPlaintext::new_application(
         leaf,
         &[1, 2, 3],
@@ -274,7 +261,7 @@ fn build_application_messages(
         &membership_key,
         backend,
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
     plaintext.remove_membership_tag();
     let ciphertext = match MlsCiphertext::try_from_plaintext(
         &plaintext,
@@ -292,8 +279,12 @@ fn build_application_messages(
         Err(e) => panic!("Could not create MlsCiphertext {}", e),
     };
     (
-        plaintext.tls_serialize_detached().unwrap(),
-        ciphertext.tls_serialize_detached().unwrap(),
+        plaintext
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred."),
+        ciphertext
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred."),
     )
 }
 
@@ -307,7 +298,10 @@ pub fn generate_test_vector(
 
     let ciphersuite_name = ciphersuite.name();
     let crypto = OpenMlsRustCrypto::default();
-    let epoch_secret = crypto.rand().random_vec(ciphersuite.hash_length()).unwrap();
+    let epoch_secret = crypto
+        .rand()
+        .random_vec(ciphersuite.hash_length())
+        .expect("An unexpected error occurred.");
     let encryption_secret =
         EncryptionSecret::from_slice(&epoch_secret[..], ProtocolVersion::default(), ciphersuite);
     let encryption_secret_group =
@@ -319,10 +313,17 @@ pub fn generate_test_vector(
     let group_secret_tree = SecretTree::new(encryption_secret_group, LeafIndex::from(n_leaves));
 
     // Create sender_data_key/secret
-    let ciphertext = crypto.rand().random_vec(77).unwrap();
-    let sender_data_key = sender_data_secret.derive_aead_key(&crypto, &ciphertext);
+    let ciphertext = crypto
+        .rand()
+        .random_vec(77)
+        .expect("An unexpected error occurred.");
+    let sender_data_key = sender_data_secret
+        .derive_aead_key(&crypto, &ciphertext)
+        .expect("Could not derive AEAD key.");
     // Derive initial nonce from the key schedule using the ciphertext.
-    let sender_data_nonce = sender_data_secret.derive_aead_nonce(ciphersuite, &crypto, &ciphertext);
+    let sender_data_nonce = sender_data_secret
+        .derive_aead_nonce(ciphersuite, &crypto, &ciphertext)
+        .expect("Could not derive nonce.");
     let sender_data_info = SenderDataInfo {
         ciphertext: bytes_to_hex(&ciphertext),
         key: bytes_to_hex(sender_data_key.as_slice()),
@@ -459,15 +460,19 @@ pub fn run_test_vector(test_vector: EncryptionTestVector) -> Result<(), EncTestV
         ciphersuite,
     );
 
-    let sender_data_key = sender_data_secret.derive_aead_key(
-        &crypto,
-        &hex_to_bytes(&test_vector.sender_data_info.ciphertext),
-    );
-    let sender_data_nonce = sender_data_secret.derive_aead_nonce(
-        ciphersuite,
-        &crypto,
-        &hex_to_bytes(&test_vector.sender_data_info.ciphertext),
-    );
+    let sender_data_key = sender_data_secret
+        .derive_aead_key(
+            &crypto,
+            &hex_to_bytes(&test_vector.sender_data_info.ciphertext),
+        )
+        .expect("Could not derive AEAD key.");
+    let sender_data_nonce = sender_data_secret
+        .derive_aead_nonce(
+            ciphersuite,
+            &crypto,
+            &hex_to_bytes(&test_vector.sender_data_info.ciphertext),
+        )
+        .expect("Could not derive nonce.");
     if hex_to_bytes(&test_vector.sender_data_info.key) != sender_data_key.as_slice() {
         if cfg!(test) {
             panic!("Sender data key mismatch");

@@ -33,10 +33,10 @@ fn test_exclusion_list() {
                 ciphersuite.signature_scheme(),
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
             let key_package_bundle =
                 KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, &crypto, vec![])
-                    .unwrap();
+                    .expect("An unexpected error occurred.");
 
             // We build a leaf node from the key packages
             let leaf_node = Node {
@@ -56,7 +56,8 @@ fn test_exclusion_list() {
         // The first key package bundle is used for the tree holder
         let key_package_bundle = key_package_bundles.remove(0);
 
-        let tree = RatchetTree::new_from_nodes(&crypto, key_package_bundle, &nodes).unwrap();
+        let tree = RatchetTree::new_from_nodes(&crypto, key_package_bundle, &nodes)
+            .expect("An unexpected error occurred.");
 
         let root = treemath::root(LeafIndex::from(NODES / 2));
 
@@ -113,10 +114,10 @@ fn test_original_child_resolution() {
                 ciphersuite.signature_scheme(),
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
             let key_package_bundle =
                 KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, &crypto, vec![])
-                    .unwrap();
+                    .expect("An unexpected error occurred.");
 
             // We build a leaf node from the key packages
             let leaf_node = Node {
@@ -139,16 +140,23 @@ fn test_original_child_resolution() {
         // The first key package bundle is used for the tree holder
         let key_package_bundle = key_package_bundles.remove(0);
 
-        let mut tree = RatchetTree::new_from_nodes(&crypto, key_package_bundle, &nodes).unwrap();
+        let mut tree = RatchetTree::new_from_nodes(&crypto, key_package_bundle, &nodes)
+            .expect("An unexpected error occurred.");
 
         // Left child index
-        let left_child_index = treemath::left(root_index).unwrap();
+        let left_child_index = treemath::left(root_index).expect("An unexpected error occurred.");
 
         // Populate the expected public key list
         let expected_public_keys_full = LEFT_CHILD_RESOLUTION
             .iter()
             .filter(|index| nodes[**index].is_some())
-            .map(|index| nodes[*index].as_ref().unwrap().public_hpke_key().unwrap())
+            .map(|index| {
+                nodes[*index]
+                    .as_ref()
+                    .expect("An unexpected error occurred.")
+                    .public_hpke_key()
+                    .expect("An unexpected error occurred.")
+            })
             .collect::<Vec<&HpkePublicKey>>();
 
         // Since the root node has no unmerged leaves, we expect all keys to be returned
@@ -162,7 +170,9 @@ fn test_original_child_resolution() {
             .crypto()
             .derive_hpke_keypair(
                 ciphersuite.hpke_config(),
-                Secret::random(ciphersuite, &crypto, None).as_slice(),
+                Secret::random(ciphersuite, &crypto, None)
+                    .expect("Not enough randomness.")
+                    .as_slice(),
             )
             .public
             .into();
@@ -184,7 +194,13 @@ fn test_original_child_resolution() {
         let expected_public_keys_filtered = EXPECTED_CHILD_RESOLUTION
             .iter()
             .filter(|index| nodes[**index].is_some())
-            .map(|index| nodes[*index].as_ref().unwrap().public_hpke_key().unwrap())
+            .map(|index| {
+                nodes[*index]
+                    .as_ref()
+                    .expect("An unexpected error occurred.")
+                    .public_hpke_key()
+                    .expect("An unexpected error occurred.")
+            })
             .collect::<Vec<&HpkePublicKey>>();
 
         // Since the root node now has unmerged leaves, we expect only certain public
@@ -212,24 +228,32 @@ fn test_exclusion_for_parent_nodes() {
         CodecUse::SerializedMessages,
     );
 
-    let group_id = setup.create_group(Ciphersuite::default()).unwrap();
+    let group_id = setup
+        .create_group(Ciphersuite::default())
+        .expect("An unexpected error occurred.");
 
     let mut groups = setup.groups.borrow_mut();
-    let group = groups.get_mut(&group_id).unwrap();
+    let group = groups
+        .get_mut(&group_id)
+        .expect("An unexpected error occurred.");
 
-    let (_, group_creator_id) = group.members.first().unwrap().clone();
+    let (_, group_creator_id) = group
+        .members
+        .first()
+        .expect("An unexpected error occurred.")
+        .clone();
 
     // We add 16 - 2 = 14 members such that we have a group of 15. We add the
     // last member manually later.
     let addees = setup
         .random_new_members_for_group(group, number_of_clients - 2)
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     // Have one client add all the other clients, such that only the direct path
     // of the group creator is non-blank.
     setup
         .add_clients(ActionType::Commit, group, &group_creator_id, addees)
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     // Now we have two clients in the right tree half do an update. This is such
     // that the right child of the root has two children that are full nodes. It
@@ -240,21 +264,27 @@ fn test_exclusion_for_parent_nodes() {
 
     setup
         .self_update(ActionType::Commit, group, &updater_id, None)
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     let (_, updater_id) = group.members[8].clone();
 
     setup
         .self_update(ActionType::Commit, group, &updater_id, None)
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     // Now we add the final group member, which should lead to an unmerged leaf
     // being added to the right child of the right child of the root, thus
     // invalidating the parent hash of the left child of the right child of the
     // root if the exclusion list is not applied to parent nodes.
-    let (_, group_creator_id) = group.members.first().unwrap().clone();
+    let (_, group_creator_id) = group
+        .members
+        .first()
+        .expect("An unexpected error occurred.")
+        .clone();
 
-    let addees = setup.random_new_members_for_group(group, 1).unwrap();
+    let addees = setup
+        .random_new_members_for_group(group, 1)
+        .expect("An unexpected error occurred.");
 
     // We now add a new client to the group. Upon receiving the new message, the
     // client will check the parent hash of all nodes in the tree as mandated by

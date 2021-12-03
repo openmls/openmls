@@ -15,20 +15,24 @@ use crate::{
 fn capabilities() {
     // A capabilities extension with the default values for openmls.
     let extension_bytes = [
-        0u8, 1, 0, 0, 0, 17, 2, 1, 200, 6, 0, 1, 0, 2, 0, 3, 6, 0, 1, 0, 2, 0, 3,
+        0u8, 1, 0, 0, 0, 30, 2, 1, 200, 6, 0, 1, 0, 2, 0, 3, 6, 0, 1, 0, 2, 0, 3, 12, 0, 1, 0, 2,
+        0, 3, 0, 4, 0, 5, 0, 8,
     ];
     let mut extension_bytes_mut = &extension_bytes[..];
 
     let ext = Extension::Capabilities(CapabilitiesExtension::default());
 
     // Check that decoding works
-    let capabilities_extension = Extension::tls_deserialize(&mut extension_bytes_mut).unwrap();
+    let capabilities_extension = Extension::tls_deserialize(&mut extension_bytes_mut)
+        .expect("An unexpected error occurred.");
     assert_eq!(ext, capabilities_extension);
 
     // Encoding creates the expected bytes.
     assert_eq!(
         extension_bytes,
-        &capabilities_extension.tls_serialize_detached().unwrap()[..]
+        &capabilities_extension
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred.")[..]
     );
 
     // Test encoding and decoding
@@ -47,10 +51,13 @@ fn key_package_id() {
     let data = &[0u8, 8, 1, 2, 3, 4, 5, 6, 6, 6];
     let kpi = KeyIdExtension::new(&data[2..]);
 
-    let kpi_from_bytes = KeyIdExtension::tls_deserialize(&mut (data as &[u8])).unwrap();
+    let kpi_from_bytes = KeyIdExtension::tls_deserialize(&mut (data as &[u8]))
+        .expect("An unexpected error occurred.");
     assert_eq!(kpi, kpi_from_bytes);
 
-    let serialized_extension_struct = kpi.tls_serialize_detached().unwrap();
+    let serialized_extension_struct = kpi
+        .tls_serialize_detached()
+        .expect("An unexpected error occurred.");
     assert_eq!(&data[..], &serialized_extension_struct);
 }
 
@@ -84,7 +91,7 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     let crypto = &OpenMlsRustCrypto::default();
 
     log::info!("Testing ciphersuite {:?}", ciphersuite_name);
-    let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
+    let ciphersuite = Config::ciphersuite(ciphersuite_name).expect("An unexpected error occurred.");
 
     // Basic group setup.
     let group_aad = b"Alice's test group";
@@ -97,14 +104,14 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         ciphersuite.signature_scheme(),
         crypto,
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
     let bob_credential_bundle = CredentialBundle::new(
         "Bob".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
         crypto,
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
     let alice_key_package_bundle =
@@ -113,7 +120,7 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
             crypto,
             Vec::new(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     let bob_key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite.name()],
@@ -121,7 +128,7 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
             crypto,
             Vec::new(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let config = MlsGroupConfig {
@@ -130,17 +137,10 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     };
 
     // === Alice creates a group with the ratchet tree extension ===
-    let group_id = [1, 2, 3, 4];
-    let mut alice_group = MlsGroup::new(
-        &group_id,
-        ciphersuite.name(),
-        crypto,
-        alice_key_package_bundle,
-        config,
-        None, /* Initial PSK */
-        None, /* MLS version */
-    )
-    .unwrap();
+    let mut alice_group = MlsGroup::builder(GroupId::random(crypto), alice_key_package_bundle)
+        .with_config(config)
+        .build(crypto)
+        .expect("Error creating group.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group
@@ -171,7 +171,7 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     alice_group.merge_commit(staged_commit);
 
     let bob_group = match MlsGroup::new_from_welcome(
-        welcome_bundle_alice_bob_option.unwrap(),
+        welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         None,
         bob_key_package_bundle,
         None,
@@ -196,11 +196,11 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     // Generate KeyPackages
     let alice_key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, crypto, Vec::new())
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
     let bob_key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, crypto, Vec::new())
-            .unwrap();
+            .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let config = MlsGroupConfig {
@@ -208,17 +208,10 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         ..MlsGroupConfig::default()
     };
 
-    let group_id = [5, 6, 7, 8];
-    let mut alice_group = MlsGroup::new(
-        &group_id,
-        ciphersuite.name(),
-        crypto,
-        alice_key_package_bundle,
-        config,
-        None, /* Initial PSK */
-        None, /* MLS version */
-    )
-    .unwrap();
+    let mut alice_group = MlsGroup::builder(GroupId::random(crypto), alice_key_package_bundle)
+        .with_config(config)
+        .build(crypto)
+        .expect("Error creating group.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group
@@ -246,7 +239,7 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     alice_group.merge_commit(staged_commit);
 
     let error = MlsGroup::new_from_welcome(
-        welcome_bundle_alice_bob_option.unwrap(),
+        welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         None,
         bob_key_package_bundle,
         None,
@@ -270,13 +263,16 @@ fn required_capabilities() {
     let ext = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::default());
 
     // Check that decoding works
-    let required_capabilities = Extension::tls_deserialize(&mut extension_bytes_mut).unwrap();
+    let required_capabilities = Extension::tls_deserialize(&mut extension_bytes_mut)
+        .expect("An unexpected error occurred.");
     assert_eq!(ext, required_capabilities);
 
     // Encoding creates the expected bytes.
     assert_eq!(
         extension_bytes,
-        &required_capabilities.tls_serialize_detached().unwrap()[..]
+        &required_capabilities
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred.")[..]
     );
 
     // Build one with some content.
@@ -285,7 +281,7 @@ fn required_capabilities() {
         &[ProposalType::Reinit],
     );
     let ext = Extension::RequiredCapabilities(required_capabilities);
-    let extension_bytes = vec![0u8, 6, 0, 0, 0, 7, 4, 0, 3, 0, 5, 1, 5];
+    let extension_bytes = vec![0u8, 6, 0, 0, 0, 8, 4, 0, 3, 0, 5, 2, 0, 5];
 
     // Test encoding and decoding
     let encoded = ext

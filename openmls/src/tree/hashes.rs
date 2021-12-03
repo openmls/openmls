@@ -36,6 +36,7 @@
 //! } ParentNodeTreeHashInput;
 //! ```
 
+use openmls_traits::types::CryptoError;
 use tls_codec::TlsSliceU8;
 use tls_codec::{Serialize, TlsSerialize, TlsSize, TlsVecU32};
 
@@ -73,7 +74,7 @@ impl<'a> ParentHashInput<'a> {
         &self,
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Vec<u8> {
+    ) -> Result<Vec<u8>, CryptoError> {
         let payload = self.tls_serialize_detached().unwrap();
         ciphersuite.hash(backend, &payload)
     }
@@ -92,7 +93,11 @@ impl<'a> LeafNodeHashInput<'a> {
             key_package,
         }
     }
-    pub fn hash(&self, ciphersuite: &Ciphersuite, backend: &impl OpenMlsCryptoProvider) -> Vec<u8> {
+    pub fn hash(
+        &self,
+        ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Vec<u8>, CryptoError> {
         let payload = self.tls_serialize_detached().unwrap();
         ciphersuite.hash(backend, &payload)
     }
@@ -124,7 +129,7 @@ impl<'a> ParentNodeTreeHashInput<'a> {
         &self,
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Vec<u8> {
+    ) -> Result<Vec<u8>, CryptoError> {
         let payload = self.tls_serialize_detached().unwrap();
         ciphersuite.hash(backend, &payload)
     }
@@ -166,19 +171,19 @@ impl RatchetTree {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         index: LeafIndex,
-    ) -> Vec<u8> {
+    ) -> Result<Vec<u8>, CryptoError> {
         // Recursive helper function used to calculate parent hashes
         fn node_parent_hash(
             backend: &impl OpenMlsCryptoProvider,
             tree: &mut RatchetTree,
             index: NodeIndex,
             former_index: NodeIndex,
-        ) -> Vec<u8> {
+        ) -> Result<Vec<u8>, CryptoError> {
             let tree_size = tree.leaf_count();
             let root = treemath::root(tree_size);
             // When the group only has one member, there are no parent nodes
             if tree.leaf_count().as_usize() <= 1 {
-                return vec![];
+                return Ok(vec![]);
             }
 
             // Calculate the sibling of the former index
@@ -193,7 +198,7 @@ impl RatchetTree {
                 // It is ok to use `unwrap()` here, since we already checked that the index is
                 // not the root
                 let parent = treemath::parent(index, tree_size).unwrap();
-                node_parent_hash(backend, tree, parent, index)
+                node_parent_hash(backend, tree, parent, index)?
             };
             // If the current node is a parent, replace the parent hash in that node
             let current_node = &mut tree.nodes[index];
@@ -205,14 +210,16 @@ impl RatchetTree {
                 tree.nodes[index].node = Some(parent_node);
                 // Calculate the parent hash of the current node and return it
                 let parent_hash = &tree.nodes[index].node.as_ref().unwrap().parent_hash;
-                ParentHashInput::new(tree, index, former_index_sibling, parent_hash.as_slice())
-                    // FIXME: remove unwrap.
-                    // It is ok to use `unwrap()` here, since we can be sure the node is not blank
-                    .unwrap()
-                    .hash(tree.ciphersuite, backend)
+                Ok(
+                    ParentHashInput::new(tree, index, former_index_sibling, parent_hash.as_slice())
+                        // FIXME: remove unwrap.
+                        // It is ok to use `unwrap()` here, since we can be sure the node is not blank
+                        .unwrap()
+                        .hash(tree.ciphersuite, backend)?,
+                )
             // Otherwise we reached the leaf level, just return the hash
             } else {
-                parent_hash
+                Ok(parent_hash)
             }
         }
         // The same index is used for the former index here, since that parameter is
@@ -238,7 +245,7 @@ impl RatchetTree {
         };
         // Current hash with right child resolution
         let current_hash_right = ParentHashInput::new(self, index, right, parent_hash_field)?
-            .hash(self.ciphersuite, backend);
+            .hash(self.ciphersuite, backend)?;
 
         // "If L.parent_hash is equal to the Parent Hash of P with Co-Path Child R, the
         // check passes"
@@ -263,10 +270,9 @@ impl RatchetTree {
         }
 
         // Current hash with left child resolution
-        let current_hash_left = ParentHashInput::new(self, index, left, parent_hash_field)
+        let current_hash_left = ParentHashInput::new(self, index, left, parent_hash_field)?
             // Unwrapping here is safe, since we can be sure the node is not blank
-            .unwrap()
-            .hash(self.ciphersuite, backend);
+            .hash(self.ciphersuite, backend)?;
 
         // "If R.parent_hash is equal to the Parent Hash of P with Co-Path Child L, the
         // check passes"
@@ -297,13 +303,16 @@ impl RatchetTree {
     // === Tree hash ===
 
     /// Computes and returns the tree hash
-    pub(crate) fn tree_hash(&self, backend: &impl OpenMlsCryptoProvider) -> Vec<u8> {
+    pub(crate) fn tree_hash(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Vec<u8>, CryptoError> {
         // Recursive helper function to the tree hashes for a node
         fn node_hash(
             backend: &impl OpenMlsCryptoProvider,
             tree: &RatchetTree,
             index: NodeIndex,
-        ) -> Vec<u8> {
+        ) -> Result<Vec<u8>, CryptoError> {
             let node = &tree.nodes[index];
             // Depending on the node type, we calculate the hash differently
             match node.node_type {
@@ -316,9 +325,9 @@ impl RatchetTree {
                 NodeType::Parent => {
                     // Unwrapping here is safe, because parent nodes always have children
                     let left = treemath::left(index).unwrap();
-                    let left_hash = node_hash(backend, tree, left);
+                    let left_hash = node_hash(backend, tree, left)?;
                     let right = treemath::right(index, tree.leaf_count()).unwrap();
-                    let right_hash = node_hash(backend, tree, right);
+                    let right_hash = node_hash(backend, tree, right)?;
                     let parent_node_hash = ParentNodeTreeHashInput::new(
                         index.as_u32(),
                         &node.node,

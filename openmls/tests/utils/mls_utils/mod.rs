@@ -91,13 +91,14 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 SignatureScheme::from(ciphersuite),
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
             // Create a number of key packages.
             let mut key_packages = Vec::new();
             for _ in 0..KEY_PACKAGE_COUNT {
                 let capabilities_extension = Extension::Capabilities(CapabilitiesExtension::new(
                     None,
                     Some(&[ciphersuite]),
+                    None,
                     None,
                 ));
                 let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
@@ -109,7 +110,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     &crypto,
                     mandatory_extensions,
                 )
-                .unwrap();
+                .expect("An unexpected error occurred.");
                 key_packages.push(key_package_bundle.key_package().clone());
                 key_package_bundles.push(key_package_bundle);
             }
@@ -135,34 +136,31 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
         // initiator.
         let initial_group_member = test_clients
             .get(group_config.members[0].name)
-            .unwrap()
+            .expect("An unexpected error occurred.")
             .borrow_mut();
         // Pull the inital member's KeyPackage from the key_store.
         let initial_key_package = key_store
             .remove(&(group_config.members[0].name, group_config.ciphersuite))
-            .unwrap()
+            .expect("An unexpected error occurred.")
             .pop()
-            .unwrap();
+            .expect("An unexpected error occurred.");
         // Figure out which KeyPackageBundle that key package corresponds to.
         let initial_key_package_bundle = initial_group_member
             .find_key_package_bundle(&initial_key_package, &crypto)
-            .unwrap();
+            .expect("An unexpected error occurred.");
         // Get the credential bundle corresponding to the ciphersuite.
         let initial_credential_bundle = initial_group_member
             .credential_bundles
             .get(&group_config.ciphersuite)
-            .unwrap();
+            .expect("An unexpected error occurred.");
         // Initialize the group state for the initial member.
-        let mls_group = MlsGroup::new(
-            &group_id.to_be_bytes(),
-            group_config.ciphersuite,
-            &crypto,
+        let mls_group = MlsGroup::builder(
+            GroupId::from_slice(&group_id.to_be_bytes()),
             initial_key_package_bundle,
-            group_config.config,
-            None, /* Initial PSK */
-            None, /* MLS version */
         )
-        .unwrap();
+        .with_config(group_config.config)
+        .build(&crypto)
+        .expect("Error creating new MlsGroup");
         let mut proposal_list = Vec::new();
         let group_aad = b"";
         // Framing parameters
@@ -178,7 +176,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             let mut group_states = initial_group_member.group_states.borrow_mut();
             let mls_group = group_states
                 .get_mut(&GroupId::from_slice(&group_id.to_be_bytes()))
-                .unwrap();
+                .expect("An unexpected error occurred.");
             for client_id in 1..group_config.members.len() {
                 // Pull a KeyPackage from the key_store for the new member.
                 let next_member_key_package = key_store
@@ -186,9 +184,9 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                         group_config.members[client_id].name,
                         group_config.ciphersuite,
                     ))
-                    .unwrap()
+                    .expect("An unexpected error occurred.")
                     .pop()
-                    .unwrap();
+                    .expect("An unexpected error occurred.");
                 // Have the initial member create an Add proposal using the new
                 // KeyPackage.
                 let add_proposal = mls_group
@@ -198,7 +196,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                         next_member_key_package,
                         &crypto,
                     )
-                    .unwrap();
+                    .expect("An unexpected error occurred.");
                 proposal_list.push(add_proposal);
             }
             // Create the commit based on the previously compiled list of
@@ -220,10 +218,12 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 .credential_bundle(initial_credential_bundle)
                 .proposal_store(&proposal_store)
                 .build();
-            let (commit_mls_plaintext, welcome_option, key_package_bundle_option) =
-                mls_group.create_commit(params, &crypto).unwrap();
-            let welcome = welcome_option.unwrap();
-            let key_package_bundle = key_package_bundle_option.unwrap();
+            let (commit_mls_plaintext, welcome_option, key_package_bundle_option) = mls_group
+                .create_commit(params, &crypto)
+                .expect("An unexpected error occurred.");
+            let welcome = welcome_option.expect("An unexpected error occurred.");
+            let key_package_bundle =
+                key_package_bundle_option.expect("An unexpected error occurred.");
 
             // Apply the commit to the initial group member's group state using
             // the key package bundle returned by the create_commit earlier.
@@ -242,7 +242,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             for client_id in 1..group_config.members.len() {
                 let new_group_member = test_clients
                     .get(group_config.members[client_id].name)
-                    .unwrap()
+                    .expect("An unexpected error occurred.")
                     .borrow_mut();
                 // Figure out which key package bundle we should use. This is
                 // a bit ugly and inefficient.
@@ -254,17 +254,25 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                             .key_package_bundles
                             .borrow()
                             .iter()
-                            .any(|y| y.key_package().hash(&crypto) == x.key_package_hash.as_slice())
+                            .any(|y| {
+                                y.key_package()
+                                    .hash(&crypto)
+                                    .expect("Could not hash KeyPackage.")
+                                    == x.key_package_hash.as_slice()
+                            })
                     })
-                    .unwrap();
+                    .expect("An unexpected error occurred.");
                 let kpb_position = new_group_member
                     .key_package_bundles
                     .borrow()
                     .iter()
                     .position(|y| {
-                        y.key_package().hash(&crypto) == member_secret.key_package_hash.as_slice()
+                        y.key_package()
+                            .hash(&crypto)
+                            .expect("Could not hash KeyPackage.")
+                            == member_secret.key_package_hash.as_slice()
                     })
-                    .unwrap();
+                    .expect("An unexpected error occurred.");
                 let key_package_bundle = new_group_member
                     .key_package_bundles
                     .borrow_mut()

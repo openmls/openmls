@@ -5,12 +5,15 @@ pub use errors::*;
 #[cfg(test)]
 mod tests;
 
-use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};
+use openmls_traits::{
+    types::{CryptoError, SignatureScheme},
+    OpenMlsCryptoProvider,
+};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 #[cfg(test)]
 use tls_codec::Serialize as TlsSerializeTrait;
-use tls_codec::{Size, TlsByteVecU16, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsByteVecU16, TlsDeserialize, TlsSerialize, TlsSize};
 
 use crate::ciphersuite::*;
 
@@ -176,7 +179,7 @@ impl CredentialBundle {
         })
     }
 
-    /// Creates a new [CredentialBundle] from an identity, a [SignatureScheme] and a [SignatureKeypair].
+    /// Creates a new [CredentialBundle] from an identity and a [SignatureKeypair].
     /// Note that only [BasicCredential] is currently supported.
     pub fn from_parts(identity: Vec<u8>, keypair: SignatureKeypair) -> Self {
         let (signature_private_key, public_key) = keypair.into_tuple();

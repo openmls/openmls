@@ -7,7 +7,7 @@
 
 use openmls::{framing::VerifiableMlsPlaintext, prelude::*};
 use tls_codec::{
-    Size, TlsByteSliceU16, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8, TlsDeserialize,
+    TlsByteSliceU16, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8, TlsDeserialize,
     TlsSerialize, TlsSize, TlsVecU32,
 };
 

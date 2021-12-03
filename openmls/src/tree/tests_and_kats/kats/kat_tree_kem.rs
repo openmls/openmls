@@ -1,6 +1,6 @@
 //! TreeKEM test vectors
 //!
-//! See https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md
+//! See <https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md>
 //! for more description on the test vectors.
 //!
 //! The test vector describes a tree of `n` leaves adds a new leaf with
@@ -18,9 +18,9 @@ use crate::test_utils::{read, write};
 use crate::{
     ciphersuite::signable::Signable,
     credentials::{CredentialBundle, CredentialType},
-    node::Node,
     prelude::KeyPackageBundlePayload,
     test_utils::hex_to_bytes,
+    tree::node::Node,
 };
 use crate::{
     ciphersuite::Secret,
@@ -100,14 +100,15 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
         ciphersuite.signature_scheme(),
         &crypto,
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
     let my_key_package_bundle = KeyPackageBundlePayload::from_key_package_and_leaf_secret(
         my_leaf_secret.clone(),
         &my_key_package,
         &crypto,
     )
+    .expect("Coul not create KeyPackage.")
     .sign(&crypto, &credential_bundle)
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     // Check tree hashes.
     let mut tree_before = RatchetTree::new_from_nodes(
@@ -115,10 +116,12 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
         my_key_package_bundle,
         ratchet_tree_before.as_slice(),
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
     crate::utils::_print_tree(&tree_before, "Tree before");
 
-    if hex_to_bytes(&test_vector.tree_hash_before) != tree_before.tree_hash(&crypto) {
+    if hex_to_bytes(&test_vector.tree_hash_before)
+        != tree_before.tree_hash(&crypto).expect("Could not hash.")
+    {
         if cfg!(test) {
             panic!("Tree hash mismatch in the 'before' tree.");
         }
@@ -135,17 +138,20 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
         &my_key_package,
         &crypto,
     )
+    .expect("Coul not create KeyPackage.")
     .sign(&crypto, &credential_bundle)
-    .unwrap();
+    .expect("An unexpected error occurred.");
     let tree_after = RatchetTree::new_from_nodes(
         &crypto,
         my_key_package_bundle,
         ratchet_tree_after.as_slice(),
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
     crate::utils::_print_tree(&tree_after, "Tree after");
 
-    if hex_to_bytes(&test_vector.tree_hash_after) != tree_after.tree_hash(&crypto) {
+    if hex_to_bytes(&test_vector.tree_hash_after)
+        != tree_after.tree_hash(&crypto).expect("Could not hash.")
+    {
         if cfg!(test) {
             panic!("Tree hash mismatch in the 'after' tree.");
         }
@@ -185,7 +191,8 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
         NodeIndex::from(tree_before.own_node_index()),
     );
     log::trace!("Common ancestor: {:?}", common_ancestor);
-    let path = parent_direct_path(common_ancestor, tree_before.leaf_count()).unwrap();
+    let path = parent_direct_path(common_ancestor, tree_before.leaf_count())
+        .expect("An unexpected error occurred.");
     log::trace!("path: {:?}", path);
     let start_secret: PathSecret = Secret::from_slice(
         hex_to_bytes(&test_vector.my_path_secret).as_slice(),
@@ -196,7 +203,8 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
 
     tree_before
         .private_tree_mut()
-        .continue_path_secrets(ciphersuite, &crypto, start_secret, &path);
+        .continue_path_secrets(ciphersuite, &crypto, start_secret, &path)
+        .expect("Could not continue path secrets.");
 
     // Check if the root secrets match up.
     let root_secret_after_add: PathSecret = Secret::from_slice(
@@ -209,7 +217,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     if &root_secret_after_add
         != tree_before
             .path_secret(root(tree_before.leaf_count()))
-            .unwrap()
+            .expect("An unexpected error occurred.")
     {
         if cfg!(test) {
             panic!("Root secret mismatch in the 'before' tree.");
@@ -220,7 +228,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     // Apply the update path
     let update_path =
         UpdatePath::tls_deserialize(&mut hex_to_bytes(&test_vector.update_path).as_slice())
-            .unwrap();
+            .expect("An unexpected error occurred.");
     log::trace!("UpdatePath: {:?}", update_path);
     let group_context = hex_to_bytes(&test_vector.update_group_context);
     let _commit_secret = tree_before
@@ -231,11 +239,15 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
             &group_context,
             HashSet::new(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     // Rename to avoid confusion.
     let tree_after = tree_before;
-    let root_secret_after = tree_after.private_tree().path_secrets().last().unwrap();
+    let root_secret_after = tree_after
+        .private_tree()
+        .path_secrets()
+        .last()
+        .expect("An unexpected error occurred.");
     let root_secret_after_update: PathSecret = Secret::from_slice(
         hex_to_bytes(&test_vector.root_secret_after_update).as_slice(),
         ProtocolVersion::default(),
@@ -252,7 +264,9 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
             log::error!(
                 "got root secret:      {}",
                 crate::test_utils::bytes_to_hex(
-                    &root_secret_after.tls_serialize_detached().unwrap()
+                    &root_secret_after
+                        .tls_serialize_detached()
+                        .expect("An unexpected error occurred.")
                 )
             );
             panic!("Root secret mismatch in the 'after' tree.");
@@ -340,10 +354,12 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     // member from a random position.
     let group_id = setup
         .create_random_group(n_leaves as usize, ciphersuite)
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     let mut groups = setup.groups.borrow_mut();
-    let group = groups.get_mut(&group_id).unwrap();
+    let group = groups
+        .get_mut(&group_id)
+        .expect("An unexpected error occurred.");
     let remover_id = group.random_group_member();
     let mut target_id = group.random_group_member();
     while remover_id == target_id {
@@ -356,7 +372,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         .members
         .iter()
         .find(|(_, id)| id == &target_id)
-        .unwrap()
+        .expect("An unexpected error occurred.")
         .clone();
 
     setup
@@ -366,7 +382,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
             &remover_id,
             &[target_index as usize],
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     // We then have the same client who removed the target add a fresh member.
     let adder_id = remover_id;
@@ -375,30 +391,40 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         .members
         .iter()
         .find(|(_, id)| id == &adder_id)
-        .unwrap()
+        .expect("An unexpected error occurred.")
         .clone();
     let addee_id = setup
         .random_new_members_for_group(group, 1)
-        .unwrap()
+        .expect("An unexpected error occurred.")
         .pop()
-        .unwrap();
+        .expect("An unexpected error occurred.");
     log::trace!("adding member with id: {:?}", addee_id);
 
     let clients = setup.clients.borrow();
-    let adder = clients.get(&adder_id).unwrap().borrow();
+    let adder = clients
+        .get(&adder_id)
+        .expect("An unexpected error occurred.")
+        .borrow();
 
     // We add the test client manually, so that we can get a hold of the leaf secret.
-    let addee = clients.get(&addee_id).unwrap().borrow();
+    let addee = clients
+        .get(&addee_id)
+        .expect("An unexpected error occurred.")
+        .borrow();
 
     let my_key_package = setup
         .get_fresh_key_package(&addee, &group.ciphersuite)
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     let kpb: KeyPackageBundle = addee
         .crypto
         .key_store()
-        .read(&my_key_package.hash(&crypto))
-        .unwrap();
+        .read(
+            &my_key_package
+                .hash(&crypto)
+                .expect("Could not hash KeyPackage."),
+        )
+        .expect("An unexpected error occurred.");
     let my_leaf_secret = kpb.leaf_secret();
 
     let (messages, welcome) = adder
@@ -407,22 +433,32 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
             &group.group_id,
             &[my_key_package.clone()],
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     // It's only going to be a single message, since we only add one member.
     setup
         .distribute_to_members(&adder.identity, group, &messages[0])
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
-    setup.deliver_welcome(welcome.unwrap(), group).unwrap();
+    setup
+        .deliver_welcome(welcome.expect("An unexpected error occurred."), group)
+        .expect("An unexpected error occurred.");
 
     let addee_groups = addee.groups.borrow();
-    let addee_group = addee_groups.get(&group_id).unwrap();
+    let addee_group = addee_groups
+        .get(&group_id)
+        .expect("An unexpected error occurred.");
 
     let path_secrets = addee_group.export_path_secrets();
 
-    let root_secret_after_add = path_secrets.last().unwrap().clone();
-    let my_path_secret = path_secrets.first().unwrap().clone();
+    let root_secret_after_add = path_secrets
+        .last()
+        .expect("An unexpected error occurred.")
+        .clone();
+    let my_path_secret = path_secrets
+        .first()
+        .expect("An unexpected error occurred.")
+        .clone();
 
     drop(path_secrets);
 
@@ -430,7 +466,9 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         .tls_serialize_detached()
         .expect("error serializing ratchet tree extension");
 
-    let tree_hash_before = addee_group.tree_hash(&crypto);
+    let tree_hash_before = addee_group
+        .tree_hash(&crypto)
+        .expect("Could not compute tree hash.");
 
     drop(addee_groups);
     drop(addee);
@@ -444,22 +482,33 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         .members
         .iter()
         .find(|(_, id)| id == &updater_id)
-        .unwrap()
+        .expect("An unexpected error occurred.")
         .clone();
 
-    let updater = clients.get(&updater_id).unwrap().borrow();
+    let updater = clients
+        .get(&updater_id)
+        .expect("An unexpected error occurred.")
+        .borrow();
     let mut updater_groups = updater.groups.borrow_mut();
-    let updater_group = updater_groups.get_mut(&group_id).unwrap();
+    let updater_group = updater_groups
+        .get_mut(&group_id)
+        .expect("An unexpected error occurred.");
     let group_context = updater_group
         .export_group_context()
         .tls_serialize_detached()
         .expect("error serializing group context");
 
-    let (message, _) = updater_group.self_update(&updater.crypto, None).unwrap();
+    let (message, _) = updater_group
+        .self_update(&updater.crypto, None)
+        .expect("An unexpected error occurred.");
 
     let update_path = match message {
         MlsMessageOut::Plaintext(ref pt) => match pt.content() {
-            MlsPlaintextContentType::Commit(commit) => commit.path().as_ref().unwrap().clone(),
+            MlsPlaintextContentType::Commit(commit) => commit
+                .path()
+                .as_ref()
+                .expect("An unexpected error occurred.")
+                .clone(),
             _ => panic!("The message should not be anything but a commit."),
         },
         _ => panic!("The message should not be a ciphertext."),
@@ -474,13 +523,18 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
 
     setup
         .distribute_to_members(&updater_id, group, &message)
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     // The update was sent, now we get the right state variables again
     let clients = setup.clients.borrow();
-    let addee = clients.get(&addee_id).unwrap().borrow();
+    let addee = clients
+        .get(&addee_id)
+        .expect("An unexpected error occurred.")
+        .borrow();
     let addee_groups = addee.groups.borrow();
-    let addee_group = addee_groups.get(&group_id).unwrap();
+    let addee_group = addee_groups
+        .get(&group_id)
+        .expect("An unexpected error occurred.");
     let mut tree = addee_group.export_ratchet_tree();
 
     let own_node = tree
@@ -495,19 +549,27 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
             }
             false
         })
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
-    let my_key_package_after = own_node.as_ref().unwrap().key_package().unwrap();
+    let my_key_package_after = own_node
+        .as_ref()
+        .expect("An unexpected error occurred.")
+        .key_package()
+        .expect("An unexpected error occurred.");
 
     assert_eq!(&my_key_package, my_key_package_after);
 
     let path_secrets_after_update = addee_group.export_path_secrets();
-    let root_secret_after_update = path_secrets_after_update.last().unwrap();
+    let root_secret_after_update = path_secrets_after_update
+        .last()
+        .expect("An unexpected error occurred.");
 
     let ratchet_tree_after = RatchetTreeExtension::new(addee_group.export_ratchet_tree())
         .tls_serialize_detached()
         .expect("error serializing ratchet tree extension");
-    let tree_hash_after = addee_group.tree_hash(&crypto);
+    let tree_hash_after = addee_group
+        .tree_hash(&crypto)
+        .expect("Could not compute tree hash.");
 
     TreeKemTestVector {
         cipher_suite: ciphersuite.name() as u16,

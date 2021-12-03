@@ -1,162 +1,66 @@
-use mls_group::{create_commit_params::CreateCommitParams, proposals::StagedProposal};
-
-use crate::prelude::ErrorString;
+use mls_group::{
+    create_commit_params::CreateCommitParams, proposals::StagedProposal,
+    staged_commit::StagedCommit,
+};
 
 use super::*;
 
 impl ManagedGroup {
-    // === Process messages ===
-
-    /// Processes any incoming messages from the DS (MlsPlaintext &
-    /// MlsCiphertext) and triggers the corresponding callback functions.
-    /// Return a list of `GroupEvent` that contain the individual events that
-    /// occurred while processing messages.
-    pub fn process_message(
+    /// This function is used to parse messages from the DS.
+    /// It checks for syntactic errors and makes some semantic checks as well.
+    /// If the input is a [MlsCiphertext] message, it will be decrypted.
+    /// Returns an [UnverifiedMessage] that can be inspected and later processed in
+    /// [self::process_unverified_message()].
+    pub fn parse_message(
         &mut self,
         message: MlsMessageIn,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Vec<GroupEvent>, ManagedGroupError> {
+    ) -> Result<UnverifiedMessage, ManagedGroupError> {
+        // Make sure we are still a member of the group
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
-        let mut events = Vec::new();
-        // Check the type of message we received
-        let (plaintext, aad_option) = match message {
-            // If it is a ciphertext we decrypt it and return the plaintext message
-            MlsMessageIn::Ciphertext(ciphertext) => {
-                let aad = ciphertext.authenticated_data.clone();
-                let unverified_plaintext = self.group.decrypt(&ciphertext, backend)?;
-                let plaintext = self.group.verify(unverified_plaintext, backend)?;
-                (plaintext, Some(aad))
-            }
-            // If it is a plaintext message we have to verify it first
-            MlsMessageIn::Plaintext(mut verifiable_plaintext) => {
-                // Verify membership tag
-                // TODO #106: Support external senders
-                if verifiable_plaintext.is_proposal()
-                    && verifiable_plaintext.sender().is_member()
-                    && self
-                        .group
-                        // This sets the context implicitly.
-                        .verify_membership_tag(backend, &mut verifiable_plaintext)
-                        .is_err()
-                {
-                    return Err(ManagedGroupError::InvalidMessage(
-                        InvalidMessageError::MembershipTagMismatch,
-                    ));
-                }
-                // Verify the signature
-                let plaintext: MlsPlaintext = self.group.verify(verifiable_plaintext, backend)?;
-                (plaintext, None)
-            }
-        };
-        // Save the current member list for validation end events
-        let indexed_members = self.indexed_members();
-        // See what kind of message it is
-        match plaintext.content() {
-            MlsPlaintextContentType::Proposal(ref proposal) => {
-                // Incoming proposals are validated against the application validation
-                // policy and then appended to the internal `pending_proposal` list.
-                // TODO #133: Semantic validation of proposals
-                if self.validate_proposal(proposal, plaintext.sender_index(), &indexed_members) {
-                    let staged_proposal =
-                        StagedProposal::from_mls_plaintext(self.ciphersuite(), backend, plaintext)
-                            .map_err(|_| InvalidMessageError::InvalidProposal)?;
-                    self.proposal_store.add(staged_proposal);
-                } else {
-                    // The proposal was invalid
-                    return Err(ManagedGroupError::InvalidMessage(
-                        InvalidMessageError::InvalidProposal,
-                    ));
-                }
-            }
-            MlsPlaintextContentType::Commit(ref commit) => {
-                // Validate inline proposals
-                if !self.validate_inline_proposals(
-                    commit.proposals.as_slice(),
-                    plaintext.sender_index(),
-                    &indexed_members,
-                ) {
-                    return Err(ManagedGroupError::InvalidMessage(
-                        InvalidMessageError::CommitWithInvalidProposals,
-                    ));
-                }
-                // If all proposals were valid, we continue with staging the Commit
-                // message
-                // TODO #141
-                match self.group.stage_commit(
-                    &plaintext,
-                    &self.proposal_store,
-                    &self.own_kpbs,
-                    None,
-                    backend,
-                ) {
-                    Ok(staged_commit) => {
-                        // Since the Commit was applied without errors, we can merge it
-                        self.group.merge_commit(staged_commit);
 
-                        // If a Commit has an update path, it is additionally to be treated
-                        // like a commited UpdateProposal.
-                        if commit.has_path() {
-                            events.push(GroupEvent::MemberUpdated(MemberUpdatedEvent::new(
-                                aad_option.unwrap_or_default().into(),
-                                indexed_members[&plaintext.sender_index()].clone(),
-                            )));
-                        }
+        // Since the state of the group might be changed, arm the state flag
+        self.flag_state_change();
 
-                        // Extract and store the resumption secret for the current epoch
-                        let resumption_secret = self.group.epoch_secrets().resumption_secret();
-                        self.resumption_secret_store
-                            .add(self.group.context().epoch(), resumption_secret.clone());
-                        // We don't need the pending proposals and key package bundles any
-                        // longer
-                        self.proposal_store.empty();
-                        self.own_kpbs.clear();
-                    }
-                    Err(stage_commit_error) => match stage_commit_error {
-                        MlsGroupError::StageCommitError(StageCommitError::SelfRemoved) => {
-                            // The group is no longer active
-                            self.active = false;
-                        }
-                        MlsGroupError::StageCommitError(e) => {
-                            return Err(ManagedGroupError::InvalidMessage(
-                                InvalidMessageError::CommitError(e),
-                            ))
-                        }
-                        _ => {
-                            let error_string =
-                                "stage_commit() did not return an StageCommitError.".to_string();
-                            events.push(GroupEvent::Error(ErrorEvent::new(
-                                ManagedGroupError::LibraryError(ErrorString::from(error_string)),
-                            )));
-                        }
-                    },
-                }
-            }
-            MlsPlaintextContentType::Application(ref app_message) => {
-                // Save the application message as an event
-                events.push(GroupEvent::ApplicationMessage(
-                    ApplicationMessageEvent::new(
-                        aad_option
-                            .ok_or(ManagedGroupError::InvalidMessage(
-                                InvalidMessageError::InvalidApplicationMessage,
-                            ))?
-                            .into(),
-                        indexed_members[&plaintext.sender_index()].clone(),
-                        app_message.as_slice().to_vec(),
-                    ),
-                ));
-            }
-        }
-
-        // Since the state of the group was changed, call the auto-save function
-        self.auto_save();
-
-        Ok(events)
+        // Parse the message
+        self.group
+            .parse_message(message, backend)
+            .map_err(ManagedGroupError::Group)
     }
 
-    /// Process pending proposals
-    pub fn process_pending_proposals(
+    /// This processing function does most of the semantic verifications.
+    /// It returns a [ProcessedMessage] enum.
+    pub fn process_unverified_message(
+        &mut self,
+        unverified_message: UnverifiedMessage,
+        signature_key: Option<&SignaturePublicKey>,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<ProcessedMessage, ManagedGroupError> {
+        self.group
+            .process_unverified_message(
+                unverified_message,
+                signature_key,
+                &self.proposal_store,
+                &self.own_kpbs,
+                backend,
+            )
+            .map_err(|e| e.into())
+    }
+
+    /// Stores a standalone proposal in the internal [ProposalStore]
+    pub fn store_pending_proposal(&mut self, proposal: StagedProposal) {
+        // Store the proposal in in the internal ProposalStore
+        self.proposal_store.add(proposal);
+
+        // Since the state of the group might be changed, arm the state flag
+        self.flag_state_change();
+    }
+
+    /// Create a Commit message that covers the pending proposals that are
+    /// currently stored inthe group's [ProposalStore].
+    pub fn commit_to_pending_proposals(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<(MlsMessageOut, Option<Welcome>), ManagedGroupError> {
@@ -188,9 +92,38 @@ impl ManagedGroup {
         // the configuration
         let mls_message = self.plaintext_to_mls_message(commit, backend)?;
 
-        // Since the state of the group was changed, call the auto-save function
-        self.auto_save();
+        // Since the state of the group might be changed, arm the state flag
+        self.flag_state_change();
 
         Ok((mls_message, welcome_option))
+    }
+
+    /// Merge a [StagedCommit] into the group after inspection
+    pub fn merge_staged_commit(
+        &mut self,
+        staged_commit: StagedCommit,
+    ) -> Result<(), ManagedGroupError> {
+        // Check if we were removed from the group
+        if staged_commit.self_removed() {
+            self.active = false;
+        }
+
+        // Since the state of the group might be changed, arm the state flag
+        self.flag_state_change();
+
+        // Merge staged commit
+        self.group
+            .merge_staged_commit(staged_commit, &mut self.proposal_store)
+            .map_err(ManagedGroupError::Group)?;
+
+        // Extract and store the resumption secret for the current epoch
+        let resumption_secret = self.group.epoch_secrets().resumption_secret();
+        self.resumption_secret_store
+            .add(self.group.context().epoch(), resumption_secret.clone());
+
+        // Delete own KeyPackageBundles
+        self.own_kpbs.clear();
+
+        Ok(())
     }
 }

@@ -1,5 +1,5 @@
-use crate::ciphersuite::*;
 use crate::config::ConfigError;
+use openmls_traits::types::CryptoError;
 use tls_codec::Error as TlsCodecError;
 
 implement_error! {

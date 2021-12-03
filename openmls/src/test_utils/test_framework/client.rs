@@ -6,7 +6,7 @@ use std::{cell::RefCell, collections::HashMap};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 
-use crate::{framing::MlsMessageIn, node::Node, prelude::*};
+use crate::{framing::MlsMessageIn, prelude::*, tree::node::Node};
 
 use super::{errors::ClientError, ActionType};
 
@@ -53,12 +53,12 @@ impl Client {
             &self.crypto,
             mandatory_extensions,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let kp = kpb.key_package().clone();
         self.crypto
             .key_store()
-            .store(&kp.hash(&self.crypto), &kpb)
-            .unwrap();
+            .store(&kp.hash(&self.crypto)?, &kpb)
+            .expect("An unexpected error occurred.");
         Ok(kp)
     }
 
@@ -88,17 +88,17 @@ impl Client {
             &self.crypto,
             mandatory_extensions,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let key_package = kpb.key_package().clone();
         self.crypto
             .key_store()
-            .store(&key_package.hash(&self.crypto), &kpb)
-            .unwrap();
+            .store(&key_package.hash(&self.crypto)?, &kpb)
+            .expect("An unexpected error occurred.");
         let group_state = ManagedGroup::new(
             &self.crypto,
             &managed_group_config,
             group_id.clone(),
-            &key_package.hash(&self.crypto),
+            &key_package.hash(&self.crypto)?,
         )?;
         self.groups.borrow_mut().insert(group_id, group_state);
         Ok(())
@@ -135,12 +135,20 @@ impl Client {
         let group_state = group_states
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
-        let events = group_state.process_message(message.clone(), &self.crypto)?;
-        for event in events {
-            if let GroupEvent::Error(e) = event {
-                return Err(ClientError::ErrorEvent(e));
+        let unverified_message = group_state.parse_message(message.clone(), &self.crypto)?;
+        let processed_message =
+            group_state.process_unverified_message(unverified_message, None, &self.crypto)?;
+
+        match processed_message {
+            ProcessedMessage::ApplicationMessage(_) => {}
+            ProcessedMessage::ProposalMessage(staged_proposal) => {
+                group_state.store_pending_proposal(*staged_proposal);
+            }
+            ProcessedMessage::StagedCommitMessage(staged_commit) => {
+                group_state.merge_staged_commit(*staged_commit)?;
             }
         }
+
         Ok(())
     }
 
@@ -158,7 +166,9 @@ impl Client {
         for (index, leaf) in tree.iter().enumerate() {
             if index % 2 == 0 {
                 if let Some(leaf_node) = leaf {
-                    let key_package = leaf_node.key_package().unwrap();
+                    let key_package = leaf_node
+                        .key_package()
+                        .expect("An unexpected error occurred.");
                     members.push((index / 2, key_package.credential().clone()));
                 }
             }

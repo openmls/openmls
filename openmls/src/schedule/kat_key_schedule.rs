@@ -1,6 +1,6 @@
 //! # Known Answer Tests for the key schedule
 //!
-//! See https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md
+//! See <https://github.com/mlswg/mls-implementations/blob/master/test-vectors.md>
 //! for more description on the test vectors.
 //!
 //! If values are not present, they are encoded as empty strings.
@@ -23,6 +23,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{random::OpenMlsRand, types::HpkeKeyPair, OpenMlsCryptoProvider};
 use rand::{rngs::OsRng, RngCore};
 use serde::{self, Deserialize, Serialize};
+use tls_codec::Serialize as TlsSerialize;
 
 use super::{errors::KsTestVectorError, PskSecret};
 use super::{CommitSecret, PreSharedKeyId};
@@ -86,7 +87,10 @@ fn generate(
     HpkeKeyPair,
 ) {
     let crypto = OpenMlsRustCrypto::default();
-    let tree_hash = crypto.rand().random_vec(ciphersuite.hash_length()).unwrap();
+    let tree_hash = crypto
+        .rand()
+        .random_vec(ciphersuite.hash_length())
+        .expect("An unexpected error occurred.");
     let commit_secret = CommitSecret::random(ciphersuite, &crypto);
 
     // Build the PSK secret.
@@ -102,25 +106,33 @@ fn generate(
                 psk_group_id: GroupId::random(&crypto),
                 psk_epoch: GroupEpoch(epoch),
             }),
-            crypto.rand().random_vec(13).unwrap(),
+            crypto.rand().random_vec(13).expect("An unexpected error occurred."),
         );
         let psk = PskSecret::random(ciphersuite, &crypto);
         psk_ids.push(psk_id.clone());
         psks.push(psk.secret().clone());
         psks_out.push((psk_id, psk.secret().clone()));
     }
-    let psk_secret = PskSecret::new(ciphersuite, &crypto, &psk_ids, &psks).unwrap();
+    let psk_secret = PskSecret::new(ciphersuite, &crypto, &psk_ids, &psks)
+        .expect("An unexpected error occurred.");
 
-    let joiner_secret = JoinerSecret::new(&crypto, &commit_secret, init_secret);
+    let joiner_secret = JoinerSecret::new(&crypto, &commit_secret, init_secret)
+        .expect("Could not create JoinerSecret.");
     let mut key_schedule = KeySchedule::init(
         ciphersuite,
         &crypto,
         joiner_secret.clone(),
         Some(psk_secret.clone()),
-    );
-    let welcome_secret = key_schedule.welcome(&crypto).unwrap();
+    )
+    .expect("Could not create KeySchedule.");
+    let welcome_secret = key_schedule
+        .welcome(&crypto)
+        .expect("An unexpected error occurred.");
 
-    let confirmed_transcript_hash = crypto.rand().random_vec(ciphersuite.hash_length()).unwrap();
+    let confirmed_transcript_hash = crypto
+        .rand()
+        .random_vec(ciphersuite.hash_length())
+        .expect("An unexpected error occurred.");
 
     let group_context = GroupContext::new(
         GroupId::from_slice(group_id),
@@ -129,10 +141,18 @@ fn generate(
         confirmed_transcript_hash.clone(),
         &[], // Extensions
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
-    key_schedule.add_context(&crypto, &group_context).unwrap();
-    let epoch_secrets = key_schedule.epoch_secrets(&crypto, true).unwrap();
+    let serialized_group_context = group_context
+        .tls_serialize_detached()
+        .expect("Could not serialize group context.");
+
+    key_schedule
+        .add_context(&crypto, &serialized_group_context)
+        .expect("An unexpected error occurred.");
+    let epoch_secrets = key_schedule
+        .epoch_secrets(&crypto, true)
+        .expect("An unexpected error occurred.");
 
     // Calculate external HPKE key pair
     let external_key_pair = epoch_secrets
@@ -163,9 +183,13 @@ pub fn generate_test_vector(
     let crypto = OpenMlsRustCrypto::default();
 
     // Set up setting.
-    let mut init_secret = InitSecret::random(ciphersuite, &crypto, ProtocolVersion::default());
+    let mut init_secret = InitSecret::random(ciphersuite, &crypto, ProtocolVersion::default())
+        .expect("Not enough randomness.");
     let initial_init_secret = init_secret.clone();
-    let group_id = crypto.rand().random_vec(16).unwrap();
+    let group_id = crypto
+        .rand()
+        .random_vec(16)
+        .expect("An unexpected error occurred.");
 
     let mut epochs = Vec::new();
 
@@ -187,7 +211,11 @@ pub fn generate_test_vector(
         let psks = psks
             .iter()
             .map(|(psk_id, psk)| PskValue {
-                psk_id: bytes_to_hex(&psk_id.tls_serialize_detached().unwrap()),
+                psk_id: bytes_to_hex(
+                    &psk_id
+                        .tls_serialize_detached()
+                        .expect("An unexpected error occurred."),
+                ),
                 psk: bytes_to_hex(psk.as_slice()),
             })
             .collect::<Vec<_>>();
@@ -197,10 +225,19 @@ pub fn generate_test_vector(
             commit_secret: bytes_to_hex(commit_secret.as_slice()),
             psks,
             confirmed_transcript_hash: bytes_to_hex(&confirmed_transcript_hash),
-            group_context: bytes_to_hex(&group_context.tls_serialize_detached().unwrap()),
+            group_context: bytes_to_hex(
+                &group_context
+                    .tls_serialize_detached()
+                    .expect("An unexpected error occurred."),
+            ),
             joiner_secret: bytes_to_hex(joiner_secret.as_slice()),
             welcome_secret: bytes_to_hex(welcome_secret.as_slice()),
-            init_secret: bytes_to_hex(epoch_secrets.init_secret().unwrap().as_slice()),
+            init_secret: bytes_to_hex(
+                epoch_secrets
+                    .init_secret()
+                    .expect("An unexpected error occurred.")
+                    .as_slice(),
+            ),
             sender_data_secret: bytes_to_hex(epoch_secrets.sender_data_secret().as_slice()),
             encryption_secret: bytes_to_hex(epoch_secrets.encryption_secret().as_slice()),
             exporter_secret: bytes_to_hex(epoch_secrets.exporter_secret().as_slice()),
@@ -212,11 +249,14 @@ pub fn generate_test_vector(
             external_pub: bytes_to_hex(
                 &HpkePublicKey::from(external_key_pair.public)
                     .tls_serialize_detached()
-                    .unwrap(),
+                    .expect("An unexpected error occurred."),
             ),
         };
         epochs.push(epoch_info);
-        init_secret = epoch_secrets.init_secret().unwrap().clone();
+        init_secret = epoch_secrets
+            .init_secret()
+            .expect("An unexpected error occurred.")
+            .clone();
     }
 
     KeyScheduleTestVector {
@@ -309,7 +349,7 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
         for psk_value in epoch.psks.iter() {
             psk_ids.push(
                 PreSharedKeyId::tls_deserialize(&mut hex_to_bytes(&psk_value.psk_id).as_slice())
-                    .unwrap(),
+                    .expect("An unexpected error occurred."),
             );
             psks.push(Secret::from_slice(
                 &hex_to_bytes(&psk_value.psk),
@@ -318,9 +358,11 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
             ));
         }
         // let psk = Vec::new();
-        let psk_secret = PskSecret::new(ciphersuite, &crypto, &psk_ids, &psks).unwrap();
+        let psk_secret = PskSecret::new(ciphersuite, &crypto, &psk_ids, &psks)
+            .expect("An unexpected error occurred.");
 
-        let joiner_secret = JoinerSecret::new(&crypto, &commit_secret, &init_secret);
+        let joiner_secret = JoinerSecret::new(&crypto, &commit_secret, &init_secret)
+            .expect("Could not create JoinerSecret.");
         if hex_to_bytes(&epoch.joiner_secret) != joiner_secret.as_slice() {
             if cfg!(test) {
                 panic!("Joiner secret mismatch");
@@ -333,8 +375,11 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
             &crypto,
             joiner_secret.clone(),
             Some(psk_secret),
-        );
-        let welcome_secret = key_schedule.welcome(&crypto).unwrap();
+        )
+        .expect("Could not create KeySchedule.");
+        let welcome_secret = key_schedule
+            .welcome(&crypto)
+            .expect("An unexpected error occurred.");
 
         if hex_to_bytes(&epoch.welcome_secret) != welcome_secret.as_slice() {
             if cfg!(test) {
@@ -355,7 +400,9 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
         .expect("Error creating group context");
 
         let expected_group_context = hex_to_bytes(&epoch.group_context);
-        let group_context_serialized = group_context.tls_serialize_detached().unwrap();
+        let group_context_serialized = group_context
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred.");
         if group_context_serialized != expected_group_context {
             log::error!("  Group context mismatch");
             log::debug!("    Computed: {:x?}", group_context_serialized);
@@ -366,11 +413,18 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
             return Err(KsTestVectorError::GroupContextMismatch);
         }
 
-        key_schedule.add_context(&crypto, &group_context).unwrap();
+        key_schedule
+            .add_context(&crypto, &group_context_serialized)
+            .expect("An unexpected error occurred.");
 
-        let epoch_secrets = key_schedule.epoch_secrets(&crypto, true).unwrap();
+        let epoch_secrets = key_schedule
+            .epoch_secrets(&crypto, true)
+            .expect("An unexpected error occurred.");
 
-        init_secret = epoch_secrets.init_secret().unwrap().clone();
+        init_secret = epoch_secrets
+            .init_secret()
+            .expect("An unexpected error occurred.")
+            .clone();
         if hex_to_bytes(&epoch.init_secret) != init_secret.as_slice() {
             log_crypto!(
                 debug,
@@ -442,14 +496,14 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
         if hex_to_bytes(&epoch.external_pub)
             != HpkePublicKey::from(external_key_pair.public.clone())
                 .tls_serialize_detached()
-                .unwrap()
+                .expect("An unexpected error occurred.")
         {
             log::error!("  External public key mismatch");
             log::debug!(
                 "    Computed: {:x?}",
                 HpkePublicKey::from(external_key_pair.public)
                     .tls_serialize_detached()
-                    .unwrap()
+                    .expect("An unexpected error occurred.")
             );
             log::debug!("    Expected: {:x?}", hex_to_bytes(&epoch.external_pub));
             if cfg!(test) {
