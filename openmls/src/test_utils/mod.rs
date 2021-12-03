@@ -148,10 +148,9 @@ pub fn backends(backend: &impl OpenMlsCryptoProvider) {}
     feature = "evercrypt",
 ))]
 #[template]
-#[template]
 #[rstest(backend,
     case(&OpenMlsRustCrypto::default()),
-    case(&OpenMlsEvercrypt::default()),
+    case(&evercrypt_backend::OpenMlsEvercrypt::default()),
   )
 ]
 pub fn backends(backend: &impl OpenMlsCryptoProvider) {}
