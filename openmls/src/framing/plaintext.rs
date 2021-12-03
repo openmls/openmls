@@ -769,13 +769,8 @@ impl Verifiable for VerifiableMlsPlaintext {
 }
 
 mod private_mod {
+    #[derive(Default)]
     pub struct Seal;
-
-    impl Default for Seal {
-        fn default() -> Self {
-            Seal {}
-        }
-    }
 }
 
 impl VerifiedStruct<VerifiableMlsPlaintext> for MlsPlaintext {
