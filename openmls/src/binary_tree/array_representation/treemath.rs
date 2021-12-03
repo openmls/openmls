@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 
-use super::NodeIndex;
+use super::tree::NodeIndex;
 
 implement_error! {
     pub enum TreeMathError {
@@ -13,7 +13,7 @@ implement_error! {
     }
 }
 
-pub(crate) fn log2(x: NodeIndex) -> usize {
+fn log2(x: NodeIndex) -> usize {
     if x == 0 {
         return 0;
     }
@@ -24,7 +24,7 @@ pub(crate) fn log2(x: NodeIndex) -> usize {
     k - 1
 }
 
-pub(crate) fn level(index: NodeIndex) -> usize {
+fn level(index: NodeIndex) -> usize {
     let x = index;
     if (x & 0x01) == 0 {
         return 0;
@@ -36,11 +36,11 @@ pub(crate) fn level(index: NodeIndex) -> usize {
     k
 }
 
-pub(crate) fn root(size: NodeIndex) -> NodeIndex {
+pub(super) fn root(size: NodeIndex) -> NodeIndex {
     (1 << log2(size)) - 1
 }
 
-pub(crate) fn left(index: NodeIndex) -> Result<NodeIndex, TreeMathError> {
+pub(super) fn left(index: NodeIndex) -> Result<NodeIndex, TreeMathError> {
     let x = index;
     let k = level(x);
     if k == 0 {
@@ -49,7 +49,7 @@ pub(crate) fn left(index: NodeIndex) -> Result<NodeIndex, TreeMathError> {
     Ok(x ^ (0x01 << (k - 1)))
 }
 
-pub(crate) fn right(index: NodeIndex, size: NodeIndex) -> Result<NodeIndex, TreeMathError> {
+pub(super) fn right(index: NodeIndex, size: NodeIndex) -> Result<NodeIndex, TreeMathError> {
     let x = index;
     let n = size;
     let k = level(x);
@@ -64,13 +64,13 @@ pub(crate) fn right(index: NodeIndex, size: NodeIndex) -> Result<NodeIndex, Tree
 }
 
 // The parent here might be beyond the right edge of the tree.
-pub(crate) fn parent_step(x: NodeIndex) -> NodeIndex {
+pub(super) fn parent_step(x: NodeIndex) -> NodeIndex {
     let k = level(x);
     let b = (x >> (k + 1)) & 0x01;
     (x | (1 << k)) ^ (b << (k + 1))
 }
 
-pub(crate) fn parent(index: NodeIndex, size: NodeIndex) -> Result<NodeIndex, TreeMathError> {
+pub(super) fn parent(index: NodeIndex, size: NodeIndex) -> Result<NodeIndex, TreeMathError> {
     node_in_tree(index, size)?;
     unsafe_parent(index, size)
 }
@@ -94,7 +94,7 @@ fn unsafe_parent(index: NodeIndex, size: NodeIndex) -> Result<NodeIndex, TreeMat
     Ok(p)
 }
 
-pub(crate) fn sibling(index: NodeIndex, size: NodeIndex) -> Result<NodeIndex, TreeMathError> {
+pub(super) fn sibling(index: NodeIndex, size: NodeIndex) -> Result<NodeIndex, TreeMathError> {
     node_in_tree(index, size)?;
     let p = unsafe_parent(index, size)?;
     match index.cmp(&p) {
@@ -105,7 +105,7 @@ pub(crate) fn sibling(index: NodeIndex, size: NodeIndex) -> Result<NodeIndex, Tr
 }
 
 #[inline(always)]
-pub(crate) fn node_in_tree(node_index: NodeIndex, size: NodeIndex) -> Result<(), TreeMathError> {
+pub(super) fn node_in_tree(node_index: NodeIndex, size: NodeIndex) -> Result<(), TreeMathError> {
     if node_index >= size {
         Err(TreeMathError::NodeNotInTree)
     } else {
@@ -115,7 +115,7 @@ pub(crate) fn node_in_tree(node_index: NodeIndex, size: NodeIndex) -> Result<(),
 
 /// Direct path from a node to the root.
 /// Does not include the node itself.
-pub(crate) fn direct_path(
+pub(super) fn direct_path(
     node_index: NodeIndex,
     size: NodeIndex,
 ) -> Result<Vec<NodeIndex>, TreeMathError> {
@@ -137,7 +137,7 @@ pub(crate) fn direct_path(
 
 /// Copath of a node.
 /// Ordered from starting node to root.
-pub(crate) fn copath(
+pub(super) fn copath(
     node_index: NodeIndex,
     size: NodeIndex,
 ) -> Result<Vec<NodeIndex>, TreeMathError> {
@@ -159,7 +159,7 @@ pub(crate) fn copath(
         .collect()
 }
 
-pub(crate) fn lowest_common_ancestor(x: NodeIndex, y: NodeIndex) -> NodeIndex {
+pub(super) fn lowest_common_ancestor(x: NodeIndex, y: NodeIndex) -> NodeIndex {
     let (lx, ly) = (level(x) + 1, level(y) + 1);
     if (lx <= ly) && (x >> ly == y >> ly) {
         return y;
@@ -178,7 +178,7 @@ pub(crate) fn lowest_common_ancestor(x: NodeIndex, y: NodeIndex) -> NodeIndex {
 }
 
 /// Returns the number of leaves in a tree
-pub(crate) fn leaf_count(number_of_nodes: NodeIndex) -> NodeIndex {
+pub(super) fn leaf_count(number_of_nodes: NodeIndex) -> NodeIndex {
     (number_of_nodes + 1) / 2
 }
 
@@ -188,7 +188,7 @@ pub(crate) fn leaf_count(number_of_nodes: NodeIndex) -> NodeIndex {
 /// Returns the list of nodes that are descendants of a given parent node,
 /// including the parent node itself
 #[cfg(test)]
-pub(crate) fn descendants(x: NodeIndex, size: NodeIndex) -> Vec<NodeIndex> {
+pub(super) fn descendants(x: NodeIndex, size: NodeIndex) -> Vec<NodeIndex> {
     let l = level(x);
     if l == 0 {
         vec![x]
@@ -208,7 +208,7 @@ pub(crate) fn descendants(x: NodeIndex, size: NodeIndex) -> Vec<NodeIndex> {
 /// including the parent node itself
 /// (Alternative, easier to verify implementation)
 #[cfg(test)]
-pub(crate) fn descendants_alt(x: NodeIndex, size: NodeIndex) -> Vec<NodeIndex> {
+pub(super) fn descendants_alt(x: NodeIndex, size: NodeIndex) -> Vec<NodeIndex> {
     if level(x) == 0 {
         vec![x]
     } else {
