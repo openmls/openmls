@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     ciphersuite::{HpkePrivateKey, HpkePublicKey},
-    prelude::KeyPackage,
+    prelude::{KeyPackage, KeyPackageBundle},
 };
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
@@ -34,6 +34,15 @@ impl From<KeyPackage> for LeafNode {
         LeafNode {
             key_package,
             private_key_option: None,
+        }
+    }
+}
+
+impl From<KeyPackageBundle> for LeafNode {
+    fn from(key_package_bundle: KeyPackageBundle) -> Self {
+        LeafNode {
+            key_package: key_package_bundle.key_package,
+            private_key_option: Some(key_package_bundle.private_key),
         }
     }
 }

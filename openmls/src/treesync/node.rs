@@ -62,21 +62,22 @@ impl Node {
 
     /// Returns the parent hash of a given node. Returns None if the node is a
     /// leaf node without a parent hash extension.
-    pub(crate) fn parent_hash(&self) -> Result<&[u8], NodeError> {
+    pub(crate) fn parent_hash(&self) -> Result<Option<&[u8]>, NodeError> {
         let parent_hash = match self {
             Node::LeafNode(ln) => {
                 let kp = ln.key_package();
-                let extension = kp
-                    .extension_with_type(ParentHash)
-                    .ok_or(NodeError::MissingParentHashExtension)?;
-                let parent_hash_extension = extension
-                    .as_parent_hash_extension()
-                    .map_err(|_| NodeError::LibraryError)?;
-                parent_hash_extension.parent_hash()
+                if let Some(extension) = kp.extension_with_type(ParentHash) {
+                    let parent_hash_extension = extension
+                        .as_parent_hash_extension()
+                        .map_err(|_| NodeError::LibraryError)?;
+                    parent_hash_extension.parent_hash()
+                } else {
+                    return Ok(None);
+                }
             }
             Node::ParentNode(pn) => pn.parent_hash(),
         };
-        Ok(parent_hash)
+        Ok(Some(parent_hash))
     }
 }
 

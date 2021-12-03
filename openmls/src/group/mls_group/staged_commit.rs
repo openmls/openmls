@@ -146,6 +146,7 @@ impl MlsGroup {
             } else {
                 // Decrypt the UpdatePath
                 let key_package = path.leaf_key_package();
+
                 let (plain_path, commit_secret) = self.tree().decrypt_path(
                     backend,
                     ciphersuite,
@@ -155,8 +156,6 @@ impl MlsGroup {
                     &serialized_context,
                 )?;
 
-                // Collect the new leaves' indexes so we can filter them out in the resolution
-                // later.
                 diff.apply_received_update_path(
                     backend,
                     ciphersuite,
@@ -284,13 +283,15 @@ impl MlsGroup {
     }
 
     /// Merges a [StagedCommit] into the group state.
-    pub fn merge_commit(&mut self, staged_commit: StagedCommit) {
+    pub fn merge_commit(&mut self, staged_commit: StagedCommit) -> Result<(), MlsGroupError> {
         if let Some(state) = staged_commit.state {
             self.group_context = state.group_context;
             self.epoch_secrets = state.epoch_secrets;
             self.interim_transcript_hash = state.interim_transcript_hash;
             self.secret_tree = state.secret_tree;
-        }
+            self.tree.merge_diff(state.staged_diff)?;
+        };
+        Ok(())
     }
 }
 

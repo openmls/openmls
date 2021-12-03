@@ -45,6 +45,20 @@ impl TreeSyncNode {
         &self.node
     }
 
+    pub(in crate::treesync) fn node_without_private_key(&self) -> Option<Node> {
+        if let Some(node) = self.node() {
+            match node {
+                Node::LeafNode(leaf_node) => Node::LeafNode(leaf_node.key_package().clone().into()),
+                Node::ParentNode(parent_node) => {
+                    Node::ParentNode(parent_node.clone_without_private_key())
+                }
+            }
+            .into()
+        } else {
+            None
+        }
+    }
+
     pub(in crate::treesync) fn node_mut(&mut self) -> &mut Option<Node> {
         &mut self.node
     }

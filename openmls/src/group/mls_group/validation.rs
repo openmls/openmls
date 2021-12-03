@@ -40,7 +40,7 @@ impl MlsGroup {
             let members = self.tree().full_leaves()?;
             let sender_index = sender.to_leaf_index();
             // FIXME: The second check should imply the first one.
-            if sender_index >= self.tree().leaf_count()? || members.contains_key(&sender_index) {
+            if sender_index >= self.tree().leaf_count()? || !members.contains_key(&sender_index) {
                 return Err(FramingValidationError::UnknownMember.into());
             }
         }

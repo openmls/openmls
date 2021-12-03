@@ -259,14 +259,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
         TlsVecU32::<Option<Node>>::tls_deserialize(&mut ratchet_tree_after_bytes.as_slice())
             .expect("Error decoding ratchet tree");
 
-    if tree_after
-        .export_nodes()
-        .iter()
-        .map(|&node| node.clone())
-        .collect::<Vec<Option<Node>>>()
-        .as_slice()
-        != ratchet_tree_after.as_slice()
-    {
+    if tree_after.export_nodes().as_slice() != ratchet_tree_after.as_slice() {
         if cfg!(test) {
             panic!("Ratchet tree mismatch in the after the update.");
         }
@@ -279,7 +272,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
 }
 
 #[test]
-fn read_test_vector() {
+fn read_test_vector_tk() {
     let tests: Vec<TreeKemTestVector> = read("test_vectors/kat_tree_kem_openmls.json");
 
     for test_vector in tests {

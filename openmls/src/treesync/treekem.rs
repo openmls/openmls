@@ -21,7 +21,7 @@ use super::{
     TreeSync, TreeSyncDiffError, TreeSyncError,
 };
 
-impl TreeSync {
+impl<'a> TreeSyncDiff<'a> {
     pub(crate) fn encrypt_path(
         &self,
         backend: &impl OpenMlsCryptoProvider,
@@ -31,9 +31,7 @@ impl TreeSync {
         exclusion_list: &HashSet<&LeafIndex>,
         key_package: &KeyPackage,
     ) -> Result<UpdatePath, TreeKemError> {
-        let copath_resolutions = self
-            .empty_diff()?
-            .copath_resolutions(self.own_leaf_index, exclusion_list)?;
+        let copath_resolutions = self.copath_resolutions(self.own_leaf_index(), exclusion_list)?;
 
         let mut update_path_nodes = Vec::new();
         // Encrypt the secrets
@@ -47,7 +45,9 @@ impl TreeSync {
             nodes: update_path_nodes.into(),
         })
     }
+}
 
+impl TreeSync {
     /// The path returned here already includes any path secrets included in the
     /// `UpdatePath`.
     pub(crate) fn decrypt_path(
@@ -60,7 +60,7 @@ impl TreeSync {
         group_context: &[u8],
     ) -> Result<(Vec<ParentNode>, CommitSecret), TreeKemError> {
         let diff = self.empty_diff()?;
-        let path_position = diff.subtree_root_position(sender_leaf_index)?;
+        let path_position = diff.subtree_root_position(sender_leaf_index, diff.own_leaf_index())?;
         let update_path_node = update_path
             .nodes()
             .get(path_position)
@@ -68,7 +68,6 @@ impl TreeSync {
 
         let (decryption_key, resolution_position) =
             diff.decryption_key(sender_leaf_index, exclusion_list)?;
-
         let ciphertext = update_path_node
             .get_encrypted_ciphertext(resolution_position)
             .ok_or(TreeKemError::EncryptedCiphertextNotFound)?;
@@ -81,19 +80,34 @@ impl TreeSync {
             group_context,
         )?;
 
-        // Now we prepare the path. The first part comes from the public keys in
-        // the UpdatePath and the second we can derive from the PathSecret.
-        let mut path = Vec::new();
-        for update_path_node in update_path.nodes().iter().take(path_position) {
-            // The path_position should be inside of the path. Otherwise we
-            // wouldn've errored out earlier.
-            let parent_node = update_path_node.public_key().clone().into();
-            path.push(parent_node);
-        }
         let remaining_path_length = update_path.nodes().len() - path_position;
         let (mut derived_path, _plain_update_path, commit_secret) =
             ParentNode::derive_path(backend, ciphersuite, path_secret, remaining_path_length)?;
+        // We now check that the public keys in the update path an in the
+        // derived path match up.
+
+        for (update_parent_node, derived_parent_node) in update_path
+            .nodes()
+            .iter()
+            .skip(path_position)
+            .zip(derived_path.iter())
+        {
+            if update_parent_node.public_key() != derived_parent_node.public_key() {
+                return Err(TreeKemError::PathMismatch);
+            }
+        }
+
+        // Finally, we append the derived path to the part of the update path
+        // below the first node that we have a private key for.
+        let mut path: Vec<ParentNode> = update_path
+            .nodes()
+            .iter()
+            .take(path_position)
+            .map(|update_path_node| update_path_node.public_key().clone().into())
+            .collect();
         path.append(&mut derived_path);
+
+        debug_assert_eq!(path.len(), update_path.nodes().len());
 
         Ok((path, commit_secret))
     }
@@ -151,7 +165,8 @@ impl PlaintextSecret {
             let key_package = add_proposal.key_package;
             let key_package_hash = key_package.hash(backend)?;
 
-            let direct_path_position = diff.subtree_root_position(leaf_index)?;
+            let direct_path_position =
+                diff.subtree_root_position(diff.own_leaf_index(), leaf_index)?;
 
             // If a plain path was given, there have to be secrets for every new member.
             let path_secret_option = if let Some(plain_path) = plain_path_option {
@@ -235,6 +250,7 @@ implement_error! {
         Simple {
             LibraryError = "An inconsistency in the internal state of the tree was detected.",
             PathLengthError = "The given path to encrypt does not have the same length as the direct path.",
+            PathMismatch = "The received update path and the derived nodes are inconsistent.",
             UpdatePathNodeNotFound = "Couldn't find our UpdatePathNode in the given UpdatePath.",
             EncryptedCiphertextNotFound = "Couldn't find a matching encrypted ciphertext in the given UpdatePathNode.",
             PathSecretNotFound = "Couldn't find the path secret to encrypt for one of the new members.",

@@ -173,7 +173,7 @@ impl MlsGroup {
         proposal_store: &mut ProposalStore,
     ) -> Result<(), MlsGroupError> {
         // Merge the staged commit into the group state
-        self.merge_commit(staged_commit);
+        self.merge_commit(staged_commit)?;
         // Empty the proposal store
         proposal_store.empty();
         Ok(())

@@ -106,12 +106,12 @@ fn write_test_vectors() {
 pub fn run_test_vector(test_vector: TreeMathTestVector) -> Result<(), TmTestVectorError> {
     let n_leaves = test_vector.n_leaves as usize;
     let n_nodes = node_width(n_leaves);
-    let leaves = n_leaves as u32;
+    let nodes = n_nodes as u32;
     if test_vector.n_nodes != node_width(n_leaves) as u32 {
         return Err(TmTestVectorError::TreeSizeMismatch);
     }
     for i in 0..n_leaves {
-        if test_vector.root[i] != root(to_node_index(i as u32 + 1)) {
+        if test_vector.root[i] != root(to_node_index(i as u32)) {
             return Err(TmTestVectorError::RootIndexMismatch);
         }
     }
@@ -120,13 +120,13 @@ pub fn run_test_vector(test_vector: TreeMathTestVector) -> Result<(), TmTestVect
         if test_vector.left[i] != convert!(left(i as u32)) {
             return Err(TmTestVectorError::LeftIndexMismatch);
         }
-        if test_vector.right[i] != convert!(right(i as u32, leaves)) {
+        if test_vector.right[i] != convert!(right(i as u32, nodes)) {
             return Err(TmTestVectorError::RightIndexMismatch);
         }
-        if test_vector.parent[i] != convert!(parent(i as u32, leaves)) {
+        if test_vector.parent[i] != convert!(parent(i as u32, nodes)) {
             return Err(TmTestVectorError::ParentIndexMismatch);
         }
-        if test_vector.sibling[i] != convert!(sibling(i as u32, leaves)) {
+        if test_vector.sibling[i] != convert!(sibling(i as u32, nodes)) {
             return Err(TmTestVectorError::SiblingIndexMismatch);
         }
     }
@@ -134,7 +134,7 @@ pub fn run_test_vector(test_vector: TreeMathTestVector) -> Result<(), TmTestVect
 }
 
 #[test]
-fn read_test_vectors() {
+fn read_test_vectors_tm() {
     let tests: Vec<TreeMathTestVector> = read("test_vectors/kat_treemath_openmls.json");
     for test_vector in tests {
         match run_test_vector(test_vector) {

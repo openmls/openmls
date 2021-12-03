@@ -39,6 +39,7 @@ impl From<HpkePublicKey> for ParentNode {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct PlainUpdatePathNode {
     public_key: HpkePublicKey,
     path_secret: PathSecret,
@@ -163,6 +164,15 @@ impl ParentNode {
     /// Get the parent hash value of this node.
     pub(crate) fn parent_hash(&self) -> &[u8] {
         self.parent_hash.as_slice()
+    }
+
+    pub(in crate::treesync) fn clone_without_private_key(&self) -> Self {
+        Self {
+            public_key: self.public_key().clone(),
+            parent_hash: self.parent_hash().to_vec().into(),
+            unmerged_leaves: self.unmerged_leaves().to_vec().into(),
+            private_key_option: None,
+        }
     }
 }
 

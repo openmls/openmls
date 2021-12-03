@@ -515,11 +515,7 @@ impl MlsGroup {
     /// on the fly when calling this function.
     pub fn other_extensions(&self) -> Vec<Extension> {
         vec![Extension::RatchetTree(RatchetTreeExtension::new(
-            self.tree()
-                .export_nodes()
-                .iter()
-                .map(|&node_option| node_option.clone())
-                .collect(),
+            self.tree().export_nodes(),
         ))]
     }
 

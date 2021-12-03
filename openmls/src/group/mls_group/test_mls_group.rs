@@ -9,7 +9,7 @@ use tls_codec::Serialize;
 use crate::{
     ciphersuite::{signable::Signable, AeadNonce},
     group::{create_commit_params::CreateCommitParams, GroupEpoch},
-    messages::{Commit, ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload},
+    messages::{Commit, ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload, PathSecretError},
     prelude::*,
     schedule::psk::*,
     treesync::treekem::{TreeKemError, UpdatePath, UpdatePathNode},
@@ -376,8 +376,9 @@ fn test_update_path() {
             alice_group.stage_commit(&broken_plaintext, &proposal_store, &[], None, &crypto);
         assert_eq!(
             staged_commit_res.expect_err("Successful processing of a broken commit."),
-            // This is wrong and just a placeholder
-            MlsGroupError::LibraryError
+            MlsGroupError::TreeKemError(TreeKemError::PathSecretError(
+                PathSecretError::DecryptionError(CryptoError::HpkeDecryptionError)
+            ))
         );
     }
 }

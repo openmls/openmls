@@ -79,8 +79,7 @@ impl MlsGroup {
                     params.credential_bundle(),
                 )?;
 
-                // FIXME: We encrypt to the old tree here. Is that correct?
-                let encrypted_path = self.tree().encrypt_path(
+                let encrypted_path = diff.encrypt_path(
                     backend,
                     self.ciphersuite(),
                     &path,
@@ -134,7 +133,6 @@ impl MlsGroup {
         let tree_hash = diff.compute_tree_hash(backend, ciphersuite)?;
 
         // Calculate group context
-        println!("create commit ext: {:?}", self.group_context.extensions());
         let provisional_group_context = GroupContext::new(
             self.group_context.group_id.clone(),
             provisional_epoch,

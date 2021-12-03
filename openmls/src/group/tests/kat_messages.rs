@@ -70,12 +70,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         .build(&crypto)
         .expect("Could not create group.");
 
-    let ratchet_tree: Vec<Option<Node>> = group
-        .tree()
-        .export_nodes()
-        .iter()
-        .map(|&node| node.clone())
-        .collect();
+    let ratchet_tree: Vec<Option<Node>> = group.tree().export_nodes();
 
     // We can't easily get a "natural" GroupInfo, so we just create one here.
     let group_info = GroupInfoPayload::new(

@@ -100,6 +100,8 @@ impl TreeSync {
         key_package_bundle: KeyPackageBundle,
     ) -> Result<(Self, CommitSecret), TreeSyncError> {
         let key_package = key_package_bundle.key_package();
+        // We generate our own leaf without a private key for now. The private
+        // key is set in the `from_nodes` constructor below.
         let node: Node = Node::LeafNode(key_package.clone().into());
         let path_secret: PathSecret = key_package_bundle.leaf_secret().clone().into();
         let commit_secret: CommitSecret = path_secret
@@ -281,11 +283,11 @@ impl TreeSync {
     /// Returns the nodes in the tree ordered according to the
     /// array-representation of the underlying binary tree. FIXME: It would be
     /// much nicer to return a slice here, but I don't know how.
-    pub(crate) fn export_nodes(&self) -> Vec<&Option<Node>> {
+    pub(crate) fn export_nodes(&self) -> Vec<Option<Node>> {
         self.tree
             .nodes()
             .iter()
-            .map(|ts_node| ts_node.node())
+            .map(|ts_node| ts_node.node_without_private_key())
             .collect()
     }
 

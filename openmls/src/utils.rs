@@ -233,7 +233,7 @@ pub fn _print_tree(tree: &TreeSync, message: &str) {
                     print!("\tL");
                     let key_bytes = leaf_node.public_key().as_slice();
                     let parent_hash_bytes = node.parent_hash().unwrap();
-                    (key_bytes, parent_hash_bytes)
+                    (key_bytes, parent_hash_bytes.unwrap_or_default())
                 }
                 Node::ParentNode(parent_node) => {
                     if treemath::root(tree.leaf_count().unwrap().into()) == NodeIndex::from(i) {
@@ -243,7 +243,7 @@ pub fn _print_tree(tree: &TreeSync, message: &str) {
                     }
                     let key_bytes = parent_node.public_key().as_slice();
                     let parent_hash_bytes = node.parent_hash().unwrap();
-                    (key_bytes, parent_hash_bytes)
+                    (key_bytes, parent_hash_bytes.unwrap_or_default())
                 }
             };
             print!("\tPK: {}", _bytes_to_hex(key_bytes));

@@ -100,7 +100,9 @@ fn test_pgs() {
                 &crypto,
             )
             .expect("Could not stage Commit");
-        group_alice.merge_commit(staged_commit);
+        group_alice
+            .merge_commit(staged_commit)
+            .expect("error merging commit");
 
         let pgs = group_alice
             .export_public_group_state(&crypto, &alice_credential_bundle)

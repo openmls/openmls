@@ -185,12 +185,7 @@ impl ManagedGroup {
 
     /// Export the Ratchet Tree
     pub fn export_ratchet_tree(&self) -> Vec<Option<Node>> {
-        self.group
-            .tree()
-            .export_nodes()
-            .iter()
-            .map(|&node_option| node_option.clone())
-            .collect()
+        self.group.tree().export_nodes()
     }
 
     #[cfg(any(feature = "test-utils", test))]
