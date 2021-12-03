@@ -43,7 +43,10 @@ impl<T> SignedStruct<T> for Signature {
 }
 
 impl SignatureKeypair {
-    /// Construct a new [SignatureKeypair] from bytes of a private and a public key
+    #[cfg(feature = "crypto-subtle")]
+    /// Construct a new [`SignatureKeypair`] from bytes of a private and a public key.
+    ///
+    /// **NO CHECKS ARE PERFORMED ON THE KEYS. USE AT YOUR OWN RISK.**
     pub fn from_bytes(
         signature_scheme: SignatureScheme,
         private_key: Vec<u8>,
@@ -103,11 +106,11 @@ impl SignatureKeypair {
 
         Ok(SignatureKeypair {
             private_key: SignaturePrivateKey {
-                value: sk.to_vec(),
+                value: sk,
                 signature_scheme,
             },
             public_key: SignaturePublicKey {
-                value: pk.to_vec(),
+                value: pk,
                 signature_scheme,
             },
         })

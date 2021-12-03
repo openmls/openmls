@@ -30,6 +30,7 @@ evercrypt_backend = { version = "0.1", path = "../evercrypt_backend", optional =
 
 [features]
 default = []
+crypto-subtle = [] # Enable subtle crypto APIs that have to be used with care.
 test-utils = ["itertools", "openmls_rust_crypto", "rand"]
 evercrypt = ["evercrypt_backend"] # Evercrypt needs to be enabled individually
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
