@@ -14,9 +14,7 @@ fn duplicate_ratchet_tree_extension(
     ciphersuite: &'static Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
-    println!("Testing ciphersuite {:?}", ciphersuite.name());
-    let ciphersuite =
-        Config::ciphersuite(ciphersuite.name()).expect("An unexpected error occurred.");
+    debug_show_backend_and_ciphersuite!(backend, ciphersuite);
 
     // Basic group setup.
     let group_aad = b"Alice's test group";

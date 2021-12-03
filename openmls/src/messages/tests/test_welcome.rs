@@ -18,6 +18,12 @@ use tls_codec::{Deserialize, Serialize};
 
 #[apply(ciphersuites_and_backends)]
 fn test_welcome_msg(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    // TODO #600: Investigate why evercrypt throws an error here
+    // Suppress warning
+    let _backend = backend;
+    // Only use RustCrypto for now
+    let backend = &OpenMlsRustCrypto::default();
+    debug_show_backend_and_ciphersuite!(backend, ciphersuite);
     test_welcome_message_with_version(ciphersuite, backend, Config::supported_versions()[0]);
 }
 

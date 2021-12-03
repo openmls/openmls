@@ -90,9 +90,7 @@ fn lifetime() {
 // in-band
 #[apply(ciphersuites_and_backends)]
 fn ratchet_tree_extension(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    log::info!("Testing ciphersuite {:?}", ciphersuite.name());
-    let ciphersuite =
-        Config::ciphersuite(ciphersuite.name()).expect("An unexpected error occurred.");
+    debug_show_backend_and_ciphersuite!(backend, ciphersuite);
 
     // Basic group setup.
     let group_aad = b"Alice's test group";

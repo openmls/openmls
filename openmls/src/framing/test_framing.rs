@@ -678,9 +678,8 @@ fn invalid_plaintext_signature(
     ciphersuite: &'static Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
-    log::info!("Testing ciphersuite {:?}", ciphersuite.name());
-    let ciphersuite =
-        Config::ciphersuite(ciphersuite.name()).expect("An unexpected error occurred.");
+    debug_show_backend_and_ciphersuite!(backend, ciphersuite);
+
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
 
