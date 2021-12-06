@@ -131,7 +131,7 @@
     <span class="doccomment">/// Create a new lifetime extensions with lifetime `t` (in seconds).</span>
     <span class="doccomment">/// Note that the lifetime is extended 1h into the past to adapt to skewed</span>
     <span class="doccomment">/// clocks.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">t</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">t</span>: <span class="ident">u64</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">lifetime_margin</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">Config::key_package_lifetime_margin</span>();
         <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>()
             .<span class="ident">duration_since</span>(<span class="ident">UNIX_EPOCH</span>)
@@ -146,7 +146,7 @@
     }
 
     <span class="doccomment">/// Returns true if this lifetime is valid.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">is_valid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">is_valid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>()
             .<span class="ident">duration_since</span>(<span class="ident">UNIX_EPOCH</span>)
             .<span class="ident">expect</span>(<span class="string">&quot;SystemTime before UNIX EPOCH!&quot;</span>)
@@ -156,14 +156,14 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">LifetimeExtension</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
         <span class="ident">LifetimeExtension::new</span>(<span class="ident">Config::default_key_package_lifetime</span>())
     }
 }
 
 <span class="comment">// Deserialize manually in order to do additional validity checks.</span>
 <span class="kw">impl</span> <span class="ident">tls_codec::Deserialize</span> <span class="kw">for</span> <span class="ident">LifetimeExtension</span> {
-    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">not_before</span> <span class="op">=</span> <span class="ident">u64::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">not_after</span> <span class="op">=</span> <span class="ident">u64::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">out</span> <span class="op">=</span> <span class="self">Self</span> {

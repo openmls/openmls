@@ -126,7 +126,7 @@
 
 <span class="kw">impl</span> <span class="ident">HpkePublicKey</span> {
     <span class="doccomment">/// Get the raw byte value as slice.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="self">self</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>()
     }
 }
@@ -139,40 +139,40 @@
 
 <span class="kw">impl</span> <span class="ident">HpkePrivateKey</span> {
     <span class="doccomment">/// Get the raw byte value as slice.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="self">self</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>()
     }
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">HpkePublicKey</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">value</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">value</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> { <span class="ident">value</span> }
     }
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">HpkePrivateKey</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">value</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">value</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> { <span class="ident">value</span> }
     }
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Size</span> <span class="kw">for</span> <span class="ident">HpkePublicKey</span> {
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         <span class="ident">tls_codec::TlsByteSliceU16</span>(<span class="self">self</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>()).<span class="ident">tls_serialized_len</span>()
     }
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Serialize</span> <span class="kw">for</span> <span class="ident">HpkePublicKey</span> {
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">std::io::Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">std::io::Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="ident">tls_codec::TlsByteSliceU16</span>(<span class="self">self</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>()).<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)
     }
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Deserialize</span> <span class="kw">for</span> <span class="ident">HpkePublicKey</span> {
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">std::io::Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">std::io::Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
             <span class="ident">value</span>: <span class="ident">tls_codec::TlsByteVecU16::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>.<span class="ident">into</span>(),
         })
@@ -181,21 +181,21 @@
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Size</span> <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">HpkePublicKey</span> {
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         <span class="ident">tls_codec::TlsByteSliceU16</span>(<span class="self">self</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>()).<span class="ident">tls_serialized_len</span>()
     }
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Serialize</span> <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">HpkePublicKey</span> {
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">std::io::Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">std::io::Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="ident">tls_codec::TlsByteSliceU16</span>(<span class="self">self</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>()).<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)
     }
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Deserialize</span> <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">HpkePublicKey</span> {
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">std::io::Read</span><span class="op">&gt;</span>(<span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">std::io::Read</span><span class="op">&gt;</span>(<span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::DecodingError</span>(
             <span class="string">&quot;Error trying to deserialize a reference.&quot;</span>.<span class="ident">to_string</span>(),
         ))
@@ -205,7 +205,7 @@
 <span class="comment">// A hopefully value independent implementation of [`PartialEq`] for HPKE private</span>
 <span class="comment">// keys. The compiler might still introduce secret dependent branching.</span>
 <span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">HpkePrivateKey</span> {
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="ident">bool</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">value</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">other</span>.<span class="ident">value</span>.<span class="ident">len</span>() {
             <span class="kw">return</span> <span class="bool-val">false</span>;
         }
@@ -215,7 +215,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">std::fmt::Debug</span> <span class="kw">for</span> <span class="ident">HpkePrivateKey</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">std::fmt::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">std::fmt::Error</span><span class="op">&gt;</span> {
         <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;HpkePrivateKey&quot;</span>)
             .<span class="ident">field</span>(<span class="string">&quot;value&quot;</span>, <span class="kw-2">&amp;</span><span class="string">&quot;***&quot;</span>)
             .<span class="ident">finish</span>()
@@ -226,7 +226,7 @@
 <span class="kw">impl</span> <span class="ident">HpkePrivateKey</span> {
     <span class="doccomment">/// Create a new HPKE private key.</span>
     <span class="doccomment">/// Consumes the private key bytes.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">b</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">b</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> { <span class="ident">value</span>: <span class="ident">b</span> }
     }
 }

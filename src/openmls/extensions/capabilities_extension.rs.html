@@ -160,7 +160,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">CapabilitiesExtension</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
         <span class="ident">CapabilitiesExtension</span> {
             <span class="ident">versions</span>: <span class="ident">Config::supported_versions</span>().<span class="ident">into</span>(),
             <span class="ident">ciphersuites</span>: <span class="ident">Config::supported_ciphersuite_names</span>().<span class="ident">into</span>(),
@@ -179,43 +179,43 @@
         <span class="ident">ciphersuites</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">CiphersuiteName</span>]<span class="op">&gt;</span>,
         <span class="ident">extensions</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">ExtensionType</span>]<span class="op">&gt;</span>,
         <span class="ident">proposals</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">ProposalType</span>]<span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    ) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">versions</span>: <span class="kw">match</span> <span class="ident">versions</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v</span>.<span class="ident">into</span>(),
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Config::supported_versions</span>().<span class="ident">into</span>(),
+                <span class="prelude-val">Some</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
+                <span class="prelude-val">None</span> =&gt; <span class="ident">Config::supported_versions</span>().<span class="ident">into</span>(),
             },
             <span class="ident">ciphersuites</span>: <span class="kw">match</span> <span class="ident">ciphersuites</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">c</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">c</span>.<span class="ident">into</span>(),
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Config::supported_ciphersuite_names</span>().<span class="ident">into</span>(),
+                <span class="prelude-val">Some</span>(<span class="ident">c</span>) =&gt; <span class="ident">c</span>.<span class="ident">into</span>(),
+                <span class="prelude-val">None</span> =&gt; <span class="ident">Config::supported_ciphersuite_names</span>().<span class="ident">into</span>(),
             },
             <span class="ident">extensions</span>: <span class="kw">match</span> <span class="ident">extensions</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">e</span>.<span class="ident">into</span>(),
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Config::supported_extensions</span>().<span class="ident">into</span>(),
+                <span class="prelude-val">Some</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">into</span>(),
+                <span class="prelude-val">None</span> =&gt; <span class="ident">Config::supported_extensions</span>().<span class="ident">into</span>(),
             },
             <span class="ident">proposals</span>: <span class="kw">match</span> <span class="ident">proposals</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">p</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">p</span>.<span class="ident">into</span>(),
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Config::supported_proposals</span>().<span class="ident">into</span>(),
+                <span class="prelude-val">Some</span>(<span class="ident">p</span>) =&gt; <span class="ident">p</span>.<span class="ident">into</span>(),
+                <span class="prelude-val">None</span> =&gt; <span class="ident">Config::supported_proposals</span>().<span class="ident">into</span>(),
             },
         }
     }
     <span class="doccomment">/// Get a reference to the list of versions in this extension.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">versions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">ProtocolVersion</span>] {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">versions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">ProtocolVersion</span>] {
         <span class="self">self</span>.<span class="ident">versions</span>.<span class="ident">as_slice</span>()
     }
     <span class="doccomment">/// Get a reference to the list of cipher suites in this extension.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ciphersuites</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">CiphersuiteName</span>] {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ciphersuites</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">CiphersuiteName</span>] {
         <span class="self">self</span>.<span class="ident">ciphersuites</span>.<span class="ident">as_slice</span>()
     }
     <span class="doccomment">/// Get a reference to the list of supported extensions.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extensions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">ExtensionType</span>] {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extensions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">ExtensionType</span>] {
         <span class="self">self</span>.<span class="ident">extensions</span>.<span class="ident">as_slice</span>()
     }
 }
 
 <span class="comment">// We deserialize manually in order to perform some checks on the values.</span>
 <span class="kw">impl</span> <span class="ident">tls_codec::Deserialize</span> <span class="kw">for</span> <span class="ident">CapabilitiesExtension</span> {
-    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">versions</span> <span class="op">=</span> <span class="ident">TlsVecU8</span>::<span class="op">&lt;</span><span class="ident">ProtocolVersion</span><span class="op">&gt;</span><span class="ident">::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
         <span class="comment">// There must be at least one version we support.</span>
         <span class="kw">if</span> <span class="ident">versions</span>.<span class="ident">is_empty</span>() {

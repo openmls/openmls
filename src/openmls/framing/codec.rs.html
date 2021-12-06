@@ -330,7 +330,7 @@
 <span class="kw">use</span> <span class="ident">std::io</span>::{<span class="ident">Read</span>, <span class="ident">Write</span>};
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Deserialize</span> <span class="kw">for</span> <span class="ident">VerifiableMlsPlaintext</span> {
-    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">wire_format</span> <span class="op">=</span> <span class="ident">WireFormat::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">group_id</span> <span class="op">=</span> <span class="ident">GroupId::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">epoch</span> <span class="op">=</span> <span class="ident">GroupEpoch::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
@@ -372,7 +372,7 @@
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Size</span> <span class="kw">for</span> <span class="ident">VerifiableMlsPlaintext</span> {
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         <span class="self">self</span>.<span class="ident">tbs</span>.<span class="ident">wire_format</span>.<span class="ident">tls_serialized_len</span>()
             <span class="op">+</span> <span class="self">self</span>.<span class="ident">tbs</span>.<span class="ident">group_id</span>.<span class="ident">tls_serialized_len</span>()
             <span class="op">+</span> <span class="self">self</span>.<span class="ident">tbs</span>.<span class="ident">epoch</span>.<span class="ident">tls_serialized_len</span>()
@@ -387,7 +387,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Serialize</span> <span class="kw">for</span> <span class="ident">VerifiableMlsPlaintext</span> {
-    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">written</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tbs</span>.<span class="ident">wire_format</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>;
         <span class="ident">written</span> <span class="op">+</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">tbs</span>.<span class="ident">group_id</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>;
         <span class="ident">written</span> <span class="op">+</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">tbs</span>.<span class="ident">epoch</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>;
@@ -405,31 +405,31 @@
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Size</span> <span class="kw">for</span> <span class="ident">MlsPlaintextContentType</span> {
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">MlsPlaintextContentType::Application</span>(<span class="ident">application_data</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">MlsPlaintextContentType::Application</span>(<span class="ident">application_data</span>) =&gt; {
                 <span class="ident">application_data</span>.<span class="ident">tls_serialized_len</span>()
             }
-            <span class="ident">MlsPlaintextContentType::Proposal</span>(<span class="ident">proposal</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">proposal</span>.<span class="ident">tls_serialized_len</span>(),
-            <span class="ident">MlsPlaintextContentType::Commit</span>(<span class="ident">commit</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">commit</span>.<span class="ident">tls_serialized_len</span>(),
+            <span class="ident">MlsPlaintextContentType::Proposal</span>(<span class="ident">proposal</span>) =&gt; <span class="ident">proposal</span>.<span class="ident">tls_serialized_len</span>(),
+            <span class="ident">MlsPlaintextContentType::Commit</span>(<span class="ident">commit</span>) =&gt; <span class="ident">commit</span>.<span class="ident">tls_serialized_len</span>(),
         }
     }
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Serialize</span> <span class="kw">for</span> <span class="ident">MlsPlaintextContentType</span> {
-    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">MlsPlaintextContentType::Application</span>(<span class="ident">application_data</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">MlsPlaintextContentType::Application</span>(<span class="ident">application_data</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">written</span> <span class="op">=</span> <span class="ident">application_data</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>;
                 <span class="macro">debug_assert_eq!</span>(<span class="ident">written</span>, <span class="ident">application_data</span>.<span class="ident">tls_serialized_len</span>());
                 <span class="prelude-val">Ok</span>(<span class="ident">written</span>)
             }
-            <span class="ident">MlsPlaintextContentType::Proposal</span>(<span class="ident">proposal</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">MlsPlaintextContentType::Proposal</span>(<span class="ident">proposal</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">written</span> <span class="op">=</span> <span class="ident">proposal</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>;
                 <span class="macro">debug_assert_eq!</span>(<span class="ident">written</span>, <span class="ident">proposal</span>.<span class="ident">tls_serialized_len</span>());
                 <span class="prelude-val">Ok</span>(<span class="ident">written</span>)
             }
-            <span class="ident">MlsPlaintextContentType::Commit</span>(<span class="ident">commit</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">MlsPlaintextContentType::Commit</span>(<span class="ident">commit</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">written</span> <span class="op">=</span> <span class="ident">commit</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>;
                 <span class="macro">debug_assert_eq!</span>(<span class="ident">written</span>, <span class="ident">commit</span>.<span class="ident">tls_serialized_len</span>());
                 <span class="prelude-val">Ok</span>(<span class="ident">written</span>)
@@ -442,17 +442,17 @@
     <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(
         <span class="ident">content_type</span>: <span class="ident">ContentType</span>,
         <span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">content_type</span> {
-            <span class="ident">ContentType::Application</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">ContentType::Application</span> =&gt; {
                 <span class="kw">let</span> <span class="ident">application_data</span> <span class="op">=</span> <span class="ident">TlsByteVecU32::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(<span class="ident">MlsPlaintextContentType::Application</span>(<span class="ident">application_data</span>))
             }
-            <span class="ident">ContentType::Proposal</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">ContentType::Proposal</span> =&gt; {
                 <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="ident">Proposal::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(<span class="ident">MlsPlaintextContentType::Proposal</span>(<span class="ident">proposal</span>))
             }
-            <span class="ident">ContentType::Commit</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">ContentType::Commit</span> =&gt; {
                 <span class="kw">let</span> <span class="ident">commit</span> <span class="op">=</span> <span class="ident">Commit::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(<span class="ident">MlsPlaintextContentType::Commit</span>(<span class="ident">commit</span>))
             }
@@ -472,7 +472,7 @@
     <span class="ident">content_type</span>: <span class="kw-2">&amp;</span><span class="ident">ContentType</span>,
     <span class="ident">payload</span>: <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextContentType</span>,
     <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">written</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">serialized_context</span>) <span class="op">=</span> <span class="ident">serialized_context</span>.<span class="ident">into</span>() {
         <span class="ident">buffer</span>.<span class="ident">write</span>(<span class="ident">serialized_context</span>)<span class="question-mark">?</span>
     } <span class="kw">else</span> {
@@ -489,7 +489,7 @@
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Size</span> <span class="kw">for</span> <span class="ident">MlsPlaintextTbs</span> {
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         <span class="kw">let</span> <span class="ident">context_len</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">serialized_context</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">serialized_context</span> {
             <span class="ident">serialized_context</span>.<span class="ident">len</span>()
         } <span class="kw">else</span> {
@@ -507,7 +507,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Serialize</span> <span class="kw">for</span> <span class="ident">MlsPlaintextTbs</span> {
-    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="ident">serialize_plaintext_tbs</span>(
             <span class="self">self</span>.<span class="ident">serialized_context</span>.<span class="ident">as_deref</span>(),
             <span class="self">self</span>.<span class="ident">wire_format</span>,
@@ -523,7 +523,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Deserialize</span> <span class="kw">for</span> <span class="ident">MlsCiphertext</span> {
-    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">wire_format</span> <span class="op">=</span> <span class="ident">WireFormat::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">group_id</span> <span class="op">=</span> <span class="ident">GroupId::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">epoch</span> <span class="op">=</span> <span class="ident">GroupEpoch::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
@@ -557,17 +557,17 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(
         <span class="ident">content_type</span>: <span class="ident">ContentType</span>,
         <span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">content</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">content_type</span> {
-            <span class="ident">ContentType::Application</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">ContentType::Application</span> =&gt; {
                 <span class="kw">let</span> <span class="ident">application_data</span> <span class="op">=</span> <span class="ident">TlsByteVecU32::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
                 <span class="ident">MlsPlaintextContentType::Application</span>(<span class="ident">application_data</span>)
             }
-            <span class="ident">ContentType::Proposal</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">ContentType::Proposal</span> =&gt; {
                 <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="ident">Proposal::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
                 <span class="ident">MlsPlaintextContentType::Proposal</span>(<span class="ident">proposal</span>)
             }
-            <span class="ident">ContentType::Commit</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">ContentType::Commit</span> =&gt; {
                 <span class="kw">let</span> <span class="ident">commit</span> <span class="op">=</span> <span class="ident">Commit::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
                 <span class="ident">MlsPlaintextContentType::Commit</span>(<span class="ident">commit</span>)
             }
@@ -585,68 +585,68 @@
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Serialize</span> <span class="kw">for</span> <span class="ident">MlsMessageIn</span> {
-    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">std::io::Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">std::io::Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">MlsMessageIn::Ciphertext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>),
-            <span class="ident">MlsMessageIn::Plaintext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>),
+            <span class="ident">MlsMessageIn::Ciphertext</span>(<span class="ident">m</span>) =&gt; <span class="ident">m</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>),
+            <span class="ident">MlsMessageIn::Plaintext</span>(<span class="ident">m</span>) =&gt; <span class="ident">m</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>),
         }
     }
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Deserialize</span> <span class="kw">for</span> <span class="ident">MlsMessageIn</span> {
-    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="comment">// Determine the wire format by looking at the first byte</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">first_byte_buffer</span> <span class="op">=</span> [<span class="number">0u8</span>];
         <span class="ident">bytes</span>
             .<span class="ident">read_exact</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">first_byte_buffer</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">tls_codec::Error::EndOfStream</span>)<span class="question-mark">?</span>;
         <span class="kw">match</span> <span class="ident">first_byte_buffer</span>.<span class="ident">first</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">first_byte</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">first_byte</span>) =&gt; {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">chain</span> <span class="op">=</span> <span class="ident">first_byte_buffer</span>.<span class="ident">chain</span>(<span class="ident">bytes</span>);
                 <span class="kw">let</span> <span class="ident">wire_format</span> <span class="op">=</span> <span class="ident">WireFormat::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="macro">vec!</span>[<span class="kw-2">*</span><span class="ident">first_byte</span>].<span class="ident">as_slice</span>())<span class="question-mark">?</span>;
                 <span class="kw">match</span> <span class="ident">wire_format</span> {
-                    <span class="ident">WireFormat::MlsPlaintext</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">WireFormat::MlsPlaintext</span> =&gt; {
                         <span class="kw">let</span> <span class="ident">plaintext</span> <span class="op">=</span> <span class="ident">VerifiableMlsPlaintext::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">chain</span>)<span class="question-mark">?</span>;
-                        <span class="prelude-val">Ok</span>(<span class="ident">MlsMessageIn::Plaintext</span>(<span class="ident">plaintext</span>))
+                        <span class="prelude-val">Ok</span>(<span class="ident">MlsMessageIn::Plaintext</span>(<span class="ident">Box::new</span>(<span class="ident">plaintext</span>)))
                     }
-                    <span class="ident">WireFormat::MlsCiphertext</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">WireFormat::MlsCiphertext</span> =&gt; {
                         <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="ident">MlsCiphertext::tls_deserialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">chain</span>)<span class="question-mark">?</span>;
-                        <span class="prelude-val">Ok</span>(<span class="ident">MlsMessageIn::Ciphertext</span>(<span class="ident">ciphertext</span>))
+                        <span class="prelude-val">Ok</span>(<span class="ident">MlsMessageIn::Ciphertext</span>(<span class="ident">Box::new</span>(<span class="ident">ciphertext</span>)))
                     }
                 }
             }
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::EndOfStream</span>),
+            <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::EndOfStream</span>),
         }
     }
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Size</span> <span class="kw">for</span> <span class="ident">MlsMessageIn</span> {
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span> {
-            <span class="ident">MlsMessageIn::Plaintext</span>(<span class="ident">plaintext</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">MlsMessageIn::Plaintext</span>(<span class="ident">plaintext</span>) =&gt; {
                 <span class="ident">VerifiableMlsPlaintext::tls_serialized_len</span>(<span class="ident">plaintext</span>)
             }
-            <span class="ident">MlsMessageIn::Ciphertext</span>(<span class="ident">ciphertext</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">MlsCiphertext::tls_serialized_len</span>(<span class="ident">ciphertext</span>),
+            <span class="ident">MlsMessageIn::Ciphertext</span>(<span class="ident">ciphertext</span>) =&gt; <span class="ident">MlsCiphertext::tls_serialized_len</span>(<span class="ident">ciphertext</span>),
         }
     }
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Serialize</span> <span class="kw">for</span> <span class="ident">MlsMessageOut</span> {
-    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">std::io::Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">std::io::Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">MlsMessageOut::Ciphertext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>),
-            <span class="ident">MlsMessageOut::Plaintext</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>),
+            <span class="ident">MlsMessageOut::Ciphertext</span>(<span class="ident">m</span>) =&gt; <span class="ident">m</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>),
+            <span class="ident">MlsMessageOut::Plaintext</span>(<span class="ident">m</span>) =&gt; <span class="ident">m</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>),
         }
     }
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Size</span> <span class="kw">for</span> <span class="ident">MlsMessageOut</span> {
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span> {
-            <span class="ident">MlsMessageOut::Plaintext</span>(<span class="ident">plaintext</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">MlsPlaintext::tls_serialized_len</span>(<span class="ident">plaintext</span>),
-            <span class="ident">MlsMessageOut::Ciphertext</span>(<span class="ident">ciphertext</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">MlsCiphertext::tls_serialized_len</span>(<span class="ident">ciphertext</span>),
+            <span class="ident">MlsMessageOut::Plaintext</span>(<span class="ident">plaintext</span>) =&gt; <span class="ident">MlsPlaintext::tls_serialized_len</span>(<span class="ident">plaintext</span>),
+            <span class="ident">MlsMessageOut::Ciphertext</span>(<span class="ident">ciphertext</span>) =&gt; <span class="ident">MlsCiphertext::tls_serialized_len</span>(<span class="ident">ciphertext</span>),
         }
     }
 }

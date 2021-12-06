@@ -681,7 +681,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Serialize</span> <span class="kw">for</span> <span class="ident">KeyPackagePayload</span> {
-    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">std::io::Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">std::io::Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">written</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">protocol_version</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>;
         <span class="ident">written</span> <span class="op">+</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">ciphersuite</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>;
         <span class="ident">written</span> <span class="op">+</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">hpke_init_key</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>;
@@ -701,19 +701,19 @@
 <span class="kw">impl</span> <span class="ident">Signable</span> <span class="kw">for</span> <span class="ident">KeyPackagePayload</span> {
     <span class="kw">type</span> <span class="ident">SignedOutput</span> <span class="op">=</span> <span class="ident">KeyPackage</span>;
 
-    <span class="kw">fn</span> <span class="ident">unsigned_payload</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">unsigned_payload</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">tls_serialize_detached</span>()
     }
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">KeyPackage</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">KeyPackagePayload</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">kp</span>: <span class="ident">KeyPackage</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">kp</span>: <span class="ident">KeyPackage</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">kp</span>.<span class="ident">payload</span>
     }
 }
 
 <span class="kw">impl</span> <span class="ident">KeyPackagePayload</span> {
-    <span class="kw">fn</span> <span class="ident">from_key_package</span>(<span class="ident">kp</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span>, <span class="ident">hpke_init_key</span>: <span class="ident">HpkePublicKey</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">from_key_package</span>(<span class="ident">kp</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span>, <span class="ident">hpke_init_key</span>: <span class="ident">HpkePublicKey</span>) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">protocol_version</span>: <span class="ident">kp</span>.<span class="ident">payload</span>.<span class="ident">protocol_version</span>,
             <span class="ident">ciphersuite</span>: <span class="ident">kp</span>.<span class="ident">payload</span>.<span class="ident">ciphersuite</span>,
@@ -736,7 +736,7 @@
     }
 
     <span class="doccomment">/// Get extensions of the KeyPackage.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extensions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">Extension</span>] {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extensions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">Extension</span>] {
         <span class="self">self</span>.<span class="ident">extensions</span>.<span class="ident">as_slice</span>()
     }
 }
@@ -749,15 +749,15 @@
 }
 
 <span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">KeyPackage</span> {
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="ident">bool</span> {
         <span class="comment">// We ignore the signature in the comparison. The same key package</span>
         <span class="comment">// may have different, valid signatures.</span>
-        <span class="self">self</span>.<span class="ident">payload</span> <span class="op">=</span><span class="op">=</span> <span class="ident">other</span>.<span class="ident">payload</span> <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">encoded</span> <span class="op">=</span><span class="op">=</span> <span class="ident">other</span>.<span class="ident">encoded</span>
+        <span class="self">self</span>.<span class="ident">payload</span> <span class="op">==</span> <span class="ident">other</span>.<span class="ident">payload</span> <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">encoded</span> <span class="op">==</span> <span class="ident">other</span>.<span class="ident">encoded</span>
     }
 }
 
 <span class="kw">impl</span> <span class="ident">SignedStruct</span><span class="op">&lt;</span><span class="ident">KeyPackagePayload</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">KeyPackage</span> {
-    <span class="kw">fn</span> <span class="ident">from_payload</span>(<span class="ident">payload</span>: <span class="ident">KeyPackagePayload</span>, <span class="ident">signature</span>: <span class="ident">Signature</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">from_payload</span>(<span class="ident">payload</span>: <span class="ident">KeyPackagePayload</span>, <span class="ident">signature</span>: <span class="ident">Signature</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">encoded</span> <span class="op">=</span> <span class="ident">payload</span>.<span class="ident">unsigned_payload</span>().<span class="ident">unwrap</span>();
         <span class="self">Self</span> {
             <span class="ident">payload</span>,
@@ -768,11 +768,11 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Verifiable</span> <span class="kw">for</span> <span class="ident">KeyPackage</span> {
-    <span class="kw">fn</span> <span class="ident">unsigned_payload</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">unsigned_payload</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">encoded</span>.<span class="ident">clone</span>())
     }
 
-    <span class="kw">fn</span> <span class="ident">signature</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Signature</span> {
+    <span class="kw">fn</span> <span class="ident">signature</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Signature</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">signature</span>
     }
 }
@@ -788,26 +788,26 @@
     <span class="doccomment">/// * verify that all mandatory extensions are present</span>
     <span class="doccomment">/// * make sure that the lifetime is valid</span>
     <span class="doccomment">/// Returns `Ok(())` if all checks succeed and `KeyPackageError` otherwise</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
         <span class="comment">//  First make sure that all mandatory extensions are present.</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mandatory_extensions_found</span> <span class="op">=</span> <span class="ident">MANDATORY_EXTENSIONS</span>.<span class="ident">to_vec</span>();
         <span class="kw">for</span> <span class="ident">extension</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">payload</span>.<span class="ident">extensions</span>.<span class="ident">iter</span>() {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">p</span>) <span class="op">=</span> <span class="ident">mandatory_extensions_found</span>
                 .<span class="ident">iter</span>()
-                .<span class="ident">position</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span> <span class="op">=</span><span class="op">=</span> <span class="ident">extension</span>.<span class="ident">extension_type</span>())
+                .<span class="ident">position</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span> <span class="op">==</span> <span class="ident">extension</span>.<span class="ident">extension_type</span>())
             {
                 <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">mandatory_extensions_found</span>.<span class="ident">remove</span>(<span class="ident">p</span>);
             }
             <span class="comment">// Make sure the lifetime is valid.</span>
-            <span class="kw">if</span> <span class="ident">extension</span>.<span class="ident">extension_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">ExtensionType::Lifetime</span> {
+            <span class="kw">if</span> <span class="ident">extension</span>.<span class="ident">extension_type</span>() <span class="op">==</span> <span class="ident">ExtensionType::Lifetime</span> {
                 <span class="kw">match</span> <span class="ident">extension</span>.<span class="ident">as_lifetime_extension</span>() {
-                    <span class="prelude-val">Ok</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Ok</span>(<span class="ident">e</span>) =&gt; {
                         <span class="kw">if</span> <span class="op">!</span><span class="ident">e</span>.<span class="ident">is_valid</span>() {
                             <span class="macro">log::error!</span>(<span class="string">&quot;Invalid lifetime extension in key package.&quot;</span>);
                             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyPackageError::InvalidLifetimeExtension</span>);
                         }
                     }
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                         <span class="macro">log::error!</span>(<span class="string">&quot;as_lifetime_extension failed while verifying a key package.&quot;</span>);
                         <span class="macro">error!</span>(<span class="string">&quot;Library error: {:?}&quot;</span>, <span class="ident">e</span>);
                         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyPackageError::LibraryError</span>);
@@ -831,14 +831,14 @@
     }
 
     <span class="doccomment">/// Compute the hash of the encoding of this key package.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">payload</span>.<span class="ident">ciphersuite</span>.<span class="ident">hash</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">bytes</span>)<span class="question-mark">?</span>)
     }
 
     <span class="doccomment">/// Get the ID of this key package as byte slice.</span>
     <span class="doccomment">/// Returns an error if no Key ID extension is present.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">key_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">key_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">key_id_ext</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">extension_with_type</span>(<span class="ident">ExtensionType::KeyId</span>) {
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">key_id_ext</span>.<span class="ident">as_key_id_extension</span>()<span class="question-mark">?</span>.<span class="ident">as_slice</span>());
         }
@@ -848,7 +848,7 @@
     }
 
     <span class="doccomment">/// Get a reference to the extensions of this key package.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extensions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">Extension</span>] {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extensions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">Extension</span>] {
         <span class="self">self</span>.<span class="ident">payload</span>.<span class="ident">extensions</span>.<span class="ident">as_slice</span>()
     }
 
@@ -857,10 +857,10 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">check_extension_support</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">required_extensions</span>: <span class="kw-2">&amp;</span>[<span class="ident">ExtensionType</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">my_extension_types</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">extensions</span>().<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">ext</span><span class="op">|</span> <span class="ident">ext</span>.<span class="ident">extension_type</span>());
         <span class="kw">for</span> <span class="ident">required</span> <span class="kw">in</span> <span class="ident">required_extensions</span>.<span class="ident">iter</span>() {
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">my_extension_types</span>.<span class="ident">clone</span>().<span class="ident">any</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">e</span> <span class="op">=</span><span class="op">=</span> <span class="ident">required</span>) {
+            <span class="kw">if</span> <span class="op">!</span><span class="ident">my_extension_types</span>.<span class="ident">clone</span>().<span class="ident">any</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">e</span> <span class="op">==</span> <span class="ident">required</span>) {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyPackageError::UnsupportedExtension</span>);
             }
         }
@@ -868,7 +868,7 @@
     }
 
     <span class="doccomment">/// Get a reference to the credential.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">credential</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Credential</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">credential</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Credential</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">payload</span>.<span class="ident">credential</span>
     }
 
@@ -877,11 +877,11 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">validate_required_capabilities</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">required_capabilities</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">RequiredCapabilitiesExtension</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">required_capabilities</span>) <span class="op">=</span> <span class="ident">required_capabilities</span>.<span class="ident">into</span>() {
             <span class="kw">let</span> <span class="ident">my_extension_types</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">extensions</span>().<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">extension_type</span>());
             <span class="kw">for</span> <span class="ident">required_extension</span> <span class="kw">in</span> <span class="ident">required_capabilities</span>.<span class="ident">extensions</span>() {
-                <span class="kw">if</span> <span class="op">!</span><span class="ident">my_extension_types</span>.<span class="ident">clone</span>().<span class="ident">any</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">e</span> <span class="op">=</span><span class="op">=</span> <span class="ident">required_extension</span>) {
+                <span class="kw">if</span> <span class="op">!</span><span class="ident">my_extension_types</span>.<span class="ident">clone</span>().<span class="ident">any</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">e</span> <span class="op">==</span> <span class="ident">required_extension</span>) {
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyPackageError::UnsupportedExtension</span>);
                 }
             }
@@ -901,7 +901,7 @@
         <span class="ident">hpke_init_key</span>: <span class="ident">HpkePublicKey</span>,
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">SignatureScheme::from</span>(<span class="ident">ciphersuite_name</span>)
             <span class="op">!</span><span class="op">=</span> <span class="ident">credential_bundle</span>.<span class="ident">credential</span>().<span class="ident">signature_scheme</span>()
         {
@@ -924,9 +924,9 @@
     <span class="doccomment">/// Get a reference to the extension of `extension_type`.</span>
     <span class="doccomment">/// Returns `Some(extension)` if present and `None` if the extension is not</span>
     <span class="doccomment">/// present.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">extension_with_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">extension_type</span>: <span class="ident">ExtensionType</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Extension</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">extension_with_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">extension_type</span>: <span class="ident">ExtensionType</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Extension</span><span class="op">&gt;</span> {
         <span class="kw">for</span> <span class="ident">e</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">payload</span>.<span class="ident">extensions</span>.<span class="ident">as_slice</span>() {
-            <span class="kw">if</span> <span class="ident">e</span>.<span class="ident">extension_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">extension_type</span> {
+            <span class="kw">if</span> <span class="ident">e</span>.<span class="ident">extension_type</span>() <span class="op">==</span> <span class="ident">extension_type</span> {
                 <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">e</span>);
             }
         }
@@ -934,22 +934,22 @@
     }
 
     <span class="doccomment">/// Get a reference to the HPKE init key.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hpke_init_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">HpkePublicKey</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hpke_init_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">HpkePublicKey</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">payload</span>.<span class="ident">hpke_init_key</span>
     }
 
     <span class="doccomment">/// Get the `Ciphersuite`.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ciphersuite</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ciphersuite</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span> {
         <span class="self">self</span>.<span class="ident">payload</span>.<span class="ident">ciphersuite</span>
     }
 
     <span class="doccomment">/// Get the `ProtocolVersion`.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">protocol_version</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ProtocolVersion</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">protocol_version</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ProtocolVersion</span> {
         <span class="self">self</span>.<span class="ident">payload</span>.<span class="ident">protocol_version</span>
     }
 
     <span class="doccomment">/// Get the `CiphersuiteName`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ciphersuite_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">CiphersuiteName</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ciphersuite_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">CiphersuiteName</span> {
         <span class="self">self</span>.<span class="ident">payload</span>.<span class="ident">ciphersuite</span>.<span class="ident">name</span>()
     }
 }
@@ -967,7 +967,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_rekeyed_key_package</span>(
         <span class="ident">key_package</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">leaf_secret</span> <span class="op">=</span> <span class="ident">Secret::random</span>(
             <span class="ident">key_package</span>.<span class="ident">ciphersuite</span>(),
             <span class="ident">backend</span>,
@@ -983,7 +983,7 @@
         <span class="ident">leaf_secret</span>: <span class="ident">Secret</span>,
         <span class="ident">key_package</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">leaf_node_secret</span> <span class="op">=</span> <span class="ident">derive_leaf_node_secret</span>(<span class="kw-2">&amp;</span><span class="ident">leaf_secret</span>, <span class="ident">backend</span>);
         <span class="kw">let</span> <span class="ident">key_pair</span> <span class="op">=</span> <span class="ident">backend</span>.<span class="ident">crypto</span>().<span class="ident">derive_hpke_keypair</span>(
             <span class="ident">key_package</span>.<span class="ident">ciphersuite</span>().<span class="ident">hpke_config</span>(),
@@ -1015,13 +1015,13 @@
 <span class="kw">impl</span> <span class="ident">Signable</span> <span class="kw">for</span> <span class="ident">KeyPackageBundlePayload</span> {
     <span class="kw">type</span> <span class="ident">SignedOutput</span> <span class="op">=</span> <span class="ident">KeyPackageBundle</span>;
 
-    <span class="kw">fn</span> <span class="ident">unsigned_payload</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">unsigned_payload</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">key_package_payload</span>.<span class="ident">unsigned_payload</span>()
     }
 }
 
 <span class="kw">impl</span> <span class="ident">SignedStruct</span><span class="op">&lt;</span><span class="ident">KeyPackageBundlePayload</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">KeyPackageBundle</span> {
-    <span class="kw">fn</span> <span class="ident">from_payload</span>(<span class="ident">payload</span>: <span class="ident">KeyPackageBundlePayload</span>, <span class="ident">signature</span>: <span class="ident">Signature</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">from_payload</span>(<span class="ident">payload</span>: <span class="ident">KeyPackageBundlePayload</span>, <span class="ident">signature</span>: <span class="ident">Signature</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">key_package</span> <span class="op">=</span> <span class="ident">KeyPackage::from_payload</span>(<span class="ident">payload</span>.<span class="ident">key_package_payload</span>, <span class="ident">signature</span>);
         <span class="self">Self</span> {
             <span class="ident">key_package</span>,
@@ -1040,7 +1040,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">KeyPackageBundlePayload</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">kpb</span>: <span class="ident">KeyPackageBundle</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">kpb</span>: <span class="ident">KeyPackageBundle</span>) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">key_package_payload</span>: <span class="ident">kpb</span>.<span class="ident">key_package</span>.<span class="ident">into</span>(),
             <span class="ident">private_key</span>: <span class="ident">kpb</span>.<span class="ident">private_key</span>,
@@ -1062,7 +1062,7 @@
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
         <span class="ident"><span class="self">Self</span>::new_with_version</span>(
             <span class="ident">ProtocolVersion::default</span>(),
             <span class="ident">ciphersuites</span>,
@@ -1086,7 +1086,7 @@
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">SignatureScheme::from</span>(<span class="ident">ciphersuites</span>[<span class="number">0</span>])
             <span class="op">!</span><span class="op">=</span> <span class="ident">credential_bundle</span>.<span class="ident">credential</span>().<span class="ident">signature_scheme</span>()
         {
@@ -1124,7 +1124,7 @@
         <span class="kw-2">mut</span> <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>,
         <span class="ident">key_pair</span>: <span class="ident">HpkeKeyPair</span>,
         <span class="ident">leaf_secret</span>: <span class="ident">Secret</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">ciphersuites</span>.<span class="ident">is_empty</span>() {
             <span class="kw">let</span> <span class="ident">error</span> <span class="op">=</span> <span class="ident">KeyPackageError::NoCiphersuitesSupplied</span>;
             <span class="macro">error!</span>(
@@ -1157,9 +1157,9 @@
 
         <span class="kw">match</span> <span class="ident">extensions</span>
             .<span class="ident">iter</span>()
-            .<span class="ident">find</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">extension_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">ExtensionType::Capabilities</span>)
+            .<span class="ident">find</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">extension_type</span>() <span class="op">==</span> <span class="ident">ExtensionType::Capabilities</span>)
         {
-            <span class="prelude-val">Some</span>(<span class="ident">extension</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">extension</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">capabilities_extension</span> <span class="op">=</span> <span class="ident">extension</span>.<span class="ident">as_capabilities_extension</span>()<span class="question-mark">?</span>;
                 <span class="kw">if</span> <span class="ident">capabilities_extension</span>.<span class="ident">ciphersuites</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">ciphersuites</span> {
                     <span class="kw">let</span> <span class="ident">error</span> <span class="op">=</span> <span class="ident">KeyPackageError::CiphersuiteMismatch</span>;
@@ -1171,7 +1171,7 @@
                 }
             }
 
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">extensions</span>.<span class="ident">push</span>(<span class="ident">Extension::Capabilities</span>(<span class="ident">CapabilitiesExtension::new</span>(
+            <span class="prelude-val">None</span> =&gt; <span class="ident">extensions</span>.<span class="ident">push</span>(<span class="ident">Extension::Capabilities</span>(<span class="ident">CapabilitiesExtension::new</span>(
                 <span class="prelude-val">None</span>,
                 <span class="prelude-val">Some</span>(<span class="ident">ciphersuites</span>),
                 <span class="prelude-val">None</span>,
@@ -1183,7 +1183,7 @@
         <span class="comment">// least valid.</span>
         <span class="kw">if</span> <span class="op">!</span><span class="ident">extensions</span>
             .<span class="ident">iter</span>()
-            .<span class="ident">any</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">extension_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">ExtensionType::Lifetime</span>)
+            .<span class="ident">any</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">extension_type</span>() <span class="op">==</span> <span class="ident">ExtensionType::Lifetime</span>)
         {
             <span class="ident">extensions</span>.<span class="ident">push</span>(<span class="ident">Extension::LifeTime</span>(<span class="ident">LifetimeExtension::default</span>()));
         }
@@ -1202,12 +1202,12 @@
     }
 
     <span class="doccomment">/// Get a reference to the `KeyPackage`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">key_package</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">key_package</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">key_package</span>
     }
 
     <span class="doccomment">/// Get the unsigned payload version of this key package bundle for modificaiton.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">unsigned</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">KeyPackageBundlePayload</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">unsigned</span>(<span class="self">self</span>) -&gt; <span class="ident">KeyPackageBundlePayload</span> {
         <span class="self">self</span>.<span class="ident">into</span>()
     }
 }
@@ -1220,7 +1220,7 @@
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">extensions</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>,
         <span class="ident">leaf_secret</span>: <span class="ident">Secret</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">ciphersuites</span>.<span class="ident">is_empty</span>() {
             <span class="kw">let</span> <span class="ident">error</span> <span class="op">=</span> <span class="ident">KeyPackageError::NoCiphersuitesSupplied</span>;
             <span class="macro">error!</span>(
@@ -1254,12 +1254,12 @@
     }
 
     <span class="doccomment">/// Get a reference to the `HpkePrivateKey`.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">private_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">HpkePrivateKey</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">private_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">HpkePrivateKey</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">private_key</span>
     }
 
     <span class="doccomment">/// Get a reference to the `leaf_secret`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">leaf_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Secret</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">leaf_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Secret</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">leaf_secret</span>
     }
 }
@@ -1269,7 +1269,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">derive_leaf_node_secret</span>(
     <span class="ident">leaf_secret</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>,
     <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Secret</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Secret</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
     <span class="ident">leaf_secret</span>.<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;node&quot;</span>)
 }
 </code></pre></div>

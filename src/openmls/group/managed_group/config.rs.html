@@ -166,37 +166,37 @@
 
 <span class="kw">impl</span> <span class="ident">ManagedGroupConfig</span> {
     <span class="doccomment">/// Returns a builder for [`ManagedGroupConfig`]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">builder</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ManagedGroupConfigBuilder</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">builder</span>() -&gt; <span class="ident">ManagedGroupConfigBuilder</span> {
         <span class="ident">ManagedGroupConfigBuilder::new</span>()
     }
 
     <span class="doccomment">/// Get the [`ManagedGroupConfig`] wire format.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wire_format</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">WireFormat</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wire_format</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">WireFormat</span> {
         <span class="self">self</span>.<span class="ident">wire_format</span>
     }
 
     <span class="doccomment">/// Get the [`ManagedGroupConfig`] padding size.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">padding_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">padding_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         <span class="self">self</span>.<span class="ident">padding_size</span>
     }
 
     <span class="doccomment">/// Get a reference to the [`ManagedGroupConfig`] update policy.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_policy</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">UpdatePolicy</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_policy</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">UpdatePolicy</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">update_policy</span>
     }
 
     <span class="doccomment">/// Get the [`ManagedGroupConfig`] number of resumption secrets.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">number_of_resumption_secrets</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">number_of_resumption_secrets</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         <span class="self">self</span>.<span class="ident">number_of_resumption_secrets</span>
     }
 
     <span class="doccomment">/// Get the [`ManagedGroupConfig`] boolean flag that indicates whether ratchet_tree_extension should be used.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">use_ratchet_tree_extension</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">use_ratchet_tree_extension</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">use_ratchet_tree_extension</span>
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">test_default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">test_default</span>() -&gt; <span class="self">Self</span> {
         <span class="ident"><span class="self">Self</span>::builder</span>()
             .<span class="ident">wire_format</span>(<span class="ident">WireFormat::MlsPlaintext</span>)
             .<span class="ident">build</span>()
@@ -204,7 +204,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">ManagedGroupConfig</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
         <span class="ident">ManagedGroupConfig</span> {
             <span class="ident">wire_format</span>: <span class="ident">WireFormat::MlsCiphertext</span>,
             <span class="ident">update_policy</span>: <span class="ident">UpdatePolicy::default</span>(),
@@ -221,43 +221,43 @@
     <span class="ident">config</span>: <span class="ident">ManagedGroupConfig</span>,
 }
 <span class="kw">impl</span> <span class="ident">ManagedGroupConfigBuilder</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="ident">ManagedGroupConfigBuilder</span> {
             <span class="ident">config</span>: <span class="ident">ManagedGroupConfig::default</span>(),
         }
     }
 
     <span class="doccomment">/// Sets the `wire_format` property of the ManagedGroupConfig.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wire_format</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">wire_format</span>: <span class="ident">WireFormat</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wire_format</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">wire_format</span>: <span class="ident">WireFormat</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">wire_format</span> <span class="op">=</span> <span class="ident">wire_format</span>;
         <span class="self">self</span>
     }
 
     <span class="doccomment">/// Sets the `update_policy` property of the ManagedGroupConfig.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_policy</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">update_policy</span>: <span class="ident">UpdatePolicy</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_policy</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">update_policy</span>: <span class="ident">UpdatePolicy</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">update_policy</span> <span class="op">=</span> <span class="ident">update_policy</span>;
         <span class="self">self</span>
     }
 
     <span class="doccomment">/// Sets the `padding_size` property of the ManagedGroupConfig.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">padding_size</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">padding_size</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">padding_size</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">padding_size</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">padding_size</span> <span class="op">=</span> <span class="ident">padding_size</span>;
         <span class="self">self</span>
     }
 
     <span class="doccomment">/// Sets the `number_of_resumption_secrets` property of the ManagedGroupConfig.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">number_of_resumtion_secrets</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">number_of_resumption_secrets</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">number_of_resumtion_secrets</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">number_of_resumption_secrets</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">number_of_resumption_secrets</span> <span class="op">=</span> <span class="ident">number_of_resumption_secrets</span>;
         <span class="self">self</span>
     }
 
     <span class="doccomment">/// Sets the `use_ratchet_tree_extension` property of the ManagedGroupConfig.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">use_ratchet_tree_extension</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">use_ratchet_tree_extension</span>: <span class="ident">bool</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">use_ratchet_tree_extension</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">use_ratchet_tree_extension</span>: <span class="ident">bool</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">use_ratchet_tree_extension</span> <span class="op">=</span> <span class="ident">use_ratchet_tree_extension</span>;
         <span class="self">self</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ManagedGroupConfig</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(<span class="self">self</span>) -&gt; <span class="ident">ManagedGroupConfig</span> {
         <span class="self">self</span>.<span class="ident">config</span>
     }
 }
@@ -274,7 +274,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">UpdatePolicy</span> {
-    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
         <span class="ident">UpdatePolicy</span> {
             <span class="ident">maximum_time</span>: <span class="number">2_592_000</span>, <span class="comment">// 30 days in seconds</span>
             <span class="ident">maximum_sent_messages</span>: <span class="number">100</span>,

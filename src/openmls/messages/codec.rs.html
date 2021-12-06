@@ -171,10 +171,10 @@
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Size</span> <span class="kw">for</span> <span class="ident">GroupInfo</span> {
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         <span class="kw">let</span> <span class="ident">payload_len</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">payload</span>.<span class="ident">unsigned_payload</span>() {
-            <span class="prelude-val">Ok</span>(<span class="ident">p</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">p</span>.<span class="ident">len</span>(),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">p</span>) =&gt; <span class="ident">p</span>.<span class="ident">len</span>(),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                 <span class="macro">log::error!</span>(<span class="string">&quot;Unable to get unsigned payload from GroupInfo {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="number">0</span>
             }
@@ -184,7 +184,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Serialize</span> <span class="kw">for</span> <span class="ident">GroupInfo</span> {
-    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">unsigned_payload</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">payload</span>.<span class="ident">unsigned_payload</span>()<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">written</span> <span class="op">=</span> <span class="ident">writer</span>.<span class="ident">write</span>(<span class="ident">unsigned_payload</span>)<span class="question-mark">?</span>;
         <span class="macro">debug_assert_eq!</span>(<span class="ident">written</span>, <span class="ident">unsigned_payload</span>.<span class="ident">len</span>());
@@ -193,7 +193,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Deserialize</span> <span class="kw">for</span> <span class="ident">GroupInfo</span> {
-    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="ident">GroupInfoPayload::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">Signature::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">GroupInfo</span> { <span class="ident">payload</span>, <span class="ident">signature</span> })
@@ -202,33 +202,33 @@
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Size</span> <span class="kw">for</span> <span class="ident">ProposalOrRef</span> {
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         <span class="self">self</span>.<span class="ident">proposal_or_ref_type</span>().<span class="ident">tls_serialized_len</span>()
             <span class="op">+</span> <span class="kw">match</span> <span class="self">self</span> {
-                <span class="ident">ProposalOrRef::Proposal</span>(<span class="ident">proposal</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">proposal</span>.<span class="ident">tls_serialized_len</span>(),
-                <span class="ident">ProposalOrRef::Reference</span>(<span class="ident">reference</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">reference</span>.<span class="ident">tls_serialized_len</span>(),
+                <span class="ident">ProposalOrRef::Proposal</span>(<span class="ident">proposal</span>) =&gt; <span class="ident">proposal</span>.<span class="ident">tls_serialized_len</span>(),
+                <span class="ident">ProposalOrRef::Reference</span>(<span class="ident">reference</span>) =&gt; <span class="ident">reference</span>.<span class="ident">tls_serialized_len</span>(),
             }
     }
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Serialize</span> <span class="kw">for</span> <span class="ident">ProposalOrRef</span> {
-    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">written</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">proposal_or_ref_type</span>().<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>;
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">ProposalOrRef::Proposal</span>(<span class="ident">proposal</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">proposal</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>),
-            <span class="ident">ProposalOrRef::Reference</span>(<span class="ident">reference</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">reference</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>),
+            <span class="ident">ProposalOrRef::Proposal</span>(<span class="ident">proposal</span>) =&gt; <span class="ident">proposal</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>),
+            <span class="ident">ProposalOrRef::Reference</span>(<span class="ident">reference</span>) =&gt; <span class="ident">reference</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>),
         }
         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span> <span class="op">+</span> <span class="ident">written</span>)
     }
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Deserialize</span> <span class="kw">for</span> <span class="ident">ProposalOrRef</span> {
-    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">ProposalOrRefType::try_from</span>(<span class="ident">u8::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span> {
-            <span class="ident">ProposalOrRefType::Proposal</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">ProposalOrRefType::Proposal</span> =&gt; {
                 <span class="prelude-val">Ok</span>(<span class="ident">ProposalOrRef::Proposal</span>(<span class="ident">Proposal::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>))
             }
-            <span class="ident">ProposalOrRefType::Reference</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ProposalOrRef::Reference</span>(
+            <span class="ident">ProposalOrRefType::Reference</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ProposalOrRef::Reference</span>(
                 <span class="ident">ProposalReference::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>,
             )),
         }
@@ -237,17 +237,17 @@
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Size</span> <span class="kw">for</span> <span class="ident">Proposal</span> {
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         <span class="ident">ProposalType::Add</span>.<span class="ident">tls_serialized_len</span>()
             <span class="op">+</span> <span class="kw">match</span> <span class="self">self</span> {
-                <span class="ident">Proposal::Add</span>(<span class="ident">add</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">add</span>.<span class="ident">tls_serialized_len</span>(),
-                <span class="ident">Proposal::Update</span>(<span class="ident">update</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">update</span>.<span class="ident">tls_serialized_len</span>(),
-                <span class="ident">Proposal::Remove</span>(<span class="ident">remove</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">remove</span>.<span class="ident">tls_serialized_len</span>(),
-                <span class="ident">Proposal::PreSharedKey</span>(<span class="ident">pre_shared_key</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">pre_shared_key</span>.<span class="ident">tls_serialized_len</span>(),
-                <span class="ident">Proposal::ReInit</span>(<span class="ident">re_init</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">re_init</span>.<span class="ident">tls_serialized_len</span>(),
-                <span class="ident">Proposal::ExternalInit</span>(<span class="ident">external_init</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">external_init</span>.<span class="ident">tls_serialized_len</span>(),
-                <span class="ident">Proposal::AppAck</span>(<span class="ident">app_ack</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">app_ack</span>.<span class="ident">tls_serialized_len</span>(),
-                <span class="ident">Proposal::GroupContextExtensions</span>(<span class="ident">group_context_extensions</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">Proposal::Add</span>(<span class="ident">add</span>) =&gt; <span class="ident">add</span>.<span class="ident">tls_serialized_len</span>(),
+                <span class="ident">Proposal::Update</span>(<span class="ident">update</span>) =&gt; <span class="ident">update</span>.<span class="ident">tls_serialized_len</span>(),
+                <span class="ident">Proposal::Remove</span>(<span class="ident">remove</span>) =&gt; <span class="ident">remove</span>.<span class="ident">tls_serialized_len</span>(),
+                <span class="ident">Proposal::PreSharedKey</span>(<span class="ident">pre_shared_key</span>) =&gt; <span class="ident">pre_shared_key</span>.<span class="ident">tls_serialized_len</span>(),
+                <span class="ident">Proposal::ReInit</span>(<span class="ident">re_init</span>) =&gt; <span class="ident">re_init</span>.<span class="ident">tls_serialized_len</span>(),
+                <span class="ident">Proposal::ExternalInit</span>(<span class="ident">external_init</span>) =&gt; <span class="ident">external_init</span>.<span class="ident">tls_serialized_len</span>(),
+                <span class="ident">Proposal::AppAck</span>(<span class="ident">app_ack</span>) =&gt; <span class="ident">app_ack</span>.<span class="ident">tls_serialized_len</span>(),
+                <span class="ident">Proposal::GroupContextExtensions</span>(<span class="ident">group_context_extensions</span>) =&gt; {
                     <span class="ident">group_context_extensions</span>.<span class="ident">tls_serialized_len</span>()
                 }
             }
@@ -255,37 +255,37 @@
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Serialize</span> <span class="kw">for</span> <span class="ident">Proposal</span> {
-    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Proposal::Add</span>(<span class="ident">add</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Proposal::Add</span>(<span class="ident">add</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">written</span> <span class="op">=</span> <span class="ident">ProposalType::Add</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>;
                 <span class="ident">add</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span> <span class="op">+</span> <span class="ident">written</span>)
             }
-            <span class="ident">Proposal::Update</span>(<span class="ident">update</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Proposal::Update</span>(<span class="ident">update</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">written</span> <span class="op">=</span> <span class="ident">ProposalType::Update</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>;
                 <span class="ident">update</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span> <span class="op">+</span> <span class="ident">written</span>)
             }
-            <span class="ident">Proposal::Remove</span>(<span class="ident">remove</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Proposal::Remove</span>(<span class="ident">remove</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">written</span> <span class="op">=</span> <span class="ident">ProposalType::Remove</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>;
                 <span class="ident">remove</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span> <span class="op">+</span> <span class="ident">written</span>)
             }
-            <span class="ident">Proposal::PreSharedKey</span>(<span class="ident">presharedkey</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Proposal::PreSharedKey</span>(<span class="ident">presharedkey</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">written</span> <span class="op">=</span> <span class="ident">ProposalType::Presharedkey</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>;
                 <span class="ident">presharedkey</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span> <span class="op">+</span> <span class="ident">written</span>)
             }
-            <span class="ident">Proposal::ReInit</span>(<span class="ident">reinit</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Proposal::ReInit</span>(<span class="ident">reinit</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">written</span> <span class="op">=</span> <span class="ident">ProposalType::Reinit</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>;
                 <span class="ident">reinit</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span> <span class="op">+</span> <span class="ident">written</span>)
             }
-            <span class="ident">Proposal::ExternalInit</span>(<span class="ident">external_init</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Proposal::ExternalInit</span>(<span class="ident">external_init</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">written</span> <span class="op">=</span> <span class="ident">ProposalType::ExternalInit</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>;
                 <span class="ident">external_init</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span> <span class="op">+</span> <span class="ident">written</span>)
             }
-            <span class="ident">Proposal::AppAck</span>(<span class="ident">app_ack</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Proposal::AppAck</span>(<span class="ident">app_ack</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">written</span> <span class="op">=</span> <span class="ident">ProposalType::AppAck</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>;
                 <span class="ident">app_ack</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span> <span class="op">+</span> <span class="ident">written</span>)
             }
-            <span class="ident">Proposal::GroupContextExtensions</span>(<span class="ident">group_context_extensions</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Proposal::GroupContextExtensions</span>(<span class="ident">group_context_extensions</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">written</span> <span class="op">=</span> <span class="ident">ProposalType::GroupContextExtensions</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>;
                 <span class="ident">group_context_extensions</span>
                     .<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)
@@ -296,10 +296,10 @@
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Deserialize</span> <span class="kw">for</span> <span class="ident">Proposal</span> {
-    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">proposal_type</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">ProposalType::try_from</span>(<span class="ident">u16::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">proposal_type</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">proposal_type</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">proposal_type</span>) =&gt; <span class="ident">proposal_type</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::DecodingError</span>(<span class="macro">format!</span>(
                     <span class="string">&quot;Deserialization error {}&quot;</span>,
                     <span class="ident">e</span>
@@ -307,20 +307,20 @@
             }
         };
         <span class="kw">match</span> <span class="ident">proposal_type</span> {
-            <span class="ident">ProposalType::Add</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Proposal::Add</span>(<span class="ident">AddProposal::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>)),
-            <span class="ident">ProposalType::Update</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Proposal::Update</span>(<span class="ident">UpdateProposal::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>)),
-            <span class="ident">ProposalType::Remove</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Proposal::Remove</span>(<span class="ident">RemoveProposal::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>)),
-            <span class="ident">ProposalType::Presharedkey</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Proposal::PreSharedKey</span>(
+            <span class="ident">ProposalType::Add</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Proposal::Add</span>(<span class="ident">AddProposal::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>)),
+            <span class="ident">ProposalType::Update</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Proposal::Update</span>(<span class="ident">UpdateProposal::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>)),
+            <span class="ident">ProposalType::Remove</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Proposal::Remove</span>(<span class="ident">RemoveProposal::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>)),
+            <span class="ident">ProposalType::Presharedkey</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Proposal::PreSharedKey</span>(
                 <span class="ident">PreSharedKeyProposal::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>,
             )),
-            <span class="ident">ProposalType::Reinit</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Proposal::ReInit</span>(<span class="ident">ReInitProposal::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>)),
-            <span class="ident">ProposalType::ExternalInit</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::DecodingError</span>(
+            <span class="ident">ProposalType::Reinit</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Proposal::ReInit</span>(<span class="ident">ReInitProposal::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>)),
+            <span class="ident">ProposalType::ExternalInit</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::DecodingError</span>(
                 <span class="string">&quot;External Init is not supported yet in OpenMLS.&quot;</span>.<span class="ident">to_string</span>(),
             )),
-            <span class="ident">ProposalType::AppAck</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::DecodingError</span>(
+            <span class="ident">ProposalType::AppAck</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::DecodingError</span>(
                 <span class="string">&quot;App ack is not supported yet in OpenMLS.&quot;</span>.<span class="ident">to_string</span>(),
             )),
-            <span class="ident">ProposalType::GroupContextExtensions</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Proposal::GroupContextExtensions</span>(
+            <span class="ident">ProposalType::GroupContextExtensions</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Proposal::GroupContextExtensions</span>(
                 <span class="ident">GroupContextExtensionProposal::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>,
             )),
         }

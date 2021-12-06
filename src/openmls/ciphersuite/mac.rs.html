@@ -51,7 +51,7 @@
 
 <span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">Mac</span> {
     <span class="comment">// Constant time comparison.</span>
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">Mac</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">Mac</span>) -&gt; <span class="ident">bool</span> {
         <span class="ident">equal_ct</span>(<span class="self">self</span>.<span class="ident">mac_value</span>.<span class="ident">as_slice</span>(), <span class="ident">other</span>.<span class="ident">mac_value</span>.<span class="ident">as_slice</span>())
     }
 }
@@ -64,7 +64,7 @@
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">salt</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>,
         <span class="ident">ikm</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">Mac</span> {
             <span class="ident">mac_value</span>: <span class="ident">salt</span>
                 .<span class="ident">hkdf_extract</span>(

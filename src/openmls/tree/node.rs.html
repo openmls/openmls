@@ -246,24 +246,24 @@
 
 <span class="kw">impl</span> <span class="ident">NodeType</span> {
     <span class="doccomment">/// Returns `true` if the node type is `Leaf` and `false` otherwise.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_leaf</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="self">self</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">NodeType::Leaf</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_leaf</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
+        <span class="self">self</span> <span class="op">==</span> <span class="kw-2">&amp;</span><span class="ident">NodeType::Leaf</span>
     }
 
     <span class="doccomment">/// Returns `true` if the node type is `Parent` and `false` otherwise.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_parent</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="self">self</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">NodeType::Parent</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_parent</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
+        <span class="self">self</span> <span class="op">==</span> <span class="kw-2">&amp;</span><span class="ident">NodeType::Parent</span>
     }
 }
 
 <span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">NodeType</span> {
     <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>;
-    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">value</span>: <span class="ident">u8</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">value</span>: <span class="ident">u8</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">value</span> {
-            <span class="number">0</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="string">&quot;Invalid node type.&quot;</span>),
-            <span class="number">1</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">NodeType::Leaf</span>),
-            <span class="number">2</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">NodeType::Parent</span>),
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="string">&quot;Unknown node type.&quot;</span>),
+            <span class="number">0</span> =&gt; <span class="prelude-val">Err</span>(<span class="string">&quot;Invalid node type.&quot;</span>),
+            <span class="number">1</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">NodeType::Leaf</span>),
+            <span class="number">2</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">NodeType::Parent</span>),
+            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="string">&quot;Unknown node type.&quot;</span>),
         }
     }
 }
@@ -284,40 +284,40 @@
 <span class="comment">// (de)serialization by hand.</span>
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Size</span> <span class="kw">for</span> <span class="ident">Node</span> {
-    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         <span class="self">self</span>.<span class="ident">node_type</span>.<span class="ident">tls_serialized_len</span>()
             <span class="op">+</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">key_package</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">kp</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">kp</span>.<span class="ident">tls_serialized_len</span>(),
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="number">0</span>,
+                <span class="prelude-val">Some</span>(<span class="ident">kp</span>) =&gt; <span class="ident">kp</span>.<span class="ident">tls_serialized_len</span>(),
+                <span class="prelude-val">None</span> =&gt; <span class="number">0</span>,
             }
             <span class="op">+</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">node</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">n</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">n</span>.<span class="ident">tls_serialized_len</span>(),
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="number">0</span>,
+                <span class="prelude-val">Some</span>(<span class="ident">n</span>) =&gt; <span class="ident">n</span>.<span class="ident">tls_serialized_len</span>(),
+                <span class="prelude-val">None</span> =&gt; <span class="number">0</span>,
             }
     }
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Serialize</span> <span class="kw">for</span> <span class="ident">Node</span> {
-    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">std::io::Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">std::io::Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">written</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">node_type</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>;
         <span class="ident">written</span> <span class="op">+</span><span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">key_package</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">kp</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">kp</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>,
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="number">0</span>,
+            <span class="prelude-val">Some</span>(<span class="ident">kp</span>) =&gt; <span class="ident">kp</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>,
+            <span class="prelude-val">None</span> =&gt; <span class="number">0</span>,
         };
         <span class="ident">written</span> <span class="op">+</span><span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">node</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">n</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">n</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>,
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="number">0</span>,
+            <span class="prelude-val">Some</span>(<span class="ident">n</span>) =&gt; <span class="ident">n</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>,
+            <span class="prelude-val">None</span> =&gt; <span class="number">0</span>,
         };
         <span class="prelude-val">Ok</span>(<span class="ident">written</span>)
     }
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Deserialize</span> <span class="kw">for</span> <span class="ident">Node</span> {
-    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">std::io::Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">std::io::Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">node_type</span> <span class="op">=</span> <span class="ident">NodeType::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> (<span class="ident">key_package</span>, <span class="ident">node</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">node_type</span> {
-            <span class="ident">NodeType::Leaf</span> <span class="op">=</span><span class="op">&gt;</span> (<span class="prelude-val">Some</span>(<span class="ident">KeyPackage::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>), <span class="prelude-val">None</span>),
-            <span class="ident">NodeType::Parent</span> <span class="op">=</span><span class="op">&gt;</span> (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="ident">ParentNode::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>)),
+            <span class="ident">NodeType::Leaf</span> =&gt; (<span class="prelude-val">Some</span>(<span class="ident">KeyPackage::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>), <span class="prelude-val">None</span>),
+            <span class="ident">NodeType::Parent</span> =&gt; (<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="ident">ParentNode::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>)),
         };
         <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
             <span class="ident">node_type</span>,
@@ -330,7 +330,7 @@
 <span class="kw">impl</span> <span class="ident">Node</span> {
     <span class="doccomment">/// Creates a new leaf node. It can either be blank or contain a</span>
     <span class="doccomment">/// `KeyPackage`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_leaf</span>(<span class="ident">kp_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KeyPackage</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_leaf</span>(<span class="ident">kp_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KeyPackage</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">Node</span> {
             <span class="ident">node_type</span>: <span class="ident">NodeType::Leaf</span>,
             <span class="ident">key_package</span>: <span class="ident">kp_option</span>,
@@ -339,7 +339,7 @@
     }
 
     <span class="doccomment">/// Creates a new blank parent node.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_blank_parent_node</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_blank_parent_node</span>() -&gt; <span class="self">Self</span> {
         <span class="ident">Node</span> {
             <span class="ident">node_type</span>: <span class="ident">NodeType::Parent</span>,
             <span class="ident">key_package</span>: <span class="prelude-val">None</span>,
@@ -348,10 +348,10 @@
     }
 
     <span class="doccomment">/// Returns the public HPKE key of either node type.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">public_hpke_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">HpkePublicKey</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">public_hpke_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">HpkePublicKey</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">node_type</span> {
-            <span class="ident">NodeType::Leaf</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">key_package</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">kp</span><span class="op">|</span> <span class="ident">kp</span>.<span class="ident">hpke_init_key</span>()),
-            <span class="ident">NodeType::Parent</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>
+            <span class="ident">NodeType::Leaf</span> =&gt; <span class="self">self</span>.<span class="ident">key_package</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">kp</span><span class="op">|</span> <span class="ident">kp</span>.<span class="ident">hpke_init_key</span>()),
+            <span class="ident">NodeType::Parent</span> =&gt; <span class="self">self</span>
                 .<span class="ident">node</span>
                 .<span class="ident">as_ref</span>()
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">parent_node</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">parent_node</span>.<span class="ident">public_key</span>),
@@ -365,13 +365,13 @@
     }
 
     <span class="doccomment">/// Returns `true` if the node is blank and `false` otherwise.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_blank</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_blank</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">key_package</span>.<span class="ident">is_none</span>() <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">node</span>.<span class="ident">is_none</span>()
     }
 
     <span class="doccomment">/// Returns `true` if the node is a non-blank parent node and `false`</span>
     <span class="doccomment">/// otherwise.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">is_full_parent</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">is_full_parent</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">node_type</span>.<span class="ident">is_parent</span>() <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">node</span>.<span class="ident">is_some</span>() <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">key_package</span>.<span class="ident">is_none</span>()
     }
 
@@ -379,25 +379,25 @@
     <span class="doccomment">/// Otherwise returns the `parent_hash` field for parent nodes and</span>
     <span class="doccomment">/// optionally the `parent_hash` field of the `ParentHashExtension` of the</span>
     <span class="doccomment">/// leaf node if the extension is present.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">parent_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">parent_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">u8</span>]<span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">is_blank</span>() {
             <span class="kw">return</span> <span class="prelude-val">None</span>;
         }
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">node_type</span> {
-            <span class="ident">NodeType::Parent</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">node</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">n</span><span class="op">|</span> <span class="ident">n</span>.<span class="ident">parent_hash</span>.<span class="ident">as_slice</span>()),
-            <span class="ident">NodeType::Leaf</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">NodeType::Parent</span> =&gt; <span class="self">self</span>.<span class="ident">node</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">n</span><span class="op">|</span> <span class="ident">n</span>.<span class="ident">parent_hash</span>.<span class="ident">as_slice</span>()),
+            <span class="ident">NodeType::Leaf</span> =&gt; {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">key_package</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">key_package</span> {
                     <span class="kw">let</span> <span class="ident">parent_hash_extension</span> <span class="op">=</span>
                         <span class="ident">key_package</span>.<span class="ident">extension_with_type</span>(<span class="ident">ExtensionType::ParentHash</span>);
                     <span class="kw">match</span> <span class="ident">parent_hash_extension</span> {
-                        <span class="prelude-val">Some</span>(<span class="ident">phe</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="prelude-val">Some</span>(<span class="ident">phe</span>) =&gt; {
                             <span class="kw">let</span> <span class="ident">phe</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">phe</span>.<span class="ident">as_parent_hash_extension</span>() {
-                                <span class="prelude-val">Ok</span>(<span class="ident">phe</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">phe</span>,
-                                <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">None</span>,
+                                <span class="prelude-val">Ok</span>(<span class="ident">phe</span>) =&gt; <span class="ident">phe</span>,
+                                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">None</span>,
                             };
                             <span class="prelude-val">Some</span>(<span class="ident">phe</span>.<span class="ident">parent_hash</span>())
                         }
-                        <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
+                        <span class="prelude-val">None</span> =&gt; <span class="prelude-val">None</span>,
                     }
                 } <span class="kw">else</span> {
                     <span class="prelude-val">None</span>
@@ -407,7 +407,7 @@
     }
 
     <span class="doccomment">/// Get a reference to the key package in this node.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">key_package</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">KeyPackage</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">key_package</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">KeyPackage</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">key_package</span>.<span class="ident">as_ref</span>()
     }
 }
@@ -428,7 +428,7 @@
         <span class="ident">public_key</span>: <span class="ident">HpkePublicKey</span>,
         <span class="ident">unmerged_leaves</span>: <span class="kw-2">&amp;</span>[<span class="ident">LeafIndex</span>],
         <span class="ident">parent_hash</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    ) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">public_key</span>,
             <span class="ident">unmerged_leaves</span>: <span class="ident">unmerged_leaves</span>.<span class="ident">into</span>(),
@@ -436,7 +436,7 @@
         }
     }
     <span class="doccomment">/// Returns the node&#39;s HPKE public key</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">public_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">HpkePublicKey</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">public_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">HpkePublicKey</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">public_key</span>
     }
     <span class="doccomment">/// Sets the node&#39;s parent hash</span>
@@ -444,7 +444,7 @@
         <span class="self">self</span>.<span class="ident">parent_hash</span> <span class="op">=</span> <span class="ident">hash</span>.<span class="ident">into</span>();
     }
     <span class="doccomment">/// Returns the node&#39;s unmerged leaves</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">unmerged_leaves</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">LeafIndex</span>] {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">unmerged_leaves</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">LeafIndex</span>] {
         <span class="self">self</span>.<span class="ident">unmerged_leaves</span>.<span class="ident">as_slice</span>()
     }
     <span class="doccomment">/// Adds a leaf to the node&#39;s unmerged leaves</span>

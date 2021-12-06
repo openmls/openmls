@@ -868,11 +868,6 @@
 <span id="868">868</span>
 <span id="869">869</span>
 <span id="870">870</span>
-<span id="871">871</span>
-<span id="872">872</span>
-<span id="873">873</span>
-<span id="874">874</span>
-<span id="875">875</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MlsPlaintext</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! An MlsPlaintext is a framing structure for MLS messages. It can contain</span>
@@ -953,11 +948,11 @@
 
 <span class="comment">// This block only has pub(super) getters.</span>
 <span class="kw">impl</span> <span class="ident">MlsPlaintext</span> {
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">signature</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Signature</span> {
+    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">signature</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Signature</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">signature</span>
     }
 
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">wire_format</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">WireFormat</span> {
+    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">wire_format</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">WireFormat</span> {
         <span class="self">self</span>.<span class="ident">wire_format</span>
     }
 
@@ -997,7 +992,7 @@
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">GroupContext</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">serialized_context</span> <span class="op">=</span> <span class="ident">context</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">mls_plaintext</span> <span class="op">=</span> <span class="ident">MlsPlaintextTbs::new</span>(
             <span class="ident">framing_parameters</span>.<span class="ident">wire_format</span>(),
@@ -1021,7 +1016,7 @@
         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">GroupContext</span>,
         <span class="ident">membership_key</span>: <span class="kw-2">&amp;</span><span class="ident">MembershipKey</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mls_plaintext</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::new</span>(
             <span class="ident">framing_parameters</span>,
             <span class="ident">sender_index</span>,
@@ -1048,7 +1043,7 @@
         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">GroupContext</span>,
         <span class="ident">membership_key</span>: <span class="kw-2">&amp;</span><span class="ident">MembershipKey</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
         <span class="ident"><span class="self">Self</span>::new_with_membership_tag</span>(
             <span class="ident">framing_parameters</span>,
             <span class="ident">sender_index</span>,
@@ -1072,7 +1067,7 @@
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">GroupContext</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
         <span class="ident"><span class="self">Self</span>::new</span>(
             <span class="ident">framing_parameters</span>,
             <span class="ident">sender_index</span>,
@@ -1096,7 +1091,7 @@
         <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">GroupContext</span>,
         <span class="ident">membership_key</span>: <span class="kw-2">&amp;</span><span class="ident">MembershipKey</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">framing_parameters</span> <span class="op">=</span>
             <span class="ident">FramingParameters::new</span>(<span class="ident">authenticated_data</span>, <span class="ident">WireFormat::MlsCiphertext</span>);
         <span class="ident"><span class="self">Self</span>::new_with_membership_tag</span>(
@@ -1114,32 +1109,32 @@
     }
 
     <span class="doccomment">/// Returns a reference to the `content` field.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">content</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextContentType</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">content</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextContentType</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">content</span>
     }
 
     <span class="doccomment">/// Returns the `content` field and consumes the parent.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">take_content</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">MlsPlaintextContentType</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">take_content</span>(<span class="self">self</span>) -&gt; <span class="ident">MlsPlaintextContentType</span> {
         <span class="self">self</span>.<span class="ident">content</span>
     }
 
     <span class="doccomment">/// Get the content type of this message.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">content_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ContentType</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">content_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ContentType</span> {
         <span class="self">self</span>.<span class="ident">content_type</span>
     }
 
     <span class="doccomment">/// Get the sender of this message.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sender</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Sender</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sender</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Sender</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">sender</span>
     }
 
     <span class="doccomment">/// Get the sender leaf index of this message.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sender_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">LeafIndex</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sender_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">LeafIndex</span> {
         <span class="self">self</span>.<span class="ident">sender</span>.<span class="ident">to_leaf_index</span>()
     }
 
     <span class="doccomment">/// Get the membership tag of this message.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">membership_tag</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">MembershipTag</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">membership_tag</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">MembershipTag</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">membership_tag</span>.<span class="ident">as_ref</span>()
     }
 
@@ -1152,7 +1147,7 @@
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">serialized_context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">membership_key</span>: <span class="kw-2">&amp;</span><span class="ident">MembershipKey</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">tbs_payload</span> <span class="op">=</span> <span class="ident">encode_tbs</span>(<span class="self">self</span>, <span class="ident">serialized_context</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">tbm_payload</span> <span class="op">=</span>
             <span class="ident">MlsPlaintextTbmPayload::new</span>(<span class="kw-2">&amp;</span><span class="ident">tbs_payload</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">signature</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">confirmation_tag</span>)<span class="question-mark">?</span>;
@@ -1171,25 +1166,25 @@
     <span class="doccomment">/// Tries to extract an application messages from an `MlsPlaintext`. Returns</span>
     <span class="doccomment">/// `MlsPlaintextError::NotAnApplicationMessage` if the `MlsPlaintext`</span>
     <span class="doccomment">/// contained something other than an application message.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_application_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_application_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">content</span> {
-            <span class="ident">MlsPlaintextContentType::Application</span>(<span class="ident">message</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">message</span>.<span class="ident">as_slice</span>()),
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">MlsPlaintextError::NotAnApplicationMessage</span>),
+            <span class="ident">MlsPlaintextContentType::Application</span>(<span class="ident">message</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">message</span>.<span class="ident">as_slice</span>()),
+            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">MlsPlaintextError::NotAnApplicationMessage</span>),
         }
     }
 
     <span class="doccomment">/// Returns `true` if this is a handshake message and `false` otherwise.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_handshake_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_handshake_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">content_type</span>.<span class="ident">is_handshake_message</span>()
     }
 
     <span class="doccomment">/// Get the group ID.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">GroupId</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">GroupId</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_id</span>
     }
 
     <span class="doccomment">/// Get the group epoch.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">epoch</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">GroupEpoch</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">epoch</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">GroupEpoch</span> {
         <span class="self">self</span>.<span class="ident">epoch</span>
     }
 
@@ -1198,12 +1193,12 @@
         <span class="self">self</span>.<span class="ident">confirmation_tag</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">tag</span>)
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">confirmation_tag</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">ConfirmationTag</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">confirmation_tag</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">ConfirmationTag</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">confirmation_tag</span>.<span class="ident">as_ref</span>()
     }
 
     <span class="doccomment">/// The the authenticated data of this MlsPlaintext as byte slice.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">authenticated_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">authenticated_data</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="self">self</span>.<span class="ident">authenticated_data</span>.<span class="ident">as_slice</span>()
     }
 
@@ -1234,12 +1229,12 @@
 
 <span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ContentType</span> {
     <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">tls_codec::Error</span>;
-    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">value</span>: <span class="ident">u8</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">value</span>: <span class="ident">u8</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">value</span> {
-            <span class="number">1</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ContentType::Application</span>),
-            <span class="number">2</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ContentType::Proposal</span>),
-            <span class="number">3</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ContentType::Commit</span>),
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::DecodingError</span>(<span class="macro">format!</span>(
+            <span class="number">1</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ContentType::Application</span>),
+            <span class="number">2</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ContentType::Proposal</span>),
+            <span class="number">3</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ContentType::Commit</span>),
+            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::DecodingError</span>(<span class="macro">format!</span>(
                 <span class="string">&quot;{} is not a valid content type&quot;</span>,
                 <span class="ident">value</span>
             ))),
@@ -1248,24 +1243,24 @@
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">MlsPlaintextContentType</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ContentType</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextContentType</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextContentType</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">match</span> <span class="ident">value</span> {
-            <span class="ident">MlsPlaintextContentType::Application</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ContentType::Application</span>,
-            <span class="ident">MlsPlaintextContentType::Proposal</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ContentType::Proposal</span>,
-            <span class="ident">MlsPlaintextContentType::Commit</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ContentType::Commit</span>,
+            <span class="ident">MlsPlaintextContentType::Application</span>(<span class="kw">_</span>) =&gt; <span class="ident">ContentType::Application</span>,
+            <span class="ident">MlsPlaintextContentType::Proposal</span>(<span class="kw">_</span>) =&gt; <span class="ident">ContentType::Proposal</span>,
+            <span class="ident">MlsPlaintextContentType::Commit</span>(<span class="kw">_</span>) =&gt; <span class="ident">ContentType::Commit</span>,
         }
     }
 }
 
 <span class="kw">impl</span> <span class="ident">ContentType</span> {
     <span class="doccomment">/// Returns `true` if this is a handshake message and `false` otherwise.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">is_handshake_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="self">self</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">ContentType::Proposal</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">ContentType::Commit</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">is_handshake_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
+        <span class="self">self</span> <span class="op">==</span> <span class="kw-2">&amp;</span><span class="ident">ContentType::Proposal</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span> <span class="op">==</span> <span class="kw-2">&amp;</span><span class="ident">ContentType::Commit</span>
     }
 
     <span class="doccomment">/// Returns `true` if this is a commit message and `false` otherwise.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">is_commit</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="self">self</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">ContentType::Commit</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">is_commit</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
+        <span class="self">self</span> <span class="op">==</span> <span class="kw-2">&amp;</span><span class="ident">ContentType::Commit</span>
     }
 }
 
@@ -1278,7 +1273,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MlsPlaintextContentType</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">plaintext</span>: <span class="ident">MlsPlaintext</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">plaintext</span>: <span class="ident">MlsPlaintext</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">plaintext</span>.<span class="ident">content</span>
     }
 }
@@ -1304,14 +1299,14 @@
         <span class="ident">tbs_payload</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>],
         <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Signature</span>,
         <span class="ident">confirmation_tag</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ConfirmationTag</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
             <span class="ident">tbs_payload</span>,
             <span class="ident">signature</span>,
             <span class="ident">confirmation_tag</span>,
         })
     }
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">into_bytes</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">into_bytes</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tbs_payload</span>.<span class="ident">to_vec</span>();
         <span class="self">self</span>.<span class="ident">signature</span>.<span class="ident">tls_serialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">buffer</span>)<span class="question-mark">?</span>;
         <span class="self">self</span>.<span class="ident">confirmation_tag</span>.<span class="ident">tls_serialize</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">buffer</span>)<span class="question-mark">?</span>;
@@ -1340,7 +1335,7 @@
 <span class="kw">fn</span> <span class="ident">encode_tbs</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
     <span class="ident">plaintext</span>: <span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span>,
     <span class="ident">serialized_context</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="ident">u8</span>]<span class="op">&gt;</span><span class="op">&gt;</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">out</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
     <span class="ident">codec::serialize_plaintext_tbs</span>(
         <span class="ident">serialized_context</span>,
@@ -1372,7 +1367,7 @@
         <span class="ident">signature</span>: <span class="ident">Signature</span>,
         <span class="ident">confirmation_tag</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ConfirmationTag</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">membership_tag</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MembershipTag</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    ) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">tbs</span>,
             <span class="ident">signature</span>,
@@ -1386,19 +1381,19 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_plaintext</span>(
         <span class="ident">mls_plaintext</span>: <span class="ident">MlsPlaintext</span>,
         <span class="ident">serialized_context</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    ) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">mls_plaintext</span>.<span class="ident">signature</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">membership_tag</span> <span class="op">=</span> <span class="ident">mls_plaintext</span>.<span class="ident">membership_tag</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">confirmation_tag</span> <span class="op">=</span> <span class="ident">mls_plaintext</span>.<span class="ident">confirmation_tag</span>.<span class="ident">clone</span>();
 
         <span class="kw">match</span> <span class="ident">serialized_context</span>.<span class="ident">into</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">context</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">context</span>) =&gt; <span class="self">Self</span> {
                 <span class="ident">tbs</span>: <span class="ident">MlsPlaintextTbs::from_plaintext</span>(<span class="ident">mls_plaintext</span>).<span class="ident">with_context</span>(<span class="ident">context</span>),
                 <span class="ident">signature</span>,
                 <span class="ident">confirmation_tag</span>,
                 <span class="ident">membership_tag</span>,
             },
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">Self</span> {
+            <span class="prelude-val">None</span> =&gt; <span class="self">Self</span> {
                 <span class="ident">tbs</span>: <span class="ident">MlsPlaintextTbs::from_plaintext</span>(<span class="ident">mls_plaintext</span>),
                 <span class="ident">signature</span>,
                 <span class="ident">confirmation_tag</span>,
@@ -1416,7 +1411,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">membership_key</span>: <span class="kw-2">&amp;</span><span class="ident">MembershipKey</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
         <span class="macro">log::debug!</span>(<span class="string">&quot;Verifying membership tag.&quot;</span>);
         <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;  Membership key: {:x?}&quot;</span>, <span class="ident">membership_key</span>);
         <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;  Serialized context: {:x?}&quot;</span>, <span class="ident">serialized_context</span>);
@@ -1438,7 +1433,7 @@
     }
 
     <span class="doccomment">/// Get the sender.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sender</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Sender</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sender</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Sender</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">tbs</span>.<span class="ident">sender</span>
     }
 
@@ -1449,12 +1444,12 @@
     }
 
     <span class="doccomment">/// Get the sender index as [`LeafIndex`].</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">sender_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">LeafIndex</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">sender_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">LeafIndex</span> {
         <span class="self">self</span>.<span class="ident">tbs</span>.<span class="ident">sender</span>.<span class="ident">sender</span>
     }
 
     <span class="doccomment">/// Get the group id as [`GroupId`].</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">GroupId</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">GroupId</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">tbs</span>.<span class="ident">group_id</span>
     }
 
@@ -1470,12 +1465,12 @@
     }
 
     <span class="doccomment">/// Set the serialized context before verifying the signature.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">has_context</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">has_context</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">tbs</span>.<span class="ident">serialized_context</span>.<span class="ident">is_some</span>()
     }
 
     <span class="doccomment">/// Get the epoch.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">epoch</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">GroupEpoch</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">epoch</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">GroupEpoch</span> {
         <span class="self">self</span>.<span class="ident">tbs</span>.<span class="ident">epoch</span>()
     }
 
@@ -1486,23 +1481,23 @@
     }
 
     <span class="doccomment">/// Get the underlying MlsPlaintext data of the tbs object.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">payload</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextTbs</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">payload</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextTbs</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">tbs</span>
     }
 
     <span class="doccomment">/// Get the wire format.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wire_format</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">WireFormat</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wire_format</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">WireFormat</span> {
         <span class="self">self</span>.<span class="ident">tbs</span>.<span class="ident">wire_format</span>
     }
 
     <span class="doccomment">/// Returns `true` if the `membership_tag` field is present and `false`</span>
     <span class="doccomment">/// otherwise.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">has_membership_tag</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">has_membership_tag</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">membership_tag</span>.<span class="ident">is_some</span>()
     }
 
     <span class="doccomment">/// Get the membership tag.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">membership_tag</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MembershipTag</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">membership_tag</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MembershipTag</span><span class="op">&gt;</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">membership_tag</span>
     }
 
@@ -1519,12 +1514,12 @@
     }
 
     <span class="doccomment">/// Returns `true` if this is a commit message and `false` otherwise.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_commit</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_commit</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">tbs</span>.<span class="ident">content_type</span>.<span class="ident">is_commit</span>()
     }
 
     <span class="doccomment">/// Get the confirmation tag.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">confirmation_tag</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">ConfirmationTag</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">confirmation_tag</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">ConfirmationTag</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">confirmation_tag</span>.<span class="ident">as_ref</span>()
     }
 
@@ -1535,7 +1530,7 @@
     }
 
     <span class="doccomment">/// Get the content type</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">content_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ContentType</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">content_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ContentType</span> {
         <span class="self">self</span>.<span class="ident">tbs</span>.<span class="ident">content_type</span>
     }
 
@@ -1552,7 +1547,7 @@
     }
 
     <span class="doccomment">/// Get the signature.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">signature</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Signature</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">signature</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Signature</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">signature</span>
     }
 
@@ -1566,7 +1561,7 @@
 <span class="kw">impl</span> <span class="ident">Signable</span> <span class="kw">for</span> <span class="ident">MlsPlaintextTbs</span> {
     <span class="kw">type</span> <span class="ident">SignedOutput</span> <span class="op">=</span> <span class="ident">MlsPlaintext</span>;
 
-    <span class="kw">fn</span> <span class="ident">unsigned_payload</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">unsigned_payload</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">tls_serialize_detached</span>()
     }
 }
@@ -1582,7 +1577,7 @@
         <span class="ident">sender</span>: <span class="ident">Sender</span>,
         <span class="ident">authenticated_data</span>: <span class="ident">TlsByteVecU32</span>,
         <span class="ident">payload</span>: <span class="ident">Payload</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    ) -&gt; <span class="self">Self</span> {
         <span class="ident">MlsPlaintextTbs</span> {
             <span class="ident">serialized_context</span>: <span class="prelude-val">None</span>,
             <span class="ident">wire_format</span>,
@@ -1596,7 +1591,7 @@
     }
     <span class="doccomment">/// Adds a serialized context to MlsPlaintextTbs.</span>
     <span class="doccomment">/// This consumes the original struct and can be used as a builder function.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">with_context</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">serialized_context</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">with_context</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">serialized_context</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">serialized_context</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">serialized_context</span>);
         <span class="self">self</span>
     }
@@ -1604,7 +1599,7 @@
     <span class="doccomment">/// Create a new signable MlsPlaintext from an existing MlsPlaintext.</span>
     <span class="doccomment">/// This consumes the existing plaintext.</span>
     <span class="doccomment">/// To get the `MlsPlaintext` back use `sign`.</span>
-    <span class="kw">fn</span> <span class="ident">from_plaintext</span>(<span class="ident">mls_plaintext</span>: <span class="ident">MlsPlaintext</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">from_plaintext</span>(<span class="ident">mls_plaintext</span>: <span class="ident">MlsPlaintext</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">MlsPlaintextTbs</span> {
             <span class="ident">wire_format</span>: <span class="ident">mls_plaintext</span>.<span class="ident">wire_format</span>,
             <span class="ident">serialized_context</span>: <span class="prelude-val">None</span>,
@@ -1618,43 +1613,38 @@
     }
 
     <span class="doccomment">/// Get the group id as byte slice.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="self">self</span>.<span class="ident">group_id</span>.<span class="ident">as_slice</span>()
     }
 
     <span class="doccomment">/// Get the epoch.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">epoch</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">GroupEpoch</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">epoch</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">GroupEpoch</span> {
         <span class="self">self</span>.<span class="ident">epoch</span>
     }
 
     <span class="doccomment">/// Returns `true` if this is a handshake message and `false` otherwise.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_handshake_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_handshake_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">content_type</span>.<span class="ident">is_handshake_message</span>()
     }
 }
 
 <span class="kw">impl</span> <span class="ident">Verifiable</span> <span class="kw">for</span> <span class="ident">VerifiableMlsPlaintext</span> {
-    <span class="kw">fn</span> <span class="ident">unsigned_payload</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">unsigned_payload</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">tbs</span>.<span class="ident">tls_serialize_detached</span>()
     }
 
-    <span class="kw">fn</span> <span class="ident">signature</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Signature</span> {
+    <span class="kw">fn</span> <span class="ident">signature</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Signature</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">signature</span>
     }
 }
 
 <span class="kw">mod</span> <span class="ident">private_mod</span> {
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Seal</span>;
-
-    <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Seal</span> {
-        <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-            <span class="ident">Seal</span> {}
-        }
-    }
 }
 
 <span class="kw">impl</span> <span class="ident">VerifiedStruct</span><span class="op">&lt;</span><span class="ident">VerifiableMlsPlaintext</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MlsPlaintext</span> {
-    <span class="kw">fn</span> <span class="ident">from_verifiable</span>(<span class="ident">v</span>: <span class="ident">VerifiableMlsPlaintext</span>, <span class="ident">_seal</span>: <span class="ident"><span class="self">Self</span>::SealingType</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">from_verifiable</span>(<span class="ident">v</span>: <span class="ident">VerifiableMlsPlaintext</span>, <span class="ident">_seal</span>: <span class="ident"><span class="self">Self</span>::SealingType</span>) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">wire_format</span>: <span class="ident">v</span>.<span class="ident">tbs</span>.<span class="ident">wire_format</span>,
             <span class="ident">group_id</span>: <span class="ident">v</span>.<span class="ident">tbs</span>.<span class="ident">group_id</span>,
@@ -1673,7 +1663,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">SignedStruct</span><span class="op">&lt;</span><span class="ident">MlsPlaintextTbs</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MlsPlaintext</span> {
-    <span class="kw">fn</span> <span class="ident">from_payload</span>(<span class="ident">tbs</span>: <span class="ident">MlsPlaintextTbs</span>, <span class="ident">signature</span>: <span class="ident">Signature</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">from_payload</span>(<span class="ident">tbs</span>: <span class="ident">MlsPlaintextTbs</span>, <span class="ident">signature</span>: <span class="ident">Signature</span>) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">wire_format</span>: <span class="ident">tbs</span>.<span class="ident">wire_format</span>,
             <span class="ident">group_id</span>: <span class="ident">tbs</span>.<span class="ident">group_id</span>,
@@ -1705,10 +1695,10 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">MlsPlaintext</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MlsPlaintextCommitContent</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>;
 
-    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">mls_plaintext</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">MlsPlaintext</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">mls_plaintext</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">MlsPlaintext</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">commit</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">mls_plaintext</span>.<span class="ident">content</span> {
-            <span class="ident">MlsPlaintextContentType::Commit</span>(<span class="ident">commit</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">commit</span>,
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="string">&quot;MlsPlaintext needs to contain a Commit.&quot;</span>),
+            <span class="ident">MlsPlaintextContentType::Commit</span>(<span class="ident">commit</span>) =&gt; <span class="ident">commit</span>,
+            <span class="kw">_</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="string">&quot;MlsPlaintext needs to contain a Commit.&quot;</span>),
         };
         <span class="prelude-val">Ok</span>(<span class="ident">MlsPlaintextCommitContent</span> {
             <span class="ident">wire_format</span>: <span class="ident">mls_plaintext</span>.<span class="ident">wire_format</span>,
@@ -1731,18 +1721,18 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">MlsPlaintext</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MlsPlaintextCommitAuthData</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>;
 
-    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">mls_plaintext</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">MlsPlaintext</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">mls_plaintext</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">MlsPlaintext</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">mls_plaintext</span>.<span class="ident">confirmation_tag</span>.<span class="ident">as_ref</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">confirmation_tag</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">MlsPlaintextCommitAuthData</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">confirmation_tag</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">MlsPlaintextCommitAuthData</span> {
                 <span class="ident">confirmation_tag</span>: <span class="prelude-val">Some</span>(<span class="ident">confirmation_tag</span>),
             }),
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="string">&quot;MLSPlaintext needs to contain a confirmation tag.&quot;</span>),
+            <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Err</span>(<span class="string">&quot;MLSPlaintext needs to contain a confirmation tag.&quot;</span>),
         }
     }
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ConfirmationTag</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MlsPlaintextCommitAuthData</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">confirmation_tag</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ConfirmationTag</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">confirmation_tag</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ConfirmationTag</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">MlsPlaintextCommitAuthData</span> {
             <span class="ident">confirmation_tag</span>: <span class="prelude-val">Some</span>(<span class="ident">confirmation_tag</span>),
         }

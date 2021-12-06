@@ -70,19 +70,19 @@
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Size</span> <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">PreSharedKeyId</span> {
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         (<span class="kw-2">*</span><span class="self">self</span>).<span class="ident">tls_serialized_len</span>()
     }
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Size</span> <span class="kw">for</span> <span class="ident">PreSharedKeyId</span> {
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialized_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         <span class="self">self</span>.<span class="ident">psk_type</span>.<span class="ident">tls_serialized_len</span>()
             <span class="op">+</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">psk</span> {
-                <span class="ident">Psk::External</span>(<span class="ident">external_psk</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">external_psk</span>.<span class="ident">tls_serialized_len</span>(),
-                <span class="ident">Psk::Reinit</span>(<span class="ident">reinit_psk</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">reinit_psk</span>.<span class="ident">tls_serialized_len</span>(),
-                <span class="ident">Psk::Branch</span>(<span class="ident">branch_psk</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">branch_psk</span>.<span class="ident">tls_serialized_len</span>(),
+                <span class="ident">Psk::External</span>(<span class="ident">external_psk</span>) =&gt; <span class="ident">external_psk</span>.<span class="ident">tls_serialized_len</span>(),
+                <span class="ident">Psk::Reinit</span>(<span class="ident">reinit_psk</span>) =&gt; <span class="ident">reinit_psk</span>.<span class="ident">tls_serialized_len</span>(),
+                <span class="ident">Psk::Branch</span>(<span class="ident">branch_psk</span>) =&gt; <span class="ident">branch_psk</span>.<span class="ident">tls_serialized_len</span>(),
             }
             <span class="op">+</span> <span class="self">self</span>.<span class="ident">psk_nonce</span>.<span class="ident">tls_serialized_len</span>()
     }
@@ -90,12 +90,12 @@
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Serialize</span> <span class="kw">for</span> <span class="ident">PreSharedKeyId</span> {
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">::tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">::tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">written</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">psk_type</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>;
         <span class="ident">written</span> <span class="op">+</span><span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">psk</span> {
-            <span class="ident">Psk::External</span>(<span class="ident">external_psk</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">external_psk</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>,
-            <span class="ident">Psk::Reinit</span>(<span class="ident">reinit_psk</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">reinit_psk</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>,
-            <span class="ident">Psk::Branch</span>(<span class="ident">branch_psk</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">branch_psk</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>,
+            <span class="ident">Psk::External</span>(<span class="ident">external_psk</span>) =&gt; <span class="ident">external_psk</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>,
+            <span class="ident">Psk::Reinit</span>(<span class="ident">reinit_psk</span>) =&gt; <span class="ident">reinit_psk</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>,
+            <span class="ident">Psk::Branch</span>(<span class="ident">branch_psk</span>) =&gt; <span class="ident">branch_psk</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)<span class="question-mark">?</span>,
         };
         <span class="self">self</span>.<span class="ident">psk_nonce</span>.<span class="ident">tls_serialize</span>(<span class="ident">writer</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">l</span><span class="op">|</span> <span class="ident">l</span> <span class="op">+</span> <span class="ident">written</span>)
     }
@@ -103,18 +103,18 @@
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Serialize</span> <span class="kw">for</span> <span class="kw-2">&amp;</span><span class="ident">PreSharedKeyId</span> {
     <span class="attribute">#[<span class="ident">inline</span>]</span>
-    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">::tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_serialize</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">::tls_codec::Error</span><span class="op">&gt;</span> {
         (<span class="kw-2">*</span><span class="self">self</span>).<span class="ident">tls_serialize</span>(<span class="ident">writer</span>)
     }
 }
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Deserialize</span> <span class="kw">for</span> <span class="ident">PreSharedKeyId</span> {
-    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">::tls_codec::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">R</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">::tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">psktype</span> <span class="op">=</span> <span class="ident">PskType::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">psk</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">psktype</span> {
-            <span class="ident">PskType::External</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Psk::External</span>(<span class="ident">ExternalPsk::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>),
-            <span class="ident">PskType::Reinit</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Psk::Reinit</span>(<span class="ident">ReinitPsk::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>),
-            <span class="ident">PskType::Branch</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Psk::Branch</span>(<span class="ident">BranchPsk::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>),
+            <span class="ident">PskType::External</span> =&gt; <span class="ident">Psk::External</span>(<span class="ident">ExternalPsk::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>),
+            <span class="ident">PskType::Reinit</span> =&gt; <span class="ident">Psk::Reinit</span>(<span class="ident">ReinitPsk::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>),
+            <span class="ident">PskType::Branch</span> =&gt; <span class="ident">Psk::Branch</span>(<span class="ident">BranchPsk::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>),
         };
         <span class="kw">let</span> <span class="ident">psk_nonce</span> <span class="op">=</span> <span class="ident">TlsByteVecU8::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">Self</span> {

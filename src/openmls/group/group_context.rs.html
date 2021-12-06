@@ -65,7 +65,7 @@
         <span class="ident">tree_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
         <span class="ident">confirmed_transcript_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
         <span class="ident">extensions</span>: <span class="kw-2">&amp;</span>[<span class="ident">Extension</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">group_context</span> <span class="op">=</span> <span class="ident">GroupContext</span> {
             <span class="ident">group_id</span>,
             <span class="ident">epoch</span>,
@@ -81,7 +81,7 @@
         <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
         <span class="ident">tree_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
         <span class="ident">extensions</span>: <span class="kw-2">&amp;</span>[<span class="ident">Extension</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="ident"><span class="self">Self</span>::new</span>(
             <span class="ident">group_id</span>,
             <span class="ident">GroupEpoch</span>(<span class="number">0</span>),
@@ -92,22 +92,22 @@
     }
 
     <span class="doccomment">/// Return the group ID</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">GroupId</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">GroupId</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_id</span>
     }
     <span class="doccomment">/// Return the epoch</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">epoch</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">GroupEpoch</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">epoch</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">GroupEpoch</span> {
         <span class="self">self</span>.<span class="ident">epoch</span>
     }
     <span class="doccomment">/// Return the extensions of the context</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extensions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">Extension</span>] {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">extensions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">Extension</span>] {
         <span class="self">self</span>.<span class="ident">extensions</span>.<span class="ident">as_slice</span>()
     }
     <span class="doccomment">/// Get the required capabilities extension.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">required_capabilities</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">RequiredCapabilitiesExtension</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">required_capabilities</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">RequiredCapabilitiesExtension</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">extensions</span>
             .<span class="ident">iter</span>()
-            .<span class="ident">find</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">extension_type</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">ExtensionType::RequiredCapabilities</span>)
+            .<span class="ident">find</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">extension_type</span>() <span class="op">==</span> <span class="ident">ExtensionType::RequiredCapabilities</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">as_required_capabilities_extension</span>().<span class="ident">ok</span>())
             .<span class="ident">flatten</span>()
     }

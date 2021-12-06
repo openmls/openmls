@@ -79,7 +79,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">ProposalOrRefTypeError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">tls_codec::Error</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">e</span>: <span class="ident">ProposalOrRefTypeError</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">e</span>: <span class="ident">ProposalOrRefTypeError</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">tls_codec::Error::DecodingError</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>))
     }
 }

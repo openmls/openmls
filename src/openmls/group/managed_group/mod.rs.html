@@ -365,7 +365,7 @@
     <span class="comment">// === Configuration ===</span>
 
     <span class="doccomment">/// Gets the configuration</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">configuration</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">ManagedGroupConfig</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">configuration</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">ManagedGroupConfig</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">managed_group_config</span>
     }
 
@@ -378,7 +378,7 @@
     }
 
     <span class="doccomment">/// Gets the AAD used in the framing</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">aad</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">aad</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>
     }
 
@@ -393,13 +393,13 @@
     <span class="comment">// === Advanced functions ===</span>
 
     <span class="doccomment">/// Returns the group&#39;s ciphersuite</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ciphersuite</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">ciphersuite</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span> {
         <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">ciphersuite</span>()
     }
 
     <span class="doccomment">/// Returns whether the own client is still a member of the group or if it</span>
     <span class="doccomment">/// was already evicted</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_active</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_active</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">active</span>
     }
 
@@ -407,7 +407,7 @@
     <span class="doccomment">/// `UseAfterEviction` error. This function currently returns a full</span>
     <span class="doccomment">/// `Credential` rather than just a reference. This issue is tracked in</span>
     <span class="doccomment">/// issue #387.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">credential</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Credential</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">credential</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Credential</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">is_active</span>() {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError::UseAfterEviction</span>(<span class="ident">UseAfterEviction::Error</span>));
         }
@@ -416,25 +416,25 @@
     }
 
     <span class="doccomment">/// Get group ID</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">GroupId</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">group_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">GroupId</span> {
         <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">group_id</span>()
     }
 
     <span class="doccomment">/// Returns an `Iterator` over staged proposals.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pending_proposals</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">StagedProposal</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pending_proposals</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">StagedProposal</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">proposal_store</span>.<span class="ident">proposals</span>()
     }
 
     <span class="comment">// === Load &amp; save ===</span>
 
     <span class="doccomment">/// Loads the state from persisted state</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">load</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">reader</span>: <span class="ident">R</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ManagedGroup</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">load</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">reader</span>: <span class="ident">R</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ManagedGroup</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">serialized_managed_group</span>: <span class="ident">SerializedManagedGroup</span> <span class="op">=</span> <span class="ident">serde_json::from_reader</span>(<span class="ident">reader</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">serialized_managed_group</span>.<span class="ident">into_managed_group</span>())
     }
 
     <span class="doccomment">/// Persists the state</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">save</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">save</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">serialized_managed_group</span> <span class="op">=</span> <span class="ident">serde_json::to_string_pretty</span>(<span class="self">self</span>)<span class="question-mark">?</span>;
         <span class="ident">writer</span>.<span class="ident">write_all</span>(<span class="kw-2">&amp;</span><span class="ident">serialized_managed_group</span>.<span class="ident">into_bytes</span>())<span class="question-mark">?</span>;
         <span class="self">self</span>.<span class="ident">state_changed</span> <span class="op">=</span> <span class="ident">InnerState::Persisted</span>;
@@ -443,29 +443,29 @@
 
     <span class="doccomment">/// Returns `true` if the internal state has changed and needs to be persisted and</span>
     <span class="doccomment">/// `false` otherwise. Calling [save()] resets the value to `false`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">state_changed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">InnerState</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">state_changed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">InnerState</span> {
         <span class="self">self</span>.<span class="ident">state_changed</span>
     }
 
     <span class="comment">// === Extensions ===</span>
 
     <span class="doccomment">/// Export the Ratchet Tree</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">export_ratchet_tree</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">export_ratchet_tree</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">tree</span>().<span class="ident">public_key_tree_copy</span>()
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">export_path_secrets</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Ref</span><span class="op">&lt;</span>[<span class="ident"><span class="kw">crate</span>::messages::PathSecret</span>]<span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">export_path_secrets</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Ref</span><span class="op">&lt;</span>[<span class="ident"><span class="kw">crate</span>::messages::PathSecret</span>]<span class="op">&gt;</span> {
         <span class="ident">Ref::map</span>(<span class="self">self</span>.<span class="ident">group</span>.<span class="ident">tree</span>(), <span class="op">|</span><span class="ident">tree</span><span class="op">|</span> <span class="ident">tree</span>.<span class="ident">private_tree</span>().<span class="ident">path_secrets</span>())
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">export_group_context</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">GroupContext</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">export_group_context</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">GroupContext</span> {
         <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">context</span>()
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">tree_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">tree_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">tree</span>().<span class="ident">tree_hash</span>(<span class="ident">backend</span>)
     }
 
@@ -476,7 +476,7 @@
 
     <span class="doccomment">/// Get the underlying [MlsGroup].</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">group</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">MlsGroup</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">group</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">MlsGroup</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group</span>
     }
 }
@@ -490,14 +490,14 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">plaintext</span>: <span class="ident">MlsPlaintext</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsMessageOut</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsMessageOut</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">msg</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">configuration</span>().<span class="ident">wire_format</span>() {
-            <span class="ident">WireFormat::MlsPlaintext</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">MlsMessageOut::Plaintext</span>(<span class="ident">plaintext</span>),
-            <span class="ident">WireFormat::MlsCiphertext</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">WireFormat::MlsPlaintext</span> =&gt; <span class="ident">MlsMessageOut::Plaintext</span>(<span class="ident">Box::new</span>(<span class="ident">plaintext</span>)),
+            <span class="ident">WireFormat::MlsCiphertext</span> =&gt; {
                 <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span>
                     <span class="self">self</span>.<span class="ident">group</span>
                         .<span class="ident">encrypt</span>(<span class="ident">plaintext</span>, <span class="self">self</span>.<span class="ident">configuration</span>().<span class="ident">padding_size</span>(), <span class="ident">backend</span>)<span class="question-mark">?</span>;
-                <span class="ident">MlsMessageOut::Ciphertext</span>(<span class="ident">ciphertext</span>)
+                <span class="ident">MlsMessageOut::Ciphertext</span>(<span class="ident">Box::new</span>(<span class="ident">ciphertext</span>))
             }
         };
         <span class="prelude-val">Ok</span>(<span class="ident">msg</span>)
@@ -509,7 +509,7 @@
     }
 
     <span class="doccomment">/// Group framing parameters</span>
-    <span class="kw">fn</span> <span class="ident">framing_parameters</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">FramingParameters</span> {
+    <span class="kw">fn</span> <span class="ident">framing_parameters</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">FramingParameters</span> {
         <span class="ident">FramingParameters::new</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>, <span class="self">self</span>.<span class="ident">managed_group_config</span>.<span class="ident">wire_format</span>)
     }
 }

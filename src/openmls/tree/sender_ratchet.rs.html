@@ -187,7 +187,7 @@
 
 <span class="kw">impl</span> <span class="ident">SenderRatchet</span> {
     <span class="doccomment">/// Creates e new SenderRatchet</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">index</span>: <span class="ident">LeafIndex</span>, <span class="ident">secret</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">index</span>: <span class="ident">LeafIndex</span>, <span class="ident">secret</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">index</span>,
             <span class="ident">generation</span>: <span class="number">0</span>,
@@ -201,7 +201,7 @@
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">generation</span>: <span class="ident">u32</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RatchetSecrets</span>, <span class="ident">SecretTreeError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RatchetSecrets</span>, <span class="ident">SecretTreeError</span><span class="op">&gt;</span> {
         <span class="comment">// If generation is too distant in the future</span>
         <span class="kw">if</span> <span class="ident">generation</span> <span class="op">&gt;</span> (<span class="self">self</span>.<span class="ident">generation</span> <span class="op">+</span> <span class="ident">MAXIMUM_FORWARD_DISTANCE</span>) {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SecretTreeError::TooDistantInTheFuture</span>);
@@ -225,7 +225,7 @@
         <span class="comment">// If generation is in the future</span>
         } <span class="kw">else</span> {
             <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..(<span class="ident">generation</span> <span class="op">-</span> <span class="self">self</span>.<span class="ident">generation</span>) {
-                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">OUT_OF_ORDER_TOLERANCE</span> <span class="kw">as</span> <span class="ident">usize</span> {
+                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="ident">OUT_OF_ORDER_TOLERANCE</span> <span class="kw">as</span> <span class="ident">usize</span> {
                     <span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">remove</span>(<span class="number">0</span>);
                 }
                 <span class="comment">// We can return a library error here, because there must be a mistake in the implementation</span>
@@ -238,9 +238,9 @@
                 <span class="self">self</span>.<span class="ident">generation</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
             }
             <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">last</span>() {
-                <span class="prelude-val">Some</span>(<span class="ident">secret</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">secret</span>,
+                <span class="prelude-val">Some</span>(<span class="ident">secret</span>) =&gt; <span class="ident">secret</span>,
                 <span class="comment">// We return a library error because there must be a mistake in the implementation</span>
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SecretTreeError::LibraryError</span>),
+                <span class="prelude-val">None</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SecretTreeError::LibraryError</span>),
             };
             <span class="kw">let</span> <span class="ident">ratchet_secrets</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">derive_key_nonce</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">secret</span>, <span class="ident">generation</span>);
             <span class="prelude-val">Ok</span>(<span class="ident">ratchet_secrets</span>)
@@ -251,10 +251,10 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">u32</span>, <span class="ident">RatchetSecrets</span>) {
+    ) -&gt; (<span class="ident">u32</span>, <span class="ident">RatchetSecrets</span>) {
         <span class="kw">let</span> <span class="ident">current_path_secret</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">last</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">secret</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">secret</span>.<span class="ident">clone</span>(),
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">secret</span>) =&gt; <span class="ident">secret</span>.<span class="ident">clone</span>(),
+            <span class="prelude-val">None</span> =&gt; {
                 <span class="macro">panic!</span>(<span class="string">&quot;Library error. PastSecrets should never be depleted in SenderRatchet.&quot;</span>)
             }
         };
@@ -279,7 +279,7 @@
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">secret</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Secret</span> {
+    ) -&gt; <span class="ident">Secret</span> {
         <span class="ident">derive_tree_secret</span>(
             <span class="ident">secret</span>,
             <span class="string">&quot;secret&quot;</span>,
@@ -296,7 +296,7 @@
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">secret</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>,
         <span class="ident">generation</span>: <span class="ident">u32</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">RatchetSecrets</span> {
+    ) -&gt; <span class="ident">RatchetSecrets</span> {
         <span class="kw">let</span> <span class="ident">tree_index</span> <span class="op">=</span> <span class="ident">NodeIndex::from</span>(<span class="self">self</span>.<span class="ident">index</span>).<span class="ident">as_u32</span>();
         <span class="kw">let</span> <span class="ident">nonce</span> <span class="op">=</span> <span class="ident">derive_tree_secret</span>(
             <span class="ident">secret</span>,
@@ -318,7 +318,7 @@
     }
     <span class="doccomment">/// Gets the current generation</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">generation</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u32</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">generation</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u32</span> {
         <span class="self">self</span>.<span class="ident">generation</span>
     }
 }

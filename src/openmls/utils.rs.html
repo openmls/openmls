@@ -305,27 +305,27 @@
 <span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">rngs::OsRng</span>, <span class="ident">RngCore</span>};
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random_u32</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u32</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random_u32</span>() -&gt; <span class="ident">u32</span> {
     <span class="ident">OsRng</span>.<span class="ident">next_u32</span>()
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random_u64</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u64</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random_u64</span>() -&gt; <span class="ident">u64</span> {
     <span class="ident">OsRng</span>.<span class="ident">next_u64</span>()
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random_u8</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">u8</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random_u8</span>() -&gt; <span class="ident">u8</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">b</span> <span class="op">=</span> [<span class="number">0u8</span>; <span class="number">1</span>];
     <span class="ident">OsRng</span>.<span class="ident">fill_bytes</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">b</span>);
     <span class="ident">b</span>[<span class="number">0</span>]
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">zero</span>(<span class="ident">length</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">zero</span>(<span class="ident">length</span>: <span class="ident">usize</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
     <span class="macro">vec!</span>[<span class="number">0u8</span>; <span class="ident">length</span>]
 }
 
-<span class="kw">fn</span> <span class="ident">_bytes_to_hex</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
+<span class="kw">fn</span> <span class="ident">_bytes_to_hex</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="ident">String</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hex</span> <span class="op">=</span> <span class="ident">String::new</span>();
     <span class="kw">for</span> <span class="ident">b</span> <span class="kw">in</span> <span class="ident">bytes</span> {
         <span class="ident">hex</span> <span class="op">+</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{:02X}&quot;</span>, <span class="kw-2">*</span><span class="ident">b</span>);
@@ -336,10 +336,10 @@
 <span class="comment">// With the crypto-debug feature enabled sensitive crypto parts can be logged.</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;crypto-debug&quot;</span>)]</span>
 <span class="macro">macro_rules!</span> <span class="ident">log_crypto</span> {
-    (<span class="ident">debug</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>:<span class="ident">tt</span>)<span class="kw-2">*</span>) <span class="op">=</span><span class="op">&gt;</span> ({
+    (<span class="ident">debug</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>:<span class="ident">tt</span>)<span class="kw-2">*</span>) =&gt; ({
         <span class="macro">log::debug!</span>($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>)<span class="kw-2">*</span>);
     });
-    (<span class="ident">trace</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>:<span class="ident">tt</span>)<span class="kw-2">*</span>) <span class="op">=</span><span class="op">&gt;</span> ({
+    (<span class="ident">trace</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>:<span class="ident">tt</span>)<span class="kw-2">*</span>) =&gt; ({
         <span class="macro">log::trace!</span>($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>)<span class="kw-2">*</span>);
     })
 }
@@ -347,39 +347,39 @@
 <span class="comment">// With the content-debug feature enabled sensitive message content parts can be logged.</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;content-debug&quot;</span>)]</span>
 <span class="macro">macro_rules!</span> <span class="ident">log_content</span> {
-    (<span class="ident">debug</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>:<span class="ident">tt</span>)<span class="kw-2">*</span>) <span class="op">=</span><span class="op">&gt;</span> ({
+    (<span class="ident">debug</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>:<span class="ident">tt</span>)<span class="kw-2">*</span>) =&gt; ({
         <span class="macro">log::debug!</span>($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>)<span class="kw-2">*</span>);
     });
-    (<span class="ident">trace</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>:<span class="ident">tt</span>)<span class="kw-2">*</span>) <span class="op">=</span><span class="op">&gt;</span> ({
+    (<span class="ident">trace</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>:<span class="ident">tt</span>)<span class="kw-2">*</span>) =&gt; ({
         <span class="macro">log::trace!</span>($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>)<span class="kw-2">*</span>);
     })
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;crypto-debug&quot;</span>))]</span>
 <span class="macro">macro_rules!</span> <span class="ident">log_crypto</span> {
-    (<span class="ident">debug</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>:<span class="ident">tt</span>)<span class="kw-2">*</span>) <span class="op">=</span><span class="op">&gt;</span> {{}};
-    (<span class="ident">trace</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>:<span class="ident">tt</span>)<span class="kw-2">*</span>) <span class="op">=</span><span class="op">&gt;</span> {{}};
+    (<span class="ident">debug</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>:<span class="ident">tt</span>)<span class="kw-2">*</span>) =&gt; {{}};
+    (<span class="ident">trace</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>:<span class="ident">tt</span>)<span class="kw-2">*</span>) =&gt; {{}};
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;content-debug&quot;</span>))]</span>
 <span class="macro">macro_rules!</span> <span class="ident">log_content</span> {
-    (<span class="ident">debug</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>:<span class="ident">tt</span>)<span class="kw-2">*</span>) <span class="op">=</span><span class="op">&gt;</span> {{}};
-    (<span class="ident">trace</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>:<span class="ident">tt</span>)<span class="kw-2">*</span>) <span class="op">=</span><span class="op">&gt;</span> {{}};
+    (<span class="ident">debug</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>:<span class="ident">tt</span>)<span class="kw-2">*</span>) =&gt; {{}};
+    (<span class="ident">trace</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>:<span class="ident">tt</span>)<span class="kw-2">*</span>) =&gt; {{}};
 }
 
 <span class="comment">// Pretty ugly helper to count the number of arguments.</span>
 <span class="macro">macro_rules!</span> <span class="ident">count</span> {
-    () <span class="op">=</span><span class="op">&gt;</span> (<span class="number">0usize</span>);
-    ( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">x</span>:<span class="ident">tt</span> $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">xs</span>:<span class="ident">tt</span>)<span class="op">*</span> ) <span class="op">=</span><span class="op">&gt;</span> (<span class="number">1usize</span> <span class="op">+</span> <span class="macro">count!</span>($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">xs</span>)<span class="kw-2">*</span>));
+    () =&gt; (<span class="number">0usize</span>);
+    ( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">x</span>:<span class="ident">tt</span> $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">xs</span>:<span class="ident">tt</span>)<span class="op">*</span> ) =&gt; (<span class="number">1usize</span> <span class="op">+</span> <span class="macro">count!</span>($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">xs</span>)<span class="kw-2">*</span>));
 }
 
 <span class="doccomment">/// The struct must contain a field `ciphersuite: &amp;&#39;static Ciphersuite`, which</span>
 <span class="doccomment">/// is not added to the macro invocation.</span>
 
 <span class="macro">macro_rules!</span> <span class="ident">implement_persistence</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>:<span class="ident">ident</span>, $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fields</span>:<span class="ident">ident</span> ),<span class="kw-2">*</span>) <span class="op">=</span><span class="op">&gt;</span> {
+    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>:<span class="ident">ident</span>, $( <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fields</span>:<span class="ident">ident</span> ),<span class="kw-2">*</span>) =&gt; {
         <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="ident">Deserialize</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span> {
-            <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>(<span class="ident">deserializer</span>: <span class="ident">D</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">D::Error</span><span class="op">&gt;</span>
+            <span class="kw">fn</span> <span class="ident">deserialize</span><span class="op">&lt;</span><span class="ident">D</span><span class="op">&gt;</span>(<span class="ident">deserializer</span>: <span class="ident">D</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">D::Error</span><span class="op">&gt;</span>
             <span class="kw">where</span>
                 <span class="ident">D</span>: <span class="ident">Deserializer</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span>,
             {
@@ -406,11 +406,11 @@
                 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="ident">Visitor</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MyVisitor</span> {
                     <span class="kw">type</span> <span class="ident">Value</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>;
 
-                    <span class="kw">fn</span> <span class="ident">expecting</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">formatter</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std::fmt::Formatter</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">std::fmt::Result</span> {
+                    <span class="kw">fn</span> <span class="ident">expecting</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">formatter</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
                         <span class="ident">formatter</span>.<span class="ident">write_str</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;struct {}&quot;</span>, <span class="macro">stringify!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>)))
                     }
 
-                    <span class="kw">fn</span> <span class="ident">visit_seq</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">seq</span>: <span class="ident">V</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>, <span class="ident">V::Error</span><span class="op">&gt;</span>
+                    <span class="kw">fn</span> <span class="ident">visit_seq</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">seq</span>: <span class="ident">V</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>, <span class="ident">V::Error</span><span class="op">&gt;</span>
                     <span class="kw">where</span>
                         <span class="ident">V</span>: <span class="ident">SeqAccess</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span>,
                     {
@@ -426,8 +426,8 @@
                             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">de::Error::invalid_length</span>(<span class="ident">ctr</span>, <span class="kw-2">&amp;</span><span class="self">self</span>))<span class="question-mark">?</span>;
                         <span class="prelude-val">Ok</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span> {
                             <span class="ident">ciphersuite</span>: <span class="kw">match</span> <span class="ident">Config::ciphersuite</span>(<span class="ident">ciphersuite</span>) {
-                                <span class="prelude-val">Ok</span>(<span class="ident">c</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">c</span>,
-                                <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">de::Error::custom</span>(<span class="string">&quot;Unsupported ciphersuite&quot;</span>)),
+                                <span class="prelude-val">Ok</span>(<span class="ident">c</span>) =&gt; <span class="ident">c</span>,
+                                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">de::Error::custom</span>(<span class="string">&quot;Unsupported ciphersuite&quot;</span>)),
                             },
                             $(
                                 <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fields</span>,
@@ -435,7 +435,7 @@
                         })
                     }
 
-                    <span class="kw">fn</span> <span class="ident">visit_map</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">map</span>: <span class="ident">V</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>, <span class="ident">V::Error</span><span class="op">&gt;</span>
+                    <span class="kw">fn</span> <span class="ident">visit_map</span><span class="op">&lt;</span><span class="ident">V</span><span class="op">&gt;</span>(<span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">map</span>: <span class="ident">V</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>, <span class="ident">V::Error</span><span class="op">&gt;</span>
                     <span class="kw">where</span>
                         <span class="ident">V</span>: <span class="ident">MapAccess</span><span class="op">&lt;</span><span class="lifetime">&#39;de</span><span class="op">&gt;</span>,
                     {
@@ -445,14 +445,14 @@
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="prelude-val">None</span>;
                         <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">key</span>) <span class="op">=</span> <span class="ident">map</span>.<span class="ident">next_key</span>()<span class="question-mark">?</span> {
                             <span class="kw">match</span> <span class="ident">key</span> {
-                                <span class="ident">Field::ciphersuite</span> <span class="op">=</span><span class="op">&gt;</span> {
+                                <span class="ident">Field::ciphersuite</span> =&gt; {
                                     <span class="kw">if</span> <span class="ident">ciphersuite</span>.<span class="ident">is_some</span>() {
                                         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">de::Error::duplicate_field</span>(<span class="string">&quot;ciphersuite&quot;</span>));
                                     }
                                     <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">map</span>.<span class="ident">next_value</span>()<span class="question-mark">?</span>);
                                 }
                                 $(
-                                    <span class="ident">Field</span>::<span class="macro-nonterminal">$</span><span class="macro-nonterminal">fields</span> <span class="op">=</span><span class="op">&gt;</span> {
+                                    <span class="ident">Field</span>::<span class="macro-nonterminal">$</span><span class="macro-nonterminal">fields</span> =&gt; {
                                         <span class="kw">if</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fields</span>.<span class="ident">is_some</span>() {
                                             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">de::Error::duplicate_field</span>(<span class="macro">stringify!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">fields</span>)));
                                         }
@@ -468,8 +468,8 @@
                         )<span class="op">*</span>
                         <span class="prelude-val">Ok</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span> {
                             <span class="ident">ciphersuite</span>: <span class="kw">match</span> <span class="ident">Config::ciphersuite</span>(<span class="ident">ciphersuite</span>) {
-                                <span class="prelude-val">Ok</span>(<span class="ident">c</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">c</span>,
-                                <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">de::Error::custom</span>(<span class="string">&quot;Unsupported ciphersuite&quot;</span>)),
+                                <span class="prelude-val">Ok</span>(<span class="ident">c</span>) =&gt; <span class="ident">c</span>,
+                                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">de::Error::custom</span>(<span class="string">&quot;Unsupported ciphersuite&quot;</span>)),
                             },
                             $(
                                 <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fields</span>,
@@ -487,7 +487,7 @@
 
         <span class="kw">impl</span> <span class="ident">Serialize</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span> {
             <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::vec_init_then_push</span>)]</span>
-            <span class="kw">fn</span> <span class="ident">serialize</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">serializer</span>: <span class="ident">S</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">S::Ok</span>, <span class="ident">S::Error</span><span class="op">&gt;</span>
+            <span class="kw">fn</span> <span class="ident">serialize</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">serializer</span>: <span class="ident">S</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">S::Ok</span>, <span class="ident">S::Error</span><span class="op">&gt;</span>
             <span class="kw">where</span>
                 <span class="ident">S</span>: <span class="ident">Serializer</span>,
             {
@@ -508,9 +508,9 @@
 
 <span class="comment">// Implement std::fmt::Display for a given enum type.</span>
 <span class="macro">macro_rules!</span> <span class="ident">implement_enum_display</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">error</span>:<span class="ident">ty</span>) <span class="op">=</span><span class="op">&gt;</span> {
+    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">error</span>:<span class="ident">ty</span>) =&gt; {
         <span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">error</span> {
-            <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">std::fmt::Result</span> {
+            <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
                 <span class="ident">f</span>.<span class="ident">write_fmt</span>(<span class="macro">format_args!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="self">self</span>))
             }
         }
@@ -525,7 +525,7 @@
         <span class="macro">print!</span>(<span class="string">&quot;{:04}&quot;</span>, <span class="ident">i</span>);
         <span class="kw">if</span> <span class="op">!</span><span class="ident">node</span>.<span class="ident">is_blank</span>() {
             <span class="kw">let</span> (<span class="ident">key_bytes</span>, <span class="ident">parent_hash_bytes</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">node</span>.<span class="ident">node_type</span> {
-                <span class="ident">NodeType::Leaf</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">NodeType::Leaf</span> =&gt; {
                     <span class="macro">print!</span>(<span class="string">&quot;\tL&quot;</span>);
                     <span class="kw">let</span> <span class="ident">key_bytes</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">kp</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">node</span>.<span class="ident">key_package</span> {
                         <span class="ident">kp</span>.<span class="ident">hpke_init_key</span>().<span class="ident">as_slice</span>()
@@ -545,8 +545,8 @@
                     };
                     (<span class="ident">key_bytes</span>, <span class="ident">parent_hash_bytes</span>)
                 }
-                <span class="ident">NodeType::Parent</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="kw">if</span> <span class="ident">treemath::root</span>(<span class="ident">tree</span>.<span class="ident">leaf_count</span>()) <span class="op">=</span><span class="op">=</span> <span class="ident">NodeIndex::from</span>(<span class="ident">i</span>) {
+                <span class="ident">NodeType::Parent</span> =&gt; {
+                    <span class="kw">if</span> <span class="ident">treemath::root</span>(<span class="ident">tree</span>.<span class="ident">leaf_count</span>()) <span class="op">==</span> <span class="ident">NodeIndex::from</span>(<span class="ident">i</span>) {
                         <span class="macro">print!</span>(<span class="string">&quot;\tP(R)&quot;</span>);
                     } <span class="kw">else</span> {
                         <span class="macro">print!</span>(<span class="string">&quot;\tP&quot;</span>);
@@ -581,7 +581,7 @@
             }
             <span class="macro">print!</span>(<span class="string">&quot;◼︎&quot;</span>);
         } <span class="kw">else</span> {
-            <span class="kw">if</span> <span class="ident">treemath::root</span>(<span class="ident">tree</span>.<span class="ident">leaf_count</span>()) <span class="op">=</span><span class="op">=</span> <span class="ident">NodeIndex::from</span>(<span class="ident">i</span>) {
+            <span class="kw">if</span> <span class="ident">treemath::root</span>(<span class="ident">tree</span>.<span class="ident">leaf_count</span>()) <span class="op">==</span> <span class="ident">NodeIndex::from</span>(<span class="ident">i</span>) {
                 <span class="macro">print!</span>(<span class="string">&quot;\tB(R)\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t| &quot;</span>);
             } <span class="kw">else</span> {
                 <span class="macro">print!</span>(<span class="string">&quot;\tB\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t| &quot;</span>);

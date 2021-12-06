@@ -242,7 +242,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">Ciphersuite</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">std::fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">write_str</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.<span class="ident">name</span>))
     }
 }
@@ -250,7 +250,7 @@
 <span class="comment">// Cloning a ciphersuite sets up a new one to make sure we don&#39;t accidentally</span>
 <span class="comment">// carry over anything we don&quot;t want to.</span>
 <span class="kw">impl</span> <span class="ident">Clone</span> <span class="kw">for</span> <span class="ident">Ciphersuite</span> {
-    <span class="kw">fn</span> <span class="ident">clone</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">clone</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">name</span>;
         <span class="ident">Ciphersuite</span> {
             <span class="ident">name</span>,
@@ -266,14 +266,14 @@
 
 <span class="comment">// Ciphersuites are equal if they have the same name.</span>
 <span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">Ciphersuite</span> {
-    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">name</span> <span class="op">=</span><span class="op">=</span> <span class="ident">other</span>.<span class="ident">name</span>
+    <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>) -&gt; <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">name</span> <span class="op">==</span> <span class="ident">other</span>.<span class="ident">name</span>
     }
 }
 
 <span class="kw">impl</span> <span class="ident">Ciphersuite</span> {
     <span class="doccomment">/// Create a new ciphersuite from the given `name`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">name</span>: <span class="ident">CiphersuiteName</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ConfigError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">name</span>: <span class="ident">CiphersuiteName</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ConfigError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="ident">Config::supported_ciphersuite_names</span>().<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>) {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ConfigError::UnsupportedCiphersuite</span>);
         }
@@ -290,24 +290,24 @@
     }
 
     <span class="doccomment">/// Get the default ciphersuite.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="self">Self</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="self">Self</span> {
         <span class="ident">Config::ciphersuite</span>(<span class="ident">CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519</span>)
             .<span class="ident">unwrap</span>()
     }
 
     <span class="doccomment">/// Get the signature scheme of this ciphersuite.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">signature_scheme</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SignatureScheme</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">signature_scheme</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">SignatureScheme</span> {
         <span class="self">self</span>.<span class="ident">signature_scheme</span>
     }
 
     <span class="doccomment">/// Get the name of this ciphersuite.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">CiphersuiteName</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">CiphersuiteName</span> {
         <span class="self">self</span>.<span class="ident">name</span>
     }
 
     <span class="doccomment">/// Get the AEAD mode</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">test</span>, <span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>))]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">aead</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">AeadType</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">aead</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">AeadType</span> {
         <span class="self">self</span>.<span class="ident">aead</span>
     }
 
@@ -316,32 +316,32 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">payload</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="ident">backend</span>.<span class="ident">crypto</span>().<span class="ident">hash</span>(<span class="self">self</span>.<span class="ident">hash</span>, <span class="ident">payload</span>)
     }
 
     <span class="doccomment">/// Get the length of the used hash algorithm.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hash_length</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hash_length</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         <span class="self">self</span>.<span class="ident">hash</span>.<span class="ident">size</span>()
     }
 
     <span class="doccomment">/// Get the length of the AEAD tag.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">mac_length</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">mac_length</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         <span class="self">self</span>.<span class="ident">aead</span>.<span class="ident">tag_size</span>()
     }
 
     <span class="doccomment">/// Returns the key size of the used AEAD.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">aead_key_length</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">aead_key_length</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         <span class="self">self</span>.<span class="ident">aead</span>.<span class="ident">key_size</span>()
     }
 
     <span class="doccomment">/// Returns the length of the nonce in the AEAD.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">aead_nonce_length</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">aead_nonce_length</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         <span class="self">self</span>.<span class="ident">aead</span>.<span class="ident">nonce_size</span>()
     }
 
     <span class="doccomment">/// Build an [`HpkeConfi`] for this cipher suite.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hpke_config</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">HpkeConfig</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hpke_config</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">HpkeConfig</span> {
         <span class="ident">HpkeConfig</span>(<span class="self">self</span>.<span class="ident">hpke_kem</span>, <span class="self">self</span>.<span class="ident">hpke_kdf</span>, <span class="self">self</span>.<span class="ident">hpke_aead</span>)
     }
 }
@@ -349,12 +349,12 @@
 <span class="doccomment">/// Compare two byte slices in a way that&#39;s hopefully not optimised out by the</span>
 <span class="doccomment">/// compiler.</span>
 <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-<span class="kw">fn</span> <span class="ident">equal_ct</span>(<span class="ident">a</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">b</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+<span class="kw">fn</span> <span class="ident">equal_ct</span>(<span class="ident">a</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">b</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="ident">bool</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">diff</span> <span class="op">=</span> <span class="number">0u8</span>;
     <span class="kw">for</span> (<span class="ident">l</span>, <span class="ident">r</span>) <span class="kw">in</span> <span class="ident">a</span>.<span class="ident">iter</span>().<span class="ident">zip</span>(<span class="ident">b</span>.<span class="ident">iter</span>()) {
         <span class="ident">diff</span> <span class="op">|</span><span class="op">=</span> <span class="ident">l</span> <span class="op">^</span> <span class="ident">r</span>;
     }
-    <span class="ident">diff</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span>
+    <span class="ident">diff</span> <span class="op">==</span> <span class="number">0</span>
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div>

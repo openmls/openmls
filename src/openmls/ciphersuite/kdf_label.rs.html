@@ -60,7 +60,7 @@
         <span class="ident">context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">label</span>: <span class="ident">String</span>,
         <span class="ident">length</span>: <span class="ident">usize</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">length</span> <span class="op">&gt;</span> <span class="ident">u16::MAX</span>.<span class="ident">into</span>() {
             <span class="macro">debug_assert!</span>(
                 <span class="bool-val">false</span>,
