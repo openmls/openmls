@@ -53,12 +53,12 @@ impl Client {
             &self.crypto,
             mandatory_extensions,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let kp = kpb.key_package().clone();
         self.crypto
             .key_store()
             .store(&kp.hash(&self.crypto)?, &kpb)
-            .unwrap();
+            .expect("An unexpected error occurred.");
         Ok(kp)
     }
 
@@ -88,12 +88,12 @@ impl Client {
             &self.crypto,
             mandatory_extensions,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let key_package = kpb.key_package().clone();
         self.crypto
             .key_store()
             .store(&key_package.hash(&self.crypto)?, &kpb)
-            .unwrap();
+            .expect("An unexpected error occurred.");
         let group_state = ManagedGroup::new(
             &self.crypto,
             &managed_group_config,

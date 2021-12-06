@@ -58,10 +58,10 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         SignatureScheme::from(ciphersuite_name),
         &crypto,
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
     let key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, &crypto, Vec::new())
-            .unwrap();
+            .expect("An unexpected error occurred.");
     let capabilities = CapabilitiesExtension::default();
     let lifetime = LifetimeExtension::default();
 
@@ -76,8 +76,14 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     let group_info = GroupInfoPayload::new(
         group.group_id().clone(),
         GroupEpoch(0),
-        crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
-        crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
+        crypto
+            .rand()
+            .random_vec(ciphersuite.hash_length())
+            .expect("An unexpected error occurred."),
+        crypto
+            .rand()
+            .random_vec(ciphersuite.hash_length())
+            .expect("An unexpected error occurred."),
         &[Extension::RequiredCapabilities(
             RequiredCapabilitiesExtension::default(),
         )],
@@ -88,22 +94,24 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
             mac_value: crypto
                 .rand()
                 .random_vec(ciphersuite.hash_length())
-                .unwrap()
+                .expect("An unexpected error occurred.")
                 .into(),
         }),
         random_u32(),
     );
-    let group_info = group_info.sign(&crypto, &credential_bundle).unwrap();
+    let group_info = group_info
+        .sign(&crypto, &credential_bundle)
+        .expect("An unexpected error occurred.");
     let group_secrets =
         GroupSecrets::random_encoded(ciphersuite, &crypto, ProtocolVersion::default());
     let public_group_state = group
         .export_public_group_state(&crypto, &credential_bundle)
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     // Create some proposals
     let key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, &crypto, Vec::new())
-            .unwrap();
+            .expect("An unexpected error occurred.");
     let key_package = key_package_bundle.key_package();
 
     let add_proposal = AddProposal {
@@ -119,9 +127,15 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     let psk_id = PreSharedKeyId::new(
         PskType::External,
         Psk::External(ExternalPsk::new(
-            crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
+            crypto
+                .rand()
+                .random_vec(ciphersuite.hash_length())
+                .expect("An unexpected error occurred."),
         )),
-        crypto.rand().random_vec(ciphersuite.hash_length()).unwrap(),
+        crypto
+            .rand()
+            .random_vec(ciphersuite.hash_length())
+            .expect("An unexpected error occurred."),
     );
 
     let psk_proposal = PreSharedKeyProposal::new(psk_id);
@@ -140,7 +154,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     let app_ack_proposal = tls_codec::TlsByteVecU32::new(Vec::new());
     let joiner_key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, &crypto, Vec::new())
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
     let framing_parameters = FramingParameters::new(b"aad", WireFormat::MlsCiphertext);
 
@@ -151,23 +165,26 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
             joiner_key_package_bundle.key_package().clone(),
             &crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, add_proposal_pt.clone()).unwrap(),
+        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, add_proposal_pt.clone())
+            .expect("An unexpected error occurred."),
     );
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
         .credential_bundle(&credential_bundle)
         .proposal_store(&proposal_store)
         .build();
-    let (commit_pt, welcome_option, _option_kpb) = group.create_commit(params, &crypto).unwrap();
+    let (commit_pt, welcome_option, _option_kpb) = group
+        .create_commit(params, &crypto)
+        .expect("An unexpected error occurred.");
     let commit = if let MlsPlaintextContentType::Commit(commit) = commit_pt.content() {
         commit.clone()
     } else {
         panic!("Wrong content of MLS plaintext");
     };
-    let welcome = welcome_option.unwrap();
+    let welcome = welcome_option.expect("An unexpected error occurred.");
     let mls_ciphertext_application = group
         .create_application_message(
             b"aad",
@@ -176,13 +193,14 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
             random_u8() as usize,
             &crypto,
         )
-        .unwrap();
-    let verifiable_mls_plaintext_application =
-        group.decrypt(&mls_ciphertext_application, &crypto).unwrap();
+        .expect("An unexpected error occurred.");
+    let verifiable_mls_plaintext_application = group
+        .decrypt(&mls_ciphertext_application, &crypto)
+        .expect("An unexpected error occurred.");
     // Sets the context implicitly.
     let mls_plaintext_application = group
         .verify(verifiable_mls_plaintext_application, &crypto)
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     let encryption_target = match random_u32() % 3 {
         0 => commit_pt.clone(),
@@ -193,38 +211,110 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
 
     let mls_ciphertext = group
         .encrypt(encryption_target, random_u8() as usize, &crypto)
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     MessagesTestVector {
-        key_package: bytes_to_hex(&key_package.tls_serialize_detached().unwrap()), // serialized KeyPackage,
-        capabilities: bytes_to_hex(&capabilities.tls_serialize_detached().unwrap()), // serialized Capabilities,
-        lifetime: bytes_to_hex(&lifetime.tls_serialize_detached().unwrap()), // serialized {uint64 not_before; uint64 not_after;},
-        ratchet_tree: bytes_to_hex(&TlsSliceU32(&ratchet_tree).tls_serialize_detached().unwrap()), /* serialized optional<Node> ratchet_tree<1..2^32-1>; */
+        key_package: bytes_to_hex(
+            &key_package
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        ), // serialized KeyPackage,
+        capabilities: bytes_to_hex(
+            &capabilities
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        ), // serialized Capabilities,
+        lifetime: bytes_to_hex(
+            &lifetime
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        ), // serialized {uint64 not_before; uint64 not_after;},
+        ratchet_tree: bytes_to_hex(
+            &TlsSliceU32(&ratchet_tree)
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        ), /* serialized optional<Node> ratchet_tree<1..2^32-1>; */
 
-        group_info: bytes_to_hex(&group_info.tls_serialize_detached().unwrap()), /* serialized GroupInfo */
-        group_secrets: bytes_to_hex(&group_secrets.unwrap()), /* serialized GroupSecrets */
-        welcome: bytes_to_hex(&welcome.tls_serialize_detached().unwrap()), /* serialized Welcome */
+        group_info: bytes_to_hex(
+            &group_info
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        ), /* serialized GroupInfo */
+        group_secrets: bytes_to_hex(&group_secrets.expect("An unexpected error occurred.")), /* serialized GroupSecrets */
+        welcome: bytes_to_hex(
+            &welcome
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        ), /* serialized Welcome */
 
-        public_group_state: bytes_to_hex(&public_group_state.tls_serialize_detached().unwrap()), /* serialized PublicGroupState */
+        public_group_state: bytes_to_hex(
+            &public_group_state
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        ), /* serialized PublicGroupState */
 
-        add_proposal: bytes_to_hex(&add_proposal.tls_serialize_detached().unwrap()), /* serialized Add */
-        update_proposal: bytes_to_hex(&update_proposal.tls_serialize_detached().unwrap()), /* serialized Update */
-        remove_proposal: bytes_to_hex(&remove_proposal.tls_serialize_detached().unwrap()), /* serialized Remove */
-        pre_shared_key_proposal: bytes_to_hex(&psk_proposal.tls_serialize_detached().unwrap()), /* serialized PreSharedKey */
-        re_init_proposal: bytes_to_hex(&reinit_proposal.tls_serialize_detached().unwrap()), /* serialized ReInit */
+        add_proposal: bytes_to_hex(
+            &add_proposal
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        ), /* serialized Add */
+        update_proposal: bytes_to_hex(
+            &update_proposal
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        ), /* serialized Update */
+        remove_proposal: bytes_to_hex(
+            &remove_proposal
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        ), /* serialized Remove */
+        pre_shared_key_proposal: bytes_to_hex(
+            &psk_proposal
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        ), /* serialized PreSharedKey */
+        re_init_proposal: bytes_to_hex(
+            &reinit_proposal
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        ), /* serialized ReInit */
         external_init_proposal: bytes_to_hex(
-            &external_init_proposal.tls_serialize_detached().unwrap(),
+            &external_init_proposal
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
         ), /* serialized ExternalInit */
-        app_ack_proposal: bytes_to_hex(&app_ack_proposal.tls_serialize_detached().unwrap()), /* serialized AppAck */
+        app_ack_proposal: bytes_to_hex(
+            &app_ack_proposal
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        ), /* serialized AppAck */
 
-        commit: bytes_to_hex(&commit.tls_serialize_detached().unwrap()), /* serialized Commit */
+        commit: bytes_to_hex(
+            &commit
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        ), /* serialized Commit */
 
         mls_plaintext_application: bytes_to_hex(
-            &mls_plaintext_application.tls_serialize_detached().unwrap(),
+            &mls_plaintext_application
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
         ), /* serialized MLSPlaintext(ApplicationData) */
-        mls_plaintext_proposal: bytes_to_hex(&add_proposal_pt.tls_serialize_detached().unwrap()), /* serialized MLSPlaintext(Proposal(*)) */
-        mls_plaintext_commit: bytes_to_hex(&commit_pt.tls_serialize_detached().unwrap()), /* serialized MLSPlaintext(Commit) */
-        mls_ciphertext: bytes_to_hex(&mls_ciphertext.tls_serialize_detached().unwrap()), /* serialized MLSCiphertext */
+        mls_plaintext_proposal: bytes_to_hex(
+            &add_proposal_pt
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        ), /* serialized MLSPlaintext(Proposal(*)) */
+        mls_plaintext_commit: bytes_to_hex(
+            &commit_pt
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        ), /* serialized MLSPlaintext(Commit) */
+        mls_ciphertext: bytes_to_hex(
+            &mls_ciphertext
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        ), /* serialized MLSCiphertext */
     }
 }
 
@@ -248,9 +338,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     let tv_key_package = hex_to_bytes(&tv.key_package);
     let mut tv_key_package_slice = tv_key_package.as_slice();
     let my_key_package = KeyPackage::tls_deserialize(&mut tv_key_package_slice)
-        .unwrap()
+        .expect("An unexpected error occurred.")
         .tls_serialize_detached()
-        .unwrap();
+        .expect("An unexpected error occurred.");
     if tv_key_package != my_key_package {
         log::error!("  KeyPackage encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_key_package);
@@ -265,9 +355,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     log::debug!("Capabilities tv: {}", tv.capabilities);
     let tv_capabilities = hex_to_bytes(&tv.capabilities);
     let my_capabilities = CapabilitiesExtension::tls_deserialize(&mut tv_capabilities.as_slice())
-        .unwrap()
+        .expect("An unexpected error occurred.")
         .tls_serialize_detached()
-        .unwrap();
+        .expect("An unexpected error occurred.");
     if tv_capabilities != my_capabilities {
         log::error!("  Capabilities encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_capabilities);
@@ -281,9 +371,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     // Lifetime
     let tv_lifetime = hex_to_bytes(&tv.lifetime);
     let my_lifetime = LifetimeExtension::tls_deserialize(&mut tv_lifetime.as_slice())
-        .unwrap()
+        .expect("An unexpected error occurred.")
         .tls_serialize_detached()
-        .unwrap();
+        .expect("An unexpected error occurred.");
     if tv_lifetime != my_lifetime {
         log::error!("  Lifetime encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_lifetime);
@@ -298,8 +388,11 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     log::trace!("  Serialized ratchet tree: {}", tv.ratchet_tree);
     let tv_ratchet_tree = hex_to_bytes(&tv.ratchet_tree);
     let dec_ratchet_tree =
-        TlsVecU32::<Option<Node>>::tls_deserialize(&mut tv_ratchet_tree.as_slice()).unwrap();
-    let my_ratchet_tree = dec_ratchet_tree.tls_serialize_detached().unwrap();
+        TlsVecU32::<Option<Node>>::tls_deserialize(&mut tv_ratchet_tree.as_slice())
+            .expect("An unexpected error occurred.");
+    let my_ratchet_tree = dec_ratchet_tree
+        .tls_serialize_detached()
+        .expect("An unexpected error occurred.");
     if tv_ratchet_tree != my_ratchet_tree {
         log::error!("  RatchetTree encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_ratchet_tree);
@@ -313,9 +406,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     // GroupInfo
     let tv_group_info = hex_to_bytes(&tv.group_info);
     let my_group_info = GroupInfo::tls_deserialize(&mut tv_group_info.as_slice())
-        .unwrap()
+        .expect("An unexpected error occurred.")
         .tls_serialize_detached()
-        .unwrap();
+        .expect("An unexpected error occurred.");
     if tv_group_info != my_group_info {
         log::error!("  GroupInfo encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_group_info);
@@ -328,9 +421,11 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
 
     // GroupSecrets
     let tv_group_secrets = hex_to_bytes(&tv.group_secrets);
-    let gs = GroupSecrets::tls_deserialize(&mut tv_group_secrets.as_slice()).unwrap();
+    let gs = GroupSecrets::tls_deserialize(&mut tv_group_secrets.as_slice())
+        .expect("An unexpected error occurred.");
     let my_group_secrets =
-        GroupSecrets::new_encoded(&gs.joiner_secret, gs.path_secret.as_ref(), &gs.psks).unwrap();
+        GroupSecrets::new_encoded(&gs.joiner_secret, gs.path_secret.as_ref(), &gs.psks)
+            .expect("An unexpected error occurred.");
     if tv_group_secrets != my_group_secrets {
         log::error!("  GroupSecrets encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_group_secrets);
@@ -344,9 +439,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     // Welcome
     let tv_welcome = hex_to_bytes(&tv.welcome);
     let my_welcome = Welcome::tls_deserialize(&mut tv_welcome.as_slice())
-        .unwrap()
+        .expect("An unexpected error occurred.")
         .tls_serialize_detached()
-        .unwrap();
+        .expect("An unexpected error occurred.");
     if tv_welcome != my_welcome {
         log::error!("  Welcome encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_welcome);
@@ -361,9 +456,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     let tv_public_group_state = hex_to_bytes(&tv.public_group_state);
     let my_public_group_state =
         VerifiablePublicGroupState::tls_deserialize(&mut tv_public_group_state.as_slice())
-            .unwrap()
+            .expect("An unexpected error occurred.")
             .tls_serialize_detached()
-            .unwrap();
+            .expect("An unexpected error occurred.");
     if tv_public_group_state != my_public_group_state {
         log::error!("  PublicGroupState encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_public_group_state);
@@ -377,9 +472,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     // AddProposal
     let tv_add_proposal = hex_to_bytes(&tv.add_proposal);
     let my_add_proposal = AddProposal::tls_deserialize(&mut tv_add_proposal.as_slice())
-        .unwrap()
+        .expect("An unexpected error occurred.")
         .tls_serialize_detached()
-        .unwrap();
+        .expect("An unexpected error occurred.");
     if tv_add_proposal != my_add_proposal {
         log::error!("  AddProposal encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_add_proposal);
@@ -394,9 +489,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     // UpdateProposal
     let tv_update_proposal = hex_to_bytes(&tv.update_proposal);
     let my_update_proposal = UpdateProposal::tls_deserialize(&mut tv_update_proposal.as_slice())
-        .unwrap()
+        .expect("An unexpected error occurred.")
         .tls_serialize_detached()
-        .unwrap();
+        .expect("An unexpected error occurred.");
     if tv_update_proposal != my_update_proposal {
         log::error!("  UpdateProposal encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_update_proposal);
@@ -410,9 +505,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     // RemoveProposal
     let tv_remove_proposal = hex_to_bytes(&tv.remove_proposal);
     let my_remove_proposal = RemoveProposal::tls_deserialize(&mut tv_remove_proposal.as_slice())
-        .unwrap()
+        .expect("An unexpected error occurred.")
         .tls_serialize_detached()
-        .unwrap();
+        .expect("An unexpected error occurred.");
     if tv_remove_proposal != my_remove_proposal {
         log::error!("  RemoveProposal encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_remove_proposal);
@@ -427,9 +522,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     let tv_pre_shared_key_proposal = hex_to_bytes(&tv.pre_shared_key_proposal);
     let my_pre_shared_key_proposal =
         PreSharedKeyProposal::tls_deserialize(&mut tv_pre_shared_key_proposal.as_slice())
-            .unwrap()
+            .expect("An unexpected error occurred.")
             .tls_serialize_detached()
-            .unwrap();
+            .expect("An unexpected error occurred.");
     if tv_pre_shared_key_proposal != my_pre_shared_key_proposal {
         log::error!("  PreSharedKeyProposal encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_pre_shared_key_proposal);
@@ -445,9 +540,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     // Commit
     let tv_commit = hex_to_bytes(&tv.commit);
     let my_commit = Commit::tls_deserialize(&mut tv_commit.as_slice())
-        .unwrap()
+        .expect("An unexpected error occurred.")
         .tls_serialize_detached()
-        .unwrap();
+        .expect("An unexpected error occurred.");
     if tv_commit != my_commit {
         log::error!("  Commit encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_commit);
@@ -464,9 +559,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     tv_mls_plaintext_application[0] = WireFormat::MlsPlaintext as u8;
     let my_mls_plaintext_application =
         VerifiableMlsPlaintext::tls_deserialize(&mut tv_mls_plaintext_application.as_slice())
-            .unwrap()
+            .expect("An unexpected error occurred.")
             .tls_serialize_detached()
-            .unwrap();
+            .expect("An unexpected error occurred.");
     if tv_mls_plaintext_application != my_mls_plaintext_application {
         log::error!("  MlsPlaintextApplication encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_mls_plaintext_application);
@@ -483,9 +578,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     tv_mls_plaintext_proposal[0] = WireFormat::MlsPlaintext as u8;
     let my_mls_plaintext_proposal =
         VerifiableMlsPlaintext::tls_deserialize(&mut tv_mls_plaintext_proposal.as_slice())
-            .unwrap()
+            .expect("An unexpected error occurred.")
             .tls_serialize_detached()
-            .unwrap();
+            .expect("An unexpected error occurred.");
     if tv_mls_plaintext_proposal != my_mls_plaintext_proposal {
         log::error!("  MlsPlaintext(Proposal) encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_mls_plaintext_proposal);
@@ -502,9 +597,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     tv_mls_plaintext_commit[0] = WireFormat::MlsPlaintext as u8;
     let my_mls_plaintext_commit =
         VerifiableMlsPlaintext::tls_deserialize(&mut tv_mls_plaintext_commit.as_slice())
-            .unwrap()
+            .expect("An unexpected error occurred.")
             .tls_serialize_detached()
-            .unwrap();
+            .expect("An unexpected error occurred.");
     if tv_mls_plaintext_commit != my_mls_plaintext_commit {
         log::error!("  MlsPlaintext(Commit) encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_mls_plaintext_commit);
@@ -518,9 +613,9 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
     // MlsCiphertext
     let tv_mls_ciphertext = hex_to_bytes(&tv.mls_ciphertext);
     let my_mls_ciphertext = MlsCiphertext::tls_deserialize(&mut tv_mls_ciphertext.as_slice())
-        .unwrap()
+        .expect("An unexpected error occurred.")
         .tls_serialize_detached()
-        .unwrap();
+        .expect("An unexpected error occurred.");
     if tv_mls_ciphertext != my_mls_ciphertext {
         log::error!("  MlsCiphertext encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_mls_ciphertext);

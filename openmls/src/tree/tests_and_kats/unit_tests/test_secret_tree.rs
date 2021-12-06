@@ -178,7 +178,10 @@ fn secret_tree() {
     let n_leaves = 10u32;
     let mut secret_tree = SecretTree::new(
         EncryptionSecret::from_slice(
-            &crypto.rand().random_vec(ciphersuite.hash_length()).unwrap()[..],
+            &crypto
+                .rand()
+                .random_vec(ciphersuite.hash_length())
+                .expect("An unexpected error occurred.")[..],
             ProtocolVersion::default(),
             ciphersuite,
         ),

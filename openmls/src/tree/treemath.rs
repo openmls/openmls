@@ -187,7 +187,7 @@ fn invalid_inputs() {
 fn test_leaf_in_tree() {
     let tests = [(0u32, 2u32), (1, 2), (4, 5), (9, 10)];
     for test in tests.iter() {
-        leaf_in_tree(test.0.into(), test.1.into()).unwrap();
+        leaf_in_tree(test.0.into(), test.1.into()).expect("An unexpected error occurred.");
     }
 }
 

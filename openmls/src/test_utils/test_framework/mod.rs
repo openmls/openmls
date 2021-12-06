@@ -142,12 +142,12 @@ impl ManagedTestSetup {
                     SignatureScheme::from(*ciphersuite),
                     &crypto,
                 )
-                .unwrap();
+                .expect("An unexpected error occurred.");
                 let credential = cb.credential().clone();
                 crypto
                     .key_store()
                     .store(cb.credential().signature_key(), &cb)
-                    .unwrap();
+                    .expect("An unexpected error occurred.");
                 credentials.insert(*ciphersuite, credential);
             }
             let client = Client {
@@ -211,7 +211,10 @@ impl ManagedTestSetup {
                 .borrow_mut()
                 .remove(egs.key_package_hash.as_slice())
                 .ok_or(SetupError::NoFreshKeyPackage)?;
-            let client = clients.get(&client_id).unwrap().borrow();
+            let client = clients
+                .get(&client_id)
+                .expect("An unexpected error occurred.")
+                .borrow();
             client.join_group(
                 group.group_config.clone(),
                 welcome.clone(),
@@ -244,13 +247,21 @@ impl ManagedTestSetup {
         let clients = self.clients.borrow();
         // Distribute message to all members.
         for (_index, member_id) in &group.members {
-            let member = clients.get(member_id).unwrap().borrow();
+            let member = clients
+                .get(member_id)
+                .expect("An unexpected error occurred.")
+                .borrow();
             member.receive_messages_for_group(&message)?;
         }
         // Get the current tree and figure out who's still in the group.
-        let sender = clients.get(sender_id).unwrap().borrow();
+        let sender = clients
+            .get(sender_id)
+            .expect("An unexpected error occurred.")
+            .borrow();
         let sender_groups = sender.groups.borrow();
-        let sender_group = sender_groups.get(&group.group_id).unwrap();
+        let sender_group = sender_groups
+            .get(&group.group_id)
+            .expect("An unexpected error occurred.");
         group.members = sender
             .get_members_of_group(&group.group_id)?
             .iter()
@@ -270,7 +281,10 @@ impl ManagedTestSetup {
         let clients = self.clients.borrow();
         let mut messages = Vec::new();
         for (_, m_id) in &group.members {
-            let m = clients.get(m_id).unwrap().borrow();
+            let m = clients
+                .get(m_id)
+                .expect("An unexpected error occurred.")
+                .borrow();
             let mut group_states = m.groups.borrow_mut();
             // Some group members may not have received their welcome messages yet.
             if let Some(group_state) = group_states.get_mut(&group.group_id) {
@@ -278,7 +292,7 @@ impl ManagedTestSetup {
                 assert_eq!(
                     group_state
                         .export_secret(&m.crypto, "test", &[], 32)
-                        .unwrap(),
+                        .expect("An unexpected error occurred."),
                     group.exporter_secret
                 );
                 let message = group_state
@@ -327,7 +341,7 @@ impl ManagedTestSetup {
             let new_member_id = clients
                 .keys()
                 .find(|&client_id| !is_in_group(client_id) && !is_in_new_members(client_id))
-                .unwrap();
+                .expect("An unexpected error occurred.");
             new_member_ids.push(new_member_id.clone());
         }
         Ok(new_member_ids)
@@ -345,13 +359,18 @@ impl ManagedTestSetup {
         let group_creator_id = ((OsRng.next_u32() as usize) % clients.len())
             .to_be_bytes()
             .to_vec();
-        let group_creator = clients.get(&group_creator_id).unwrap().borrow();
+        let group_creator = clients
+            .get(&group_creator_id)
+            .expect("An unexpected error occurred.")
+            .borrow();
         let mut groups = self.groups.borrow_mut();
         let group_id = GroupId::from_slice(&groups.len().to_string().into_bytes());
 
         group_creator.create_group(group_id.clone(), self.default_mgc.clone(), ciphersuite)?;
         let creator_groups = group_creator.groups.borrow();
-        let group = creator_groups.get(&group_id).unwrap();
+        let group = creator_groups
+            .get(&group_id)
+            .expect("An unexpected error occurred.");
         let public_tree = group.export_ratchet_tree();
         let exporter_secret = group.export_secret(&group_creator.crypto, "test", &[], 32)?;
         let member_ids = vec![(0, group_creator_id)];
@@ -377,7 +396,9 @@ impl ManagedTestSetup {
         let group_id = self.create_group(ciphersuite)?;
 
         let mut groups = self.groups.borrow_mut();
-        let group = groups.get_mut(&group_id).unwrap();
+        let group = groups
+            .get_mut(&group_id)
+            .expect("An unexpected error occurred.");
 
         // Get new members to add to the group.
         let mut new_members = self.random_new_members_for_group(group, target_group_size - 1)?;
@@ -558,7 +579,7 @@ impl ManagedTestSetup {
                         .members
                         .iter()
                         .find(|(_, identity)| identity == &member_id)
-                        .unwrap()
+                        .expect("An unexpected error occurred.")
                         .clone();
                     println!(
                         "Index of the member performing the {:?}: {:?}",
@@ -595,7 +616,7 @@ impl ManagedTestSetup {
                     let number_of_adds = (((OsRng.next_u32() as usize) % clients_left) % 5) + 1;
                     let new_member_ids = self
                         .random_new_members_for_group(group, number_of_adds)
-                        .unwrap();
+                        .expect("An unexpected error occurred.");
                     println!(
                         "{:?}: Adding new clients: {:?}",
                         action_type, new_member_ids

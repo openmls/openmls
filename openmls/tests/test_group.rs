@@ -17,14 +17,14 @@ fn create_commit_optional_path() {
             ciphersuite.signature_scheme(),
             &crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let bob_credential_bundle = CredentialBundle::new(
             "Bob".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
             &crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         // Mandatory extensions, will be fixed in #164
         let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
@@ -37,7 +37,7 @@ fn create_commit_optional_path() {
             &crypto,
             mandatory_extensions.clone(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         let bob_key_package_bundle = KeyPackageBundle::new(
             &[ciphersuite.name()],
@@ -45,7 +45,7 @@ fn create_commit_optional_path() {
             &crypto,
             mandatory_extensions.clone(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let bob_key_package = bob_key_package_bundle.key_package();
 
         let alice_update_key_package_bundle = KeyPackageBundle::new(
@@ -54,7 +54,7 @@ fn create_commit_optional_path() {
             &crypto,
             mandatory_extensions,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let alice_update_key_package = alice_update_key_package_bundle.key_package();
         assert!(alice_update_key_package.verify(&crypto,).is_ok());
 
@@ -145,7 +145,7 @@ fn create_commit_optional_path() {
 
         // Bob creates group from Welcome
         let group_bob = match MlsGroup::new_from_welcome(
-            welcome_bundle_alice_bob_option.unwrap(),
+            welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
             Some(ratchet_tree),
             bob_key_package_bundle,
             None, /* PSK fetcher */
@@ -199,7 +199,7 @@ fn create_commit_optional_path() {
             .stage_commit(
                 &commit_mls_plaintext,
                 &proposal_store,
-                &[kpb_option.unwrap()],
+                &[kpb_option.expect("An unexpected error occurred.")],
                 None, /* PSK fetcher */
                 &crypto,
             )
@@ -225,14 +225,14 @@ fn basic_group_setup() {
             ciphersuite.signature_scheme(),
             &crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let bob_credential_bundle = CredentialBundle::new(
             "Bob".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
             &crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         // Generate KeyPackages
         let bob_key_package_bundle = KeyPackageBundle::new(
@@ -241,7 +241,7 @@ fn basic_group_setup() {
             &crypto,
             Vec::new(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let bob_key_package = bob_key_package_bundle.key_package();
 
         let alice_key_package_bundle = KeyPackageBundle::new(
@@ -250,7 +250,7 @@ fn basic_group_setup() {
             &crypto,
             Vec::new(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         // Alice creates a group
         let group_alice = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
@@ -296,14 +296,14 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         ciphersuite.signature_scheme(),
         &crypto,
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
     let bob_credential_bundle = CredentialBundle::new(
         "Bob".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
         &crypto,
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     // Mandatory extensions
     let capabilities_extension = Extension::Capabilities(CapabilitiesExtension::new(
@@ -322,7 +322,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         &crypto,
         mandatory_extensions.clone(),
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     let bob_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite.name()],
@@ -330,7 +330,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         &crypto,
         mandatory_extensions.clone(),
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group ===
@@ -385,7 +385,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     let ratchet_tree = group_alice.tree().public_key_tree_copy();
 
     let mut group_bob = match MlsGroup::new_from_welcome(
-        welcome_bundle_alice_bob_option.unwrap(),
+        welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,
         None, /* PSK fetcher */
@@ -409,7 +409,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     let message_alice = [1, 2, 3];
     let mls_ciphertext_alice = group_alice
         .create_application_message(&[], &message_alice, &alice_credential_bundle, 0, &crypto)
-        .unwrap();
+        .expect("An unexpected error occurred.");
     let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_alice, &crypto) {
         Ok(mls_plaintext) => group_bob
             .verify(mls_plaintext, &crypto)
@@ -418,7 +418,9 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     };
     assert_eq!(
         message_alice,
-        mls_plaintext_bob.as_application_message().unwrap()
+        mls_plaintext_bob
+            .as_application_message()
+            .expect("An unexpected error occurred.")
     );
 
     // === Bob updates and commits ===
@@ -478,7 +480,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         .stage_commit(
             &mls_plaintext_commit,
             &proposal_store,
-            &[kpb_option.unwrap()],
+            &[kpb_option.expect("An unexpected error occurred.")],
             None, /* PSK fetcher */
             &crypto,
         )
@@ -536,7 +538,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         .stage_commit(
             &mls_plaintext_commit,
             &proposal_store,
-            &[kpb_option.unwrap()],
+            &[kpb_option.expect("An unexpected error occurred.")],
             None, /* PSK fetcher */
             &crypto,
         )
@@ -605,7 +607,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         .stage_commit(
             &mls_plaintext_commit,
             &proposal_store,
-            &[kpb_option.unwrap()],
+            &[kpb_option.expect("An unexpected error occurred.")],
             None,
             /* PSK fetcher */ &crypto,
         )
@@ -639,7 +641,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         ciphersuite.signature_scheme(),
         &crypto,
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     let charlie_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite.name()],
@@ -710,7 +712,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
 
     let ratchet_tree = group_alice.tree().public_key_tree_copy();
     let mut group_charlie = match MlsGroup::new_from_welcome(
-        welcome_for_charlie_option.unwrap(),
+        welcome_for_charlie_option.expect("An unexpected error occurred."),
         Some(ratchet_tree),
         charlie_key_package_bundle,
         None,
@@ -740,7 +742,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             0,
             &crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
     let mls_plaintext_alice = match group_alice.decrypt(&mls_ciphertext_charlie.clone(), &crypto) {
         Ok(mls_plaintext) => group_alice
             .verify(mls_plaintext, &crypto)
@@ -755,11 +757,15 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     };
     assert_eq!(
         message_charlie,
-        mls_plaintext_alice.as_application_message().unwrap()
+        mls_plaintext_alice
+            .as_application_message()
+            .expect("An unexpected error occurred.")
     );
     assert_eq!(
         message_charlie,
-        mls_plaintext_bob.as_application_message().unwrap()
+        mls_plaintext_bob
+            .as_application_message()
+            .expect("An unexpected error occurred.")
     );
 
     // === Charlie updates and commits ===
@@ -828,7 +834,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         .stage_commit(
             &mls_plaintext_commit,
             &proposal_store,
-            &[kpb_option.unwrap()],
+            &[kpb_option.expect("An unexpected error occurred.")],
             None,
             /* PSK fetcher */ &crypto,
         )
@@ -904,7 +910,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         .stage_commit(
             &mls_plaintext_commit,
             &proposal_store,
-            &[kpb_option.unwrap()],
+            &[kpb_option.expect("An unexpected error occurred.")],
             None,
             /* PSK fetcher */ &crypto,
         )
@@ -926,10 +932,10 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     // Make sure all groups export the same key
     let alice_exporter = group_alice
         .export_secret(&crypto, "export test", &[], 32)
-        .unwrap();
+        .expect("An unexpected error occurred.");
     let charlie_exporter = group_charlie
         .export_secret(&crypto, "export test", &[], 32)
-        .unwrap();
+        .expect("An unexpected error occurred.");
     assert_eq!(alice_exporter, charlie_exporter);
 
     // Now alice tries to derive an exporter with too large of a key length.

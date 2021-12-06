@@ -31,7 +31,7 @@ fn generate_credential_bundle(
     backend
         .key_store()
         .store(credential.signature_key(), &cb)
-        .unwrap();
+        .expect("An unexpected error occurred.");
     Ok(credential)
 }
 
@@ -44,13 +44,13 @@ fn generate_key_package_bundle(
     let credential_bundle = backend
         .key_store()
         .read(credential.signature_key())
-        .unwrap();
+        .expect("An unexpected error occurred.");
     let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, backend, extensions)?;
     let kp = kpb.key_package().clone();
     backend
         .key_store()
         .store(&kp.hash(backend).expect("Could not hash KeyPackage."), &kpb)
-        .unwrap();
+        .expect("An unexpected error occurred.");
     Ok(kp)
 }
 
@@ -124,7 +124,7 @@ fn managed_group_operations() {
                 ciphersuite.signature_scheme(),
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             let bob_credential = generate_credential_bundle(
                 "Bob".into(),
@@ -132,7 +132,7 @@ fn managed_group_operations() {
                 ciphersuite.signature_scheme(),
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             let charlie_credential = generate_credential_bundle(
                 "Charlie".into(),
@@ -140,7 +140,7 @@ fn managed_group_operations() {
                 ciphersuite.signature_scheme(),
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             // Generate KeyPackages
             let alice_key_package = generate_key_package_bundle(
@@ -149,7 +149,7 @@ fn managed_group_operations() {
                 vec![],
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             let bob_key_package = generate_key_package_bundle(
                 &[ciphersuite.name()],
@@ -157,7 +157,7 @@ fn managed_group_operations() {
                 vec![],
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             // Define the managed group configuration
 
@@ -174,7 +174,7 @@ fn managed_group_operations() {
                     .hash(&crypto)
                     .expect("Could not hash KeyPackage."),
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             // === Alice adds Bob ===
             let (queued_message, welcome) =
@@ -470,7 +470,7 @@ fn managed_group_operations() {
                 vec![],
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             let (queued_message, welcome) =
                 match bob_group.add_members(&crypto, &[charlie_key_package]) {
@@ -749,7 +749,7 @@ fn managed_group_operations() {
                 vec![],
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             // Create RemoveProposal and process it
             let queued_message = alice_group
@@ -1124,7 +1124,7 @@ fn managed_group_operations() {
                 vec![],
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             // Add Bob to the group
             let (queued_message, welcome) = alice_group
@@ -1192,12 +1192,12 @@ fn test_empty_input_errors() {
         ciphersuite.signature_scheme(),
         &crypto,
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
     let alice_key_package =
         generate_key_package_bundle(&[ciphersuite.name()], &alice_credential, vec![], &crypto)
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
     // Define the managed group configuration
     let managed_group_config = ManagedGroupConfig::test_default();
@@ -1211,7 +1211,7 @@ fn test_empty_input_errors() {
             .hash(&crypto)
             .expect("Could not hash KeyPackage."),
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     assert_eq!(
         alice_group
@@ -1244,7 +1244,7 @@ fn managed_group_ratchet_tree_extension() {
                 ciphersuite.signature_scheme(),
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             let bob_credential = generate_credential_bundle(
                 "Bob".into(),
@@ -1252,7 +1252,7 @@ fn managed_group_ratchet_tree_extension() {
                 ciphersuite.signature_scheme(),
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             // Generate KeyPackages
             let alice_key_package = generate_key_package_bundle(
@@ -1261,7 +1261,7 @@ fn managed_group_ratchet_tree_extension() {
                 vec![],
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             let bob_key_package = generate_key_package_bundle(
                 &[ciphersuite.name()],
@@ -1269,7 +1269,7 @@ fn managed_group_ratchet_tree_extension() {
                 vec![],
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             let managed_group_config = ManagedGroupConfig::builder()
                 .wire_format(wire_format)
@@ -1285,7 +1285,7 @@ fn managed_group_ratchet_tree_extension() {
                     .hash(&crypto)
                     .expect("Could not hash KeyPackage."),
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             // === Alice adds Bob ===
             let (_queued_message, welcome) =
@@ -1308,7 +1308,7 @@ fn managed_group_ratchet_tree_extension() {
                 ciphersuite.signature_scheme(),
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             let bob_credential = generate_credential_bundle(
                 "Bob".into(),
@@ -1316,7 +1316,7 @@ fn managed_group_ratchet_tree_extension() {
                 ciphersuite.signature_scheme(),
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             // Generate KeyPackages
             let alice_key_package = generate_key_package_bundle(
@@ -1325,7 +1325,7 @@ fn managed_group_ratchet_tree_extension() {
                 vec![],
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             let bob_key_package = generate_key_package_bundle(
                 &[ciphersuite.name()],
@@ -1333,7 +1333,7 @@ fn managed_group_ratchet_tree_extension() {
                 vec![],
                 &crypto,
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             let managed_group_config = ManagedGroupConfig::test_default();
 
@@ -1346,7 +1346,7 @@ fn managed_group_ratchet_tree_extension() {
                     .hash(&crypto)
                     .expect("Could not hash KeyPackage."),
             )
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
             // === Alice adds Bob ===
             let (_queued_message, welcome) =

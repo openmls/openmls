@@ -15,7 +15,7 @@ fn generate_key_package() {
             ciphersuite.name().into(),
             &crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         // Generate a valid KeyPackage.
         let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
@@ -25,7 +25,7 @@ fn generate_key_package() {
             &crypto,
             vec![lifetime_extension],
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         std::thread::sleep(std::time::Duration::from_millis(1));
         assert!(kpb.key_package().verify(&crypto).is_ok());
 
@@ -37,7 +37,7 @@ fn generate_key_package() {
             &crypto,
             vec![lifetime_extension],
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         std::thread::sleep(std::time::Duration::from_millis(1));
         assert!(kpb.key_package().verify(&crypto).is_err());
 
@@ -65,22 +65,28 @@ fn test_codec() {
             ciphersuite.name().into(),
             &crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let mut kpb = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &credential_bundle,
             &crypto,
             Vec::new(),
         )
-        .unwrap()
+        .expect("An unexpected error occurred.")
         .unsigned();
 
         kpb.add_extension(Extension::LifeTime(LifetimeExtension::new(60)));
-        let kpb = kpb.sign(&crypto, &credential_bundle).unwrap();
-        let enc = kpb.key_package().tls_serialize_detached().unwrap();
+        let kpb = kpb
+            .sign(&crypto, &credential_bundle)
+            .expect("An unexpected error occurred.");
+        let enc = kpb
+            .key_package()
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred.");
 
         // Now it's valid.
-        let kp = KeyPackage::tls_deserialize(&mut enc.as_slice()).unwrap();
+        let kp = KeyPackage::tls_deserialize(&mut enc.as_slice())
+            .expect("An unexpected error occurred.");
         assert_eq!(kpb.key_package, kp);
     }
 }
@@ -97,14 +103,14 @@ fn key_package_id_extension() {
             ciphersuite.name().into(),
             &crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let kpb = KeyPackageBundle::new(
             &[ciphersuite.name()],
             &credential_bundle,
             &crypto,
             vec![Extension::LifeTime(LifetimeExtension::new(60))],
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         assert!(kpb.key_package().verify(&crypto).is_ok());
         let mut kpb = kpb.unsigned();
 
@@ -113,7 +119,9 @@ fn key_package_id_extension() {
         kpb.add_extension(Extension::KeyPackageId(KeyIdExtension::new(&id)));
 
         // Sign it to make it valid.
-        let kpb = kpb.sign(&crypto, &credential_bundle).unwrap();
+        let kpb = kpb
+            .sign(&crypto, &credential_bundle)
+            .expect("An unexpected error occurred.");
         assert!(kpb.key_package().verify(&crypto).is_ok());
 
         // Check ID

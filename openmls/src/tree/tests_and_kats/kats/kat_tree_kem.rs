@@ -93,7 +93,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
         ciphersuite.signature_scheme(),
         &crypto,
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
     let my_key_package_bundle = KeyPackageBundlePayload::from_key_package_and_leaf_secret(
         my_leaf_secret.clone(),
         &my_key_package,
@@ -101,7 +101,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     )
     .expect("Coul not create KeyPackage.")
     .sign(&crypto, &credential_bundle)
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     let start_secret: PathSecret = Secret::from_slice(
         hex_to_bytes(&test_vector.my_path_secret).as_slice(),
@@ -224,9 +224,17 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
                 test_vector.root_secret_after_update
             );
             log::error!(
-                "got root secret:      {}",
-                crate::test_utils::bytes_to_hex(&commit_secret.as_slice())
-            );
+                            "got root secret:      {}",
+            <<<<<<< HEAD
+                            crate::test_utils::bytes_to_hex(&commit_secret.as_slice())
+            =======
+                            crate::test_utils::bytes_to_hex(
+                                &root_secret_after
+                                    .tls_serialize_detached()
+                                    .expect("An unexpected error occurred.")
+                            )
+            >>>>>>> main
+                        );
             panic!("Root secret mismatch in the 'after' tree.");
         }
         return Err(TreeKemTestVectorError::AfterRootSecretMismatch);
@@ -320,10 +328,12 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     // member from a random position.
     let group_id = setup
         .create_random_group(n_leaves as usize, ciphersuite)
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     let mut groups = setup.groups.borrow_mut();
-    let group = groups.get_mut(&group_id).unwrap();
+    let group = groups
+        .get_mut(&group_id)
+        .expect("An unexpected error occurred.");
     let remover_id = group.random_group_member();
     let mut target_id = group.random_group_member();
     while remover_id == target_id {
@@ -336,7 +346,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         .members
         .iter()
         .find(|(_, id)| id == &target_id)
-        .unwrap()
+        .expect("An unexpected error occurred.")
         .clone();
 
     setup
@@ -346,7 +356,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
             &remover_id,
             &[target_index as usize],
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     // We then have the same client who removed the target add a fresh member.
     let adder_id = remover_id;
@@ -355,24 +365,30 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         .members
         .iter()
         .find(|(_, id)| id == &adder_id)
-        .unwrap()
+        .expect("An unexpected error occurred.")
         .clone();
     let addee_id = setup
         .random_new_members_for_group(group, 1)
-        .unwrap()
+        .expect("An unexpected error occurred.")
         .pop()
-        .unwrap();
+        .expect("An unexpected error occurred.");
     log::trace!("adding member with id: {:?}", addee_id);
 
     let clients = setup.clients.borrow();
-    let adder = clients.get(&adder_id).unwrap().borrow();
+    let adder = clients
+        .get(&adder_id)
+        .expect("An unexpected error occurred.")
+        .borrow();
 
     // We add the test client manually, so that we can get a hold of the leaf secret.
-    let addee = clients.get(&addee_id).unwrap().borrow();
+    let addee = clients
+        .get(&addee_id)
+        .expect("An unexpected error occurred.")
+        .borrow();
 
     let my_key_package = setup
         .get_fresh_key_package(&addee, &group.ciphersuite)
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     let kpb: KeyPackageBundle = addee
         .crypto
@@ -382,7 +398,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
                 .hash(&crypto)
                 .expect("Could not hash KeyPackage."),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
     let my_leaf_secret = kpb.leaf_secret();
 
     let (messages, welcome) = adder
@@ -391,17 +407,21 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
             &group.group_id,
             &[my_key_package.clone()],
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     // It's only going to be a single message, since we only add one member.
     setup
         .distribute_to_members(&adder.identity, group, &messages[0])
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
-    setup.deliver_welcome(welcome.unwrap(), group).unwrap();
+    setup
+        .deliver_welcome(welcome.expect("An unexpected error occurred."), group)
+        .expect("An unexpected error occurred.");
 
     let addee_groups = addee.groups.borrow();
-    let addee_group = addee_groups.get(&group_id).unwrap();
+    let addee_group = addee_groups
+        .get(&group_id)
+        .expect("An unexpected error occurred.");
 
     // FIXME: This is going to be tricky. I'm going to have to write some
     // functions that allow the creation of larger treesync groups, so that I

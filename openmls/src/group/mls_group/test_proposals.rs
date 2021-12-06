@@ -32,14 +32,14 @@ fn setup_client(
         ciphersuite.signature_scheme(),
         backend,
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
     let key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite.name()],
         &credential_bundle,
         backend,
         Vec::new(),
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
     (credential_bundle, key_package_bundle)
 }
 
@@ -65,7 +65,7 @@ fn proposal_queue_functions() {
             &crypto,
             Vec::new(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let alice_update_key_package = alice_update_key_package_bundle.key_package();
         assert!(alice_update_key_package.verify(&crypto).is_ok());
 
@@ -86,13 +86,16 @@ fn proposal_queue_functions() {
 
         let proposal_add_alice1 = Proposal::Add(add_proposal_alice1);
         let proposal_reference_add_alice1 =
-            ProposalReference::from_proposal(ciphersuite, &crypto, &proposal_add_alice1).unwrap();
+            ProposalReference::from_proposal(ciphersuite, &crypto, &proposal_add_alice1)
+                .expect("An unexpected error occurred.");
         let proposal_add_alice2 = Proposal::Add(add_proposal_alice2);
         let proposal_reference_add_alice2 =
-            ProposalReference::from_proposal(ciphersuite, &crypto, &proposal_add_alice2).unwrap();
+            ProposalReference::from_proposal(ciphersuite, &crypto, &proposal_add_alice2)
+                .expect("An unexpected error occurred.");
         let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
         let proposal_reference_add_bob1 =
-            ProposalReference::from_proposal(ciphersuite, &crypto, &proposal_add_bob1).unwrap();
+            ProposalReference::from_proposal(ciphersuite, &crypto, &proposal_add_bob1)
+                .expect("An unexpected error occurred.");
 
         // Test proposal types
         assert!(proposal_add_alice1.is_type(ProposalType::Add));
@@ -200,13 +203,13 @@ fn proposal_queue_order() {
             &crypto,
             Vec::new(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let alice_update_key_package = alice_update_key_package_bundle.key_package();
         assert!(alice_update_key_package.verify(&crypto).is_ok());
 
         let group_context =
             GroupContext::new(GroupId::random(&crypto), GroupEpoch(0), vec![], vec![], &[])
-                .unwrap();
+                .expect("An unexpected error occurred.");
 
         // Let's create some proposals
         let add_proposal_alice1 = AddProposal {
@@ -218,7 +221,8 @@ fn proposal_queue_order() {
 
         let proposal_add_alice1 = Proposal::Add(add_proposal_alice1);
         let proposal_reference_add_alice1 =
-            ProposalReference::from_proposal(ciphersuite, &crypto, &proposal_add_alice1).unwrap();
+            ProposalReference::from_proposal(ciphersuite, &crypto, &proposal_add_alice1)
+                .expect("An unexpected error occurred.");
         let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
 
         // Frame proposals in MlsPlaintext
@@ -279,7 +283,7 @@ fn proposal_queue_order() {
             &proposal_store,
             sender,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         let proposal_collection: Vec<&StagedProposal> =
             proposal_queue.filtered_by_type(ProposalType::Add).collect();
@@ -382,7 +386,7 @@ fn test_group_context_extensions() {
         &crypto,
         vec![Extension::KeyPackageId(KeyIdExtension::default())],
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // Set required capabilities
@@ -437,7 +441,7 @@ fn test_group_context_extensions() {
     // Make sure that Bob can join the group with the required extension in place
     // and Bob's key package supporting them.
     let _bob_group = MlsGroup::new_from_welcome(
-        welcome_bundle_alice_bob_option.unwrap(),
+        welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,
         None,
@@ -465,7 +469,7 @@ fn test_group_context_extension_proposal_fails() {
         &crypto,
         vec![Extension::KeyPackageId(KeyIdExtension::default())],
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // Set required capabilities
@@ -537,7 +541,7 @@ fn test_group_context_extension_proposal_fails() {
     let ratchet_tree = alice_group.tree().public_key_tree_copy();
 
     let bob_group = MlsGroup::new_from_welcome(
-        welcome_bundle_alice_bob_option.unwrap(),
+        welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,
         None,
@@ -579,14 +583,14 @@ fn test_group_context_extension_proposal() {
         &crypto,
         vec![Extension::KeyPackageId(KeyIdExtension::default())],
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
     let alice_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite.name()],
         &alice_credential_bundle,
         &crypto,
         vec![Extension::KeyPackageId(KeyIdExtension::default())],
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // Set required capabilities
@@ -640,7 +644,7 @@ fn test_group_context_extension_proposal() {
     let ratchet_tree = alice_group.tree().public_key_tree_copy();
 
     let mut bob_group = MlsGroup::new_from_welcome(
-        welcome_bundle_alice_bob_option.unwrap(),
+        welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,
         None,

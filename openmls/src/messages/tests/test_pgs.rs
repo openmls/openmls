@@ -34,14 +34,14 @@ fn test_pgs() {
             ciphersuite.signature_scheme(),
             &crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let bob_credential_bundle = CredentialBundle::new(
             "Bob".into(),
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
             &crypto,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         // Generate KeyPackages
         let bob_key_package_bundle = KeyPackageBundle::new(
@@ -50,7 +50,7 @@ fn test_pgs() {
             &crypto,
             Vec::new(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
         let bob_key_package = bob_key_package_bundle.key_package();
 
         let alice_key_package_bundle = KeyPackageBundle::new(
@@ -59,7 +59,7 @@ fn test_pgs() {
             &crypto,
             Vec::new(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
         // Alice creates a group
         let mut group_alice = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)

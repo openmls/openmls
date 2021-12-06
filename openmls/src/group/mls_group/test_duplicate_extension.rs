@@ -11,7 +11,7 @@ use tls_codec::Deserialize;
 ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: CiphersuiteName) {
     let crypto = OpenMlsRustCrypto::default();
     println!("Testing ciphersuite {:?}", ciphersuite_name);
-    let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
+    let ciphersuite = Config::ciphersuite(ciphersuite_name).expect("An unexpected error occurred.");
 
     // Basic group setup.
     let group_aad = b"Alice's test group";
@@ -23,23 +23,23 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
         ciphersuite.signature_scheme(),
         &crypto,
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
     let bob_credential_bundle = CredentialBundle::new(
         "Bob".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
         &crypto,
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
     let alice_key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, &crypto, Vec::new())
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
     let bob_key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, &crypto, Vec::new())
-            .unwrap();
+            .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let config = MlsGroupConfig {
@@ -136,7 +136,7 @@ ctest_ciphersuites!(duplicate_ratchet_tree_extension, test(ciphersuite_name: Cip
 
     let encrypted_group_info = welcome_key
         .aead_seal(&crypto, &group_info.tls_serialize_detached().expect("Could not encode GroupInfo"), &[], &welcome_nonce)
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     welcome.set_encrypted_group_info(encrypted_group_info);
 
