@@ -25,7 +25,7 @@
 //! return a [`Result`] since they may throw a
 //! [`LibraryError`](TreeSyncError::LibraryError).
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 use openmls_traits::OpenMlsCryptoProvider;
 use serde::{Deserialize, Serialize};
@@ -255,13 +255,13 @@ impl TreeSync {
         Ok(self.tree.leaf_count()?)
     }
 
-    /// Returns a [`HashMap`] mapping leaf indices to the corresponding
+    /// Returns a [`BTreeMap`] mapping leaf indices to the corresponding
     /// [`KeyPackage`] instances in the leaves. The map only contains full
     /// nodes.
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    pub(crate) fn full_leaves(&self) -> Result<HashMap<LeafIndex, &KeyPackage>, TreeSyncError> {
+    pub(crate) fn full_leaves(&self) -> Result<BTreeMap<LeafIndex, &KeyPackage>, TreeSyncError> {
         let tsn_leaves: Vec<(usize, &TreeSyncNode)> = self
             .tree
             .leaves()?
@@ -269,7 +269,7 @@ impl TreeSync {
             .enumerate()
             .filter(|(_, tsn)| tsn.node().is_some())
             .collect();
-        let mut leaves = HashMap::new();
+        let mut leaves = BTreeMap::new();
         for (index, tsn_leaf) in tsn_leaves {
             let index = u32::try_from(index).map_err(|_| TreeSyncError::LibraryError)?;
             if let Some(ref node) = tsn_leaf.node() {

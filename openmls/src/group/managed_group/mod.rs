@@ -12,7 +12,7 @@ mod test_managed_group;
 mod updates;
 
 use crate::credentials::CredentialBundle;
-use crate::{binary_tree::LeafIndex, treesync::node::Node};
+use crate::{treesync::node::Node, treesync::LeafIndex};
 
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 

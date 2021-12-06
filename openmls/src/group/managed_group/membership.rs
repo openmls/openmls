@@ -1,3 +1,5 @@
+use std::collections::{BTreeMap, HashMap};
+
 use mls_group::create_commit_params::CreateCommitParams;
 
 use super::*;
@@ -240,5 +242,10 @@ impl ManagedGroup {
             .iter()
             .map(|(_, kp)| kp.credential())
             .collect())
+    }
+
+    /// Gets the current list of members
+    pub fn indexed_members(&self) -> Result<BTreeMap<LeafIndex, &KeyPackage>, ManagedGroupError> {
+        Ok(self.group.tree().full_leaves()?)
     }
 }

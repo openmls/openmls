@@ -441,23 +441,45 @@ impl<'a> TreeSyncDiff<'a> {
             if let Some(leaf_index) = self.diff.leaf_index(node_ref) {
                 // If the node is a leaf, check if it is in the exclusion list.
                 if excluded_indices.contains(&leaf_index) {
-                    return Ok(vec![]);
+                    Ok(vec![])
+                } else {
+                    // If it's not, return its public key as its resolution.
+                    Ok(vec![node.public_key().clone()])
                 }
+            } else {
+                // If it's a parent node, get the unmerged leaves, exclude them as
+                // necessary and get their public keys.
+                let mut resolution = vec![node.public_key().clone()];
+                for leaf_index in node.as_parent_node()?.unmerged_leaves() {
+                    if !excluded_indices.contains(leaf_index) {
+                        let leaf_ref = self.diff.leaf(*leaf_index)?;
+                        let leaf = self.diff.try_deref(leaf_ref)?;
+                        // FIXME: Once we have the right checks in place, this could
+                        // turn into a libraryerror.
+                        let leaf_node = leaf
+                            .node()
+                            .as_ref()
+                            .ok_or(TreeSyncDiffError::BlankUnmergedLeaf)?;
+                        resolution.push(leaf_node.public_key().clone())
+                    }
+                }
+                Ok(resolution)
             }
-            return Ok(vec![node.public_key().clone()]);
+        } else {
+            // If it's a blank, also check if it's a leaf
+            if self.diff.is_leaf(node_ref) {
+                // If it it, just return an empty vector.
+                Ok(vec![])
+            } else {
+                // If not, continue resolving down the tree.
+                let mut resolution = Vec::new();
+                let left_child = self.diff.left_child(node_ref)?;
+                let right_child = self.diff.right_child(node_ref)?;
+                resolution.append(&mut self.resolution(left_child, excluded_indices)?);
+                resolution.append(&mut self.resolution(right_child, excluded_indices)?);
+                Ok(resolution)
+            }
         }
-        // If it's a blank, also check if it's a leaf
-        if self.diff.is_leaf(node_ref) {
-            // If it it, just return an empty vector.
-            return Ok(vec![]);
-        }
-        // If not, continue resolving down the tree.
-        let mut resolution = Vec::new();
-        let left_child = self.diff.left_child(node_ref)?;
-        let right_child = self.diff.right_child(node_ref)?;
-        resolution.append(&mut self.resolution(left_child, excluded_indices)?);
-        resolution.append(&mut self.resolution(right_child, excluded_indices)?);
-        Ok(resolution)
     }
 
     /// Compute the resolution of the copath of the leaf node corresponding to
@@ -658,14 +680,24 @@ impl<'a> TreeSyncDiff<'a> {
         sender_leaf_index: LeafIndex,
         excluded_indices: &HashSet<&LeafIndex>,
     ) -> Result<(&HpkePrivateKey, usize), TreeSyncDiffError> {
+        println!("\nSearching decryption key");
+        println!("I am {:?}", self.own_leaf_index());
+        println!("Sender is {:?}", sender_leaf_index);
+        println!("Exclusion list: {:?}", excluded_indices);
+        println!("Leaf count: {:?}", self.leaf_count());
         // Get the copath node of the sender that is in our direct path, as well
         // as its position in our direct path.
         let subtree_root_copath_node_ref = self
             .diff
             .subtree_root_copath_node(sender_leaf_index, self.own_leaf_index)?;
+        println!(
+            "Subtree root copath node: {:?}",
+            subtree_root_copath_node_ref
+        );
 
         let sender_copath_resolution =
             self.resolution(subtree_root_copath_node_ref, excluded_indices)?;
+        println!("Sender copath resolution: {:?}", sender_copath_resolution);
 
         // Get all of the public keys that we have secret keys for, i.e. our own
         // leaf pk, as well as potentially a number of public keys from our
@@ -673,8 +705,10 @@ impl<'a> TreeSyncDiff<'a> {
         let mut own_node_refs = vec![self.diff.leaf(self.own_leaf_index)?];
 
         own_node_refs.append(&mut self.diff.direct_path(self.own_leaf_index)?);
+        println!("Looking for key in the following path: {:?}", own_node_refs);
         for node_ref in own_node_refs {
             let node_tsn = self.diff.try_deref(node_ref)?;
+            println!("Node {:?}: {:?}", node_ref, node_tsn);
             // If the node is blank, skip it.
             if let Some(node) = node_tsn.node() {
                 // If we don't have the private key, skip it.
@@ -690,6 +724,7 @@ impl<'a> TreeSyncDiff<'a> {
                 }
             }
         }
+        panic!();
         Err(TreeSyncDiffError::NoPrivateKeyFound)
     }
 
@@ -714,6 +749,7 @@ implement_error! {
             InvalidParentHash = "The parent hash of a node in the given tree is invalid.",
             PublicKeyCollision = "The public key of the new node is not unique in the tree.",
             RedundantBlank = "The leaf we were trying to blank is already blank.",
+            BlankUnmergedLeaf = "The leaf index in the unmerged leaves of a parent node point to a blank.",
             UpdateBlank = "The leaf we were trying to update is blank.",
             PublicKeyMismatch = "The derived public key doesn't match the one in the tree.",
             NoPrivateKeyFound = "Couldn't find a fitting private key in the filtered resolution of the given leaf index.",

@@ -161,11 +161,10 @@ impl Client {
     ) -> Result<Vec<(usize, Credential)>, ClientError> {
         let groups = self.groups.borrow();
         let group = groups.get(group_id).ok_or(ClientError::NoMatchingGroup)?;
-        let members = group.members().expect("error getting members");
+        let members = group.indexed_members().expect("error getting members");
         Ok(members
-            .iter()
-            .map(|&cred| cred.clone())
-            .enumerate()
+            .into_iter()
+            .map(|(index, kp)| (index as usize, kp.credential().clone()))
             .collect())
     }
 

@@ -204,6 +204,8 @@ ctest_ciphersuites!(remove, test(ciphersuite_name: CiphersuiteName) {
 
     let (_, alice_id) = group.members.first().expect("An unexpected error occurred.").clone();
     let (_, bob_id) = group.members.last().expect("An unexpected error occurred.").clone();
+    println!("alice_id: {:?}", alice_id);
+    println!("bob_id: {:?}", bob_id);
 
     // Have alice remove Bob.
     setup
