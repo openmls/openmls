@@ -33,8 +33,8 @@ use super::{
 
 use crate::{
     binary_tree::{
-        array_representation::diff::NodeReference, LeafIndex, MlsBinaryTreeDiff,
-        MlsBinaryTreeDiffError, StagedMlsBinaryTreeDiff,
+        array_representation::diff::NodeId, LeafIndex, MlsBinaryTreeDiff, MlsBinaryTreeDiffError,
+        StagedMlsBinaryTreeDiff,
     },
     ciphersuite::{signable::Signable, Ciphersuite, HpkePrivateKey, HpkePublicKey},
     credentials::{CredentialBundle, CredentialError},
@@ -90,7 +90,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// right-most leaf until the right-most leaf is not blank anymore.
     pub(crate) fn trim_tree(&mut self) -> Result<(), TreeSyncDiffError> {
         let mut leaf_ref = self.diff.leaf(self.leaf_count() - 1)?;
-        while self.diff.try_deref(leaf_ref)?.node().is_none() {
+        while self.diff.node(leaf_ref)?.node().is_none() {
             self.diff.remove_leaf()?;
             leaf_ref = self.diff.leaf(self.leaf_count() - 1)?;
         }
@@ -132,7 +132,7 @@ impl<'a> TreeSyncDiff<'a> {
         for (leaf_index, leaf_ref) in leaf_refs.iter().enumerate() {
             let leaf_index: LeafIndex =
                 u32::try_from(leaf_index).map_err(|_| TreeSyncDiffError::LibraryError)?;
-            if self.diff.try_deref(*leaf_ref)?.node().is_none() {
+            if self.diff.node(*leaf_ref)?.node().is_none() {
                 leaf_index_option = Some(leaf_index);
                 continue;
             }
@@ -148,7 +148,7 @@ impl<'a> TreeSyncDiff<'a> {
         // Add new unmerged leaves entry to all nodes in direct path. Also, wipe
         // the cached tree hash.
         for node_ref in self.diff.direct_path(leaf_index)? {
-            let tsn = self.diff.try_deref_mut(node_ref)?;
+            let tsn = self.diff.node_mut(node_ref)?;
             if let Some(ref mut node) = tsn.node_mut() {
                 let pn = node.as_parent_node_mut()?;
                 pn.add_unmerged_leaf(leaf_index);
@@ -325,7 +325,7 @@ impl<'a> TreeSyncDiff<'a> {
     ) -> Result<CommitSecret, TreeSyncDiffError> {
         let subtree_path = self.diff.subtree_path(self.own_leaf_index, sender_index)?;
         for node_ref in subtree_path {
-            let tsn = self.diff.try_deref_mut(node_ref)?;
+            let tsn = self.diff.node_mut(node_ref)?;
             // We only care about non-blank nodes.
             if let Some(ref mut node) = tsn.node_mut() {
                 // This has to be a parent node.
@@ -362,7 +362,7 @@ impl<'a> TreeSyncDiff<'a> {
     ) -> Result<(), TreeSyncDiffError> {
         for leaf_index in parent_node.unmerged_leaves() {
             let leaf_ref = self.diff.leaf(*leaf_index)?;
-            let leaf = self.diff.try_deref(leaf_ref)?;
+            let leaf = self.diff.node(leaf_ref)?;
             // All unmerged leaves should be non-blank.
             let leaf_node = leaf
                 .node()
@@ -432,11 +432,11 @@ impl<'a> TreeSyncDiff<'a> {
     /// given in the list.
     fn resolution(
         &self,
-        node_ref: NodeReference,
+        node_ref: NodeId,
         excluded_indices: &HashSet<&LeafIndex>,
     ) -> Result<Vec<HpkePublicKey>, TreeSyncDiffError> {
         // First, check if the node is blank or not.
-        if let Some(node) = self.diff.try_deref(node_ref)?.node() {
+        if let Some(node) = self.diff.node(node_ref)?.node() {
             // If it's a full node, check if it's a leaf.
             if let Some(leaf_index) = self.diff.leaf_index(node_ref) {
                 // If the node is a leaf, check if it is in the exclusion list.
@@ -453,7 +453,7 @@ impl<'a> TreeSyncDiff<'a> {
                 for leaf_index in node.as_parent_node()?.unmerged_leaves() {
                     if !excluded_indices.contains(leaf_index) {
                         let leaf_ref = self.diff.leaf(*leaf_index)?;
-                        let leaf = self.diff.try_deref(leaf_ref)?;
+                        let leaf = self.diff.node(leaf_ref)?;
                         // FIXME: Once we have the right checks in place, this could
                         // turn into a libraryerror.
                         let leaf_node = leaf
@@ -524,13 +524,13 @@ impl<'a> TreeSyncDiff<'a> {
     ) -> Result<(), TreeSyncDiffError> {
         for node_ref in self.diff.iter() {
             // Continue early if node is blank.
-            if let Some(Node::ParentNode(parent_node)) = self.diff.try_deref(node_ref)?.node() {
+            if let Some(Node::ParentNode(parent_node)) = self.diff.node(node_ref)?.node() {
                 // We don't care about leaf nodes.
                 let left_child_ref = self.diff.left_child(node_ref)?;
                 let mut right_child_ref = self.diff.right_child(node_ref)?;
                 // If the left child is blank, we continue with the next step
                 // in the verification algorithm.
-                if let Some(left_child) = self.diff.try_deref(left_child_ref)?.node() {
+                if let Some(left_child) = self.diff.node(left_child_ref)?.node() {
                     let mut right_child_resolution =
                         self.resolution(right_child_ref, &HashSet::new())?;
                     // Filter unmerged leaves from resolution.
@@ -551,7 +551,7 @@ impl<'a> TreeSyncDiff<'a> {
 
                 // If the right child is blank, replace it with its left child
                 // until it's non-blank or a leaf.
-                while self.diff.try_deref(right_child_ref)?.node().is_none()
+                while self.diff.node(right_child_ref)?.node().is_none()
                     && !self.diff.is_leaf(right_child_ref)
                 {
                     right_child_ref = self.diff.left_child(right_child_ref)?;
@@ -559,7 +559,7 @@ impl<'a> TreeSyncDiff<'a> {
                 // If the "right child" is a non-blank node, we continue,
                 // otherwise it has to be a blank leaf node and the check
                 // fails.
-                if let Some(right_child) = self.diff.try_deref(right_child_ref)?.node() {
+                if let Some(right_child) = self.diff.node(right_child_ref)?.node() {
                     // Perform the check with the parent hash of the "right
                     // child" and the left child resolution.
                     let mut left_child_resolution =
@@ -611,11 +611,11 @@ impl<'a> TreeSyncDiff<'a> {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
-        node_ref: NodeReference,
+        node_ref: NodeId,
     ) -> Result<Vec<u8>, TreeSyncDiffError> {
         // Check if this is a leaf.
         if let Some(leaf_index) = self.diff.leaf_index(node_ref) {
-            let leaf = self.diff.try_deref_mut(node_ref)?;
+            let leaf = self.diff.node_mut(node_ref)?;
             let tree_hash =
                 // Giving 0 as a node index here for now. See comment in the
                 // function for context.
@@ -623,7 +623,7 @@ impl<'a> TreeSyncDiff<'a> {
             return Ok(tree_hash);
         }
         // Return early if there's already a cached tree hash.
-        let node = self.diff.try_deref(node_ref)?;
+        let node = self.diff.node(node_ref)?;
         if let Some(tree_hash) = node.tree_hash() {
             return Ok(tree_hash.to_vec());
         }
@@ -634,7 +634,7 @@ impl<'a> TreeSyncDiff<'a> {
         let right_child = self.diff.right_child(node_ref)?;
         let right_hash = self.set_tree_hash(backend, ciphersuite, right_child)?;
 
-        let node = self.diff.try_deref_mut(node_ref)?;
+        let node = self.diff.node_mut(node_ref)?;
         let node_index = node_ref.node_index();
         let tree_hash = node.compute_tree_hash(
             backend,
@@ -707,7 +707,7 @@ impl<'a> TreeSyncDiff<'a> {
         own_node_refs.append(&mut self.diff.direct_path(self.own_leaf_index)?);
         println!("Looking for key in the following path: {:?}", own_node_refs);
         for node_ref in own_node_refs {
-            let node_tsn = self.diff.try_deref(node_ref)?;
+            let node_tsn = self.diff.node(node_ref)?;
             println!("Node {:?}: {:?}", node_ref, node_tsn);
             // If the node is blank, skip it.
             if let Some(node) = node_tsn.node() {
