@@ -3,9 +3,9 @@ use tls_codec::Error as TlsCodecError;
 
 implement_error! {
     pub enum ErrorState {
-        NotInit = "Expected to be in initial state.",
-        NotEpoch = "Expected to be in epoch state.",
-        NotContext = "Expected to be in a state where the context is added.",
+        Init = "Expected to be in initial state.",
+        Epoch = "Expected to be in epoch state.",
+        Context = "Expected to be in a state where the context is added.",
     }
 }
 
