@@ -20,7 +20,7 @@ fn generate_credential_bundle(
     key_store
         .key_store()
         .store(credential.signature_key(), &cb)
-        .unwrap();
+        .expect("An unexpected error occurred.");
     Ok(credential)
 }
 
@@ -33,7 +33,7 @@ fn generate_key_package_bundle(
     let credential_bundle = key_store
         .key_store()
         .read(credential.signature_key())
-        .unwrap();
+        .expect("An unexpected error occurred.");
     let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, key_store, extensions)?;
     let kp = kpb.key_package().clone();
     key_store
@@ -42,7 +42,7 @@ fn generate_key_package_bundle(
             &kp.hash(key_store).expect("Could not hash KeyPackage."),
             &kpb,
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
     Ok(kp)
 }
 
@@ -59,12 +59,12 @@ fn test_managed_group_persistence() {
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
     let alice_key_package =
         generate_key_package_bundle(&crypto, &[ciphersuite.name()], &alice_credential, vec![])
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
     // Define the managed group configuration
     let managed_group_config = ManagedGroupConfig::test_default();
@@ -79,7 +79,7 @@ fn test_managed_group_persistence() {
             .hash(&crypto)
             .expect("Could not hash KeyPackage."),
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     // Check the internal state has changed
     assert_eq!(alice_group.state_changed(), InnerState::Changed);
@@ -122,7 +122,7 @@ fn remover() {
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     let bob_credential = generate_credential_bundle(
         crypto,
@@ -130,7 +130,7 @@ fn remover() {
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     let charlie_credential = generate_credential_bundle(
         crypto,
@@ -138,20 +138,20 @@ fn remover() {
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
     let alice_key_package =
         generate_key_package_bundle(crypto, &[ciphersuite.name()], &alice_credential, vec![])
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
     let bob_key_package =
         generate_key_package_bundle(crypto, &[ciphersuite.name()], &bob_credential, vec![])
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
     let charlie_key_package =
         generate_key_package_bundle(crypto, &[ciphersuite.name()], &charlie_credential, vec![])
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
     // Define the managed group configuration
     let managed_group_config = ManagedGroupConfig::default();
@@ -165,7 +165,7 @@ fn remover() {
             .hash(crypto)
             .expect("Could not hash KeyPackage."),
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     // === Alice adds Bob ===
     let (queued_message, welcome) = alice_group
@@ -307,7 +307,7 @@ fn remover() {
 ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
 
     let crypto = &OpenMlsRustCrypto::default();
-    let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
+    let ciphersuite = Config::ciphersuite(ciphersuite_name).expect("An unexpected error occurred.");
     let group_id = GroupId::from_slice(b"Test Group");
 
 
@@ -319,7 +319,7 @@ ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
             CredentialType::Basic,
             ciphersuite.signature_scheme(),
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
     let alice_key_package = generate_key_package_bundle(
@@ -328,7 +328,7 @@ ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
             &alice_credential,
             vec![],
         )
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     // Define the managed group configuration
     let managed_group_config = ManagedGroupConfig::builder().wire_format(WireFormat::MlsPlaintext).build();
@@ -342,30 +342,30 @@ ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
         group_id,
         &alice_key_package.hash(crypto).expect("Could not hash KeyPackage."),
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     assert!(
         alice_group
             .export_secret(crypto, "test1", &[], ciphersuite.hash_length())
-            .unwrap()
+            .expect("An unexpected error occurred.")
             != alice_group
             .export_secret(crypto, "test2", &[], ciphersuite.hash_length())
-            .unwrap()
+            .expect("An unexpected error occurred.")
     );
     assert!(
         alice_group
             .export_secret(crypto, "test", &[0u8], ciphersuite.hash_length())
-            .unwrap()
+            .expect("An unexpected error occurred.")
             != alice_group
                 .export_secret(crypto, "test", &[1u8], ciphersuite.hash_length())
-                .unwrap()
+                .expect("An unexpected error occurred.")
     )
 });
 
 #[test]
 fn test_invalid_plaintext() {
     let ciphersuite_name = Ciphersuite::default().name();
-    let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
+    let ciphersuite = Config::ciphersuite(ciphersuite_name).expect("An unexpected error occurred.");
 
     // Some basic setup functions for the managed group.
     let managed_group_config = ManagedGroupConfig::builder()
@@ -380,19 +380,26 @@ fn test_invalid_plaintext() {
         CodecUse::StructMessages,
     );
     // Create a basic group with more than 4 members to create a tree with intermediate nodes.
-    let group_id = setup.create_random_group(10, ciphersuite).unwrap();
+    let group_id = setup
+        .create_random_group(10, ciphersuite)
+        .expect("An unexpected error occurred.");
     let mut groups = setup.groups.borrow_mut();
-    let group = groups.get_mut(&group_id).unwrap();
+    let group = groups
+        .get_mut(&group_id)
+        .expect("An unexpected error occurred.");
 
     let (_, client_id) = &group
         .members
         .iter()
         .find(|(index, _)| index == &0)
-        .unwrap()
+        .expect("An unexpected error occurred.")
         .clone();
 
     let clients = setup.clients.borrow();
-    let client = clients.get(client_id).unwrap().borrow();
+    let client = clients
+        .get(client_id)
+        .expect("An unexpected error occurred.")
+        .borrow();
 
     let (mls_message, _welcome_option) = client
         .self_update(Commit, &group_id, None)

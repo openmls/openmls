@@ -9,7 +9,7 @@ mod utils;
 
 ctest_ciphersuites!(decryption_key_index_computation, test(ciphersuite_name: CiphersuiteName) {
     println!("Testing ciphersuite {:?}", ciphersuite_name);
-    let ciphersuite = Config::ciphersuite(ciphersuite_name).unwrap();
+    let ciphersuite = Config::ciphersuite(ciphersuite_name).expect("An unexpected error occurred.");
 
     // Some basic setup functions for the managed group.
     let managed_group_config =
@@ -19,9 +19,9 @@ ctest_ciphersuites!(decryption_key_index_computation, test(ciphersuite_name: Cip
     let number_of_clients = 20;
     let setup = ManagedTestSetup::new(managed_group_config, number_of_clients, CodecUse::StructMessages);
     // Create a basic group with more than 4 members to create a tree with intermediate nodes.
-    let group_id = setup.create_random_group(10, ciphersuite).unwrap();
+    let group_id = setup.create_random_group(10, ciphersuite).expect("An unexpected error occurred.");
     let mut groups = setup.groups.borrow_mut();
-    let group = groups.get_mut(&group_id).unwrap();
+    let group = groups.get_mut(&group_id).expect("An unexpected error occurred.");
 
     // Now we have to create a situation, where the resolution is neither
     // the leaf, nor the common ancestor closest to the root. To do that, we
@@ -33,11 +33,11 @@ ctest_ciphersuites!(decryption_key_index_computation, test(ciphersuite_name: Cip
         .members
         .iter()
         .find(|(index, _)| index == &0)
-        .unwrap()
+        .expect("An unexpected error occurred.")
         .clone();
     setup
         .remove_clients_by_index(ActionType::Commit, group, remover_id, &[2])
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     // Then we have the member at index 7 remove the one at index 3. This
     // causes a secret to be encrypted to the parent node of index 0, which
@@ -49,11 +49,11 @@ ctest_ciphersuites!(decryption_key_index_computation, test(ciphersuite_name: Cip
         .members
         .iter()
         .find(|(index, _)| index == &7)
-        .unwrap()
+        .expect("An unexpected error occurred.")
         .clone();
     setup
         .remove_clients_by_index(ActionType::Commit, group, remover_id, &[3])
-        .unwrap();
+        .expect("An unexpected error occurred.");
 
     // Since the decryption failure doesn't cause a panic, but only an error
     // message in the callback, we also have to check that the group states

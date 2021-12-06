@@ -230,12 +230,12 @@ impl ManagedGroup {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsMessageOut, ManagedGroupError> {
         let msg = match self.configuration().wire_format() {
-            WireFormat::MlsPlaintext => MlsMessageOut::Plaintext(plaintext),
+            WireFormat::MlsPlaintext => MlsMessageOut::Plaintext(Box::new(plaintext)),
             WireFormat::MlsCiphertext => {
                 let ciphertext =
                     self.group
                         .encrypt(plaintext, self.configuration().padding_size(), backend)?;
-                MlsMessageOut::Ciphertext(ciphertext)
+                MlsMessageOut::Ciphertext(Box::new(ciphertext))
             }
         };
         Ok(msg)

@@ -35,7 +35,7 @@ fn generate_credential_bundle(
     backend
         .key_store()
         .store(credential.signature_key(), &cb)
-        .unwrap();
+        .expect("An unexpected error occurred.");
     Ok(credential)
 }
 
@@ -49,13 +49,13 @@ fn generate_key_package_bundle(
     let credential_bundle = backend
         .key_store()
         .read(credential.signature_key())
-        .unwrap();
+        .expect("An unexpected error occurred.");
     let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, backend, extensions)?;
     let kp = kpb.key_package().clone();
     backend
         .key_store()
         .store(&kp.hash(backend).expect("Could not hash KeyPackage."), &kpb)
-        .unwrap();
+        .expect("An unexpected error occurred.");
     Ok(kp)
 }
 
@@ -76,7 +76,8 @@ fn validation_test_setup(wire_format: WireFormat) -> ValidationTestSetup {
     let backend = OpenMlsRustCrypto::default();
 
     let ciphersuite =
-        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519).unwrap();
+        Ciphersuite::new(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519)
+            .expect("An unexpected error occurred.");
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credential bundles
@@ -86,7 +87,7 @@ fn validation_test_setup(wire_format: WireFormat) -> ValidationTestSetup {
         ciphersuite.signature_scheme(),
         &backend,
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     let bob_credential = generate_credential_bundle(
         "Bob".into(),
@@ -94,16 +95,16 @@ fn validation_test_setup(wire_format: WireFormat) -> ValidationTestSetup {
         ciphersuite.signature_scheme(),
         &backend,
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
     let alice_key_package =
         generate_key_package_bundle(&[ciphersuite.name()], &alice_credential, vec![], &backend)
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
     let bob_key_package =
         generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, vec![], &backend)
-            .unwrap();
+            .expect("An unexpected error occurred.");
 
     // Define the managed group configuration
 
@@ -120,7 +121,7 @@ fn validation_test_setup(wire_format: WireFormat) -> ValidationTestSetup {
             .hash(&backend)
             .expect("Could not hash KeyPackage."),
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     ValidationTestSetup {
         backend,
