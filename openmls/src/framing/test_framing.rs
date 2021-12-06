@@ -421,7 +421,9 @@ fn unknown_sender() {
         let staged_commit = group_alice
             .stage_commit(&commit, &proposal_store, &[], None, crypto)
             .expect("Could not stage Commit");
-        group_alice.merge_commit(staged_commit);
+        group_alice
+            .merge_commit(staged_commit)
+            .expect("error merging commit");
 
         // Alice adds Charlie
 
@@ -453,7 +455,9 @@ fn unknown_sender() {
         let staged_commit = group_alice
             .stage_commit(&commit, &proposal_store, &[], None, crypto)
             .expect("Could not stage Commit");
-        group_alice.merge_commit(staged_commit);
+        group_alice
+            .merge_commit(staged_commit)
+            .expect("error merging commit");
 
         let mut group_charlie = MlsGroup::new_from_welcome(
             welcome_option.unwrap(),
@@ -488,7 +492,9 @@ fn unknown_sender() {
         let staged_commit = group_charlie
             .stage_commit(&commit, &proposal_store, &[], None, crypto)
             .expect("Charlie: Could not stage Commit");
-        group_charlie.merge_commit(staged_commit);
+        group_charlie
+            .merge_commit(staged_commit)
+            .expect("error merging commit");
         let staged_commit = group_alice
             .stage_commit(
                 &commit,
@@ -498,7 +504,9 @@ fn unknown_sender() {
                 crypto,
             )
             .expect("Alice: Could not stage Commit");
-        group_alice.merge_commit(staged_commit);
+        group_alice
+            .merge_commit(staged_commit)
+            .expect("error merging commit");
 
         _print_tree(&group_alice.tree(), "Alice tree");
         _print_tree(&group_charlie.tree(), "Charlie tree");

@@ -81,6 +81,7 @@ impl<'a> LeafNodeHashInput<'a> {
 
 #[derive(TlsSerialize, TlsSize)]
 pub struct ParentNodeTreeHashInput<'a> {
+    pub(crate) node_index: LeafIndex,
     pub(crate) parent_node: Option<&'a ParentNode>,
     pub(crate) left_hash: TlsSliceU8<'a, u8>,
     pub(crate) right_hash: TlsSliceU8<'a, u8>,
@@ -88,11 +89,13 @@ pub struct ParentNodeTreeHashInput<'a> {
 
 impl<'a> ParentNodeTreeHashInput<'a> {
     pub(crate) fn new(
+        node_index: LeafIndex,
         parent_node: Option<&'a ParentNode>,
         left_hash: TlsSliceU8<'a, u8>,
         right_hash: TlsSliceU8<'a, u8>,
     ) -> Self {
         Self {
+            node_index,
             parent_node,
             left_hash,
             right_hash,

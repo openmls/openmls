@@ -45,9 +45,7 @@ impl<'a> TreeSyncDiff<'a> {
             nodes: update_path_nodes.into(),
         })
     }
-}
 
-impl TreeSync {
     /// The path returned here already includes any path secrets included in the
     /// `UpdatePath`.
     pub(crate) fn decrypt_path(
@@ -59,18 +57,23 @@ impl TreeSync {
         exclusion_list: &HashSet<&LeafIndex>,
         group_context: &[u8],
     ) -> Result<(Vec<ParentNode>, CommitSecret), TreeKemError> {
-        let diff = self.empty_diff()?;
-        let path_position = diff.subtree_root_position(sender_leaf_index, diff.own_leaf_index())?;
+        let path_position = self.subtree_root_position(sender_leaf_index, self.own_leaf_index())?;
         let update_path_node = update_path
             .nodes()
             .get(path_position)
             .ok_or(TreeKemError::UpdatePathNodeNotFound)?;
 
         let (decryption_key, resolution_position) =
-            diff.decryption_key(sender_leaf_index, exclusion_list)?;
-        let ciphertext = update_path_node
-            .get_encrypted_ciphertext(resolution_position)
-            .ok_or(TreeKemError::EncryptedCiphertextNotFound)?;
+            self.decryption_key(sender_leaf_index, exclusion_list)?;
+        let ciphertext = match update_path_node.get_encrypted_ciphertext(resolution_position) {
+            Some(ct) => ct,
+            None => {
+                return Err(TreeKemError::EncryptedCiphertextNotFound);
+            }
+        };
+        //let ciphertext = update_path_node
+        //    .get_encrypted_ciphertext(resolution_position)
+        //    .ok_or(TreeKemError::EncryptedCiphertextNotFound)?;
 
         let path_secret = PathSecret::decrypt(
             backend,

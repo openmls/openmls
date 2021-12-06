@@ -147,7 +147,7 @@ impl MlsGroup {
                 // Decrypt the UpdatePath
                 let key_package = path.leaf_key_package();
 
-                let (plain_path, commit_secret) = self.tree().decrypt_path(
+                let (plain_path, commit_secret) = diff.decrypt_path(
                     backend,
                     ciphersuite,
                     &path,

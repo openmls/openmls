@@ -594,7 +594,9 @@ impl<'a> TreeSyncDiff<'a> {
         if let Some(leaf_index) = self.diff.leaf_index(node_ref) {
             let leaf = self.diff.try_deref_mut(node_ref)?;
             let tree_hash =
-                leaf.compute_tree_hash(backend, ciphersuite, Some(leaf_index), vec![], vec![])?;
+                // Giving 0 as a node index here for now. See comment in the
+                // function for context.
+                leaf.compute_tree_hash(backend, ciphersuite, Some(leaf_index), 0,vec![], vec![])?;
             return Ok(tree_hash);
         }
         // Return early if there's already a cached tree hash.
@@ -610,8 +612,15 @@ impl<'a> TreeSyncDiff<'a> {
         let right_hash = self.set_tree_hash(backend, ciphersuite, right_child)?;
 
         let node = self.diff.try_deref_mut(node_ref)?;
-        let tree_hash =
-            node.compute_tree_hash(backend, ciphersuite, None, left_hash, right_hash)?;
+        let node_index = node_ref.node_index();
+        let tree_hash = node.compute_tree_hash(
+            backend,
+            ciphersuite,
+            None,
+            node_index,
+            left_hash,
+            right_hash,
+        )?;
 
         Ok(tree_hash)
     }

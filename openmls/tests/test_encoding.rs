@@ -397,7 +397,9 @@ fn test_welcome_message_encoding() {
                 &crypto,
             )
             .expect("Could not stage the commit");
-        group_state.merge_commit(staged_commit);
+        group_state
+            .merge_commit(staged_commit)
+            .expect("error merging commit");
 
         // Welcome messages
 

@@ -265,7 +265,9 @@ fn test_update_path() {
         let staged_commit = alice_group
             .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, &crypto)
             .expect("error staging commit");
-        alice_group.merge_commit(staged_commit);
+        alice_group
+            .merge_commit(staged_commit)
+            .expect("error merging commit");
         let ratchet_tree = alice_group.tree().public_key_tree_copy();
 
         let group_bob = MlsGroup::new_from_welcome(
@@ -514,7 +516,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
             &crypto,
         )
         .expect("error staging commit");
-    alice_group.merge_commit(staged_commit);
+    alice_group.merge_commit(staged_commit).expect("error merging commit");
     let ratchet_tree = alice_group.tree().public_key_tree_copy();
 
     let group_bob = MlsGroup::new_from_welcome(

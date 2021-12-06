@@ -429,7 +429,9 @@ fn test_group_context_extensions() {
     let staged_commit = alice_group
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, &crypto)
         .expect("error staging commit");
-    alice_group.merge_commit(staged_commit);
+    alice_group
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
     let ratchet_tree = alice_group.tree().public_key_tree_copy();
 
     // Make sure that Bob can join the group with the required extension in place
@@ -529,7 +531,9 @@ fn test_group_context_extension_proposal_fails() {
     let staged_commit = alice_group
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, &crypto)
         .expect("error staging commit");
-    alice_group.merge_commit(staged_commit);
+    alice_group
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
     let ratchet_tree = alice_group.tree().public_key_tree_copy();
 
     let bob_group = MlsGroup::new_from_welcome(
@@ -630,7 +634,9 @@ fn test_group_context_extension_proposal() {
     let staged_commit = alice_group
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, &crypto)
         .expect("error staging commit");
-    alice_group.merge_commit(staged_commit);
+    alice_group
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
     let ratchet_tree = alice_group.tree().public_key_tree_copy();
 
     let mut bob_group = MlsGroup::new_from_welcome(
@@ -676,12 +682,16 @@ fn test_group_context_extension_proposal() {
     let staged_commit = alice_group
         .stage_commit(&gce_mls_plaintext, &proposal_store, &[], None, &crypto)
         .expect("error staging commit");
-    alice_group.merge_commit(staged_commit);
+    alice_group
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
 
     let staged_commit = bob_group
         .stage_commit(&gce_mls_plaintext, &proposal_store, &[], None, &crypto)
         .expect("error staging commit");
-    bob_group.merge_commit(staged_commit);
+    bob_group
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
 
     assert_eq!(
         alice_group

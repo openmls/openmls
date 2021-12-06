@@ -138,7 +138,9 @@ fn create_commit_optional_path() {
         let staged_commit = group_alice
             .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, &crypto)
             .expect("Error staging commit");
-        group_alice.merge_commit(staged_commit);
+        group_alice
+            .merge_commit(staged_commit)
+            .expect("error merging commit");
         let ratchet_tree = group_alice.tree().public_key_tree_copy();
 
         // Bob creates group from Welcome
@@ -202,7 +204,9 @@ fn create_commit_optional_path() {
                 &crypto,
             )
             .expect("Error staging commit");
-        group_alice.merge_commit(staged_commit);
+        group_alice
+            .merge_commit(staged_commit)
+            .expect("error merging commit");
     }
 }
 
@@ -375,7 +379,9 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &crypto,
         )
         .expect("Error staging commit");
-    group_alice.merge_commit(staged_commit);
+    group_alice
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
     let ratchet_tree = group_alice.tree().public_key_tree_copy();
 
     let mut group_bob = match MlsGroup::new_from_welcome(
@@ -465,7 +471,9 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &crypto,
         )
         .expect("Error applying commit (Alice)");
-    group_alice.merge_commit(staged_commit);
+    group_alice
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
     let staged_commit = group_bob
         .stage_commit(
             &mls_plaintext_commit,
@@ -475,7 +483,9 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &crypto,
         )
         .expect("Error applying commit (Bob)");
-    group_bob.merge_commit(staged_commit);
+    group_bob
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
 
     // Make sure that both groups have the same public tree
     if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
@@ -531,7 +541,9 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &crypto,
         )
         .expect("Error applying commit (Alice)");
-    group_alice.merge_commit(staged_commit);
+    group_alice
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
     let staged_commit = group_bob
         .stage_commit(
             &mls_plaintext_commit,
@@ -541,7 +553,9 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &crypto,
         )
         .expect("Error applying commit (Bob)");
-    group_bob.merge_commit(staged_commit);
+    group_bob
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
 
     // Make sure that both groups have the same public tree
     if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
@@ -596,7 +610,9 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             /* PSK fetcher */ &crypto,
         )
         .expect("Error applying commit (Alice)");
-    group_alice.merge_commit(staged_commit);
+    group_alice
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
     let staged_commit = group_bob
         .stage_commit(
             &mls_plaintext_commit,
@@ -606,7 +622,9 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             /* PSK fetcher */ &crypto,
         )
         .expect("Error applying commit (Bob)");
-    group_bob.merge_commit(staged_commit);
+    group_bob
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
 
     // Make sure that both groups have the same public tree
     if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
@@ -674,7 +692,9 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             /* PSK fetcher */ &crypto,
         )
         .expect("Error applying commit (Alice)");
-    group_alice.merge_commit(staged_commit);
+    group_alice
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
     let staged_commit = group_bob
         .stage_commit(
             &mls_plaintext_commit,
@@ -684,7 +704,9 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             /* PSK fetcher */ &crypto,
         )
         .expect("Error applying commit (Bob)");
-    group_bob.merge_commit(staged_commit);
+    group_bob
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
 
     let ratchet_tree = group_alice.tree().public_key_tree_copy();
     let mut group_charlie = match MlsGroup::new_from_welcome(
@@ -787,7 +809,9 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             /* PSK fetcher */ &crypto,
         )
         .expect("Error applying commit (Alice)");
-    group_alice.merge_commit(staged_commit);
+    group_alice
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
     let staged_commit = group_bob
         .stage_commit(
             &mls_plaintext_commit,
@@ -797,7 +821,9 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             /* PSK fetcher */ &crypto,
         )
         .expect("Error applying commit (Bob)");
-    group_bob.merge_commit(staged_commit);
+    group_bob
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
     let staged_commit = group_charlie
         .stage_commit(
             &mls_plaintext_commit,
@@ -807,7 +833,9 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             /* PSK fetcher */ &crypto,
         )
         .expect("Error applying commit (Charlie)");
-    group_charlie.merge_commit(staged_commit);
+    group_charlie
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
 
     // Make sure that all groups have the same public tree
     if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
@@ -859,7 +887,9 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             /* PSK fetcher */ &crypto,
         )
         .expect("Error applying commit (Alice)");
-    group_alice.merge_commit(staged_commit);
+    group_alice
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
     assert!(group_bob
         .stage_commit(
             &mls_plaintext_commit,
@@ -879,7 +909,9 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             /* PSK fetcher */ &crypto,
         )
         .expect("Error applying commit (Charlie)");
-    group_charlie.merge_commit(staged_commit);
+    group_charlie
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
 
     // Make sure that all groups have the same public tree
     if group_alice.tree().public_key_tree() == group_bob.tree().public_key_tree() {

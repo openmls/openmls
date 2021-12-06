@@ -82,6 +82,13 @@ impl NodeReference {
         diff.out_of_bounds(node_index)?;
         Ok(NodeReference { node_index })
     }
+
+    /// FIXME: This is only needed to workaround the current presence of a
+    /// NodeIndex in the ParentNodeTreeHashInput struct in the spec and should
+    /// go away when #507 in the MLS spec is integrated.
+    pub(crate) fn node_index(&self) -> LeafIndex {
+        self.node_index
+    }
 }
 
 /// The [`AbDiff`] represents a set of differences (i.e. a "Diff") for an

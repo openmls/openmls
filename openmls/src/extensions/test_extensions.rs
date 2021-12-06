@@ -162,7 +162,7 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     let staged_commit = alice_group
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, crypto)
         .expect("error staging commit");
-    alice_group.merge_commit(staged_commit);
+    alice_group.merge_commit(staged_commit).expect("error merging commit");
 
     let bob_group = match MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.unwrap(),
@@ -230,7 +230,7 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     let staged_commit = alice_group
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, crypto)
         .expect("error staging commit");
-    alice_group.merge_commit(staged_commit);
+    alice_group.merge_commit(staged_commit).expect("error merging commit");
 
     let error = MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.unwrap(),

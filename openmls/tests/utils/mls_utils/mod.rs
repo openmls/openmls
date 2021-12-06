@@ -234,7 +234,9 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     &crypto,
                 )
                 .expect("Error applying Commit");
-            mls_group.merge_commit(staged_commit);
+            mls_group
+                .merge_commit(staged_commit)
+                .expect("error merging commit");
 
             // Distribute the Welcome message to the other members.
             for client_id in 1..group_config.members.len() {
