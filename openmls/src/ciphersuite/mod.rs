@@ -95,16 +95,18 @@ impl PartialEq for Ciphersuite {
 impl Ciphersuite {
     /// Create a new ciphersuite from the given `name`.
     pub fn new(name: CiphersuiteName) -> Result<Self, ConfigError> {
+        println!(" >>> csuite: {:?}", name);
         if !Config::supported_ciphersuite_names().contains(&name) {
             return Err(ConfigError::UnsupportedCiphersuite);
         }
 
+        println!(" >>> fooo");
         Ok(Ciphersuite {
             name,
             signature_scheme: SignatureScheme::from(name),
             hash: hash_from_suite(&name),
             aead: aead_from_suite(&name),
-            hpke_kem: kem_from_suite(&name)?,
+            hpke_kem: kem_from_suite(&name),
             hpke_kdf: hpke_kdf_from_suite(&name),
             hpke_aead: hpke_aead_from_suite(&name),
         })

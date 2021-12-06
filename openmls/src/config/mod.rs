@@ -147,6 +147,7 @@ impl Config {
 
     /// Get the ciphersuite of the given name.
     pub fn ciphersuite(ciphersuite: CiphersuiteName) -> Result<&'static Ciphersuite, ConfigError> {
+        println!("ciphersuites: {:?}", CONFIG.ciphersuites);
         match CONFIG.ciphersuites.iter().find(|s| s.name() == ciphersuite) {
             Some(c) => Ok(c),
             None => Err(ConfigError::UnsupportedCiphersuite),
