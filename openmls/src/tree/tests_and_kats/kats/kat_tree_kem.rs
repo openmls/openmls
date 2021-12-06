@@ -224,17 +224,9 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
                 test_vector.root_secret_after_update
             );
             log::error!(
-                            "got root secret:      {}",
-            <<<<<<< HEAD
-                            crate::test_utils::bytes_to_hex(&commit_secret.as_slice())
-            =======
-                            crate::test_utils::bytes_to_hex(
-                                &root_secret_after
-                                    .tls_serialize_detached()
-                                    .expect("An unexpected error occurred.")
-                            )
-            >>>>>>> main
-                        );
+                "got root secret:      {}",
+                crate::test_utils::bytes_to_hex(&commit_secret.as_slice())
+            );
             panic!("Root secret mismatch in the 'after' tree.");
         }
         return Err(TreeKemTestVectorError::AfterRootSecretMismatch);

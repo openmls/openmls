@@ -7,7 +7,7 @@ use crate::{
     messages::proposals::{AddProposal, ProposalType},
     prelude::{KeyPackageBundle, KeyPackageBundlePayload},
     schedule::{PreSharedKeyId, PreSharedKeys},
-    treesync::{diff::TreeSyncDiff, TreeSyncError},
+    treesync::{diff::TreeSyncDiff, node::leaf_node::LeafNode, TreeSyncError},
 };
 
 use super::{
@@ -48,12 +48,9 @@ impl MlsGroup {
     pub(crate) fn apply_proposals(
         &self,
         diff: &mut TreeSyncDiff,
-        // FIXME: Keeping this here until the FIXME below is solved.
         _backend: &impl OpenMlsCryptoProvider,
         proposal_queue: CreationProposalQueue,
-        // FIXME: Should this be here? If it's my own update, I need to include
-        // a path anyway, so we can just filter out own updates, right?
-        _key_package_bundle_payload_option: Option<KeyPackageBundlePayload>,
+        key_package_bundles: &[KeyPackageBundle],
     ) -> Result<ApplyProposalsValues, TreeSyncError> {
         log::debug!("Applying proposal");
         let mut has_updates = false;
@@ -66,11 +63,21 @@ impl MlsGroup {
             // Unwrapping here is safe because we know the proposal type
             let update_proposal = &queued_proposal.proposal().as_update().unwrap();
             // Check if this is our own update.
-            diff.update_leaf(
-                update_proposal.key_package().clone(),
-                queued_proposal.sender().to_leaf_index(),
-            )?;
-            // FIXME: Potentially process own update here (see comment above.)
+            let sender_index = queued_proposal.sender().to_leaf_index();
+            let leaf_node: LeafNode = if sender_index == self.tree.own_leaf_index() {
+                let own_kpb = match key_package_bundles
+                    .iter()
+                    .find(|&kpb| kpb.key_package() == update_proposal.key_package())
+                {
+                    Some(kpb) => kpb,
+                    // We lost the KeyPackageBundle apparently
+                    None => return Err(TreeSyncError::MissingKeyPackage),
+                };
+                own_kpb.clone().into()
+            } else {
+                update_proposal.key_package().clone().into()
+            };
+            diff.update_leaf(leaf_node, queued_proposal.sender().to_leaf_index())?;
         }
 
         // Process removes
@@ -137,7 +144,7 @@ impl MlsGroup {
         diff: &mut TreeSyncDiff,
         _backend: &impl OpenMlsCryptoProvider,
         proposal_queue: &StagedProposalQueue,
-        _updates_key_package_bundles: &[KeyPackageBundle],
+        key_package_bundles: &[KeyPackageBundle],
     ) -> Result<ApplyProposalsValues, TreeSyncError> {
         log::debug!("Applying proposal");
         let mut has_updates = false;
@@ -150,11 +157,21 @@ impl MlsGroup {
             // Unwrapping here is safe because we know the proposal type
             let update_proposal = &queued_proposal.proposal().as_update().unwrap();
             // Check if this is our own update.
-            diff.update_leaf(
-                update_proposal.key_package().clone(),
-                queued_proposal.sender().to_leaf_index(),
-            )?;
-            // FIXME: Potentially process own update here (see comment above.)
+            let sender_index = queued_proposal.sender().to_leaf_index();
+            let leaf_node: LeafNode = if sender_index == self.tree.own_leaf_index() {
+                let own_kpb = match key_package_bundles
+                    .iter()
+                    .find(|&kpb| kpb.key_package() == update_proposal.key_package())
+                {
+                    Some(kpb) => kpb,
+                    // We lost the KeyPackageBundle apparently
+                    None => return Err(TreeSyncError::MissingKeyPackage),
+                };
+                own_kpb.clone().into()
+            } else {
+                update_proposal.key_package().clone().into()
+            };
+            diff.update_leaf(leaf_node, queued_proposal.sender().to_leaf_index())?;
         }
 
         // Process removes

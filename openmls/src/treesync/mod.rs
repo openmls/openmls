@@ -310,22 +310,16 @@ impl TreeSync {
         Ok(leaf_node.as_leaf_node()?.key_package())
     }
 
+    /// FIXME: the following two functions should be removed. They were just put
+    /// here to make integration into existing tests easier.
     #[cfg(any(feature = "test-utils", test))]
     pub fn public_key_tree(&self) -> Vec<Option<Node>> {
-        self.tree
-            .nodes()
-            .iter()
-            .map(|ts_node| ts_node.node().clone())
-            .collect()
+        self.export_nodes()
     }
 
     #[cfg(any(feature = "test-utils", test))]
     pub fn public_key_tree_copy(&self) -> Vec<Option<Node>> {
-        self.tree
-            .nodes()
-            .iter()
-            .map(|ts_node| ts_node.node().clone())
-            .collect()
+        self.export_nodes()
     }
 }
 

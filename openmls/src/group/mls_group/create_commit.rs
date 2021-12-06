@@ -53,7 +53,7 @@ impl MlsGroup {
 
         // Apply proposals to tree
         let apply_proposals_values =
-            self.apply_proposals(&mut diff, backend, proposal_queue, None)?;
+            self.apply_proposals(&mut diff, backend, proposal_queue, &[])?;
         if apply_proposals_values.self_removed {
             return Err(CreateCommitError::CannotRemoveSelf.into());
         }

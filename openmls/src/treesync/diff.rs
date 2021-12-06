@@ -23,6 +23,7 @@ use std::{collections::HashSet, convert::TryFrom};
 
 use super::{
     node::{
+        leaf_node::LeafNode,
         parent_node::{ParentNode, ParentNodeError, PlainUpdatePathNode},
         {Node, NodeError},
     },
@@ -104,7 +105,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// direct path. Returns an error if the target leaf is blank.
     pub(crate) fn update_leaf(
         &mut self,
-        leaf_node: KeyPackage,
+        leaf_node: impl Into<LeafNode>,
         leaf_index: LeafIndex,
     ) -> Result<(), TreeSyncDiffError> {
         let node = Node::LeafNode(leaf_node.into());
