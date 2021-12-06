@@ -41,7 +41,7 @@ pub struct HashReference {
 pub type KeyPackageRef = HashReference;
 
 /// A reference to a proposal.
-/// THis value uniquely identifies a proposal.
+/// This value uniquely identifies a proposal.
 pub type ProposalRef = HashReference;
 
 impl HashReference {
