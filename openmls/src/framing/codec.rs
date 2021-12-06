@@ -281,11 +281,11 @@ impl tls_codec::Deserialize for MlsMessageIn {
                 match wire_format {
                     WireFormat::MlsPlaintext => {
                         let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut chain)?;
-                        Ok(MlsMessageIn::Plaintext(Box::new(plaintext)))
+                        Ok(MlsMessageIn::Plaintext(plaintext))
                     }
                     WireFormat::MlsCiphertext => {
                         let ciphertext = MlsCiphertext::tls_deserialize(&mut chain)?;
-                        Ok(MlsMessageIn::Ciphertext(Box::new(ciphertext)))
+                        Ok(MlsMessageIn::Ciphertext(ciphertext))
                     }
                 }
             }
