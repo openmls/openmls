@@ -1,27 +1,39 @@
 //! Test decryption key index computation in larger trees.
 use openmls::{
     prelude::*,
-    test_utils::test_framework::{ActionType, CodecUse, ManagedTestSetup},
+    test_utils::{
+        test_framework::{ActionType, CodecUse, ManagedTestSetup},
+        *,
+    },
+    *,
 };
 
 #[macro_use]
 mod utils;
 
-ctest_ciphersuites!(decryption_key_index_computation, test(ciphersuite_name: CiphersuiteName) {
-    println!("Testing ciphersuite {:?}", ciphersuite_name);
-    let ciphersuite = Config::ciphersuite(ciphersuite_name).expect("An unexpected error occurred.");
+#[apply(ciphersuites)]
+fn decryption_key_index_computation(ciphersuite: &'static Ciphersuite) {
+    println!("Testing ciphersuite {:?}", ciphersuite.name());
 
     // Some basic setup functions for the managed group.
-    let managed_group_config =
-        ManagedGroupConfig::builder()
+    let managed_group_config = ManagedGroupConfig::builder()
         .wire_format(WireFormat::MlsPlaintext)
-        .padding_size(10).build();
+        .padding_size(10)
+        .build();
     let number_of_clients = 20;
-    let setup = ManagedTestSetup::new(managed_group_config, number_of_clients, CodecUse::StructMessages);
+    let setup = ManagedTestSetup::new(
+        managed_group_config,
+        number_of_clients,
+        CodecUse::StructMessages,
+    );
     // Create a basic group with more than 4 members to create a tree with intermediate nodes.
-    let group_id = setup.create_random_group(10, ciphersuite).expect("An unexpected error occurred.");
+    let group_id = setup
+        .create_random_group(10, ciphersuite)
+        .expect("An unexpected error occurred.");
     let mut groups = setup.groups.borrow_mut();
-    let group = groups.get_mut(&group_id).expect("An unexpected error occurred.");
+    let group = groups
+        .get_mut(&group_id)
+        .expect("An unexpected error occurred.");
 
     // Now we have to create a situation, where the resolution is neither
     // the leaf, nor the common ancestor closest to the root. To do that, we
@@ -59,4 +71,4 @@ ctest_ciphersuites!(decryption_key_index_computation, test(ciphersuite_name: Cip
     // message in the callback, we also have to check that the group states
     // match for all group members.
     setup.check_group_states(group);
-});
+}

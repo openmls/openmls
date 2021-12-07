@@ -237,6 +237,7 @@ impl MlsClient for MlsClientImpl {
         request: tonic::Request<VerifyTestVectorRequest>,
     ) -> Result<tonic::Response<VerifyTestVectorResponse>, tonic::Status> {
         println!("Got VerifyTestVector request");
+        let backend = &OpenMlsRustCrypto::default();
 
         let obj = request.get_ref();
         let (type_msg, _result) = match TestVectorType::try_from(obj.test_vector_type) {
@@ -278,7 +279,7 @@ impl MlsClient for MlsClientImpl {
                     ),
                     &obj.test_vector,
                 );
-                match kat_encryption::run_test_vector(kat_encryption) {
+                match kat_encryption::run_test_vector(kat_encryption, backend) {
                     Ok(result) => ("Encryption", result),
                     Err(e) => {
                         let message = "Error while running encryption test vector: ".to_string()
@@ -327,7 +328,7 @@ impl MlsClient for MlsClientImpl {
                     &format!("mlspp_transcript_{}.json", kat_transcript.cipher_suite),
                     &obj.test_vector,
                 );
-                match kat_transcripts::run_test_vector(kat_transcript) {
+                match kat_transcripts::run_test_vector(kat_transcript, backend) {
                     Ok(result) => ("Transcript", result),
                     Err(e) => {
                         let message = "Error while running transcript test vector: ".to_string()
@@ -351,7 +352,7 @@ impl MlsClient for MlsClientImpl {
                     &format!("mlspp_tree_kem_{}.json", kat_tree_kem.cipher_suite),
                     &obj.test_vector,
                 );
-                match kat_tree_kem::run_test_vector(kat_tree_kem) {
+                match kat_tree_kem::run_test_vector(kat_tree_kem, backend) {
                     Ok(result) => ("TreeKEM", result),
                     Err(e) => {
                         let message = "Error while running TreeKEM test vector: ".to_string()

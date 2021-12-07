@@ -12,7 +12,6 @@ use crate::{
     prelude::*,
     test_utils::*,
     tree::node::Node,
-    utils::*,
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -629,7 +628,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
 }
 
 #[test]
-fn read_test_vectors() {
+fn read_test_vectors_messages() {
     let tests: Vec<MessagesTestVector> = read("test_vectors/kat_messages.json");
 
     for test_vector in tests {
