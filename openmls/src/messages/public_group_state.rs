@@ -46,6 +46,7 @@ pub struct PublicGroupState {
     pub(crate) group_context_extensions: TlsVecU32<Extension>,
     pub(crate) other_extensions: TlsVecU32<Extension>,
     pub(crate) external_pub: HpkePublicKey,
+    // TODO: #541 replace signer_index with [`KeyPackageRef`]
     pub(crate) signer_index: LeafIndex,
     pub(crate) signature: Signature,
 }
@@ -137,6 +138,7 @@ pub(crate) struct PublicGroupStateTbs {
     pub(crate) group_context_extensions: TlsVecU32<Extension>,
     pub(crate) other_extensions: TlsVecU32<Extension>,
     pub(crate) external_pub: HpkePublicKey,
+    // TODO: #541 replace signer_index with [`KeyPackageRef`]
     pub(crate) signer_index: LeafIndex,
 }
 

@@ -71,6 +71,7 @@ pub struct Welcome {
 /// ```
 #[derive(Clone, Debug, PartialEq, TlsDeserialize, TlsSerialize, TlsSize)]
 pub struct EncryptedGroupSecrets {
+    // TODO: #541 replace key_package_hash with [`KeyPackageRef`]
     pub key_package_hash: TlsByteVecU8,
     pub encrypted_group_secrets: HpkeCiphertext,
 }
@@ -154,6 +155,7 @@ pub(crate) struct GroupInfoPayload {
     group_context_extensions: TlsVecU32<Extension>,
     other_extensions: TlsVecU32<Extension>,
     confirmation_tag: ConfirmationTag,
+    // TODO: #541 replace sender_index with [`KeyPackageRef`]
     signer_index: LeafIndex,
 }
 
