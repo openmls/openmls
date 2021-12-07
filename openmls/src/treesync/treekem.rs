@@ -11,7 +11,7 @@ use crate::{
     messages::{
         proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret, PathSecretError,
     },
-    prelude::{KeyPackage, KeyPackageError},
+    prelude::{KeyPackage, KeyPackageError, ProtocolVersion},
     schedule::{CommitSecret, JoinerSecret, PreSharedKeys},
 };
 
@@ -52,6 +52,7 @@ impl<'a> TreeSyncDiff<'a> {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &'static Ciphersuite,
+        version: ProtocolVersion,
         update_path: &UpdatePath,
         sender_leaf_index: LeafIndex,
         exclusion_list: &HashSet<&LeafIndex>,
@@ -71,13 +72,11 @@ impl<'a> TreeSyncDiff<'a> {
                 return Err(TreeKemError::EncryptedCiphertextNotFound);
             }
         };
-        //let ciphertext = update_path_node
-        //    .get_encrypted_ciphertext(resolution_position)
-        //    .ok_or(TreeKemError::EncryptedCiphertextNotFound)?;
 
         let path_secret = PathSecret::decrypt(
             backend,
             ciphersuite,
+            version,
             ciphertext,
             decryption_key,
             group_context,
