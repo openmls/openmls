@@ -87,7 +87,6 @@ impl<'a> TreeSyncDiff<'a> {
             ParentNode::derive_path(backend, ciphersuite, path_secret, remaining_path_length)?;
         // We now check that the public keys in the update path an in the
         // derived path match up.
-
         for (update_parent_node, derived_parent_node) in update_path
             .nodes()
             .iter()

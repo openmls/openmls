@@ -137,7 +137,7 @@ impl MlsGroup {
         let (tree, _commit_secret_option) = TreeSync::from_nodes_with_secrets(
             backend,
             ciphersuite,
-            &nodes,
+            nodes,
             group_info.signer_index(),
             path_secret_option,
             key_package_bundle,

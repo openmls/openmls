@@ -150,34 +150,6 @@ pub(super) fn lowest_common_ancestor(x: NodeIndex, y: NodeIndex) -> NodeIndex {
     (xn << k) + (1 << (k - 1)) - 1
 }
 
-// The following functions are not currently used but are kept for the time
-// being for test vector computation.
-
-/// Copath of a node.
-/// Ordered from starting node to root.
-#[cfg(test)]
-pub(super) fn copath(
-    node_index: NodeIndex,
-    size: NodeIndex,
-) -> Result<Vec<NodeIndex>, TreeMathError> {
-    node_in_tree(node_index, size)?;
-    let node_index = node_index;
-    // If the tree only has one leaf
-    if node_index == root(size) {
-        return Ok(vec![]);
-    }
-    // Add leaf node
-    let mut d = vec![node_index];
-    // Add direct path
-    d.append(&mut direct_path(node_index, size)?);
-    // Remove root node
-    d.pop();
-    // Calculate copath
-    d.iter()
-        .map(|&node_index| sibling(node_index, size))
-        .collect()
-}
-
 #[cfg(any(feature = "test-utils", test))]
 pub(super) fn parent(index: NodeIndex, size: NodeIndex) -> Result<NodeIndex, TreeMathError> {
     node_in_tree(index, size)?;

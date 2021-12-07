@@ -131,48 +131,6 @@ pub(crate) fn leaf_direct_path(
 // The following is not currently used but could be useful in future parent hash
 // computations:
 
-/// Returns the list of nodes that are descendants of a given parent node,
-/// including the parent node itself
-#[cfg(test)]
-pub(crate) fn descendants(x: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
-    let l = level(x);
-    if l == 0 {
-        vec![x]
-    } else {
-        let s = (1 << l) - 1;
-        let l = x.as_usize() - s;
-        let mut r = x.as_usize() + s;
-        if r > (size.as_usize() * 2) - 2 {
-            r = (size.as_usize() * 2) - 2;
-        }
-
-        (l..=r).map(NodeIndex::from).collect::<Vec<NodeIndex>>()
-    }
-}
-
-/// Returns the list of nodes that are descendants of a given parent node,
-/// including the parent node itself
-/// (Alternative, easier to verify implementation)
-
-#[cfg(test)]
-pub(crate) fn descendants_alt(
-    x: NodeIndex,
-    size: LeafIndex,
-) -> Result<Vec<NodeIndex>, TreeMathError> {
-    Ok(if level(x) == 0 {
-        vec![x]
-    } else {
-        let left_child = left(x)?;
-        let right_child = right(x, size)?;
-        [
-            descendants_alt(left_child, size)?,
-            vec![x],
-            descendants_alt(right_child, size)?,
-        ]
-        .concat()
-    })
-}
-
 #[test]
 fn invalid_inputs() {
     assert_eq!(

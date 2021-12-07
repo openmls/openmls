@@ -177,6 +177,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
         .decrypt_path(
             &crypto,
             ciphersuite,
+            ProtocolVersion::default(),
             &update_path,
             test_vector.update_sender,
             &HashSet::new(),

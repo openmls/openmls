@@ -6,7 +6,6 @@ use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMls
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
-    binary_tree::LeafIndex,
     ciphersuite::{Ciphersuite, CiphersuiteName, Mac, Secret},
     credentials::{Credential, CredentialBundle, CredentialError, CredentialType},
     extensions::Extension,

@@ -34,7 +34,7 @@ use super::{
 use crate::{
     binary_tree::{
         array_representation::diff::NodeId, LeafIndex, MlsBinaryTreeDiff, MlsBinaryTreeDiffError,
-        StagedMlsBinaryTreeDiff,
+        MlsBinaryTreeError, StagedMlsBinaryTreeDiff,
     },
     ciphersuite::{signable::Signable, Ciphersuite, HpkePrivateKey, HpkePublicKey},
     credentials::{CredentialBundle, CredentialError},
@@ -68,7 +68,7 @@ impl<'a> TryFrom<&'a TreeSync> for TreeSyncDiff<'a> {
 
     fn try_from(tree_sync: &'a TreeSync) -> Result<Self, Self::Error> {
         Ok(TreeSyncDiff {
-            diff: MlsBinaryTreeDiff::try_from(&tree_sync.tree)?,
+            diff: tree_sync.tree.empty_diff()?,
             own_leaf_index: tree_sync.own_leaf_index,
         })
     }
@@ -753,6 +753,7 @@ implement_error! {
             CryptoError(CryptoError) = "An error occurred during key derivation.",
             DerivationError(PathSecretError) = "An error occurred during PathSecret derivation.",
             ParentNodeError(ParentNodeError) = "An error occurred during path derivation.",
+            CreationError(MlsBinaryTreeError) = "An error occurred while creating an empty diff.",
         }
     }
 }
