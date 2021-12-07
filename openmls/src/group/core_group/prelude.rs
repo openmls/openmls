@@ -5,8 +5,7 @@
 pub use crate::group::{
     create_commit_params::{CreateCommitParams, CreateCommitParamsBuilder},
     proposals::{ProposalStore, StagedProposal},
-    CoreGroup, CoreGroupConfig, InvalidMessageError, ManagedGroupConfig, ManagedGroupError,
-    UpdatePolicy,
+    CoreGroup, CoreGroupConfig, InvalidMessageError, MlsGroupConfig, MlsGroupError, UpdatePolicy,
 };
 
 // Indexes

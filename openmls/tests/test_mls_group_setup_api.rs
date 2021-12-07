@@ -1,6 +1,6 @@
 use openmls::{
     prelude::*,
-    test_utils::test_framework::{ActionType, CodecUse, ManagedTestSetup},
+    test_utils::test_framework::{ActionType, CodecUse, MlsGroupTestSetup},
     test_utils::*,
     *,
 };
@@ -8,14 +8,14 @@ use openmls::{
 mod utils;
 
 #[apply(ciphersuites)]
-fn test_managed_api(ciphersuite: &'static Ciphersuite) {
-    // Some basic setup functions for the managed group.
-    let managed_group_config = ManagedGroupConfig::builder()
+fn mls_group_setup_api(ciphersuite: &'static Ciphersuite) {
+    // Some basic setup functions for the MlsGroup.
+    let mls_group_config = MlsGroupConfig::builder()
         .wire_format(WireFormat::MlsPlaintext)
         .build();
     let number_of_clients = 20;
-    let setup = ManagedTestSetup::new(
-        managed_group_config,
+    let setup = MlsGroupTestSetup::new(
+        mls_group_config,
         number_of_clients,
         CodecUse::SerializedMessages,
     );

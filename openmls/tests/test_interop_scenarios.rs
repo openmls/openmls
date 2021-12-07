@@ -1,6 +1,6 @@
 use openmls::{
     prelude::*,
-    test_utils::test_framework::{ActionType, CodecUse, ManagedTestSetup},
+    test_utils::test_framework::{ActionType, CodecUse, MlsGroupTestSetup},
     test_utils::*,
     *,
 };
@@ -13,8 +13,8 @@ mod utils;
 // The tests are conducted for every available ciphersuite, but currently only
 // using BasicCredentials. We can change the test setup once #134 is fixed.
 
-fn default_managed_group_config() -> ManagedGroupConfig {
-    ManagedGroupConfig::builder()
+fn default_mls_group_config() -> MlsGroupConfig {
+    MlsGroupConfig::builder()
         .wire_format(WireFormat::MlsPlaintext)
         .padding_size(10)
         .build()
@@ -29,8 +29,8 @@ fn default_managed_group_config() -> ManagedGroupConfig {
 fn one_to_one_join(ciphersuite: &'static Ciphersuite) {
     println!("Testing ciphersuite {:?}", ciphersuite.name());
     let number_of_clients = 2;
-    let setup = ManagedTestSetup::new(
-        default_managed_group_config(),
+    let setup = MlsGroupTestSetup::new(
+        default_mls_group_config(),
         number_of_clients,
         CodecUse::StructMessages,
     );
@@ -76,8 +76,8 @@ fn three_party_join(ciphersuite: &'static Ciphersuite) {
     println!("Testing ciphersuite {:?}", ciphersuite.name());
 
     let number_of_clients = 3;
-    let setup = ManagedTestSetup::new(
-        default_managed_group_config(),
+    let setup = MlsGroupTestSetup::new(
+        default_mls_group_config(),
         number_of_clients,
         CodecUse::StructMessages,
     );
@@ -132,8 +132,8 @@ fn multiple_joins(ciphersuite: &'static Ciphersuite) {
     println!("Testing ciphersuite {:?}", ciphersuite.name());
 
     let number_of_clients = 3;
-    let setup = ManagedTestSetup::new(
-        default_managed_group_config(),
+    let setup = MlsGroupTestSetup::new(
+        default_mls_group_config(),
         number_of_clients,
         CodecUse::StructMessages,
     );
@@ -180,8 +180,8 @@ fn update(ciphersuite: &'static Ciphersuite) {
     println!("Testing ciphersuite {:?}", ciphersuite.name());
 
     let number_of_clients = 2;
-    let setup = ManagedTestSetup::new(
-        default_managed_group_config(),
+    let setup = MlsGroupTestSetup::new(
+        default_mls_group_config(),
         number_of_clients,
         CodecUse::StructMessages,
     );
@@ -223,8 +223,8 @@ fn remove(ciphersuite: &'static Ciphersuite) {
     println!("Testing ciphersuite {:?}", ciphersuite.name());
 
     let number_of_clients = 2;
-    let setup = ManagedTestSetup::new(
-        default_managed_group_config(),
+    let setup = MlsGroupTestSetup::new(
+        default_mls_group_config(),
         number_of_clients,
         CodecUse::StructMessages,
     );
@@ -275,8 +275,8 @@ fn large_group_lifecycle(ciphersuite: &'static Ciphersuite) {
 
     // "Large" is 20 for now.
     let number_of_clients = 20;
-    let setup = ManagedTestSetup::new(
-        default_managed_group_config(),
+    let setup = MlsGroupTestSetup::new(
+        default_mls_group_config(),
         number_of_clients,
         CodecUse::StructMessages,
     );

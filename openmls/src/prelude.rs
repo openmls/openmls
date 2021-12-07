@@ -3,7 +3,7 @@
 
 pub use crate::group::{
     proposals::{ProposalStore, StagedProposal},
-    InvalidMessageError, ManagedGroup, ManagedGroupConfig, ManagedGroupError, UpdatePolicy,
+    InvalidMessageError, MlsGroup, MlsGroupConfig, MlsGroupError, UpdatePolicy,
 };
 // Errors
 pub use crate::group::errors::{

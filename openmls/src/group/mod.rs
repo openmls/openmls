@@ -3,12 +3,12 @@
 //! This file contains the API to interact with groups.
 //!
 //! The low-level standard API is described in the `Api` trait.\
-//! The high-level API is exposed in `ManagedGroup`.
+//! The high-level API is exposed in `MlsGroup`.
 
 pub(crate) mod core_group;
 pub mod errors;
 mod group_context;
-mod managed_group;
+mod mls_group;
 
 #[cfg(any(feature = "test-utils", test))]
 pub mod tests;
@@ -27,7 +27,7 @@ pub use errors::{
     InterimTranscriptHashError, ProposalValidationError, StageCommitError, WelcomeError,
 };
 pub use group_context::*;
-pub use managed_group::*;
+pub use mls_group::*;
 
 #[cfg(feature = "coregroup")]
 pub use core_group::*;
