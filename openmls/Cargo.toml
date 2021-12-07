@@ -27,12 +27,12 @@ getrandom = { version = "0.2", features = ["js"] }
 itertools = { version = "0.10", optional = true }
 openmls_rust_crypto = { version = "0.1", path = "../openmls_rust_crypto", optional = true }
 evercrypt_backend = { version = "0.1", path = "../evercrypt_backend", optional = true }
-rstest = "^0.11"
-rstest_reuse = "^0.1"
+rstest = {version = "^0.11", optional = true}
+rstest_reuse = {version = "^0.1", optional = true}
 
 [features]
 default = []
-test-utils = ["itertools", "openmls_rust_crypto", "rand"]
+test-utils = ["itertools", "openmls_rust_crypto", "rand", "rstest", "rstest_reuse"]
 evercrypt = ["evercrypt_backend"] # Evercrypt needs to be enabled individually
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content

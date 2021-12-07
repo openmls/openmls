@@ -14,8 +14,6 @@ fn duplicate_ratchet_tree_extension(
     ciphersuite: &'static Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
-    debug_show_backend_and_ciphersuite!(backend, ciphersuite);
-
     // Basic group setup.
     let group_aad = b"Alice's test group";
 

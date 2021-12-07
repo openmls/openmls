@@ -21,6 +21,7 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![forbid(unsafe_code)]
 
+#[cfg(any(feature = "test-utils", test))]
 pub use rstest_reuse;
 
 #[macro_use]

@@ -90,8 +90,6 @@ fn lifetime() {
 // in-band
 #[apply(ciphersuites_and_backends)]
 fn ratchet_tree_extension(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    debug_show_backend_and_ciphersuite!(backend, ciphersuite);
-
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
