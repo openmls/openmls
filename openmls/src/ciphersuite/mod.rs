@@ -23,6 +23,7 @@ use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU16, TlsByteVecU32, Tl
 mod aead;
 mod ciphersuites;
 mod codec;
+mod hash_ref;
 mod hpke;
 mod kdf_label;
 mod mac;
@@ -34,6 +35,7 @@ mod signature;
 
 pub(crate) use aead::*;
 pub use ciphersuites::*;
+pub use hash_ref::*;
 pub(crate) use hpke::*;
 pub(crate) use mac::*;
 pub(crate) use reuse_guard::*;

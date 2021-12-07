@@ -56,6 +56,7 @@ impl TryFrom<u8> for SenderType {
 )]
 pub struct Sender {
     pub(crate) sender_type: SenderType,
+    // TODO: #541 replace sender with [`KeyPackageRef`] (and preconfigured/new)
     pub(crate) sender: LeafIndex,
 }
 // Public functions
