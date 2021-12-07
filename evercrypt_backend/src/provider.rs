@@ -45,6 +45,9 @@ fn signature_mode(signature_scheme: SignatureScheme) -> Result<SignatureMode, &'
         SignatureScheme::ECDSA_SECP521R1_SHA512 => {
             Err("SignatureScheme ecdsa_secp521r1 is not supported.")
         }
+        SignatureScheme::ECDSA_SECP384R1_SHA384 => {
+            Err("SignatureScheme ecdsa_secp384r1 is not supported.")
+        }
     }
 }
 
@@ -58,6 +61,9 @@ fn hash_from_signature(signature_scheme: SignatureScheme) -> Result<DigestMode, 
         SignatureScheme::ECDSA_SECP521R1_SHA512 => {
             Err("SignatureScheme ecdsa_secp521r1 is not supported.")
         }
+        SignatureScheme::ECDSA_SECP384R1_SHA384 => {
+            Err("SignatureScheme ecdsa_secp384r1 is not supported.")
+        }
     }
 }
 
@@ -65,6 +71,7 @@ fn hash_from_signature(signature_scheme: SignatureScheme) -> Result<DigestMode, 
 fn hash_from_algorithm(hash_type: HashType) -> DigestMode {
     match hash_type {
         HashType::Sha2_256 => DigestMode::Sha256,
+        HashType::Sha2_384 => DigestMode::Sha384,
         HashType::Sha2_512 => DigestMode::Sha512,
     }
 }
@@ -82,6 +89,7 @@ fn aead_from_algorithm(alg: AeadType) -> AeadMode {
 fn hmac_from_hash(hash_type: HashType) -> HmacMode {
     match hash_type {
         HashType::Sha2_256 => HmacMode::Sha256,
+        HashType::Sha2_384 => HmacMode::Sha384,
         HashType::Sha2_512 => HmacMode::Sha512,
     }
 }

@@ -106,7 +106,7 @@ impl Ciphersuite {
             signature_scheme: SignatureScheme::from(name),
             hash: hash_from_suite(&name),
             aead: aead_from_suite(&name),
-            hpke_kem: kem_from_suite(&name)?,
+            hpke_kem: kem_from_suite(&name),
             hpke_kdf: hpke_kdf_from_suite(&name),
             hpke_aead: hpke_aead_from_suite(&name),
         })
