@@ -41,9 +41,10 @@ pub use errors::{
 pub(crate) use resumption::ResumptionSecretStore;
 use ser::*;
 
+use super::core_group::*;
 use super::proposals::{ProposalStore, StagedProposal};
 
-/// A `ManagedGroup` represents an [MlsGroup] with
+/// A `ManagedGroup` represents an [CoreGroup] with
 /// an easier, high-level API designed to be used in production. The API exposes
 /// high level functions to manage a group by adding/removing members, get the
 /// current member list, etc.
@@ -75,9 +76,9 @@ use super::proposals::{ProposalStore, StagedProposal};
 pub struct ManagedGroup {
     // The group configuration. See `ManagedGroupCongig` for more information.
     managed_group_config: ManagedGroupConfig,
-    // the internal `MlsGroup` used for lower level operations. See `MlsGroup` for more
+    // the internal `CoreGroup` used for lower level operations. See `CoreGroup` for more
     // information.
-    group: MlsGroup,
+    group: CoreGroup,
     // A [ProposalStore] that stores incoming proposals from the DS within one epoch.
     // The store is emptied after every epoch change.
     proposal_store: ProposalStore,
@@ -212,9 +213,9 @@ impl ManagedGroup {
         _print_tree(&self.group.tree(), message)
     }
 
-    /// Get the underlying [MlsGroup].
+    /// Get the underlying [CoreGroup].
     #[cfg(any(feature = "test-utils", test))]
-    pub fn group(&self) -> &MlsGroup {
+    pub fn group(&self) -> &CoreGroup {
         &self.group
     }
 }

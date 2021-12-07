@@ -4,15 +4,15 @@ use openmls_traits::OpenMlsCryptoProvider;
 use rstest::*;
 use rstest_reuse::{self, *};
 
-use mls_group::create_commit_params::CreateCommitParams;
-use mls_group::proposals::ProposalStore;
-use mls_group::proposals::StagedProposal;
+use core_group::create_commit_params::CreateCommitParams;
+use core_group::proposals::ProposalStore;
+use core_group::proposals::StagedProposal;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::framing::*;
 use crate::prelude::KeyPackageBundle;
-use crate::prelude::_print_tree;
+use crate::utils::_print_tree;
 use crate::{
     ciphersuite::signable::{Signable, Verifiable},
     config::*,
@@ -388,7 +388,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     .expect("An unexpected error occurred.");
 
     // Alice creates a group
-    let mut group_alice = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .build(backend)
         .expect("Error creating group.");
 
@@ -454,7 +454,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .expect("Could not stage Commit");
     group_alice.merge_commit(staged_commit);
 
-    let mut group_charlie = MlsGroup::new_from_welcome(
+    let mut group_charlie = CoreGroup::new_from_welcome(
         welcome_option.expect("An unexpected error occurred."),
         Some(group_alice.tree().public_key_tree_copy()),
         charlie_key_package_bundle,
@@ -544,7 +544,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     let received_message = group_charlie.verify(received_message, backend);
     assert_eq!(
         received_message.unwrap_err(),
-        MlsGroupError::MlsPlaintextError(MlsPlaintextError::UnknownSender)
+        CoreGroupError::MlsPlaintextError(MlsPlaintextError::UnknownSender)
     );
 
     // Alice sends a message with a sender that is outside of the group
@@ -585,7 +585,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     let received_message = group_charlie.decrypt(&enc_message, backend);
     assert_eq!(
         received_message.unwrap_err(),
-        MlsGroupError::MlsCiphertextError(MlsCiphertextError::GenerationOutOfBound)
+        CoreGroupError::MlsCiphertextError(MlsCiphertextError::GenerationOutOfBound)
     );
 }
 
@@ -632,7 +632,7 @@ fn confirmation_tag_presence(
     .expect("An unexpected error occurred.");
 
     // Alice creates a group
-    let mut group_alice = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .build(backend)
         .expect("Error creating group.");
 
@@ -669,7 +669,7 @@ fn confirmation_tag_presence(
 
     assert_eq!(
         err,
-        MlsGroupError::StageCommitError(StageCommitError::ConfirmationTagMissing)
+        CoreGroupError::StageCommitError(StageCommitError::ConfirmationTagMissing)
     );
 }
 
@@ -716,7 +716,7 @@ fn invalid_plaintext_signature(
     .expect("An unexpected error occurred.");
 
     // Alice creates a group
-    let mut group_alice = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .build(backend)
         .expect("Error creating group.");
 
@@ -763,7 +763,7 @@ fn invalid_plaintext_signature(
 
     assert_eq!(
         membership_error,
-        MlsGroupError::MlsPlaintextError(MlsPlaintextError::VerificationError(
+        CoreGroupError::MlsPlaintextError(MlsPlaintextError::VerificationError(
             VerificationError::MissingMembershipTag
         ))
     );
@@ -781,7 +781,7 @@ fn invalid_plaintext_signature(
 
     assert_eq!(
         membership_error,
-        MlsGroupError::MlsPlaintextError(MlsPlaintextError::VerificationError(
+        CoreGroupError::MlsPlaintextError(MlsPlaintextError::VerificationError(
             VerificationError::InvalidMembershipTag
         ))
     );
@@ -809,7 +809,7 @@ fn invalid_plaintext_signature(
         decoded_commit
             .err()
             .expect("group.verify() should have returned an error"),
-        MlsGroupError::MlsPlaintextError(MlsPlaintextError::CredentialError(
+        CoreGroupError::MlsPlaintextError(MlsPlaintextError::CredentialError(
             CredentialError::InvalidSignature
         ))
     );
@@ -827,7 +827,7 @@ fn invalid_plaintext_signature(
         .expect_err("Staging commit should have yielded an error.");
     assert_eq!(
         error,
-        MlsGroupError::StageCommitError(StageCommitError::ConfirmationTagMissing)
+        CoreGroupError::StageCommitError(StageCommitError::ConfirmationTagMissing)
     );
 
     // Tamper with confirmation tag.
@@ -850,7 +850,7 @@ fn invalid_plaintext_signature(
         .expect_err("Staging commit should have yielded an error.");
     assert_eq!(
         error,
-        MlsGroupError::StageCommitError(StageCommitError::ConfirmationTagMismatch)
+        CoreGroupError::StageCommitError(StageCommitError::ConfirmationTagMismatch)
     );
     let serialized_group_after =
         serde_json::to_string(&group_alice).expect("An unexpected error occurred.");

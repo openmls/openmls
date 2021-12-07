@@ -1,4 +1,4 @@
-use openmls::prelude::*;
+use openmls::group::prelude::*;
 mod utils;
 use openmls::{test_utils::*, *};
 use utils::mls_utils::*;
@@ -18,7 +18,7 @@ fn padding(backend: &impl OpenMlsCryptoProvider) {
     for ciphersuite_name in Config::supported_ciphersuite_names() {
         let test_group = TestGroupConfig {
             ciphersuite: *ciphersuite_name,
-            config: MlsGroupConfig::default(),
+            config: CoreGroupConfig::default(),
             members: vec![alice_config.clone()],
         };
         test_group_configs.push(test_group);

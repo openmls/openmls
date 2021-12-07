@@ -5,10 +5,10 @@
 //! The low-level standard API is described in the `Api` trait.\
 //! The high-level API is exposed in `ManagedGroup`.
 
+pub(crate) mod core_group;
 pub mod errors;
 mod group_context;
 mod managed_group;
-pub mod mls_group;
 
 #[cfg(any(feature = "test-utils", test))]
 pub mod tests;
@@ -23,12 +23,17 @@ use openmls_traits::OpenMlsCryptoProvider;
 pub(crate) use serde::{Deserialize, Serialize};
 
 pub use errors::{
-    CreateCommitError, ExporterError, FramingValidationError, InterimTranscriptHashError,
-    MlsGroupError, ProposalValidationError, StageCommitError, WelcomeError,
+    CoreGroupError, CreateCommitError, ExporterError, FramingValidationError,
+    InterimTranscriptHashError, ProposalValidationError, StageCommitError, WelcomeError,
 };
 pub use group_context::*;
 pub use managed_group::*;
-pub use mls_group::*;
+
+#[cfg(feature = "coregroup")]
+pub use core_group::*;
+
+#[cfg(not(feature = "coregroup"))]
+pub(crate) use core_group::*;
 
 use tls_codec::TlsVecU32;
 use tls_codec::{TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize};
@@ -91,40 +96,4 @@ impl GroupContext {
     pub(crate) fn set_epoch(&mut self, epoch: GroupEpoch) {
         self.epoch = epoch;
     }
-}
-
-/// Configuration for an MLS group.
-#[derive(Clone, Copy, Debug)]
-pub struct MlsGroupConfig {
-    /// Flag whether to send the ratchet tree along with the `GroupInfo` or not.
-    /// Defaults to false.
-    pub add_ratchet_tree_extension: bool,
-    pub padding_block_size: u32,
-    pub additional_as_epochs: u32,
-}
-
-impl MlsGroupConfig {
-    /// Get the padding block size used in this config.
-    pub fn padding_block_size(&self) -> u32 {
-        self.padding_block_size
-    }
-}
-
-impl Default for MlsGroupConfig {
-    fn default() -> Self {
-        Self {
-            add_ratchet_tree_extension: false,
-            padding_block_size: 10,
-            additional_as_epochs: 0,
-        }
-    }
-}
-
-#[derive(
-    PartialEq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
-)]
-#[repr(u8)]
-pub enum WireFormat {
-    MlsPlaintext = 1,
-    MlsCiphertext = 2,
 }

@@ -23,11 +23,11 @@ impl ManagedGroup {
             .key_store()
             .delete(&kph)
             .map_err(|_| ManagedGroupError::KeyStoreError)?;
-        let group_config = MlsGroupConfig {
+        let group_config = CoreGroupConfig {
             add_ratchet_tree_extension: managed_group_config.use_ratchet_tree_extension,
             ..Default::default()
         };
-        let group = MlsGroup::builder(group_id, key_package_bundle)
+        let group = CoreGroup::builder(group_id, key_package_bundle)
             .with_config(group_config)
             .with_required_capabilities(managed_group_config.required_capabilities.clone())
             .build(backend)?;
@@ -69,7 +69,7 @@ impl ManagedGroup {
             .ok_or(ManagedGroupError::NoMatchingKeyPackageBundle)?;
         // TODO #141
         let group =
-            MlsGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle, None, backend)?;
+            CoreGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle, None, backend)?;
 
         let managed_group = ManagedGroup {
             managed_group_config: managed_group_config.clone(),

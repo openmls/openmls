@@ -1,4 +1,5 @@
 use openmls::{
+    group::prelude::*,
     group::{EmptyInputError, InnerState},
     prelude::*,
     test_utils::*,
@@ -920,7 +921,7 @@ fn managed_group_operations(
         // Should fail because you cannot remove yourself from a group
         assert_eq!(
             bob_group.commit_to_pending_proposals(backend,),
-            Err(ManagedGroupError::Group(MlsGroupError::CreateCommitError(
+            Err(ManagedGroupError::Group(CoreGroupError::CreateCommitError(
                 CreateCommitError::CannotRemoveSelf
             )))
         );
@@ -1238,7 +1239,7 @@ fn managed_group_ratchet_tree_extension(
 
         assert_eq!(
             error,
-            ManagedGroupError::Group(MlsGroupError::WelcomeError(
+            ManagedGroupError::Group(CoreGroupError::WelcomeError(
                 WelcomeError::MissingRatchetTree
             ))
         );

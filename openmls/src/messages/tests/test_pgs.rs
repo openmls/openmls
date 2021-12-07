@@ -5,17 +5,17 @@ use crate::{
     ciphersuite::signable::Verifiable,
     config::Config,
     credentials::{CredentialBundle, CredentialType},
+    framing::{FramingParameters, WireFormat},
     group::{
         create_commit_params::CreateCommitParams,
         proposals::{ProposalStore, StagedProposal},
-        GroupId, WireFormat,
+        GroupId,
     },
     key_packages::KeyPackageBundle,
     messages::{
         public_group_state::{PublicGroupState, VerifiablePublicGroupState},
-        LeafIndex, MlsGroup,
+        CoreGroup, LeafIndex,
     },
-    prelude::FramingParameters,
 };
 
 /// Tests the creation of a `PublicGroupState` and verifies it was correctly
@@ -60,7 +60,7 @@ fn test_pgs(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvi
     .expect("An unexpected error occurred.");
 
     // Alice creates a group
-    let mut group_alice = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .build(backend)
         .expect("Could not create group.");
 

@@ -7,7 +7,7 @@ use crate::config::ConfigError;
 use crate::credentials::CredentialError;
 use crate::error::ErrorString;
 use crate::framing::MlsCiphertextError;
-use crate::group::{CreateCommitError, ExporterError, MlsGroupError, StageCommitError};
+use crate::group::{CoreGroupError, CreateCommitError, ExporterError, StageCommitError};
 use crate::prelude::ValidationError;
 use openmls_traits::types::CryptoError;
 use tls_codec::Error as TlsCodecError;
@@ -26,8 +26,8 @@ implement_error! {
                 "An internal library error occurred. Additional detail is provided.",
             Config(ConfigError) =
                 "See [`ConfigError`](`crate::config::ConfigError`) for details",
-            Group(MlsGroupError) =
-                "See [`MlsGroupError`](`crate::group::MlsGroupError`) for details",
+            Group(CoreGroupError) =
+                "See [`CoreGroupError`](`crate::group::CoreGroupError`) for details",
             CreateCommit(CreateCommitError) =
                 "See [`CreateCommitError`](`crate::group::CreateCommitError`) for details",
             UseAfterEviction(UseAfterEviction) =
@@ -92,8 +92,8 @@ implement_error! {
                 "An invalid ciphertext was provided. The error returns the associated data of the ciphertext.",
             CommitError(StageCommitError) =
                 "See [`StageCommitError`](`crate::group::StageCommitError`) for details",
-            GroupError(MlsGroupError) =
-                "See [`MlsGroupError`](`crate::group::MlsGroupError`) for details",
+            GroupError(CoreGroupError) =
+                "See [`CoreGroupError`](`crate::group::CoreGroupError`) for details",
         }
     }
 }

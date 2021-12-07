@@ -4,6 +4,7 @@ extern crate openmls;
 extern crate rand;
 
 use criterion::Criterion;
+use openmls::group::prelude::*;
 use openmls::prelude::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 

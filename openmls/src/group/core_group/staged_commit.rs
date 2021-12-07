@@ -1,4 +1,4 @@
-use mls_group::proposals::StagedProposal;
+use core_group::proposals::StagedProposal;
 
 use super::super::errors::*;
 use super::proposals::{
@@ -8,7 +8,7 @@ use super::proposals::{
 use super::*;
 use core::fmt::Debug;
 
-impl MlsGroup {
+impl CoreGroup {
     /// Stages a commit message.
     /// This function does the following:
     ///  - Applies the proposals covered by the commit to the tree
@@ -17,7 +17,7 @@ impl MlsGroup {
     ///  - Initializes the key schedule for epoch rollover
     ///  - Verifies the confirmation tag/membership tag
     /// Returns a [StagedCommit] that can be inspected and later merged
-    /// into the group state with [MlsGroup::merge_commit()]
+    /// into the group state with [CoreGroup::merge_commit()]
     /// This function does the following checks:
     ///  - ValSem100
     ///  - ValSem101
@@ -39,7 +39,7 @@ impl MlsGroup {
         own_key_packages: &[KeyPackageBundle],
         psk_fetcher_option: Option<PskFetcher>,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<StagedCommit, MlsGroupError> {
+    ) -> Result<StagedCommit, CoreGroupError> {
         let ciphersuite = self.ciphersuite();
 
         // Extract the sender of the Commit message
@@ -151,7 +151,7 @@ impl MlsGroup {
                 } else {
                     // We can return a library error here, because we know there was a path and thus
                     // a new commit secret must have been set.
-                    return Err(MlsGroupError::LibraryError);
+                    return Err(CoreGroupError::LibraryError);
                 }
             } else {
                 // Collect the new leaves' indexes so we can filter them out in the resolution
@@ -165,7 +165,7 @@ impl MlsGroup {
                         apply_proposals_values.exclusion_list(),
                     )
                     .map_err(|e| {
-                        MlsGroupError::StageCommitError(StageCommitError::DecryptionFailure(e))
+                        CoreGroupError::StageCommitError(StageCommitError::DecryptionFailure(e))
                     })?
             }
         } else {
@@ -193,7 +193,7 @@ impl MlsGroup {
             backend,
             // It is ok to use return a library error here, because we know the MlsPlaintext contains a Commit
             &MlsPlaintextCommitContent::try_from(mls_plaintext)
-                .map_err(|_| MlsGroupError::LibraryError)?,
+                .map_err(|_| CoreGroupError::LibraryError)?,
             &self.interim_transcript_hash,
         )?;
 
@@ -280,7 +280,7 @@ impl MlsGroup {
             let proposal = Proposal::Update(UpdateProposal { key_package });
             let staged_proposal =
                 StagedProposal::from_proposal_and_sender(ciphersuite, backend, proposal, sender)
-                    .map_err(|_| MlsGroupError::LibraryError)?;
+                    .map_err(|_| CoreGroupError::LibraryError)?;
             proposal_queue.add(staged_proposal);
         }
 
@@ -297,7 +297,7 @@ impl MlsGroup {
                 epoch_secrets: provisional_epoch_secrets,
                 interim_transcript_hash,
                 secret_tree: RefCell::new(secret_tree),
-                original_nodes,
+                _original_nodes: original_nodes,
             }),
         })
     }
@@ -315,10 +315,10 @@ impl MlsGroup {
     /// This is temporary and will disappear when #424 is addressed.
     /// This is just here for completeness but won't be used anywhere.
     /// Rolls back the public tree nodes in case a Commit contained undesired proposals.
-    pub fn cancel_commit(&mut self, staged_commit: StagedCommit) {
+    pub fn _cancel_commit(&mut self, staged_commit: StagedCommit) {
         let mut tree = self.tree.borrow_mut();
         if let Some(state) = staged_commit.state {
-            tree.nodes = state.original_nodes;
+            tree.nodes = state._original_nodes;
         }
     }
 }
@@ -365,5 +365,5 @@ pub(crate) struct StagedCommitState {
     epoch_secrets: EpochSecrets,
     interim_transcript_hash: Vec<u8>,
     secret_tree: RefCell<SecretTree>,
-    original_nodes: Vec<Node>,
+    _original_nodes: Vec<Node>,
 }

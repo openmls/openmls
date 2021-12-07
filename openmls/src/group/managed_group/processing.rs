@@ -1,4 +1,4 @@
-use mls_group::{
+use core_group::{
     create_commit_params::CreateCommitParams, proposals::StagedProposal,
     staged_commit::StagedCommit,
 };

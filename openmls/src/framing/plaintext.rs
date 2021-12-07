@@ -573,11 +573,6 @@ impl VerifiableMlsPlaintext {
         self.tbs.sender = sender;
     }
 
-    /// Get the sender index as [`LeafIndex`].
-    pub(crate) fn sender_index(&self) -> LeafIndex {
-        self.tbs.sender.sender
-    }
-
     /// Get the group id as [`GroupId`].
     pub(crate) fn group_id(&self) -> &GroupId {
         &self.tbs.group_id

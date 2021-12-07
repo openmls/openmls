@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use ::rand::rngs::OsRng;
 use ::rand::RngCore;
 use openmls::group::create_commit_params::CreateCommitParams;
+use openmls::group::prelude::*;
 use openmls::prelude::*;
 use openmls::{test_utils::*, *};
 use openmls_traits::types::SignatureScheme;
@@ -26,7 +27,7 @@ pub(crate) struct TestClientConfig {
 /// Configuration of a group meant to be used in a test setup.
 pub(crate) struct TestGroupConfig {
     pub(crate) ciphersuite: CiphersuiteName,
-    pub(crate) config: MlsGroupConfig,
+    pub(crate) config: CoreGroupConfig,
     pub(crate) members: Vec<TestClientConfig>,
 }
 
@@ -41,7 +42,7 @@ pub(crate) struct TestSetupConfig {
 pub(crate) struct TestClient {
     pub(crate) credential_bundles: HashMap<CiphersuiteName, CredentialBundle>,
     pub(crate) key_package_bundles: RefCell<Vec<KeyPackageBundle>>,
-    pub(crate) group_states: RefCell<HashMap<GroupId, MlsGroup>>,
+    pub(crate) group_states: RefCell<HashMap<GroupId, CoreGroup>>,
 }
 
 impl TestClient {
@@ -153,13 +154,13 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
             .get(&group_config.ciphersuite)
             .expect("An unexpected error occurred.");
         // Initialize the group state for the initial member.
-        let mls_group = MlsGroup::builder(
+        let core_group = CoreGroup::builder(
             GroupId::from_slice(&group_id.to_be_bytes()),
             initial_key_package_bundle,
         )
         .with_config(group_config.config)
         .build(backend)
-        .expect("Error creating new MlsGroup");
+        .expect("Error creating new CoreGroup");
         let mut proposal_list = Vec::new();
         let group_aad = b"";
         // Framing parameters
@@ -167,13 +168,13 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
         initial_group_member
             .group_states
             .borrow_mut()
-            .insert(mls_group.context().group_id().clone(), mls_group);
+            .insert(core_group.context().group_id().clone(), core_group);
         // If there is more than one member in the group, prepare proposals and
         // commit. Then distribute the Welcome message to the new
         // members.
         if group_config.members.len() > 1 {
             let mut group_states = initial_group_member.group_states.borrow_mut();
-            let mls_group = group_states
+            let core_group = group_states
                 .get_mut(&GroupId::from_slice(&group_id.to_be_bytes()))
                 .expect("An unexpected error occurred.");
             for client_id in 1..group_config.members.len() {
@@ -188,7 +189,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                     .expect("An unexpected error occurred.");
                 // Have the initial member create an Add proposal using the new
                 // KeyPackage.
-                let add_proposal = mls_group
+                let add_proposal = core_group
                     .create_add_proposal(
                         framing_parameters,
                         initial_credential_bundle,
@@ -217,7 +218,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                 .credential_bundle(initial_credential_bundle)
                 .proposal_store(&proposal_store)
                 .build();
-            let (commit_mls_plaintext, welcome_option, key_package_bundle_option) = mls_group
+            let (commit_mls_plaintext, welcome_option, key_package_bundle_option) = core_group
                 .create_commit(params, backend)
                 .expect("An unexpected error occurred.");
             let welcome = welcome_option.expect("An unexpected error occurred.");
@@ -226,7 +227,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
 
             // Apply the commit to the initial group member's group state using
             // the key package bundle returned by the create_commit earlier.
-            let staged_commit = mls_group
+            let staged_commit = core_group
                 .stage_commit(
                     &commit_mls_plaintext,
                     &proposal_store,
@@ -235,7 +236,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                     backend,
                 )
                 .expect("Error applying Commit");
-            mls_group.merge_commit(staged_commit);
+            core_group.merge_commit(staged_commit);
 
             // Distribute the Welcome message to the other members.
             for client_id in 1..group_config.members.len() {
@@ -278,9 +279,9 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                     .remove(kpb_position);
                 // Create the local group state of the new member based on the
                 // Welcome.
-                let new_group = match MlsGroup::new_from_welcome(
+                let new_group = match CoreGroup::new_from_welcome(
                     welcome.clone(),
-                    Some(mls_group.tree().public_key_tree_copy()),
+                    Some(core_group.tree().public_key_tree_copy()),
                     key_package_bundle,
                     None, /* PSKs not supported here */
                     backend,
@@ -329,7 +330,7 @@ fn test_setup(backend: &impl OpenMlsCryptoProvider) {
         name: "TestClientConfigB",
         ciphersuites: vec![CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519],
     };
-    let group_config = MlsGroupConfig::default();
+    let group_config = CoreGroupConfig::default();
     let test_group_config = TestGroupConfig {
         ciphersuite: CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         config: group_config,

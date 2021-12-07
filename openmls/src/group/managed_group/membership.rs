@@ -1,4 +1,4 @@
-use mls_group::create_commit_params::CreateCommitParams;
+use core_group::create_commit_params::CreateCommitParams;
 
 use super::*;
 

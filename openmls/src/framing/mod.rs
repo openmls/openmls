@@ -26,10 +26,21 @@ pub use errors::*;
 pub use message::*;
 pub use plaintext::*;
 pub use sender::*;
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 pub use validation::*;
 
 #[cfg(test)]
 mod test_framing;
+
+/// Wire format of an MLS message. This indicates whether a message is encrypted or not.
+#[derive(
+    PartialEq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
+#[repr(u8)]
+pub enum WireFormat {
+    MlsPlaintext = 1,
+    MlsCiphertext = 2,
+}
 
 /// This struct is used to group common framing parameters
 /// in order to reduce the number of arguments in function calls.

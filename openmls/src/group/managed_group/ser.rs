@@ -7,7 +7,7 @@ use serde::{
 #[derive(Serialize, Deserialize)]
 pub struct SerializedManagedGroup {
     managed_group_config: ManagedGroupConfig,
-    group: MlsGroup,
+    group: CoreGroup,
     proposal_store: ProposalStore,
     own_kpbs: Vec<KeyPackageBundle>,
     aad: Vec<u8>,

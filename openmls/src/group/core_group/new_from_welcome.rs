@@ -4,13 +4,13 @@ use tls_codec::Deserialize;
 
 use crate::ciphersuite::signable::Verifiable;
 use crate::extensions::ExtensionType;
-use crate::group::{mls_group::*, *};
+use crate::group::{core_group::*, *};
 use crate::key_packages::*;
 use crate::messages::*;
 use crate::schedule::*;
 use crate::tree::{index::*, node::*, treemath, *};
 
-impl MlsGroup {
+impl CoreGroup {
     pub(crate) fn new_from_welcome_internal(
         welcome: Welcome,
         nodes_option: Option<Vec<Option<Node>>>,
@@ -18,7 +18,7 @@ impl MlsGroup {
         psk_fetcher_option: Option<PskFetcher>,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, WelcomeError> {
-        log::debug!("MlsGroup::new_from_welcome_internal");
+        log::debug!("CoreGroup::new_from_welcome_internal");
         let mls_version = *welcome.version();
         if !Config::supported_versions().contains(&mls_version) {
             return Err(WelcomeError::UnsupportedMlsVersion);
@@ -219,7 +219,7 @@ impl MlsGroup {
             log_crypto!(trace, "  Expected: {:x?}", group_info.confirmation_tag());
             Err(WelcomeError::ConfirmationTagMismatch)
         } else {
-            Ok(MlsGroup {
+            Ok(CoreGroup {
                 ciphersuite,
                 group_context,
                 epoch_secrets,

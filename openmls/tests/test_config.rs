@@ -5,6 +5,7 @@
 //! * which ciphersuites are supported
 //! * which extensions are supported
 
+use openmls::group::prelude::*;
 use openmls::prelude::*;
 use tls_codec::Serialize;
 

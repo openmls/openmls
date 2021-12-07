@@ -8,16 +8,16 @@ use tls_codec::Serialize;
 
 use crate::{
     ciphersuite::{signable::Signable, AeadNonce},
-    group::{create_commit_params::CreateCommitParams, GroupEpoch},
+    group::{create_commit_params::CreateCommitParams, CoreGroup, GroupEpoch},
     messages::{Commit, ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload},
     prelude::*,
     schedule::psk::*,
     test_utils::*,
-    tree::{TreeError, UpdatePath, UpdatePathNode},
+    tree::{index::LeafIndex, TreeError, UpdatePath, UpdatePathNode},
 };
 
 #[apply(ciphersuites_and_backends)]
-fn test_mls_group_persistence(
+fn test_core_group_persistence(
     ciphersuite: &'static Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
@@ -40,7 +40,7 @@ fn test_mls_group_persistence(
     .expect("An unexpected error occurred.");
 
     // Alice creates a group
-    let alice_group = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .build(backend)
         .expect("Error creating group.");
 
@@ -53,7 +53,7 @@ fn test_mls_group_persistence(
         .reopen()
         .expect("Error re-opening serialized group state file");
     let alice_group_deserialized =
-        MlsGroup::load(file_in).expect("Could not deserialize managed group");
+        CoreGroup::load(file_in).expect("Could not deserialize managed group");
 
     assert_eq!(alice_group, alice_group_deserialized);
 }
@@ -167,7 +167,7 @@ fn test_failed_groupinfo_decryption(
             encrypted_group_info.clone(),
         );
 
-        let error = MlsGroup::new_from_welcome_internal(
+        let error = CoreGroup::new_from_welcome_internal(
             broken_welcome,
             None,
             key_package_bundle,
@@ -226,7 +226,7 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group ===
-    let mut alice_group = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .build(backend)
         .expect("Error creating group.");
 
@@ -272,7 +272,7 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     alice_group.merge_commit(staged_commit);
     let ratchet_tree = alice_group.tree().public_key_tree_copy();
 
-    let group_bob = MlsGroup::new_from_welcome(
+    let group_bob = CoreGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,
@@ -390,7 +390,7 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         alice_group.stage_commit(&broken_plaintext, &proposal_store, &[], None, backend);
     assert_eq!(
         staged_commit_res.expect_err("Successful processing of a broken commit."),
-        MlsGroupError::StageCommitError(StageCommitError::DecryptionFailure(
+        CoreGroupError::StageCommitError(StageCommitError::DecryptionFailure(
             TreeError::CryptoError(CryptoError::HpkeDecryptionError)
         ))
     );
@@ -472,7 +472,7 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
         &[external_psk_bundle.secret().clone()],
     )
     .expect("Could not create PskSecret");
-    let mut alice_group = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_psk(initial_psk)
         .build(backend)
         .expect("Error creating group.");
@@ -532,7 +532,7 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
     alice_group.merge_commit(staged_commit);
     let ratchet_tree = alice_group.tree().public_key_tree_copy();
 
-    let group_bob = MlsGroup::new_from_welcome(
+    let group_bob = CoreGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,

@@ -32,10 +32,11 @@ rstest_reuse = {version = "^0.1", optional = true}
 
 [features]
 default = []
-test-utils = ["itertools", "openmls_rust_crypto", "rand", "rstest", "rstest_reuse"]
+test-utils = ["itertools", "openmls_rust_crypto", "rand", "rstest", "rstest_reuse", "coregroup"]
 evercrypt = ["evercrypt_backend"] # Evercrypt needs to be enabled individually
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
+coregroup = [] # Expose the CoreGroup for low-level operations
 
 [dev-dependencies]
 criterion = "^0.3"
