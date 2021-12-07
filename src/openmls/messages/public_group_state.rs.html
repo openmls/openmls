@@ -181,6 +181,8 @@
 <span id="181">181</span>
 <span id="182">182</span>
 <span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the types and implementations for the</span>
 <span class="doccomment">//! `PublicGroupState` and `PublicGroupStateTbs` structs of the MLS spec. The</span>
 <span class="doccomment">//! `PublicGroupState` implements type-enforced verification in the same way as</span>
@@ -229,6 +231,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">group_context_extensions</span>: <span class="ident">TlsVecU32</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">other_extensions</span>: <span class="ident">TlsVecU32</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">external_pub</span>: <span class="ident">HpkePublicKey</span>,
+    <span class="comment">// TODO: #541 replace signer_index with [`KeyPackageRef`]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">signer_index</span>: <span class="ident">LeafIndex</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">signature</span>: <span class="ident">Signature</span>,
 }
@@ -320,6 +323,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">group_context_extensions</span>: <span class="ident">TlsVecU32</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">other_extensions</span>: <span class="ident">TlsVecU32</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">external_pub</span>: <span class="ident">HpkePublicKey</span>,
+    <span class="comment">// TODO: #541 replace signer_index with [`KeyPackageRef`]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">signer_index</span>: <span class="ident">LeafIndex</span>,
 }
 

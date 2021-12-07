@@ -398,6 +398,8 @@
 <span id="398">398</span>
 <span id="399">399</span>
 <span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite</span>::{<span class="ident">signable</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config::ProtocolVersion</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::extensions</span>::<span class="kw-2">*</span>;
@@ -471,6 +473,7 @@
 <span class="doccomment">/// ```</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EncryptedGroupSecrets</span> {
+    <span class="comment">// TODO: #541 replace key_package_hash with [`KeyPackageRef`]</span>
     <span class="kw">pub</span> <span class="ident">key_package_hash</span>: <span class="ident">TlsByteVecU8</span>,
     <span class="kw">pub</span> <span class="ident">encrypted_group_secrets</span>: <span class="ident">HpkeCiphertext</span>,
 }
@@ -554,6 +557,7 @@
     <span class="ident">group_context_extensions</span>: <span class="ident">TlsVecU32</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>,
     <span class="ident">other_extensions</span>: <span class="ident">TlsVecU32</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span>,
     <span class="ident">confirmation_tag</span>: <span class="ident">ConfirmationTag</span>,
+    <span class="comment">// TODO: #541 replace sender_index with [`KeyPackageRef`]</span>
     <span class="ident">signer_index</span>: <span class="ident">LeafIndex</span>,
 }
 

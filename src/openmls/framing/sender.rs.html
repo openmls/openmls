@@ -77,6 +77,7 @@
 <span id="77">77</span>
 <span id="78">78</span>
 <span id="79">79</span>
+<span id="80">80</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # The sender of a message</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Section  9. Message Framing</span>
@@ -135,6 +136,7 @@
 )]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Sender</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">sender_type</span>: <span class="ident">SenderType</span>,
+    <span class="comment">// TODO: #541 replace sender with [`KeyPackageRef`] (and preconfigured/new)</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">sender</span>: <span class="ident">LeafIndex</span>,
 }
 <span class="comment">// Public functions</span>

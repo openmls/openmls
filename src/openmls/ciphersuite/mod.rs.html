@@ -177,6 +177,8 @@
 <span id="177">177</span>
 <span id="178">178</span>
 <span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Ciphersuites for MLS</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This file contains the API to interact with ciphersuites.</span>
@@ -202,6 +204,7 @@
 <span class="kw">mod</span> <span class="ident">aead</span>;
 <span class="kw">mod</span> <span class="ident">ciphersuites</span>;
 <span class="kw">mod</span> <span class="ident">codec</span>;
+<span class="kw">mod</span> <span class="ident">hash_ref</span>;
 <span class="kw">mod</span> <span class="ident">hpke</span>;
 <span class="kw">mod</span> <span class="ident">kdf_label</span>;
 <span class="kw">mod</span> <span class="ident">mac</span>;
@@ -213,6 +216,7 @@
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">aead</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ciphersuites</span>::<span class="kw-2">*</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">hash_ref</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">hpke</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">mac</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">reuse_guard</span>::<span class="kw-2">*</span>;

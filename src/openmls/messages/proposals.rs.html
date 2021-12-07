@@ -375,6 +375,9 @@
 <span id="375">375</span>
 <span id="376">376</span>
 <span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite</span>::<span class="kw-2">*</span>, <span class="ident">config::ProtocolVersion</span>, <span class="ident">extensions::Extension</span>, <span class="ident">group::GroupId</span>,
     <span class="ident">key_packages</span>::<span class="kw-2">*</span>, <span class="ident">schedule::psk</span>::<span class="kw-2">*</span>,
@@ -478,6 +481,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProposalOrRef</span> {
     <span class="ident">Proposal</span>(<span class="ident">Proposal</span>),
+    <span class="comment">// TODO: #541 replace ProposalReference with [`ProposalRef`]</span>
     <span class="ident">Reference</span>(<span class="ident">ProposalReference</span>),
 }
 
@@ -599,6 +603,7 @@
     <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
 )]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">RemoveProposal</span> {
+    <span class="comment">// TODO: #541 replace removed with [`KeyPackageRef`]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">removed</span>: <span class="ident">u32</span>,
 }
 
@@ -695,6 +700,7 @@
     <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
 )]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MessageRange</span> {
+    <span class="comment">// TODO: #541 replace sender with [`KeyPackageRef`]</span>
     <span class="ident">sender</span>: <span class="ident">KeyPackageId</span>,
     <span class="ident">first_generation</span>: <span class="ident">u32</span>,
     <span class="ident">last_generation</span>: <span class="ident">u32</span>,
