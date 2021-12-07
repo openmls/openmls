@@ -252,10 +252,7 @@ impl<'a> TreeSyncDiff<'a> {
     }
 
     /// The given path of ParentNodes should already include any potential path
-    /// secrets. FIXME: We might want to change this API, because it's slightly
-    /// asymmetrical as compared to re-applying one's own update path: Here, the
-    /// CommitSecret falls out of the decryption process, whereas in the other
-    /// case, the commit_secret falls out of the path-application process.
+    /// secrets.
     pub(crate) fn apply_received_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
