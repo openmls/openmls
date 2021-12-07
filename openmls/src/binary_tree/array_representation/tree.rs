@@ -25,6 +25,7 @@ use super::diff::{AbDiff, StagedAbDiff};
 use crate::binary_tree::{LeafIndex, TreeSize};
 
 /// The [`NodeIndex`] is used to index nodes.
+/// FIXME: This is only crate-public for tree printing.
 pub(crate) type NodeIndex = u32;
 
 /// Given a [`LeafIndex`], compute the position of the corresponding [`NodeIndex`].

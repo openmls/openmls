@@ -38,7 +38,7 @@ The Github CI also builds (but doesn't test) the following rust targets.
 - aarch64-apple-ios-sim
 - wasm32-unknown-unknown
 
-OpenMLS does not support 16 bit platforms.
+OpenMLS only supports 32 and 64 bit platforms.
 
 ### Dependencies
 

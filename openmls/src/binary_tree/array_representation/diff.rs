@@ -548,12 +548,12 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         leaf_index_1: LeafIndex,
         leaf_index_2: LeafIndex,
     ) -> Result<(), ABinaryTreeDiffError> {
-        let node_index_1 = to_node_index(leaf_index_1);
-        let node_index_2 = to_node_index(leaf_index_2);
-
         if leaf_index_1 == leaf_index_2 {
             return Err(ABinaryTreeDiffError::SameLeafError);
         }
+
+        let node_index_1 = to_node_index(leaf_index_1);
+        let node_index_2 = to_node_index(leaf_index_2);
 
         self.out_of_bounds(node_index_1)?;
         self.out_of_bounds(node_index_2)?;

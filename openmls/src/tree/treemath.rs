@@ -4,9 +4,7 @@ implement_error! {
     pub enum TreeMathError {
         LeafHasNoChildren = "Leaf nodes don't have children.",
         RootHasNoParent = "Root nodes don't have parents.",
-        NotAParentNode = "Node index was not a parent node.",
         LeafNotInTree = "The leaf index is larger than the tree size.",
-        NodeNotInTree = "The node index is larger than the tree size.",
         InvalidInput = "The provided input is invalid for tree math.",
     }
 }

@@ -24,6 +24,7 @@ fn log2(x: NodeIndex) -> usize {
     k - 1
 }
 
+/// FIXME: This is only crate-public for tree printing
 pub(crate) fn level(index: NodeIndex) -> usize {
     let x = index;
     if (x & 0x01) == 0 {
@@ -36,6 +37,7 @@ pub(crate) fn level(index: NodeIndex) -> usize {
     k
 }
 
+/// FIXME: This is only crate-public for tree printing
 pub(crate) fn root(size: NodeIndex) -> NodeIndex {
     (1 << log2(size)) - 1
 }
