@@ -7,6 +7,7 @@ use crate::{
     test_utils::test_framework::{
         errors::ClientError, ActionType::Commit, CodecUse, ManagedTestSetup,
     },
+    test_utils::*,
 };
 
 fn generate_credential_bundle(
@@ -46,15 +47,16 @@ fn generate_key_package_bundle(
     Ok(kp)
 }
 
-#[test]
-fn test_managed_group_persistence() {
-    let crypto = OpenMlsRustCrypto::default();
-    let ciphersuite = &Config::supported_ciphersuites()[0];
+#[apply(ciphersuites_and_backends)]
+fn test_managed_group_persistence(
+    ciphersuite: &'static Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credential bundles
     let alice_credential = generate_credential_bundle(
-        &crypto,
+        backend,
         "Alice".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
@@ -63,7 +65,7 @@ fn test_managed_group_persistence() {
 
     // Generate KeyPackages
     let alice_key_package =
-        generate_key_package_bundle(&crypto, &[ciphersuite.name()], &alice_credential, vec![])
+        generate_key_package_bundle(backend, &[ciphersuite.name()], &alice_credential, vec![])
             .expect("An unexpected error occurred.");
 
     // Define the managed group configuration
@@ -72,11 +74,11 @@ fn test_managed_group_persistence() {
     // === Alice creates a group ===
 
     let mut alice_group = ManagedGroup::new(
-        &crypto,
+        backend,
         &managed_group_config,
         group_id,
         &alice_key_package
-            .hash(&crypto)
+            .hash(backend)
             .expect("Could not hash KeyPackage."),
     )
     .expect("An unexpected error occurred.");
@@ -98,26 +100,24 @@ fn test_managed_group_persistence() {
     assert_eq!(
         (
             alice_group.export_ratchet_tree(),
-            alice_group.export_secret(&crypto, "test", &[], 32)
+            alice_group.export_secret(backend, "test", &[], 32)
         ),
         (
             alice_group_deserialized.export_ratchet_tree(),
-            alice_group_deserialized.export_secret(&crypto, "test", &[], 32)
+            alice_group_deserialized.export_secret(backend, "test", &[], 32)
         )
     );
 }
 
 // This tests if the remover is correctly passed to the callback when one member
 // issues a RemoveProposal and another members issues the next Commit.
-#[test]
-fn remover() {
-    let crypto = &OpenMlsRustCrypto::default();
-    let ciphersuite = &Config::supported_ciphersuites()[0];
+#[apply(ciphersuites_and_backends)]
+fn remover(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credential bundles
     let alice_credential = generate_credential_bundle(
-        crypto,
+        backend,
         "Alice".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
@@ -125,7 +125,7 @@ fn remover() {
     .expect("An unexpected error occurred.");
 
     let bob_credential = generate_credential_bundle(
-        crypto,
+        backend,
         "Bob".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
@@ -133,7 +133,7 @@ fn remover() {
     .expect("An unexpected error occurred.");
 
     let charlie_credential = generate_credential_bundle(
-        crypto,
+        backend,
         "Charly".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
@@ -142,15 +142,15 @@ fn remover() {
 
     // Generate KeyPackages
     let alice_key_package =
-        generate_key_package_bundle(crypto, &[ciphersuite.name()], &alice_credential, vec![])
+        generate_key_package_bundle(backend, &[ciphersuite.name()], &alice_credential, vec![])
             .expect("An unexpected error occurred.");
 
     let bob_key_package =
-        generate_key_package_bundle(crypto, &[ciphersuite.name()], &bob_credential, vec![])
+        generate_key_package_bundle(backend, &[ciphersuite.name()], &bob_credential, vec![])
             .expect("An unexpected error occurred.");
 
     let charlie_key_package =
-        generate_key_package_bundle(crypto, &[ciphersuite.name()], &charlie_credential, vec![])
+        generate_key_package_bundle(backend, &[ciphersuite.name()], &charlie_credential, vec![])
             .expect("An unexpected error occurred.");
 
     // Define the managed group configuration
@@ -158,26 +158,26 @@ fn remover() {
 
     // === Alice creates a group ===
     let mut alice_group = ManagedGroup::new(
-        crypto,
+        backend,
         &managed_group_config,
         group_id,
         &alice_key_package
-            .hash(crypto)
+            .hash(backend)
             .expect("Could not hash KeyPackage."),
     )
     .expect("An unexpected error occurred.");
 
     // === Alice adds Bob ===
     let (queued_message, welcome) = alice_group
-        .add_members(crypto, &[bob_key_package])
+        .add_members(backend, &[bob_key_package])
         .expect("Could not add member to group.");
 
     let unverified_message = alice_group
-        .parse_message(queued_message.into(), crypto)
+        .parse_message(queued_message.into(), backend)
         .expect("Could not parse message.");
 
     let alice_processed_message = alice_group
-        .process_unverified_message(unverified_message, None, crypto)
+        .process_unverified_message(unverified_message, None, backend)
         .expect("Could not process unverified message.");
 
     if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
@@ -189,7 +189,7 @@ fn remover() {
     }
 
     let mut bob_group = ManagedGroup::new_from_welcome(
-        crypto,
+        backend,
         &managed_group_config,
         welcome,
         Some(alice_group.export_ratchet_tree()),
@@ -197,16 +197,16 @@ fn remover() {
     .expect("Error creating group from Welcome");
 
     // === Bob adds Charlie ===
-    let (queued_messages, welcome) = match bob_group.add_members(crypto, &[charlie_key_package]) {
+    let (queued_messages, welcome) = match bob_group.add_members(backend, &[charlie_key_package]) {
         Ok((qm, welcome)) => (qm, welcome),
         Err(e) => panic!("Could not add member to group: {:?}", e),
     };
 
     let unverified_message = alice_group
-        .parse_message(queued_messages.clone().into(), crypto)
+        .parse_message(queued_messages.clone().into(), backend)
         .expect("Could not parse message.");
     let alice_processed_message = alice_group
-        .process_unverified_message(unverified_message, None, crypto)
+        .process_unverified_message(unverified_message, None, backend)
         .expect("Could not process unverified message.");
     if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
         alice_group
@@ -217,10 +217,10 @@ fn remover() {
     }
 
     let unverified_message = bob_group
-        .parse_message(queued_messages.into(), crypto)
+        .parse_message(queued_messages.into(), backend)
         .expect("Could not parse message.");
     let bob_processed_message = bob_group
-        .process_unverified_message(unverified_message, None, crypto)
+        .process_unverified_message(unverified_message, None, backend)
         .expect("Could not process unverified message.");
     if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
         bob_group
@@ -231,7 +231,7 @@ fn remover() {
     }
 
     let mut charlie_group = ManagedGroup::new_from_welcome(
-        crypto,
+        backend,
         &managed_group_config,
         welcome,
         Some(bob_group.export_ratchet_tree()),
@@ -241,14 +241,14 @@ fn remover() {
     // === Alice removes Bob & Charlie commits ===
 
     let queued_messages = alice_group
-        .propose_remove_member(crypto, 1)
+        .propose_remove_member(backend, 1)
         .expect("Could not propose removal");
 
     let unverified_message = charlie_group
-        .parse_message(queued_messages.into(), crypto)
+        .parse_message(queued_messages.into(), backend)
         .expect("Could not parse message.");
     let charlie_processed_message = charlie_group
-        .process_unverified_message(unverified_message, None, crypto)
+        .process_unverified_message(unverified_message, None, backend)
         .expect("Could not process unverified message.");
 
     // Check that we received the correct proposals
@@ -275,14 +275,14 @@ fn remover() {
 
     // Charlie commits
     let (queued_messages, _welcome) = charlie_group
-        .commit_to_pending_proposals(crypto)
+        .commit_to_pending_proposals(backend)
         .expect("Could not commit proposal");
 
     let unverified_message = charlie_group
-        .parse_message(queued_messages.into(), crypto)
+        .parse_message(queued_messages.into(), backend)
         .expect("Could not parse message.");
     let charlie_processed_message = charlie_group
-        .process_unverified_message(unverified_message, None, crypto)
+        .process_unverified_message(unverified_message, None, backend)
         .expect("Could not process unverified message.");
 
     // Check that we receive the correct proposal
@@ -304,69 +304,60 @@ fn remover() {
     // TODO #524: Check that Alice removed Bob
 }
 
-ctest_ciphersuites!(export_secret, test(ciphersuite_name: CiphersuiteName) {
-
-    let crypto = &OpenMlsRustCrypto::default();
-    let ciphersuite = Config::ciphersuite(ciphersuite_name).expect("An unexpected error occurred.");
+#[apply(ciphersuites_and_backends)]
+fn export_secret(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
-
-
 
     // Generate credential bundles
     let alice_credential = generate_credential_bundle(
-            crypto,
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-        )
-        .expect("An unexpected error occurred.");
+        backend,
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+    )
+    .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package = generate_key_package_bundle(
-            crypto,
-            &[ciphersuite.name()],
-            &alice_credential,
-            vec![],
-        )
-        .expect("An unexpected error occurred.");
+    let alice_key_package =
+        generate_key_package_bundle(backend, &[ciphersuite.name()], &alice_credential, vec![])
+            .expect("An unexpected error occurred.");
 
     // Define the managed group configuration
-    let managed_group_config = ManagedGroupConfig::builder().wire_format(WireFormat::MlsPlaintext).build();
+    let managed_group_config = ManagedGroupConfig::builder()
+        .wire_format(WireFormat::MlsPlaintext)
+        .build();
 
     // === Alice creates a group ===
     let alice_group = ManagedGroup::new(
-
-
-        crypto,
+        backend,
         &managed_group_config,
         group_id,
-        &alice_key_package.hash(crypto).expect("Could not hash KeyPackage."),
+        &alice_key_package
+            .hash(backend)
+            .expect("Could not hash KeyPackage."),
     )
     .expect("An unexpected error occurred.");
 
     assert!(
         alice_group
-            .export_secret(crypto, "test1", &[], ciphersuite.hash_length())
+            .export_secret(backend, "test1", &[], ciphersuite.hash_length())
             .expect("An unexpected error occurred.")
             != alice_group
-            .export_secret(crypto, "test2", &[], ciphersuite.hash_length())
-            .expect("An unexpected error occurred.")
+                .export_secret(backend, "test2", &[], ciphersuite.hash_length())
+                .expect("An unexpected error occurred.")
     );
     assert!(
         alice_group
-            .export_secret(crypto, "test", &[0u8], ciphersuite.hash_length())
+            .export_secret(backend, "test", &[0u8], ciphersuite.hash_length())
             .expect("An unexpected error occurred.")
             != alice_group
-                .export_secret(crypto, "test", &[1u8], ciphersuite.hash_length())
+                .export_secret(backend, "test", &[1u8], ciphersuite.hash_length())
                 .expect("An unexpected error occurred.")
     )
-});
+}
 
-#[test]
-fn test_invalid_plaintext() {
-    let ciphersuite_name = Ciphersuite::default().name();
-    let ciphersuite = Config::ciphersuite(ciphersuite_name).expect("An unexpected error occurred.");
-
+#[apply(ciphersuites)]
+fn test_invalid_plaintext(ciphersuite: &'static Ciphersuite) {
     // Some basic setup functions for the managed group.
     let managed_group_config = ManagedGroupConfig::builder()
         .wire_format(WireFormat::MlsPlaintext)
