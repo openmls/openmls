@@ -194,7 +194,7 @@ impl ManagedGroup {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub fn tree_hash(&self, backend: &impl OpenMlsCryptoProvider) -> &[u8] {
+    pub fn tree_hash(&self) -> &[u8] {
         self.group.tree().tree_hash()
     }
 

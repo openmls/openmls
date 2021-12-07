@@ -3,7 +3,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use crate::tree::sender_ratchet::SenderRatchet;
 
 use crate::config::Config;
-use crate::prelude::{LeafIndex, Secret};
+use crate::prelude::Secret;
 
 #[test]
 fn test_ratchet_generations() {

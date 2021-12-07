@@ -25,7 +25,7 @@
 //! return a [`Result`] since they may throw a
 //! [`LibraryError`](TreeSyncError::LibraryError).
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 use openmls_traits::OpenMlsCryptoProvider;
 use serde::{Deserialize, Serialize};

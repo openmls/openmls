@@ -4,8 +4,8 @@ use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
     binary_tree::LeafIndex,
+    key_packages::KeyPackageBundle,
     messages::proposals::{AddProposal, ProposalType},
-    prelude::{KeyPackageBundle, KeyPackageBundlePayload},
     schedule::{PreSharedKeyId, PreSharedKeys},
     treesync::{diff::TreeSyncDiff, node::leaf_node::LeafNode, TreeSyncError},
 };

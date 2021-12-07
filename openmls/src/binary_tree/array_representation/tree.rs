@@ -25,10 +25,10 @@ use super::diff::{AbDiff, StagedAbDiff};
 use crate::binary_tree::{LeafIndex, TreeSize};
 
 /// The [`NodeIndex`] is used to index nodes.
-pub(in crate::binary_tree) type NodeIndex = u32;
+pub(crate) type NodeIndex = u32;
 
 /// Given a [`LeafIndex`], compute the position of the corresponding [`NodeIndex`].
-pub(in crate::binary_tree) fn to_node_index(leaf_index: LeafIndex) -> NodeIndex {
+pub(crate) fn to_node_index(leaf_index: LeafIndex) -> NodeIndex {
     leaf_index * 2
 }
 

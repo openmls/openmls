@@ -1,5 +1,4 @@
-use crate::tree::index::NodeIndex;
-use crate::tree::treemath;
+use crate::binary_tree::array_representation::treemath;
 use crate::treesync::node::Node;
 use crate::treesync::TreeSync;
 
@@ -224,8 +223,10 @@ macro_rules! implement_enum_display {
 pub fn _print_tree(tree: &TreeSync, message: &str) {
     let factor = 3;
     println!("{}", message);
-    for (i, node) in tree.export_nodes().iter().enumerate() {
-        let level = treemath::level(NodeIndex::from(i));
+    let nodes = tree.export_nodes();
+    let tree_size = nodes.len() as u32;
+    for (i, node) in nodes.iter().enumerate() {
+        let level = treemath::level(i as u32);
         print!("{:04}", i);
         if let Some(node) = node {
             let (key_bytes, parent_hash_bytes) = match node {
@@ -236,7 +237,7 @@ pub fn _print_tree(tree: &TreeSync, message: &str) {
                     (key_bytes, parent_hash_bytes.unwrap_or_default())
                 }
                 Node::ParentNode(parent_node) => {
-                    if treemath::root(tree.leaf_count().unwrap().into()) == NodeIndex::from(i) {
+                    if treemath::root(tree_size) == i as u32 {
                         print!("\tP(R)");
                     } else {
                         print!("\tP");
@@ -255,7 +256,7 @@ pub fn _print_tree(tree: &TreeSync, message: &str) {
             }
             print!("◼︎");
         } else {
-            if treemath::root(tree.leaf_count().unwrap().into()) == NodeIndex::from(i) {
+            if treemath::root(tree_size) == i as u32 {
                 print!("\tB(R)\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t| ");
             } else {
                 print!("\tB\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t| ");

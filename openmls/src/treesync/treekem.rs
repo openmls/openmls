@@ -18,7 +18,7 @@ use crate::{
 use super::{
     diff::TreeSyncDiff,
     node::parent_node::{ParentNode, ParentNodeError, PlainUpdatePathNode},
-    TreeSync, TreeSyncDiffError, TreeSyncError,
+    TreeSyncDiffError, TreeSyncError,
 };
 
 impl<'a> TreeSyncDiff<'a> {

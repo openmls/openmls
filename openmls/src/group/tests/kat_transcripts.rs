@@ -18,8 +18,8 @@ use crate::{
     },
     messages::Commit,
     prelude::{
-        random_u32, random_u64, FramingParameters, LeafIndex, MlsPlaintext,
-        MlsPlaintextCommitAuthData, MlsPlaintextCommitContent, VerifiableMlsPlaintext,
+        random_u32, random_u64, FramingParameters, MlsPlaintext, MlsPlaintextCommitAuthData,
+        MlsPlaintextCommitContent, VerifiableMlsPlaintext,
     },
     schedule::{ConfirmationKey, MembershipKey},
     test_utils::{bytes_to_hex, hex_to_bytes},

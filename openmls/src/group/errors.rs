@@ -12,7 +12,7 @@ use crate::framing::errors::{
 use crate::key_packages::KeyPackageError;
 use crate::messages::errors::{ProposalError, ProposalQueueError};
 use crate::schedule::errors::{KeyScheduleError, PskSecretError};
-use crate::tree::{treemath::TreeMathError, ParentHashError, TreeError};
+use crate::tree::{ParentHashError, TreeError};
 use crate::treesync::{diff::TreeSyncDiffError, treekem::TreeKemError, TreeSyncError};
 use openmls_traits::types::CryptoError;
 use tls_codec::Error as TlsCodecError;
@@ -48,8 +48,6 @@ implement_error! {
                 "TLS (de)serialization error occurred.",
             KeyScheduleError(KeyScheduleError) =
                 "An error occurred in the key schedule.",
-            MathError(TreeMathError) =
-                "An error occurred during a tree math operation.",
             PskError(PskError) =
                 "A PSK error occurred.",
             CredentialError(CredentialError) =

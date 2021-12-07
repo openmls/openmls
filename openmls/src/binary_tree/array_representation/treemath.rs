@@ -24,7 +24,7 @@ fn log2(x: NodeIndex) -> usize {
     k - 1
 }
 
-fn level(index: NodeIndex) -> usize {
+pub(crate) fn level(index: NodeIndex) -> usize {
     let x = index;
     if (x & 0x01) == 0 {
         return 0;
@@ -36,7 +36,7 @@ fn level(index: NodeIndex) -> usize {
     k
 }
 
-pub(super) fn root(size: NodeIndex) -> NodeIndex {
+pub(crate) fn root(size: NodeIndex) -> NodeIndex {
     (1 << log2(size)) - 1
 }
 
@@ -176,54 +176,10 @@ pub(super) fn copath(
         .collect()
 }
 
-/// Returns the number of leaves in a tree
-#[cfg(test)]
-pub(super) fn leaf_count(number_of_nodes: NodeIndex) -> NodeIndex {
-    (number_of_nodes + 1) / 2
-}
-
 #[cfg(any(feature = "test-utils", test))]
 pub(super) fn parent(index: NodeIndex, size: NodeIndex) -> Result<NodeIndex, TreeMathError> {
     node_in_tree(index, size)?;
     unsafe_parent(index, size)
-}
-
-/// Returns the list of nodes that are descendants of a given parent node,
-/// including the parent node itself
-#[cfg(test)]
-pub(super) fn descendants(x: NodeIndex, size: NodeIndex) -> Vec<NodeIndex> {
-    let l = level(x);
-    if l == 0 {
-        vec![x]
-    } else {
-        let s = (1 << l) - 1;
-        let l = x - s;
-        let mut r = x + s;
-        if r > (size * 2) - 2 {
-            r = (size * 2) - 2;
-        }
-
-        (l..=r).collect()
-    }
-}
-
-/// Returns the list of nodes that are descendants of a given parent node,
-/// including the parent node itself
-/// (Alternative, easier to verify implementation)
-#[cfg(test)]
-pub(super) fn descendants_alt(x: NodeIndex, size: NodeIndex) -> Vec<NodeIndex> {
-    if level(x) == 0 {
-        vec![x]
-    } else {
-        let left_child = left(x).unwrap();
-        let right_child = right(x, size).unwrap();
-        [
-            descendants_alt(left_child, size),
-            vec![x],
-            descendants_alt(right_child, size),
-        ]
-        .concat()
-    }
 }
 
 #[cfg(any(feature = "test-utils", test))]

@@ -16,4 +16,4 @@ pub mod kat_treemath;
 pub(crate) mod diff;
 pub(crate) mod tree;
 
-pub(super) mod treemath;
+pub(crate) mod treemath;

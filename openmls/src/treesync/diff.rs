@@ -690,14 +690,9 @@ impl<'a> TreeSyncDiff<'a> {
         let subtree_root_copath_node_ref = self
             .diff
             .subtree_root_copath_node(sender_leaf_index, self.own_leaf_index)?;
-        println!(
-            "Subtree root copath node: {:?}",
-            subtree_root_copath_node_ref
-        );
 
         let sender_copath_resolution =
             self.resolution(subtree_root_copath_node_ref, excluded_indices)?;
-        println!("Sender copath resolution: {:?}", sender_copath_resolution);
 
         // Get all of the public keys that we have secret keys for, i.e. our own
         // leaf pk, as well as potentially a number of public keys from our
@@ -724,7 +719,6 @@ impl<'a> TreeSyncDiff<'a> {
                 }
             }
         }
-        panic!();
         Err(TreeSyncDiffError::NoPrivateKeyFound)
     }
 
@@ -747,10 +741,7 @@ implement_error! {
             MissingParentHash = "The given key package does not contain a parent hash extension.",
             ParentHashMismatch = "The parent hash of the given key package is invalid.",
             InvalidParentHash = "The parent hash of a node in the given tree is invalid.",
-            PublicKeyCollision = "The public key of the new node is not unique in the tree.",
-            RedundantBlank = "The leaf we were trying to blank is already blank.",
             BlankUnmergedLeaf = "The leaf index in the unmerged leaves of a parent node point to a blank.",
-            UpdateBlank = "The leaf we were trying to update is blank.",
             PublicKeyMismatch = "The derived public key doesn't match the one in the tree.",
             NoPrivateKeyFound = "Couldn't find a fitting private key in the filtered resolution of the given leaf index.",
         }
