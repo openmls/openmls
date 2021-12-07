@@ -35,7 +35,6 @@ use crate::messages::public_group_state::{PublicGroupState, PublicGroupStateTbs}
 use crate::messages::{proposals::*, *};
 use crate::schedule::*;
 use crate::tree::secret_tree::SecretTree;
-//use crate::tree::{index::*, node::*, secret_tree::*, *};
 use crate::treesync::node::Node;
 use crate::treesync::*;
 use crate::{ciphersuite::*, config::ProtocolVersion};
