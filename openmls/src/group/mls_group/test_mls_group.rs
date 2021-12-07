@@ -273,7 +273,7 @@ fn test_update_path() {
         alice_group
             .merge_commit(staged_commit)
             .expect("error merging commit");
-        let ratchet_tree = alice_group.tree().public_key_tree_copy();
+        let ratchet_tree = alice_group.tree().export_nodes();
 
         let group_bob = MlsGroup::new_from_welcome(
             welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
@@ -529,7 +529,7 @@ ctest_ciphersuites!(test_psks, test(ciphersuite_name: CiphersuiteName) {
         )
         .expect("error staging commit");
     alice_group.merge_commit(staged_commit).expect("error merging commit");
-    let ratchet_tree = alice_group.tree().public_key_tree_copy();
+    let ratchet_tree = alice_group.tree().export_nodes();
 
     let group_bob = MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),

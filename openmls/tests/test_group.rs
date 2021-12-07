@@ -141,7 +141,7 @@ fn create_commit_optional_path() {
         group_alice
             .merge_commit(staged_commit)
             .expect("error merging commit");
-        let ratchet_tree = group_alice.tree().public_key_tree_copy();
+        let ratchet_tree = group_alice.tree().export_nodes();
 
         // Bob creates group from Welcome
         let group_bob = match MlsGroup::new_from_welcome(
@@ -156,8 +156,8 @@ fn create_commit_optional_path() {
         };
 
         assert_eq!(
-            group_alice.tree().public_key_tree(),
-            group_bob.tree().public_key_tree()
+            group_alice.tree().export_nodes(),
+            group_bob.tree().export_nodes()
         );
 
         // Alice updates
@@ -382,7 +382,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     group_alice
         .merge_commit(staged_commit)
         .expect("error merging commit");
-    let ratchet_tree = group_alice.tree().public_key_tree_copy();
+    let ratchet_tree = group_alice.tree().export_nodes();
 
     let mut group_bob = match MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
@@ -396,7 +396,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     };
 
     // Make sure that both groups have the same public tree
-    if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
+    if group_alice.tree().export_nodes() != group_bob.tree().export_nodes() {
         _print_tree(&group_alice.tree(), "Alice added Bob");
         panic!("Different public trees");
     }
@@ -490,7 +490,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         .expect("error merging commit");
 
     // Make sure that both groups have the same public tree
-    if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
+    if group_alice.tree().export_nodes() != group_bob.tree().export_nodes() {
         _print_tree(&group_alice.tree(), "Alice added Bob");
         panic!("Different public trees");
     }
@@ -560,7 +560,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         .expect("error merging commit");
 
     // Make sure that both groups have the same public tree
-    if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
+    if group_alice.tree().export_nodes() != group_bob.tree().export_nodes() {
         _print_tree(&group_alice.tree(), "Alice added Bob");
         panic!("Different public trees");
     }
@@ -629,7 +629,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         .expect("error merging commit");
 
     // Make sure that both groups have the same public tree
-    if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
+    if group_alice.tree().export_nodes() != group_bob.tree().export_nodes() {
         _print_tree(&group_alice.tree(), "Alice added Bob");
         panic!("Different public trees");
     }
@@ -710,7 +710,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         .merge_commit(staged_commit)
         .expect("error merging commit");
 
-    let ratchet_tree = group_alice.tree().public_key_tree_copy();
+    let ratchet_tree = group_alice.tree().export_nodes();
     let mut group_charlie = match MlsGroup::new_from_welcome(
         welcome_for_charlie_option.expect("An unexpected error occurred."),
         Some(ratchet_tree),
@@ -723,11 +723,11 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     };
 
     // Make sure that all groups have the same public tree
-    if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
+    if group_alice.tree().export_nodes() != group_bob.tree().export_nodes() {
         _print_tree(&group_alice.tree(), "Bob added Charlie");
         panic!("Different public trees");
     }
-    if group_alice.tree().public_key_tree() != group_charlie.tree().public_key_tree() {
+    if group_alice.tree().export_nodes() != group_charlie.tree().export_nodes() {
         _print_tree(&group_alice.tree(), "Bob added Charlie");
         panic!("Different public trees");
     }
@@ -844,11 +844,11 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         .expect("error merging commit");
 
     // Make sure that all groups have the same public tree
-    if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
+    if group_alice.tree().export_nodes() != group_bob.tree().export_nodes() {
         _print_tree(&group_alice.tree(), "Charlie updated");
         panic!("Different public trees");
     }
-    if group_alice.tree().public_key_tree() != group_charlie.tree().public_key_tree() {
+    if group_alice.tree().export_nodes() != group_charlie.tree().export_nodes() {
         _print_tree(&group_alice.tree(), "Charlie updated");
         panic!("Different public trees");
     }
@@ -920,11 +920,11 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         .expect("error merging commit");
 
     // Make sure that all groups have the same public tree
-    if group_alice.tree().public_key_tree() == group_bob.tree().public_key_tree() {
+    if group_alice.tree().export_nodes() == group_bob.tree().export_nodes() {
         _print_tree(&group_alice.tree(), "Charlie removed Bob");
         panic!("Same public trees");
     }
-    if group_alice.tree().public_key_tree() != group_charlie.tree().public_key_tree() {
+    if group_alice.tree().export_nodes() != group_charlie.tree().export_nodes() {
         _print_tree(&group_alice.tree(), "Charlie removed Bob");
         panic!("Different public trees");
     }

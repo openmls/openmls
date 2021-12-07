@@ -67,21 +67,6 @@ pub mod tests_and_kats;
 /// [`TreeSync`] instance guarantee a few invariants that are checked upon
 /// creating a new instance from an imported set of nodes, as well as when
 /// merging a diff.
-///
-/// FIXME: Extend and implement the following list.
-/// * validity/consistency of unmerged leaves in all parent nodes
-/// * uniqueness of public keys in the tree
-/// * uniqueness of (identity, endpoint_id) tuples in the tree
-/// * validity of all parent hashes in the tree
-/// * validity of all key packages in the tree
-///   * support for the ciphersuite, support of required extensions, etc.
-/// * tree size is below u32::MAX
-/// * our own leaf is not blank
-/// * our own leaf index points to inside of the tree
-/// * we have a private key for our own leaf
-/// * our direct path has private keys according to the unmerged leaves in the nodes
-/// * there are private keys only in our leaf and our direct path
-/// * the tree hash is non-empty
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct TreeSync {
@@ -167,9 +152,8 @@ impl TreeSync {
         let mut tree_sync =
             Self::from_nodes(backend, ciphersuite, node_options, key_package_bundle)?;
 
-        // If there is no path secret, the direct path has to be blank. FIXME:
-        // Return error if a given path secret doesn't imply that the direct
-        // path isn't blank.
+        // Populate the tree with secrets and derive a commit secret if a path
+        // secret is given.
         let commit_secret = if let Some(path_secret) = path_secret_option.into() {
             let mut diff = tree_sync.empty_diff()?;
             let commit_secret =
@@ -193,14 +177,13 @@ impl TreeSync {
         node_options: &[Option<Node>],
         key_package_bundle: KeyPackageBundle,
     ) -> Result<Self, TreeSyncError> {
-        // FIXME: We might want to verify some more things here, such as the
-        // validity of the leaf indices in the unmerged leaves or the uniqueness
-        // of public keys in the tree. We are building on those properties in
-        // other functions.
+        // Before we can instantiate the TreeSync instance, we have to figure
+        // out what our leaf index is.
         let mut ts_nodes: Vec<TreeSyncNode> = Vec::new();
         let mut own_index_option = None;
         let own_key_package = key_package_bundle.key_package;
         let mut private_key = Some(key_package_bundle.private_key);
+        // Check if our own key package is in the tree.
         for (node_index, node_option) in node_options.iter().enumerate() {
             let ts_node_option: TreeSyncNode = match node_option {
                 Some(node) => {
@@ -226,7 +209,6 @@ impl TreeSync {
             ts_nodes.push(ts_node_option);
         }
         let tree = MlsBinaryTree::new(ts_nodes)?;
-        // Check if our own key package is in the tree.
         if let Some(leaf_index) = own_index_option {
             let mut tree_sync = Self {
                 tree,
@@ -281,9 +263,8 @@ impl TreeSync {
     }
 
     /// Returns the nodes in the tree ordered according to the
-    /// array-representation of the underlying binary tree. FIXME: It would be
-    /// much nicer to return a slice here, but I don't know how.
-    pub(crate) fn export_nodes(&self) -> Vec<Option<Node>> {
+    /// array-representation of the underlying binary tree.
+    pub fn export_nodes(&self) -> Vec<Option<Node>> {
         self.tree
             .nodes()
             .iter()
@@ -308,18 +289,6 @@ impl TreeSync {
             .ok_or(TreeSyncError::LibraryError)?;
         let leaf_node = leaf.node().as_ref().ok_or(TreeSyncError::LibraryError)?;
         Ok(leaf_node.as_leaf_node()?.key_package())
-    }
-
-    /// FIXME: the following two functions should be removed. They were just put
-    /// here to make integration into existing tests easier.
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn public_key_tree(&self) -> Vec<Option<Node>> {
-        self.export_nodes()
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn public_key_tree_copy(&self) -> Vec<Option<Node>> {
-        self.export_nodes()
     }
 }
 

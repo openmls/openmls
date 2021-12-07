@@ -16,5 +16,4 @@ pub mod kat_treemath;
 pub(crate) mod diff;
 pub(crate) mod tree;
 
-// FIXME: treemath is only crate-public for tree-printing
-pub(crate) mod treemath;
+pub(super) mod treemath;

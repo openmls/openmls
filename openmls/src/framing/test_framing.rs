@@ -476,7 +476,7 @@ fn unknown_sender() {
 
         let mut group_charlie = MlsGroup::new_from_welcome(
             welcome_option.expect("An unexpected error occurred."),
-            Some(group_alice.tree().public_key_tree_copy()),
+            Some(group_alice.tree().export_nodes()),
             charlie_key_package_bundle,
             None,
             crypto,

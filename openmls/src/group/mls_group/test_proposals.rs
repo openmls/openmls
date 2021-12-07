@@ -436,7 +436,7 @@ fn test_group_context_extensions() {
     alice_group
         .merge_commit(staged_commit)
         .expect("error merging commit");
-    let ratchet_tree = alice_group.tree().public_key_tree_copy();
+    let ratchet_tree = alice_group.tree().export_nodes();
 
     // Make sure that Bob can join the group with the required extension in place
     // and Bob's key package supporting them.
@@ -538,7 +538,7 @@ fn test_group_context_extension_proposal_fails() {
     alice_group
         .merge_commit(staged_commit)
         .expect("error merging commit");
-    let ratchet_tree = alice_group.tree().public_key_tree_copy();
+    let ratchet_tree = alice_group.tree().export_nodes();
 
     let bob_group = MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
@@ -641,7 +641,7 @@ fn test_group_context_extension_proposal() {
     alice_group
         .merge_commit(staged_commit)
         .expect("error merging commit");
-    let ratchet_tree = alice_group.tree().public_key_tree_copy();
+    let ratchet_tree = alice_group.tree().export_nodes();
 
     let mut bob_group = MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),

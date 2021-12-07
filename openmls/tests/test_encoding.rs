@@ -457,7 +457,7 @@ fn test_welcome_message_encoding() {
         // example the RatchetTreeExtension.
         assert!(MlsGroup::new_from_welcome(
             welcome,
-            Some(group_state.tree().public_key_tree_copy()),
+            Some(group_state.tree().export_nodes()),
             charlie_key_package_bundle,
             None,
             &crypto

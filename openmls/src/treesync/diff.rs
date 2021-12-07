@@ -82,9 +82,7 @@ impl<'a> TryFrom<&'a TreeSync> for TreeSyncDiff<'a> {
 // * unmerged leaf indices should only point to non-blank leaf nodes
 
 /// Note: Any function that modifies a node should erase the tree hash of every
-/// node in its direct path. FIXME: We currently don't guarantee that we fail
-/// before changing the state of the diff. E.g., if a parent hash is invalid,
-/// the diff is corrupted. Is that a problem?
+/// node in its direct path.
 impl<'a> TreeSyncDiff<'a> {
     /// Check if the right-most leaf is blank. If that is the case, remove the
     /// right-most leaf until the right-most leaf is not blank anymore.
@@ -254,7 +252,7 @@ impl<'a> TreeSyncDiff<'a> {
     }
 
     /// The given path of ParentNodes should already include any potential path
-    /// secrets. FIXME: I might want to change this API, because it's slightly
+    /// secrets. FIXME: We might want to change this API, because it's slightly
     /// asymmetrical as compared to re-applying one's own update path: Here, the
     /// CommitSecret falls out of the decryption process, whereas in the other
     /// case, the commit_secret falls out of the path-application process.
