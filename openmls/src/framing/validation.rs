@@ -57,7 +57,7 @@ impl DecryptedMessage {
         inbound_message: MlsMessageIn,
     ) -> Result<Self, ValidationError> {
         if let MlsMessageIn::Plaintext(plaintext) = inbound_message {
-            Self::from_plaintext(*plaintext)
+            Self::from_plaintext(plaintext)
         } else {
             Err(ValidationError::WrongWireFormat)
         }

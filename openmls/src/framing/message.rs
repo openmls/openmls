@@ -4,10 +4,10 @@ use super::*;
 #[derive(Debug, Clone)]
 pub enum MlsMessageIn {
     /// An OpenMLS `VerifiableMlsPlaintext`.
-    Plaintext(Box<VerifiableMlsPlaintext>),
+    Plaintext(VerifiableMlsPlaintext),
 
     /// An OpenMLS `MlsCiphertext`.
-    Ciphertext(Box<MlsCiphertext>),
+    Ciphertext(MlsCiphertext),
 }
 
 impl MlsMessageIn {
@@ -40,21 +40,21 @@ impl MlsMessageIn {
 #[derive(PartialEq, Debug, Clone)]
 pub enum MlsMessageOut {
     /// An OpenMLS `MlsPlaintext`.
-    Plaintext(Box<MlsPlaintext>),
+    Plaintext(MlsPlaintext),
 
     /// An OpenMLS `MlsCiphertext`.
-    Ciphertext(Box<MlsCiphertext>),
+    Ciphertext(MlsCiphertext),
 }
 
 impl From<MlsPlaintext> for MlsMessageOut {
     fn from(mls_plaintext: MlsPlaintext) -> Self {
-        MlsMessageOut::Plaintext(Box::new(mls_plaintext))
+        MlsMessageOut::Plaintext(mls_plaintext)
     }
 }
 
 impl From<MlsCiphertext> for MlsMessageOut {
     fn from(mls_ciphertext: MlsCiphertext) -> Self {
-        MlsMessageOut::Ciphertext(Box::new(mls_ciphertext))
+        MlsMessageOut::Ciphertext(mls_ciphertext)
     }
 }
 
@@ -89,21 +89,23 @@ impl From<MlsMessageOut> for MlsMessageIn {
     fn from(message: MlsMessageOut) -> Self {
         match message {
             MlsMessageOut::Plaintext(pt) => {
-                MlsMessageIn::Plaintext(Box::new(VerifiableMlsPlaintext::from_plaintext(*pt, None)))
+                MlsMessageIn::Plaintext(VerifiableMlsPlaintext::from_plaintext(pt, None))
             }
-            MlsMessageOut::Ciphertext(ct) => MlsMessageIn::Ciphertext(Box::new(*ct)),
+            MlsMessageOut::Ciphertext(ct) => MlsMessageIn::Ciphertext(ct),
         }
     }
 }
 
+#[cfg(any(feature = "test-utils", test))]
 impl From<VerifiableMlsPlaintext> for MlsMessageIn {
     fn from(plaintext: VerifiableMlsPlaintext) -> Self {
-        MlsMessageIn::Plaintext(Box::new(plaintext))
+        MlsMessageIn::Plaintext(plaintext)
     }
 }
 
+#[cfg(any(feature = "test-utils", test))]
 impl From<MlsCiphertext> for MlsMessageIn {
     fn from(ciphertext: MlsCiphertext) -> Self {
-        MlsMessageIn::Ciphertext(Box::new(ciphertext))
+        MlsMessageIn::Ciphertext(ciphertext)
     }
 }
