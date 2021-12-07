@@ -83,9 +83,9 @@
 
 <span class="macro">implement_error!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ErrorState</span> {
-        <span class="ident">Init</span> <span class="op">=</span> <span class="string">&quot;Expected to be in initial state.&quot;</span>,
-        <span class="ident">Epoch</span> <span class="op">=</span> <span class="string">&quot;Expected to be in epoch state.&quot;</span>,
-        <span class="ident">Context</span> <span class="op">=</span> <span class="string">&quot;Expected to be in a state where the context is added.&quot;</span>,
+        <span class="ident">NotInit</span> <span class="op">=</span> <span class="string">&quot;Expected to be in initial state.&quot;</span>,
+        <span class="ident">NotEpoch</span> <span class="op">=</span> <span class="string">&quot;Expected to be in epoch state.&quot;</span>,
+        <span class="ident">NotContext</span> <span class="op">=</span> <span class="string">&quot;Expected to be in a state where the context is added.&quot;</span>,
     }
 }
 

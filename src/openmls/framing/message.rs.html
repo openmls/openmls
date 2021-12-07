@@ -107,16 +107,18 @@
 <span id="107">107</span>
 <span id="108">108</span>
 <span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// Unified message type for incoming MLS messages</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsMessageIn</span> {
     <span class="doccomment">/// An OpenMLS `VerifiableMlsPlaintext`.</span>
-    <span class="ident">Plaintext</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">VerifiableMlsPlaintext</span><span class="op">&gt;</span>),
+    <span class="ident">Plaintext</span>(<span class="ident">VerifiableMlsPlaintext</span>),
 
     <span class="doccomment">/// An OpenMLS `MlsCiphertext`.</span>
-    <span class="ident">Ciphertext</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">MlsCiphertext</span><span class="op">&gt;</span>),
+    <span class="ident">Ciphertext</span>(<span class="ident">MlsCiphertext</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">MlsMessageIn</span> {
@@ -149,21 +151,21 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsMessageOut</span> {
     <span class="doccomment">/// An OpenMLS `MlsPlaintext`.</span>
-    <span class="ident">Plaintext</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span><span class="op">&gt;</span>),
+    <span class="ident">Plaintext</span>(<span class="ident">MlsPlaintext</span>),
 
     <span class="doccomment">/// An OpenMLS `MlsCiphertext`.</span>
-    <span class="ident">Ciphertext</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">MlsCiphertext</span><span class="op">&gt;</span>),
+    <span class="ident">Ciphertext</span>(<span class="ident">MlsCiphertext</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MlsMessageOut</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">mls_plaintext</span>: <span class="ident">MlsPlaintext</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">MlsMessageOut::Plaintext</span>(<span class="ident">Box::new</span>(<span class="ident">mls_plaintext</span>))
+        <span class="ident">MlsMessageOut::Plaintext</span>(<span class="ident">mls_plaintext</span>)
     }
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">MlsCiphertext</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MlsMessageOut</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">mls_ciphertext</span>: <span class="ident">MlsCiphertext</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">MlsMessageOut::Ciphertext</span>(<span class="ident">Box::new</span>(<span class="ident">mls_ciphertext</span>))
+        <span class="ident">MlsMessageOut::Ciphertext</span>(<span class="ident">mls_ciphertext</span>)
     }
 }
 
@@ -198,22 +200,24 @@
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">message</span>: <span class="ident">MlsMessageOut</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">match</span> <span class="ident">message</span> {
             <span class="ident">MlsMessageOut::Plaintext</span>(<span class="ident">pt</span>) =&gt; {
-                <span class="ident">MlsMessageIn::Plaintext</span>(<span class="ident">Box::new</span>(<span class="ident">VerifiableMlsPlaintext::from_plaintext</span>(<span class="kw-2">*</span><span class="ident">pt</span>, <span class="prelude-val">None</span>)))
+                <span class="ident">MlsMessageIn::Plaintext</span>(<span class="ident">VerifiableMlsPlaintext::from_plaintext</span>(<span class="ident">pt</span>, <span class="prelude-val">None</span>))
             }
-            <span class="ident">MlsMessageOut::Ciphertext</span>(<span class="ident">ct</span>) =&gt; <span class="ident">MlsMessageIn::Ciphertext</span>(<span class="ident">Box::new</span>(<span class="kw-2">*</span><span class="ident">ct</span>)),
+            <span class="ident">MlsMessageOut::Ciphertext</span>(<span class="ident">ct</span>) =&gt; <span class="ident">MlsMessageIn::Ciphertext</span>(<span class="ident">ct</span>),
         }
     }
 }
 
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">VerifiableMlsPlaintext</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MlsMessageIn</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">plaintext</span>: <span class="ident">VerifiableMlsPlaintext</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">MlsMessageIn::Plaintext</span>(<span class="ident">Box::new</span>(<span class="ident">plaintext</span>))
+        <span class="ident">MlsMessageIn::Plaintext</span>(<span class="ident">plaintext</span>)
     }
 }
 
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">MlsCiphertext</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MlsMessageIn</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">ciphertext</span>: <span class="ident">MlsCiphertext</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">MlsMessageIn::Ciphertext</span>(<span class="ident">Box::new</span>(<span class="ident">ciphertext</span>))
+        <span class="ident">MlsMessageIn::Ciphertext</span>(<span class="ident">ciphertext</span>)
     }
 }
 </code></pre></div>

@@ -183,6 +183,11 @@
 <span id="183">183</span>
 <span id="184">184</span>
 <span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the types and implementations for the</span>
 <span class="doccomment">//! `PublicGroupState` and `PublicGroupStateTbs` structs of the MLS spec. The</span>
 <span class="doccomment">//! `PublicGroupState` implements type-enforced verification in the same way as</span>
@@ -250,8 +255,13 @@
 }
 
 <span class="kw">mod</span> <span class="ident">private_mod</span> {
-    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Seal</span>;
+
+    <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Seal</span> {
+        <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
+            <span class="ident">Seal</span> {}
+        }
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">VerifiedStruct</span><span class="op">&lt;</span><span class="ident">VerifiablePublicGroupState</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">PublicGroupState</span> {

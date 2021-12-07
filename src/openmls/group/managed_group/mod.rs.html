@@ -492,12 +492,12 @@
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsMessageOut</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">msg</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">configuration</span>().<span class="ident">wire_format</span>() {
-            <span class="ident">WireFormat::MlsPlaintext</span> =&gt; <span class="ident">MlsMessageOut::Plaintext</span>(<span class="ident">Box::new</span>(<span class="ident">plaintext</span>)),
+            <span class="ident">WireFormat::MlsPlaintext</span> =&gt; <span class="ident">MlsMessageOut::Plaintext</span>(<span class="ident">plaintext</span>),
             <span class="ident">WireFormat::MlsCiphertext</span> =&gt; {
                 <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span>
                     <span class="self">self</span>.<span class="ident">group</span>
                         .<span class="ident">encrypt</span>(<span class="ident">plaintext</span>, <span class="self">self</span>.<span class="ident">configuration</span>().<span class="ident">padding_size</span>(), <span class="ident">backend</span>)<span class="question-mark">?</span>;
-                <span class="ident">MlsMessageOut::Ciphertext</span>(<span class="ident">Box::new</span>(<span class="ident">ciphertext</span>))
+                <span class="ident">MlsMessageOut::Ciphertext</span>(<span class="ident">ciphertext</span>)
             }
         };
         <span class="prelude-val">Ok</span>(<span class="ident">msg</span>)

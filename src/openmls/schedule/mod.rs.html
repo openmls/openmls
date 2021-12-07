@@ -1090,6 +1090,14 @@
 <span id="1090">1090</span>
 <span id="1091">1091</span>
 <span id="1092">1092</span>
+<span id="1093">1093</span>
+<span id="1094">1094</span>
+<span id="1095">1095</span>
+<span id="1096">1096</span>
+<span id="1097">1097</span>
+<span id="1098">1098</span>
+<span id="1099">1099</span>
+<span id="1100">1100</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module represents the key schedule as introduced in Section 8 of the</span>
 <span class="doccomment">//! MLS specification. The key schedule evolves in epochs, where in each epoch</span>
 <span class="doccomment">//! new key material is injected.</span>
@@ -1243,10 +1251,18 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">psk</span>::{<span class="ident">PreSharedKeyId</span>, <span class="ident">PreSharedKeys</span>, <span class="ident">PskSecret</span>};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">CommitSecret</span> {
     <span class="ident">secret</span>: <span class="ident">Secret</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">CommitSecret</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
+        <span class="ident">CommitSecret</span> {
+            <span class="ident">secret</span>: <span class="ident">Secret::default</span>(),
+        }
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Secret</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CommitSecret</span> {
@@ -1447,7 +1463,7 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">WelcomeSecret</span>, <span class="ident">KeyScheduleError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">state</span> <span class="op">!</span><span class="op">=</span> <span class="ident">State::Initial</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">intermediate_secret</span>.<span class="ident">is_none</span>() {
             <span class="macro">log::error!</span>(<span class="string">&quot;Trying to derive a welcome secret while not in the initial state.&quot;</span>);
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyScheduleError::InvalidState</span>(<span class="ident">ErrorState::Init</span>));
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyScheduleError::InvalidState</span>(<span class="ident">ErrorState::NotInit</span>));
         }
 
         <span class="comment">// We can return a library error here, because there must be a mistake in the state machine</span>
@@ -1473,7 +1489,7 @@
             <span class="macro">log::error!</span>(
                 <span class="string">&quot;Trying to add context to the key schedule while not in the initial state.&quot;</span>
             );
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyScheduleError::InvalidState</span>(<span class="ident">ErrorState::Init</span>));
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyScheduleError::InvalidState</span>(<span class="ident">ErrorState::NotInit</span>));
         }
         <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">State::Context</span>;
 
@@ -1509,7 +1525,7 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">EpochSecrets</span>, <span class="ident">KeyScheduleError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">state</span> <span class="op">!</span><span class="op">=</span> <span class="ident">State::Context</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">epoch_secret</span>.<span class="ident">is_none</span>() {
             <span class="macro">log::error!</span>(<span class="string">&quot;Trying to derive the epoch secrets while not in the right state.&quot;</span>);
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyScheduleError::InvalidState</span>(<span class="ident">ErrorState::Context</span>));
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyScheduleError::InvalidState</span>(<span class="ident">ErrorState::NotContext</span>));
         }
         <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">State::Done</span>;
 

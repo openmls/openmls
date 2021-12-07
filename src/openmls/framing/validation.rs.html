@@ -410,7 +410,7 @@
         <span class="ident">inbound_message</span>: <span class="ident">MlsMessageIn</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ValidationError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="ident">MlsMessageIn::Plaintext</span>(<span class="ident">plaintext</span>) <span class="op">=</span> <span class="ident">inbound_message</span> {
-            <span class="ident"><span class="self">Self</span>::from_plaintext</span>(<span class="kw-2">*</span><span class="ident">plaintext</span>)
+            <span class="ident"><span class="self">Self</span>::from_plaintext</span>(<span class="ident">plaintext</span>)
         } <span class="kw">else</span> {
             <span class="prelude-val">Err</span>(<span class="ident">ValidationError::WrongWireFormat</span>)
         }
