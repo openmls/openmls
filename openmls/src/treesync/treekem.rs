@@ -82,7 +82,7 @@ impl<'a> TreeSyncDiff<'a> {
         let remaining_path_length = update_path.nodes().len() - path_position;
         let (mut derived_path, _plain_update_path, commit_secret) =
             ParentNode::derive_path(backend, ciphersuite, path_secret, remaining_path_length)?;
-        // We now check that the public keys in the update path an in the
+        // We now check that the public keys in the update path and in the
         // derived path match up.
         for (update_parent_node, derived_parent_node) in update_path
             .nodes()

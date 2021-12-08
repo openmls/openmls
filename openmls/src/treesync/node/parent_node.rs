@@ -71,6 +71,8 @@ impl PlainUpdatePathNode {
     }
 }
 
+pub(crate) type PathDerivationResult = (Vec<ParentNode>, Vec<PlainUpdatePathNode>, CommitSecret);
+
 impl ParentNode {
     pub(super) fn new(
         public_key: HpkePublicKey,
@@ -94,7 +96,7 @@ impl ParentNode {
         ciphersuite: &Ciphersuite,
         path_secret: PathSecret,
         path_length: usize,
-    ) -> Result<(Vec<Self>, Vec<PlainUpdatePathNode>, CommitSecret), ParentNodeError> {
+    ) -> Result<PathDerivationResult, ParentNodeError> {
         let mut path = Vec::new();
         let mut update_path_nodes = Vec::new();
         let mut path_secret_option = Some(path_secret);

@@ -24,7 +24,7 @@ use std::{collections::HashSet, convert::TryFrom};
 use super::{
     node::{
         leaf_node::LeafNode,
-        parent_node::{ParentNode, ParentNodeError, PlainUpdatePathNode},
+        parent_node::{ParentNode, ParentNodeError, PathDerivationResult, PlainUpdatePathNode},
         {Node, NodeError},
     },
     treesync_node::{TreeSyncNode, TreeSyncNodeError},
@@ -36,7 +36,7 @@ use crate::{
         array_representation::diff::NodeId, LeafIndex, MlsBinaryTreeDiff, MlsBinaryTreeDiffError,
         MlsBinaryTreeError, StagedMlsBinaryTreeDiff,
     },
-    ciphersuite::{signable::Signable, Ciphersuite, HpkePrivateKey, HpkePublicKey},
+    ciphersuite::{signable::Signable, Ciphersuite, HpkePrivateKey, HpkePublicKey, Secret},
     credentials::{CredentialBundle, CredentialError},
     extensions::ExtensionType,
     messages::{PathSecret, PathSecretError},
@@ -175,6 +175,25 @@ impl<'a> TreeSyncDiff<'a> {
         Ok(())
     }
 
+    fn derive_path_from_leaf_secret(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+        leaf_secret: Secret,
+    ) -> Result<PathDerivationResult, TreeSyncDiffError> {
+        let leaf_path_secret = PathSecret::from(leaf_secret);
+        let path_secret = leaf_path_secret.derive_path_secret(backend, ciphersuite)?;
+
+        let path_length = self.diff.direct_path(self.own_leaf_index)?.len();
+
+        Ok(ParentNode::derive_path(
+            backend,
+            ciphersuite,
+            path_secret,
+            path_length,
+        )?)
+    }
+
     /// Given a [`KeyPackageBundle`], use it to create a path and apply it to
     /// the diff. This function is meant to be used with a [`KeyPackageBundle`]
     /// that has been returned by a call to [`Self::apply_own_update_path()`].
@@ -187,18 +206,13 @@ impl<'a> TreeSyncDiff<'a> {
         ciphersuite: &Ciphersuite,
         key_package_bundle: &KeyPackageBundle,
     ) -> Result<CommitSecret, TreeSyncDiffError> {
-        let leaf_secret = key_package_bundle.leaf_secret();
-        let leaf_path_secret = PathSecret::from(leaf_secret.clone());
-
-        let path_secret = leaf_path_secret.derive_path_secret(backend, ciphersuite)?;
-
-        let path_length = self.diff.direct_path(self.own_leaf_index)?.len();
+        let leaf_secret = key_package_bundle.leaf_secret().clone();
 
         // The `update_path_nodes` are not needed here, because we're applying
         // our own commit rather then creating one, for which we would have to
         // encrypt the update path nodes returned here.
         let (path, _update_path_nodes, commit_secret) =
-            ParentNode::derive_path(backend, ciphersuite, path_secret, path_length)?;
+            self.derive_path_from_leaf_secret(backend, ciphersuite, leaf_secret)?;
 
         let parent_hash =
             self.process_update_path(backend, ciphersuite, self.own_leaf_index, path)?;
@@ -233,7 +247,8 @@ impl<'a> TreeSyncDiff<'a> {
     /// to sign the [`KeyPackageBundlePayload`] after updating its parent hash.
     ///
     /// Returns the resulting [`KeyPackageBundle`] for later use with
-    /// [`Self::re_apply_own_update_path()`].
+    /// [`Self::re_apply_own_update_path()`], as well as the [`CommitSecret`]
+    /// and the path resulting from the path derivation.
     pub(crate) fn apply_own_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -241,15 +256,10 @@ impl<'a> TreeSyncDiff<'a> {
         mut key_package_bundle_payload: KeyPackageBundlePayload,
         credential_bundle: &CredentialBundle,
     ) -> Result<UpdatePathResult, TreeSyncDiffError> {
-        let leaf_secret = key_package_bundle_payload.leaf_secret();
-        let leaf_path_secret = PathSecret::from(leaf_secret.clone());
-
-        let path_secret = leaf_path_secret.derive_path_secret(backend, ciphersuite)?;
-
-        let path_length = self.diff.direct_path(self.own_leaf_index)?.len();
+        let leaf_secret = key_package_bundle_payload.leaf_secret().clone();
 
         let (path, update_path_nodes, commit_secret) =
-            ParentNode::derive_path(backend, ciphersuite, path_secret, path_length)?;
+            self.derive_path_from_leaf_secret(backend, ciphersuite, leaf_secret)?;
 
         let parent_hash =
             self.process_update_path(backend, ciphersuite, self.own_leaf_index, path)?;
@@ -280,6 +290,7 @@ impl<'a> TreeSyncDiff<'a> {
     ) -> Result<(), TreeSyncDiffError> {
         let parent_hash =
             self.process_update_path(backend, ciphersuite, sender_leaf_index, path)?;
+
         // Verify the parent hash.
         let phe = key_package
             .extension_with_type(ExtensionType::ParentHash)
