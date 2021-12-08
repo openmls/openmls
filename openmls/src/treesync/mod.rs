@@ -9,7 +9,7 @@
 //! in turn can be mutably operated on and merged back into the original
 //! [`TreeSync`] instance.
 //!
-//! The submodules of this module define the nodes of the tree ([`nodes`]),
+//! The submodules of this module define the nodes of the tree (`nodes`),
 //! helper functions and structs for the algorithms used to sync the tree across
 //! the group ([`hashes`]) and the diff functionality ([`diff`]).
 //!
