@@ -66,12 +66,9 @@ impl<'a> TreeSyncDiff<'a> {
 
         let (decryption_key, resolution_position) =
             self.decryption_key(sender_leaf_index, exclusion_list)?;
-        let ciphertext = match update_path_node.get_encrypted_ciphertext(resolution_position) {
-            Some(ct) => ct,
-            None => {
-                return Err(TreeKemError::EncryptedCiphertextNotFound);
-            }
-        };
+        let ciphertext = update_path_node
+            .get_encrypted_ciphertext(resolution_position)
+            .ok_or(TreeKemError::EncryptedCiphertextNotFound)?;
 
         let path_secret = PathSecret::decrypt(
             backend,

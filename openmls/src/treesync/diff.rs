@@ -46,6 +46,8 @@ use crate::{
 
 pub(crate) type UpdatePathResult = (KeyPackageBundle, Vec<PlainUpdatePathNode>, CommitSecret);
 
+/// The [`StagedTreeSyncDiff`] can be created from a [`TreeSyncDiff`], examined
+/// and later merged into a [`TreeSync`] instance.
 #[derive(Debug)]
 pub(crate) struct StagedTreeSyncDiff {
     diff: StagedMlsBinaryTreeDiff<TreeSyncNode>,
@@ -58,6 +60,12 @@ impl StagedTreeSyncDiff {
     }
 }
 
+/// A [`TreeSyncDiff`] serves as a way to perform changes on an otherwise
+/// immutable [`TreeSync`] instance. Before the changes made to a
+/// [`TreeSyncDiff`] can be merged into the original [`TreeSync`] instance, it
+/// has to be turned into a [`StagedTreeSyncDiff`], upon which a number of
+/// checks are performed to ensure that the changes preseve the [`TreeSync`]
+/// invariants. See [`TreeSync`] for the list of invariants.
 pub(crate) struct TreeSyncDiff<'a> {
     diff: MlsBinaryTreeDiff<'a, TreeSyncNode>,
     own_leaf_index: LeafIndex,
@@ -74,15 +82,6 @@ impl<'a> TryFrom<&'a TreeSync> for TreeSyncDiff<'a> {
     }
 }
 
-// We want to enforce a few invariants on the tree that should be explicitly
-// checked before making a Diff a StagedDiff and before creating an actual tree
-// from a vector of nodes.
-
-// * Private keys should only be in our own leaf and in the direct path.
-// * unmerged leaf indices should only point to non-blank leaf nodes
-
-/// Note: Any function that modifies a node should erase the tree hash of every
-/// node in its direct path.
 impl<'a> TreeSyncDiff<'a> {
     /// Check if the right-most leaf is blank. If that is the case, remove the
     /// right-most leaf until the right-most leaf is not blank anymore.
@@ -95,12 +94,16 @@ impl<'a> TreeSyncDiff<'a> {
         Ok(())
     }
 
+    /// Returns the number of leaves in the tree that would result from merging
+    /// this diff.
     pub(crate) fn leaf_count(&self) -> LeafIndex {
         self.diff.leaf_count()
     }
 
-    /// Update an existing leaf node and blank the nodes in the updated leaf's
-    /// direct path. Returns an error if the target leaf is blank.
+    /// Updates an existing leaf node and blanks the nodes in the updated leaf's
+    /// direct path.
+    ///
+    /// Returns an error if the target leaf is blank or outside of the tree.
     pub(crate) fn update_leaf(
         &mut self,
         leaf_node: impl Into<LeafNode>,
@@ -115,10 +118,12 @@ impl<'a> TreeSyncDiff<'a> {
     }
 
     /// Adds a new leaf to the tree either by filling a blank leaf or by
-    /// creating a new leaf, inserting intermediate blanks as necessary. This
-    /// also adds the leaf_index of the new leaf to the `unmerged_leaves` state
-    /// of the parent nodes in its direct path. Returns the LeafIndex of the new
-    /// leaf.
+    /// extending the tree to the right to create a new leaf, inserting
+    /// intermediate blanks as necessary. This also adds the leaf_index of the
+    /// new leaf to the `unmerged_leaves` of the parent nodes in its direct
+    /// path.
+    ///
+    /// Returns the LeafIndex of the new leaf.
     pub(crate) fn add_leaf(
         &mut self,
         leaf_node: KeyPackage,
@@ -159,6 +164,8 @@ impl<'a> TreeSyncDiff<'a> {
     /// Remove a group member by blanking the target leaf and its direct path.
     /// After blanking the leaf and its direct path, the diff is trimmed, i.e.
     /// leafs are removed until the right-most leaf in the tree is non-blank.
+    ///
+    /// Returns an error if the target leaf is outside of the tree.
     pub(crate) fn blank_leaf(&mut self, leaf_index: LeafIndex) -> Result<(), TreeSyncDiffError> {
         self.diff.replace_leaf(leaf_index, TreeSyncNode::blank())?;
         // This also erases any cached tree hash in the direct path.
@@ -168,8 +175,12 @@ impl<'a> TreeSyncDiff<'a> {
         Ok(())
     }
 
-    /// Given a [`KeyPackageBundle`], use it to re-create a path in the course
-    /// of applying our own commit.
+    /// Given a [`KeyPackageBundle`], use it to create a path and apply it to
+    /// the diff. This function is meant to be used with a [`KeyPackageBundle`]
+    /// that has been returned by a call to [`Self::apply_own_update_path()`].
+    ///
+    /// Returns an error if the `parent_hash` of the given [`KeyPackageBundle`]
+    /// does not match the one computed from the generated path.
     pub(crate) fn re_apply_own_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -219,8 +230,10 @@ impl<'a> TreeSyncDiff<'a> {
 
     /// Given a [`KeyPackageBundlePayload`], use it to create a new path and
     /// apply it to this diff. The given [`CredentialBundle`] reference is used
-    /// to sign the [`KeyPackageBundlePayload`], which is returned for later use
-    /// with [`Self::re_apply_own_update_path`].
+    /// to sign the [`KeyPackageBundlePayload`] after updating its parent hash.
+    ///
+    /// Returns the resulting [`KeyPackageBundle`] for later use with
+    /// [`Self::re_apply_own_update_path()`].
     pub(crate) fn apply_own_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -251,8 +264,12 @@ impl<'a> TreeSyncDiff<'a> {
         Ok((key_package_bundle, update_path_nodes, commit_secret))
     }
 
+    /// Set the given path as the direct path of the `sender_leaf_index` and
+    /// replace the [`KeyPackage`] in the corresponding leaf with the given one.
     /// The given path of ParentNodes should already include any potential path
     /// secrets.
+    ///
+    /// Returns an error if the `sender_leaf_index` is outside of the tree.
     pub(crate) fn apply_received_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -284,9 +301,12 @@ impl<'a> TreeSyncDiff<'a> {
         Ok(())
     }
 
-    /// Process a given update path, consisting of a vector of `Node`. This
-    /// function replaces the nodes in the direct path of the given `leaf_index`
-    /// with the the ones in `path`
+    /// Process a given update path, consisting of a vector of `ParentNode`.
+    /// This function replaces the nodes in the direct path of the given
+    /// `leaf_index` with the the ones in `path`.
+    ///
+    /// Returns the parent hash of the leaf at `leaf_index`. Returns an error if
+    /// the target leaf is outside of the tree.
     fn process_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -307,10 +327,12 @@ impl<'a> TreeSyncDiff<'a> {
         Ok(parent_hash)
     }
 
-    /// Sets the path secrets, but doesn't otherwise touch the nodes. This
+    /// Set the path secrets, but doesn't otherwise touch the nodes. This
     /// function also checks that the derived public keys match the existing
-    /// public keys. Returns the `CommitSecret` resulting from the path
-    /// derivation.
+    /// public keys.
+    ///
+    /// Returns the `CommitSecret` derived from the path secret of the root
+    /// node. Returns an error if the target leaf is outside of the tree.
     pub(super) fn set_path_secrets(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -375,9 +397,11 @@ impl<'a> TreeSyncDiff<'a> {
     }
 
     /// Set the parent hash of the given nodes assuming that they are the new
-    /// direct path of the leaf with the given index and return the parent hash
-    /// of the leaf node. This function requires that all nodes in the direct
-    /// path are non-blank.
+    /// direct path of the leaf with the given index. This function requires
+    /// that all nodes in the direct path are non-blank.
+    ///
+    /// Returns the parent hash of the leaf node at `leaf_index`. Returns an
+    /// error if the target leaf is outside of the tree.
     fn set_parent_hashes(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -442,8 +466,9 @@ impl<'a> TreeSyncDiff<'a> {
                     Ok(vec![node.public_key().clone()])
                 }
             } else {
-                // If it's a parent node, get the unmerged leaves, exclude them as
-                // necessary and get their public keys.
+                // If it's a parent node, get the unmerged leaves, exclude them
+                // as necessary and add their public keys to the resulting
+                // resolution.
                 let mut resolution = vec![node.public_key().clone()];
                 for leaf_index in node.as_parent_node()?.unmerged_leaves() {
                     if !excluded_indices.contains(leaf_index) {
@@ -463,7 +488,7 @@ impl<'a> TreeSyncDiff<'a> {
         } else {
             // If it's a blank, also check if it's a leaf
             if self.diff.is_leaf(node_ref) {
-                // If it it, just return an empty vector.
+                // If it is, just return an empty vector.
                 Ok(vec![])
             } else {
                 // If not, continue resolving down the tree.
@@ -481,6 +506,10 @@ impl<'a> TreeSyncDiff<'a> {
     /// the given leaf index. This includes the neighbour of the given leaf. If
     /// an exclusion list is given, do not add the public keys of the leaves
     /// given in the list.
+    ///
+    /// Returns a vector containing the copath resolutions of the given
+    /// `leaf_index` beginning with the neighbour of the leaf. Returns an error
+    /// if the target leaf is outside of the tree.
     pub(crate) fn copath_resolutions(
         &self,
         leaf_index: LeafIndex,
@@ -512,6 +541,9 @@ impl<'a> TreeSyncDiff<'a> {
         Ok(copath_resolutions)
     }
 
+    /// Verify the parent hashes of all nodes in the tree.
+    ///
+    /// Returns an error if a mismatching parent hash is found.
     pub(crate) fn verify_parent_hashes(
         &self,
         backend: &impl OpenMlsCryptoProvider,
@@ -602,6 +634,10 @@ impl<'a> TreeSyncDiff<'a> {
         })
     }
 
+    /// Helper function to compute and set the tree hash of the given node and
+    /// all nodes below it in the tree. This function respects cached tree hash
+    /// values. If a cached value is found it is returned without further
+    /// computation of hashes of the node or the nodes below it.
     fn set_tree_hash(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -643,10 +679,12 @@ impl<'a> TreeSyncDiff<'a> {
         Ok(tree_hash)
     }
 
+    /// Return the own leaf index.
     pub(in crate::treesync) fn own_leaf_index(&self) -> LeafIndex {
         self.own_leaf_index
     }
 
+    /// Compute and set the tree hash of all nodes in the tree.
     pub(crate) fn compute_tree_hash(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -657,6 +695,9 @@ impl<'a> TreeSyncDiff<'a> {
 
     /// Returns the position of the subtree root shared by both given indices in
     /// the direct path of `leaf_index_1`.
+    ///
+    /// Returns an error if the given leaf indices are identical or if either of
+    /// the given leaf indices is outside of the tree.
     pub(crate) fn subtree_root_position(
         &self,
         leaf_index_1: LeafIndex,
@@ -667,19 +708,18 @@ impl<'a> TreeSyncDiff<'a> {
             .subtree_root_position(leaf_index_1, leaf_index_2)?)
     }
 
-    /// Returns the positions in the filtered copath resolution (i.e. the
-    /// position in the copath, as well as the position in the resolution of the
-    /// copath node), as well as the matching private key.
+    /// Compute the position of the highest node in the tree in the filtered
+    /// copath resolution of the given `sender_leaf_index` that we have a
+    /// private key for.
+    ///
+    /// Returns the resulting position, as well as the private key of the node
+    /// corresponding to that node private key. Returns an error if the given
+    /// `sender_leaf_index` is outside of the tree.
     pub(crate) fn decryption_key(
         &self,
         sender_leaf_index: LeafIndex,
         excluded_indices: &HashSet<&LeafIndex>,
     ) -> Result<(&HpkePrivateKey, usize), TreeSyncDiffError> {
-        println!("\nSearching decryption key");
-        println!("I am {:?}", self.own_leaf_index());
-        println!("Sender is {:?}", sender_leaf_index);
-        println!("Exclusion list: {:?}", excluded_indices);
-        println!("Leaf count: {:?}", self.leaf_count());
         // Get the copath node of the sender that is in our direct path, as well
         // as its position in our direct path.
         let subtree_root_copath_node_ref = self
@@ -695,10 +735,8 @@ impl<'a> TreeSyncDiff<'a> {
         let mut own_node_refs = vec![self.diff.leaf(self.own_leaf_index)?];
 
         own_node_refs.append(&mut self.diff.direct_path(self.own_leaf_index)?);
-        println!("Looking for key in the following path: {:?}", own_node_refs);
         for node_ref in own_node_refs {
             let node_tsn = self.diff.node(node_ref)?;
-            println!("Node {:?}: {:?}", node_ref, node_tsn);
             // If the node is blank, skip it.
             if let Some(node) = node_tsn.node() {
                 // If we don't have the private key, skip it.
@@ -717,11 +755,13 @@ impl<'a> TreeSyncDiff<'a> {
         Err(TreeSyncDiffError::NoPrivateKeyFound)
     }
 
+    /// Returns a vector of all nodes in the tree resulting from merging this
+    /// diff.
     pub(crate) fn export_nodes(&self) -> Result<Vec<Option<Node>>, TreeSyncDiffError> {
         let nodes = self
             .diff
             .export_nodes()?
-            .drain(..)
+            .into_iter()
             .map(|ts_node| ts_node.node().to_owned())
             .collect();
         Ok(nodes)
