@@ -92,29 +92,19 @@ fn test_pgs(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvi
         .stage_commit(
             &commit,
             &proposal_store,
-            &[kpb_option.expect("No KeyPackageBundle")],
+            &[kpb_option.clone().expect("No KeyPackageBundle")],
             None,
             backend,
-        )
-        .expect("Could not stage Commit");
-    group_alice.merge_commit(staged_commit);
-
-    let pgs = group_alice
-        .export_public_group_state(backend, &alice_credential_bundle)
-        .expect("Could not export the public group state");
-
-    let staged_commit = group_alice
-        .stage_commit(
-            &commit,
-            &proposal_store,
-            &[kpb_option.expect("No KeyPackageBundle")],
-            None,
-            &crypto,
         )
         .expect("Could not stage Commit");
     group_alice
         .merge_commit(staged_commit)
         .expect("error merging commit");
+
+    let pgs = group_alice
+        .export_public_group_state(backend, &alice_credential_bundle)
+        .expect("Could not export the public group state");
+
     // Make sure Alice is the signer
     assert_eq!(pgs.signer_index, LeafIndex::from(0u32));
 

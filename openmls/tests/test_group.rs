@@ -141,8 +141,10 @@ fn create_commit_optional_path(
     let staged_commit = group_alice
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, backend)
         .expect("Error staging commit");
-    group_alice.merge_commit(staged_commit);
-    let ratchet_tree = group_alice.tree().public_key_tree_copy();
+    group_alice
+        .merge_commit(staged_commit)
+        .expect("An unexpected error occurred.");
+    let ratchet_tree = group_alice.tree().export_nodes();
 
     // Bob creates group from Welcome
     let group_bob = match MlsGroup::new_from_welcome(
@@ -157,8 +159,8 @@ fn create_commit_optional_path(
     };
 
     assert_eq!(
-        group_alice.tree().public_key_tree(),
-        group_bob.tree().public_key_tree()
+        group_alice.tree().export_nodes(),
+        group_bob.tree().export_nodes()
     );
 
     // Alice updates
@@ -205,7 +207,9 @@ fn create_commit_optional_path(
             backend,
         )
         .expect("Error staging commit");
-    group_alice.merge_commit(staged_commit);
+    group_alice
+        .merge_commit(staged_commit)
+        .expect("An unexpected error occurred.");
 }
 
 #[apply(ciphersuites_and_backends)]

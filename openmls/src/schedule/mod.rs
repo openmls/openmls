@@ -163,7 +163,8 @@ impl From<PathSecret> for CommitSecret {
         CommitSecret {
             secret: path_secret.secret(),
         }
-
+    }
+}
 
 impl From<Secret> for CommitSecret {
     fn from(secret: Secret) -> Self {

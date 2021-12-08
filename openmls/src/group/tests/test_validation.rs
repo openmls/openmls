@@ -5,8 +5,12 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMlsCryptoProvider};
 use tls_codec::{Deserialize, Serialize};
 
+use rstest::*;
+use rstest_reuse::{self, *};
+
 use crate::{
     ciphersuite::{Ciphersuite, CiphersuiteName, Mac, Secret},
+    config::Config,
     credentials::{Credential, CredentialBundle, CredentialError, CredentialType},
     extensions::Extension,
     framing::{
