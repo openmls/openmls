@@ -1,290 +1,215 @@
 use openmls::{group::create_commit_params::CreateCommitParams, prelude::*};
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::OpenMlsCryptoProvider;
 
-#[test]
-fn create_commit_optional_path() {
-    let crypto = OpenMlsRustCrypto::default();
-    for ciphersuite in Config::supported_ciphersuites() {
-        let group_aad = b"Alice's test group";
-        // Framing parameters
-        let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+use openmls::test_utils::*;
+use openmls::*;
 
-        // Define identities
-        let alice_credential_bundle = CredentialBundle::new(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-            &crypto,
-        )
-        .expect("An unexpected error occurred.");
-        let bob_credential_bundle = CredentialBundle::new(
-            "Bob".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-            &crypto,
-        )
-        .expect("An unexpected error occurred.");
+#[apply(ciphersuites_and_backends)]
+fn create_commit_optional_path(
+    ciphersuite: &'static Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+) {
+    let group_aad = b"Alice's test group";
+    // Framing parameters
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
 
-        // Mandatory extensions, will be fixed in #164
-        let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
-        let mandatory_extensions: Vec<Extension> = vec![lifetime_extension];
+    // Define identities
+    let alice_credential_bundle = CredentialBundle::new(
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
+    let bob_credential_bundle = CredentialBundle::new(
+        "Bob".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
 
-        // Generate KeyPackages
-        let alice_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
+    // Mandatory extensions, will be fixed in #164
+    let lifetime_extension = Extension::LifeTime(LifetimeExtension::new(60));
+    let mandatory_extensions: Vec<Extension> = vec![lifetime_extension];
+
+    // Generate KeyPackages
+    let alice_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &alice_credential_bundle,
+        backend,
+        mandatory_extensions.clone(),
+    )
+    .expect("An unexpected error occurred.");
+
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &bob_credential_bundle,
+        backend,
+        mandatory_extensions.clone(),
+    )
+    .expect("An unexpected error occurred.");
+    let bob_key_package = bob_key_package_bundle.key_package();
+
+    let alice_update_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &alice_credential_bundle,
+        backend,
+        mandatory_extensions,
+    )
+    .expect("An unexpected error occurred.");
+    let alice_update_key_package = alice_update_key_package_bundle.key_package();
+    assert!(alice_update_key_package.verify(backend,).is_ok());
+
+    // Alice creates a group
+    let mut group_alice = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+        .build(backend)
+        .expect("Error creating MlsGroup.");
+
+    // Alice proposes to add Bob with forced self-update
+    // Even though there are only Add Proposals, this should generated a path field
+    // on the Commit
+    let bob_add_proposal = group_alice
+        .create_add_proposal(
+            framing_parameters,
             &alice_credential_bundle,
-            &crypto,
-            mandatory_extensions.clone(),
+            bob_key_package.clone(),
+            backend,
         )
-        .expect("An unexpected error occurred.");
+        .expect("Could not create proposal.");
 
-        let bob_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
-            &bob_credential_bundle,
-            &crypto,
-            mandatory_extensions.clone(),
-        )
-        .expect("An unexpected error occurred.");
-        let bob_key_package = bob_key_package_bundle.key_package();
+    let mut proposal_store = ProposalStore::from_staged_proposal(
+        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create StagedProposal."),
+    );
 
-        let alice_update_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
-            &alice_credential_bundle,
-            &crypto,
-            mandatory_extensions,
-        )
-        .expect("An unexpected error occurred.");
-        let alice_update_key_package = alice_update_key_package_bundle.key_package();
-        assert!(alice_update_key_package.verify(&crypto,).is_ok());
-
-        // Alice creates a group
-        let mut group_alice = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
-            .build(&crypto)
-            .expect("Error creating MlsGroup.");
-
-        // Alice proposes to add Bob with forced self-update
-        // Even though there are only Add Proposals, this should generated a path field
-        // on the Commit
-        let bob_add_proposal = group_alice
-            .create_add_proposal(
-                framing_parameters,
-                &alice_credential_bundle,
-                bob_key_package.clone(),
-                &crypto,
-            )
-            .expect("Could not create proposal.");
-
-        let mut proposal_store = ProposalStore::from_staged_proposal(
-            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
-                .expect("Could not create StagedProposal."),
-        );
-
-        let params = CreateCommitParams::builder()
-            .framing_parameters(framing_parameters)
-            .credential_bundle(&alice_credential_bundle)
-            .proposal_store(&proposal_store)
-            .build();
-        let (mls_plaintext_commit, _welcome_bundle_alice_bob_option, kpb_option) =
-            match group_alice.create_commit(params /* No PSK fetcher */, &crypto) {
-                Ok(c) => c,
-                Err(e) => panic!("Error creating commit: {:?}", e),
-            };
-        let commit = match mls_plaintext_commit.content() {
-            MlsPlaintextContentType::Commit(commit) => commit,
-            _ => panic!(),
-        };
-        assert!(commit.has_path());
-        assert!(commit.has_path() && kpb_option.is_some());
-
-        // Alice adds Bob without forced self-update
-        // Since there are only Add Proposals, this does not generate a path field on
-        // the Commit Creating a second proposal to add the same member should
-        // not fail, only committing that proposal should fail
-        let bob_add_proposal = group_alice
-            .create_add_proposal(
-                framing_parameters,
-                &alice_credential_bundle,
-                bob_key_package.clone(),
-                &crypto,
-            )
-            .expect("Could not create proposal.");
-
-        proposal_store.empty();
-        proposal_store.add(
-            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
-                .expect("Could not create StagedProposal."),
-        );
-
-        let params = CreateCommitParams::builder()
-            .framing_parameters(framing_parameters)
-            .credential_bundle(&alice_credential_bundle)
-            .proposal_store(&proposal_store)
-            .force_self_update(false)
-            .build();
-        let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) =
-            match group_alice.create_commit(params /* PSK fetcher */, &crypto) {
-                Ok(c) => c,
-                Err(e) => panic!("Error creating commit: {:?}", e),
-            };
-        let commit = match mls_plaintext_commit.content() {
-            MlsPlaintextContentType::Commit(commit) => commit,
-            _ => panic!(),
-        };
-        assert!(!commit.has_path() && kpb_option.is_none());
-
-        // Alice applies the Commit without the forced self-update
-
-        let staged_commit = group_alice
-            .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, &crypto)
-            .expect("Error staging commit");
-        group_alice
-            .merge_commit(staged_commit)
-            .expect("error merging commit");
-        let ratchet_tree = group_alice.tree().export_nodes();
-
-        // Bob creates group from Welcome
-        let group_bob = match MlsGroup::new_from_welcome(
-            welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
-            Some(ratchet_tree),
-            bob_key_package_bundle,
-            None, /* PSK fetcher */
-            &crypto,
-        ) {
-            Ok(group) => group,
-            Err(e) => panic!("Error creating group from Welcome: {:?}", e),
-        };
-
-        assert_eq!(
-            group_alice.tree().export_nodes(),
-            group_bob.tree().export_nodes()
-        );
-
-        // Alice updates
-        let alice_update_proposal = group_alice
-            .create_update_proposal(
-                framing_parameters,
-                &alice_credential_bundle,
-                alice_update_key_package.clone(),
-                &crypto,
-            )
-            .expect("Could not create proposal.");
-
-        proposal_store.empty();
-        proposal_store.add(
-            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, alice_update_proposal)
-                .expect("Could not create StagedProposal."),
-        );
-
-        // Only UpdateProposal
-        let params = CreateCommitParams::builder()
-            .framing_parameters(framing_parameters)
-            .credential_bundle(&alice_credential_bundle)
-            .proposal_store(&proposal_store)
-            .force_self_update(false)
-            .build();
-        let (commit_mls_plaintext, _welcome_option, kpb_option) =
-            match group_alice.create_commit(params /* PSK fetcher */, &crypto) {
-                Ok(c) => c,
-                Err(e) => panic!("Error creating commit: {:?}", e),
-            };
-        let commit = match commit_mls_plaintext.content() {
-            MlsPlaintextContentType::Commit(commit) => commit,
-            _ => panic!(),
-        };
-        assert!(commit.has_path() && kpb_option.is_some());
-
-        // Apply UpdateProposal
-        let staged_commit = group_alice
-            .stage_commit(
-                &commit_mls_plaintext,
-                &proposal_store,
-                &[kpb_option.expect("An unexpected error occurred.")],
-                None, /* PSK fetcher */
-                &crypto,
-            )
-            .expect("Error staging commit");
-        group_alice
-            .merge_commit(staged_commit)
-            .expect("error merging commit");
-    }
-}
-
-#[test]
-fn basic_group_setup() {
-    let crypto = OpenMlsRustCrypto::default();
-    for ciphersuite in Config::supported_ciphersuites() {
-        let group_aad = b"Alice's test group";
-        // Framing parameters
-        let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
-
-        // Define credential bundles
-        let alice_credential_bundle = CredentialBundle::new(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-            &crypto,
-        )
-        .expect("An unexpected error occurred.");
-        let bob_credential_bundle = CredentialBundle::new(
-            "Bob".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-            &crypto,
-        )
-        .expect("An unexpected error occurred.");
-
-        // Generate KeyPackages
-        let bob_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
-            &bob_credential_bundle,
-            &crypto,
-            Vec::new(),
-        )
-        .expect("An unexpected error occurred.");
-        let bob_key_package = bob_key_package_bundle.key_package();
-
-        let alice_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
-            &alice_credential_bundle,
-            &crypto,
-            Vec::new(),
-        )
-        .expect("An unexpected error occurred.");
-
-        // Alice creates a group
-        let group_alice = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
-            .build(&crypto)
-            .expect("Error creating MlsGroup.");
-
-        // Alice adds Bob
-        let bob_add_proposal = group_alice
-            .create_add_proposal(
-                framing_parameters,
-                &alice_credential_bundle,
-                bob_key_package.clone(),
-                &crypto,
-            )
-            .expect("Could not create proposal.");
-
-        let proposal_store = ProposalStore::from_staged_proposal(
-            StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
-                .expect("Could not create StagedProposal."),
-        );
-
-        let params = CreateCommitParams::builder()
-            .framing_parameters(framing_parameters)
-            .credential_bundle(&alice_credential_bundle)
-            .proposal_store(&proposal_store)
-            .build();
-        let _commit = match group_alice.create_commit(params /* PSK fetcher */, &crypto) {
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .build();
+    let (mls_plaintext_commit, _welcome_bundle_alice_bob_option, kpb_option) =
+        match group_alice.create_commit(params /* No PSK fetcher */, backend) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
-    }
+    let commit = match mls_plaintext_commit.content() {
+        MlsPlaintextContentType::Commit(commit) => commit,
+        _ => panic!(),
+    };
+    assert!(commit.has_path());
+    assert!(commit.has_path() && kpb_option.is_some());
+
+    // Alice adds Bob without forced self-update
+    // Since there are only Add Proposals, this does not generate a path field on
+    // the Commit Creating a second proposal to add the same member should
+    // not fail, only committing that proposal should fail
+    let bob_add_proposal = group_alice
+        .create_add_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            bob_key_package.clone(),
+            backend,
+        )
+        .expect("Could not create proposal.");
+
+    proposal_store.empty();
+    proposal_store.add(
+        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create StagedProposal."),
+    );
+
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .force_self_update(false)
+        .build();
+    let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) =
+        match group_alice.create_commit(params /* PSK fetcher */, backend) {
+            Ok(c) => c,
+            Err(e) => panic!("Error creating commit: {:?}", e),
+        };
+    let commit = match mls_plaintext_commit.content() {
+        MlsPlaintextContentType::Commit(commit) => commit,
+        _ => panic!(),
+    };
+    assert!(!commit.has_path() && kpb_option.is_none());
+
+    // Alice applies the Commit without the forced self-update
+
+    let staged_commit = group_alice
+        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, backend)
+        .expect("Error staging commit");
+    group_alice.merge_commit(staged_commit);
+    let ratchet_tree = group_alice.tree().public_key_tree_copy();
+
+    // Bob creates group from Welcome
+    let group_bob = match MlsGroup::new_from_welcome(
+        welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
+        Some(ratchet_tree),
+        bob_key_package_bundle,
+        None, /* PSK fetcher */
+        backend,
+    ) {
+        Ok(group) => group,
+        Err(e) => panic!("Error creating group from Welcome: {:?}", e),
+    };
+
+    assert_eq!(
+        group_alice.tree().public_key_tree(),
+        group_bob.tree().public_key_tree()
+    );
+
+    // Alice updates
+    let alice_update_proposal = group_alice
+        .create_update_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            alice_update_key_package.clone(),
+            backend,
+        )
+        .expect("Could not create proposal.");
+
+    proposal_store.empty();
+    proposal_store.add(
+        StagedProposal::from_mls_plaintext(ciphersuite, backend, alice_update_proposal)
+            .expect("Could not create StagedProposal."),
+    );
+
+    // Only UpdateProposal
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .force_self_update(false)
+        .build();
+    let (commit_mls_plaintext, _welcome_option, kpb_option) =
+        match group_alice.create_commit(params /* PSK fetcher */, backend) {
+            Ok(c) => c,
+            Err(e) => panic!("Error creating commit: {:?}", e),
+        };
+    let commit = match commit_mls_plaintext.content() {
+        MlsPlaintextContentType::Commit(commit) => commit,
+        _ => panic!(),
+    };
+    assert!(commit.has_path() && kpb_option.is_some());
+
+    // Apply UpdateProposal
+    let staged_commit = group_alice
+        .stage_commit(
+            &commit_mls_plaintext,
+            &proposal_store,
+            &[kpb_option.expect("An unexpected error occurred.")],
+            None, /* PSK fetcher */
+            backend,
+        )
+        .expect("Error staging commit");
+    group_alice.merge_commit(staged_commit);
 }
 
-fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuite: &Ciphersuite) {
+#[apply(ciphersuites_and_backends)]
+fn basic_group_setup(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_aad = b"Alice's test group";
     // Framing parameters
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
@@ -294,14 +219,97 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         "Alice".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
-        &crypto,
+        backend,
     )
     .expect("An unexpected error occurred.");
     let bob_credential_bundle = CredentialBundle::new(
         "Bob".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
-        &crypto,
+        backend,
+    )
+    .expect("An unexpected error occurred.");
+
+    // Generate KeyPackages
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &bob_credential_bundle,
+        backend,
+        Vec::new(),
+    )
+    .expect("An unexpected error occurred.");
+    let bob_key_package = bob_key_package_bundle.key_package();
+
+    let alice_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &alice_credential_bundle,
+        backend,
+        Vec::new(),
+    )
+    .expect("An unexpected error occurred.");
+
+    // Alice creates a group
+    let group_alice = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+        .build(backend)
+        .expect("Error creating MlsGroup.");
+
+    // Alice adds Bob
+    let bob_add_proposal = group_alice
+        .create_add_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            bob_key_package.clone(),
+            backend,
+        )
+        .expect("Could not create proposal.");
+
+    let proposal_store = ProposalStore::from_staged_proposal(
+        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create StagedProposal."),
+    );
+
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .build();
+    let _commit = match group_alice.create_commit(params /* PSK fetcher */, backend) {
+        Ok(c) => c,
+        Err(e) => panic!("Error creating commit: {:?}", e),
+    };
+}
+
+/// This test simulates various group operations like Add, Update, Remove in a
+/// small group
+///  - Alice creates a group
+///  - Alice adds Bob
+///  - Alice sends a message to Bob
+///  - Bob updates and commits
+///  - Alice updates and commits
+///  - Bob updates and Alice commits
+///  - Bob adds Charlie
+///  - Charlie sends a message to the group
+///  - Charlie updates and commits
+///  - Charlie removes Bob
+#[apply(ciphersuites_and_backends)]
+fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let group_aad = b"Alice's test group";
+    // Framing parameters
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+
+    // Define credential bundles
+    let alice_credential_bundle = CredentialBundle::new(
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
+    let bob_credential_bundle = CredentialBundle::new(
+        "Bob".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+        backend,
     )
     .expect("An unexpected error occurred.");
 
@@ -319,7 +327,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     let alice_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite.name()],
         &alice_credential_bundle,
-        &crypto,
+        backend,
         mandatory_extensions.clone(),
     )
     .expect("An unexpected error occurred.");
@@ -327,15 +335,15 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     let bob_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite.name()],
         &bob_credential_bundle,
-        &crypto,
+        backend,
         mandatory_extensions.clone(),
     )
     .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group ===
-    let mut group_alice = MlsGroup::builder(GroupId::random(&crypto), alice_key_package_bundle)
-        .build(&crypto)
+    let mut group_alice = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+        .build(backend)
         .expect("Error creating MlsGroup.");
 
     // === Alice adds Bob ===
@@ -344,12 +352,12 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             framing_parameters,
             &alice_credential_bundle,
             bob_key_package.clone(),
-            &crypto,
+            backend,
         )
         .expect("Could not create proposal.");
 
     let mut proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, bob_add_proposal)
+        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create StagedProposal."),
     );
 
@@ -360,7 +368,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         .force_self_update(false)
         .build();
     let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = group_alice
-        .create_commit(params, &crypto)
+        .create_commit(params, backend)
         .expect("Error creating commit");
     let commit = match mls_plaintext_commit.content() {
         MlsPlaintextContentType::Commit(commit) => commit,
@@ -376,7 +384,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &proposal_store,
             &[],
             None, /* PSK fetcher */
-            &crypto,
+            backend,
         )
         .expect("Error staging commit");
     group_alice
@@ -389,7 +397,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         Some(ratchet_tree),
         bob_key_package_bundle,
         None, /* PSK fetcher */
-        &crypto,
+        backend,
     ) {
         Ok(group) => group,
         Err(e) => panic!("Error creating group from Welcome: {:?}", e),
@@ -408,11 +416,11 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     // === Alice sends a message to Bob ===
     let message_alice = [1, 2, 3];
     let mls_ciphertext_alice = group_alice
-        .create_application_message(&[], &message_alice, &alice_credential_bundle, 0, &crypto)
+        .create_application_message(&[], &message_alice, &alice_credential_bundle, 0, backend)
         .expect("An unexpected error occurred.");
-    let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_alice, &crypto) {
+    let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_alice, backend) {
         Ok(mls_plaintext) => group_bob
-            .verify(mls_plaintext, &crypto)
+            .verify(mls_plaintext, backend)
             .expect("Error verifying plaintext"),
         Err(e) => panic!("Error decrypting MlsCiphertext: {:?}", e),
     };
@@ -427,7 +435,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     let bob_update_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite.name()],
         &bob_credential_bundle,
-        &crypto,
+        backend,
         mandatory_extensions.clone(),
     )
     .expect("Could not create key package bundle.");
@@ -437,13 +445,13 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             framing_parameters,
             &bob_credential_bundle,
             bob_update_key_package_bundle.key_package().clone(),
-            &crypto,
+            backend,
         )
         .expect("Could not create proposal.");
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, update_proposal_bob)
+        StagedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_bob)
             .expect("Could not create StagedProposal."),
     );
 
@@ -454,7 +462,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         .force_self_update(false)
         .build();
     let (mls_plaintext_commit, welcome_option, kpb_option) =
-        match group_bob.create_commit(params, &crypto) {
+        match group_bob.create_commit(params, backend) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
@@ -470,7 +478,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &proposal_store,
             &[],
             None, /* PSK fetcher */
-            &crypto,
+            backend,
         )
         .expect("Error applying commit (Alice)");
     group_alice
@@ -482,7 +490,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &proposal_store,
             &[kpb_option.expect("An unexpected error occurred.")],
             None, /* PSK fetcher */
-            &crypto,
+            backend,
         )
         .expect("Error applying commit (Bob)");
     group_bob
@@ -499,7 +507,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     let alice_update_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite.name()],
         &alice_credential_bundle,
-        &crypto,
+        backend,
         mandatory_extensions.clone(),
     )
     .expect("Could not create key package bundle.");
@@ -509,13 +517,13 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             framing_parameters,
             &alice_credential_bundle,
             alice_update_key_package_bundle.key_package().clone(),
-            &crypto,
+            backend,
         )
         .expect("Could not create proposal.");
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, update_proposal_alice)
+        StagedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_alice)
             .expect("Could not create StagedProposal."),
     );
 
@@ -526,7 +534,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         .force_self_update(false)
         .build();
     let (mls_plaintext_commit, _, kpb_option) =
-        match group_alice.create_commit(params /* PSK fetcher */, &crypto) {
+        match group_alice.create_commit(params /* PSK fetcher */, backend) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
@@ -540,7 +548,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &proposal_store,
             &[kpb_option.expect("An unexpected error occurred.")],
             None, /* PSK fetcher */
-            &crypto,
+            backend,
         )
         .expect("Error applying commit (Alice)");
     group_alice
@@ -552,7 +560,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &proposal_store,
             &[],
             None, /* PSK fetcher */
-            &crypto,
+            backend,
         )
         .expect("Error applying commit (Bob)");
     group_bob
@@ -569,7 +577,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     let bob_update_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite.name()],
         &bob_credential_bundle,
-        &crypto,
+        backend,
         mandatory_extensions.clone(),
     )
     .expect("Could not create key package bundle.");
@@ -579,13 +587,13 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             framing_parameters,
             &bob_credential_bundle,
             bob_update_key_package_bundle.key_package().clone(),
-            &crypto,
+            backend,
         )
         .expect("Could not create proposal.");
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, update_proposal_bob)
+        StagedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_bob)
             .expect("Could not create StagedProposal."),
     );
 
@@ -595,7 +603,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (mls_plaintext_commit, _, kpb_option) = match group_alice.create_commit(params, &crypto) {
+    let (mls_plaintext_commit, _, kpb_option) = match group_alice.create_commit(params, backend) {
         Ok(c) => c,
         Err(e) => panic!("Error creating commit: {:?}", e),
     };
@@ -609,7 +617,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &proposal_store,
             &[kpb_option.expect("An unexpected error occurred.")],
             None,
-            /* PSK fetcher */ &crypto,
+            /* PSK fetcher */ backend,
         )
         .expect("Error applying commit (Alice)");
     group_alice
@@ -621,7 +629,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &proposal_store,
             &[bob_update_key_package_bundle],
             None,
-            /* PSK fetcher */ &crypto,
+            /* PSK fetcher */ backend,
         )
         .expect("Error applying commit (Bob)");
     group_bob
@@ -639,14 +647,14 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         "Charlie".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
-        &crypto,
+        backend,
     )
     .expect("An unexpected error occurred.");
 
     let charlie_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite.name()],
         &charlie_credential_bundle,
-        &crypto,
+        backend,
         mandatory_extensions.clone(),
     )
     .expect("Could not create key package bundle.");
@@ -657,13 +665,13 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             framing_parameters,
             &bob_credential_bundle,
             charlie_key_package,
-            &crypto,
+            backend,
         )
         .expect("Could not create proposal.");
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, add_charlie_proposal_bob)
+        StagedProposal::from_mls_plaintext(ciphersuite, backend, add_charlie_proposal_bob)
             .expect("Could not create StagedProposal."),
     );
 
@@ -674,7 +682,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         .force_self_update(false)
         .build();
     let (mls_plaintext_commit, welcome_for_charlie_option, kpb_option) =
-        match group_bob.create_commit(params, &crypto) {
+        match group_bob.create_commit(params, backend) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
@@ -691,7 +699,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &proposal_store,
             &[],
             None,
-            /* PSK fetcher */ &crypto,
+            /* PSK fetcher */ backend,
         )
         .expect("Error applying commit (Alice)");
     group_alice
@@ -703,7 +711,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &proposal_store,
             &[],
             None,
-            /* PSK fetcher */ &crypto,
+            /* PSK fetcher */ backend,
         )
         .expect("Error applying commit (Bob)");
     group_bob
@@ -716,7 +724,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         Some(ratchet_tree),
         charlie_key_package_bundle,
         None,
-        /* PSK fetcher */ &crypto,
+        /* PSK fetcher */ backend,
     ) {
         Ok(group) => group,
         Err(e) => panic!("Error creating group from Welcome: {:?}", e),
@@ -740,18 +748,18 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &message_charlie,
             &charlie_credential_bundle,
             0,
-            &crypto,
+            backend,
         )
         .expect("An unexpected error occurred.");
-    let mls_plaintext_alice = match group_alice.decrypt(&mls_ciphertext_charlie.clone(), &crypto) {
+    let mls_plaintext_alice = match group_alice.decrypt(&mls_ciphertext_charlie.clone(), backend) {
         Ok(mls_plaintext) => group_alice
-            .verify(mls_plaintext, &crypto)
+            .verify(mls_plaintext, backend)
             .expect("Error verifying plaintext"),
         Err(e) => panic!("Error decrypting MlsCiphertext: {:?}", e),
     };
-    let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_charlie, &crypto) {
+    let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_charlie, backend) {
         Ok(mls_plaintext) => group_bob
-            .verify(mls_plaintext, &crypto)
+            .verify(mls_plaintext, backend)
             .expect("Error verifying plaintext"),
         Err(e) => panic!("Error decrypting MlsCiphertext: {:?}", e),
     };
@@ -772,7 +780,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
     let charlie_update_key_package_bundle = KeyPackageBundle::new(
         &[ciphersuite.name()],
         &charlie_credential_bundle,
-        &crypto,
+        backend,
         mandatory_extensions,
     )
     .expect("Could not create key package bundle.");
@@ -782,13 +790,13 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             framing_parameters,
             &charlie_credential_bundle,
             charlie_update_key_package_bundle.key_package().clone(),
-            &crypto,
+            backend,
         )
         .expect("Could not create proposal.");
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, update_proposal_charlie)
+        StagedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_charlie)
             .expect("Could not create StagedProposal."),
     );
 
@@ -798,7 +806,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (mls_plaintext_commit, _, kpb_option) = match group_charlie.create_commit(params, &crypto) {
+    let (mls_plaintext_commit, _, kpb_option) = match group_charlie.create_commit(params, backend) {
         Ok(c) => c,
         Err(e) => panic!("Error creating commit: {:?}", e),
     };
@@ -812,7 +820,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &proposal_store,
             &[],
             None,
-            /* PSK fetcher */ &crypto,
+            /* PSK fetcher */ backend,
         )
         .expect("Error applying commit (Alice)");
     group_alice
@@ -824,7 +832,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &proposal_store,
             &[],
             None,
-            /* PSK fetcher */ &crypto,
+            /* PSK fetcher */ backend,
         )
         .expect("Error applying commit (Bob)");
     group_bob
@@ -836,7 +844,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &proposal_store,
             &[kpb_option.expect("An unexpected error occurred.")],
             None,
-            /* PSK fetcher */ &crypto,
+            /* PSK fetcher */ backend,
         )
         .expect("Error applying commit (Charlie)");
     group_charlie
@@ -859,13 +867,13 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             framing_parameters,
             &charlie_credential_bundle,
             LeafIndex::from(1u32),
-            &crypto,
+            backend,
         )
         .expect("Could not create proposal.");
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, &crypto, remove_bob_proposal_charlie)
+        StagedProposal::from_mls_plaintext(ciphersuite, backend, remove_bob_proposal_charlie)
             .expect("Could not create StagedProposal."),
     );
 
@@ -876,7 +884,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
         .force_self_update(false)
         .build();
     let (mls_plaintext_commit, _, kpb_option) =
-        match group_charlie.create_commit(params /* PSK fetcher */, &crypto) {
+        match group_charlie.create_commit(params /* PSK fetcher */, backend) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
@@ -890,7 +898,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &proposal_store,
             &[],
             None,
-            /* PSK fetcher */ &crypto,
+            /* PSK fetcher */ backend,
         )
         .expect("Error applying commit (Alice)");
     group_alice
@@ -902,7 +910,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &proposal_store,
             &[],
             None,
-            /* PSK fetcher */ &crypto,
+            /* PSK fetcher */ backend,
         )
         .expect("Could not stage commit.")
         .self_removed());
@@ -912,7 +920,7 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
             &proposal_store,
             &[kpb_option.expect("An unexpected error occurred.")],
             None,
-            /* PSK fetcher */ &crypto,
+            /* PSK fetcher */ backend,
         )
         .expect("Error applying commit (Charlie)");
     group_charlie
@@ -931,43 +939,16 @@ fn do_group_operations<Crypto: OpenMlsCryptoProvider>(crypto: Crypto, ciphersuit
 
     // Make sure all groups export the same key
     let alice_exporter = group_alice
-        .export_secret(&crypto, "export test", &[], 32)
+        .export_secret(backend, "export test", &[], 32)
         .expect("An unexpected error occurred.");
     let charlie_exporter = group_charlie
-        .export_secret(&crypto, "export test", &[], 32)
+        .export_secret(backend, "export test", &[], 32)
         .expect("An unexpected error occurred.");
     assert_eq!(alice_exporter, charlie_exporter);
 
     // Now alice tries to derive an exporter with too large of a key length.
     let exporter_length: usize = u16::MAX.into();
     let exporter_length = exporter_length + 1;
-    let alice_exporter = group_alice.export_secret(&crypto, "export test", &[], exporter_length);
+    let alice_exporter = group_alice.export_secret(backend, "export test", &[], exporter_length);
     assert!(alice_exporter.is_err())
-}
-
-#[test]
-/// This test simulates various group operations like Add, Update, Remove in a
-/// small group
-///  - Alice creates a group
-///  - Alice adds Bob
-///  - Alice sends a message to Bob
-///  - Bob updates and commits
-///  - Alice updates and commits
-///  - Bob updates and Alice commits
-///  - Bob adds Charlie
-///  - Charlie sends a message to the group
-///  - Charlie updates and commits
-///  - Charlie removes Bob
-fn group_operations() {
-    for ciphersuite in Config::supported_ciphersuites() {
-        #[cfg(all(
-            target_arch = "x86_64",
-            not(target_os = "macos"),
-            not(target_family = "wasm")
-        ))]
-        if ciphersuite.aead() == openmls_traits::types::AeadType::ChaCha20Poly1305 {
-            do_group_operations(evercrypt_backend::OpenMlsEvercrypt::default(), ciphersuite);
-        }
-        do_group_operations(OpenMlsRustCrypto::default(), ciphersuite);
-    }
 }

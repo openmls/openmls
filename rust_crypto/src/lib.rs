@@ -25,7 +25,7 @@ use p256::{
     EncodedPoint,
 };
 use rand::{RngCore, SeedableRng};
-use sha2::{Digest, Sha256, Sha512};
+use sha2::{Digest, Sha256, Sha384, Sha512};
 
 #[derive(Debug)]
 pub struct RustCrypto {
@@ -90,6 +90,7 @@ impl OpenMlsCrypto for RustCrypto {
     ) -> Result<Vec<u8>, openmls_traits::types::CryptoError> {
         match hash_type {
             HashType::Sha2_256 => Ok(Hkdf::<Sha256>::extract(Some(salt), ikm).0.as_slice().into()),
+            HashType::Sha2_384 => Ok(Hkdf::<Sha384>::extract(Some(salt), ikm).0.as_slice().into()),
             HashType::Sha2_512 => Ok(Hkdf::<Sha512>::extract(Some(salt), ikm).0.as_slice().into()),
         }
     }
@@ -118,6 +119,14 @@ impl OpenMlsCrypto for RustCrypto {
                     .map_err(|_| CryptoError::HkdfOutputLengthInvalid)?;
                 Ok(okm)
             }
+            HashType::Sha2_384 => {
+                let hkdf = Hkdf::<Sha384>::from_prk(prk)
+                    .map_err(|_| CryptoError::HkdfOutputLengthInvalid)?;
+                let mut okm = vec![0u8; okm_len];
+                hkdf.expand(info, &mut okm)
+                    .map_err(|_| CryptoError::HkdfOutputLengthInvalid)?;
+                Ok(okm)
+            }
         }
     }
 
@@ -128,6 +137,7 @@ impl OpenMlsCrypto for RustCrypto {
     ) -> Result<Vec<u8>, openmls_traits::types::CryptoError> {
         match hash_type {
             HashType::Sha2_256 => Ok(Sha256::digest(data).as_slice().into()),
+            HashType::Sha2_384 => Ok(Sha384::digest(data).as_slice().into()),
             HashType::Sha2_512 => Ok(Sha512::digest(data).as_slice().into()),
         }
     }

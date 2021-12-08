@@ -152,7 +152,7 @@ pub mod kat_key_schedule;
 pub use errors::*;
 pub use psk::{PreSharedKeyId, PreSharedKeys, PskSecret};
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct CommitSecret {
     secret: Secret,
@@ -163,6 +163,11 @@ impl From<PathSecret> for CommitSecret {
         CommitSecret {
             secret: path_secret.secret(),
         }
+
+
+impl From<Secret> for CommitSecret {
+    fn from(secret: Secret) -> Self {
+        Self { secret }
     }
 }
 
@@ -347,7 +352,7 @@ impl KeySchedule {
     ) -> Result<WelcomeSecret, KeyScheduleError> {
         if self.state != State::Initial || self.intermediate_secret.is_none() {
             log::error!("Trying to derive a welcome secret while not in the initial state.");
-            return Err(KeyScheduleError::InvalidState(ErrorState::Init));
+            return Err(KeyScheduleError::InvalidState(ErrorState::NotInit));
         }
 
         // We can return a library error here, because there must be a mistake in the state machine
@@ -373,7 +378,7 @@ impl KeySchedule {
             log::error!(
                 "Trying to add context to the key schedule while not in the initial state."
             );
-            return Err(KeyScheduleError::InvalidState(ErrorState::Init));
+            return Err(KeyScheduleError::InvalidState(ErrorState::NotInit));
         }
         self.state = State::Context;
 
@@ -409,7 +414,7 @@ impl KeySchedule {
     ) -> Result<EpochSecrets, KeyScheduleError> {
         if self.state != State::Context || self.epoch_secret.is_none() {
             log::error!("Trying to derive the epoch secrets while not in the right state.");
-            return Err(KeyScheduleError::InvalidState(ErrorState::Context));
+            return Err(KeyScheduleError::InvalidState(ErrorState::NotContext));
         }
         self.state = State::Done;
 

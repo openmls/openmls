@@ -10,7 +10,7 @@ use ::rand::rngs::OsRng;
 use ::rand::RngCore;
 use openmls::group::create_commit_params::CreateCommitParams;
 use openmls::prelude::*;
-use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls::{test_utils::*, *};
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsCryptoProvider;
 
@@ -72,8 +72,7 @@ pub(crate) struct TestSetup {
 const KEY_PACKAGE_COUNT: usize = 10;
 
 /// The setup function creates a set of groups and clients.
-pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
-    let crypto = OpenMlsRustCrypto::default();
+pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvider) -> TestSetup {
     let mut test_clients: HashMap<&'static str, RefCell<TestClient>> = HashMap::new();
     let mut key_store: HashMap<(&'static str, CiphersuiteName), Vec<KeyPackage>> = HashMap::new();
     // Initialize the clients for which we have configurations.
@@ -89,7 +88,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 client.name.as_bytes().to_vec(),
                 CredentialType::Basic,
                 SignatureScheme::from(ciphersuite),
-                &crypto,
+                backend,
             )
             .expect("An unexpected error occurred.");
             // Create a number of key packages.
@@ -107,7 +106,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 let key_package_bundle: KeyPackageBundle = KeyPackageBundle::new(
                     &[ciphersuite],
                     &credential_bundle,
-                    &crypto,
+                    backend,
                     mandatory_extensions,
                 )
                 .expect("An unexpected error occurred.");
@@ -146,7 +145,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             .expect("An unexpected error occurred.");
         // Figure out which KeyPackageBundle that key package corresponds to.
         let initial_key_package_bundle = initial_group_member
-            .find_key_package_bundle(&initial_key_package, &crypto)
+            .find_key_package_bundle(&initial_key_package, backend)
             .expect("An unexpected error occurred.");
         // Get the credential bundle corresponding to the ciphersuite.
         let initial_credential_bundle = initial_group_member
@@ -159,7 +158,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             initial_key_package_bundle,
         )
         .with_config(group_config.config)
-        .build(&crypto)
+        .build(backend)
         .expect("Error creating new MlsGroup");
         let mut proposal_list = Vec::new();
         let group_aad = b"";
@@ -194,7 +193,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                         framing_parameters,
                         initial_credential_bundle,
                         next_member_key_package,
-                        &crypto,
+                        backend,
                     )
                     .expect("An unexpected error occurred.");
                 proposal_list.push(add_proposal);
@@ -207,7 +206,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     StagedProposal::from_mls_plaintext(
                         &Ciphersuite::new(group_config.ciphersuite)
                             .expect("Could not create ciphersuite."),
-                        &crypto,
+                        backend,
                         proposal,
                     )
                     .expect("Could not create staged proposal."),
@@ -219,7 +218,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 .proposal_store(&proposal_store)
                 .build();
             let (commit_mls_plaintext, welcome_option, key_package_bundle_option) = mls_group
-                .create_commit(params, &crypto)
+                .create_commit(params, backend)
                 .expect("An unexpected error occurred.");
             let welcome = welcome_option.expect("An unexpected error occurred.");
             let key_package_bundle =
@@ -233,7 +232,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     &proposal_store,
                     &[key_package_bundle],
                     None,
-                    &crypto,
+                    backend,
                 )
                 .expect("Error applying Commit");
             mls_group
@@ -258,7 +257,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                             .iter()
                             .any(|y| {
                                 y.key_package()
-                                    .hash(&crypto)
+                                    .hash(backend)
                                     .expect("Could not hash KeyPackage.")
                                     == x.key_package_hash.as_slice()
                             })
@@ -270,7 +269,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     .iter()
                     .position(|y| {
                         y.key_package()
-                            .hash(&crypto)
+                            .hash(backend)
                             .expect("Could not hash KeyPackage.")
                             == member_secret.key_package_hash.as_slice()
                     })
@@ -286,7 +285,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     Some(mls_group.tree().export_nodes()),
                     key_package_bundle,
                     None, /* PSKs not supported here */
-                    &crypto,
+                    backend,
                 ) {
                     Ok(group) => group,
                     Err(err) => panic!("Error creating new group from Welcome: {:?}", err),
@@ -322,8 +321,8 @@ fn test_random() {
     randombytes(0);
 }
 
-#[test]
-fn test_setup() {
+#[apply(backends)]
+fn test_setup(backend: &impl OpenMlsCryptoProvider) {
     let test_client_config_a = TestClientConfig {
         name: "TestClientConfigA",
         ciphersuites: vec![CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519],
@@ -342,5 +341,5 @@ fn test_setup() {
         clients: vec![test_client_config_a, test_client_config_b],
         groups: vec![test_group_config],
     };
-    let _test_setup = setup(test_setup_config);
+    let _test_setup = setup(test_setup_config, backend);
 }

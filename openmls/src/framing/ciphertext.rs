@@ -325,6 +325,7 @@ impl MlsCiphertext {
 
 #[derive(Clone, TlsDeserialize, TlsSerialize, TlsSize)]
 pub(crate) struct MlsSenderData {
+    // TODO: #541 replace sender with [`KeyPackageRef`]
     pub(crate) sender: LeafIndex,
     pub(crate) generation: u32,
     pub(crate) reuse_guard: ReuseGuard,
