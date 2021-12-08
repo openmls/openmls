@@ -4,6 +4,7 @@
 //! It is based on the Mock client written by Richard Barnes.
 
 use clap::Parser;
+use clap_derive::*;
 use openmls::{
     ciphersuite::signable::Verifiable,
     group::{
