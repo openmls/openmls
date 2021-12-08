@@ -122,8 +122,9 @@
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
 use crate::framing::MlsPlaintextTbmPayload;
-use crate::tree::index::LeafIndex;
+use crate::messages::PathSecret;
 use crate::tree::secret_tree::SecretTree;
+use crate::treesync::LeafIndex;
 use crate::{ciphersuite::Mac, prelude::MembershipTag};
 use crate::{
     ciphersuite::{AeadKey, AeadNonce, Ciphersuite, Secret},
@@ -157,10 +158,10 @@ pub(crate) struct CommitSecret {
     secret: Secret,
 }
 
-impl Default for CommitSecret {
-    fn default() -> Self {
+impl From<PathSecret> for CommitSecret {
+    fn from(path_secret: PathSecret) -> Self {
         CommitSecret {
-            secret: Secret::default(),
+            secret: path_secret.secret(),
         }
     }
 }
@@ -172,17 +173,6 @@ impl From<Secret> for CommitSecret {
 }
 
 impl CommitSecret {
-    pub(crate) fn new(
-        ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
-        path_secret: &Secret,
-    ) -> Result<Self, CryptoError> {
-        let secret =
-            path_secret.kdf_expand_label(backend, "path", &[], ciphersuite.hash_length())?;
-
-        Ok(Self { secret })
-    }
-
     /// Create a CommitSecret consisting of an all-zero string of length
     /// `hash_length`.
     pub(crate) fn zero_secret(ciphersuite: &'static Ciphersuite, version: ProtocolVersion) -> Self {
@@ -573,7 +563,7 @@ impl EncryptionSecret {
     /// `EpochSecrets`. The `encryption_secret` is replaced with `None` in the
     /// process, allowing us to achieve FS.
     pub(crate) fn create_secret_tree(self, treesize: LeafIndex) -> SecretTree {
-        SecretTree::new(self, treesize)
+        SecretTree::new(self, treesize.into())
     }
 
     pub(crate) fn consume_secret(self) -> Secret {

@@ -1,4 +1,4 @@
-use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
+use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
     ciphersuite::signable::Signable,
@@ -6,6 +6,7 @@ use crate::{
     framing::*,
     group::{mls_group::*, *},
     messages::*,
+    treesync::{diff::TreeSyncDiff, treekem::PlaintextSecret},
 };
 
 use super::{
@@ -33,8 +34,8 @@ impl MlsGroup {
             backend,
             params.proposal_store(),
             params.inline_proposals(),
-            self.tree().own_node_index(),
-            self.tree().leaf_count(),
+            self.tree().own_leaf_index(),
+            self.tree().leaf_count()?,
         )?;
 
         // TODO: #581 Filter proposals by support
@@ -48,40 +49,59 @@ impl MlsGroup {
 
         let sender_index = self.sender_index();
         // Make a copy of the current tree to apply proposals safely
-        let mut provisional_tree = RatchetTree::new_from_public_tree(&self.tree());
+        let mut diff: TreeSyncDiff = self.tree().empty_diff()?;
 
         // Apply proposals to tree
         let apply_proposals_values =
-            match provisional_tree.apply_proposals(backend, proposal_queue, &[]) {
-                Ok(res) => res,
-                Err(_) => return Err(CreateCommitError::OwnKeyNotFound.into()),
-            };
+            self.apply_proposals(&mut diff, backend, proposal_queue, &[])?;
         if apply_proposals_values.self_removed {
             return Err(CreateCommitError::CannotRemoveSelf.into());
         }
 
         let serialized_group_context = self.group_context.tls_serialize_detached()?;
-        let (path_option, kpb_option) = if apply_proposals_values.path_required
-            || contains_own_updates
-            || params.force_self_update()
-        {
-            // If path is needed, compute path values
-            let (path, key_package_bundle) = provisional_tree.refresh_private_tree(
-                params.credential_bundle(),
-                &serialized_group_context,
-                apply_proposals_values.exclusion_list(),
-                backend,
-            )?;
-            (Some(path), Some(key_package_bundle))
-        } else {
-            // If path is not needed, return empty commit secret
-            (None, None)
-        };
+        let (encrypted_path_option, plain_path_option, kpb_option, commit_secret_option) =
+            if apply_proposals_values.path_required
+                || contains_own_updates
+                || params.force_self_update()
+            {
+                // Create a new key package bundle payload from the existing key
+                // package.
+                let key_package_bundle_payload = KeyPackageBundlePayload::from_rekeyed_key_package(
+                    self.tree().own_leaf_node()?,
+                    backend,
+                )?;
+
+                // If path is needed, compute path values
+                let (key_package_bundle, path, commit_secret) = diff.apply_own_update_path(
+                    backend,
+                    ciphersuite,
+                    key_package_bundle_payload,
+                    params.credential_bundle(),
+                )?;
+
+                let encrypted_path = diff.encrypt_path(
+                    backend,
+                    self.ciphersuite(),
+                    &path,
+                    &serialized_group_context,
+                    &apply_proposals_values.exclusion_list(),
+                    key_package_bundle.key_package(),
+                )?;
+                (
+                    Some(encrypted_path),
+                    Some(path),
+                    Some(key_package_bundle),
+                    Some(commit_secret),
+                )
+            } else {
+                // If path is not needed, return empty commit secret
+                (None, None, None, None)
+            };
 
         // Create commit message
         let commit = Commit {
             proposals: proposal_reference_list.into(),
-            path: path_option,
+            path: encrypted_path_option,
         };
 
         // Create provisional group state
@@ -110,10 +130,9 @@ impl MlsGroup {
         )?;
 
         // Calculate tree hash
-        let tree_hash = provisional_tree.tree_hash(backend)?;
+        let tree_hash = diff.compute_tree_hash(backend, ciphersuite)?;
 
         // Calculate group context
-        println!("create commit ext: {:?}", self.group_context.extensions());
         let provisional_group_context = GroupContext::new(
             self.group_context.group_id.clone(),
             provisional_epoch,
@@ -124,7 +143,7 @@ impl MlsGroup {
 
         let joiner_secret = JoinerSecret::new(
             backend,
-            provisional_tree.commit_secret(),
+            commit_secret_option.as_ref(),
             self.epoch_secrets()
                 .init_secret()
                 .ok_or(MlsGroupError::InitSecretNotFound)?,
@@ -132,10 +151,11 @@ impl MlsGroup {
 
         // Create group secrets for later use, so we can afterwards consume the
         // `joiner_secret`.
-        let plaintext_secrets = PlaintextSecret::new(
+        let plaintext_secrets = PlaintextSecret::from_plain_update_path(
+            &diff,
             &joiner_secret,
             apply_proposals_values.invitation_list,
-            &provisional_tree,
+            plain_path_option.as_deref(),
             &apply_proposals_values.presharedkeys,
             backend,
         )?;
@@ -175,12 +195,12 @@ impl MlsGroup {
             self.epoch_secrets().membership_key(),
         )?;
 
-        // Check if new members were added an create welcome message
+        // Check if new members were added and, if so, create welcome messages
         if !plaintext_secrets.is_empty() {
             // Create the ratchet tree extension if necessary
             let other_extensions: Vec<Extension> = if self.use_ratchet_tree_extension {
                 vec![Extension::RatchetTree(RatchetTreeExtension::new(
-                    provisional_tree.public_key_tree_copy(),
+                    diff.export_nodes()?,
                 ))]
             } else {
                 Vec::new()
@@ -208,26 +228,8 @@ impl MlsGroup {
             )?;
             // Encrypt group secrets
             let secrets = plaintext_secrets
-                .iter()
-                .map(
-                    |PlaintextSecret {
-                         public_key,
-                         group_secrets_bytes,
-                         key_package_hash,
-                     }| {
-                        let encrypted_group_secrets = backend.crypto().hpke_seal(
-                            ciphersuite.hpke_config(),
-                            public_key.as_slice(),
-                            &[],
-                            &[],
-                            group_secrets_bytes,
-                        );
-                        EncryptedGroupSecrets {
-                            key_package_hash: key_package_hash.clone().into(),
-                            encrypted_group_secrets,
-                        }
-                    },
-                )
+                .into_iter()
+                .map(|pts| pts.encrypt(backend, ciphersuite))
                 .collect();
             // Create welcome message
             let welcome = Welcome::new(
@@ -240,53 +242,5 @@ impl MlsGroup {
         } else {
             Ok((mls_plaintext, None, kpb_option))
         }
-    }
-}
-
-/// Helper struct holding values that are encryptedin the
-/// `EncryptedGroupSecrets`. In particular, the `group_secrets_bytes` are
-/// encrypted for the `public_key` into `encrypted_group_secrets` later.
-pub(crate) struct PlaintextSecret {
-    pub(crate) public_key: HpkePublicKey,
-    pub(crate) group_secrets_bytes: Vec<u8>,
-    pub(crate) key_package_hash: Vec<u8>,
-}
-
-impl PlaintextSecret {
-    /// Prepare the `GroupSecrets` for a number of `invited_members` based on a
-    /// provisional `RatchetTree`. If there are `path_secrets` in the
-    /// provisional tree, we need to include a `path_secret` into the
-    /// `GroupSecrets`.
-    pub(crate) fn new(
-        joiner_secret: &JoinerSecret,
-        invited_members: Vec<(LeafIndex, AddProposal)>,
-        provisional_tree: &RatchetTree,
-        presharedkeys: &PreSharedKeys,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Vec<Self>, MlsGroupError> {
-        let mut plaintext_secrets = vec![];
-        for (index, add_proposal) in invited_members {
-            let key_package = add_proposal.key_package;
-            let key_package_hash = key_package.hash(backend)?;
-
-            // Compute the index of the common ancestor lowest in the
-            // tree of our own leaf and the given index.
-            let common_ancestor_index = treemath::common_ancestor_index(
-                index.into(),
-                provisional_tree.own_node_index().into(),
-            );
-
-            let path_secret = provisional_tree.path_secret(common_ancestor_index);
-
-            // Create the GroupSecrets object for the respective member.
-            let group_secrets_bytes =
-                GroupSecrets::new_encoded(joiner_secret, path_secret, presharedkeys)?;
-            plaintext_secrets.push(PlaintextSecret {
-                public_key: key_package.hpke_init_key().clone(),
-                group_secrets_bytes,
-                key_package_hash,
-            });
-        }
-        Ok(plaintext_secrets)
     }
 }

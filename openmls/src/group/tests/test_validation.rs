@@ -5,8 +5,12 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMlsCryptoProvider};
 use tls_codec::{Deserialize, Serialize};
 
+use rstest::*;
+use rstest_reuse::{self, *};
+
 use crate::{
     ciphersuite::{Ciphersuite, CiphersuiteName, Mac, Secret},
+    config::Config,
     credentials::{Credential, CredentialBundle, CredentialError, CredentialType},
     extensions::Extension,
     framing::{
@@ -20,8 +24,6 @@ use crate::{
     },
     key_packages::{KeyPackage, KeyPackageBundle, KeyPackageError},
     prelude::ProcessedMessage,
-    test_utils::*,
-    tree::index::LeafIndex,
 };
 
 // Helper function to generate a CredentialBundle
@@ -352,7 +354,7 @@ fn test_valsem4(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
     plaintext.set_sender(Sender {
         sender_type: crate::prelude::SenderType::Member,
-        sender: LeafIndex::from(100u32),
+        sender: 100u32,
     });
 
     let message_in = MlsMessageIn::from(plaintext);

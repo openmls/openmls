@@ -11,7 +11,7 @@ use crate::{
     messages::{ConfirmationTag, GroupInfoPayload},
     prelude::*,
     test_utils::*,
-    tree::node::Node,
+    treesync::node::Node,
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -69,7 +69,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         .build(&crypto)
         .expect("Could not create group.");
 
-    let ratchet_tree = group.tree().public_key_tree_copy();
+    let ratchet_tree: Vec<Option<Node>> = group.tree().export_nodes();
 
     // We can't easily get a "natural" GroupInfo, so we just create one here.
     let group_info = GroupInfoPayload::new(
@@ -96,7 +96,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
                 .expect("An unexpected error occurred.")
                 .into(),
         }),
-        LeafIndex::from(random_u32()),
+        random_u32(),
     );
     let group_info = group_info
         .sign(&crypto, &credential_bundle)

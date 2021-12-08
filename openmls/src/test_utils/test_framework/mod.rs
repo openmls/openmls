@@ -26,7 +26,8 @@ use crate::framing::MlsMessageIn;
 /// We allow dead code here due to the following issue:
 /// https://github.com/rust-lang/rust/issues/46379, which would otherwise create
 /// a lot of unused code warnings.
-use crate::{prelude::*, tree::node::Node};
+use crate::prelude::*;
+use crate::treesync::node::Node;
 use ::rand::{rngs::OsRng, RngCore};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::key_store::OpenMlsKeyStore;

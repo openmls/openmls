@@ -421,7 +421,9 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
                 backend,
             )
             .expect("Could not stage the commit");
-        group_state.merge_commit(staged_commit);
+        group_state
+            .merge_commit(staged_commit)
+            .expect("error merging commit");
 
         // Welcome messages
 
@@ -450,7 +452,7 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
         // example the RatchetTreeExtension.
         assert!(MlsGroup::new_from_welcome(
             welcome,
-            Some(group_state.tree().public_key_tree_copy()),
+            Some(group_state.tree().export_nodes()),
             charlie_key_package_bundle,
             None,
             backend

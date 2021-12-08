@@ -66,7 +66,7 @@ impl<T: Clone + Debug> StagedAbDiff<T> {
 /// can be used to access the node at that position or to navigate to other,
 /// neighbouring nodes via the [`AbDiff::sibling()`], [`AbDiff::left_child()`]
 /// and [`AbDiff::right_child()`] functions of the [`AbDiff`].
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct NodeId {
     node_index: NodeIndex,
 }
@@ -81,6 +81,13 @@ impl NodeId {
     ) -> Result<Self, ABinaryTreeDiffError> {
         diff.out_of_bounds(node_index)?;
         Ok(NodeId { node_index })
+    }
+
+    /// FIXME: This is only needed to workaround the current presence of a
+    /// NodeIndex in the ParentNodeTreeHashInput struct in the spec and should
+    /// go away when #507 in the MLS spec is integrated.
+    pub(crate) fn node_index(&self) -> LeafIndex {
+        self.node_index
     }
 }
 

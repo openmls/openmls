@@ -8,7 +8,7 @@ use crate::group::{mls_group::*, *};
 use crate::key_packages::*;
 use crate::messages::*;
 use crate::schedule::*;
-use crate::tree::{index::*, node::*, treemath, *};
+use crate::treesync::node::Node;
 
 impl MlsGroup {
     pub(crate) fn new_from_welcome_internal(
@@ -132,63 +132,32 @@ impl MlsGroup {
             },
         };
 
-        let mut tree = RatchetTree::new_from_nodes(backend, key_package_bundle, nodes)?;
+        // Commit secret is ignored when joining a group, since we already have
+        // the joiner_secret.
+        let (tree, _commit_secret_option) = TreeSync::from_nodes_with_secrets(
+            backend,
+            ciphersuite,
+            nodes,
+            group_info.signer_index(),
+            path_secret_option,
+            key_package_bundle,
+        )?;
 
-        // Verify tree hash
-        let tree_hash = tree.tree_hash(backend)?;
-        if tree_hash != group_info.tree_hash() {
-            return Err(WelcomeError::TreeHashMismatch);
-        }
-
-        // Verify parent hashes
-        tree.verify_parent_hashes(backend)?;
+        let group_members = tree.full_leaves()?;
+        let signer_key_package = group_members
+            .get(&group_info.signer_index())
+            .ok_or(WelcomeError::UnknownSender)?;
 
         // Verify GroupInfo signature
-        let signer_node = tree.nodes[group_info.signer_index()].clone();
-        let signer_key_package = signer_node
-            .key_package
-            .ok_or(WelcomeError::MissingKeyPackage)?;
         group_info
             .verify_no_out(backend, signer_key_package.credential())
             .map_err(|_| WelcomeError::InvalidGroupInfoSignature)?;
-
-        // Compute path secrets
-        // TODO: #36 check if path_secret has to be optional
-        if let Some(path_secret) = path_secret_option {
-            let common_ancestor_index = treemath::common_ancestor_index(
-                tree.own_node_index().into(),
-                NodeIndex::from(group_info.signer_index()),
-            );
-            // We can throw a library error here, because, upon closer inspection,
-            // `parent_direct_path` will never throw an error.
-            let common_path =
-                treemath::parent_direct_path(common_ancestor_index, tree.leaf_count())
-                    .map_err(|_| WelcomeError::LibraryError)?;
-
-            // Update the private tree.
-            let private_tree = tree.private_tree_mut();
-            // Derive path secrets and generate keypairs
-            let new_public_keys = private_tree.continue_path_secrets(
-                ciphersuite,
-                backend,
-                path_secret,
-                &common_path,
-            )?;
-
-            // Validate public keys
-            if tree
-                .validate_public_keys(&new_public_keys, &common_path)
-                .is_err()
-            {
-                return Err(WelcomeError::InvalidRatchetTree(TreeError::InvalidTree));
-            }
-        }
 
         // Compute state
         let group_context = GroupContext::new(
             group_info.group_id().clone(),
             group_info.epoch(),
-            tree_hash,
+            tree.tree_hash().to_vec(),
             group_info.confirmed_transcript_hash().to_vec(),
             group_context_extensions,
         )?;
@@ -200,7 +169,7 @@ impl MlsGroup {
 
         let secret_tree = epoch_secrets
             .encryption_secret()
-            .create_secret_tree(tree.leaf_count());
+            .create_secret_tree(tree.leaf_count()?);
 
         let confirmation_tag = epoch_secrets
             .confirmation_key()
@@ -224,7 +193,7 @@ impl MlsGroup {
                 group_context,
                 epoch_secrets,
                 secret_tree: RefCell::new(secret_tree),
-                tree: RefCell::new(tree),
+                tree,
                 interim_transcript_hash,
                 use_ratchet_tree_extension: enable_ratchet_tree_extension,
                 mls_version,

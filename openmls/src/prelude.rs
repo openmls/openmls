@@ -14,7 +14,7 @@ pub use crate::group::errors::{
 };
 
 // Indexes
-pub use crate::tree::index::LeafIndex;
+pub use crate::binary_tree::LeafIndex;
 
 // PSKs
 pub use crate::schedule::psk::ExternalPskBundle;

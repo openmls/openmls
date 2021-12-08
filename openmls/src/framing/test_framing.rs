@@ -13,6 +13,7 @@ use tls_codec::{Deserialize, Serialize};
 use crate::framing::*;
 use crate::prelude::KeyPackageBundle;
 use crate::prelude::_print_tree;
+use crate::tree::secret_tree::SecretTree;
 use crate::{
     ciphersuite::signable::{Signable, Verifiable},
     config::*,
@@ -130,7 +131,7 @@ fn codec_ciphertext(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .epoch_secrets(backend, false)
         .expect("Could not generte epoch secrets");
 
-    let mut secret_tree = SecretTree::new(epoch_secrets.encryption_secret(), LeafIndex(1));
+    let mut secret_tree = SecretTree::new(epoch_secrets.encryption_secret(), 1u32.into());
 
     let orig = MlsCiphertext::try_from_plaintext(
         &plaintext,
@@ -168,7 +169,7 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
     .expect("An unexpected error occurred.");
     let sender = Sender {
         sender_type: SenderType::Member,
-        sender: LeafIndex::from(0u32),
+        sender: (0u32),
     };
     let group_context = GroupContext::new(
         GroupId::from_slice(&[5, 5, 5]),
@@ -218,8 +219,7 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
         .epoch_secrets(backend, false)
         .expect("Could not generte epoch secrets");
 
-    let mut secret_tree = SecretTree::new(epoch_secrets.encryption_secret(), LeafIndex(1));
-
+    let mut secret_tree = SecretTree::new(epoch_secrets.encryption_secret(), 1u32.into());
     let mut ciphertext = MlsCiphertext::try_from_plaintext(
         &plaintext,
         ciphersuite,
@@ -295,7 +295,7 @@ fn membership_tag(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
             .expect("Not enough randomness."),
     );
     let mut mls_plaintext = MlsPlaintext::new_application(
-        LeafIndex::from(2u32),
+        2u32,
         &[1, 2, 3],
         &[4, 5, 6],
         &credential_bundle,
@@ -420,7 +420,9 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     let staged_commit = group_alice
         .stage_commit(&commit, &proposal_store, &[], None, backend)
         .expect("Could not stage Commit");
-    group_alice.merge_commit(staged_commit);
+    group_alice
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
 
     // Alice adds Charlie
 
@@ -452,11 +454,13 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     let staged_commit = group_alice
         .stage_commit(&commit, &proposal_store, &[], None, backend)
         .expect("Could not stage Commit");
-    group_alice.merge_commit(staged_commit);
+    group_alice
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
 
     let mut group_charlie = MlsGroup::new_from_welcome(
         welcome_option.expect("An unexpected error occurred."),
-        Some(group_alice.tree().public_key_tree_copy()),
+        Some(group_alice.tree().export_nodes()),
         charlie_key_package_bundle,
         None,
         backend,
@@ -465,12 +469,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     // Alice removes Bob
     let bob_remove_proposal = group_alice
-        .create_remove_proposal(
-            framing_parameters,
-            &alice_credential_bundle,
-            LeafIndex::from(1usize),
-            backend,
-        )
+        .create_remove_proposal(framing_parameters, &alice_credential_bundle, 1u32, backend)
         .expect("Could not create proposal.");
 
     proposal_store.empty();
@@ -492,7 +491,9 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     let staged_commit = group_charlie
         .stage_commit(&commit, &proposal_store, &[], None, backend)
         .expect("Charlie: Could not stage Commit");
-    group_charlie.merge_commit(staged_commit);
+    group_charlie
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
     let staged_commit = group_alice
         .stage_commit(
             &commit,
@@ -502,7 +503,9 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
             backend,
         )
         .expect("Alice: Could not stage Commit");
-    group_alice.merge_commit(staged_commit);
+    group_alice
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
 
     _print_tree(&group_alice.tree(), "Alice tree");
     _print_tree(&group_charlie.tree(), "Charlie tree");
@@ -510,7 +513,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     // Alice sends a message with a sender that points to a blank leaf
     // Expected result: MlsCiphertextError::UnknownSender
 
-    let bogus_sender = LeafIndex::from(1usize);
+    let bogus_sender = 1u32;
     let bogus_sender_message = MlsPlaintext::new_application(
         bogus_sender,
         &[],
@@ -529,7 +532,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         ciphersuite,
         backend,
         group_alice.context(),
-        LeafIndex::from(1usize),
+        1u32,
         Secrets {
             epoch_secrets: group_alice.epoch_secrets(),
             secret_tree: &mut group_alice.secret_tree_mut(),
@@ -549,7 +552,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     // Alice sends a message with a sender that is outside of the group
     // Expected result: MlsCiphertextError::GenerationOutOfBound
-    let bogus_sender = LeafIndex::from(100usize);
+    let bogus_sender = 100u32;
     let bogus_sender_message = MlsPlaintext::new_application(
         bogus_sender,
         &[],
@@ -565,7 +568,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     let mut secret_tree = SecretTree::new(
         EncryptionSecret::random(ciphersuite, backend),
-        LeafIndex::from(100usize),
+        100u32.into(),
     );
 
     let enc_message = MlsCiphertext::try_from_plaintext(
@@ -573,7 +576,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         ciphersuite,
         backend,
         group_alice.context(),
-        LeafIndex::from(99usize),
+        99u32,
         Secrets {
             epoch_secrets: group_alice.epoch_secrets(),
             secret_tree: &mut secret_tree,

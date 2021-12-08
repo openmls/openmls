@@ -1,9 +1,11 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::random::OpenMlsRand;
 
+use crate::prelude::ProtocolVersion;
 use crate::schedule::EncryptionSecret;
 
 use crate::config::Config;
+use crate::tree::index::LeafIndex;
 use crate::tree::{secret_tree::*, *};
 use std::collections::HashMap;
 

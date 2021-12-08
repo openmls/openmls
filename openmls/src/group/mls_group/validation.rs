@@ -37,10 +37,9 @@ impl MlsGroup {
         // ValSem4
         let sender = plaintext.sender();
         if sender.is_member() {
+            let members = self.tree().full_leaves()?;
             let sender_index = sender.to_leaf_index();
-            if sender_index >= self.tree().leaf_count()
-                || self.tree().nodes[sender_index].is_blank()
-            {
+            if sender_index >= self.tree().leaf_count()? || !members.contains_key(&sender_index) {
                 return Err(FramingValidationError::UnknownMember.into());
             }
         }
@@ -128,7 +127,7 @@ impl MlsGroup {
             }
         }
 
-        for key_package in self.tree().key_packages() {
+        for (_index, key_package) in self.tree().full_leaves()? {
             let identity = key_package.credential().identity();
             // ValSem103
             if identity_set.contains(identity) {
@@ -161,8 +160,7 @@ impl MlsGroup {
         let mut removes_set = HashSet::new();
         let tree = &self.tree();
 
-        let index_set: HashSet<NodeIndex> =
-            HashSet::from_iter(tree.indexed_key_packages().map(|(index, _kp)| index));
+        let full_leaves = tree.full_leaves()?;
 
         for remove_proposal in remove_proposals {
             let removed = remove_proposal.remove_proposal().removed();
@@ -172,7 +170,7 @@ impl MlsGroup {
             }
 
             // ValSem108
-            if !index_set.contains(&NodeIndex::from(LeafIndex::from(removed))) {
+            if !full_leaves.contains_key(&removed) {
                 return Err(ProposalValidationError::UnknownMemberRemoval.into());
             }
         }
@@ -189,7 +187,7 @@ impl MlsGroup {
         path_key_package: Option<(LeafIndex, &KeyPackage)>,
     ) -> Result<(), MlsGroupError> {
         let mut public_key_set = HashSet::new();
-        for key_package in self.tree().key_packages() {
+        for (_index, key_package) in self.tree().full_leaves()? {
             let public_key = key_package.hpke_init_key().as_slice().to_vec();
             public_key_set.insert(public_key);
         }
@@ -199,12 +197,9 @@ impl MlsGroup {
         let tree = &self.tree();
 
         for update_proposal in update_proposals {
-            let mut indexed_key_packages = tree.indexed_key_packages();
-            if let Some(existing_key_package) = indexed_key_packages
-                .find(|(index, _key_package)| {
-                    &NodeIndex::from(update_proposal.sender().sender) == index
-                })
-                .map(|(_index, key_package)| key_package)
+            let indexed_key_packages = tree.full_leaves()?;
+            if let Some(existing_key_package) =
+                indexed_key_packages.get(&update_proposal.sender().sender)
             {
                 // ValSem109
                 if update_proposal
@@ -234,11 +229,8 @@ impl MlsGroup {
         // TODO #424: This won't be necessary anymore, we can just apply the proposals first
         // and add a new fake Update proposal to the queue after that
         if let Some((sender, key_package)) = path_key_package {
-            let mut indexed_key_packages = tree.indexed_key_packages();
-            if let Some(existing_key_package) = indexed_key_packages
-                .find(|(index, _key_package)| &NodeIndex::from(sender) == index)
-                .map(|(_index, key_package)| key_package)
-            {
+            let indexed_key_packages = tree.full_leaves()?;
+            if let Some(existing_key_package) = indexed_key_packages.get(&sender) {
                 // ValSem109
                 if key_package.credential().identity()
                     != existing_key_package.credential().identity()

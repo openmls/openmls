@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use mls_group::create_commit_params::CreateCommitParams;
 
 use super::*;
@@ -179,7 +181,7 @@ impl ManagedGroup {
     pub fn propose_remove_member(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        member: usize,
+        member: LeafIndex,
     ) -> Result<MlsMessageOut, ManagedGroupError> {
         if !self.active {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
@@ -194,7 +196,7 @@ impl ManagedGroup {
         let remove_proposal = self.group.create_remove_proposal(
             self.framing_parameters(),
             &credential_bundle,
-            LeafIndex::from(member),
+            member,
             backend,
         )?;
 
@@ -224,7 +226,7 @@ impl ManagedGroup {
         let remove_proposal = self.group.create_remove_proposal(
             self.framing_parameters(),
             &credential_bundle,
-            self.group.tree().own_node_index(),
+            self.group.tree().own_leaf_index(),
             backend,
         )?;
 
@@ -232,16 +234,18 @@ impl ManagedGroup {
     }
 
     /// Gets the current list of members
-    pub fn members(&self) -> Vec<Credential> {
-        let mut members: Vec<Credential> = vec![];
-        let tree = self.group.tree();
-        let leaf_count = self.group.tree().leaf_count();
-        for index in 0..leaf_count.as_usize() {
-            let leaf = &tree.nodes[LeafIndex::from(index)];
-            if let Some(leaf_node) = leaf.key_package() {
-                members.push(leaf_node.credential().clone());
-            }
-        }
-        members
+    pub fn members(&self) -> Result<Vec<&Credential>, ManagedGroupError> {
+        Ok(self
+            .group
+            .tree()
+            .full_leaves()?
+            .iter()
+            .map(|(_, kp)| kp.credential())
+            .collect())
+    }
+
+    /// Gets the current list of members
+    pub fn indexed_members(&self) -> Result<BTreeMap<LeafIndex, &KeyPackage>, ManagedGroupError> {
+        Ok(self.group.tree().full_leaves()?)
     }
 }

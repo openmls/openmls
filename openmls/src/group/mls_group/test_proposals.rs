@@ -18,7 +18,6 @@ use crate::{
     key_packages::{KeyPackageBundle, KeyPackageError},
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalReference, ProposalType},
     schedule::MembershipKey,
-    tree::index::*,
 };
 
 use super::MlsGroup;
@@ -108,7 +107,7 @@ fn proposal_queue_functions(
     // Frame proposals in MlsPlaintext
     let mls_plaintext_add_alice1 = MlsPlaintext::new_proposal(
         framing_parameters,
-        LeafIndex::from(0u32),
+        0u32,
         proposal_add_alice1,
         &alice_credential_bundle,
         &group_context,
@@ -120,7 +119,7 @@ fn proposal_queue_functions(
     .expect("Could not create proposal.");
     let mls_plaintext_add_alice2 = MlsPlaintext::new_proposal(
         framing_parameters,
-        LeafIndex::from(1u32),
+        1u32,
         proposal_add_alice2,
         &alice_credential_bundle,
         &group_context,
@@ -132,7 +131,7 @@ fn proposal_queue_functions(
     .expect("Could not create proposal.");
     let _mls_plaintext_add_bob1 = MlsPlaintext::new_proposal(
         framing_parameters,
-        LeafIndex::from(1u32),
+        1u32,
         proposal_add_bob1,
         &alice_credential_bundle,
         &group_context,
@@ -157,8 +156,8 @@ fn proposal_queue_functions(
         backend,
         &proposal_store,
         &[],
-        LeafIndex::from(0u32),
-        LeafIndex::from(1u32),
+        0u32,
+        1u32,
     )
     .expect("Could not create ProposalQueue.");
 
@@ -228,7 +227,7 @@ fn proposal_queue_order(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
     // Frame proposals in MlsPlaintext
     let mls_plaintext_add_alice1 = MlsPlaintext::new_proposal(
         framing_parameters,
-        LeafIndex::from(0u32),
+        0u32,
         proposal_add_alice1.clone(),
         &alice_credential_bundle,
         &group_context,
@@ -241,7 +240,7 @@ fn proposal_queue_order(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
     .expect("Could not create proposal.");
     let mls_plaintext_add_bob1 = MlsPlaintext::new_proposal(
         framing_parameters,
-        LeafIndex::from(1u32),
+        1u32,
         proposal_add_bob1.clone(),
         &alice_credential_bundle,
         &group_context,
@@ -270,7 +269,7 @@ fn proposal_queue_order(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
 
     let sender = Sender {
         sender_type: SenderType::Member,
-        sender: LeafIndex::from(0u32),
+        sender: (0u32),
     };
 
     // And the same should go for proposal queues built from committed
@@ -432,8 +431,10 @@ fn test_group_context_extensions(
     let staged_commit = alice_group
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, backend)
         .expect("error staging commit");
-    alice_group.merge_commit(staged_commit);
-    let ratchet_tree = alice_group.tree().public_key_tree_copy();
+    alice_group
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
+    let ratchet_tree = alice_group.tree().export_nodes();
 
     // Make sure that Bob can join the group with the required extension in place
     // and Bob's key package supporting them.
@@ -532,8 +533,10 @@ fn test_group_context_extension_proposal_fails(
     let staged_commit = alice_group
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, backend)
         .expect("error staging commit");
-    alice_group.merge_commit(staged_commit);
-    let ratchet_tree = alice_group.tree().public_key_tree_copy();
+    alice_group
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
+    let ratchet_tree = alice_group.tree().export_nodes();
 
     let bob_group = MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
@@ -633,8 +636,10 @@ fn test_group_context_extension_proposal(
     let staged_commit = alice_group
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, backend)
         .expect("error staging commit");
-    alice_group.merge_commit(staged_commit);
-    let ratchet_tree = alice_group.tree().public_key_tree_copy();
+    alice_group
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
+    let ratchet_tree = alice_group.tree().export_nodes();
 
     let mut bob_group = MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
@@ -679,12 +684,16 @@ fn test_group_context_extension_proposal(
     let staged_commit = alice_group
         .stage_commit(&gce_mls_plaintext, &proposal_store, &[], None, backend)
         .expect("error staging commit");
-    alice_group.merge_commit(staged_commit);
+    alice_group
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
 
     let staged_commit = bob_group
         .stage_commit(&gce_mls_plaintext, &proposal_store, &[], None, backend)
         .expect("error staging commit");
-    bob_group.merge_commit(staged_commit);
+    bob_group
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
 
     assert_eq!(
         alice_group

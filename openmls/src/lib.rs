@@ -35,6 +35,7 @@ pub mod error;
 pub mod test_utils;
 
 mod binary_tree;
+mod treesync;
 
 pub mod ciphersuite;
 pub mod config;
