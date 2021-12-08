@@ -1,6 +1,8 @@
 use super::*;
 
-/// Unified message type for incoming MLS messages
+/// Unified message type for incoming MLS messages.
+/// Since the memory footprint can differ considerably between [`VerifiableMlsPlaintext`]
+/// and [`MlsCiphertext`], we use `Box<T>` for more efficient memory allocation.
 #[derive(Debug, Clone)]
 pub enum MlsMessageIn {
     /// An OpenMLS `VerifiableMlsPlaintext`.
@@ -36,7 +38,9 @@ impl MlsMessageIn {
     }
 }
 
-/// Unified message type for outgoing MLS messages
+/// Unified message type for outgoing MLS messages.
+/// Since the memory footprint can differ considerably between [`MlsPlaintext`]
+/// and [`MlsCiphertext`], we use `Box<T>` for more efficient memory allocation.
 #[derive(PartialEq, Debug, Clone)]
 pub enum MlsMessageOut {
     /// An OpenMLS `MlsPlaintext`.
