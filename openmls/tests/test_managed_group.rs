@@ -1,4 +1,5 @@
 use openmls::{
+    group::prelude::*,
     group::{EmptyInputError, InnerState},
     prelude::*,
     test_utils::*,
@@ -64,10 +65,7 @@ fn generate_key_package_bundle(
 ///  - Bob leaves
 ///  - Test saving the group state
 #[apply(ciphersuites_and_backends)]
-fn managed_group_operations(
-    ciphersuite: &'static Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
+fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     for wire_format in vec![WireFormat::MlsPlaintext, WireFormat::MlsCiphertext].into_iter() {
         let group_id = GroupId::from_slice(b"Test Group");
 
@@ -105,16 +103,14 @@ fn managed_group_operations(
             generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, vec![], backend)
                 .expect("An unexpected error occurred.");
 
-        // Define the managed group configuration
+        // Define the MlsGroup configuration
 
-        let managed_group_config = ManagedGroupConfig::builder()
-            .wire_format(wire_format)
-            .build();
+        let mls_group_config = MlsGroupConfig::builder().wire_format(wire_format).build();
 
         // === Alice creates a group ===
-        let mut alice_group = ManagedGroup::new(
+        let mut alice_group = MlsGroup::new(
             backend,
-            &managed_group_config,
+            &mls_group_config,
             group_id,
             &alice_key_package
                 .hash(backend)
@@ -174,9 +170,9 @@ fn managed_group_operations(
         assert_eq!(members[0].identity(), b"Alice");
         assert_eq!(members[1].identity(), b"Bob");
 
-        let mut bob_group = ManagedGroup::new_from_welcome(
+        let mut bob_group = MlsGroup::new_from_welcome(
             backend,
-            &managed_group_config,
+            &mls_group_config,
             welcome,
             Some(alice_group.export_ratchet_tree()),
         )
@@ -439,9 +435,9 @@ fn managed_group_operations(
             unreachable!("Expected a StagedCommit.");
         }
 
-        let mut charlie_group = ManagedGroup::new_from_welcome(
+        let mut charlie_group = MlsGroup::new_from_welcome(
             backend,
-            &managed_group_config,
+            &mls_group_config,
             welcome,
             Some(bob_group.export_ratchet_tree()),
         )
@@ -832,9 +828,9 @@ fn managed_group_operations(
         assert_eq!(members[1].identity(), b"Bob");
 
         // Bob creates a new group
-        let mut bob_group = ManagedGroup::new_from_welcome(
+        let mut bob_group = MlsGroup::new_from_welcome(
             backend,
-            &managed_group_config,
+            &mls_group_config,
             welcome_option.expect("Welcome was not returned"),
             Some(alice_group.export_ratchet_tree()),
         )
@@ -920,7 +916,7 @@ fn managed_group_operations(
         // Should fail because you cannot remove yourself from a group
         assert_eq!(
             bob_group.commit_to_pending_proposals(backend,),
-            Err(ManagedGroupError::Group(MlsGroupError::CreateCommitError(
+            Err(MlsGroupError::Group(CoreGroupError::CreateCommitError(
                 CreateCommitError::CannotRemoveSelf
             )))
         );
@@ -1023,9 +1019,9 @@ fn managed_group_operations(
             unreachable!("Expected a StagedCommit.");
         }
 
-        let mut bob_group = ManagedGroup::new_from_welcome(
+        let mut bob_group = MlsGroup::new_from_welcome(
             backend,
-            &managed_group_config,
+            &mls_group_config,
             welcome,
             Some(alice_group.export_ratchet_tree()),
         )
@@ -1050,7 +1046,7 @@ fn managed_group_operations(
         .to_lowercase();
         let path = TEMP_DIR
             .path()
-            .join(format!("test_managed_group_{}.json", &name));
+            .join(format!("test_mls_group_{}.json", &name));
         let out_file = &mut File::create(path.clone()).expect("Could not create file");
         bob_group
             .save(out_file)
@@ -1060,7 +1056,7 @@ fn managed_group_operations(
         assert_eq!(bob_group.state_changed(), InnerState::Persisted);
 
         let file = File::open(path).expect("Could not open file");
-        let bob_group = ManagedGroup::load(file).expect("Could not load group from file");
+        let bob_group = MlsGroup::load(file).expect("Could not load group from file");
 
         // Make sure the state is still the same
         assert_eq!(
@@ -1091,13 +1087,13 @@ fn test_empty_input_errors(
         generate_key_package_bundle(&[ciphersuite.name()], &alice_credential, vec![], backend)
             .expect("An unexpected error occurred.");
 
-    // Define the managed group configuration
-    let managed_group_config = ManagedGroupConfig::test_default();
+    // Define the MlsGroup configuration
+    let mls_group_config = MlsGroupConfig::test_default();
 
     // === Alice creates a group ===
-    let mut alice_group = ManagedGroup::new(
+    let mut alice_group = MlsGroup::new(
         backend,
-        &managed_group_config,
+        &mls_group_config,
         group_id,
         &alice_key_package
             .hash(backend)
@@ -1109,19 +1105,19 @@ fn test_empty_input_errors(
         alice_group
             .add_members(backend, &[])
             .expect_err("No EmptyInputError when trying to pass an empty slice to `add_members`."),
-        ManagedGroupError::EmptyInput(EmptyInputError::AddMembers)
+        MlsGroupError::EmptyInput(EmptyInputError::AddMembers)
     );
     assert_eq!(
         alice_group.remove_members(backend, &[]).expect_err(
             "No EmptyInputError when trying to pass an empty slice to `remove_members`."
         ),
-        ManagedGroupError::EmptyInput(EmptyInputError::RemoveMembers)
+        MlsGroupError::EmptyInput(EmptyInputError::RemoveMembers)
     );
 }
 
 // This tests the ratchet tree extension usage flag in the configuration
 #[apply(ciphersuites_and_backends)]
-fn managed_group_ratchet_tree_extension(
+fn mls_group_ratchet_tree_extension(
     ciphersuite: &'static Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
@@ -1156,15 +1152,15 @@ fn managed_group_ratchet_tree_extension(
             generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, vec![], backend)
                 .expect("An unexpected error occurred.");
 
-        let managed_group_config = ManagedGroupConfig::builder()
+        let mls_group_config = MlsGroupConfig::builder()
             .wire_format(wire_format)
             .use_ratchet_tree_extension(true)
             .build();
 
         // === Alice creates a group ===
-        let mut alice_group = ManagedGroup::new(
+        let mut alice_group = MlsGroup::new(
             backend,
-            &managed_group_config,
+            &mls_group_config,
             group_id.clone(),
             &alice_key_package
                 .hash(backend)
@@ -1180,9 +1176,8 @@ fn managed_group_ratchet_tree_extension(
             };
 
         // === Bob joins using the ratchet tree extension ===
-        let _bob_group =
-            ManagedGroup::new_from_welcome(backend, &managed_group_config, welcome, None)
-                .expect("Error creating group from Welcome");
+        let _bob_group = MlsGroup::new_from_welcome(backend, &mls_group_config, welcome, None)
+            .expect("Error creating group from Welcome");
 
         // === Negative case: not using the ratchet tree extension ===
 
@@ -1212,12 +1207,12 @@ fn managed_group_ratchet_tree_extension(
             generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, vec![], backend)
                 .expect("An unexpected error occurred.");
 
-        let managed_group_config = ManagedGroupConfig::test_default();
+        let mls_group_config = MlsGroupConfig::test_default();
 
         // === Alice creates a group ===
-        let mut alice_group = ManagedGroup::new(
+        let mut alice_group = MlsGroup::new(
             backend,
-            &managed_group_config,
+            &mls_group_config,
             group_id,
             &alice_key_package
                 .hash(backend)
@@ -1233,12 +1228,12 @@ fn managed_group_ratchet_tree_extension(
         };
 
         // === Bob tries to join without the ratchet tree extension ===
-        let error = ManagedGroup::new_from_welcome(backend, &managed_group_config, welcome, None)
+        let error = MlsGroup::new_from_welcome(backend, &mls_group_config, welcome, None)
             .expect_err("Could join a group without a ratchet tree");
 
         assert_eq!(
             error,
-            ManagedGroupError::Group(MlsGroupError::WelcomeError(
+            MlsGroupError::Group(CoreGroupError::WelcomeError(
                 WelcomeError::MissingRatchetTree
             ))
         );
