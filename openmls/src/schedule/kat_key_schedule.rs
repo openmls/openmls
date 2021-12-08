@@ -278,7 +278,7 @@ fn write_test_vectors() {
 }
 
 #[test]
-fn read_test_vectors() {
+fn read_test_vectors_key_schedule() {
     let tests: Vec<KeyScheduleTestVector> = read("test_vectors/kat_key_schedule_openmls.json");
     for test_vector in tests {
         match run_test_vector(test_vector) {

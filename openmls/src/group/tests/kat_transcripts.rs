@@ -22,7 +22,7 @@ use crate::{
         MlsPlaintextCommitAuthData, MlsPlaintextCommitContent, VerifiableMlsPlaintext,
     },
     schedule::{ConfirmationKey, MembershipKey},
-    test_utils::{bytes_to_hex, hex_to_bytes},
+    test_utils::*,
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -42,7 +42,6 @@ pub struct TranscriptTestVector {
     membership_key: String,
     confirmation_key: String,
     commit: String, // TLS serialized MlsPlaintext(Commit)
-
     group_context: String,
     confirmed_transcript_hash_after: String,
     interim_transcript_hash_after: String,
@@ -182,10 +181,12 @@ fn write_test_vectors() {
     write("test_vectors/kat_transcripts-new.json", &tests);
 }
 
-pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), TranscriptTestVectorError> {
+pub fn run_test_vector(
+    test_vector: TranscriptTestVector,
+    backend: &impl OpenMlsCryptoProvider,
+) -> Result<(), TranscriptTestVectorError> {
     let ciphersuite =
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
-    let crypto = OpenMlsRustCrypto::default();
     let ciphersuite = match Config::ciphersuite(ciphersuite) {
         Ok(cs) => cs,
         Err(_) => {
@@ -258,14 +259,14 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
             .tls_serialize_detached()
             .expect("An unexpected error occurred."),
     );
-    if commit.verify_membership(&crypto, &membership_key).is_err() {
+    if commit.verify_membership(backend, &membership_key).is_err() {
         if cfg!(test) {
             panic!("Invalid membership tag");
         }
         return Err(TranscriptTestVectorError::MembershipTagVerificationError);
     }
     let commit: MlsPlaintext = commit
-        .verify(&crypto, &credential)
+        .verify(backend, &credential)
         .expect("Invalid signature on MlsPlaintext commit");
 
     //let my_confirmation_tag = confirmation_key.tag(&confirmed_transcript_hash_before);
@@ -273,7 +274,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
         hex_to_bytes(&test_vector.confirmed_transcript_hash_after);
 
     let my_confirmation_tag = confirmation_key
-        .tag(&crypto, &confirmed_transcript_hash_after)
+        .tag(backend, &confirmed_transcript_hash_after)
         .expect("Could not compute confirmation tag.");
     if &my_confirmation_tag
         != commit
@@ -297,7 +298,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
     // Compute new transcript hashes.
     let my_confirmed_transcript_hash_after = update_confirmed_transcript_hash(
         ciphersuite,
-        &crypto,
+        backend,
         &MlsPlaintextCommitContent::try_from(&commit).expect("An unexpected error occurred."),
         &interim_transcript_hash_before,
     )
@@ -316,7 +317,7 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
 
     let my_interim_transcript_hash_after = update_interim_transcript_hash(
         ciphersuite,
-        &crypto,
+        backend,
         &MlsPlaintextCommitAuthData::try_from(&commit).expect("An unexpected error occurred."),
         &my_confirmed_transcript_hash_after,
     )
@@ -334,12 +335,12 @@ pub fn run_test_vector(test_vector: TranscriptTestVector) -> Result<(), Transcri
     Ok(())
 }
 
-#[test]
-fn read_test_vectors() {
+#[apply(backends)]
+fn read_test_vectors_transcript(backend: &impl OpenMlsCryptoProvider) {
     let tests: Vec<TranscriptTestVector> = read("test_vectors/kat_transcripts.json");
 
     for test_vector in tests {
-        match run_test_vector(test_vector) {
+        match run_test_vector(test_vector, backend) {
             Ok(_) => {}
             Err(e) => panic!("Error while checking transcript test vector.\n{:?}", e),
         }

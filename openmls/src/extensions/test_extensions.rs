@@ -2,6 +2,7 @@
 //! Some basic unit tests for extensions
 //! Proper testing is done through the public APIs.
 
+use crate::test_utils::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
@@ -87,12 +88,8 @@ fn lifetime() {
 
 // This tests the ratchet tree extension to deliver the public ratcheting tree
 // in-band
-ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteName) {
-    let crypto = &OpenMlsRustCrypto::default();
-
-    log::info!("Testing ciphersuite {:?}", ciphersuite_name);
-    let ciphersuite = Config::ciphersuite(ciphersuite_name).expect("An unexpected error occurred.");
-
+#[apply(ciphersuites_and_backends)]
+fn ratchet_tree_extension(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
@@ -102,33 +99,33 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         "Alice".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
-        crypto,
+        backend,
     )
     .expect("An unexpected error occurred.");
     let bob_credential_bundle = CredentialBundle::new(
         "Bob".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
-        crypto,
+        backend,
     )
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()],
-            &alice_credential_bundle,
-            crypto,
-            Vec::new(),
-        )
-        .expect("An unexpected error occurred.");
+    let alice_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &alice_credential_bundle,
+        backend,
+        Vec::new(),
+    )
+    .expect("An unexpected error occurred.");
 
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()],
-            &bob_credential_bundle,
-            crypto,
-            Vec::new(),
-        )
-        .expect("An unexpected error occurred.");
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &bob_credential_bundle,
+        backend,
+        Vec::new(),
+    )
+    .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let config = MlsGroupConfig {
@@ -137,36 +134,38 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     };
 
     // === Alice creates a group with the ratchet tree extension ===
-    let mut alice_group = MlsGroup::builder(GroupId::random(crypto), alice_key_package_bundle)
+    let mut alice_group = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_config(config)
-        .build(crypto)
+        .build(backend)
         .expect("Error creating group.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group
-        .create_add_proposal(framing_parameters, &alice_credential_bundle, bob_key_package.clone(), crypto)
+        .create_add_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            bob_key_package.clone(),
+            backend,
+        )
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, crypto, bob_add_proposal)
+        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create StagedProposal."),
     );
 
     let params = CreateCommitParams::builder()
-            .framing_parameters(framing_parameters)
-            .credential_bundle(&alice_credential_bundle)
-            .proposal_store(&proposal_store)
-            .force_self_update(false)
-            .build();
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .force_self_update(false)
+        .build();
     let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
-        .create_commit(
-            params,
-            crypto,
-        )
+        .create_commit(params, backend)
         .expect("Error creating commit");
 
     let staged_commit = alice_group
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, crypto)
+        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, backend)
         .expect("error staging commit");
     alice_group.merge_commit(staged_commit);
 
@@ -175,7 +174,7 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         None,
         bob_key_package_bundle,
         None,
-        crypto,
+        backend,
     ) {
         Ok(g) => g,
         Err(e) => panic!("Could not join group with ratchet tree extension {}", e),
@@ -194,13 +193,21 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
     // === Alice creates a group without the ratchet tree extension ===
 
     // Generate KeyPackages
-    let alice_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &alice_credential_bundle, crypto, Vec::new())
-            .expect("An unexpected error occurred.");
+    let alice_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &alice_credential_bundle,
+        backend,
+        Vec::new(),
+    )
+    .expect("An unexpected error occurred.");
 
-    let bob_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &bob_credential_bundle, crypto, Vec::new())
-            .expect("An unexpected error occurred.");
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &bob_credential_bundle,
+        backend,
+        Vec::new(),
+    )
+    .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let config = MlsGroupConfig {
@@ -208,18 +215,23 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         ..MlsGroupConfig::default()
     };
 
-    let mut alice_group = MlsGroup::builder(GroupId::random(crypto), alice_key_package_bundle)
+    let mut alice_group = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_config(config)
-        .build(crypto)
+        .build(backend)
         .expect("Error creating group.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = alice_group
-        .create_add_proposal(framing_parameters, &alice_credential_bundle, bob_key_package.clone(), crypto)
+        .create_add_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            bob_key_package.clone(),
+            backend,
+        )
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, crypto, bob_add_proposal)
+        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create staged proposal."),
     );
 
@@ -230,11 +242,11 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         .force_self_update(false)
         .build();
     let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
-        .create_commit(params, crypto)
+        .create_commit(params, backend)
         .expect("Error creating commit");
 
     let staged_commit = alice_group
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, crypto)
+        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, backend)
         .expect("error staging commit");
     alice_group.merge_commit(staged_commit);
 
@@ -243,7 +255,7 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         None,
         bob_key_package_bundle,
         None,
-        crypto,
+        backend,
     )
     .err();
 
@@ -252,7 +264,7 @@ ctest_ciphersuites!(ratchet_tree_extension, test(ciphersuite_name: CiphersuiteNa
         error.expect("We expected an error"),
         MlsGroupError::WelcomeError(WelcomeError::MissingRatchetTree)
     );
-});
+}
 
 #[test]
 fn required_capabilities() {

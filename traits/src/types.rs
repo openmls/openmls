@@ -53,6 +53,7 @@ impl AeadType {
 /// Hash types
 pub enum HashType {
     Sha2_256 = 0x04,
+    Sha2_384 = 0x05,
     Sha2_512 = 0x06,
 }
 
@@ -62,6 +63,7 @@ impl HashType {
     pub const fn size(&self) -> usize {
         match self {
             HashType::Sha2_256 => 32,
+            HashType::Sha2_384 => 48,
             HashType::Sha2_512 => 64,
         }
     }
@@ -87,6 +89,8 @@ impl HashType {
 pub enum SignatureScheme {
     /// ECDSA_SECP256R1_SHA256
     ECDSA_SECP256R1_SHA256 = 0x0403,
+    /// ECDSA_SECP384R1_SHA384
+    ECDSA_SECP384R1_SHA384 = 0x0503,
     /// ECDSA_SECP521R1_SHA512
     ECDSA_SECP521R1_SHA512 = 0x0603,
     /// ED25519
@@ -101,6 +105,7 @@ impl TryFrom<u16> for SignatureScheme {
     fn try_from(value: u16) -> Result<Self, Self::Error> {
         match value {
             0x0403 => Ok(SignatureScheme::ECDSA_SECP256R1_SHA256),
+            0x0503 => Ok(SignatureScheme::ECDSA_SECP384R1_SHA384),
             0x0603 => Ok(SignatureScheme::ECDSA_SECP521R1_SHA512),
             0x0807 => Ok(SignatureScheme::ED25519),
             0x0808 => Ok(SignatureScheme::ED448),
