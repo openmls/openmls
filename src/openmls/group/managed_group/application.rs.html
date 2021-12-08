@@ -85,7 +85,7 @@
         <span class="comment">// Since the state of the group might be changed, arm the state flag</span>
         <span class="self">self</span>.<span class="ident">flag_state_change</span>();
 
-        <span class="prelude-val">Ok</span>(<span class="ident">MlsMessageOut::Ciphertext</span>(<span class="ident">ciphertext</span>))
+        <span class="prelude-val">Ok</span>(<span class="ident">MlsMessageOut::Ciphertext</span>(<span class="ident">Box::new</span>(<span class="ident">ciphertext</span>)))
     }
 }
 </code></pre></div>

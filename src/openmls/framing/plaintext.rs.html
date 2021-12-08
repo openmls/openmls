@@ -868,11 +868,6 @@
 <span id="868">868</span>
 <span id="869">869</span>
 <span id="870">870</span>
-<span id="871">871</span>
-<span id="872">872</span>
-<span id="873">873</span>
-<span id="874">874</span>
-<span id="875">875</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MlsPlaintext</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! An MlsPlaintext is a framing structure for MLS messages. It can contain</span>
@@ -1644,13 +1639,8 @@
 }
 
 <span class="kw">mod</span> <span class="ident">private_mod</span> {
+    <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
     <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Seal</span>;
-
-    <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">Seal</span> {
-        <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-            <span class="ident">Seal</span> {}
-        }
-    }
 }
 
 <span class="kw">impl</span> <span class="ident">VerifiedStruct</span><span class="op">&lt;</span><span class="ident">VerifiableMlsPlaintext</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MlsPlaintext</span> {
