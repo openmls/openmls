@@ -5,9 +5,10 @@ use crate::{
     group::InnerState,
     prelude::*,
     test_utils::test_framework::{
-        errors::ClientError, ActionType::Commit, CodecUse, ManagedTestSetup,
+        errors::ClientError, ActionType::Commit, CodecUse, MlsGroupTestSetup,
     },
     test_utils::*,
+    tree::index::LeafIndex,
 };
 
 fn generate_credential_bundle(
@@ -48,7 +49,7 @@ fn generate_key_package_bundle(
 }
 
 #[apply(ciphersuites_and_backends)]
-fn test_managed_group_persistence(
+fn test_mls_group_persistence(
     ciphersuite: &'static Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
@@ -68,14 +69,14 @@ fn test_managed_group_persistence(
         generate_key_package_bundle(backend, &[ciphersuite.name()], &alice_credential, vec![])
             .expect("An unexpected error occurred.");
 
-    // Define the managed group configuration
-    let managed_group_config = ManagedGroupConfig::test_default();
+    // Define the MlsGroup configuration
+    let mls_group_config = MlsGroupConfig::test_default();
 
     // === Alice creates a group ===
 
-    let mut alice_group = ManagedGroup::new(
+    let mut alice_group = MlsGroup::new(
         backend,
-        &managed_group_config,
+        &mls_group_config,
         group_id,
         &alice_key_package
             .hash(backend)
@@ -94,8 +95,7 @@ fn test_managed_group_persistence(
     let file_in = file_out
         .reopen()
         .expect("Error re-opening serialized group state file");
-    let alice_group_deserialized =
-        ManagedGroup::load(file_in).expect("Could not deserialize managed group");
+    let alice_group_deserialized = MlsGroup::load(file_in).expect("Could not deserialize MlsGroup");
 
     assert_eq!(
         (
@@ -153,13 +153,13 @@ fn remover(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvid
         generate_key_package_bundle(backend, &[ciphersuite.name()], &charlie_credential, vec![])
             .expect("An unexpected error occurred.");
 
-    // Define the managed group configuration
-    let managed_group_config = ManagedGroupConfig::default();
+    // Define the MlsGroup configuration
+    let mls_group_config = MlsGroupConfig::default();
 
     // === Alice creates a group ===
-    let mut alice_group = ManagedGroup::new(
+    let mut alice_group = MlsGroup::new(
         backend,
-        &managed_group_config,
+        &mls_group_config,
         group_id,
         &alice_key_package
             .hash(backend)
@@ -188,9 +188,9 @@ fn remover(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvid
         unreachable!("Expected a StagedCommit.");
     }
 
-    let mut bob_group = ManagedGroup::new_from_welcome(
+    let mut bob_group = MlsGroup::new_from_welcome(
         backend,
-        &managed_group_config,
+        &mls_group_config,
         welcome,
         Some(alice_group.export_ratchet_tree()),
     )
@@ -230,9 +230,9 @@ fn remover(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvid
         unreachable!("Expected a StagedCommit.");
     }
 
-    let mut charlie_group = ManagedGroup::new_from_welcome(
+    let mut charlie_group = MlsGroup::new_from_welcome(
         backend,
-        &managed_group_config,
+        &mls_group_config,
         welcome,
         Some(bob_group.export_ratchet_tree()),
     )
@@ -322,15 +322,15 @@ fn export_secret(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypto
         generate_key_package_bundle(backend, &[ciphersuite.name()], &alice_credential, vec![])
             .expect("An unexpected error occurred.");
 
-    // Define the managed group configuration
-    let managed_group_config = ManagedGroupConfig::builder()
+    // Define the MlsGroup configuration
+    let mls_group_config = MlsGroupConfig::builder()
         .wire_format(WireFormat::MlsPlaintext)
         .build();
 
     // === Alice creates a group ===
-    let alice_group = ManagedGroup::new(
+    let alice_group = MlsGroup::new(
         backend,
-        &managed_group_config,
+        &mls_group_config,
         group_id,
         &alice_key_package
             .hash(backend)
@@ -358,15 +358,15 @@ fn export_secret(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypto
 
 #[apply(ciphersuites)]
 fn test_invalid_plaintext(ciphersuite: &'static Ciphersuite) {
-    // Some basic setup functions for the managed group.
-    let managed_group_config = ManagedGroupConfig::builder()
+    // Some basic setup functions for the MlsGroup.
+    let mls_group_config = MlsGroupConfig::builder()
         .wire_format(WireFormat::MlsPlaintext)
         .padding_size(10)
         .build();
 
     let number_of_clients = 20;
-    let setup = ManagedTestSetup::new(
-        managed_group_config,
+    let setup = MlsGroupTestSetup::new(
+        mls_group_config,
         number_of_clients,
         CodecUse::StructMessages,
     );
@@ -413,7 +413,7 @@ fn test_invalid_plaintext(ciphersuite: &'static Ciphersuite) {
         .expect_err("No error when distributing message with invalid signature.");
 
     assert_eq!(
-        ClientError::ManagedGroupError(ManagedGroupError::Group(MlsGroupError::ValidationError(
+        ClientError::MlsGroupError(MlsGroupError::Group(CoreGroupError::ValidationError(
             ValidationError::MlsPlaintextError(MlsPlaintextError::VerificationError(
                 VerificationError::InvalidMembershipTag
             ))
@@ -436,8 +436,8 @@ fn test_invalid_plaintext(ciphersuite: &'static Ciphersuite) {
         .expect_err("No error when distributing message with invalid signature.");
 
     assert_eq!(
-        ClientError::ManagedGroupError(ManagedGroupError::Group(
-            MlsGroupError::FramingValidationError(FramingValidationError::UnknownMember)
+        ClientError::MlsGroupError(MlsGroupError::Group(
+            CoreGroupError::FramingValidationError(FramingValidationError::UnknownMember)
         )),
         error
     );

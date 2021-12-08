@@ -6,12 +6,12 @@
 
 use crate::{
     ciphersuite::signable::Signable,
-    group::{create_commit_params::CreateCommitParams, GroupEpoch, WireFormat},
+    group::{create_commit_params::CreateCommitParams, CoreGroup, GroupEpoch},
     messages::{public_group_state::VerifiablePublicGroupState, Commit, GroupInfo, GroupSecrets},
     messages::{ConfirmationTag, GroupInfoPayload},
     prelude::*,
     test_utils::*,
-    tree::node::Node,
+    tree::{index::LeafIndex, node::Node},
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -65,7 +65,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     let lifetime = LifetimeExtension::default();
 
     // Let's create a group
-    let mut group = MlsGroup::builder(GroupId::random(&crypto), key_package_bundle)
+    let mut group = CoreGroup::builder(GroupId::random(&crypto), key_package_bundle)
         .build(&crypto)
         .expect("Could not create group.");
 

@@ -1,11 +1,11 @@
 use std::ops::DerefMut;
 
-use mls_group::{proposals::StagedProposal, staged_commit::StagedCommit};
+use core_group::{proposals::StagedProposal, staged_commit::StagedCommit};
 use tls_codec::Serialize;
 
 use super::{proposals::ProposalStore, *};
 
-impl MlsGroup {
+impl CoreGroup {
     /// This function is used to parse messages from the DS.
     /// It checks for syntactic errors and makes some semantic checks as well.
     /// If the input is a [MlsCiphertext] message, it will be decrypted.
@@ -23,7 +23,7 @@ impl MlsGroup {
         &mut self,
         message: MlsMessageIn,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<UnverifiedMessage, MlsGroupError> {
+    ) -> Result<UnverifiedMessage, CoreGroupError> {
         // Checks the following semantic validation:
         //  - ValSem2
         //  - ValSem3
@@ -90,7 +90,7 @@ impl MlsGroup {
         proposal_store: &ProposalStore,
         own_kpbs: &[KeyPackageBundle],
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<ProcessedMessage, MlsGroupError> {
+    ) -> Result<ProcessedMessage, CoreGroupError> {
         // Add the context to the message and verify the membership tag if necessary
         let serialized_context = self.context().tls_serialize_detached()?;
 
@@ -154,7 +154,7 @@ impl MlsGroup {
                     let _verified_external_message =
                         external_message.into_verified(backend, signature_public_key)?;
                 } else {
-                    return Err(MlsGroupError::NoSignatureKey);
+                    return Err(CoreGroupError::NoSignatureKey);
                 }
 
                 // We don't support external messages yet
@@ -169,7 +169,7 @@ impl MlsGroup {
         &mut self,
         staged_commit: StagedCommit,
         proposal_store: &mut ProposalStore,
-    ) -> Result<(), MlsGroupError> {
+    ) -> Result<(), CoreGroupError> {
         // Merge the staged commit into the group state
         self.merge_commit(staged_commit);
         // Empty the proposal store

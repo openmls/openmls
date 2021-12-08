@@ -4,22 +4,13 @@ use crate::{
     ciphersuite::signable::Signable,
     config::Config,
     framing::*,
-    group::{mls_group::*, *},
+    group::{core_group::*, *},
     messages::*,
 };
 
-use super::{
-    create_commit_params::CreateCommitParams,
-    proposals::{CreationProposalQueue, ProposalStore},
-};
+use super::{create_commit_params::CreateCommitParams, proposals::CreationProposalQueue};
 
-/// Wrapper for proposals by value and reference.
-pub struct Proposals<'a> {
-    pub proposals_by_reference: &'a ProposalStore,
-    pub proposals_by_value: &'a [&'a Proposal],
-}
-
-impl MlsGroup {
+impl CoreGroup {
     pub fn create_commit(
         &self,
         params: CreateCommitParams,
@@ -105,7 +96,7 @@ impl MlsGroup {
             // It is ok to a library error here, because we know the MlsPlaintext contains a
             // Commit
             &MlsPlaintextCommitContent::try_from(&mls_plaintext)
-                .map_err(|_| MlsGroupError::LibraryError)?,
+                .map_err(|_| CoreGroupError::LibraryError)?,
             &self.interim_transcript_hash,
         )?;
 
@@ -127,7 +118,7 @@ impl MlsGroup {
             provisional_tree.commit_secret(),
             self.epoch_secrets()
                 .init_secret()
-                .ok_or(MlsGroupError::InitSecretNotFound)?,
+                .ok_or(CoreGroupError::InitSecretNotFound)?,
         )?;
 
         // Create group secrets for later use, so we can afterwards consume the
@@ -263,7 +254,7 @@ impl PlaintextSecret {
         provisional_tree: &RatchetTree,
         presharedkeys: &PreSharedKeys,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Vec<Self>, MlsGroupError> {
+    ) -> Result<Vec<Self>, CoreGroupError> {
         let mut plaintext_secrets = vec![];
         for (index, add_proposal) in invited_members {
             let key_package = add_proposal.key_package;

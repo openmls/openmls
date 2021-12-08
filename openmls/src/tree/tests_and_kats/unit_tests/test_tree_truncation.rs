@@ -3,9 +3,10 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use crate::{
     ciphersuite::Ciphersuite,
     credentials::{CredentialBundle, CredentialType},
-    group::ManagedGroupConfig,
-    prelude::{KeyPackageBundle, LeafIndex},
-    test_utils::test_framework::{ActionType, CodecUse, ManagedTestSetup},
+    group::MlsGroupConfig,
+    prelude::KeyPackageBundle,
+    test_utils::test_framework::{ActionType, CodecUse, MlsGroupTestSetup},
+    tree::index::LeafIndex,
     tree::node::{Node, NodeType},
     tree::RatchetTree,
 };
@@ -78,11 +79,11 @@ fn test_trim() {
 #[test]
 fn test_truncation_after_removal() {
     // Set up a group with 8 members.
-    let managed_group_config = ManagedGroupConfig::test_default();
+    let mls_group_config = MlsGroupConfig::test_default();
     let test_group_sizes = vec![5, 15, 21, 65];
     for number_of_clients in test_group_sizes {
-        let setup = ManagedTestSetup::new(
-            managed_group_config.clone(),
+        let setup = MlsGroupTestSetup::new(
+            mls_group_config.clone(),
             number_of_clients,
             CodecUse::SerializedMessages,
         );
@@ -123,11 +124,11 @@ fn test_truncation_after_removal() {
 #[test]
 fn test_truncation_after_update() {
     // Set up a group with 8 members.
-    let managed_group_config = ManagedGroupConfig::test_default();
+    let mls_group_config = MlsGroupConfig::test_default();
     let test_group_sizes = vec![5, 15, 21, 65];
     for number_of_clients in test_group_sizes {
-        let setup = ManagedTestSetup::new(
-            managed_group_config.clone(),
+        let setup = MlsGroupTestSetup::new(
+            mls_group_config.clone(),
             number_of_clients,
             CodecUse::SerializedMessages,
         );

@@ -7,19 +7,21 @@ use std::convert::TryFrom;
 
 #[cfg(test)]
 use crate::test_utils::{read, write};
+use crate::tree::index::LeafIndex;
 
 use crate::{
     ciphersuite::{signable::Verifiable, Ciphersuite, CiphersuiteName, Secret},
     config::{Config, ProtocolVersion},
     credentials::{Credential, CredentialBundle, CredentialType},
+    framing::WireFormat,
     group::{
         update_confirmed_transcript_hash, update_interim_transcript_hash, GroupContext, GroupEpoch,
-        GroupId, WireFormat,
+        GroupId,
     },
     messages::Commit,
     prelude::{
-        random_u32, random_u64, FramingParameters, LeafIndex, MlsPlaintext,
-        MlsPlaintextCommitAuthData, MlsPlaintextCommitContent, VerifiableMlsPlaintext,
+        FramingParameters, MlsPlaintext, MlsPlaintextCommitAuthData, MlsPlaintextCommitContent,
+        VerifiableMlsPlaintext,
     },
     schedule::{ConfirmationKey, MembershipKey},
     test_utils::*,

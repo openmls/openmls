@@ -5,9 +5,9 @@ use serde::{
     Deserialize, Serialize,
 };
 #[derive(Serialize, Deserialize)]
-pub struct SerializedManagedGroup {
-    managed_group_config: ManagedGroupConfig,
-    group: MlsGroup,
+pub struct SerializedMlsGroup {
+    mls_group_config: MlsGroupConfig,
+    group: CoreGroup,
     proposal_store: ProposalStore,
     own_kpbs: Vec<KeyPackageBundle>,
     aad: Vec<u8>,
@@ -15,10 +15,10 @@ pub struct SerializedManagedGroup {
     active: bool,
 }
 
-impl SerializedManagedGroup {
-    pub(crate) fn into_managed_group(self) -> ManagedGroup {
-        ManagedGroup {
-            managed_group_config: self.managed_group_config,
+impl SerializedMlsGroup {
+    pub(crate) fn into_mls_group(self) -> MlsGroup {
+        MlsGroup {
+            mls_group_config: self.mls_group_config,
             group: self.group,
             proposal_store: self.proposal_store,
             own_kpbs: self.own_kpbs,
@@ -30,13 +30,13 @@ impl SerializedManagedGroup {
     }
 }
 
-impl Serialize for ManagedGroup {
+impl Serialize for MlsGroup {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("SerializedManagedGroup", 6)?;
-        state.serialize_field("managed_group_config", &self.managed_group_config)?;
+        let mut state = serializer.serialize_struct("SerializedMlsGroup", 6)?;
+        state.serialize_field("mls_group_config", &self.mls_group_config)?;
         state.serialize_field("group", &self.group)?;
         state.serialize_field("proposal_store", &self.proposal_store)?;
         state.serialize_field("own_kpbs", &self.own_kpbs)?;

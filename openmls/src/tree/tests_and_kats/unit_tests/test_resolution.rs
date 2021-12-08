@@ -1,8 +1,8 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use crate::{
-    group::ManagedGroupConfig,
-    test_utils::test_framework::{ActionType, CodecUse, ManagedTestSetup},
+    group::MlsGroupConfig,
+    test_utils::test_framework::{ActionType, CodecUse, MlsGroupTestSetup},
     tree::*,
 };
 
@@ -217,13 +217,13 @@ fn test_original_child_resolution() {
 #[test]
 fn test_exclusion_for_parent_nodes() {
     // Create a large tree members.
-    let managed_group_config = ManagedGroupConfig::test_default();
+    let mls_group_config = MlsGroupConfig::test_default();
 
     // We need 16 clients, such that we can create a group with 16 members. 16
     // members means that we have two layers between the root and the leaves.
     let number_of_clients = 16;
-    let setup = ManagedTestSetup::new(
-        managed_group_config,
+    let setup = MlsGroupTestSetup::new(
+        mls_group_config,
         number_of_clients,
         CodecUse::SerializedMessages,
     );

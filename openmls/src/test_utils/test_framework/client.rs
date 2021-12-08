@@ -21,7 +21,7 @@ pub struct Client {
     /// Ciphersuites supported by the client.
     pub credentials: HashMap<CiphersuiteName, Credential>,
     pub crypto: OpenMlsRustCrypto,
-    pub groups: RefCell<HashMap<GroupId, ManagedGroup>>,
+    pub groups: RefCell<HashMap<GroupId, MlsGroup>>,
 }
 
 impl Client {
@@ -63,12 +63,12 @@ impl Client {
     }
 
     /// Create a group with the given `group_id`, `ciphersuite` and
-    /// `managed_group_config`. Throws an error if the client doesn't support
+    /// `mls_group_config`. Throws an error if the client doesn't support
     /// the `ciphersuite`, i.e. if no corresponding `CredentialBundle` exists.
     pub fn create_group(
         &self,
         group_id: GroupId,
-        managed_group_config: ManagedGroupConfig,
+        mls_group_config: MlsGroupConfig,
         ciphersuite: &Ciphersuite,
     ) -> Result<(), ClientError> {
         let credential = self
@@ -94,9 +94,9 @@ impl Client {
             .key_store()
             .store(&key_package.hash(&self.crypto)?, &kpb)
             .expect("An unexpected error occurred.");
-        let group_state = ManagedGroup::new(
+        let group_state = MlsGroup::new(
             &self.crypto,
-            &managed_group_config,
+            &mls_group_config,
             group_id.clone(),
             &key_package.hash(&self.crypto)?,
         )?;
@@ -105,21 +105,17 @@ impl Client {
     }
 
     /// Join a group based on the given `welcome` and `ratchet_tree`. The group
-    /// is created with the given `ManagedGroupConfig`. Throws an error if no
+    /// is created with the given `MlsGroupConfig`. Throws an error if no
     /// `KeyPackage` exists matching the `Welcome`, if the client doesn't
     /// support the ciphersuite, or if an error occurs processing the `Welcome`.
     pub fn join_group(
         &self,
-        managed_group_config: ManagedGroupConfig,
+        mls_group_config: MlsGroupConfig,
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
     ) -> Result<(), ClientError> {
-        let new_group: ManagedGroup = ManagedGroup::new_from_welcome(
-            &self.crypto,
-            &managed_group_config,
-            welcome,
-            ratchet_tree,
-        )?;
+        let new_group: MlsGroup =
+            MlsGroup::new_from_welcome(&self.crypto, &mls_group_config, welcome, ratchet_tree)?;
         self.groups
             .borrow_mut()
             .insert(new_group.group_id().to_owned(), new_group);

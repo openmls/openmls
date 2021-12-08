@@ -8,7 +8,7 @@ pub mod processing;
 mod resumption;
 mod ser;
 #[cfg(test)]
-mod test_managed_group;
+mod test_mls_group;
 mod updates;
 
 use crate::credentials::CredentialBundle;
@@ -35,15 +35,15 @@ use std::cell::Ref;
 
 pub use config::*;
 pub use errors::{
-    EmptyInputError, InvalidMessageError, ManagedGroupError, PendingProposalsError,
-    UseAfterEviction,
+    EmptyInputError, InvalidMessageError, MlsGroupError, PendingProposalsError, UseAfterEviction,
 };
 pub(crate) use resumption::ResumptionSecretStore;
 use ser::*;
 
+use super::core_group::*;
 use super::proposals::{ProposalStore, StagedProposal};
 
-/// A `ManagedGroup` represents an [MlsGroup] with
+/// A `MlsGroup` represents an [CoreGroup] with
 /// an easier, high-level API designed to be used in production. The API exposes
 /// high level functions to manage a group by adding/removing members, get the
 /// current member list, etc.
@@ -52,12 +52,12 @@ use super::proposals::{ProposalStore, StagedProposal};
 /// Delivery Service. Functions that modify the public state of the group will
 /// return a `Vec<MLSMessage>` that can be sent to the Delivery
 /// Service directly. Conversely, incoming messages from the Delivery Service
-/// can be fed into [process_message()](`ManagedGroup::process_message()`).
+/// can be fed into [process_message()](`MlsGroup::process_message()`).
 ///
-/// A `ManagedGroup` has an internal queue of pending proposals that builds up
+/// A `MlsGroup` has an internal queue of pending proposals that builds up
 /// as new messages are processed. When creating proposals, those messages are
 /// not automatically appended to this queue, instead they have to be processed
-/// again through [process_message()](`ManagedGroup::process_message()`). This
+/// again through [process_message()](`MlsGroup::process_message()`). This
 /// allows the Delivery Service to reject them (e.g. if they reference the wrong
 /// epoch).
 ///
@@ -67,17 +67,17 @@ use super::proposals::{ProposalStore, StagedProposal};
 ///
 /// The application policy for the group can be enforced by implementing the
 /// validator callback functions and selectively allowing/ disallowing each
-/// operation (see [`ManagedGroupCallbacks`])
+/// operation (see [`MlsGroupCallbacks`])
 ///
 /// Changes to the group state are dispatched as events through callback
-/// functions (see [`ManagedGroupCallbacks`]).
+/// functions (see [`MlsGroupCallbacks`]).
 #[derive(Debug)]
-pub struct ManagedGroup {
-    // The group configuration. See `ManagedGroupCongig` for more information.
-    managed_group_config: ManagedGroupConfig,
-    // the internal `MlsGroup` used for lower level operations. See `MlsGroup` for more
+pub struct MlsGroup {
+    // The group configuration. See `MlsGroupCongig` for more information.
+    mls_group_config: MlsGroupConfig,
+    // the internal `CoreGroup` used for lower level operations. See `CoreGroup` for more
     // information.
-    group: MlsGroup,
+    group: CoreGroup,
     // A [ProposalStore] that stores incoming proposals from the DS within one epoch.
     // The store is emptied after every epoch change.
     proposal_store: ProposalStore,
@@ -99,17 +99,17 @@ pub struct ManagedGroup {
     state_changed: InnerState,
 }
 
-impl ManagedGroup {
+impl MlsGroup {
     // === Configuration ===
 
     /// Gets the configuration
-    pub fn configuration(&self) -> &ManagedGroupConfig {
-        &self.managed_group_config
+    pub fn configuration(&self) -> &MlsGroupConfig {
+        &self.mls_group_config
     }
 
     /// Sets the configuration
-    pub fn set_configuration(&mut self, managed_group_config: &ManagedGroupConfig) {
-        self.managed_group_config = managed_group_config.clone();
+    pub fn set_configuration(&mut self, mls_group_config: &MlsGroupConfig) {
+        self.mls_group_config = mls_group_config.clone();
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
@@ -145,9 +145,9 @@ impl ManagedGroup {
     /// `UseAfterEviction` error. This function currently returns a full
     /// `Credential` rather than just a reference. This issue is tracked in
     /// issue #387.
-    pub fn credential(&self) -> Result<Credential, ManagedGroupError> {
+    pub fn credential(&self) -> Result<Credential, MlsGroupError> {
         if !self.is_active() {
-            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
+            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
         let tree = self.group.tree();
         Ok(tree.own_key_package().credential().clone())
@@ -166,15 +166,15 @@ impl ManagedGroup {
     // === Load & save ===
 
     /// Loads the state from persisted state
-    pub fn load<R: Read>(reader: R) -> Result<ManagedGroup, Error> {
-        let serialized_managed_group: SerializedManagedGroup = serde_json::from_reader(reader)?;
-        Ok(serialized_managed_group.into_managed_group())
+    pub fn load<R: Read>(reader: R) -> Result<MlsGroup, Error> {
+        let serialized_mls_group: SerializedMlsGroup = serde_json::from_reader(reader)?;
+        Ok(serialized_mls_group.into_mls_group())
     }
 
     /// Persists the state
     pub fn save<W: Write>(&mut self, writer: &mut W) -> Result<(), Error> {
-        let serialized_managed_group = serde_json::to_string_pretty(self)?;
-        writer.write_all(&serialized_managed_group.into_bytes())?;
+        let serialized_mls_group = serde_json::to_string_pretty(self)?;
+        writer.write_all(&serialized_mls_group.into_bytes())?;
         self.state_changed = InnerState::Persisted;
         Ok(())
     }
@@ -212,15 +212,15 @@ impl ManagedGroup {
         _print_tree(&self.group.tree(), message)
     }
 
-    /// Get the underlying [MlsGroup].
+    /// Get the underlying [CoreGroup].
     #[cfg(any(feature = "test-utils", test))]
-    pub fn group(&self) -> &MlsGroup {
+    pub fn group(&self) -> &CoreGroup {
         &self.group
     }
 }
 
-// Private methods of ManagedGroup
-impl ManagedGroup {
+// Private methods of MlsGroup
+impl MlsGroup {
     /// Converts MlsPlaintext to MLSMessage. Depending on whether handshake
     /// message should be encrypted, MlsPlaintext messages are encrypted to
     /// MlsCiphertext first.
@@ -228,7 +228,7 @@ impl ManagedGroup {
         &mut self,
         plaintext: MlsPlaintext,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsMessageOut, ManagedGroupError> {
+    ) -> Result<MlsMessageOut, MlsGroupError> {
         let msg = match self.configuration().wire_format() {
             WireFormat::MlsPlaintext => MlsMessageOut::Plaintext(plaintext),
             WireFormat::MlsCiphertext => {
@@ -248,7 +248,7 @@ impl ManagedGroup {
 
     /// Group framing parameters
     fn framing_parameters(&self) -> FramingParameters {
-        FramingParameters::new(&self.aad, self.managed_group_config.wire_format)
+        FramingParameters::new(&self.aad, self.mls_group_config.wire_format)
     }
 }
 

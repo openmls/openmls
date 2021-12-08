@@ -1,5 +1,5 @@
 //! This module contains code to serialize `MlsMessage`/`MlsMessageIn` as used
-//! by the Managed API, which the Clients are built on. These
+//! by the MlsGroup API, which the Clients are built on. These
 //! serialization/deserialization functions attach an additional byte that
 //! indicates if a message is a plaintext or a ciphertext
 

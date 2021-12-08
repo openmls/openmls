@@ -2,7 +2,7 @@
 //!
 //! OpenMLS is an implementation of the [MLS RFC].
 //!
-//! The main entry point for most consumers should be the [ManagedGroup](prelude::ManagedGroup).
+//! The main entry point for most consumers should be the [MlsGroup](prelude::MlsGroup).
 //! It provides an safe, opinionated API for interacting with MLS groups.
 //!
 //! ## Error handling

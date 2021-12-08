@@ -1,24 +1,24 @@
 use super::*;
 
-impl ManagedGroup {
+impl MlsGroup {
     // === Application messages ===
 
     /// Creates an application message.
-    /// Returns `ManagedGroupError::UseAfterEviction(UseAfterEviction::Error)`
+    /// Returns `MlsGroupError::UseAfterEviction(UseAfterEviction::Error)`
     /// if the member is no longer part of the group.
-    /// Returns `ManagedGroupError::PendingProposalsExist` if pending proposals
+    /// Returns `MlsGroupError::PendingProposalsExist` if pending proposals
     /// exist. In that case `.process_pending_proposals()` must be called first
     /// and incoming messages from the DS must be processed afterwards.
     pub fn create_message(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         message: &[u8],
-    ) -> Result<MlsMessageOut, ManagedGroupError> {
+    ) -> Result<MlsMessageOut, MlsGroupError> {
         if !self.active {
-            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
+            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
         if !self.proposal_store.is_empty() {
-            return Err(ManagedGroupError::PendingProposalsExist(
+            return Err(MlsGroupError::PendingProposalsExist(
                 PendingProposalsError::Exists,
             ));
         }
@@ -27,7 +27,7 @@ impl ManagedGroup {
         let credential_bundle: CredentialBundle = backend
             .key_store()
             .read(credential.signature_key())
-            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+            .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
         let ciphertext = self.group.create_application_message(
             &self.aad,

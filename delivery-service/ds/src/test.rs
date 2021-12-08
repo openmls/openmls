@@ -1,6 +1,6 @@
 use super::*;
 use actix_web::{dev::Body, http::StatusCode, test, web, web::Bytes, App};
-use openmls::group::create_commit_params::CreateCommitParams;
+use openmls::group::prelude::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::SignatureScheme;
 use tls_codec::{TlsByteVecU8, TlsVecU16};
@@ -175,9 +175,10 @@ async fn test_group() {
     let group_aad = b"MyFirstGroup AAD";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
     let group_ciphersuite = key_package_bundles[0].key_package().ciphersuite_name();
-    let mut group = MlsGroup::builder(GroupId::from_slice(group_id), key_package_bundles.remove(0))
-        .build(crypto)
-        .unwrap();
+    let mut group =
+        CoreGroup::builder(GroupId::from_slice(group_id), key_package_bundles.remove(0))
+            .build(crypto)
+            .unwrap();
 
     // === Client1 invites Client2 ===
     // First we need to get the key package for Client2 from the DS.
@@ -275,7 +276,7 @@ async fn test_group() {
     assert_eq!(welcome_msg, welcome_message);
     assert!(messages.is_empty());
 
-    let mut group_on_client2 = MlsGroup::new_from_welcome(
+    let mut group_on_client2 = CoreGroup::new_from_welcome(
         welcome_message,
         Some(group.tree().public_key_tree_copy()), // delivered out of band
         key_package_bundles.remove(0),

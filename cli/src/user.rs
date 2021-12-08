@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use ds_lib::{ClientKeyPackages, DsMlsMessage, GroupMessage, Message};
-use openmls::{group::create_commit_params::CreateCommitParams, prelude::*};
+use openmls::{group::prelude::*, prelude::*};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use super::{backend::Backend, conversation::Conversation, identity::Identity};
@@ -25,7 +25,7 @@ pub struct Group {
     group_aad: Vec<u8>,
     members: Vec<Vec<u8>>,
     conversation: Conversation,
-    mls_group: RefCell<MlsGroup>,
+    mls_group: RefCell<CoreGroup>,
     pending_proposals: Vec<MlsPlaintext>,
 }
 
@@ -272,11 +272,11 @@ impl User {
         let mut group_aad = group_id.to_vec();
         group_aad.extend(b" AAD");
         let kpb = self.identity.borrow_mut().update(&self.crypto);
-        let config = MlsGroupConfig {
+        let config = CoreGroupConfig {
             add_ratchet_tree_extension: true,
             ..Default::default()
         };
-        let mls_group = MlsGroup::builder(GroupId::from_slice(group_id), kpb)
+        let mls_group = CoreGroup::builder(GroupId::from_slice(group_id), kpb)
             .with_config(config)
             .build(&self.crypto)
             .unwrap();
@@ -394,7 +394,7 @@ impl User {
         log::debug!("{} joining group ...", self.username);
 
         let kpb = self.identity.borrow_mut().update(&self.crypto);
-        let mls_group = match MlsGroup::new_from_welcome(
+        let mls_group = match CoreGroup::new_from_welcome(
             welcome,
             None, /* no public tree here, has to be in the extension */
             kpb,
