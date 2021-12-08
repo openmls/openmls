@@ -327,23 +327,9 @@ fn test_update_path() {
 
         let path = commit.path.expect("An unexpected error occurred.");
 
+        let mut broken_path = path.clone();
         // For simplicity, let's just break all the ciphertexts.
-        let mut new_nodes = Vec::new();
-        for node in path.nodes().iter() {
-            let mut new_eps = Vec::new();
-            for c in node.encrypted_path_secrets.iter() {
-                let mut c_copy = c.clone();
-                flip_last_byte(&mut c_copy);
-                new_eps.push(c_copy);
-            }
-            let node = UpdatePathNode {
-                public_key: node.public_key.clone(),
-                encrypted_path_secrets: new_eps.into(),
-            };
-            new_nodes.push(node);
-        }
-
-        let broken_path = UpdatePath::new(path.leaf_key_package().clone(), new_nodes.into());
+        broken_path.flip_eps_bytes();
 
         // Now let's create a new commit from out broken update path.
         let broken_commit = Commit {

@@ -1,3 +1,5 @@
+//! This module contains the [`TreeSyncNode`] struct and its implementation.
+
 use openmls_traits::{types::CryptoError, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use tls_codec::TlsSliceU8;
@@ -15,7 +17,8 @@ use crate::treesync::hashes::ParentHashError;
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
 /// This intermediate struct on top of `Option<Node>` allows us to cache tree
-/// hash values.
+/// hash values. Blank nodes are represented by [`TreeSyncNode`] instances where
+/// `node = None`.
 pub(crate) struct TreeSyncNode {
     tree_hash: Option<Vec<u8>>,
     node: Option<Node>,
@@ -37,14 +40,18 @@ impl From<TreeSyncNode> for Option<Node> {
 }
 
 impl TreeSyncNode {
+    /// Create a blank [`TreeSyncNode`].
     pub(in crate::treesync) fn blank() -> Self {
         Self::default()
     }
 
+    /// Return a reference to the contained `Option<Node>`.
     pub(in crate::treesync) fn node(&self) -> &Option<Node> {
         &self.node
     }
 
+    /// Return a copy of this node, but remove any potential private key
+    /// material contained in the `Node`.
     pub(in crate::treesync) fn node_without_private_key(&self) -> Option<Node> {
         if let Some(node) = self.node() {
             match node {
@@ -59,18 +66,23 @@ impl TreeSyncNode {
         }
     }
 
+    /// Return a mutable reference to the contained `Option<Node>`.
     pub(in crate::treesync) fn node_mut(&mut self) -> &mut Option<Node> {
         &mut self.node
     }
 
+    /// Return a reference to the contained optional `tree_hash`.
     pub(in crate::treesync) fn tree_hash(&self) -> &Option<Vec<u8>> {
         &self.tree_hash
     }
 
+    /// Replace the current `tree_hash` with `None`.
     pub(in crate::treesync) fn erase_tree_hash(&mut self) {
         self.tree_hash = None
     }
 
+    /// Compute the tree hash for this node, thus populating the `tree_hash`
+    /// field.
     pub(in crate::treesync) fn compute_tree_hash(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,

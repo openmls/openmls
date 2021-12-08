@@ -1,3 +1,9 @@
+//! Module to encrypt and decrypt update paths for a [`TreeSyncDiff`] instance.
+//!
+//! # About
+//!
+//! This module contains structs and functions to encrypt and decrypt path
+//! updates for a [`TreeSyncDiff`] instance.
 use std::collections::HashSet;
 
 use tls_codec::{Error as TlsCodecError, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
@@ -22,6 +28,13 @@ use super::{
 };
 
 impl<'a> TreeSyncDiff<'a> {
+    /// Encrypt the given `path` to the nodes in the copath resolution of the
+    /// owner of this [`TreeSyncDiff`]. The `group_context` is used in the
+    /// encryption of the nodes, while the `exclusion_list` is used to filter
+    /// target leaves from the encryption targets. The given [`KeyPackage`] is
+    /// included in the resulting [`UpdatePath`].
+    ///
+    /// Returns the encrypted path (i.e. an [`UpdatePath`] instance).
     pub(crate) fn encrypt_path(
         &self,
         backend: &impl OpenMlsCryptoProvider,
@@ -46,8 +59,14 @@ impl<'a> TreeSyncDiff<'a> {
         })
     }
 
-    /// The path returned here already includes any path secrets included in the
-    /// `UpdatePath`.
+    /// Decrypt an [`UpdatePath`] originating from the given
+    /// `sender_leaf_index`. The `group_context` is used in the decryption
+    /// process and the `exclusion_list` is used to determine the position of
+    /// the ciphertext in the `UpdatePath` that we can decrypt.
+    ///
+    /// Returns a vector containing the decrypted [`ParentNode`] instances, as
+    /// well as the [`CommitSecret`] resulting from their derivation. Returns an
+    /// error if the `sender_leaf_index` is outside of the tree.
     pub(crate) fn decrypt_path(
         &self,
         backend: &impl OpenMlsCryptoProvider,
@@ -67,7 +86,7 @@ impl<'a> TreeSyncDiff<'a> {
         let (decryption_key, resolution_position) =
             self.decryption_key(sender_leaf_index, exclusion_list)?;
         let ciphertext = update_path_node
-            .get_encrypted_ciphertext(resolution_position)
+            .encrypted_path_secrets(resolution_position)
             .ok_or(TreeKemError::EncryptedCiphertextNotFound)?;
 
         let path_secret = PathSecret::decrypt(
@@ -123,21 +142,40 @@ impl<'a> TreeSyncDiff<'a> {
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct UpdatePathNode {
-    pub(crate) public_key: HpkePublicKey,
-    pub(crate) encrypted_path_secrets: TlsVecU32<HpkeCiphertext>,
+    pub(super) public_key: HpkePublicKey,
+    pub(super) encrypted_path_secrets: TlsVecU32<HpkeCiphertext>,
 }
 
 impl UpdatePathNode {
-    fn get_encrypted_ciphertext(&self, ciphertext_index: usize) -> Option<&HpkeCiphertext> {
+    /// Return the `encrypted_path_secrets`.
+    fn encrypted_path_secrets(&self, ciphertext_index: usize) -> Option<&HpkeCiphertext> {
         self.encrypted_path_secrets.get(ciphertext_index)
     }
 
+    /// Return the `public_key`.
     fn public_key(&self) -> &HpkePublicKey {
         &self.public_key
     }
+
+    /// Flip the last byte of every `encrypte_path_secret` in this node.
+    #[cfg(test)]
+    fn flip_last_byte(&mut self) {
+        let mut new_eps_vec = Vec::new();
+        for eps in self.encrypted_path_secrets.as_slice() {
+            let mut new_eps = eps.clone();
+            let mut last_bits = new_eps
+                .ciphertext
+                .pop()
+                .expect("An unexpected error occurred.");
+            last_bits ^= 0xff;
+            new_eps.ciphertext.push(last_bits);
+            new_eps_vec.push(new_eps);
+        }
+        self.encrypted_path_secrets = new_eps_vec.into();
+    }
 }
 
-/// Helper struct holding values that are encryptedin the
+/// Helper struct holding values that are encrypted in the
 /// `EncryptedGroupSecrets`. In particular, the `group_secrets_bytes` are
 /// encrypted for the `public_key` into `encrypted_group_secrets` later.
 pub(crate) struct PlaintextSecret {
@@ -148,8 +186,8 @@ pub(crate) struct PlaintextSecret {
 
 impl PlaintextSecret {
     /// Prepare the `GroupSecrets` for a number of `invited_members` based on a
-    /// `TreeSyncDiff`. If a slice of [`PlainUpdatePathNode`] is given, they are
-    /// included in the [`GroupSecrets`] of the path.
+    /// [`TreeSyncDiff`]. If a slice of [`PlainUpdatePathNode`] is given, they
+    /// are included in the [`GroupSecrets`] of the path.
     pub(crate) fn from_plain_update_path(
         diff: &TreeSyncDiff,
         joiner_secret: &JoinerSecret,
@@ -190,6 +228,10 @@ impl PlaintextSecret {
         Ok(plaintext_secrets)
     }
 
+    /// Encrypt the `group_secret_bytes` using the `public_key`, both contained
+    /// in this [`PlaintextSecret`].
+    ///
+    /// Returns the resulting [`EncryptedGroupSecrets`].
     pub(crate) fn encrypt(
         self,
         backend: &impl OpenMlsCryptoProvider,
@@ -226,20 +268,26 @@ pub struct UpdatePath {
 }
 
 impl UpdatePath {
+    /// Return the nodes of this [`UpdatePath`].
     pub(crate) fn nodes(&self) -> &TlsVecU32<UpdatePathNode> {
         &self.nodes
     }
 
+    /// Return the `leaf_key_package` of this [`UpdatePath`].
     pub(crate) fn leaf_key_package(&self) -> &KeyPackage {
         &self.leaf_key_package
     }
 
     #[cfg(test)]
-    pub fn new(leaf_key_package: KeyPackage, nodes: TlsVecU32<UpdatePathNode>) -> Self {
-        Self {
-            leaf_key_package,
-            nodes,
+    /// Flip the last bytes of the ciphertexts of all contained nodes.
+    pub fn flip_eps_bytes(&mut self) {
+        let mut new_nodes = Vec::new();
+        for node in self.nodes.as_slice() {
+            let mut new_node = node.clone();
+            new_node.flip_last_byte();
+            new_nodes.push(new_node);
         }
+        self.nodes = new_nodes.into();
     }
 }
 

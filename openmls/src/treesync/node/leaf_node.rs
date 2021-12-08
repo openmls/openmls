@@ -1,3 +1,4 @@
+//! This module contains the [`LeafNode`] struct and its implementation.
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -5,6 +6,8 @@ use crate::{
     prelude::{KeyPackage, KeyPackageBundle},
 };
 
+/// This struct implements the MLS leaf node and contains a [`KeyPackage`] and
+/// potentially a corresponding [`HpkePrivateKey`].
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct LeafNode {
     key_package: KeyPackage,
@@ -12,18 +15,24 @@ pub struct LeafNode {
 }
 
 impl LeafNode {
+    /// Return a reference to the `public_key` of the [`KeyPackage`] in this
+    /// node.
     pub(crate) fn public_key(&self) -> &HpkePublicKey {
         self.key_package.hpke_init_key()
     }
 
-    pub(crate) fn private_key(&self) -> &Option<HpkePrivateKey> {
+    /// Return a reference to the `private_key` corresponding to the
+    /// [`KeyPackage`] in this node.
+    pub(in crate::treesync) fn private_key(&self) -> &Option<HpkePrivateKey> {
         &self.private_key_option
     }
 
-    pub(crate) fn set_private_key(&mut self, private_key: HpkePrivateKey) {
+    /// Set the private key in this node.
+    pub(in crate::treesync) fn set_private_key(&mut self, private_key: HpkePrivateKey) {
         self.private_key_option = Some(private_key)
     }
 
+    /// Return a reference to the `key_package` of this node.
     pub(crate) fn key_package(&self) -> &KeyPackage {
         &self.key_package
     }

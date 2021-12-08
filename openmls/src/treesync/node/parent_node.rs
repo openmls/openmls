@@ -1,3 +1,6 @@
+//! This module contains the [`ParentNode`] struct, its implementation, as well
+//! as the [`PlainUpdatePathNode`], a helper struct for the creation of
+//! [`UpdatePathNode`] instances.
 use openmls_traits::types::CryptoError;
 use openmls_traits::OpenMlsCryptoProvider;
 use serde::{Deserialize, Serialize};
@@ -12,6 +15,9 @@ use crate::{
     treesync::hashes::{ParentHashError, ParentHashInput},
 };
 
+/// This struct implements the MLS parent node. It contains its public key,
+/// parent hash and unmerged leaves. Additionally, it may contain the private
+/// key corresponding to the public key.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ParentNode {
     public_key: HpkePublicKey,
@@ -39,13 +45,15 @@ impl From<HpkePublicKey> for ParentNode {
     }
 }
 
+/// Helper struct for the encryption of a [`ParentNode`].
 #[derive(Debug)]
-pub(crate) struct PlainUpdatePathNode {
+pub(in crate::treesync) struct PlainUpdatePathNode {
     public_key: HpkePublicKey,
     path_secret: PathSecret,
 }
 
 impl PlainUpdatePathNode {
+    /// Encrypt this node and return the resulting [`UpdatePathNode`].
     pub(in crate::treesync) fn encrypt(
         &self,
         backend: &impl OpenMlsCryptoProvider,
@@ -66,14 +74,17 @@ impl PlainUpdatePathNode {
         }
     }
 
+    /// Return a reference to the `path_secret` of this node.
     pub(in crate::treesync) fn path_secret(&self) -> &PathSecret {
         &self.path_secret
     }
 }
 
-pub(crate) type PathDerivationResult = (Vec<ParentNode>, Vec<PlainUpdatePathNode>, CommitSecret);
+pub(in crate::treesync) type PathDerivationResult =
+    (Vec<ParentNode>, Vec<PlainUpdatePathNode>, CommitSecret);
 
 impl ParentNode {
+    /// Create a new [`ParentNode`].
     pub(super) fn new(
         public_key: HpkePublicKey,
         parent_hash: TlsByteVecU8,
@@ -86,11 +97,12 @@ impl ParentNode {
             private_key_option: None,
         }
     }
+
     /// Derives a path from the given path secret, where the `node_secret` of
     /// the first node is immediately derived from the given `path_secret`.
-    /// Returns the resulting vector of `ParentNode`s, as well as the
-    /// intermediary `PathSecret`s. Note, that the last of the `PathSecret`s is
-    /// the `CommitSecret`.
+    ///
+    /// Returns the resulting vector of [`ParentNode`] instances, as well as the
+    /// intermediary `PathSecret`s and the [`CommitSecret`].
     pub(crate) fn derive_path(
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
@@ -124,14 +136,17 @@ impl ParentNode {
         Ok((path, update_path_nodes, commit_secret))
     }
 
+    /// Return a reference to the `public_key` of this node.
     pub(crate) fn public_key(&self) -> &HpkePublicKey {
         &self.public_key
     }
 
+    /// Return a reference to the potential `private_key` of this node.
     pub(in crate::treesync) fn private_key(&self) -> &Option<HpkePrivateKey> {
         &self.private_key_option
     }
 
+    /// Set the `private_key` of this node to the given key.
     pub(in crate::treesync) fn set_private_key(&mut self, private_key: HpkePrivateKey) {
         self.private_key_option = Some(private_key)
     }
@@ -141,7 +156,7 @@ impl ParentNode {
         self.unmerged_leaves.as_slice()
     }
 
-    /// Add a `LeafIndex` to the node's list of unmerged leaves.
+    /// Add a [`LeafIndex`] to the node's list of unmerged leaves.
     pub(in crate::treesync) fn add_unmerged_leaf(&mut self, leaf_index: LeafIndex) {
         self.unmerged_leaves.push(leaf_index)
     }
@@ -159,6 +174,7 @@ impl ParentNode {
         Ok(parent_hash_input.hash(backend, ciphersuite)?)
     }
 
+    /// Set the `parent_hash` of this node.
     pub(in crate::treesync) fn set_parent_hash(&mut self, parent_hash: Vec<u8>) {
         self.parent_hash = parent_hash.into()
     }
@@ -168,6 +184,8 @@ impl ParentNode {
         self.parent_hash.as_slice()
     }
 
+    /// Create and return a clone of this node without any potentially contained
+    /// private key material.
     pub(in crate::treesync) fn clone_without_private_key(&self) -> Self {
         Self {
             public_key: self.public_key().clone(),

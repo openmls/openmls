@@ -1,3 +1,5 @@
+//! This module contains helper structs and functions related to parent hashing
+//! and tree hashing.
 use openmls_traits::{types::CryptoError, OpenMlsCryptoProvider};
 use tls_codec::{
     Error as TlsCodecError, Serialize, TlsSerialize, TlsSize, TlsSliceU32, TlsSliceU8,
@@ -11,15 +13,18 @@ use crate::{
 use super::node::parent_node::ParentNode;
 use crate::key_packages::KeyPackage;
 
+/// Helper struct that can be serialized in the course of parent hash
+/// computation.
 #[derive(TlsSerialize, TlsSize)]
-pub(crate) struct ParentHashInput<'a> {
+pub(super) struct ParentHashInput<'a> {
     public_key: &'a HpkePublicKey,
     parent_hash: TlsSliceU8<'a, u8>,
     original_child_resolution: TlsSliceU32<'a, HpkePublicKey>,
 }
 
 impl<'a> ParentHashInput<'a> {
-    pub(crate) fn new(
+    /// Create a new [`ParentHashInput`] instance.
+    pub(super) fn new(
         public_key: &'a HpkePublicKey,
         parent_hash: &'a [u8],
         original_child_resolution: &'a [HpkePublicKey],
@@ -30,7 +35,9 @@ impl<'a> ParentHashInput<'a> {
             original_child_resolution: TlsSliceU32(original_child_resolution),
         }
     }
-    pub(crate) fn hash(
+
+    /// Serialize and hash this instance of [`ParentHashInput`].
+    pub(super) fn hash(
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
@@ -56,20 +63,24 @@ implement_error! {
     }
 }
 
+/// Helper struct that can be serialized in the course of tree hash computation.
 #[derive(TlsSerialize, TlsSize)]
 pub struct LeafNodeHashInput<'a> {
-    pub(crate) leaf_index: &'a LeafIndex,
-    pub(crate) key_package: Option<&'a KeyPackage>,
+    pub(super) leaf_index: &'a LeafIndex,
+    pub(super) key_package: Option<&'a KeyPackage>,
 }
 
 impl<'a> LeafNodeHashInput<'a> {
-    pub(crate) fn new(leaf_index: &'a LeafIndex, key_package: Option<&'a KeyPackage>) -> Self {
+    /// Create a new [`LeafNodeHashInput`] instance.
+    pub(super) fn new(leaf_index: &'a LeafIndex, key_package: Option<&'a KeyPackage>) -> Self {
         Self {
             leaf_index,
             key_package,
         }
     }
-    pub fn hash(
+
+    /// Serialize and hash this instance of [`LeafNodeHashInput`].
+    pub(super) fn hash(
         &self,
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
@@ -79,16 +90,18 @@ impl<'a> LeafNodeHashInput<'a> {
     }
 }
 
+/// Helper struct that can be serialized in the course of tree hash computation.
 #[derive(TlsSerialize, TlsSize)]
-pub struct ParentNodeTreeHashInput<'a> {
-    pub(crate) node_index: LeafIndex,
-    pub(crate) parent_node: Option<&'a ParentNode>,
-    pub(crate) left_hash: TlsSliceU8<'a, u8>,
-    pub(crate) right_hash: TlsSliceU8<'a, u8>,
+pub(super) struct ParentNodeTreeHashInput<'a> {
+    node_index: LeafIndex,
+    parent_node: Option<&'a ParentNode>,
+    left_hash: TlsSliceU8<'a, u8>,
+    right_hash: TlsSliceU8<'a, u8>,
 }
 
 impl<'a> ParentNodeTreeHashInput<'a> {
-    pub(crate) fn new(
+    /// Create a new [`ParentNodeTreeHashInput`] instance.
+    pub(super) fn new(
         node_index: LeafIndex,
         parent_node: Option<&'a ParentNode>,
         left_hash: TlsSliceU8<'a, u8>,
@@ -101,7 +114,9 @@ impl<'a> ParentNodeTreeHashInput<'a> {
             right_hash,
         }
     }
-    pub(crate) fn hash(
+
+    /// Serialize and hash this instance of [`ParentNodeTreeHashInput`].
+    pub(super) fn hash(
         &self,
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
