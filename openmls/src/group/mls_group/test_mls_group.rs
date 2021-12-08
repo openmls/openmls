@@ -12,7 +12,7 @@ use crate::{
     messages::{Commit, ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload, PathSecretError},
     prelude::*,
     schedule::psk::*,
-    treesync::treekem::{TreeKemError, UpdatePath, UpdatePathNode},
+    treesync::treekem::TreeKemError,
 };
 
 #[test]

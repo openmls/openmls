@@ -15,9 +15,6 @@ mod codec;
 pub(crate) mod leaf_node;
 pub(crate) mod parent_node;
 
-#[cfg(test)]
-pub mod tests;
-
 /// Container enum for leaf and parent nodes.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum Node {

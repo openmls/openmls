@@ -47,7 +47,7 @@ impl From<HpkePublicKey> for ParentNode {
 
 /// Helper struct for the encryption of a [`ParentNode`].
 #[derive(Debug)]
-pub(in crate::treesync) struct PlainUpdatePathNode {
+pub(crate) struct PlainUpdatePathNode {
     public_key: HpkePublicKey,
     path_secret: PathSecret,
 }
