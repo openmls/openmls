@@ -18,11 +18,6 @@ use tls_codec::{Deserialize, Serialize};
 
 #[apply(ciphersuites_and_backends)]
 fn test_welcome_msg(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    // TODO #600: Investigate why evercrypt throws an error here
-    // Suppress warning
-    let _backend = backend;
-    // Only use RustCrypto for now
-    let backend = &OpenMlsRustCrypto::default();
     test_welcome_message_with_version(ciphersuite, backend, Config::supported_versions()[0]);
 }
 
@@ -31,10 +26,9 @@ fn test_welcome_message_with_version(
     backend: &impl OpenMlsCryptoProvider,
     version: ProtocolVersion,
 ) {
-    let crypto = OpenMlsRustCrypto::default();
     // We use this dummy group info in all test cases.
     let group_info = GroupInfoPayload::new(
-        GroupId::random(&crypto),
+        GroupId::random(backend),
         GroupEpoch(123),
         vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
         vec![1, 1, 1],
@@ -55,12 +49,12 @@ fn test_welcome_message_with_version(
     )
     .expect("An unexpected error occurred.");
     let group_info = group_info
-        .sign(&crypto, &credential_bundle)
+        .sign(backend, &credential_bundle)
         .expect("Error signing GroupInfo");
 
     // Generate key and nonce for the symmetric cipher.
     let welcome_key = AeadKey::random(ciphersuite, backend.rand());
-    let welcome_nonce = AeadNonce::random(&crypto);
+    let welcome_nonce = AeadNonce::random(backend);
 
     // Generate receiver key pair.
     let receiver_key_pair = backend.crypto().derive_hpke_keypair(
@@ -75,7 +69,7 @@ fn test_welcome_message_with_version(
     let key_package_hash = vec![0, 0, 0, 0];
     let secrets = vec![EncryptedGroupSecrets {
         key_package_hash: key_package_hash.clone().into(),
-        encrypted_group_secrets: crypto.crypto().hpke_seal(
+        encrypted_group_secrets: backend.crypto().hpke_seal(
             ciphersuite.hpke_config(),
             receiver_key_pair.public.as_slice(),
             hpke_info,
@@ -87,7 +81,7 @@ fn test_welcome_message_with_version(
     // Encrypt the group info.
     let encrypted_group_info = welcome_key
         .aead_seal(
-            &crypto,
+            backend,
             &group_info
                 .tls_serialize_detached()
                 .expect("An unexpected error occurred."),
@@ -115,7 +109,7 @@ fn test_welcome_message_with_version(
             key_package_hash.as_slice(),
             secret.key_package_hash.as_slice()
         );
-        let ptxt = crypto
+        let ptxt = backend
             .crypto()
             .hpke_open(
                 ciphersuite.hpke_config(),
