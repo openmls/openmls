@@ -12,9 +12,8 @@
 //! Some more points
 //! * update path with empty exclusion list.
 
-use crate::test_utils::test_framework::{ActionType, ManagedTestSetup};
 #[cfg(test)]
-use crate::test_utils::{read, write};
+use crate::test_utils::read;
 use crate::{
     ciphersuite::signable::Signable,
     credentials::{CredentialBundle, CredentialType},
@@ -23,13 +22,10 @@ use crate::{
     test_utils::hex_to_bytes,
     treesync::{node::Node, treekem::UpdatePath},
 };
+use crate::{ciphersuite::CiphersuiteName, treesync::TreeSync};
 use crate::{
     ciphersuite::Secret, config::Config, config::ProtocolVersion, key_packages::KeyPackage,
     messages::PathSecret,
-};
-use crate::{
-    ciphersuite::{Ciphersuite, CiphersuiteName},
-    treesync::TreeSync,
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
