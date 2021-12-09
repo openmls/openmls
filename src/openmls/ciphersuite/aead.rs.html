@@ -160,8 +160,6 @@
 <span id="160">160</span>
 <span id="161">161</span>
 <span id="162">162</span>
-<span id="163">163</span>
-<span id="164">164</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// AEAD keys holding the plain key value and the AEAD algorithm type.</span>
@@ -301,18 +299,16 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">unit_tests</span> {
-    <span class="kw">use</span> <span class="ident">openmls_rust_crypto::OpenMlsRustCrypto</span>;
-
     <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::test_utils</span>::<span class="kw-2">*</span>;
 
     <span class="doccomment">/// Make sure that xoring works by xoring a nonce with a reuse guard, testing if</span>
     <span class="doccomment">/// it has changed, xoring it again and testing that it&#39;s back in its original</span>
     <span class="doccomment">/// state.</span>
-    <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_xor</span>() {
-        <span class="kw">let</span> <span class="ident">crypto</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">OpenMlsRustCrypto::default</span>();
-        <span class="kw">let</span> <span class="ident">reuse_guard</span>: <span class="ident">ReuseGuard</span> <span class="op">=</span> <span class="ident">ReuseGuard::from_random</span>(<span class="ident">crypto</span>);
-        <span class="kw">let</span> <span class="ident">original_nonce</span> <span class="op">=</span> <span class="ident">AeadNonce::random</span>(<span class="ident">crypto</span>);
+    <span class="attribute">#[<span class="ident">apply</span>(<span class="ident">backends</span>)]</span>
+    <span class="kw">fn</span> <span class="ident">test_xor</span>(<span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) {
+        <span class="kw">let</span> <span class="ident">reuse_guard</span>: <span class="ident">ReuseGuard</span> <span class="op">=</span> <span class="ident">ReuseGuard::from_random</span>(<span class="ident">backend</span>);
+        <span class="kw">let</span> <span class="ident">original_nonce</span> <span class="op">=</span> <span class="ident">AeadNonce::random</span>(<span class="ident">backend</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nonce</span> <span class="op">=</span> <span class="ident">original_nonce</span>.<span class="ident">clone</span>();
         <span class="ident">nonce</span>.<span class="ident">xor_with_reuse_guard</span>(<span class="kw-2">&amp;</span><span class="ident">reuse_guard</span>);
         <span class="macro">assert_ne!</span>(
