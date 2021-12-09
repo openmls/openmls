@@ -256,9 +256,8 @@ impl JoinerSecret {
     /// Derive a `JoinerSecret` from an optional `CommitSecret` and an
     /// `EpochSecrets` object, which contains the necessary `InitSecret`. The
     /// `CommitSecret` needs to be present if the current commit is not a
-    /// partial commit. TODO: For now, this takes a reference to a
-    /// `CommitSecret` as input. This should change with #224.
-    pub(crate) fn new<'a>(
+    /// partial commit.
+    pub(crate) fn new(
         backend: &impl OpenMlsCryptoProvider,
         commit_secret_option: impl Into<Option<CommitSecret>>,
         init_secret: &InitSecret,
