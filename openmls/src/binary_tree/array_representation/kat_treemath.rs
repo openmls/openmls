@@ -54,15 +54,6 @@ pub struct TreeMathTestVector {
     sibling: Vec<Option<u32>>,
 }
 
-macro_rules! convert {
-    ($r:expr) => {
-        match $r {
-            Ok(i) => Some(i),
-            Err(_) => None,
-        }
-    };
-}
-
 #[cfg(any(feature = "test-utils", test))]
 pub fn generate_test_vector(n_leaves: u32) -> TreeMathTestVector {
     let leaves = LeafIndex::from(n_leaves);
@@ -81,10 +72,10 @@ pub fn generate_test_vector(n_leaves: u32) -> TreeMathTestVector {
         test_vector.root.push(root(to_node_index(i + 1)));
     }
     for i in 0..n_nodes {
-        test_vector.left.push(convert!(left(i)));
-        test_vector.right.push(convert!(right(i, n_nodes)));
-        test_vector.parent.push(convert!(parent(i, n_nodes)));
-        test_vector.sibling.push(convert!(sibling(i, n_nodes)));
+        test_vector.left.push(left(i).ok());
+        test_vector.right.push(right(i, n_nodes).ok());
+        test_vector.parent.push(parent(i, n_nodes).ok());
+        test_vector.sibling.push(sibling(i, n_nodes).ok());
     }
 
     test_vector
@@ -117,16 +108,16 @@ pub fn run_test_vector(test_vector: TreeMathTestVector) -> Result<(), TmTestVect
     }
 
     for i in 0..n_nodes {
-        if test_vector.left[i] != convert!(left(i as u32)) {
+        if test_vector.left[i] != left(i as u32).ok() {
             return Err(TmTestVectorError::LeftIndexMismatch);
         }
-        if test_vector.right[i] != convert!(right(i as u32, nodes)) {
+        if test_vector.right[i] != right(i as u32, nodes).ok() {
             return Err(TmTestVectorError::RightIndexMismatch);
         }
-        if test_vector.parent[i] != convert!(parent(i as u32, nodes)) {
+        if test_vector.parent[i] != parent(i as u32, nodes).ok() {
             return Err(TmTestVectorError::ParentIndexMismatch);
         }
-        if test_vector.sibling[i] != convert!(sibling(i as u32, nodes)) {
+        if test_vector.sibling[i] != sibling(i as u32, nodes).ok() {
             return Err(TmTestVectorError::SiblingIndexMismatch);
         }
     }
