@@ -277,18 +277,14 @@ impl TreeSync {
         self.own_leaf_index
     }
 
-    /// Returns the [`KeyPackage`] of this client.
+    /// Returns the [`LeafNode`] of this client.
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    pub(crate) fn own_leaf_node(&self) -> Result<&KeyPackage, TreeSyncError> {
-        // Our own leaf should be insider of the tree and never blank.
-        let leaves = self.tree.leaves()?;
-        let leaf = leaves
-            .get(self.own_leaf_index as usize)
-            .ok_or(TreeSyncError::LibraryError)?;
-        let leaf_node = leaf.node().as_ref().ok_or(TreeSyncError::LibraryError)?;
-        Ok(leaf_node.as_leaf_node()?.key_package())
+    pub(crate) fn own_leaf_node(&self) -> Result<&LeafNode, TreeSyncError> {
+        // Our own leaf should be inside of the tree and never blank.
+        self.leaf(self.own_leaf_index)?
+            .ok_or(TreeSyncError::LibraryError)
     }
 
     /// Return a reference to the leaf at the given `LeafIndex` or `None` if the

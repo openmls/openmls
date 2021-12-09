@@ -338,6 +338,7 @@ impl MlsGroup {
             check_required_capabilities_support(required_capabilities)?;
             self.treesync()
                 .own_leaf_node()?
+                .key_package()
                 .validate_required_capabilities(required_capabilities)?;
             // Ensure that all other key packages support all the required
             // extensions as well.

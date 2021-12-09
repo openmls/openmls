@@ -82,7 +82,7 @@ impl MlsGroup {
                 // Create a new key package bundle payload from the existing key
                 // package.
                 let key_package_bundle_payload = KeyPackageBundlePayload::from_rekeyed_key_package(
-                    self.treesync().own_leaf_node()?,
+                    self.treesync().own_leaf_node()?.key_package(),
                     backend,
                 )?;
 

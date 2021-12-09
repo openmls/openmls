@@ -86,7 +86,7 @@ impl ManagedGroup {
             .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
 
         let tree = self.group.treesync();
-        let existing_key_package = tree.own_leaf_node()?;
+        let existing_key_package = tree.own_leaf_node()?.key_package();
         let key_package_bundle = match key_package_bundle_option {
             Some(kpb) => kpb,
             None => {

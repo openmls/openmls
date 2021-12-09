@@ -146,7 +146,7 @@ impl ManagedGroup {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
         let tree = self.group.treesync();
-        Ok(tree.own_leaf_node()?.credential().clone())
+        Ok(tree.own_leaf_node()?.key_package().credential().clone())
     }
 
     /// Get group ID
