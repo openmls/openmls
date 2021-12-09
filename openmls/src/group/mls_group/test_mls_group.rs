@@ -176,7 +176,6 @@ fn test_failed_groupinfo_decryption(
         )
         .expect_err("Creation of MLS group from a broken Welcome was successful.");
 
-        // FIXME: Wrong error
         assert_eq!(
             error,
             WelcomeError::CryptoError(CryptoError::HpkeDecryptionError)
