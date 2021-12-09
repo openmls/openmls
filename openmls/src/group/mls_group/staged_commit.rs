@@ -145,13 +145,13 @@ impl MlsGroup {
                 diff.re_apply_own_update_path(backend, ciphersuite, own_kpb)?
             } else {
                 // Decrypt the UpdatePath
-                let key_package = path.leaf_key_package();
+                let (key_package, update_path_nodes) = path.into_parts();
 
                 let (plain_path, commit_secret) = diff.decrypt_path(
                     backend,
                     ciphersuite,
                     self.mls_version,
-                    &path,
+                    update_path_nodes,
                     sender,
                     &apply_proposals_values.exclusion_list(),
                     &serialized_context,
@@ -161,7 +161,7 @@ impl MlsGroup {
                     backend,
                     ciphersuite,
                     sender,
-                    key_package,
+                    &key_package,
                     plain_path,
                 )?;
                 commit_secret

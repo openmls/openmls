@@ -286,7 +286,7 @@ impl<'a> TreeSyncDiff<'a> {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
         sender_leaf_index: LeafIndex,
-        key_package: &KeyPackage,
+        key_package: KeyPackage,
         path: Vec<ParentNode>,
     ) -> Result<(), TreeSyncDiffError> {
         let parent_hash =
@@ -306,10 +306,8 @@ impl<'a> TreeSyncDiff<'a> {
         };
 
         // Replace the leaf.
-        self.diff.replace_leaf(
-            sender_leaf_index,
-            Node::LeafNode(key_package.clone().into()).into(),
-        )?;
+        self.diff
+            .replace_leaf(sender_leaf_index, Node::LeafNode(key_package.into()).into())?;
         Ok(())
     }
 

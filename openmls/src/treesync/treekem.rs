@@ -78,14 +78,13 @@ impl<'a> TreeSyncDiff<'a> {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &'static Ciphersuite,
         version: ProtocolVersion,
-        update_path: &UpdatePath,
+        update_path: Vec<UpdatePathNode>,
         sender_leaf_index: LeafIndex,
         exclusion_list: &HashSet<&LeafIndex>,
         group_context: &[u8],
     ) -> Result<(Vec<ParentNode>, CommitSecret), TreeKemError> {
         let path_position = self.subtree_root_position(sender_leaf_index, self.own_leaf_index())?;
         let update_path_node = update_path
-            .nodes()
             .get(path_position)
             .ok_or(TreeKemError::UpdatePathNodeNotFound)?;
 
@@ -104,13 +103,12 @@ impl<'a> TreeSyncDiff<'a> {
             group_context,
         )?;
 
-        let remaining_path_length = update_path.nodes().len() - path_position;
+        let remaining_path_length = update_path.len() - path_position;
         let (mut derived_path, _plain_update_path, commit_secret) =
             ParentNode::derive_path(backend, ciphersuite, path_secret, remaining_path_length)?;
         // We now check that the public keys in the update path and in the
         // derived path match up.
         for (update_parent_node, derived_parent_node) in update_path
-            .nodes()
             .iter()
             .skip(path_position)
             .zip(derived_path.iter())
@@ -122,15 +120,17 @@ impl<'a> TreeSyncDiff<'a> {
 
         // Finally, we append the derived path to the part of the update path
         // below the first node that we have a private key for.
+        #[cfg(debug_assertions)]
+        let update_path_len = update_path.len();
+
         let mut path: Vec<ParentNode> = update_path
-            .nodes()
-            .iter()
+            .into_iter()
             .take(path_position)
-            .map(|update_path_node| update_path_node.public_key().clone().into())
+            .map(|update_path_node| update_path_node.public_key.into())
             .collect();
         path.append(&mut derived_path);
 
-        debug_assert_eq!(path.len(), update_path.nodes().len());
+        debug_assert_eq!(path.len(), update_path_len);
 
         Ok((path, commit_secret))
     }
@@ -282,6 +282,10 @@ impl UpdatePath {
     /// Return the `leaf_key_package` of this [`UpdatePath`].
     pub(crate) fn leaf_key_package(&self) -> &KeyPackage {
         &self.leaf_key_package
+    }
+
+    pub(crate) fn into_parts(self) -> (KeyPackage, Vec<UpdatePathNode>) {
+        (self.leaf_key_package, self.nodes.into())
     }
 
     #[cfg(test)]

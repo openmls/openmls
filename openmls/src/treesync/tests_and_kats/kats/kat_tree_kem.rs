@@ -167,13 +167,15 @@ pub fn run_test_vector(
     // Process the update_path to get a new root secret and update the tree.
     let mut diff = tree_before.empty_diff().expect("error creating diff");
 
+    let (key_package, update_path_nodes) = update_path.into_parts();
+
     // Decrypt update path
     let (path, commit_secret) = diff
         .decrypt_path(
             backend,
             ciphersuite,
             ProtocolVersion::default(),
-            &update_path,
+            update_path_nodes,
             test_vector.update_sender,
             &HashSet::new(),
             &group_context,
@@ -183,7 +185,7 @@ pub fn run_test_vector(
         backend,
         ciphersuite,
         test_vector.update_sender,
-        update_path.leaf_key_package(),
+        key_package,
         path,
     )
     .expect("error applying update path");
