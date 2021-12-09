@@ -129,7 +129,7 @@ impl MlsGroup {
             // Verify KeyPackage and MlsPlaintext membership tag
             // Note that the signature must have been verified already.
             // TODO #106: Support external members
-            let kp = &path.leaf_key_package();
+            let kp = path.leaf_key_package();
             if kp.verify(backend).is_err() {
                 return Err(StageCommitError::PathKeyPackageVerificationFailure.into());
             }
@@ -140,7 +140,7 @@ impl MlsGroup {
                 // clone out the one that we need.
                 let own_kpb = own_key_packages
                     .iter()
-                    .find(|kpb| &kpb.key_package() == kp)
+                    .find(|kpb| kpb.key_package() == kp)
                     .ok_or(StageCommitError::MissingOwnKeyPackage)?;
                 diff.re_apply_own_update_path(backend, ciphersuite, own_kpb)?
             } else {
