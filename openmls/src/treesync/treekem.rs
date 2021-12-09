@@ -120,8 +120,7 @@ impl<'a> TreeSyncDiff<'a> {
 
         // Finally, we append the derived path to the part of the update path
         // below the first node that we have a private key for.
-        #[cfg(debug_assertions)]
-        let update_path_len = update_path.len();
+        let _update_path_len = update_path.len();
 
         let mut path: Vec<ParentNode> = update_path
             .into_iter()
@@ -130,7 +129,7 @@ impl<'a> TreeSyncDiff<'a> {
             .collect();
         path.append(&mut derived_path);
 
-        debug_assert_eq!(path.len(), update_path_len);
+        debug_assert_eq!(path.len(), _update_path_len);
 
         Ok((path, commit_secret))
     }
