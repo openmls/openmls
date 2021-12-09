@@ -1,18 +1,19 @@
 //! This module contains the [`ParentNode`] struct, its implementation, as well
 //! as the [`PlainUpdatePathNode`], a helper struct for the creation of
 //! [`UpdatePathNode`] instances.
-use openmls_traits::types::CryptoError;
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{types::CryptoError, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsByteVecU8, TlsVecU32};
-
-use crate::{schedule::CommitSecret, treesync::treekem::UpdatePathNode};
 
 use crate::{
     binary_tree::LeafIndex,
     ciphersuite::{Ciphersuite, HpkePrivateKey, HpkePublicKey},
     messages::{PathSecret, PathSecretError},
-    treesync::hashes::{ParentHashError, ParentHashInput},
+    schedule::CommitSecret,
+    treesync::{
+        hashes::{ParentHashError, ParentHashInput},
+        treekem::UpdatePathNode,
+    },
 };
 
 /// This struct implements the MLS parent node. It contains its public key,

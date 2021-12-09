@@ -39,8 +39,8 @@ use crate::{
     ciphersuite::{signable::Signable, Ciphersuite, HpkePrivateKey, HpkePublicKey, Secret},
     credentials::{CredentialBundle, CredentialError},
     extensions::ExtensionType,
+    key_packages::{KeyPackage, KeyPackageBundle, KeyPackageBundlePayload},
     messages::{PathSecret, PathSecretError},
-    prelude::{KeyPackage, KeyPackageBundle, KeyPackageBundlePayload},
     schedule::CommitSecret,
 };
 

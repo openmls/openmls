@@ -7,12 +7,10 @@ use tls_codec::TlsSliceU8;
 use crate::{
     binary_tree::{LeafIndex, MlsBinaryTreeDiffError},
     ciphersuite::Ciphersuite,
-    treesync::hashes::{LeafNodeHashInput, ParentNodeTreeHashInput},
+    treesync::hashes::{LeafNodeHashInput, ParentHashError, ParentNodeTreeHashInput},
 };
 
-use super::node::NodeError;
-use super::Node;
-use crate::treesync::hashes::ParentHashError;
+use super::{node::NodeError, Node};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]

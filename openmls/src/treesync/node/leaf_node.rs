@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     ciphersuite::{HpkePrivateKey, HpkePublicKey},
-    prelude::{KeyPackage, KeyPackageBundle},
+    key_packages::{KeyPackage, KeyPackageBundle},
 };
 
 /// This struct implements the MLS leaf node and contains a [`KeyPackage`] and

@@ -15,17 +15,15 @@
 #[cfg(test)]
 use crate::test_utils::read;
 use crate::{
-    ciphersuite::signable::Signable,
+    ciphersuite::{signable::Signable, CiphersuiteName, Secret},
+    config::{Config, ProtocolVersion},
     credentials::{CredentialBundle, CredentialType},
-    prelude::KeyPackageBundlePayload,
+    key_packages::KeyPackage,
+    key_packages::KeyPackageBundlePayload,
+    messages::PathSecret,
     schedule::CommitSecret,
     test_utils::hex_to_bytes,
-    treesync::{node::Node, treekem::UpdatePath},
-};
-use crate::{ciphersuite::CiphersuiteName, treesync::TreeSync};
-use crate::{
-    ciphersuite::Secret, config::Config, config::ProtocolVersion, key_packages::KeyPackage,
-    messages::PathSecret,
+    treesync::{node::Node, treekem::UpdatePath, TreeSync},
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;

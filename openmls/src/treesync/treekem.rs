@@ -9,15 +9,16 @@ use std::collections::HashSet;
 use tls_codec::{Error as TlsCodecError, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext, OpenMlsCryptoProvider};
-pub(crate) use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::LeafIndex,
     ciphersuite::{Ciphersuite, HpkePublicKey},
+    config::ProtocolVersion,
+    key_packages::{KeyPackage, KeyPackageError},
     messages::{
         proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret, PathSecretError,
     },
-    prelude::{KeyPackage, KeyPackageError, ProtocolVersion},
     schedule::{CommitSecret, JoinerSecret, PreSharedKeys},
 };
 

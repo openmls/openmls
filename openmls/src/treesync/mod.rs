@@ -33,8 +33,8 @@ use serde::{Deserialize, Serialize};
 use crate::{
     binary_tree::{MlsBinaryTree, MlsBinaryTreeError},
     ciphersuite::Ciphersuite,
+    key_packages::{KeyPackage, KeyPackageBundle},
     messages::{PathSecret, PathSecretError},
-    prelude::{KeyPackage, KeyPackageBundle},
     schedule::CommitSecret,
 };
 
