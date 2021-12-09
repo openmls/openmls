@@ -374,6 +374,7 @@ impl KeyPackageBundlePayload {
         self.key_package_payload.add_extension(extension)
     }
 
+    /// Get a reference to the `leaf_secret`.
     pub(crate) fn leaf_secret(&self) -> &Secret {
         &self.leaf_secret
     }
