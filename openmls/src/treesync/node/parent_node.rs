@@ -114,7 +114,7 @@ impl ParentNode {
         path_length: usize,
     ) -> Result<PathDerivationResult, ParentNodeError> {
         let mut path = Vec::new();
-        let mut update_path_nodes = Vec::new();
+        let mut update_path_nodes = Vec::with_capacity(path_length);
         let mut path_secret_option = Some(path_secret);
         for _ in 0..path_length {
             let path_secret = path_secret_option
