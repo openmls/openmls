@@ -366,7 +366,7 @@ impl PathSecret {
     /// Decrypt a given `HpkeCiphertext` using the `private_key` and `group_context`.
     ///
     /// Returns the decrypted `PathSecret`. Returns an error if the decryption
-    /// was unsuccessul.
+    /// was unsuccessful.
     pub(crate) fn decrypt(
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &'static Ciphersuite,
