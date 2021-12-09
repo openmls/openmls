@@ -24,6 +24,8 @@ pub struct Proposals<'a> {
     pub proposals_by_value: &'a [&'a Proposal],
 }
 
+/// A helper struct which contains the values resulting from the preparation of
+/// a commit with path.
 #[derive(Default)]
 struct PathProcessingResult {
     commit_secret: Option<CommitSecret>,
