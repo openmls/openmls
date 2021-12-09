@@ -340,6 +340,8 @@ impl PathSecret {
         Ok(Self { path_secret })
     }
 
+    /// Encrypt the path secret under the given `HpkePublicKey` using the given
+    /// `group_context`.
     pub(crate) fn encrypt(
         &self,
         backend: &impl OpenMlsCryptoProvider,
@@ -356,11 +358,15 @@ impl PathSecret {
         )
     }
 
-    /// This is used to turn the path secret into a commit secret.
+    /// Consume the `PathSecret`, returning the internal `Secret` value.
     pub(crate) fn secret(self) -> Secret {
         self.path_secret
     }
 
+    /// Decrypt a given `HpkeCiphertext` using the `private_key` and `group_context`.
+    ///
+    /// Returns the decrypted `PathSecret`. Returns an error if the decryption
+    /// was unsuccessul.
     pub(crate) fn decrypt(
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &'static Ciphersuite,
