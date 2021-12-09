@@ -47,7 +47,12 @@ impl<'a> TreeSyncDiff<'a> {
     ) -> Result<UpdatePath, TreeKemError> {
         let copath_resolutions = self.copath_resolutions(self.own_leaf_index(), exclusion_list)?;
 
-        let mut update_path_nodes = Vec::new();
+        // There should be as many copath resolutions.
+        if copath_resolutions.len() != path.len() {
+            return Err(TreeKemError::PathLengthError);
+        }
+
+        let mut update_path_nodes = Vec::with_capacity(path.len());
         // Encrypt the secrets
         for (node, resolution) in path.iter().zip(copath_resolutions.iter()) {
             let update_path_node = node.encrypt(backend, ciphersuite, resolution, group_context);
