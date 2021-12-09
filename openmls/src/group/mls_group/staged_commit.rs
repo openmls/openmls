@@ -284,6 +284,9 @@ impl MlsGroup {
     }
 
     /// Merges a [StagedCommit] into the group state.
+    ///
+    /// This function should not fail and only returns a [`Result`], because it
+    /// might throw a `LibraryError`.
     pub fn merge_commit(&mut self, staged_commit: StagedCommit) -> Result<(), MlsGroupError> {
         if let Some(state) = staged_commit.state {
             self.group_context = state.group_context;
