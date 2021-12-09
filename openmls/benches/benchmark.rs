@@ -43,20 +43,22 @@ fn criterion_kp_bundle(c: &mut Criterion, backend: &impl OpenMlsCryptoProvider) 
 
 fn kp_bundle_rust_crypto(c: &mut Criterion) {
     let backend = &OpenMlsRustCrypto::default();
+    println!("Backend: RustCrypto");
     criterion_kp_bundle(c, backend);
 }
 
 #[cfg(feature = "evercrypt")]
 fn kp_bundle_evercrypt(c: &mut Criterion) {
     use evercrypt_backend::OpenMlsEvercrypt;
-    let backend = OpenMlsEvercrypt::default();
+    let backend = &OpenMlsEvercrypt::default();
+    println!("Backend: Evercrypt");
     criterion_kp_bundle(c, backend);
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
     kp_bundle_rust_crypto(c);
     #[cfg(feature = "evercrypt")]
-    kp_bundle_evercypt(c);
+    kp_bundle_evercrypt(c);
 }
 
 criterion_group!(benches, criterion_benchmark);
