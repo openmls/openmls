@@ -21,6 +21,12 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(not(test), forbid(unsafe_code))]
 
+const _: () = assert!(
+    std::mem::size_of::<usize>() == 16
+        || std::mem::size_of::<usize>() == 8
+        || std::mem::size_of::<usize>() == 4
+);
+
 #[cfg(any(feature = "test-utils", test))]
 pub use rstest_reuse;
 
