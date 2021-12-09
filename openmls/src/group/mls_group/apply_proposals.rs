@@ -86,7 +86,7 @@ impl MlsGroup {
             // Unwrapping here is safe because we know the proposal type
             let remove_proposal = &queued_proposal.proposal().as_remove().unwrap();
             // Check if we got removed from the group
-            if remove_proposal.removed() == self.tree().own_leaf_index() {
+            if remove_proposal.removed() == self.treesync().own_leaf_index() {
                 self_removed = true;
             }
             // Blank the direct path of the removed member
@@ -180,7 +180,7 @@ impl MlsGroup {
             // Unwrapping here is safe because we know the proposal type
             let remove_proposal = &queued_proposal.proposal().as_remove().unwrap();
             // Check if we got removed from the group
-            if remove_proposal.removed() == self.tree().own_leaf_index() {
+            if remove_proposal.removed() == self.treesync().own_leaf_index() {
                 self_removed = true;
             }
             // Blank the direct path of the removed member

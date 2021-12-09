@@ -336,12 +336,12 @@ impl MlsGroup {
             let required_capabilities = required_extension.as_required_capabilities_extension()?;
             // Ensure we support all the capabilities.
             check_required_capabilities_support(required_capabilities)?;
-            self.tree()
+            self.treesync()
                 .own_leaf_node()?
                 .validate_required_capabilities(required_capabilities)?;
             // Ensure that all other key packages support all the required
             // extensions as well.
-            for (_index, key_package) in self.tree().full_leaves()? {
+            for (_index, key_package) in self.treesync().full_leaves()? {
                 key_package.check_extension_support(required_capabilities.extensions())?;
             }
         }
@@ -425,7 +425,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsPlaintext, MlsGroupError> {
         // Verify the signature on the plaintext.
-        let tree = self.tree();
+        let tree = self.treesync();
 
         let leaf_node = tree
             .leaf(verifiable.sender_index())
@@ -493,7 +493,7 @@ impl MlsGroup {
     }
 
     /// Returns the ratchet tree
-    pub fn tree(&self) -> &TreeSync {
+    pub fn treesync(&self) -> &TreeSync {
         &self.tree
     }
 
@@ -517,7 +517,7 @@ impl MlsGroup {
     /// on the fly when calling this function.
     pub fn other_extensions(&self) -> Vec<Extension> {
         vec![Extension::RatchetTree(RatchetTreeExtension::new(
-            self.tree().export_nodes(),
+            self.treesync().export_nodes(),
         ))]
     }
 

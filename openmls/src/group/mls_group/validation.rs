@@ -37,9 +37,10 @@ impl MlsGroup {
         // ValSem4
         let sender = plaintext.sender();
         if sender.is_member() {
-            let members = self.tree().full_leaves()?;
+            let members = self.treesync().full_leaves()?;
             let sender_index = sender.to_leaf_index();
-            if sender_index >= self.tree().leaf_count()? || !members.contains_key(&sender_index) {
+            if sender_index >= self.treesync().leaf_count()? || !members.contains_key(&sender_index)
+            {
                 return Err(FramingValidationError::UnknownMember.into());
             }
         }
@@ -127,7 +128,7 @@ impl MlsGroup {
             }
         }
 
-        for (_index, key_package) in self.tree().full_leaves()? {
+        for (_index, key_package) in self.treesync().full_leaves()? {
             let identity = key_package.credential().identity();
             // ValSem103
             if identity_set.contains(identity) {
@@ -158,7 +159,7 @@ impl MlsGroup {
         let remove_proposals = staged_proposal_queue.remove_proposals();
 
         let mut removes_set = HashSet::new();
-        let tree = &self.tree();
+        let tree = &self.treesync();
 
         let full_leaves = tree.full_leaves()?;
 
@@ -187,14 +188,14 @@ impl MlsGroup {
         path_key_package: Option<(LeafIndex, &KeyPackage)>,
     ) -> Result<(), MlsGroupError> {
         let mut public_key_set = HashSet::new();
-        for (_index, key_package) in self.tree().full_leaves()? {
+        for (_index, key_package) in self.treesync().full_leaves()? {
             let public_key = key_package.hpke_init_key().as_slice().to_vec();
             public_key_set.insert(public_key);
         }
 
         // Check the update proposals from the proposal queue first
         let update_proposals = staged_proposal_queue.update_proposals();
-        let tree = &self.tree();
+        let tree = &self.treesync();
 
         for update_proposal in update_proposals {
             let indexed_key_packages = tree.full_leaves()?;

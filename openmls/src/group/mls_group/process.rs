@@ -57,7 +57,7 @@ impl MlsGroup {
             let sender_index = sender.to_leaf_index();
 
             credential = self
-                .tree()
+                .treesync()
                 .full_leaves()?
                 .get(&sender_index)
                 .as_ref()

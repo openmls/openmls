@@ -227,7 +227,7 @@ impl ManagedGroup {
         let remove_proposal = self.group.create_remove_proposal(
             self.framing_parameters(),
             &credential_bundle,
-            self.group.tree().own_leaf_index(),
+            self.group.treesync().own_leaf_index(),
             backend,
         )?;
 
@@ -238,7 +238,7 @@ impl ManagedGroup {
     pub fn members(&self) -> Result<Vec<&Credential>, ManagedGroupError> {
         Ok(self
             .group
-            .tree()
+            .treesync()
             .full_leaves()?
             .iter()
             .map(|(_, kp)| kp.credential())
@@ -248,6 +248,6 @@ impl ManagedGroup {
     /// Gets the current list of members
     #[cfg(any(feature = "test-utils", test))]
     pub fn indexed_members(&self) -> Result<BTreeMap<LeafIndex, &KeyPackage>, ManagedGroupError> {
-        Ok(self.group.tree().full_leaves()?)
+        Ok(self.group.treesync().full_leaves()?)
     }
 }

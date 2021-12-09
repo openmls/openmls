@@ -460,7 +460,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     let mut group_charlie = MlsGroup::new_from_welcome(
         welcome_option.expect("An unexpected error occurred."),
-        Some(group_alice.tree().export_nodes()),
+        Some(group_alice.treesync().export_nodes()),
         charlie_key_package_bundle,
         None,
         backend,
@@ -507,8 +507,8 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .merge_commit(staged_commit)
         .expect("error merging commit");
 
-    _print_tree(&group_alice.tree(), "Alice tree");
-    _print_tree(&group_charlie.tree(), "Charlie tree");
+    _print_tree(&group_alice.treesync(), "Alice tree");
+    _print_tree(&group_charlie.treesync(), "Charlie tree");
 
     // Alice sends a message with a sender that points to a blank leaf
     // Expected result: MlsCiphertextError::UnknownSender

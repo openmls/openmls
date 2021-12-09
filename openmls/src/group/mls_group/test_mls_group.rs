@@ -272,7 +272,7 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     alice_group
         .merge_commit(staged_commit)
         .expect("error merging commit");
-    let ratchet_tree = alice_group.tree().export_nodes();
+    let ratchet_tree = alice_group.treesync().export_nodes();
 
     let group_bob = MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
@@ -517,7 +517,7 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
     alice_group
         .merge_commit(staged_commit)
         .expect("error merging commit");
-    let ratchet_tree = alice_group.tree().export_nodes();
+    let ratchet_tree = alice_group.treesync().export_nodes();
 
     let group_bob = MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),

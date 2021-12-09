@@ -452,7 +452,7 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
         // example the RatchetTreeExtension.
         assert!(MlsGroup::new_from_welcome(
             welcome,
-            Some(group_state.tree().export_nodes()),
+            Some(group_state.treesync().export_nodes()),
             charlie_key_package_bundle,
             None,
             backend

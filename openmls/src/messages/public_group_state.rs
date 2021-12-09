@@ -163,7 +163,7 @@ impl PublicGroupStateTbs {
 
         let group_id = mls_group.group_id().clone();
         let epoch = mls_group.context().epoch();
-        let tree_hash = mls_group.tree().tree_hash().into();
+        let tree_hash = mls_group.treesync().tree_hash().into();
         let interim_transcript_hash = mls_group.interim_transcript_hash().into();
         let other_extensions = mls_group.other_extensions().into();
 
@@ -176,7 +176,7 @@ impl PublicGroupStateTbs {
             other_extensions,
             external_pub: external_pub.into(),
             ciphersuite: ciphersuite.name(),
-            signer_index: mls_group.tree().own_leaf_index(),
+            signer_index: mls_group.treesync().own_leaf_index(),
         })
     }
 }

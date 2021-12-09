@@ -106,7 +106,7 @@ impl MlsGroup {
         self.validate_update_proposals(&proposal_queue, sender_key_package_tuple)?;
 
         // Create provisional tree and apply proposals
-        let mut diff = self.tree().empty_diff()?;
+        let mut diff = self.treesync().empty_diff()?;
 
         let apply_proposals_values = self
             .apply_staged_proposals(&mut diff, backend, &proposal_queue, own_key_packages)
@@ -122,7 +122,7 @@ impl MlsGroup {
 
         // Determine if Commit is own Commit
         let sender = mls_plaintext.sender_index();
-        let is_own_commit = sender == self.tree().own_leaf_index();
+        let is_own_commit = sender == self.treesync().own_leaf_index();
 
         // Determine if Commit has a path
         let commit_secret = if let Some(path) = commit.path.clone() {

@@ -145,7 +145,7 @@ impl ManagedGroup {
         if !self.is_active() {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
-        let tree = self.group.tree();
+        let tree = self.group.treesync();
         Ok(tree.own_leaf_node()?.credential().clone())
     }
 
@@ -185,7 +185,7 @@ impl ManagedGroup {
 
     /// Export the Ratchet Tree
     pub fn export_ratchet_tree(&self) -> Vec<Option<Node>> {
-        self.group.tree().export_nodes()
+        self.group.treesync().export_nodes()
     }
 
     #[cfg(any(feature = "test-utils", test))]
@@ -195,12 +195,12 @@ impl ManagedGroup {
 
     #[cfg(any(feature = "test-utils", test))]
     pub fn tree_hash(&self) -> &[u8] {
-        self.group.tree().tree_hash()
+        self.group.treesync().tree_hash()
     }
 
     #[cfg(any(feature = "test-utils", test))]
     pub fn print_tree(&self, message: &str) {
-        _print_tree(&self.group.tree(), message)
+        _print_tree(&self.group.treesync(), message)
     }
 
     /// Get the underlying [MlsGroup].

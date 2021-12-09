@@ -282,7 +282,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                 // Welcome.
                 let new_group = match MlsGroup::new_from_welcome(
                     welcome.clone(),
-                    Some(mls_group.tree().export_nodes()),
+                    Some(mls_group.treesync().export_nodes()),
                     key_package_bundle,
                     None, /* PSKs not supported here */
                     backend,

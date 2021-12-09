@@ -48,8 +48,8 @@ impl MlsGroup {
             backend,
             params.proposal_store(),
             params.inline_proposals(),
-            self.tree().own_leaf_index(),
-            self.tree().leaf_count()?,
+            self.treesync().own_leaf_index(),
+            self.treesync().leaf_count()?,
         )?;
 
         // TODO: #581 Filter proposals by support
@@ -63,7 +63,7 @@ impl MlsGroup {
 
         let sender_index = self.sender_index();
         // Make a copy of the current tree to apply proposals safely
-        let mut diff: TreeSyncDiff = self.tree().empty_diff()?;
+        let mut diff: TreeSyncDiff = self.treesync().empty_diff()?;
 
         // Apply proposals to tree
         let apply_proposals_values =
@@ -82,7 +82,7 @@ impl MlsGroup {
                 // Create a new key package bundle payload from the existing key
                 // package.
                 let key_package_bundle_payload = KeyPackageBundlePayload::from_rekeyed_key_package(
-                    self.tree().own_leaf_node()?,
+                    self.treesync().own_leaf_node()?,
                     backend,
                 )?;
 
