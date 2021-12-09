@@ -12,8 +12,6 @@
 //! Some more points
 //! * update path with empty exclusion list.
 
-#[cfg(test)]
-use crate::test_utils::read;
 use crate::{
     ciphersuite::{signable::Signable, CiphersuiteName, Secret},
     config::{Config, ProtocolVersion},
@@ -22,11 +20,11 @@ use crate::{
     key_packages::KeyPackageBundlePayload,
     messages::PathSecret,
     schedule::CommitSecret,
-    test_utils::hex_to_bytes,
+    test_utils::*,
     treesync::{node::Node, treekem::UpdatePath, TreeSync},
 };
 
-use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::OpenMlsCryptoProvider;
 use serde::{self, Deserialize, Serialize};
 use std::{collections::HashSet, convert::TryFrom};
 use tls_codec::{Deserialize as TlsDeserialize, TlsVecU32};
@@ -56,10 +54,12 @@ pub struct TreeKemTestVector {
 }
 
 #[cfg(any(feature = "test-utils", test))]
-pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTestVectorError> {
+pub fn run_test_vector(
+    test_vector: TreeKemTestVector,
+    backend: &impl OpenMlsCryptoProvider,
+) -> Result<(), TreeKemTestVectorError> {
     log::debug!("Running TreeKEM test vector");
     log::trace!("{:?}", test_vector);
-    let crypto = OpenMlsRustCrypto::default();
     let ciphersuite =
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
     let ciphersuite = Config::ciphersuite(ciphersuite).expect("Invalid ciphersuite");
@@ -86,16 +86,16 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
         "username".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
-        &crypto,
+        backend,
     )
     .expect("An unexpected error occurred.");
     let my_key_package_bundle = KeyPackageBundlePayload::from_key_package_and_leaf_secret(
         my_leaf_secret.clone(),
         &my_key_package,
-        &crypto,
+        backend,
     )
     .expect("Coul not create KeyPackage.")
-    .sign(&crypto, &credential_bundle)
+    .sign(backend, &credential_bundle)
     .expect("An unexpected error occurred.");
 
     let start_secret: PathSecret = Secret::from_slice(
@@ -109,7 +109,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     // well.
     let (mut tree_before, commit_secret_option_before) = if let Ok((tree, commit_secret_option)) =
         TreeSync::from_nodes_with_secrets(
-            &crypto,
+            backend,
             ciphersuite,
             ratchet_tree_before.as_slice(),
             test_vector.add_sender,
@@ -142,7 +142,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     );
     let path_secret: PathSecret = secret.into();
     let commit_secret_after_add_kat: CommitSecret = path_secret
-        .derive_path_secret(&crypto, ciphersuite)
+        .derive_path_secret(backend, ciphersuite)
         .expect("error deriving commit secret")
         .into();
 
@@ -170,7 +170,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     // Decrypt update path
     let (path, commit_secret) = diff
         .decrypt_path(
-            &crypto,
+            backend,
             ciphersuite,
             ProtocolVersion::default(),
             &update_path,
@@ -180,7 +180,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
         )
         .expect("error decrypting update path");
     diff.apply_received_update_path(
-        &crypto,
+        backend,
         ciphersuite,
         test_vector.update_sender,
         update_path.leaf_key_package(),
@@ -189,7 +189,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     .expect("error applying update path");
 
     let staged_diff = diff
-        .into_staged_diff(&crypto, ciphersuite)
+        .into_staged_diff(backend, ciphersuite)
         .expect("error creating staged diff");
     tree_before
         .merge_diff(staged_diff)
@@ -208,7 +208,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     );
     let path_secret: PathSecret = secret.into();
     let commit_secret_after_update_kat: CommitSecret = path_secret
-        .derive_path_secret(&crypto, ciphersuite)
+        .derive_path_secret(backend, ciphersuite)
         .expect("error deriving commit secret")
         .into();
 
@@ -254,12 +254,12 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     Ok(())
 }
 
-#[test]
-fn read_test_vector_tk() {
+#[apply(backends)]
+fn read_test_vectors_tree_kem(backend: &impl OpenMlsCryptoProvider) {
     let tests: Vec<TreeKemTestVector> = read("test_vectors/kat_tree_kem_openmls.json");
 
     for test_vector in tests {
-        run_test_vector(test_vector).expect("error while checking tree kem test vector.");
+        run_test_vector(test_vector, backend).expect("error while checking tree kem test vector.");
     }
 }
 
