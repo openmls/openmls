@@ -8,6 +8,7 @@ use crate::{
     ciphersuite::*,
     credentials::*,
     key_packages::*,
+    test_utils::*,
     tree::{
         index::{LeafIndex, NodeIndex},
         private_tree::*,
@@ -15,17 +16,20 @@ use crate::{
 };
 
 // Common setup for tests.
-fn setup(ciphersuite: &Ciphersuite, len: usize) -> (KeyPackageBundle, LeafIndex, Vec<NodeIndex>) {
-    let crypto = OpenMlsRustCrypto::default();
+fn setup(
+    ciphersuite: &'static Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+    len: usize,
+) -> (KeyPackageBundle, LeafIndex, Vec<NodeIndex>) {
     let credential_bundle = CredentialBundle::new(
         "username".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
-        &crypto,
+        backend,
     )
     .expect("An unexpected error occurred.");
     let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, &crypto, vec![])
+        KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, backend, vec![])
             .expect("An unexpected error occurred.");
     let own_index = LeafIndex::from(0u32);
     let direct_path = generate_path_u8(len);
@@ -76,36 +80,35 @@ fn test_private_tree(
     assert_eq!(m, data);
 }
 
-#[test]
-fn create_private_tree_from_secret() {
-    use crate::config::*;
+#[apply(ciphersuites_and_backends)]
+fn create_private_tree_from_secret(
+    ciphersuite: &'static Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+) {
     const PATH_LENGTH: usize = 33;
-    let crypto = OpenMlsRustCrypto::default();
-    for ciphersuite in Config::supported_ciphersuites() {
-        let (key_package_bundle, own_index, direct_path) = setup(ciphersuite, PATH_LENGTH);
+    let (key_package_bundle, own_index, direct_path) = setup(ciphersuite, backend, PATH_LENGTH);
 
-        let mut private_tree =
-            PrivateTree::from_leaf_secret(&crypto, own_index, key_package_bundle.leaf_secret())
-                .expect("Could not create PrivateTree.");
+    let mut private_tree =
+        PrivateTree::from_leaf_secret(backend, own_index, key_package_bundle.leaf_secret())
+            .expect("Could not create PrivateTree.");
 
-        // Compute path secrets from the leaf and generate keypairs
-        let public_keys = private_tree
-            .generate_path_secrets(
-                ciphersuite,
-                &crypto,
-                key_package_bundle.leaf_secret(),
-                &direct_path,
-            )
-            .expect("Could not generate path secrets.");
-
-        assert_eq!(public_keys.len(), direct_path.len());
-
-        test_private_tree(
-            &private_tree,
-            &direct_path,
-            &public_keys,
+    // Compute path secrets from the leaf and generate keypairs
+    let public_keys = private_tree
+        .generate_path_secrets(
             ciphersuite,
-            &crypto,
-        );
-    }
+            backend,
+            key_package_bundle.leaf_secret(),
+            &direct_path,
+        )
+        .expect("Could not generate path secrets.");
+
+    assert_eq!(public_keys.len(), direct_path.len());
+
+    test_private_tree(
+        &private_tree,
+        &direct_path,
+        &public_keys,
+        ciphersuite,
+        backend,
+    );
 }
