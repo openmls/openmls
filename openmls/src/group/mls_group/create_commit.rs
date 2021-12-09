@@ -111,7 +111,7 @@ impl MlsGroup {
                     key_package_bundle: Some(key_package_bundle),
                 }
             } else {
-                // If path is not needed, return empty commit secret
+                // If path is not needed, return empty path processing results
                 PathProcessingResult::default()
             };
 

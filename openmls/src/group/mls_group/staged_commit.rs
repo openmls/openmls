@@ -268,7 +268,7 @@ impl MlsGroup {
             .encryption_secret()
             .create_secret_tree(diff.leaf_count());
 
-        // Make the diff a staged diff.
+        // Make the diff a staged diff. This finalizes the diff and no more changes can be applied to it.
         let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
 
         Ok(StagedCommit {
