@@ -58,10 +58,8 @@ impl MlsGroup {
 
             credential = self
                 .treesync()
-                .full_leaves()?
-                .get(&sender_index)
-                .as_ref()
-                .map(|key_package| key_package.credential().clone());
+                .leaf(sender_index)?
+                .map(|leaf_node| leaf_node.key_package().credential().clone());
         }
 
         Ok(UnverifiedMessage::from_decrypted_message(
