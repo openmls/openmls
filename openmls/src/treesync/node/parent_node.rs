@@ -81,6 +81,9 @@ impl PlainUpdatePathNode {
     }
 }
 
+/// The result of a path derivation result containing the vector of
+/// [`ParentNode`], as well as [`PlainUpdatePathNode`] instance and a
+/// [`CommitSecret`].
 pub(in crate::treesync) type PathDerivationResult =
     (Vec<ParentNode>, Vec<PlainUpdatePathNode>, CommitSecret);
 
