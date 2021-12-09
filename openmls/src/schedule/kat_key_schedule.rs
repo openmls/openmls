@@ -116,7 +116,7 @@ fn generate(
     let psk_secret = PskSecret::new(ciphersuite, &crypto, &psk_ids, &psks)
         .expect("An unexpected error occurred.");
 
-    let joiner_secret = JoinerSecret::new(&crypto, &commit_secret, init_secret)
+    let joiner_secret = JoinerSecret::new(&crypto, commit_secret.clone(), init_secret)
         .expect("Could not create JoinerSecret.");
     let mut key_schedule = KeySchedule::init(
         ciphersuite,
@@ -361,7 +361,7 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
         let psk_secret = PskSecret::new(ciphersuite, &crypto, &psk_ids, &psks)
             .expect("An unexpected error occurred.");
 
-        let joiner_secret = JoinerSecret::new(&crypto, &commit_secret, &init_secret)
+        let joiner_secret = JoinerSecret::new(&crypto, commit_secret, &init_secret)
             .expect("Could not create JoinerSecret.");
         if hex_to_bytes(&epoch.joiner_secret) != joiner_secret.as_slice() {
             if cfg!(test) {

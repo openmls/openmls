@@ -158,7 +158,7 @@ impl MlsGroup {
 
         let joiner_secret = JoinerSecret::new(
             backend,
-            path_processing_result.commit_secret.as_ref(),
+            path_processing_result.commit_secret,
             self.epoch_secrets()
                 .init_secret()
                 .ok_or(MlsGroupError::InitSecretNotFound)?,

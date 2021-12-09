@@ -154,6 +154,7 @@ pub use psk::{PreSharedKeyId, PreSharedKeys, PskSecret};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(any(feature = "test-utils", test), derive(Clone))]
 pub(crate) struct CommitSecret {
     secret: Secret,
 }
@@ -259,12 +260,13 @@ impl JoinerSecret {
     /// `CommitSecret` as input. This should change with #224.
     pub(crate) fn new<'a>(
         backend: &impl OpenMlsCryptoProvider,
-        commit_secret_option: impl Into<Option<&'a CommitSecret>>,
+        commit_secret_option: impl Into<Option<CommitSecret>>,
         init_secret: &InitSecret,
     ) -> Result<Self, CryptoError> {
-        let intermediate_secret = init_secret
-            .secret
-            .hkdf_extract(backend, commit_secret_option.into().map(|cs| &cs.secret))?;
+        let intermediate_secret = init_secret.secret.hkdf_extract(
+            backend,
+            commit_secret_option.into().as_ref().map(|cs| &cs.secret),
+        )?;
         let secret = intermediate_secret.derive_secret(backend, "joiner")?;
         log_crypto!(trace, "Joiner secret: {:x?}", secret);
         Ok(JoinerSecret { secret })

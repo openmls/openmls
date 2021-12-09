@@ -162,7 +162,7 @@ impl MlsGroupBuilder {
         // We use a random `InitSecret` for initialization.
         let joiner_secret = JoinerSecret::new(
             backend,
-            &commit_secret,
+            commit_secret,
             &InitSecret::random(ciphersuite, backend, version)?,
         )?;
 

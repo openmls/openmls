@@ -176,7 +176,7 @@ impl MlsGroup {
 
         let joiner_secret = JoinerSecret::new(
             backend,
-            &commit_secret,
+            commit_secret,
             self.epoch_secrets
                 .init_secret()
                 .ok_or(StageCommitError::InitSecretNotFound)?,
