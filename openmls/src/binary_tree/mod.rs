@@ -1,5 +1,9 @@
 //! This module defines the binary tree implementation used by OpenMLS.
 
+#[cfg(any(feature = "test-utils", test))]
+pub mod array_representation;
+
+#[cfg(not(any(feature = "test-utils", test)))]
 pub(crate) mod array_representation;
 
 #[cfg(test)]

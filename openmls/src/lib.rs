@@ -34,7 +34,13 @@ pub mod error;
 #[macro_use]
 pub mod test_utils;
 
+#[cfg(any(feature = "test-utils", test))]
+pub mod binary_tree;
+#[cfg(not(any(feature = "test-utils", test)))]
 mod binary_tree;
+#[cfg(any(feature = "test-utils", test))]
+pub mod treesync;
+#[cfg(not(any(feature = "test-utils", test)))]
 mod treesync;
 
 pub mod ciphersuite;

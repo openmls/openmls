@@ -4,7 +4,10 @@
 //! It is based on the Mock client written by Richard Barnes.
 
 use clap::Parser;
+use clap_derive::*;
+
 use openmls::{
+    binary_tree::array_representation::kat_treemath::{self, TreeMathTestVector},
     ciphersuite::signable::Verifiable,
     group::{
         create_commit_params::CreateCommitParams,
@@ -15,11 +18,8 @@ use openmls::{
     },
     prelude::*,
     schedule::kat_key_schedule::{self, KeyScheduleTestVector},
-    tree::tests_and_kats::kats::{
-        kat_encryption::{self, EncryptionTestVector},
-        kat_tree_kem::{self, TreeKemTestVector},
-        kat_treemath,
-    },
+    tree::tests_and_kats::kats::kat_encryption::{self, EncryptionTestVector},
+    treesync::tests_and_kats::kats::kat_tree_kem::{self, TreeKemTestVector},
 };
 
 use serde::{self, Serialize};
@@ -205,11 +205,15 @@ impl MlsClient for MlsClientImpl {
                 ("Transcript", kat_bytes)
             }
             Ok(TestVectorType::Treekem) => {
-                let ciphersuite = to_ciphersuite(obj.cipher_suite)?;
-                let kat_tree_kem =
-                    kat_tree_kem::generate_test_vector(obj.n_leaves as u32, ciphersuite);
-                let kat_bytes = into_bytes(kat_tree_kem);
-                ("TreeKEM", kat_bytes)
+                //let ciphersuite = to_ciphersuite(obj.cipher_suite)?;
+                //let kat_tree_kem =
+                //    kat_tree_kem::generate_test_vector(obj.n_leaves as u32, ciphersuite);
+                //let kat_bytes = into_bytes(kat_tree_kem);
+                //("TreeKEM", kat_bytes)
+                return Err(tonic::Status::new(
+                    tonic::Code::InvalidArgument,
+                    "TreeKEM test vector generation is currently not supported by OpenMLS. Please see OpenMLS GitHub issue #423.",
+                ));
             }
             Ok(TestVectorType::Messages) => {
                 let ciphersuite: &'static Ciphersuite =
