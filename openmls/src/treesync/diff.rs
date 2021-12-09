@@ -636,10 +636,8 @@ impl<'a> TreeSyncDiff<'a> {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
     ) -> Result<StagedTreeSyncDiff, TreeSyncDiffError> {
-        let new_tree_hash = self.compute_tree_hash(backend, ciphersuite)?;
-        #[cfg(test)]
-        self.verify_parent_hashes(backend, ciphersuite)
-            .expect("error verifying parent hashes");
+        let new_tree_hash = self.compute_tree_hashes(backend, ciphersuite)?;
+        debug_assert!(self.verify_parent_hashes(backend, ciphersuite).is_ok());
         Ok(StagedTreeSyncDiff {
             diff: self.diff.into(),
             new_tree_hash,
@@ -650,7 +648,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// all nodes below it in the tree. This function respects cached tree hash
     /// values. If a cached value is found it is returned without further
     /// computation of hashes of the node or the nodes below it.
-    fn set_tree_hash(
+    fn compute_tree_hash(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
@@ -672,10 +670,10 @@ impl<'a> TreeSyncDiff<'a> {
         }
         // Compute left hash.
         let left_child = self.diff.left_child(node_id)?;
-        let left_hash = self.set_tree_hash(backend, ciphersuite, left_child)?;
+        let left_hash = self.compute_tree_hash(backend, ciphersuite, left_child)?;
         // Compute right hash.
         let right_child = self.diff.right_child(node_id)?;
-        let right_hash = self.set_tree_hash(backend, ciphersuite, right_child)?;
+        let right_hash = self.compute_tree_hash(backend, ciphersuite, right_child)?;
 
         let node = self.diff.node_mut(node_id)?;
         let node_index = node_id.node_index();
@@ -697,12 +695,12 @@ impl<'a> TreeSyncDiff<'a> {
     }
 
     /// Compute and set the tree hash of all nodes in the tree.
-    pub(crate) fn compute_tree_hash(
+    pub(crate) fn compute_tree_hashes(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
     ) -> Result<Vec<u8>, TreeSyncDiffError> {
-        self.set_tree_hash(backend, ciphersuite, self.diff.root())
+        self.compute_tree_hash(backend, ciphersuite, self.diff.root())
     }
 
     /// Returns the position of the subtree root shared by both given indices in

@@ -198,7 +198,7 @@ impl MlsGroup {
         let provisional_group_context = GroupContext::new(
             self.group_context.group_id.clone(),
             provisional_epoch,
-            diff.compute_tree_hash(backend, ciphersuite)?,
+            diff.compute_tree_hashes(backend, ciphersuite)?,
             confirmed_transcript_hash.clone(),
             self.group_context.extensions(),
         )?;

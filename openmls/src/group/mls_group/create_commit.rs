@@ -147,7 +147,7 @@ impl MlsGroup {
         )?;
 
         // Calculate tree hash
-        let tree_hash = diff.compute_tree_hash(backend, ciphersuite)?;
+        let tree_hash = diff.compute_tree_hashes(backend, ciphersuite)?;
 
         // Calculate group context
         let provisional_group_context = GroupContext::new(
