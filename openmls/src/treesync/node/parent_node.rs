@@ -62,7 +62,7 @@ impl PlainUpdatePathNode {
         public_keys: &[HpkePublicKey],
         group_context: &[u8],
     ) -> UpdatePathNode {
-        let mut encrypted_path_secrets = Vec::new();
+        let mut encrypted_path_secrets = Vec::with_capacity(public_keys.len());
         for pk in public_keys {
             let encrypted_path_secret =
                 self.path_secret
