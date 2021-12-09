@@ -163,7 +163,7 @@ impl UpdatePathNode {
         &self.public_key
     }
 
-    /// Flip the last byte of every `encrypte_path_secret` in this node.
+    /// Flip the last byte of every `encrypted_path_secret` in this node.
     #[cfg(test)]
     fn flip_last_byte(&mut self) {
         let mut new_eps_vec = Vec::new();

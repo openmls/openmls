@@ -170,10 +170,7 @@ fn managed_group_operations(
         assert_eq!(
             alice_group
                 .members()
-                .expect(
-                    "error getting members from
-        group"
-                )
+                .expect("error getting members from group")
                 .len(),
             2
         );
