@@ -1,3 +1,4 @@
+#[cfg(any(feature = "test-utils", test))]
 use std::collections::BTreeMap;
 
 use mls_group::create_commit_params::CreateCommitParams;
@@ -245,6 +246,7 @@ impl ManagedGroup {
     }
 
     /// Gets the current list of members
+    #[cfg(any(feature = "test-utils", test))]
     pub fn indexed_members(&self) -> Result<BTreeMap<LeafIndex, &KeyPackage>, ManagedGroupError> {
         Ok(self.group.tree().full_leaves()?)
     }
