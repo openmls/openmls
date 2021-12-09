@@ -40,7 +40,7 @@ use crate::{
 
 use self::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff, TreeSyncDiffError},
-    node::{Node, NodeError},
+    node::{leaf_node::LeafNode, Node, NodeError},
     treesync_node::{TreeSyncNode, TreeSyncNodeError},
 };
 
@@ -289,6 +289,18 @@ impl TreeSync {
             .ok_or(TreeSyncError::LibraryError)?;
         let leaf_node = leaf.node().as_ref().ok_or(TreeSyncError::LibraryError)?;
         Ok(leaf_node.as_leaf_node()?.key_package())
+    }
+
+    /// Return a reference to the leaf at the given `LeafIndex` or `None` if the
+    /// leaf is blank.
+    ///
+    /// Returns an error if the leaf is outside of the tree.
+    pub(crate) fn leaf(&self, leaf_index: LeafIndex) -> Result<Option<&LeafNode>, TreeSyncError> {
+        let tsn = self.tree.leaf(leaf_index)?;
+        Ok(match tsn.node() {
+            Some(node) => Some(node.as_leaf_node()?),
+            None => None,
+        })
     }
 }
 

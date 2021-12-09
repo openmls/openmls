@@ -427,11 +427,14 @@ impl MlsGroup {
         // Verify the signature on the plaintext.
         let tree = self.tree();
 
-        let leaves = tree.full_leaves()?;
-        let kp = leaves
-            .get(&verifiable.sender_index())
+        let leaf_node = tree
+            .leaf(verifiable.sender_index())
+            // It's an unknown sender either if the index is outside of the tree
+            // ...
+            .map_err(|_| MlsPlaintextError::UnknownSender)?
+            // ... or if the leaf is blank.
             .ok_or(MlsPlaintextError::UnknownSender)?;
-        let credential = kp.credential();
+        let credential = leaf_node.key_package().credential();
         // Set the context if it has not been set already.
         if !verifiable.has_context() {
             verifiable.set_context(self.context().tls_serialize_detached()?);

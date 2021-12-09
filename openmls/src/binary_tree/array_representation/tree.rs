@@ -164,6 +164,17 @@ impl<T: Clone + Debug> ABinaryTree<T> {
     pub(crate) fn nodes(&self) -> &[T] {
         &self.nodes
     }
+
+    /// Return a reference to the leaf at the given `LeafIndex`.
+    ///
+    /// Returns an error if the leaf is outside of the tree.
+    pub(crate) fn leaf(&self, leaf_index: LeafIndex) -> Result<&T, ABinaryTreeError> {
+        let node_index = usize::try_from(to_node_index(leaf_index))
+            .map_err(|_| ABinaryTreeError::ArchitectureError)?;
+        self.nodes
+            .get(node_index)
+            .ok_or(ABinaryTreeError::OutOfBounds)
+    }
 }
 
 implement_error! {
