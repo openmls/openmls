@@ -6,8 +6,9 @@ extern crate rand;
 use criterion::Criterion;
 use openmls::prelude::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::OpenMlsCryptoProvider;
 
-fn criterion_kp_bundle(c: &mut Criterion) {
+fn criterion_kp_bundle(c: &mut Criterion, backend: &impl OpenMlsCryptoProvider) {
     for ciphersuite in Config::supported_ciphersuites() {
         c.bench_function(
             &format!(
@@ -17,21 +18,19 @@ fn criterion_kp_bundle(c: &mut Criterion) {
             move |b| {
                 b.iter_with_setup(
                     || {
-                        let crypto = &OpenMlsRustCrypto::default();
                         CredentialBundle::new(
                             vec![1, 2, 3],
                             CredentialType::Basic,
                             ciphersuite.signature_scheme(),
-                            crypto,
+                            backend,
                         )
                         .expect("An unexpected error occurred.")
                     },
                     |credential_bundle: CredentialBundle| {
-                        let crypto = &OpenMlsRustCrypto::default();
                         KeyPackageBundle::new(
                             &[ciphersuite.name()],
                             &credential_bundle,
-                            crypto,
+                            backend,
                             Vec::new(),
                         )
                         .expect("An unexpected error occurred.");
@@ -42,8 +41,22 @@ fn criterion_kp_bundle(c: &mut Criterion) {
     }
 }
 
+fn kp_bundle_rust_crypto(c: &mut Criterion) {
+    let backend = &OpenMlsRustCrypto::default();
+    criterion_kp_bundle(c, backend);
+}
+
+#[cfg(feature = "evercrypt")]
+fn kp_bundle_evercrypt(c: &mut Criterion) {
+    use evercrypt_backend::OpenMlsEvercrypt;
+    let backend = OpenMlsEvercrypt::default();
+    criterion_kp_bundle(c, backend);
+}
+
 fn criterion_benchmark(c: &mut Criterion) {
-    criterion_kp_bundle(c);
+    kp_bundle_rust_crypto(c);
+    #[cfg(feature = "evercrypt")]
+    kp_bundle_evercypt(c);
 }
 
 criterion_group!(benches, criterion_benchmark);

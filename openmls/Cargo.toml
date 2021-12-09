@@ -54,3 +54,4 @@ features = ["test-utils", "evercrypt"]
 [[bench]]
 name = "benchmark"
 harness = false
+features = ["test-utils"]
