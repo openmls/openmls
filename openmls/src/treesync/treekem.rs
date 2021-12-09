@@ -274,16 +274,13 @@ pub struct UpdatePath {
 }
 
 impl UpdatePath {
-    /// Return the nodes of this [`UpdatePath`].
-    pub(crate) fn nodes(&self) -> &TlsVecU32<UpdatePathNode> {
-        &self.nodes
-    }
-
     /// Return the `leaf_key_package` of this [`UpdatePath`].
     pub(crate) fn leaf_key_package(&self) -> &KeyPackage {
         &self.leaf_key_package
     }
 
+    /// Consume the [`UpdatePath`] and return its individual parts: A
+    /// [`KeyPackage`] and a vector of [`UpdatePathNode`] instances.
     pub(crate) fn into_parts(self) -> (KeyPackage, Vec<UpdatePathNode>) {
         (self.leaf_key_package, self.nodes.into())
     }

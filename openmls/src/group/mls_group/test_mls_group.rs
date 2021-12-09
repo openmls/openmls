@@ -13,7 +13,7 @@ use crate::{
     prelude::*,
     schedule::psk::*,
     test_utils::*,
-    treesync::treekem::{TreeKemError, UpdatePathNode},
+    treesync::treekem::TreeKemError,
 };
 
 #[apply(ciphersuites_and_backends)]

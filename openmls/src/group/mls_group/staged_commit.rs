@@ -161,7 +161,7 @@ impl MlsGroup {
                     backend,
                     ciphersuite,
                     sender,
-                    &key_package,
+                    key_package,
                     plain_path,
                 )?;
                 commit_secret
