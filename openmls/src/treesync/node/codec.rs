@@ -9,21 +9,9 @@ use super::{leaf_node::LeafNode, parent_node::ParentNode, Node};
 /// Node type. Can be either `Leaf` or `Parent`.
 #[derive(PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize)]
 #[repr(u8)]
-pub enum MlsNodeType {
+enum MlsNodeType {
     Leaf = 1,
     Parent = 2,
-}
-
-impl MlsNodeType {
-    /// Returns `true` if the node type is `Leaf` and `false` otherwise.
-    pub fn is_leaf(&self) -> bool {
-        self == &MlsNodeType::Leaf
-    }
-
-    /// Returns `true` if the node type is `Parent` and `false` otherwise.
-    pub fn is_parent(&self) -> bool {
-        self == &MlsNodeType::Parent
-    }
 }
 
 impl tls_codec::Size for Node {
