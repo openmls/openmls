@@ -6,7 +6,11 @@ use crate::{
     framing::*,
     group::{mls_group::*, *},
     messages::*,
-    treesync::{diff::TreeSyncDiff, treekem::PlaintextSecret},
+    treesync::{
+        diff::TreeSyncDiff,
+        node::parent_node::PlainUpdatePathNode,
+        treekem::{PlaintextSecret, UpdatePath},
+    },
 };
 
 use super::{
@@ -18,6 +22,14 @@ use super::{
 pub struct Proposals<'a> {
     pub proposals_by_reference: &'a ProposalStore,
     pub proposals_by_value: &'a [&'a Proposal],
+}
+
+#[derive(Default)]
+struct PathProcessingResult {
+    commit_secret: Option<CommitSecret>,
+    encrypted_path: Option<UpdatePath>,
+    plain_path: Option<Vec<PlainUpdatePathNode>>,
+    key_package_bundle: Option<KeyPackageBundle>,
 }
 
 impl MlsGroup {
@@ -59,7 +71,8 @@ impl MlsGroup {
         }
 
         let serialized_group_context = self.group_context.tls_serialize_detached()?;
-        let (encrypted_path_option, plain_path_option, kpb_option, commit_secret_option) =
+        let path_processing_result =
+        // If path is needed, compute path values
             if apply_proposals_values.path_required
                 || contains_own_updates
                 || params.force_self_update()
@@ -71,37 +84,39 @@ impl MlsGroup {
                     backend,
                 )?;
 
-                // If path is needed, compute path values
-                let (key_package_bundle, path, commit_secret) = diff.apply_own_update_path(
+                // Derive and apply an update path based on the previously
+                // generated KeyPackageBundle.
+                let (key_package_bundle, plain_path, commit_secret) = diff.apply_own_update_path(
                     backend,
                     ciphersuite,
                     key_package_bundle_payload,
                     params.credential_bundle(),
                 )?;
 
+                // Encrypt the path to the correct recipient nodes.
                 let encrypted_path = diff.encrypt_path(
                     backend,
                     self.ciphersuite(),
-                    &path,
+                    &plain_path,
                     &serialized_group_context,
                     &apply_proposals_values.exclusion_list(),
                     key_package_bundle.key_package(),
                 )?;
-                (
-                    Some(encrypted_path),
-                    Some(path),
-                    Some(key_package_bundle),
-                    Some(commit_secret),
-                )
+                PathProcessingResult {
+                    commit_secret: Some(commit_secret),
+                    encrypted_path: Some(encrypted_path),
+                    plain_path: Some(plain_path),
+                    key_package_bundle: Some(key_package_bundle),
+                }
             } else {
                 // If path is not needed, return empty commit secret
-                (None, None, None, None)
+                PathProcessingResult::default()
             };
 
         // Create commit message
         let commit = Commit {
             proposals: proposal_reference_list.into(),
-            path: encrypted_path_option,
+            path: path_processing_result.encrypted_path,
         };
 
         // Create provisional group state
@@ -143,7 +158,7 @@ impl MlsGroup {
 
         let joiner_secret = JoinerSecret::new(
             backend,
-            commit_secret_option.as_ref(),
+            path_processing_result.commit_secret.as_ref(),
             self.epoch_secrets()
                 .init_secret()
                 .ok_or(MlsGroupError::InitSecretNotFound)?,
@@ -155,7 +170,7 @@ impl MlsGroup {
             &diff,
             &joiner_secret,
             apply_proposals_values.invitation_list,
-            plain_path_option.as_deref(),
+            path_processing_result.plain_path.as_deref(),
             &apply_proposals_values.presharedkeys,
             backend,
         )?;
@@ -238,9 +253,17 @@ impl MlsGroup {
                 secrets,
                 encrypted_group_info,
             );
-            Ok((mls_plaintext, Some(welcome), kpb_option))
+            Ok((
+                mls_plaintext,
+                Some(welcome),
+                path_processing_result.key_package_bundle,
+            ))
         } else {
-            Ok((mls_plaintext, None, kpb_option))
+            Ok((
+                mls_plaintext,
+                None,
+                path_processing_result.key_package_bundle,
+            ))
         }
     }
 }
