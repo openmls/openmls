@@ -7,7 +7,7 @@ use clap::Parser;
 use clap_derive::*;
 
 use openmls::{
-    binary_tree::array_representation::kat_treemath::{self, TreeMathTestVector},
+    binary_tree::array_representation::kat_treemath,
     ciphersuite::signable::Verifiable,
     group::{
         create_commit_params::CreateCommitParams,
@@ -751,7 +751,7 @@ impl MlsClient for MlsClientImpl {
             .create_remove_proposal(
                 framing_parameters,
                 &interop_group.credential_bundle,
-                LeafIndex::from(remove_proposal_request.removed as usize),
+                remove_proposal_request.removed,
                 &self.crypto_provider,
             )
             .map_err(into_status)?;
@@ -1003,7 +1003,10 @@ impl MlsClient for MlsClientImpl {
                 &self.crypto_provider,
             )
             .map_err(into_status)?;
-        interop_group.group.merge_commit(staged_commit);
+        interop_group
+            .group
+            .merge_commit(staged_commit)
+            .map_err(|_| Status::aborted("couldn't merge commit after applying proposal"))?;
 
         Ok(Response::new(HandleCommitResponse {
             state_id: handle_commit_request.state_id,
