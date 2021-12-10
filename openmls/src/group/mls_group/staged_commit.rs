@@ -1,9 +1,10 @@
-use mls_group::proposals::StagedProposal;
+use crate::treesync::diff::StagedTreeSyncDiff;
+
+use super::proposals::{ProposalStore, StagedProposal, StagedProposalQueue};
 
 use super::super::errors::*;
 use super::proposals::{
-    ProposalStore, StagedAddProposal, StagedProposalQueue, StagedPskProposal, StagedRemoveProposal,
-    StagedUpdateProposal,
+    StagedAddProposal, StagedPskProposal, StagedRemoveProposal, StagedUpdateProposal,
 };
 use super::*;
 use core::fmt::Debug;
@@ -81,7 +82,7 @@ impl MlsGroup {
         let path_key_package = commit
             .path()
             .as_ref()
-            .map(|update_path| update_path.leaf_key_package.clone());
+            .map(|update_path| update_path.leaf_key_package().clone());
 
         let sender_key_package_tuple = path_key_package
             .as_ref()
@@ -105,11 +106,10 @@ impl MlsGroup {
         self.validate_update_proposals(&proposal_queue, sender_key_package_tuple)?;
 
         // Create provisional tree and apply proposals
-        let mut provisional_tree = self.tree.borrow_mut();
-        // FIXME: #424 this is a copy of the nodes in the tree to reset the original state.
-        let original_nodes = provisional_tree.nodes.clone();
-        let apply_proposals_values = provisional_tree
-            .apply_staged_proposals(backend, &proposal_queue, own_key_packages)
+        let mut diff = self.treesync().empty_diff()?;
+
+        let apply_proposals_values = self
+            .apply_staged_proposals(&mut diff, backend, &proposal_queue, own_key_packages)
             .map_err(|_| StageCommitError::OwnKeyNotFound)?;
 
         // Check if we were removed from the group
@@ -121,16 +121,15 @@ impl MlsGroup {
         }
 
         // Determine if Commit is own Commit
-        let sender_index = sender.to_leaf_index();
-        let is_own_commit = sender_index == provisional_tree.own_node_index();
+        let sender = mls_plaintext.sender_index();
+        let is_own_commit = sender == self.treesync().own_leaf_index();
 
-        let zero_commit_secret = CommitSecret::zero_secret(ciphersuite, self.mls_version);
         // Determine if Commit has a path
         let commit_secret = if let Some(path) = commit.path.clone() {
             // Verify KeyPackage and MlsPlaintext membership tag
             // Note that the signature must have been verified already.
             // TODO #106: Support external members
-            let kp = &path.leaf_key_package;
+            let kp = path.leaf_key_package();
             if kp.verify(backend).is_err() {
                 return Err(StageCommitError::PathKeyPackageVerificationFailure.into());
             }
@@ -143,37 +142,36 @@ impl MlsGroup {
                     .iter()
                     .find(|kpb| kpb.key_package() == kp)
                     .ok_or(StageCommitError::MissingOwnKeyPackage)?;
-
-                if let Some(commit_secret) =
-                    provisional_tree.replace_private_tree(backend, own_kpb, &serialized_context)
-                {
-                    commit_secret
-                } else {
-                    // We can return a library error here, because we know there was a path and thus
-                    // a new commit secret must have been set.
-                    return Err(MlsGroupError::LibraryError);
-                }
+                diff.re_apply_own_update_path(backend, ciphersuite, own_kpb)?
             } else {
-                // Collect the new leaves' indexes so we can filter them out in the resolution
-                // later.
-                provisional_tree
-                    .update_path(
-                        backend,
-                        sender_index,
-                        &path,
-                        &serialized_context,
-                        apply_proposals_values.exclusion_list(),
-                    )
-                    .map_err(|e| {
-                        MlsGroupError::StageCommitError(StageCommitError::DecryptionFailure(e))
-                    })?
+                // Decrypt the UpdatePath
+                let (key_package, update_path_nodes) = path.into_parts();
+
+                let (plain_path, commit_secret) = diff.decrypt_path(
+                    backend,
+                    ciphersuite,
+                    self.mls_version,
+                    update_path_nodes,
+                    sender,
+                    &apply_proposals_values.exclusion_list(),
+                    &serialized_context,
+                )?;
+
+                diff.apply_received_update_path(
+                    backend,
+                    ciphersuite,
+                    sender,
+                    key_package,
+                    plain_path,
+                )?;
+                commit_secret
             }
         } else {
             if apply_proposals_values.path_required {
                 // ValSem201
                 return Err(StageCommitError::RequiredPathNotFound.into());
             }
-            &zero_commit_secret
+            CommitSecret::zero_secret(ciphersuite, self.mls_version)
         };
 
         let joiner_secret = JoinerSecret::new(
@@ -200,7 +198,7 @@ impl MlsGroup {
         let provisional_group_context = GroupContext::new(
             self.group_context.group_id.clone(),
             provisional_epoch,
-            provisional_tree.tree_hash(backend)?,
+            diff.compute_tree_hashes(backend, ciphersuite)?,
             confirmed_transcript_hash.clone(),
             self.group_context.extensions(),
         )?;
@@ -243,34 +241,10 @@ impl MlsGroup {
             .confirmation_key()
             .tag(backend, &confirmed_transcript_hash)?;
         if &own_confirmation_tag != received_confirmation_tag {
-            // FIXME: reset nodes. This should get fixed with the tree rewrite.
-            provisional_tree.nodes = original_nodes;
             log::error!("Confirmation tag mismatch");
             log_crypto!(trace, "  Got:      {:x?}", received_confirmation_tag);
             log_crypto!(trace, "  Expected: {:x?}", own_confirmation_tag);
             return Err(StageCommitError::ConfirmationTagMismatch.into());
-        }
-
-        // Verify KeyPackage extensions
-        if let Some(path) = &commit.path {
-            if !is_own_commit {
-                let parent_hash = provisional_tree.set_parent_hashes(backend, sender_index)?;
-                if let Some(received_parent_hash) = path
-                    .leaf_key_package
-                    .extension_with_type(ExtensionType::ParentHash)
-                {
-                    let parent_hash_extension =
-                        match received_parent_hash.as_parent_hash_extension() {
-                            Ok(phe) => phe,
-                            Err(_) => return Err(StageCommitError::NoParentHashExtension.into()),
-                        };
-                    if parent_hash != parent_hash_extension.parent_hash() {
-                        return Err(StageCommitError::ParentHashMismatch.into());
-                    }
-                } else {
-                    return Err(StageCommitError::NoParentHashExtension.into());
-                }
-            }
         }
 
         // If there is a key package from the Commit's update path, add it to the proposal queue
@@ -278,9 +252,13 @@ impl MlsGroup {
         // and add a new fake Update proposal to the queue after that
         if let Some(key_package) = path_key_package {
             let proposal = Proposal::Update(UpdateProposal { key_package });
-            let staged_proposal =
-                StagedProposal::from_proposal_and_sender(ciphersuite, backend, proposal, sender)
-                    .map_err(|_| MlsGroupError::LibraryError)?;
+            let staged_proposal = StagedProposal::from_proposal_and_sender(
+                ciphersuite,
+                backend,
+                proposal,
+                *mls_plaintext.sender(),
+            )
+            .map_err(|_| MlsGroupError::LibraryError)?;
             proposal_queue.add(staged_proposal);
         }
 
@@ -288,7 +266,10 @@ impl MlsGroup {
         // process.
         let secret_tree = provisional_epoch_secrets
             .encryption_secret()
-            .create_secret_tree(provisional_tree.leaf_count());
+            .create_secret_tree(diff.leaf_count());
+
+        // Make the diff a staged diff. This finalizes the diff and no more changes can be applied to it.
+        let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
 
         Ok(StagedCommit {
             staged_proposal_queue: proposal_queue,
@@ -297,29 +278,24 @@ impl MlsGroup {
                 epoch_secrets: provisional_epoch_secrets,
                 interim_transcript_hash,
                 secret_tree: RefCell::new(secret_tree),
-                original_nodes,
+                staged_diff,
             }),
         })
     }
 
     /// Merges a [StagedCommit] into the group state.
-    pub fn merge_commit(&mut self, staged_commit: StagedCommit) {
+    ///
+    /// This function should not fail and only returns a [`Result`], because it
+    /// might throw a `LibraryError`.
+    pub fn merge_commit(&mut self, staged_commit: StagedCommit) -> Result<(), MlsGroupError> {
         if let Some(state) = staged_commit.state {
             self.group_context = state.group_context;
             self.epoch_secrets = state.epoch_secrets;
             self.interim_transcript_hash = state.interim_transcript_hash;
             self.secret_tree = state.secret_tree;
-        }
-    }
-
-    /// This is temporary and will disappear when #424 is addressed.
-    /// This is just here for completeness but won't be used anywhere.
-    /// Rolls back the public tree nodes in case a Commit contained undesired proposals.
-    pub fn cancel_commit(&mut self, staged_commit: StagedCommit) {
-        let mut tree = self.tree.borrow_mut();
-        if let Some(state) = staged_commit.state {
-            tree.nodes = state.original_nodes;
-        }
+            self.tree.merge_diff(state.staged_diff)?;
+        };
+        Ok(())
     }
 }
 
@@ -365,5 +341,5 @@ pub(crate) struct StagedCommitState {
     epoch_secrets: EpochSecrets,
     interim_transcript_hash: Vec<u8>,
     secret_tree: RefCell<SecretTree>,
-    original_nodes: Vec<Node>,
+    staged_diff: StagedTreeSyncDiff,
 }

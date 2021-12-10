@@ -19,7 +19,7 @@
 //!
 //! [MLS RFC]: https://datatracker.ietf.org/doc/draft-ietf-mls-protocol/
 #![cfg_attr(docsrs, feature(doc_cfg))]
-#![forbid(unsafe_code)]
+#![cfg_attr(not(test), forbid(unsafe_code))]
 
 #[cfg(any(feature = "test-utils", test))]
 pub use rstest_reuse;
@@ -33,6 +33,12 @@ pub mod error;
 #[cfg(any(feature = "test-utils", test))]
 #[macro_use]
 pub mod test_utils;
+
+mod binary_tree;
+#[cfg(not(any(feature = "test-utils", test)))]
+mod treesync;
+#[cfg(any(feature = "test-utils", test))]
+pub mod treesync;
 
 pub mod ciphersuite;
 pub mod config;

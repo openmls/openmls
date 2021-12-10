@@ -235,7 +235,9 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                     backend,
                 )
                 .expect("Error applying Commit");
-            mls_group.merge_commit(staged_commit);
+            mls_group
+                .merge_commit(staged_commit)
+                .expect("error merging commit");
 
             // Distribute the Welcome message to the other members.
             for client_id in 1..group_config.members.len() {
@@ -280,7 +282,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                 // Welcome.
                 let new_group = match MlsGroup::new_from_welcome(
                     welcome.clone(),
-                    Some(mls_group.tree().public_key_tree_copy()),
+                    Some(mls_group.treesync().export_nodes()),
                     key_package_bundle,
                     None, /* PSKs not supported here */
                     backend,

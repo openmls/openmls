@@ -116,7 +116,7 @@ fn generate(
     let psk_secret = PskSecret::new(ciphersuite, &crypto, &psk_ids, &psks)
         .expect("An unexpected error occurred.");
 
-    let joiner_secret = JoinerSecret::new(&crypto, &commit_secret, init_secret)
+    let joiner_secret = JoinerSecret::new(&crypto, commit_secret.clone(), init_secret)
         .expect("Could not create JoinerSecret.");
     let mut key_schedule = KeySchedule::init(
         ciphersuite,
@@ -307,7 +307,7 @@ pub fn run_test_vector(
 ) -> Result<(), KsTestVectorError> {
     use tls_codec::{Deserialize, Serialize};
 
-    use crate::ciphersuite::HpkePublicKey;
+    use crate::{ciphersuite::HpkePublicKey, messages::PathSecret};
 
     let ciphersuite =
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
@@ -339,12 +339,12 @@ pub fn run_test_vector(
     for (i, epoch) in test_vector.epochs.iter().enumerate() {
         log::debug!("  Epoch {:?}", i);
         let tree_hash = hex_to_bytes(&epoch.tree_hash);
-        let commit_secret = hex_to_bytes(&epoch.commit_secret);
-        let commit_secret = CommitSecret::from(Secret::from_slice(
-            &commit_secret,
+        let secret = hex_to_bytes(&epoch.commit_secret);
+        let commit_secret = CommitSecret::from(PathSecret::from(Secret::from_slice(
+            &secret,
             ProtocolVersion::default(),
             ciphersuite,
-        ));
+        )));
         log::trace!("    CommitSecret from tve {:?}", epoch.commit_secret);
         let mut psks = Vec::new();
         let mut psk_ids = Vec::new();
@@ -363,7 +363,7 @@ pub fn run_test_vector(
         let psk_secret = PskSecret::new(ciphersuite, backend, &psk_ids, &psks)
             .expect("An unexpected error occurred.");
 
-        let joiner_secret = JoinerSecret::new(backend, &commit_secret, &init_secret)
+        let joiner_secret = JoinerSecret::new(backend, commit_secret, &init_secret)
             .expect("Could not create JoinerSecret.");
         if hex_to_bytes(&epoch.joiner_secret) != joiner_secret.as_slice() {
             if cfg!(test) {

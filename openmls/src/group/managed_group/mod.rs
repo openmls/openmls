@@ -12,8 +12,8 @@ mod test_managed_group;
 mod updates;
 
 use crate::credentials::CredentialBundle;
-#[cfg(any(feature = "test-utils", test))]
-use openmls_traits::types::CryptoError;
+use crate::{treesync::node::Node, treesync::LeafIndex};
+
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 
 use crate::{
@@ -25,13 +25,9 @@ use crate::{
     messages::{proposals::*, Welcome},
     prelude::KeyPackageBundlePayload,
     schedule::ResumptionSecret,
-    tree::{index::LeafIndex, node::Node},
 };
 
 use std::io::{Error, Read, Write};
-
-#[cfg(any(feature = "test-utils", test))]
-use std::cell::Ref;
 
 pub use config::*;
 pub use errors::{
@@ -149,8 +145,8 @@ impl ManagedGroup {
         if !self.is_active() {
             return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
-        let tree = self.group.tree();
-        Ok(tree.own_key_package().credential().clone())
+        let tree = self.group.treesync();
+        Ok(tree.own_leaf_node()?.key_package().credential().clone())
     }
 
     /// Get group ID
@@ -189,12 +185,7 @@ impl ManagedGroup {
 
     /// Export the Ratchet Tree
     pub fn export_ratchet_tree(&self) -> Vec<Option<Node>> {
-        self.group.tree().public_key_tree_copy()
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn export_path_secrets(&self) -> Ref<[crate::messages::PathSecret]> {
-        Ref::map(self.group.tree(), |tree| tree.private_tree().path_secrets())
+        self.group.treesync().export_nodes()
     }
 
     #[cfg(any(feature = "test-utils", test))]
@@ -203,13 +194,13 @@ impl ManagedGroup {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub fn tree_hash(&self, backend: &impl OpenMlsCryptoProvider) -> Result<Vec<u8>, CryptoError> {
-        self.group.tree().tree_hash(backend)
+    pub fn tree_hash(&self) -> &[u8] {
+        self.group.treesync().tree_hash()
     }
 
     #[cfg(any(feature = "test-utils", test))]
     pub fn print_tree(&self, message: &str) {
-        _print_tree(&self.group.tree(), message)
+        _print_tree(&self.group.treesync(), message)
     }
 
     /// Get the underlying [MlsGroup].

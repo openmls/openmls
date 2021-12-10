@@ -56,10 +56,10 @@ impl MlsGroup {
         if sender.is_member() {
             let sender_index = sender.to_leaf_index();
 
-            credential = self.tree().nodes[sender_index]
-                .key_package
-                .as_ref()
-                .map(|key_package| key_package.credential().clone());
+            credential = self
+                .treesync()
+                .leaf(sender_index)?
+                .map(|leaf_node| leaf_node.key_package().credential().clone());
         }
 
         Ok(UnverifiedMessage::from_decrypted_message(
@@ -171,7 +171,7 @@ impl MlsGroup {
         proposal_store: &mut ProposalStore,
     ) -> Result<(), MlsGroupError> {
         // Merge the staged commit into the group state
-        self.merge_commit(staged_commit);
+        self.merge_commit(staged_commit)?;
         // Empty the proposal store
         proposal_store.empty();
         Ok(())
