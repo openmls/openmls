@@ -225,10 +225,7 @@ fn managed_group_operations(
             assert_eq!(application_message.message(), message_alice);
             // Check that Alice sent the message
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                application_message.sender().to_leaf_index(),
-                0u32
-            );
+            assert_eq!(application_message.sender().to_leaf_index(), 0u32);
         } else {
             unreachable!("Expected an ApplicationMessage.");
         }
@@ -332,10 +329,7 @@ fn managed_group_operations(
 
             // Check that Alice added bob
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                staged_proposal.sender().to_leaf_index(),
-                0u32
-            );
+            assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
         } else {
             unreachable!("Expected a StagedProposal.");
         }
@@ -708,10 +702,7 @@ fn managed_group_operations(
 
             // Check that Alice removed Charlie
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                staged_proposal.sender().to_leaf_index(),
-                0u32
-            );
+            assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
         } else {
             unreachable!("Expected a StagedProposal.");
         }
@@ -737,10 +728,7 @@ fn managed_group_operations(
 
             // Check that Alice removed Charlie
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                staged_proposal.sender().to_leaf_index(),
-                0u32
-            );
+            assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
         } else {
             unreachable!("Expected a StagedProposal.");
         }
@@ -767,10 +755,7 @@ fn managed_group_operations(
 
             // Check that Alice added Bob
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                staged_proposal.sender().to_leaf_index(),
-                0u32
-            );
+            assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
             // Store proposal
             alice_group.store_pending_proposal(*staged_proposal);
         } else {
@@ -795,10 +780,7 @@ fn managed_group_operations(
 
             // Check that Alice added Bob
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                staged_proposal.sender().to_leaf_index(),
-                0u32
-            );
+            assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
             // Store proposal
             charlie_group.store_pending_proposal(*staged_proposal);
         } else {
@@ -898,10 +880,7 @@ fn managed_group_operations(
             assert_eq!(application_message.message(), message_alice);
             // Check that Alice sent the message
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                application_message.sender().to_leaf_index(),
-                0u32
-            );
+            assert_eq!(application_message.sender().to_leaf_index(), 0u32);
         } else {
             unreachable!("Expected an ApplicationMessage.");
         }

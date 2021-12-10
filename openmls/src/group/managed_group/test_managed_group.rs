@@ -265,10 +265,7 @@ fn remover(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
         // Check that Alice removed Charlie
         // TODO #541: Replace this with the adequate API call
-        assert_eq!(
-            staged_proposal.sender().to_leaf_index(),
-            0u32
-        );
+        assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
     } else {
         unreachable!("Expected a StagedProposal.");
     }
