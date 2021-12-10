@@ -278,6 +278,14 @@
 <span id="278">278</span>
 <span id="279">279</span>
 <span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS Group errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -292,7 +300,8 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::key_packages::KeyPackageError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::errors</span>::{<span class="ident">ProposalError</span>, <span class="ident">ProposalQueueError</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schedule::errors</span>::{<span class="ident">KeyScheduleError</span>, <span class="ident">PskSecretError</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree</span>::{<span class="ident">treemath::TreeMathError</span>, <span class="ident">ParentHashError</span>, <span class="ident">TreeError</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree</span>::{<span class="ident">ParentHashError</span>, <span class="ident">TreeError</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync</span>::{<span class="ident">diff::TreeSyncDiffError</span>, <span class="ident">treekem::TreeKemError</span>, <span class="ident">TreeSyncError</span>};
 <span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
 <span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
 
@@ -327,14 +336,18 @@
                 <span class="string">&quot;TLS (de)serialization error occurred.&quot;</span>,
             <span class="ident">KeyScheduleError</span>(<span class="ident">KeyScheduleError</span>) <span class="op">=</span>
                 <span class="string">&quot;An error occurred in the key schedule.&quot;</span>,
-            <span class="ident">MathError</span>(<span class="ident">TreeMathError</span>) <span class="op">=</span>
-                <span class="string">&quot;An error occurred during a tree math operation.&quot;</span>,
             <span class="ident">PskError</span>(<span class="ident">PskError</span>) <span class="op">=</span>
                 <span class="string">&quot;A PSK error occurred.&quot;</span>,
             <span class="ident">CredentialError</span>(<span class="ident">CredentialError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`CredentialError`](crate::credentials::CredentialError) for details.&quot;</span>,
             <span class="ident">TreeError</span>(<span class="ident">TreeError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`TreeError`](crate::tree::TreeError) for details.&quot;</span>,
+            <span class="ident">TreeSyncError</span>(<span class="ident">TreeSyncError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`TreeSyncError`](crate::treesync::TreeSyncError) for details.&quot;</span>,
+            <span class="ident">TreeSyncDiffError</span>(<span class="ident">TreeSyncDiffError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`TreeSyncDiffError`](crate::treesync::diff::TreeSyncDiffError) for details.&quot;</span>,
+            <span class="ident">TreeKemError</span>(<span class="ident">TreeKemError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`TreeKemError`](crate::treesync::treekem::TreeKemError) for details.&quot;</span>,
             <span class="ident">KeyPackageError</span>(<span class="ident">KeyPackageError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`KeyPackageError`] for details.&quot;</span>,
             <span class="ident">ExtensionError</span>(<span class="ident">ExtensionError</span>) <span class="op">=</span>
@@ -380,6 +393,8 @@
                 <span class="string">&quot;The sender key package is missing.&quot;</span>,
             <span class="ident">UnknownError</span> <span class="op">=</span>
                 <span class="string">&quot;An unknown error occurred.&quot;</span>,
+            <span class="ident">UnknownSender</span> <span class="op">=</span>
+                <span class="string">&quot;Sender not found in tree.&quot;</span>,
             <span class="ident">LibraryError</span> <span class="op">=</span> <span class="string">&quot;An unrecoverable error has occurred due to a bug in the implementation.&quot;</span>,
             }
         <span class="ident">Complex</span> {
@@ -395,6 +410,8 @@
                 <span class="string">&quot;An error occurred in the key schedule.&quot;</span>,
             <span class="ident">PskError</span>(<span class="ident">PskError</span>) <span class="op">=</span>
                 <span class="string">&quot;A PSK error occured.&quot;</span>,
+            <span class="ident">TreeSyncError</span>(<span class="ident">TreeSyncError</span>) <span class="op">=</span>
+                <span class="string">&quot;An error occurred while importing the new tree.&quot;</span>,
             <span class="ident">ExtensionError</span>(<span class="ident">ExtensionError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`ExtensionError`] for details.&quot;</span>,
             <span class="ident">KeyPackageError</span>(<span class="ident">KeyPackageError</span>) <span class="op">=</span>
@@ -440,8 +457,6 @@
         <span class="ident">Complex</span> {
             <span class="ident">PlaintextSignatureFailure</span>(<span class="ident">VerificationError</span>) <span class="op">=</span>
                 <span class="string">&quot;MlsPlaintext signature is invalid.&quot;</span>,
-            <span class="ident">DecryptionFailure</span>(<span class="ident">TreeError</span>) <span class="op">=</span>
-                <span class="string">&quot;A matching EncryptedPathSecret failed to decrypt.&quot;</span>,
             <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span>
                 <span class="string">&quot;Tls (de)serialization error occurred.&quot;</span>,
             <span class="ident">KeyScheduleError</span>(<span class="ident">KeyScheduleError</span>) <span class="op">=</span>
@@ -511,6 +526,7 @@
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CreationProposalQueueError</span> {
         <span class="ident">Simple</span> {
             <span class="ident">ProposalNotFound</span> <span class="op">=</span> <span class="string">&quot;Not all proposals in the Commit were found locally.&quot;</span>,
+            <span class="ident">ArchitectureError</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t fit a `u32` into a `usize`.&quot;</span>,
         }
         <span class="ident">Complex</span> {
             <span class="ident">NotAProposal</span>(<span class="ident">StagedProposalError</span>) <span class="op">=</span> <span class="string">&quot;The given MLS Plaintext was not a Proposal.&quot;</span>,

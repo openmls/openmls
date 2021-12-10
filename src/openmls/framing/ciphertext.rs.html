@@ -379,9 +379,9 @@
     <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
 };
 
-<span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree::secret_tree</span>::{<span class="ident">SecretTree</span>, <span class="ident">SecretType</span>};
 
-<span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
+<span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// `MlsCiphertext` is the framing struct for an encrypted `MlsPlaintext`.</span>
 <span class="doccomment">/// This message format is meant to be sent to and received from the Delivery</span>
@@ -433,7 +433,7 @@
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MlsCiphertextError::InvalidContentType</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> (<span class="ident">generation</span>, (<span class="ident">ratchet_key</span>, <span class="kw-2">mut</span> <span class="ident">ratchet_nonce</span>)) <span class="op">=</span> <span class="ident">secrets</span>
             .<span class="ident">secret_tree</span>
-            .<span class="ident">secret_for_encryption</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">sender</span>, <span class="ident">secret_type</span>)<span class="question-mark">?</span>;
+            .<span class="ident">secret_for_encryption</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">sender</span>.<span class="ident">into</span>(), <span class="ident">secret_type</span>)<span class="question-mark">?</span>;
         <span class="comment">// Sample reuse guard uniformly at random.</span>
         <span class="kw">let</span> <span class="ident">reuse_guard</span>: <span class="ident">ReuseGuard</span> <span class="op">=</span> <span class="ident">ReuseGuard::from_random</span>(<span class="ident">backend</span>);
         <span class="comment">// Prepare the nonce by xoring with the reuse guard.</span>
@@ -546,7 +546,7 @@
             .<span class="ident">secret_for_decryption</span>(
                 <span class="ident">ciphersuite</span>,
                 <span class="ident">backend</span>,
-                <span class="ident">sender_data</span>.<span class="ident">sender</span>,
+                <span class="ident">sender_data</span>.<span class="ident">sender</span>.<span class="ident">into</span>(),
                 <span class="ident">secret_type</span>,
                 <span class="ident">sender_data</span>.<span class="ident">generation</span>,
             )

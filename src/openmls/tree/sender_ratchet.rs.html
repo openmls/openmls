@@ -160,6 +160,7 @@
 <span id="160">160</span>
 <span id="161">161</span>
 <span id="162">162</span>
+<span id="163">163</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Functions in this module should never panic. However, if there is a bug in</span>
@@ -170,6 +171,7 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite</span>::{<span class="ident">AeadNonce</span>, <span class="kw-2">*</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree</span>::{<span class="ident">index::LeafIndex</span>, <span class="ident">secret_tree</span>::<span class="kw-2">*</span>};
 
+<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::index::NodeIndex</span>;
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
 <span class="kw">const</span> <span class="ident">OUT_OF_ORDER_TOLERANCE</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">5</span>;

@@ -400,17 +400,99 @@
 <span id="400">400</span>
 <span id="401">401</span>
 <span id="402">402</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite</span>::{<span class="ident">signable</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::binary_tree::LeafIndex</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite</span>::{<span class="ident">signable</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config::ProtocolVersion</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::extensions</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schedule::psk::PreSharedKeys</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schedule::JoinerSecret</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree</span>::{<span class="ident">index</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::treekem::UpdatePath</span>;
 
-<span class="kw">use</span> <span class="ident">openmls_traits::types::HpkeCiphertext</span>;
+<span class="kw">use</span> <span class="ident">openmls_traits::crypto::OpenMlsCrypto</span>;
+<span class="kw">use</span> <span class="ident">openmls_traits::types</span>::{<span class="ident">CryptoError</span> <span class="kw">as</span> <span class="ident">CryptoTraitError</span>, <span class="ident">HpkeCiphertext</span>};
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -620,11 +702,6 @@
 }
 
 <span class="kw">impl</span> <span class="ident">GroupInfo</span> {
-    <span class="doccomment">/// Get the tree hash as byte slice.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">tree_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
-        <span class="self">self</span>.<span class="ident">payload</span>.<span class="ident">tree_hash</span>.<span class="ident">as_slice</span>()
-    }
-
     <span class="doccomment">/// Get the signer index.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">signer_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">LeafIndex</span> {
         <span class="self">self</span>.<span class="ident">payload</span>.<span class="ident">signer_index</span>
@@ -711,6 +788,91 @@
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Secret</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">PathSecret</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">path_secret</span>: <span class="ident">Secret</span>) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> { <span class="ident">path_secret</span> }
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">PathSecret</span> {
+    <span class="doccomment">/// Derives a node secret which in turn is used to derive an HpkeKeyPair.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">derive_key_pair</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">HpkePublicKey</span>, <span class="ident">HpkePrivateKey</span>), <span class="ident">CryptoTraitError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">node_secret</span> <span class="op">=</span>
+            <span class="self">self</span>.<span class="ident">path_secret</span>
+                .<span class="ident">kdf_expand_label</span>(<span class="ident">backend</span>, <span class="string">&quot;node&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>())<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">key_pair</span> <span class="op">=</span> <span class="ident">backend</span>
+            .<span class="ident">crypto</span>()
+            .<span class="ident">derive_hpke_keypair</span>(<span class="ident">ciphersuite</span>.<span class="ident">hpke_config</span>(), <span class="ident">node_secret</span>.<span class="ident">as_slice</span>());
+
+        <span class="prelude-val">Ok</span>((
+            <span class="ident">HpkePublicKey::from</span>(<span class="ident">key_pair</span>.<span class="ident">public</span>),
+            <span class="ident">HpkePrivateKey::from</span>(<span class="ident">key_pair</span>.<span class="ident">private</span>),
+        ))
+    }
+
+    <span class="doccomment">/// Derives a path secret.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">derive_path_secret</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">PathSecretError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">path_secret</span> <span class="op">=</span>
+            <span class="self">self</span>.<span class="ident">path_secret</span>
+                .<span class="ident">kdf_expand_label</span>(<span class="ident">backend</span>, <span class="string">&quot;path&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>())<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span> { <span class="ident">path_secret</span> })
+    }
+
+    <span class="doccomment">/// Encrypt the path secret under the given `HpkePublicKey` using the given</span>
+    <span class="doccomment">/// `group_context`.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">encrypt</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
+        <span class="ident">public_key</span>: <span class="kw-2">&amp;</span><span class="ident">HpkePublicKey</span>,
+        <span class="ident">group_context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
+    ) -&gt; <span class="ident">HpkeCiphertext</span> {
+        <span class="ident">backend</span>.<span class="ident">crypto</span>().<span class="ident">hpke_seal</span>(
+            <span class="ident">ciphersuite</span>.<span class="ident">hpke_config</span>(),
+            <span class="ident">public_key</span>.<span class="ident">as_slice</span>(),
+            <span class="ident">group_context</span>,
+            <span class="kw-2">&amp;</span>[],
+            <span class="self">self</span>.<span class="ident">path_secret</span>.<span class="ident">as_slice</span>(),
+        )
+    }
+
+    <span class="doccomment">/// Consume the `PathSecret`, returning the internal `Secret` value.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">secret</span>(<span class="self">self</span>) -&gt; <span class="ident">Secret</span> {
+        <span class="self">self</span>.<span class="ident">path_secret</span>
+    }
+
+    <span class="doccomment">/// Decrypt a given `HpkeCiphertext` using the `private_key` and `group_context`.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Returns the decrypted `PathSecret`. Returns an error if the decryption</span>
+    <span class="doccomment">/// was unsuccessful.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">decrypt</span>(
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
+        <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>,
+        <span class="ident">ciphertext</span>: <span class="kw-2">&amp;</span><span class="ident">HpkeCiphertext</span>,
+        <span class="ident">private_key</span>: <span class="kw-2">&amp;</span><span class="ident">HpkePrivateKey</span>,
+        <span class="ident">group_context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PathSecret</span>, <span class="ident">PathSecretError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">secret_bytes</span> <span class="op">=</span> <span class="ident">backend</span>.<span class="ident">crypto</span>().<span class="ident">hpke_open</span>(
+            <span class="ident">ciphersuite</span>.<span class="ident">hpke_config</span>(),
+            <span class="ident">ciphertext</span>,
+            <span class="ident">private_key</span>.<span class="ident">as_slice</span>(),
+            <span class="ident">group_context</span>,
+            <span class="kw-2">&amp;</span>[],
+        )<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">path_secret</span> <span class="op">=</span> <span class="ident">Secret::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">secret_bytes</span>, <span class="ident">version</span>, <span class="ident">ciphersuite</span>);
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span> { <span class="ident">path_secret</span> })
+    }
+}
+
+<span class="macro">implement_error!</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PathSecretError</span> {
+        <span class="ident">DecryptionError</span>(<span class="ident">CryptoTraitError</span>) <span class="op">=</span> <span class="string">&quot;Error decrypting PathSecret.&quot;</span>,
     }
 }
 

@@ -112,7 +112,6 @@
 <span id="112">112</span>
 <span id="113">113</span>
 <span id="114">114</span>
-<span id="115">115</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">mls_group::create_commit_params::CreateCommitParams</span>;
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
@@ -200,8 +199,8 @@
             .<span class="ident">read</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
             .<span class="ident">ok_or</span>(<span class="ident">ManagedGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">tree</span>();
-        <span class="kw">let</span> <span class="ident">existing_key_package</span> <span class="op">=</span> <span class="ident">tree</span>.<span class="ident">own_key_package</span>();
+        <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">treesync</span>();
+        <span class="kw">let</span> <span class="ident">existing_key_package</span> <span class="op">=</span> <span class="ident">tree</span>.<span class="ident">own_leaf_node</span>()<span class="question-mark">?</span>.<span class="ident">key_package</span>();
         <span class="kw">let</span> <span class="ident">key_package_bundle</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">key_package_bundle_option</span> {
             <span class="prelude-val">Some</span>(<span class="ident">kpb</span>) =&gt; <span class="ident">kpb</span>,
             <span class="prelude-val">None</span> =&gt; {
@@ -216,7 +215,6 @@
             <span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>().<span class="ident">clone</span>(),
             <span class="ident">backend</span>,
         )<span class="question-mark">?</span>;
-        <span class="ident">drop</span>(<span class="ident">tree</span>);
 
         <span class="self">self</span>.<span class="ident">own_kpbs</span>.<span class="ident">push</span>(<span class="ident">key_package_bundle</span>);
 

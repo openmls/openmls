@@ -383,14 +383,14 @@
 <span class="doccomment">//! |                        |</span>
 <span class="doccomment">//! +------------------------+</span>
 <span class="doccomment">//! |</span>
-<span class="doccomment">//! V                        </span>
+<span class="doccomment">//! V</span>
 <span class="doccomment">//! ProcessedMessage (Application, Proposal, ExternalProposal, Commit, External Commit)</span>
 <span class="doccomment">//! ```</span>
 
 <span class="kw">use</span> <span class="ident">mls_group</span>::{<span class="ident">proposals::StagedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
 <span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite::signable::Verifiable</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ciphersuite::signable::Verifiable</span>, <span class="ident">tree::secret_tree::SecretTree</span>};
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 

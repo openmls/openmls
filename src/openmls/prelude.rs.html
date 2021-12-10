@@ -42,6 +42,9 @@
 <span id="42">42</span>
 <span id="43">43</span>
 <span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Prelude for OpenMLS.</span>
 <span class="doccomment">//! Include this to get access to all the public functions of OpenMLS.</span>
 
@@ -58,7 +61,7 @@
 };
 
 <span class="comment">// Indexes</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree::index::LeafIndex</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::binary_tree::LeafIndex</span>;
 
 <span class="comment">// PSKs</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schedule::psk::ExternalPskBundle</span>;
@@ -81,6 +84,9 @@
     <span class="ident">BranchPsk</span>, <span class="ident">ExternalPsk</span>, <span class="ident">PreSharedKeyId</span>, <span class="ident">PreSharedKeys</span>, <span class="ident">Psk</span>, <span class="ident">PskType</span>, <span class="ident">ReinitPsk</span>,
 };
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils</span>::<span class="kw-2">*</span>;
+
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::binary_tree::array_representation::kat_treemath</span>;
 
 <span class="comment">// TLS codec traits</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">tls_codec</span>::{

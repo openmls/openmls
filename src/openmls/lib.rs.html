@@ -51,6 +51,12 @@
 <span id="51">51</span>
 <span id="52">52</span>
 <span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # OpenMLS</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! OpenMLS is an implementation of the [MLS RFC].</span>
@@ -72,7 +78,7 @@
 <span class="doccomment">//!</span>
 <span class="doccomment">//! [MLS RFC]: https://datatracker.ietf.org/doc/draft-ietf-mls-protocol/</span>
 <span class="attribute">#![<span class="ident">cfg_attr</span>(<span class="ident">docsrs</span>, <span class="ident">feature</span>(<span class="ident">doc_cfg</span>))]</span>
-<span class="attribute">#![<span class="ident">forbid</span>(<span class="ident">unsafe_code</span>)]</span>
+<span class="attribute">#![<span class="ident">cfg_attr</span>(<span class="ident">not</span>(<span class="ident">test</span>), <span class="ident">forbid</span>(<span class="ident">unsafe_code</span>))]</span>
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">rstest_reuse</span>;
@@ -86,6 +92,12 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">test_utils</span>;
+
+<span class="kw">mod</span> <span class="ident">binary_tree</span>;
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>)))]</span>
+<span class="kw">mod</span> <span class="ident">treesync</span>;
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">treesync</span>;
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">ciphersuite</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;

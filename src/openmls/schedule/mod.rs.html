@@ -1083,13 +1083,6 @@
 <span id="1083">1083</span>
 <span id="1084">1084</span>
 <span id="1085">1085</span>
-<span id="1086">1086</span>
-<span id="1087">1087</span>
-<span id="1088">1088</span>
-<span id="1089">1089</span>
-<span id="1090">1090</span>
-<span id="1091">1091</span>
-<span id="1092">1092</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module represents the key schedule as introduced in Section 8 of the</span>
 <span class="doccomment">//! MLS specification. The key schedule evolves in epochs, where in each epoch</span>
 <span class="doccomment">//! new key material is injected.</span>
@@ -1214,8 +1207,9 @@
 <span class="doccomment">//! error, will still return a `Result` since they may throw a `LibraryError`.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::framing::MlsPlaintextTbmPayload</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree::index::LeafIndex</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::PathSecret</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree::secret_tree::SecretTree</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::LeafIndex</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ciphersuite::Mac</span>, <span class="ident">prelude::MembershipTag</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite</span>::{<span class="ident">AeadKey</span>, <span class="ident">AeadNonce</span>, <span class="ident">Ciphersuite</span>, <span class="ident">Secret</span>},
@@ -1245,28 +1239,20 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>), <span class="ident">derive</span>(<span class="ident">Clone</span>))]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">CommitSecret</span> {
     <span class="ident">secret</span>: <span class="ident">Secret</span>,
 }
 
-<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">Secret</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CommitSecret</span> {
-    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">secret</span>: <span class="ident">Secret</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">secret</span> }
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">PathSecret</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CommitSecret</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">path_secret</span>: <span class="ident">PathSecret</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">CommitSecret</span> {
+            <span class="ident">secret</span>: <span class="ident">path_secret</span>.<span class="ident">secret</span>(),
+        }
     }
 }
 
 <span class="kw">impl</span> <span class="ident">CommitSecret</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">path_secret</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span>
-            <span class="ident">path_secret</span>.<span class="ident">kdf_expand_label</span>(<span class="ident">backend</span>, <span class="string">&quot;path&quot;</span>, <span class="kw-2">&amp;</span>[], <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>())<span class="question-mark">?</span>;
-
-        <span class="prelude-val">Ok</span>(<span class="self">Self</span> { <span class="ident">secret</span> })
-    }
-
     <span class="doccomment">/// Create a CommitSecret consisting of an all-zero string of length</span>
     <span class="doccomment">/// `hash_length`.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">zero_secret</span>(<span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>, <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>) -&gt; <span class="self">Self</span> {
@@ -1349,16 +1335,16 @@
     <span class="doccomment">/// Derive a `JoinerSecret` from an optional `CommitSecret` and an</span>
     <span class="doccomment">/// `EpochSecrets` object, which contains the necessary `InitSecret`. The</span>
     <span class="doccomment">/// `CommitSecret` needs to be present if the current commit is not a</span>
-    <span class="doccomment">/// partial commit. TODO: For now, this takes a reference to a</span>
-    <span class="doccomment">/// `CommitSecret` as input. This should change with #224.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(
+    <span class="doccomment">/// partial commit.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">commit_secret_option</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">CommitSecret</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">commit_secret_option</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CommitSecret</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">init_secret</span>: <span class="kw-2">&amp;</span><span class="ident">InitSecret</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">intermediate_secret</span> <span class="op">=</span> <span class="ident">init_secret</span>
-            .<span class="ident">secret</span>
-            .<span class="ident">hkdf_extract</span>(<span class="ident">backend</span>, <span class="ident">commit_secret_option</span>.<span class="ident">into</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">cs</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">cs</span>.<span class="ident">secret</span>))<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">intermediate_secret</span> <span class="op">=</span> <span class="ident">init_secret</span>.<span class="ident">secret</span>.<span class="ident">hkdf_extract</span>(
+            <span class="ident">backend</span>,
+            <span class="ident">commit_secret_option</span>.<span class="ident">into</span>().<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">cs</span><span class="op">|</span> <span class="kw-2">&amp;</span><span class="ident">cs</span>.<span class="ident">secret</span>),
+        )<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">intermediate_secret</span>.<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;joiner&quot;</span>)<span class="question-mark">?</span>;
         <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;Joiner secret: {:x?}&quot;</span>, <span class="ident">secret</span>);
         <span class="prelude-val">Ok</span>(<span class="ident">JoinerSecret</span> { <span class="ident">secret</span> })
@@ -1657,7 +1643,7 @@
     <span class="doccomment">/// `EpochSecrets`. The `encryption_secret` is replaced with `None` in the</span>
     <span class="doccomment">/// process, allowing us to achieve FS.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">create_secret_tree</span>(<span class="self">self</span>, <span class="ident">treesize</span>: <span class="ident">LeafIndex</span>) -&gt; <span class="ident">SecretTree</span> {
-        <span class="ident">SecretTree::new</span>(<span class="self">self</span>, <span class="ident">treesize</span>)
+        <span class="ident">SecretTree::new</span>(<span class="self">self</span>, <span class="ident">treesize</span>.<span class="ident">into</span>())
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">consume_secret</span>(<span class="self">self</span>) -&gt; <span class="ident">Secret</span> {
