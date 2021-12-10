@@ -235,7 +235,7 @@ async fn test_group() {
         .expect("Error creating commit");
     let welcome_msg = welcome_msg.expect("Welcome message wasn't created by create_commit.");
     let staged_commit = group
-        .stage_commit(&commit, &proposal_store, &[], None, crypto)
+        .stage_commit(&commit, &proposal_store, &[], crypto)
         .expect("error applying commit");
     group.merge_commit(staged_commit);
 
@@ -279,7 +279,6 @@ async fn test_group() {
         welcome_message,
         Some(group.tree().public_key_tree_copy()), // delivered out of band
         key_package_bundles.remove(0),
-        None, /* PSK fetcher */
         crypto,
     )
     .expect("Error creating group from Welcome");
