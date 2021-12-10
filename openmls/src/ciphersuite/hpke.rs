@@ -105,12 +105,3 @@ impl std::fmt::Debug for HpkePrivateKey {
             .finish()
     }
 }
-
-#[cfg(test)]
-impl HpkePrivateKey {
-    /// Create a new HPKE private key.
-    /// Consumes the private key bytes.
-    pub fn new(b: Vec<u8>) -> Self {
-        Self { value: b }
-    }
-}
