@@ -49,8 +49,8 @@ implement_error! {
                 "An error occurred in the key schedule.",
             MathError(TreeMathError) =
                 "An error occurred during a tree math operation.",
-            PskError(PskError) =
-                "A PSK error occurred.",
+            PskSecretError(PskSecretError) =
+                "A PskSecret error occurred.",
             CredentialError(CredentialError) =
                 "See [`CredentialError`](crate::credentials::CredentialError) for details.",
             TreeError(TreeError) =
@@ -113,8 +113,8 @@ implement_error! {
                 "Tls (de)serialization error occurred.",
             KeyScheduleError(KeyScheduleError) =
                 "An error occurred in the key schedule.",
-            PskError(PskError) =
-                "A PSK error occured.",
+            PskSecretError(PskSecretError) =
+                "A PskSecret error occured.",
             ExtensionError(ExtensionError) =
                 "See [`ExtensionError`] for details.",
             KeyPackageError(KeyPackageError) =
@@ -166,8 +166,6 @@ implement_error! {
                 "Tls (de)serialization error occurred.",
             KeyScheduleError(KeyScheduleError) =
                 "An error occurred in the key schedule.",
-            PskError(PskError) =
-                "A PSK error occurred.",
         }
     }
 }
@@ -185,21 +183,6 @@ implement_error! {
     pub enum ExporterError {
         KeyLengthTooLong =
             "The requested key length is not supported (too large).",
-    }
-}
-
-implement_error! {
-    pub enum PskError {
-        Simple {
-            NoPskFetcherProvided =
-                "A PSK was needed, but no PSK fetcher function was provided.",
-            PskIdNotFound =
-                "No PSK was found for PSK ID.",
-        }
-        Complex {
-            PskSecretError(PskSecretError) =
-                "An error occured when concatenating the PSKs.",
-        }
     }
 }
 

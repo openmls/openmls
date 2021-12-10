@@ -141,7 +141,6 @@ impl MlsGroup {
                             verified_member_message.plaintext(),
                             proposal_store,
                             own_kpbs,
-                            None,
                             backend,
                         )?;
                         ProcessedMessage::StagedCommitMessage(Box::new(staged_commit))

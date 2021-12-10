@@ -17,7 +17,7 @@ pub use crate::group::errors::{
 pub use crate::tree::index::LeafIndex;
 
 // PSKs
-pub use crate::schedule::psk::ExternalPskBundle;
+pub use crate::schedule::psk::PskBundle;
 
 pub use crate::ciphersuite::*;
 pub use crate::config::*;

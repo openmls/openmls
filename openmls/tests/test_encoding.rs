@@ -417,7 +417,6 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
                 &commit,
                 &proposal_store,
                 &[key_package_bundle_option.expect("An unexpected error occurred.")],
-                None,
                 backend,
             )
             .expect("Could not stage the commit");
@@ -452,7 +451,6 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
             welcome,
             Some(group_state.tree().public_key_tree_copy()),
             charlie_key_package_bundle,
-            None,
             backend
         )
         .is_ok());

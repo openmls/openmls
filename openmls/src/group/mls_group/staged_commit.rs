@@ -37,7 +37,6 @@ impl MlsGroup {
         mls_plaintext: &MlsPlaintext,
         proposal_store: &ProposalStore,
         own_key_packages: &[KeyPackageBundle],
-        psk_fetcher_option: Option<PskFetcher>,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<StagedCommit, MlsGroupError> {
         let ciphersuite = self.ciphersuite();
@@ -205,18 +204,15 @@ impl MlsGroup {
             self.group_context.extensions(),
         )?;
 
-        // Create key schedule
-        let mut key_schedule = KeySchedule::init(
+        // Prepare the PskSecret
+        let psk_secret = PskSecret::new(
             ciphersuite,
             backend,
-            joiner_secret,
-            psk_output(
-                ciphersuite,
-                backend,
-                psk_fetcher_option,
-                &apply_proposals_values.presharedkeys,
-            )?,
+            apply_proposals_values.presharedkeys.psks(),
         )?;
+
+        // Create key schedule
+        let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)?;
 
         let serialized_provisional_group_context =
             provisional_group_context.tls_serialize_detached()?;

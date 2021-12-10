@@ -2,12 +2,14 @@
 
 use crate::test_utils::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::{random::OpenMlsRand, OpenMlsCryptoProvider};
 
 use crate::{
     ciphersuite::Secret,
     config::Config,
-    prelude::{ExternalPsk, PreSharedKeyId, Psk, PskType},
+    prelude::{ExternalPsk, PreSharedKeyId, Psk},
+    schedule::psk::PskBundle,
 };
 
 use super::PskSecret;
@@ -16,8 +18,16 @@ use super::PskSecret;
 fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Create a new PSK secret from multiple PSKs.
     let prng = backend.rand();
-    let psks = &vec![0u8; 33]
-        .iter()
+
+    let psk_ids = (0..33)
+        .map(|_| {
+            let id = prng.random_vec(12).expect("An unexpected error occurred.");
+            PreSharedKeyId::new(ciphersuite, backend, Psk::External(ExternalPsk::new(id)))
+                .expect("An unexpected error occurred.")
+        })
+        .collect::<Vec<PreSharedKeyId>>();
+
+    for (secret, psk_id) in (0..33)
         .map(|_| {
             Secret::from_slice(
                 &prng.random_vec(55).expect("An unexpected error occurred."),
@@ -25,19 +35,16 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
                 ciphersuite,
             )
         })
-        .collect::<Vec<Secret>>();
-    let psk_ids = &vec![0u8; 33]
-        .iter()
-        .map(|_| {
-            let id = prng.random_vec(12).expect("An unexpected error occurred.");
-            let nonce = prng.random_vec(17).expect("An unexpected error occurred.");
-            PreSharedKeyId::new(
-                PskType::External,
-                Psk::External(ExternalPsk::new(id)),
-                nonce,
-            )
-        })
-        .collect::<Vec<PreSharedKeyId>>();
-    let _psk_secret = PskSecret::new(ciphersuite, backend, psk_ids, psks)
-        .expect("Could not calculate PSK secret.");
+        .zip(psk_ids.clone())
+    {
+        let psk_bundle =
+            PskBundle::new(psk_id.clone(), secret).expect("Could not create PskBundle.");
+        backend
+            .key_store()
+            .store(&psk_id, &psk_bundle)
+            .expect("An unexpected error occured.");
+    }
+
+    let _psk_secret =
+        PskSecret::new(ciphersuite, backend, &psk_ids).expect("Could not calculate PSK secret.");
 }

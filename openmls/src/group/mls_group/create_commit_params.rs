@@ -8,7 +8,6 @@ pub struct CreateCommitParams<'a> {
     proposal_store: &'a ProposalStore,         // Mandatory
     inline_proposals: Vec<Proposal>,           // Optional
     force_self_update: bool,                   // Optional
-    psk_fetcher_option: Option<PskFetcher>,    // Optional
 }
 
 pub struct TempBuilderCCPM0 {}
@@ -56,7 +55,6 @@ impl<'a> TempBuilderCCPM2<'a> {
                 proposal_store,
                 inline_proposals: vec![],
                 force_self_update: true,
-                psk_fetcher_option: None,
             },
         }
     }
@@ -69,10 +67,6 @@ impl<'a> CreateCommitParamsBuilder<'a> {
     }
     pub fn force_self_update(mut self, force_self_update: bool) -> Self {
         self.ccp.force_self_update = force_self_update;
-        self
-    }
-    pub fn psk_fetcher_option(mut self, psk_fetcher_option: Option<PskFetcher>) -> Self {
-        self.ccp.psk_fetcher_option = psk_fetcher_option;
         self
     }
     pub fn build(self) -> CreateCommitParams<'a> {
@@ -98,8 +92,5 @@ impl<'a> CreateCommitParams<'a> {
     }
     pub fn force_self_update(&self) -> bool {
         self.force_self_update
-    }
-    pub fn psk_fetcher_option(&self) -> &Option<PskFetcher> {
-        &self.psk_fetcher_option
     }
 }

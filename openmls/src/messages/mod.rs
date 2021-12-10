@@ -35,7 +35,7 @@ use crate::credentials::{CredentialBundle, CredentialError};
 
 #[cfg(any(feature = "test-utils", test))]
 use crate::schedule::{
-    psk::{ExternalPsk, Psk, PskType::External},
+    psk::{ExternalPsk, Psk},
     PreSharedKeyId,
 };
 
@@ -374,18 +374,16 @@ impl GroupSecrets {
         use openmls_traits::random::OpenMlsRand;
 
         let psk_id = PreSharedKeyId::new(
-            External,
+            ciphersuite,
+            backend,
             Psk::External(ExternalPsk::new(
                 backend
                     .rand()
                     .random_vec(ciphersuite.hash_length())
                     .expect("Not enough randomness."),
             )),
-            backend
-                .rand()
-                .random_vec(ciphersuite.hash_length())
-                .expect("Not enough randomness."),
-        );
+        )
+        .expect("An unexpected error occurred.");
         let psks = PreSharedKeys {
             psks: vec![psk_id].into(),
         };

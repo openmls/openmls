@@ -1,6 +1,7 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
+    key_store::OpenMlsKeyStore,
     types::{CryptoError, HpkeCiphertext},
     OpenMlsCryptoProvider,
 };
@@ -167,14 +168,9 @@ fn test_failed_groupinfo_decryption(
             encrypted_group_info.clone(),
         );
 
-        let error = MlsGroup::new_from_welcome_internal(
-            broken_welcome,
-            None,
-            key_package_bundle,
-            None,
-            backend,
-        )
-        .expect_err("Creation of MLS group from a broken Welcome was successful.");
+        let error =
+            MlsGroup::new_from_welcome_internal(broken_welcome, None, key_package_bundle, backend)
+                .expect_err("Creation of MLS group from a broken Welcome was successful.");
 
         assert_eq!(
             error,
@@ -267,7 +263,7 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     );
 
     let staged_commit = alice_group
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, backend)
+        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     alice_group.merge_commit(staged_commit);
     let ratchet_tree = alice_group.tree().public_key_tree_copy();
@@ -276,7 +272,6 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,
-        None,
         backend,
     )
     .expect("An unexpected error occurred.");
@@ -387,7 +382,7 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .expect("Could not add membership key");
 
     let staged_commit_res =
-        alice_group.stage_commit(&broken_plaintext, &proposal_store, &[], None, backend);
+        alice_group.stage_commit(&broken_plaintext, &proposal_store, &[], backend);
     assert_eq!(
         staged_commit_res.expect_err("Successful processing of a broken commit."),
         MlsGroupError::StageCommitError(StageCommitError::DecryptionFailure(
@@ -399,26 +394,6 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 // Test several scenarios when PSKs are used in a group
 #[apply(ciphersuites_and_backends)]
 fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    fn psk_fetcher(psks: &PreSharedKeys, ciphersuite: &'static Ciphersuite) -> Option<Vec<Secret>> {
-        let psk_id = vec![1u8, 2, 3];
-        let secret = Secret::from_slice(&[6, 6, 6], ProtocolVersion::Mls10, ciphersuite);
-
-        let psk = &psks.psks[0];
-        if psk.psk_type == PskType::External {
-            if let Psk::External(external_psk) = &psk.psk {
-                if external_psk.psk_id() == psk_id {
-                    Some(vec![secret])
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-    }
-
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
@@ -462,18 +437,17 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
 
     let secret = Secret::random(ciphersuite, backend, None /* MLS version */)
         .expect("Not enough randomness.");
-    let external_psk_bundle = ExternalPskBundle::new(ciphersuite, backend, secret, psk_id)
-        .expect("Could not create ExternalPskBundle.");
-    let preshared_key_id = external_psk_bundle.to_presharedkey_id();
-    let initial_psk = PskSecret::new(
-        ciphersuite,
-        backend,
-        &[preshared_key_id.clone()],
-        &[external_psk_bundle.secret().clone()],
-    )
-    .expect("Could not create PskSecret");
+    let external_psk = ExternalPsk::new(psk_id);
+    let preshared_key_id = PreSharedKeyId::new(ciphersuite, backend, Psk::External(external_psk))
+        .expect("An unexpected error occured.");
+    let psk_bundle =
+        PskBundle::new(preshared_key_id.clone(), secret).expect("Could not create PskBundle.");
+    backend
+        .key_store()
+        .store(&preshared_key_id, &psk_bundle)
+        .expect("An unexpected error occured.");
     let mut alice_group = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .with_psk(initial_psk)
+        .with_psk(vec![preshared_key_id.clone()])
         .build(backend)
         .expect("Error creating group.");
 
@@ -512,7 +486,6 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
         .credential_bundle(&alice_credential_bundle)
         .proposal_store(&proposal_store)
         .force_self_update(false)
-        .psk_fetcher_option(Some(psk_fetcher))
         .build();
     let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
         .create_commit(params, backend)
@@ -521,13 +494,7 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
     log::info!(" >>> Staging & merging commit ...");
 
     let staged_commit = alice_group
-        .stage_commit(
-            &mls_plaintext_commit,
-            &proposal_store,
-            &[],
-            Some(psk_fetcher),
-            backend,
-        )
+        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     alice_group.merge_commit(staged_commit);
     let ratchet_tree = alice_group.tree().public_key_tree_copy();
@@ -536,7 +503,6 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,
-        Some(psk_fetcher),
         backend,
     )
     .expect("Could not create new group from Welcome");

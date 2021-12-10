@@ -430,7 +430,7 @@ fn test_group_context_extensions(
     log::info!(" >>> Staging & merging commit ...");
 
     let staged_commit = alice_group
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, backend)
+        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     alice_group.merge_commit(staged_commit);
     let ratchet_tree = alice_group.tree().public_key_tree_copy();
@@ -441,7 +441,6 @@ fn test_group_context_extensions(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,
-        None,
         backend,
     )
     .expect("Error joining group.");
@@ -530,7 +529,7 @@ fn test_group_context_extension_proposal_fails(
     log::info!(" >>> Staging & merging commit ...");
 
     let staged_commit = alice_group
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, backend)
+        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     alice_group.merge_commit(staged_commit);
     let ratchet_tree = alice_group.tree().public_key_tree_copy();
@@ -539,7 +538,6 @@ fn test_group_context_extension_proposal_fails(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,
-        None,
         backend,
     )
     .expect("Error joining group.");
@@ -631,7 +629,7 @@ fn test_group_context_extension_proposal(
     log::info!(" >>> Staging & merging commit ...");
 
     let staged_commit = alice_group
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, backend)
+        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     alice_group.merge_commit(staged_commit);
     let ratchet_tree = alice_group.tree().public_key_tree_copy();
@@ -640,7 +638,6 @@ fn test_group_context_extension_proposal(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,
-        None,
         backend,
     )
     .expect("Error joining group.");
@@ -677,12 +674,12 @@ fn test_group_context_extension_proposal(
     log::info!(" >>> Staging & merging commit ...");
 
     let staged_commit = alice_group
-        .stage_commit(&gce_mls_plaintext, &proposal_store, &[], None, backend)
+        .stage_commit(&gce_mls_plaintext, &proposal_store, &[], backend)
         .expect("error staging commit");
     alice_group.merge_commit(staged_commit);
 
     let staged_commit = bob_group
-        .stage_commit(&gce_mls_plaintext, &proposal_store, &[], None, backend)
+        .stage_commit(&gce_mls_plaintext, &proposal_store, &[], backend)
         .expect("error staging commit");
     bob_group.merge_commit(staged_commit);
 

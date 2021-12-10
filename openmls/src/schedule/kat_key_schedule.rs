@@ -11,7 +11,7 @@ use crate::{
     ciphersuite::{Ciphersuite, CiphersuiteName, Secret},
     config::{Config, ProtocolVersion},
     group::{GroupContext, GroupEpoch, GroupId},
-    prelude::{BranchPsk, Psk, PskType::Branch},
+    prelude::{BranchPsk, Psk, PskBundle},
     schedule::{EpochSecrets, InitSecret, JoinerSecret, KeySchedule, WelcomeSecret},
     test_utils::*,
 };
@@ -20,7 +20,9 @@ use crate::{
 use crate::test_utils::{read, write};
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{random::OpenMlsRand, types::HpkeKeyPair, OpenMlsCryptoProvider};
+use openmls_traits::{
+    key_store::OpenMlsKeyStore, random::OpenMlsRand, types::HpkeKeyPair, OpenMlsCryptoProvider,
+};
 use rand::{rngs::OsRng, RngCore};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerialize;
@@ -101,20 +103,26 @@ fn generate(
         let psk_id =
         // XXX: Test all different PSK types.
         PreSharedKeyId::new(
-            Branch,
+            ciphersuite,
+            &crypto,
             Psk::Branch(BranchPsk {
                 psk_group_id: GroupId::random(&crypto),
                 psk_epoch: GroupEpoch(epoch),
             }),
-            crypto.rand().random_vec(13).expect("An unexpected error occurred."),
-        );
+        ).expect("An unexpected error occurred.");
         let psk = PskSecret::random(ciphersuite, &crypto);
         psk_ids.push(psk_id.clone());
         psks.push(psk.secret().clone());
-        psks_out.push((psk_id, psk.secret().clone()));
+        psks_out.push((psk_id.clone(), psk.secret().clone()));
+        let psk_bundle = PskBundle::new(psk_id.clone(), psk.secret().clone())
+            .expect("Could not create PskBundle.");
+        crypto
+            .key_store()
+            .store(&psk_id, &psk_bundle)
+            .expect("Could not store PskBundle in key store.");
     }
-    let psk_secret = PskSecret::new(ciphersuite, &crypto, &psk_ids, &psks)
-        .expect("An unexpected error occurred.");
+    let psk_secret =
+        PskSecret::new(ciphersuite, &crypto, &psk_ids).expect("Could not create PskSecret.");
 
     let joiner_secret = JoinerSecret::new(&crypto, &commit_secret, init_secret)
         .expect("Could not create JoinerSecret.");
@@ -349,19 +357,26 @@ pub fn run_test_vector(
         let mut psks = Vec::new();
         let mut psk_ids = Vec::new();
         for psk_value in epoch.psks.iter() {
-            psk_ids.push(
+            let psk_id =
                 PreSharedKeyId::tls_deserialize(&mut hex_to_bytes(&psk_value.psk_id).as_slice())
-                    .expect("An unexpected error occurred."),
-            );
-            psks.push(Secret::from_slice(
+                    .expect("An unexpected error occurred.");
+            psk_ids.push(psk_id.clone());
+            let secret = Secret::from_slice(
                 &hex_to_bytes(&psk_value.psk),
                 ProtocolVersion::default(),
                 ciphersuite,
-            ));
+            );
+            psks.push(secret.clone());
+            let psk_bundle =
+                PskBundle::new(psk_id.clone(), secret).expect("Could not create PskBundle.");
+            backend
+                .key_store()
+                .store(&psk_id, &psk_bundle)
+                .expect("Could not store PskBundle in key store.");
         }
-        // let psk = Vec::new();
-        let psk_secret = PskSecret::new(ciphersuite, backend, &psk_ids, &psks)
-            .expect("An unexpected error occurred.");
+
+        let psk_secret =
+            PskSecret::new(ciphersuite, backend, &psk_ids).expect("An unexpected error occurred.");
 
         let joiner_secret = JoinerSecret::new(backend, &commit_secret, &init_secret)
             .expect("Could not create JoinerSecret.");
