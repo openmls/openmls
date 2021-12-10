@@ -248,17 +248,19 @@ impl TreeSync {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
     ) -> Result<(), TreeSyncError> {
-        // We create a diff here and verify the parent hashes based on this. The
-        // ability to verify parent hashes is required both for diffs and
+        // The ability to verify parent hashes is required both for diffs and
         // treesync instances. We choose the computationally slightly more
         // expensive solution of implementing parent hash verification for the
         // diff and creating an empty diff whenever we need to verify parent
-        // hashes in the treem, which at the time of writing is only upon
-        // construction of a tree from a vector of nodes. The alternative
-        // solution would be to create a "`TreeLike`" trait, which allows tree
-        // navigation and node access. We could then implement `TreeLike` for
-        // both `TreeSync` and `TreeSyncDiff` and finally implement parent hash
-        // verification for any struct that implements `TreeLike`.
+        // hashes for a `TreeSync` instance. At the time of writing, this
+        // happens only upon construction of a `TreeSync` instance from a vector
+        // of nodes. The alternative solution would be to create a `TreeLike`
+        // trait, which allows tree navigation and node access. We could then
+        // implement `TreeLike` for both `TreeSync` and `TreeSyncDiff` and
+        // finally implement parent hash verification for any struct that
+        // implements `TreeLike`. We choose the less complex version for now.
+        // Should this turn out to cause too much computational overhead, we
+        // should reconsider and choose the alternative sketched above
         let diff = self.empty_diff()?;
         // No need to merge the diff, since we didn't actually modify any state.
         Ok(diff.verify_parent_hashes(backend, ciphersuite)?)
