@@ -87,6 +87,10 @@ impl<'a> TreeSyncDiff<'a> {
     /// case, remove the right-most leaf and its parent until either the
     /// right-most leaf or its parent are not blank anymore.
     pub(crate) fn trim_tree(&mut self) -> Result<(), TreeSyncDiffError> {
+        // Nothing to trim if there's only one leaf left.
+        if self.leaf_count() == 1 {
+            return Ok(());
+        }
         let mut leaf_id = self.diff.leaf(self.leaf_count() - 1)?;
         let mut parent_id = self.diff.parent(leaf_id)?;
         // Trim only if the parent node is blank as well;.
@@ -94,6 +98,11 @@ impl<'a> TreeSyncDiff<'a> {
             && self.diff.node(parent_id)?.node().is_none()
         {
             self.diff.remove_leaf()?;
+            // If there's only one leaf left, it won't have a parent, so we'll
+            // have to stop here.
+            if self.leaf_count() == 1 {
+                return Ok(());
+            }
             leaf_id = self.diff.leaf(self.leaf_count() - 1)?;
             parent_id = self.diff.parent(leaf_id)?;
         }
