@@ -39,7 +39,7 @@ pub use crate::schedule::psk::{
 pub use crate::utils::*;
 
 #[cfg(any(feature = "test-utils", test))]
-pub use crate::binary_tree::array_representation::kat_treemath::*;
+pub use crate::binary_tree::array_representation::kat_treemath;
 
 // TLS codec traits
 pub use tls_codec::{
