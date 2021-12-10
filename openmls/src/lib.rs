@@ -35,7 +35,10 @@ pub mod error;
 pub mod test_utils;
 
 mod binary_tree;
+#[cfg(not(any(feature = "test-utils", test)))]
 mod treesync;
+#[cfg(any(feature = "test-utils", test))]
+pub mod treesync;
 
 pub mod ciphersuite;
 pub mod config;
