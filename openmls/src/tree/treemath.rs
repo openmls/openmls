@@ -1,13 +1,10 @@
 use crate::tree::index::*;
-use std::cmp::Ordering;
 
 implement_error! {
     pub enum TreeMathError {
         LeafHasNoChildren = "Leaf nodes don't have children.",
         RootHasNoParent = "Root nodes don't have parents.",
-        NotAParentNode = "Node index was not a parent node.",
         LeafNotInTree = "The leaf index is larger than the tree size.",
-        NodeNotInTree = "The node index is larger than the tree size.",
         InvalidInput = "The provided input is invalid for tree math.",
     }
 }
@@ -81,11 +78,6 @@ pub(crate) fn parent_step(x: usize) -> usize {
     res as usize
 }
 
-pub(crate) fn parent(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, TreeMathError> {
-    node_in_tree(index, size)?;
-    unsafe_parent(index, size)
-}
-
 // This function is only safe to use if index <= size.
 // If this is not checked before calling the function, `parent` should be used.
 fn unsafe_parent(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, TreeMathError> {
@@ -103,25 +95,6 @@ fn unsafe_parent(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, TreeMat
         p = new_p;
     }
     Ok(NodeIndex::from(p))
-}
-
-pub(crate) fn sibling(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, TreeMathError> {
-    node_in_tree(index, size)?;
-    let p = unsafe_parent(index, size)?;
-    match index.cmp(&p) {
-        Ordering::Less => right(p, size),
-        Ordering::Greater => left(p),
-        Ordering::Equal => left(p),
-    }
-}
-
-#[inline(always)]
-fn node_in_tree(node_index: NodeIndex, size: LeafIndex) -> Result<(), TreeMathError> {
-    if node_index.as_usize() >= node_width(size.as_usize()) {
-        Err(TreeMathError::NodeNotInTree)
-    } else {
-        Ok(())
-    }
 }
 
 #[inline(always)]
@@ -155,122 +128,8 @@ pub(crate) fn leaf_direct_path(
     Ok(d)
 }
 
-/// Direct path from a parent node to the root.
-/// Includes the parent node and the root.
-/// Returns an error if the `index` is not a parent node.
-pub(crate) fn parent_direct_path(
-    node_index: NodeIndex,
-    size: LeafIndex,
-) -> Result<Vec<NodeIndex>, TreeMathError> {
-    node_in_tree(node_index, size)?;
-    if !node_index.is_parent() {
-        return Err(TreeMathError::NotAParentNode);
-    }
-    let r = root(size);
-    if node_index == r {
-        return Ok(vec![r]);
-    }
-
-    let mut x = node_index;
-    let mut d = vec![node_index];
-    while x != r {
-        x = parent(x, size)?;
-        d.push(x);
-    }
-    Ok(d)
-}
-
-/// Copath of a leaf.
-/// Ordered from leaf to root.
-pub(crate) fn copath(
-    leaf_index: LeafIndex,
-    size: LeafIndex,
-) -> Result<Vec<NodeIndex>, TreeMathError> {
-    leaf_in_tree(leaf_index, size)?;
-    let node_index = NodeIndex::from(leaf_index);
-    // If the tree only has one leaf
-    if node_index == root(size) {
-        return Ok(vec![]);
-    }
-    // Add leaf node
-    let mut d = vec![node_index];
-    // Add direct path
-    d.append(&mut leaf_direct_path(leaf_index, size)?);
-    // Remove root node
-    d.pop();
-    // Calculate copath
-    d.iter()
-        .map(|&node_index| sibling(node_index, size))
-        .collect()
-}
-
-pub(crate) fn common_ancestor_index(x: NodeIndex, y: NodeIndex) -> NodeIndex {
-    let (lx, ly) = (level(x) + 1, level(y) + 1);
-    if (lx <= ly) && (x.as_usize() >> ly == y.as_usize() >> ly) {
-        return y;
-    } else if (ly <= lx) && (x.as_usize() >> lx == y.as_usize() >> lx) {
-        return x;
-    }
-
-    let (mut xn, mut yn) = (x.as_usize(), y.as_usize());
-    let mut k = 0;
-    while xn != yn {
-        xn >>= 1;
-        yn >>= 1;
-        k += 1;
-    }
-    NodeIndex::from((xn << k) + (1 << (k - 1)) - 1)
-}
-
-/// Returns the number of leaves in a tree
-pub(crate) fn leaf_count(number_of_nodes: NodeIndex) -> LeafIndex {
-    LeafIndex::from((number_of_nodes.as_usize() + 1) / 2)
-}
-
 // The following is not currently used but could be useful in future parent hash
 // computations:
-
-/// Returns the list of nodes that are descendants of a given parent node,
-/// including the parent node itself
-#[cfg(test)]
-pub(crate) fn descendants(x: NodeIndex, size: LeafIndex) -> Vec<NodeIndex> {
-    let l = level(x);
-    if l == 0 {
-        vec![x]
-    } else {
-        let s = (1 << l) - 1;
-        let l = x.as_usize() - s;
-        let mut r = x.as_usize() + s;
-        if r > (size.as_usize() * 2) - 2 {
-            r = (size.as_usize() * 2) - 2;
-        }
-
-        (l..=r).map(NodeIndex::from).collect::<Vec<NodeIndex>>()
-    }
-}
-
-/// Returns the list of nodes that are descendants of a given parent node,
-/// including the parent node itself
-/// (Alternative, easier to verify implementation)
-
-#[cfg(test)]
-pub(crate) fn descendants_alt(
-    x: NodeIndex,
-    size: LeafIndex,
-) -> Result<Vec<NodeIndex>, TreeMathError> {
-    Ok(if level(x) == 0 {
-        vec![x]
-    } else {
-        let left_child = left(x)?;
-        let right_child = right(x, size)?;
-        [
-            descendants_alt(left_child, size)?,
-            vec![x],
-            descendants_alt(right_child, size)?,
-        ]
-        .concat()
-    })
-}
 
 #[test]
 fn invalid_inputs() {
@@ -278,25 +137,6 @@ fn invalid_inputs() {
         Err(TreeMathError::InvalidInput),
         unsafe_parent(1000u32.into(), 100u32.into())
     );
-}
-
-#[test]
-fn test_node_in_tree() {
-    let tests = [(0u32, 2u32), (1, 2), (2, 2), (5, 5), (8, 5)];
-    for test in tests.iter() {
-        node_in_tree(test.0.into(), test.1.into()).expect("An unexpected error occurred.");
-    }
-}
-
-#[test]
-fn test_node_not_in_tree() {
-    let tests = [(3u32, 2u32), (13, 7)];
-    for test in tests.iter() {
-        assert_eq!(
-            node_in_tree(test.0.into(), test.1.into()),
-            Err(TreeMathError::NodeNotInTree)
-        );
-    }
 }
 
 #[test]

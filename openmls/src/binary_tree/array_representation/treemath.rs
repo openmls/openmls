@@ -70,11 +70,6 @@ pub(super) fn parent_step(x: NodeIndex) -> NodeIndex {
     (x | (1 << k)) ^ (b << (k + 1))
 }
 
-pub(super) fn parent(index: NodeIndex, size: NodeIndex) -> Result<NodeIndex, TreeMathError> {
-    node_in_tree(index, size)?;
-    unsafe_parent(index, size)
-}
-
 // This function is only safe to use if index <= size.
 // If this is not checked before calling the function, `parent` should be used.
 fn unsafe_parent(index: NodeIndex, size: NodeIndex) -> Result<NodeIndex, TreeMathError> {
@@ -135,30 +130,6 @@ pub(super) fn direct_path(
     Ok(d)
 }
 
-/// Copath of a node.
-/// Ordered from starting node to root.
-pub(super) fn copath(
-    node_index: NodeIndex,
-    size: NodeIndex,
-) -> Result<Vec<NodeIndex>, TreeMathError> {
-    node_in_tree(node_index, size)?;
-    let node_index = node_index;
-    // If the tree only has one leaf
-    if node_index == root(size) {
-        return Ok(vec![]);
-    }
-    // Add leaf node
-    let mut d = vec![node_index];
-    // Add direct path
-    d.append(&mut direct_path(node_index, size)?);
-    // Remove root node
-    d.pop();
-    // Calculate copath
-    d.iter()
-        .map(|&node_index| sibling(node_index, size))
-        .collect()
-}
-
 pub(super) fn lowest_common_ancestor(x: NodeIndex, y: NodeIndex) -> NodeIndex {
     let (lx, ly) = (level(x) + 1, level(y) + 1);
     if (lx <= ly) && (x >> ly == y >> ly) {
@@ -177,49 +148,17 @@ pub(super) fn lowest_common_ancestor(x: NodeIndex, y: NodeIndex) -> NodeIndex {
     (xn << k) + (1 << (k - 1)) - 1
 }
 
-/// Returns the number of leaves in a tree
-pub(super) fn leaf_count(number_of_nodes: NodeIndex) -> NodeIndex {
-    (number_of_nodes + 1) / 2
+pub(super) fn parent(index: NodeIndex, size: NodeIndex) -> Result<NodeIndex, TreeMathError> {
+    node_in_tree(index, size)?;
+    unsafe_parent(index, size)
 }
 
-// The following is not currently used but could be useful in future parent hash
-// computations:
-
-/// Returns the list of nodes that are descendants of a given parent node,
-/// including the parent node itself
-#[cfg(test)]
-pub(super) fn descendants(x: NodeIndex, size: NodeIndex) -> Vec<NodeIndex> {
-    let l = level(x);
-    if l == 0 {
-        vec![x]
+#[cfg(any(feature = "test-utils", test))]
+pub(crate) fn node_width(n: usize) -> usize {
+    if n == 0 {
+        0
     } else {
-        let s = (1 << l) - 1;
-        let l = x - s;
-        let mut r = x + s;
-        if r > (size * 2) - 2 {
-            r = (size * 2) - 2;
-        }
-
-        (l..=r).collect()
-    }
-}
-
-/// Returns the list of nodes that are descendants of a given parent node,
-/// including the parent node itself
-/// (Alternative, easier to verify implementation)
-#[cfg(test)]
-pub(super) fn descendants_alt(x: NodeIndex, size: NodeIndex) -> Vec<NodeIndex> {
-    if level(x) == 0 {
-        vec![x]
-    } else {
-        let left_child = left(x).unwrap();
-        let right_child = right(x, size).unwrap();
-        [
-            descendants_alt(left_child, size),
-            vec![x],
-            descendants_alt(right_child, size),
-        ]
-        .concat()
+        2 * (n - 1) + 1
     }
 }
 

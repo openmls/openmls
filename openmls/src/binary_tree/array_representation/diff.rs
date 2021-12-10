@@ -22,6 +22,7 @@ use std::fmt::Debug;
 
 use crate::binary_tree::{array_representation::treemath::sibling, LeafIndex, TreeSize};
 
+use super::treemath::parent;
 use super::{
     tree::{to_node_index, ABinaryTree, ABinaryTreeError, NodeIndex},
     treemath::{direct_path, left, lowest_common_ancestor, right, root, TreeMathError},
@@ -66,7 +67,7 @@ impl<T: Clone + Debug> StagedAbDiff<T> {
 /// can be used to access the node at that position or to navigate to other,
 /// neighbouring nodes via the [`AbDiff::sibling()`], [`AbDiff::left_child()`]
 /// and [`AbDiff::right_child()`] functions of the [`AbDiff`].
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct NodeId {
     node_index: NodeIndex,
 }
@@ -81,6 +82,13 @@ impl NodeId {
     ) -> Result<Self, ABinaryTreeDiffError> {
         diff.out_of_bounds(node_index)?;
         Ok(NodeId { node_index })
+    }
+
+    /// FIXME: This is only needed to workaround the current presence of a
+    /// NodeIndex in the ParentNodeTreeHashInput struct in the spec and should
+    /// go away when #507 in the MLS spec is integrated.
+    pub(crate) fn node_index(&self) -> LeafIndex {
+        self.node_index
     }
 }
 
@@ -397,6 +405,14 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// otherwise.
     pub(crate) fn is_leaf(&self, node_ref: NodeId) -> bool {
         node_ref.node_index % 2 == 0
+    }
+
+    /// Returns a [`NodeReference`] to the parent of the referenced node. Returns
+    /// an error when the given [`NodeReference`] points to the root node or to a
+    /// node not in the tree.
+    pub(crate) fn parent(&self, node_ref: NodeId) -> Result<NodeId, ABinaryTreeDiffError> {
+        let parent_index = parent(node_ref.node_index, self.tree_size())?;
+        NodeId::try_from_node_index(self, parent_index)
     }
 
     /// Returns a [`NodeReference`] to the sibling of the referenced node. Returns

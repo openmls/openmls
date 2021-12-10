@@ -4,7 +4,7 @@ use crate::messages::proposals::{
     AddProposal, PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalOrRefType,
     ProposalReference, ProposalType, RemoveProposal, UpdateProposal,
 };
-use crate::tree::index::LeafIndex;
+use crate::treesync::LeafIndex;
 use crate::{ciphersuite::*, framing::*};
 
 use openmls_traits::OpenMlsCryptoProvider;
@@ -149,7 +149,7 @@ impl StagedProposalQueue {
                 ProposalOrRef::Proposal(proposal) => {
                     // ValSem200
                     if let Proposal::Remove(ref remove_proposal) = proposal {
-                        if remove_proposal.removed() == sender.sender.as_u32() {
+                        if remove_proposal.removed() == sender.sender {
                             return Err(StagedProposalQueueError::SelfRemoval);
                         }
                     }
@@ -167,7 +167,7 @@ impl StagedProposalQueue {
                             // ValSem200
                             if let Proposal::Remove(ref remove_proposal) = staged_proposal.proposal
                             {
-                                if remove_proposal.removed() == sender.sender.as_u32() {
+                                if remove_proposal.removed() == sender.sender {
                                     return Err(StagedProposalQueueError::SelfRemoval);
                                 }
                             }
@@ -217,7 +217,7 @@ impl StagedProposalQueue {
             .filter_map(move |reference| self.get(reference))
     }
 
-    /// Returns an iterator over all `StagedProposal` in the queue  
+    /// Returns an iterator over all `StagedProposal` in the queue
     /// in the order of the the Commit message
     pub(crate) fn staged_proposals(&self) -> impl Iterator<Item = &StagedProposal> {
         // Iterate over the reference to extract the proposals in the right order
@@ -226,7 +226,7 @@ impl StagedProposalQueue {
             .filter_map(move |reference| self.get(reference))
     }
 
-    /// Returns an iterator over all Add proposals in the queue  
+    /// Returns an iterator over all Add proposals in the queue
     /// in the order of the the Commit message
     pub fn add_proposals(&self) -> impl Iterator<Item = StagedAddProposal> {
         self.staged_proposals().filter_map(|staged_proposal| {
@@ -242,7 +242,7 @@ impl StagedProposalQueue {
         })
     }
 
-    /// Returns an iterator over all Remove proposals in the queue  
+    /// Returns an iterator over all Remove proposals in the queue
     /// in the order of the the Commit message
     pub fn remove_proposals(&self) -> impl Iterator<Item = StagedRemoveProposal> {
         self.staged_proposals().filter_map(|staged_proposal| {
@@ -258,7 +258,7 @@ impl StagedProposalQueue {
         })
     }
 
-    /// Returns an iterator over all Update in the queue  
+    /// Returns an iterator over all Update in the queue
     /// in the order of the the Commit message
     pub fn update_proposals(&self) -> impl Iterator<Item = StagedUpdateProposal> {
         self.staged_proposals().filter_map(|staged_proposal| {
@@ -274,7 +274,7 @@ impl StagedProposalQueue {
         })
     }
 
-    /// Returns an iterator over all PresharedKey proposals in the queue  
+    /// Returns an iterator over all PresharedKey proposals in the queue
     /// in the order of the the Commit message
     pub fn psk_proposals(&self) -> impl Iterator<Item = StagedPskProposal> {
         self.staged_proposals().filter_map(|staged_proposal| {
@@ -463,8 +463,12 @@ impl<'a> CreationProposalQueue<'a> {
         proposal_store: &'a ProposalStore,
         inline_proposals: &'a [Proposal],
         own_index: LeafIndex,
-        tree_size: LeafIndex,
+        leaf_count: LeafIndex,
     ) -> Result<(Self, bool), CreationProposalQueueError> {
+        fn to_usize(leaf_index: LeafIndex) -> Result<usize, CreationProposalQueueError> {
+            usize::try_from(leaf_index).map_err(|_| CreationProposalQueueError::ArchitectureError)
+        }
+
         #[derive(Clone)]
         struct Member<'a> {
             updates: Vec<QueuedProposal<'a>>,
@@ -475,7 +479,7 @@ impl<'a> CreationProposalQueue<'a> {
                 updates: vec![],
                 removes: vec![],
             };
-            tree_size.as_usize()
+            to_usize(leaf_count)?
         ];
         let mut adds: HashSet<ProposalReference> = HashSet::new();
         let mut valid_proposals: HashSet<ProposalReference> = HashSet::new();
@@ -512,9 +516,11 @@ impl<'a> CreationProposalQueue<'a> {
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::Update(_) => {
-                    let sender_index = queued_proposal.sender.sender.as_usize();
-                    if sender_index != own_index.as_usize() {
-                        members[sender_index].updates.push(queued_proposal.clone());
+                    let sender_index = queued_proposal.sender.sender;
+                    if sender_index != own_index {
+                        members[to_usize(sender_index)?]
+                            .updates
+                            .push(queued_proposal.clone());
                     } else {
                         contains_own_updates = true;
                     }
@@ -522,9 +528,11 @@ impl<'a> CreationProposalQueue<'a> {
                     proposal_pool.insert(proposal_reference, queued_proposal);
                 }
                 Proposal::Remove(remove_proposal) => {
-                    let removed_index = remove_proposal.removed as usize;
-                    if removed_index < tree_size.as_usize() {
-                        members[removed_index].updates.push(queued_proposal.clone());
+                    let removed_index = remove_proposal.removed;
+                    if removed_index < leaf_count {
+                        members[to_usize(removed_index)?]
+                            .updates
+                            .push(queued_proposal.clone());
                     }
                     let proposal_reference = queued_proposal.proposal_reference();
                     proposal_pool.insert(proposal_reference, queued_proposal);

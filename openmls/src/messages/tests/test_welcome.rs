@@ -8,9 +8,10 @@ use crate::{
     credentials::{CredentialBundle, CredentialType},
     group::{GroupEpoch, GroupId},
     messages::{ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload, Welcome},
-    test_utils::*,
-    tree::index::LeafIndex,
 };
+
+use rstest::*;
+use rstest_reuse::{self, *};
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
@@ -43,7 +44,7 @@ fn test_welcome_message_with_version(
         ConfirmationTag(Mac {
             mac_value: vec![1, 2, 3, 4, 5].into(),
         }),
-        LeafIndex::from(8u32),
+        8u32,
     );
 
     // We need a credential bundle to sign the group info.
