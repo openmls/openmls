@@ -23,8 +23,8 @@ impl LeafNode {
 
     /// Return a reference to the `private_key` corresponding to the
     /// [`KeyPackage`] in this node.
-    pub(in crate::treesync) fn private_key(&self) -> &Option<HpkePrivateKey> {
-        &self.private_key_option
+    pub(in crate::treesync) fn private_key(&self) -> Option<&HpkePrivateKey> {
+        self.private_key_option.as_ref()
     }
 
     /// Set the private key in this node.

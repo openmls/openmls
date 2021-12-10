@@ -144,8 +144,8 @@ impl ParentNode {
     }
 
     /// Return a reference to the potential `private_key` of this node.
-    pub(in crate::treesync) fn private_key(&self) -> &Option<HpkePrivateKey> {
-        &self.private_key_option
+    pub(in crate::treesync) fn private_key(&self) -> Option<&HpkePrivateKey> {
+        self.private_key_option.as_ref()
     }
 
     /// Set the `private_key` of this node to the given key.

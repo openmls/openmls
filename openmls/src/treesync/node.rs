@@ -66,7 +66,7 @@ impl Node {
     }
 
     /// Returns the private key of this node.
-    pub(in crate::treesync) fn private_key(&self) -> &Option<HpkePrivateKey> {
+    pub(in crate::treesync) fn private_key(&self) -> Option<&HpkePrivateKey> {
         match self {
             Node::LeafNode(ln) => ln.private_key(),
             Node::ParentNode(pn) => pn.private_key(),
