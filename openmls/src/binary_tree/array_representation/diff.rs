@@ -22,6 +22,7 @@ use std::fmt::Debug;
 
 use crate::binary_tree::{array_representation::treemath::sibling, LeafIndex, TreeSize};
 
+use super::treemath::parent;
 use super::{
     tree::{to_node_index, ABinaryTree, ABinaryTreeError, NodeIndex},
     treemath::{direct_path, left, lowest_common_ancestor, right, root, TreeMathError},
@@ -404,6 +405,14 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// otherwise.
     pub(crate) fn is_leaf(&self, node_ref: NodeId) -> bool {
         node_ref.node_index % 2 == 0
+    }
+
+    /// Returns a [`NodeReference`] to the parent of the referenced node. Returns
+    /// an error when the given [`NodeReference`] points to the root node or to a
+    /// node not in the tree.
+    pub(crate) fn parent(&self, node_ref: NodeId) -> Result<NodeId, ABinaryTreeDiffError> {
+        let parent_index = parent(node_ref.node_index, self.tree_size())?;
+        NodeId::try_from_node_index(self, parent_index)
     }
 
     /// Returns a [`NodeReference`] to the sibling of the referenced node. Returns

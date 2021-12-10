@@ -148,7 +148,6 @@ pub(super) fn lowest_common_ancestor(x: NodeIndex, y: NodeIndex) -> NodeIndex {
     (xn << k) + (1 << (k - 1)) - 1
 }
 
-#[cfg(any(feature = "test-utils", test))]
 pub(super) fn parent(index: NodeIndex, size: NodeIndex) -> Result<NodeIndex, TreeMathError> {
     node_in_tree(index, size)?;
     unsafe_parent(index, size)

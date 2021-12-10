@@ -83,13 +83,19 @@ impl<'a> TryFrom<&'a TreeSync> for TreeSyncDiff<'a> {
 }
 
 impl<'a> TreeSyncDiff<'a> {
-    /// Check if the right-most leaf is blank. If that is the case, remove the
-    /// right-most leaf until the right-most leaf is not blank anymore.
+    /// Check if the right-most leaf and its parent are blank. If that is the
+    /// case, remove the right-most leaf and its parent until either the
+    /// right-most leaf or its parent are not blank anymore.
     pub(crate) fn trim_tree(&mut self) -> Result<(), TreeSyncDiffError> {
         let mut leaf_id = self.diff.leaf(self.leaf_count() - 1)?;
-        while self.diff.node(leaf_id)?.node().is_none() {
+        let mut parent_id = self.diff.parent(leaf_id)?;
+        // Trim only if the parent node is blank as well;.
+        while self.diff.node(leaf_id)?.node().is_none()
+            && self.diff.node(parent_id)?.node().is_none()
+        {
             self.diff.remove_leaf()?;
             leaf_id = self.diff.leaf(self.leaf_count() - 1)?;
+            parent_id = self.diff.parent(leaf_id)?;
         }
         Ok(())
     }
@@ -163,7 +169,8 @@ impl<'a> TreeSyncDiff<'a> {
 
     /// Remove a group member by blanking the target leaf and its direct path.
     /// After blanking the leaf and its direct path, the diff is trimmed, i.e.
-    /// leafs are removed until the right-most leaf in the tree is non-blank.
+    /// leaves are removed until the right-most leaf in the tree, as well as its
+    /// parent are non-blank.
     ///
     /// Returns an error if the target leaf is outside of the tree.
     pub(crate) fn blank_leaf(&mut self, leaf_index: LeafIndex) -> Result<(), TreeSyncDiffError> {
