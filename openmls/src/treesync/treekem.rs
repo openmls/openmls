@@ -14,7 +14,6 @@ use serde::{Deserialize, Serialize};
 use crate::{
     binary_tree::LeafIndex,
     ciphersuite::{Ciphersuite, HpkePublicKey},
-    config::ProtocolVersion,
     key_packages::{KeyPackage, KeyPackageError},
     messages::{
         proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret, PathSecretError,
@@ -77,7 +76,6 @@ impl<'a> TreeSyncDiff<'a> {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &'static Ciphersuite,
-        version: ProtocolVersion,
         update_path: Vec<UpdatePathNode>,
         sender_leaf_index: LeafIndex,
         exclusion_list: &HashSet<&LeafIndex>,
@@ -97,7 +95,6 @@ impl<'a> TreeSyncDiff<'a> {
         let path_secret = PathSecret::decrypt(
             backend,
             ciphersuite,
-            version,
             ciphertext,
             decryption_key,
             group_context,

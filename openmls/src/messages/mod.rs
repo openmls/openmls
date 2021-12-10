@@ -370,7 +370,6 @@ impl PathSecret {
     pub(crate) fn decrypt(
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &'static Ciphersuite,
-        version: ProtocolVersion,
         ciphertext: &HpkeCiphertext,
         private_key: &HpkePrivateKey,
         group_context: &[u8],
@@ -382,7 +381,8 @@ impl PathSecret {
             group_context,
             &[],
         )?;
-        let path_secret = Secret::from_slice(&secret_bytes, version, ciphersuite);
+        let path_secret =
+            Secret::from_slice(&secret_bytes, ciphersuite.protocol_version(), ciphersuite);
         Ok(Self { path_secret })
     }
 }
