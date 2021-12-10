@@ -1,10 +1,15 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::SignatureScheme;
 
-use crate::config::*;
-use crate::tree::index::{LeafIndex, NodeIndex};
-use crate::tree::treemath::{descendants, descendants_alt, TreeMathError};
-use crate::tree::{treemath, *};
+use crate::{
+    config::*,
+    test_utils::*,
+    tree::{
+        index::{LeafIndex, NodeIndex},
+        treemath::{self, descendants, descendants_alt, TreeMathError},
+        *,
+    },
+};
 use std::convert::TryFrom;
 
 /// Tests the variants of the direct path calculations.
@@ -31,41 +36,46 @@ fn test_dir_path() {
     }
 }
 
-#[test]
-fn test_tree_hash() {
-    let crypto = OpenMlsRustCrypto::default();
-    fn create_identity(id: &[u8], ciphersuite_name: CiphersuiteName) -> KeyPackageBundle {
-        let crypto = OpenMlsRustCrypto::default();
-        let signature_scheme = SignatureScheme::from(ciphersuite_name);
+#[apply(ciphersuites_and_backends)]
+fn test_tree_hash(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    fn create_identity(
+        id: &[u8],
+        ciphersuite: &'static Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> KeyPackageBundle {
+        let signature_scheme = SignatureScheme::from(ciphersuite.name());
         let credential_bundle = CredentialBundle::new(
             id.to_vec(),
             CredentialType::Basic,
             signature_scheme,
-            &crypto,
+            backend,
         )
         .expect("An unexpected error occurred.");
-        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, &crypto, Vec::new())
-            .expect("An unexpected error occurred.")
+        KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &credential_bundle,
+            backend,
+            Vec::new(),
+        )
+        .expect("An unexpected error occurred.")
     }
 
-    for ciphersuite in Config::supported_ciphersuites() {
-        let kbp = create_identity(b"Tree creator", ciphersuite.name());
+    let kbp = create_identity(b"Tree creator", ciphersuite, backend);
 
-        // Initialise tree
-        let mut tree = RatchetTree::new(&crypto, kbp).expect("Could not create PrivateTree.");
-        let tree_hash = tree.tree_hash(&crypto);
-        println!("Tree hash: {:?}", tree_hash);
+    // Initialise tree
+    let mut tree = RatchetTree::new(backend, kbp).expect("Could not create PrivateTree.");
+    let tree_hash = tree.tree_hash(backend);
+    println!("Tree hash: {:?}", tree_hash);
 
-        // Add 5 nodes to the tree.
-        let mut nodes = Vec::new();
-        for _ in 0..5 {
-            nodes.push(create_identity(b"Tree creator", ciphersuite.name()));
-        }
-        let key_packages: Vec<&KeyPackage> = nodes.iter().map(|kbp| &kbp.key_package).collect();
-        let _ = tree.add_nodes(&key_packages);
-        let tree_hash = tree.tree_hash(&crypto);
-        println!("Tree hash: {:?}", tree_hash);
+    // Add 5 nodes to the tree.
+    let mut nodes = Vec::new();
+    for _ in 0..5 {
+        nodes.push(create_identity(b"Tree creator", ciphersuite, backend));
     }
+    let key_packages: Vec<&KeyPackage> = nodes.iter().map(|kbp| &kbp.key_package).collect();
+    let _ = tree.add_nodes(&key_packages);
+    let tree_hash = tree.tree_hash(backend);
+    println!("Tree hash: {:?}", tree_hash);
 }
 
 #[test]

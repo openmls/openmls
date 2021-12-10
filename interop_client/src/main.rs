@@ -4,6 +4,7 @@
 //! It is based on the Mock client written by Richard Barnes.
 
 use clap::Parser;
+use clap_derive::*;
 use openmls::{
     ciphersuite::signable::Verifiable,
     group::{
@@ -303,7 +304,7 @@ impl MlsClient for MlsClientImpl {
                     &format!("mlspp_key_schedule_{}.json", kat_key_schedule.cipher_suite),
                     &obj.test_vector,
                 );
-                match kat_key_schedule::run_test_vector(kat_key_schedule) {
+                match kat_key_schedule::run_test_vector(kat_key_schedule, backend) {
                     Ok(result) => ("Key Schedule", result),
                     Err(e) => {
                         let message = "Error while running key schedule test vector: ".to_string()

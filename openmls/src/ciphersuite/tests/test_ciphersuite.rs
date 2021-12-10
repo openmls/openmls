@@ -80,10 +80,8 @@ fn test_sign_verify(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     assert!(keypair.verify(backend, &signature, payload).is_ok());
 }
 
-#[test]
-fn supported_ciphersuites() {
-    let backend = &OpenMlsRustCrypto::default();
-
+#[apply(backends)]
+fn supported_ciphersuites(backend: &impl OpenMlsCryptoProvider) {
     const SUPPORTED_CIPHERSUITE_NAMES: &[CiphersuiteName] = &[
         CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
