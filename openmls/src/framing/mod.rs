@@ -9,7 +9,7 @@ use crate::credentials::*;
 use crate::group::*;
 use crate::messages::{proposals::*, *};
 use crate::schedule::*;
-use crate::tree::{index::*, secret_tree::*};
+use crate::treesync::*;
 
 pub(crate) use serde::{Deserialize, Serialize};
 

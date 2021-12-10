@@ -237,7 +237,9 @@ async fn test_group() {
     let staged_commit = group
         .stage_commit(&commit, &proposal_store, &[], crypto)
         .expect("error applying commit");
-    group.merge_commit(staged_commit);
+    group
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
 
     // Send welcome message for Client2
     let req = test::TestRequest::post()
@@ -277,15 +279,15 @@ async fn test_group() {
 
     let mut group_on_client2 = MlsGroup::new_from_welcome(
         welcome_message,
-        Some(group.tree().public_key_tree_copy()), // delivered out of band
+        Some(group.treesync().export_nodes()), // delivered out of band
         key_package_bundles.remove(0),
         crypto,
     )
     .expect("Error creating group from Welcome");
 
     assert_eq!(
-        group.tree().public_key_tree(),
-        group_on_client2.tree().public_key_tree()
+        group.treesync().export_nodes(),
+        group_on_client2.treesync().export_nodes()
     );
 
     // === Client2 sends a message to the group ===

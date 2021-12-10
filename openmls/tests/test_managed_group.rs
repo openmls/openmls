@@ -167,10 +167,18 @@ fn managed_group_operations(
         }
 
         // Check that the group now has two members
-        assert_eq!(alice_group.members().len(), 2);
+        assert_eq!(
+            alice_group
+                .members()
+                .expect("error getting members from group")
+                .len(),
+            2
+        );
 
         // Check that Alice & Bob are the members of the group
-        let members = alice_group.members();
+        let members = alice_group
+            .members()
+            .expect("error getting members from group");
         assert_eq!(members[0].identity(), b"Alice");
         assert_eq!(members[1].identity(), b"Bob");
 
@@ -183,7 +191,14 @@ fn managed_group_operations(
         .expect("Error creating group from Welcome");
 
         // Make sure that both groups have the same members
-        assert_eq!(alice_group.members(), bob_group.members());
+        assert_eq!(
+            alice_group
+                .members()
+                .expect("error getting members from group"),
+            bob_group
+                .members()
+                .expect("error getting members from group")
+        );
 
         // Make sure that both groups have the same authentication secret
         assert_eq!(
@@ -458,7 +473,7 @@ fn managed_group_operations(
         );
 
         // Check that Alice, Bob & Charlie are the members of the group
-        let members = alice_group.members();
+        let members = alice_group.members().expect("error getting member");
         assert_eq!(members[0].identity(), b"Alice");
         assert_eq!(members[1].identity(), b"Bob");
         assert_eq!(members[2].identity(), b"Charlie");
@@ -646,10 +661,13 @@ fn managed_group_operations(
         );
 
         // Make sure the group only contains two members
-        assert_eq!(alice_group.members().len(), 2);
+        assert_eq!(
+            alice_group.members().expect("error getting members").len(),
+            2
+        );
 
         // Check that Alice & Charlie are the members of the group
-        let members = alice_group.members();
+        let members = alice_group.members().expect("error getting members");
         assert_eq!(members[0].identity(), b"Alice");
         assert_eq!(members[1].identity(), b"Charlie");
 
@@ -824,10 +842,13 @@ fn managed_group_operations(
         }
 
         // Make sure the group contains two members
-        assert_eq!(alice_group.members().len(), 2);
+        assert_eq!(
+            alice_group.members().expect("error getting members").len(),
+            2
+        );
 
         // Check that Alice & Bob are the members of the group
-        let members = alice_group.members();
+        let members = alice_group.members().expect("error getting members");
         assert_eq!(members[0].identity(), b"Alice");
         assert_eq!(members[1].identity(), b"Bob");
 
@@ -841,18 +862,21 @@ fn managed_group_operations(
         .expect("Error creating group from Welcome");
 
         // Make sure the group contains two members
-        assert_eq!(alice_group.members().len(), 2);
+        assert_eq!(
+            alice_group.members().expect("error getting members").len(),
+            2
+        );
 
         // Check that Alice & Bob are the members of the group
-        let members = alice_group.members();
+        let members = alice_group.members().expect("error getting members");
         assert_eq!(members[0].identity(), b"Alice");
         assert_eq!(members[1].identity(), b"Bob");
 
         // Make sure the group contains two members
-        assert_eq!(bob_group.members().len(), 2);
+        assert_eq!(bob_group.members().expect("error getting members").len(), 2);
 
         // Check that Alice & Bob are the members of the group
-        let members = bob_group.members();
+        let members = bob_group.members().expect("error getting members");
         assert_eq!(members[0].identity(), b"Alice");
         assert_eq!(members[1].identity(), b"Bob");
 
@@ -989,10 +1013,13 @@ fn managed_group_operations(
         assert!(!bob_group.is_active());
 
         // Make sure the group contains one member
-        assert_eq!(alice_group.members().len(), 1);
+        assert_eq!(
+            alice_group.members().expect("error getting members").len(),
+            1
+        );
 
         // Check that Alice is the only member of the group
-        let members = alice_group.members();
+        let members = alice_group.members().expect("error getting members");
         assert_eq!(members[0].identity(), b"Alice");
 
         // === Save the group state ===

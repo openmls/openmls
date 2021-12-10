@@ -167,7 +167,9 @@ fn ratchet_tree_extension(ciphersuite: &'static Ciphersuite, backend: &impl Open
     let staged_commit = alice_group
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
         .expect("error staging commit");
-    alice_group.merge_commit(staged_commit);
+    alice_group
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
 
     let bob_group = match MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
@@ -247,7 +249,9 @@ fn ratchet_tree_extension(ciphersuite: &'static Ciphersuite, backend: &impl Open
     let staged_commit = alice_group
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
         .expect("error staging commit");
-    alice_group.merge_commit(staged_commit);
+    alice_group
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
 
     let error = MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),

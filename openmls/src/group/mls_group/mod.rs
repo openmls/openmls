@@ -8,6 +8,7 @@
 use log::{debug, trace};
 use psk::{PreSharedKeys, PskSecret};
 
+mod apply_proposals;
 pub mod create_commit;
 pub mod create_commit_params;
 mod new_from_welcome;
@@ -26,14 +27,16 @@ pub mod validation;
 
 use crate::ciphersuite::signable::{Signable, Verifiable};
 use crate::config::{check_required_capabilities_support, Config};
-use crate::credentials::{CredentialBundle, CredentialError};
+use crate::credentials::{Credential, CredentialBundle, CredentialError};
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
 use crate::messages::public_group_state::{PublicGroupState, PublicGroupStateTbs};
 use crate::messages::{proposals::*, *};
 use crate::schedule::*;
-use crate::tree::{index::*, node::*, secret_tree::*, *};
+use crate::tree::secret_tree::SecretTree;
+use crate::treesync::node::Node;
+use crate::treesync::*;
 use crate::{ciphersuite::*, config::ProtocolVersion};
 
 use serde::{
@@ -41,7 +44,8 @@ use serde::{
     ser::{SerializeStruct, Serializer},
     Deserialize, Deserializer, Serialize,
 };
-use std::cell::{Ref, RefCell};
+use std::cell::RefCell;
+use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::io::{Error, Read, Write};
 
@@ -62,7 +66,7 @@ pub struct MlsGroup {
     group_context: GroupContext,
     epoch_secrets: EpochSecrets,
     secret_tree: RefCell<SecretTree>,
-    tree: RefCell<RatchetTree>,
+    tree: TreeSync,
     interim_transcript_hash: Vec<u8>,
     // Group config.
     // Set to true if the ratchet tree extension is added to the `GroupInfo`.
@@ -143,7 +147,7 @@ impl MlsGroupBuilder {
 
         debug!("Created group {:x?}", self.group_id);
         trace!(" >>> with {:?}, {:?}", ciphersuite, config);
-        let tree = RatchetTree::new(backend, self.key_package_bundle)?;
+        let (tree, commit_secret) = TreeSync::new(backend, self.key_package_bundle)?;
 
         check_required_capabilities_support(&required_capabilities)?;
         let required_capabilities = &[Extension::RequiredCapabilities(required_capabilities)];
@@ -151,10 +155,9 @@ impl MlsGroupBuilder {
         let group_context = GroupContext::create_initial_group_context(
             ciphersuite,
             self.group_id,
-            tree.tree_hash(backend)?,
+            tree.tree_hash().to_vec(),
             required_capabilities,
         )?;
-        let commit_secret = tree.private_tree().commit_secret();
         // Derive an initial joiner secret based on the commit secret.
         // Derive an epoch secret from the joiner secret.
         // We use a random `InitSecret` for initialization.
@@ -173,9 +176,7 @@ impl MlsGroupBuilder {
         key_schedule.add_context(backend, &serialized_group_context)?;
         let epoch_secrets = key_schedule.epoch_secrets(backend, true)?;
 
-        let secret_tree = epoch_secrets
-            .encryption_secret()
-            .create_secret_tree(LeafIndex::from(1u32));
+        let secret_tree = epoch_secrets.encryption_secret().create_secret_tree(1u32);
         let interim_transcript_hash = vec![];
 
         Ok(MlsGroup {
@@ -183,7 +184,7 @@ impl MlsGroupBuilder {
             group_context,
             epoch_secrets,
             secret_tree: RefCell::new(secret_tree),
-            tree: RefCell::new(tree),
+            tree,
             interim_transcript_hash,
             use_ratchet_tree_extension: config.add_ratchet_tree_extension,
             mls_version: version,
@@ -281,7 +282,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsPlaintext, MlsGroupError> {
         let remove_proposal = RemoveProposal {
-            removed: removed_index.into(),
+            removed: removed_index,
         };
         let proposal = Proposal::Remove(remove_proposal);
         MlsPlaintext::new_proposal(
@@ -337,12 +338,13 @@ impl MlsGroup {
             let required_capabilities = required_extension.as_required_capabilities_extension()?;
             // Ensure we support all the capabilities.
             check_required_capabilities_support(required_capabilities)?;
-            self.tree()
-                .own_key_package()
+            self.treesync()
+                .own_leaf_node()?
+                .key_package()
                 .validate_required_capabilities(required_capabilities)?;
             // Ensure that all other key packages support all the required
             // extensions as well.
-            for key_package in self.tree().key_packages() {
+            for (_index, key_package) in self.treesync().full_leaves()? {
                 key_package.check_extension_support(required_capabilities.extensions())?;
             }
         }
@@ -426,17 +428,16 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsPlaintext, MlsGroupError> {
         // Verify the signature on the plaintext.
-        let tree = self.tree();
+        let tree = self.treesync();
 
-        let node = &tree
-            .nodes
-            .get(NodeIndex::from(verifiable.sender_index()).as_usize())
+        let leaf_node = tree
+            .leaf(verifiable.sender_index())
+            // It's an unknown sender either if the index is outside of the tree
+            // ...
+            .map_err(|_| MlsPlaintextError::UnknownSender)?
+            // ... or if the leaf is blank.
             .ok_or(MlsPlaintextError::UnknownSender)?;
-        let credential = if let Some(kp) = node.key_package.as_ref() {
-            kp.credential()
-        } else {
-            return Err(MlsPlaintextError::UnknownSender.into());
-        };
+        let credential = leaf_node.key_package().credential();
         // Set the context if it has not been set already.
         if !verifiable.has_context() {
             verifiable.set_context(self.context().tls_serialize_detached()?);
@@ -495,8 +496,8 @@ impl MlsGroup {
     }
 
     /// Returns the ratchet tree
-    pub fn tree(&self) -> Ref<RatchetTree> {
-        self.tree.borrow()
+    pub fn treesync(&self) -> &TreeSync {
+        &self.tree
     }
 
     /// Get the ciphersuite implementation used in this group.
@@ -514,12 +515,22 @@ impl MlsGroup {
         &self.group_context.group_id
     }
 
+    /// Get the members of the group, indexed by their leaves.
+    pub fn members(&self) -> Result<BTreeMap<LeafIndex, &Credential>, MlsGroupError> {
+        Ok(self
+            .tree
+            .full_leaves()?
+            .into_iter()
+            .map(|(index, kp)| (index, kp.credential()))
+            .collect())
+    }
+
     /// Get the groups extensions.
     /// Right now this is limited to the ratchet tree extension which is built
     /// on the fly when calling this function.
     pub fn other_extensions(&self) -> Vec<Extension> {
         vec![Extension::RatchetTree(RatchetTreeExtension::new(
-            self.tree().public_key_tree_copy(),
+            self.treesync().export_nodes(),
         ))]
     }
 
@@ -553,7 +564,7 @@ impl MlsGroup {
 // Private and crate functions
 impl MlsGroup {
     pub(crate) fn sender_index(&self) -> LeafIndex {
-        self.tree.borrow().own_node_index()
+        self.tree.own_leaf_index()
     }
 
     pub(crate) fn epoch_secrets(&self) -> &EpochSecrets {

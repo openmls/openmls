@@ -122,8 +122,9 @@
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
 use crate::framing::MlsPlaintextTbmPayload;
-use crate::tree::index::LeafIndex;
+use crate::messages::PathSecret;
 use crate::tree::secret_tree::SecretTree;
+use crate::treesync::LeafIndex;
 use crate::{ciphersuite::Mac, prelude::MembershipTag};
 use crate::{
     ciphersuite::{AeadKey, AeadNonce, Ciphersuite, Secret},
@@ -153,28 +154,20 @@ pub use psk::{PreSharedKeyId, PreSharedKeys, PskSecret};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(any(feature = "test-utils", test), derive(Clone))]
 pub(crate) struct CommitSecret {
     secret: Secret,
 }
 
-impl From<Secret> for CommitSecret {
-    fn from(secret: Secret) -> Self {
-        Self { secret }
+impl From<PathSecret> for CommitSecret {
+    fn from(path_secret: PathSecret) -> Self {
+        CommitSecret {
+            secret: path_secret.secret(),
+        }
     }
 }
 
 impl CommitSecret {
-    pub(crate) fn new(
-        ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
-        path_secret: &Secret,
-    ) -> Result<Self, CryptoError> {
-        let secret =
-            path_secret.kdf_expand_label(backend, "path", &[], ciphersuite.hash_length())?;
-
-        Ok(Self { secret })
-    }
-
     /// Create a CommitSecret consisting of an all-zero string of length
     /// `hash_length`.
     pub(crate) fn zero_secret(ciphersuite: &'static Ciphersuite, version: ProtocolVersion) -> Self {
@@ -257,16 +250,16 @@ impl JoinerSecret {
     /// Derive a `JoinerSecret` from an optional `CommitSecret` and an
     /// `EpochSecrets` object, which contains the necessary `InitSecret`. The
     /// `CommitSecret` needs to be present if the current commit is not a
-    /// partial commit. TODO: For now, this takes a reference to a
-    /// `CommitSecret` as input. This should change with #224.
-    pub(crate) fn new<'a>(
+    /// partial commit.
+    pub(crate) fn new(
         backend: &impl OpenMlsCryptoProvider,
-        commit_secret_option: impl Into<Option<&'a CommitSecret>>,
+        commit_secret_option: impl Into<Option<CommitSecret>>,
         init_secret: &InitSecret,
     ) -> Result<Self, CryptoError> {
-        let intermediate_secret = init_secret
-            .secret
-            .hkdf_extract(backend, commit_secret_option.into().map(|cs| &cs.secret))?;
+        let intermediate_secret = init_secret.secret.hkdf_extract(
+            backend,
+            commit_secret_option.into().as_ref().map(|cs| &cs.secret),
+        )?;
         let secret = intermediate_secret.derive_secret(backend, "joiner")?;
         log_crypto!(trace, "Joiner secret: {:x?}", secret);
         Ok(JoinerSecret { secret })
@@ -565,7 +558,7 @@ impl EncryptionSecret {
     /// `EpochSecrets`. The `encryption_secret` is replaced with `None` in the
     /// process, allowing us to achieve FS.
     pub(crate) fn create_secret_tree(self, treesize: LeafIndex) -> SecretTree {
-        SecretTree::new(self, treesize)
+        SecretTree::new(self, treesize.into())
     }
 
     pub(crate) fn consume_secret(self) -> Secret {

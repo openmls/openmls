@@ -226,7 +226,9 @@ impl User {
                                 &self.crypto,
                             ) {
                                 Ok(staged_commit) => {
-                                    mls_group.merge_commit(staged_commit);
+                                    mls_group
+                                        .merge_commit(staged_commit)
+                                        .map_err(|e| format!("{}", e))?;
                                 }
                                 Err(e) => {
                                     let s = format!("Error applying commit: {:?}", e);
@@ -355,7 +357,11 @@ impl User {
             .borrow_mut()
             .stage_commit(&commit, &proposal_store, &[], &self.crypto)
             .expect("error applying commit");
-        group.mls_group.borrow_mut().merge_commit(staged_commit);
+        group
+            .mls_group
+            .borrow_mut()
+            .merge_commit(staged_commit)
+            .map_err(|e| format!("{}", e))?;
 
         // Send Welcome to the client.
         log::trace!("Sending welcome");
@@ -414,16 +420,12 @@ impl User {
         let group_id = group_id.to_vec();
 
         // FIXME
-        let tree = mls_group.tree();
-        let leaf_count = tree.leaf_count();
-        let mut members = Vec::new();
-        for index in 0..leaf_count.as_usize() {
-            let leaf = &tree.nodes[LeafIndex::from(index)];
-            if let Some(leaf_node) = leaf.key_package() {
-                members.push(leaf_node.credential().identity().to_vec());
-            }
-        }
-        drop(tree);
+        let members: Vec<Vec<u8>> = mls_group
+            .members()
+            .map_err(|e| format!("{}", e))?
+            .into_iter()
+            .map(|(_index, cred)| cred.identity().to_vec())
+            .collect();
 
         let group = Group {
             group_id: group_id.clone(),

@@ -141,8 +141,10 @@ fn create_commit_optional_path(
     let staged_commit = group_alice
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
         .expect("Error staging commit");
-    group_alice.merge_commit(staged_commit);
-    let ratchet_tree = group_alice.tree().public_key_tree_copy();
+    group_alice
+        .merge_commit(staged_commit)
+        .expect("An unexpected error occurred.");
+    let ratchet_tree = group_alice.treesync().export_nodes();
 
     // Bob creates group from Welcome
     let group_bob = match MlsGroup::new_from_welcome(
@@ -156,8 +158,8 @@ fn create_commit_optional_path(
     };
 
     assert_eq!(
-        group_alice.tree().public_key_tree(),
-        group_bob.tree().public_key_tree()
+        group_alice.treesync().export_nodes(),
+        group_bob.treesync().export_nodes()
     );
 
     // Alice updates
@@ -203,7 +205,9 @@ fn create_commit_optional_path(
             backend,
         )
         .expect("Error staging commit");
-    group_alice.merge_commit(staged_commit);
+    group_alice
+        .merge_commit(staged_commit)
+        .expect("An unexpected error occurred.");
 }
 
 #[apply(ciphersuites_and_backends)]
@@ -379,8 +383,10 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     let staged_commit = group_alice
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
         .expect("Error staging commit");
-    group_alice.merge_commit(staged_commit);
-    let ratchet_tree = group_alice.tree().public_key_tree_copy();
+    group_alice
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
+    let ratchet_tree = group_alice.treesync().export_nodes();
 
     let mut group_bob = match MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
@@ -393,8 +399,8 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     };
 
     // Make sure that both groups have the same public tree
-    if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
-        _print_tree(&group_alice.tree(), "Alice added Bob");
+    if group_alice.treesync().export_nodes() != group_bob.treesync().export_nodes() {
+        _print_tree(&group_alice.treesync(), "Alice added Bob");
         panic!("Different public trees");
     }
     // Make sure that both groups have the same group context
@@ -464,7 +470,9 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     let staged_commit = group_alice
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Alice)");
-    group_alice.merge_commit(staged_commit);
+    group_alice
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
     let staged_commit = group_bob
         .stage_commit(
             &mls_plaintext_commit,
@@ -473,11 +481,13 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
             backend,
         )
         .expect("Error applying commit (Bob)");
-    group_bob.merge_commit(staged_commit);
+    group_bob
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
 
     // Make sure that both groups have the same public tree
-    if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
-        _print_tree(&group_alice.tree(), "Alice added Bob");
+    if group_alice.treesync().export_nodes() != group_bob.treesync().export_nodes() {
+        _print_tree(&group_alice.treesync(), "Alice added Bob");
         panic!("Different public trees");
     }
 
@@ -528,15 +538,19 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
             backend,
         )
         .expect("Error applying commit (Alice)");
-    group_alice.merge_commit(staged_commit);
+    group_alice
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
     let staged_commit = group_bob
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Bob)");
-    group_bob.merge_commit(staged_commit);
+    group_bob
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
 
     // Make sure that both groups have the same public tree
-    if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
-        _print_tree(&group_alice.tree(), "Alice added Bob");
+    if group_alice.treesync().export_nodes() != group_bob.treesync().export_nodes() {
+        _print_tree(&group_alice.treesync(), "Alice added Bob");
         panic!("Different public trees");
     }
 
@@ -586,7 +600,9 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
             backend,
         )
         .expect("Error applying commit (Alice)");
-    group_alice.merge_commit(staged_commit);
+    group_alice
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
     let staged_commit = group_bob
         .stage_commit(
             &mls_plaintext_commit,
@@ -595,11 +611,13 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
             backend,
         )
         .expect("Error applying commit (Bob)");
-    group_bob.merge_commit(staged_commit);
+    group_bob
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
 
     // Make sure that both groups have the same public tree
-    if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
-        _print_tree(&group_alice.tree(), "Alice added Bob");
+    if group_alice.treesync().export_nodes() != group_bob.treesync().export_nodes() {
+        _print_tree(&group_alice.treesync(), "Alice added Bob");
         panic!("Different public trees");
     }
 
@@ -657,13 +675,17 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     let staged_commit = group_alice
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Alice)");
-    group_alice.merge_commit(staged_commit);
+    group_alice
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
     let staged_commit = group_bob
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Bob)");
-    group_bob.merge_commit(staged_commit);
+    group_bob
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
 
-    let ratchet_tree = group_alice.tree().public_key_tree_copy();
+    let ratchet_tree = group_alice.treesync().export_nodes();
     let mut group_charlie = match MlsGroup::new_from_welcome(
         welcome_for_charlie_option.expect("An unexpected error occurred."),
         Some(ratchet_tree),
@@ -675,12 +697,12 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     };
 
     // Make sure that all groups have the same public tree
-    if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
-        _print_tree(&group_alice.tree(), "Bob added Charlie");
+    if group_alice.treesync().export_nodes() != group_bob.treesync().export_nodes() {
+        _print_tree(&group_alice.treesync(), "Bob added Charlie");
         panic!("Different public trees");
     }
-    if group_alice.tree().public_key_tree() != group_charlie.tree().public_key_tree() {
-        _print_tree(&group_alice.tree(), "Bob added Charlie");
+    if group_alice.treesync().export_nodes() != group_charlie.treesync().export_nodes() {
+        _print_tree(&group_alice.treesync(), "Bob added Charlie");
         panic!("Different public trees");
     }
 
@@ -761,11 +783,15 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     let staged_commit = group_alice
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Alice)");
-    group_alice.merge_commit(staged_commit);
+    group_alice
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
     let staged_commit = group_bob
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Bob)");
-    group_bob.merge_commit(staged_commit);
+    group_bob
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
     let staged_commit = group_charlie
         .stage_commit(
             &mls_plaintext_commit,
@@ -774,15 +800,17 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
             backend,
         )
         .expect("Error applying commit (Charlie)");
-    group_charlie.merge_commit(staged_commit);
+    group_charlie
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
 
     // Make sure that all groups have the same public tree
-    if group_alice.tree().public_key_tree() != group_bob.tree().public_key_tree() {
-        _print_tree(&group_alice.tree(), "Charlie updated");
+    if group_alice.treesync().export_nodes() != group_bob.treesync().export_nodes() {
+        _print_tree(&group_alice.treesync(), "Charlie updated");
         panic!("Different public trees");
     }
-    if group_alice.tree().public_key_tree() != group_charlie.tree().public_key_tree() {
-        _print_tree(&group_alice.tree(), "Charlie updated");
+    if group_alice.treesync().export_nodes() != group_charlie.treesync().export_nodes() {
+        _print_tree(&group_alice.treesync(), "Charlie updated");
         panic!("Different public trees");
     }
 
@@ -820,7 +848,9 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     let staged_commit = group_alice
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Alice)");
-    group_alice.merge_commit(staged_commit);
+    group_alice
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
     assert!(group_bob
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend,)
         .expect("Could not stage commit.")
@@ -833,15 +863,17 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
             backend,
         )
         .expect("Error applying commit (Charlie)");
-    group_charlie.merge_commit(staged_commit);
+    group_charlie
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
 
     // Make sure that all groups have the same public tree
-    if group_alice.tree().public_key_tree() == group_bob.tree().public_key_tree() {
-        _print_tree(&group_alice.tree(), "Charlie removed Bob");
+    if group_alice.treesync().export_nodes() == group_bob.treesync().export_nodes() {
+        _print_tree(&group_alice.treesync(), "Charlie removed Bob");
         panic!("Same public trees");
     }
-    if group_alice.tree().public_key_tree() != group_charlie.tree().public_key_tree() {
-        _print_tree(&group_alice.tree(), "Charlie removed Bob");
+    if group_alice.treesync().export_nodes() != group_charlie.treesync().export_nodes() {
+        _print_tree(&group_alice.treesync(), "Charlie removed Bob");
         panic!("Different public trees");
     }
 

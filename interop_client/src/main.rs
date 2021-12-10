@@ -14,13 +14,11 @@ use openmls::{
             kat_transcripts::{self, TranscriptTestVector},
         },
     },
+    prelude::kat_treemath,
     prelude::*,
     schedule::kat_key_schedule::{self, KeyScheduleTestVector},
-    tree::tests_and_kats::kats::{
-        kat_encryption::{self, EncryptionTestVector},
-        kat_tree_kem::{self, TreeKemTestVector},
-        kat_treemath,
-    },
+    tree::tests_and_kats::kats::kat_encryption::{self, EncryptionTestVector},
+    treesync::tests_and_kats::kats::kat_tree_kem::{self, TreeKemTestVector},
 };
 
 use serde::{self, Serialize};
@@ -206,11 +204,10 @@ impl MlsClient for MlsClientImpl {
                 ("Transcript", kat_bytes)
             }
             Ok(TestVectorType::Treekem) => {
-                let ciphersuite = to_ciphersuite(obj.cipher_suite)?;
-                let kat_tree_kem =
-                    kat_tree_kem::generate_test_vector(obj.n_leaves as u32, ciphersuite);
-                let kat_bytes = into_bytes(kat_tree_kem);
-                ("TreeKEM", kat_bytes)
+                return Err(tonic::Status::new(
+                    tonic::Code::InvalidArgument,
+                    "OpenMLS currently can't generate TreeKEM test vectors. See GitHub issue #423 for more information.",
+                ));
             }
             Ok(TestVectorType::Messages) => {
                 let ciphersuite: &'static Ciphersuite =
@@ -748,7 +745,7 @@ impl MlsClient for MlsClientImpl {
             .create_remove_proposal(
                 framing_parameters,
                 &interop_group.credential_bundle,
-                LeafIndex::from(remove_proposal_request.removed as usize),
+                remove_proposal_request.removed,
                 &self.crypto_provider,
             )
             .map_err(into_status)?;
@@ -999,7 +996,10 @@ impl MlsClient for MlsClientImpl {
                 &self.crypto_provider,
             )
             .map_err(into_status)?;
-        interop_group.group.merge_commit(staged_commit);
+        interop_group
+            .group
+            .merge_commit(staged_commit)
+            .map_err(into_status)?;
 
         Ok(Response::new(HandleCommitResponse {
             state_id: handle_commit_request.state_id,

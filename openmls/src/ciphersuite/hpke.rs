@@ -3,7 +3,7 @@
 use super::*;
 
 /// A simple wrapper for HPKE public keys using `Vec<u8>` for (de)serializing.
-#[derive(Debug, PartialEq, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Eq, Hash, PartialEq, Clone, Default, Serialize, Deserialize)]
 pub struct HpkePublicKey {
     value: Vec<u8>,
 }
@@ -103,14 +103,5 @@ impl std::fmt::Debug for HpkePrivateKey {
         f.debug_struct("HpkePrivateKey")
             .field("value", &"***")
             .finish()
-    }
-}
-
-#[cfg(test)]
-impl HpkePrivateKey {
-    /// Create a new HPKE private key.
-    /// Consumes the private key bytes.
-    pub fn new(b: Vec<u8>) -> Self {
-        Self { value: b }
     }
 }

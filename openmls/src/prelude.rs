@@ -14,7 +14,7 @@ pub use crate::group::errors::{
 };
 
 // Indexes
-pub use crate::tree::index::LeafIndex;
+pub use crate::binary_tree::LeafIndex;
 
 // PSKs
 pub use crate::schedule::psk::PskBundle;
@@ -37,6 +37,9 @@ pub use crate::schedule::psk::{
     BranchPsk, ExternalPsk, PreSharedKeyId, PreSharedKeys, Psk, PskType, ReinitPsk,
 };
 pub use crate::utils::*;
+
+#[cfg(any(feature = "test-utils", test))]
+pub use crate::binary_tree::array_representation::kat_treemath;
 
 // TLS codec traits
 pub use tls_codec::{

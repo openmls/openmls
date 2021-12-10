@@ -10,11 +10,11 @@ use tls_codec::Serialize;
 use crate::{
     ciphersuite::{signable::Signable, AeadNonce},
     group::{create_commit_params::CreateCommitParams, GroupEpoch},
-    messages::{Commit, ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload},
+    messages::{Commit, ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload, PathSecretError},
     prelude::*,
     schedule::psk::*,
     test_utils::*,
-    tree::{TreeError, UpdatePath, UpdatePathNode},
+    treesync::treekem::TreeKemError,
 };
 
 #[apply(ciphersuites_and_backends)]
@@ -265,8 +265,10 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     let staged_commit = alice_group
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
         .expect("error staging commit");
-    alice_group.merge_commit(staged_commit);
-    let ratchet_tree = alice_group.tree().public_key_tree_copy();
+    alice_group
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
+    let ratchet_tree = alice_group.treesync().export_nodes();
 
     let group_bob = MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
@@ -319,26 +321,9 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     let path = commit.path.expect("An unexpected error occurred.");
 
+    let mut broken_path = path.clone();
     // For simplicity, let's just break all the ciphertexts.
-    let mut new_nodes = Vec::new();
-    for node in path.nodes.iter() {
-        let mut new_eps = Vec::new();
-        for c in node.encrypted_path_secret.iter() {
-            let mut c_copy = c.clone();
-            flip_last_byte(&mut c_copy);
-            new_eps.push(c_copy);
-        }
-        let node = UpdatePathNode {
-            public_key: node.public_key.clone(),
-            encrypted_path_secret: new_eps.into(),
-        };
-        new_nodes.push(node);
-    }
-
-    let broken_path = UpdatePath {
-        leaf_key_package: path.leaf_key_package,
-        nodes: new_nodes.into(),
-    };
+    broken_path.flip_eps_bytes();
 
     // Now let's create a new commit from out broken update path.
     let broken_commit = Commit {
@@ -385,8 +370,8 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         alice_group.stage_commit(&broken_plaintext, &proposal_store, &[], backend);
     assert_eq!(
         staged_commit_res.expect_err("Successful processing of a broken commit."),
-        MlsGroupError::StageCommitError(StageCommitError::DecryptionFailure(
-            TreeError::CryptoError(CryptoError::HpkeDecryptionError)
+        MlsGroupError::TreeKemError(TreeKemError::PathSecretError(
+            PathSecretError::DecryptionError(CryptoError::HpkeDecryptionError)
         ))
     );
 }
@@ -496,8 +481,10 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
     let staged_commit = alice_group
         .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
         .expect("error staging commit");
-    alice_group.merge_commit(staged_commit);
-    let ratchet_tree = alice_group.tree().public_key_tree_copy();
+    alice_group
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
+    let ratchet_tree = alice_group.treesync().export_nodes();
 
     let group_bob = MlsGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),

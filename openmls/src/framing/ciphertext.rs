@@ -4,9 +4,9 @@ use tls_codec::{
     TlsDeserialize, TlsSerialize, TlsSize,
 };
 
-use super::*;
+use crate::tree::secret_tree::{SecretTree, SecretType};
 
-use std::convert::TryFrom;
+use super::*;
 
 /// `MlsCiphertext` is the framing struct for an encrypted `MlsPlaintext`.
 /// This message format is meant to be sent to and received from the Delivery
@@ -58,7 +58,7 @@ impl MlsCiphertext {
             .map_err(|_| MlsCiphertextError::InvalidContentType)?;
         let (generation, (ratchet_key, mut ratchet_nonce)) = secrets
             .secret_tree
-            .secret_for_encryption(ciphersuite, backend, sender, secret_type)?;
+            .secret_for_encryption(ciphersuite, backend, sender.into(), secret_type)?;
         // Sample reuse guard uniformly at random.
         let reuse_guard: ReuseGuard = ReuseGuard::from_random(backend);
         // Prepare the nonce by xoring with the reuse guard.
@@ -171,7 +171,7 @@ impl MlsCiphertext {
             .secret_for_decryption(
                 ciphersuite,
                 backend,
-                sender_data.sender,
+                sender_data.sender.into(),
                 secret_type,
                 sender_data.generation,
             )

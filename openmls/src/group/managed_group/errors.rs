@@ -9,6 +9,7 @@ use crate::error::ErrorString;
 use crate::framing::MlsCiphertextError;
 use crate::group::{CreateCommitError, ExporterError, MlsGroupError, StageCommitError};
 use crate::prelude::ValidationError;
+use crate::treesync::TreeSyncError;
 use openmls_traits::types::CryptoError;
 use tls_codec::Error as TlsCodecError;
 
@@ -40,6 +41,7 @@ implement_error! {
                 "Empty input. Additional detail is provided.",
             InvalidMessage(InvalidMessageError) = "The message could not be processed.",
             CredentialError(CredentialError) = "See [`CredentialError`](`crate::credentials::CredentialError`) for details",
+            TreeSyncError(TreeSyncError) = "See [`TreeSyncError`](`crate::treesync::TreeSyncError`) for details",
             ValidationError(ValidationError) = "See [`ValidationError`](`crate::framing::ValidationError`) for details",
             TlsCodecError(TlsCodecError) = "An error occured during TLS encoding/decoding.",
             CryptoError(CryptoError) =

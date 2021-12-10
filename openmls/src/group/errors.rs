@@ -12,7 +12,8 @@ use crate::framing::errors::{
 use crate::key_packages::KeyPackageError;
 use crate::messages::errors::{ProposalError, ProposalQueueError};
 use crate::schedule::errors::{KeyScheduleError, PskSecretError};
-use crate::tree::{treemath::TreeMathError, ParentHashError, TreeError};
+use crate::tree::{ParentHashError, TreeError};
+use crate::treesync::{diff::TreeSyncDiffError, treekem::TreeKemError, TreeSyncError};
 use openmls_traits::types::CryptoError;
 use tls_codec::Error as TlsCodecError;
 
@@ -47,14 +48,18 @@ implement_error! {
                 "TLS (de)serialization error occurred.",
             KeyScheduleError(KeyScheduleError) =
                 "An error occurred in the key schedule.",
-            MathError(TreeMathError) =
-                "An error occurred during a tree math operation.",
             PskSecretError(PskSecretError) =
                 "A PskSecret error occurred.",
             CredentialError(CredentialError) =
                 "See [`CredentialError`](crate::credentials::CredentialError) for details.",
             TreeError(TreeError) =
                 "See [`TreeError`](crate::tree::TreeError) for details.",
+            TreeSyncError(TreeSyncError) =
+                "See [`TreeSyncError`](crate::treesync::TreeSyncError) for details.",
+            TreeSyncDiffError(TreeSyncDiffError) =
+                "See [`TreeSyncDiffError`](crate::treesync::diff::TreeSyncDiffError) for details.",
+            TreeKemError(TreeKemError) =
+                "See [`TreeKemError`](crate::treesync::treekem::TreeKemError) for details.",
             KeyPackageError(KeyPackageError) =
                 "See [`KeyPackageError`] for details.",
             ExtensionError(ExtensionError) =
@@ -100,6 +105,8 @@ implement_error! {
                 "The sender key package is missing.",
             UnknownError =
                 "An unknown error occurred.",
+            UnknownSender =
+                "Sender not found in tree.",
             LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
             }
         Complex {
@@ -115,6 +122,8 @@ implement_error! {
                 "An error occurred in the key schedule.",
             PskSecretError(PskSecretError) =
                 "A PskSecret error occured.",
+            TreeSyncError(TreeSyncError) =
+                "An error occurred while importing the new tree.",
             ExtensionError(ExtensionError) =
                 "See [`ExtensionError`] for details.",
             KeyPackageError(KeyPackageError) =
@@ -160,8 +169,6 @@ implement_error! {
         Complex {
             PlaintextSignatureFailure(VerificationError) =
                 "MlsPlaintext signature is invalid.",
-            DecryptionFailure(TreeError) =
-                "A matching EncryptedPathSecret failed to decrypt.",
             CodecError(TlsCodecError) =
                 "Tls (de)serialization error occurred.",
             KeyScheduleError(KeyScheduleError) =
@@ -214,6 +221,7 @@ implement_error! {
     pub enum CreationProposalQueueError {
         Simple {
             ProposalNotFound = "Not all proposals in the Commit were found locally.",
+            ArchitectureError = "Couldn't fit a `u32` into a `usize`.",
         }
         Complex {
             NotAProposal(StagedProposalError) = "The given MLS Plaintext was not a Proposal.",
