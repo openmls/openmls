@@ -115,16 +115,17 @@ impl ParentNode {
     ) -> Result<PathDerivationResult, ParentNodeError> {
         let mut path = Vec::with_capacity(path_length);
         let mut update_path_nodes = Vec::with_capacity(path_length);
-        let mut path_secret_option = Some(path_secret);
+        let mut next_path_secret = path_secret;
         for _ in 0..path_length {
-            let path_secret = path_secret_option
-                .take()
-                .ok_or(ParentNodeError::LibraryError)?;
+            let path_secret = next_path_secret;
+            // Derive the next path secret.
+            next_path_secret = path_secret.derive_path_secret(backend, ciphersuite)?;
+
+            // Derive a key pair from the path secret. This includes the
+            // intermediate derivation of a node secret.
             let (public_key, private_key) = path_secret.derive_key_pair(backend, ciphersuite)?;
             let parent_node = (public_key.clone(), private_key).into();
             path.push(parent_node);
-            // Derive the next path secret.
-            path_secret_option = Some(path_secret.derive_path_secret(backend, ciphersuite)?);
             // Store the current path secret and the derived public key for
             // later encryption.
             let update_path_node = PlainUpdatePathNode {
@@ -133,10 +134,7 @@ impl ParentNode {
             };
             update_path_nodes.push(update_path_node);
         }
-        let commit_secret = path_secret_option
-            .take()
-            .ok_or(ParentNodeError::LibraryError)?
-            .into();
+        let commit_secret = next_path_secret.into();
         Ok((path, update_path_nodes, commit_secret))
     }
 
