@@ -232,7 +232,7 @@ impl TreeSync {
         ciphersuite: &Ciphersuite,
     ) -> Result<(), TreeSyncError> {
         let diff = self.empty_diff()?;
-        // Make the diff into a staged diff. This is implicitly computes the
+        // Make the diff into a staged diff. This implicitly computes the
         // tree hashes and poulates the tree hash caches.
         let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
         // Merge the diff.
