@@ -21,9 +21,9 @@ use crate::{
 /// key corresponding to the public key.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ParentNode {
-    public_key: HpkePublicKey,
-    parent_hash: TlsByteVecU8,
-    unmerged_leaves: TlsVecU32<LeafIndex>,
+    pub(super) public_key: HpkePublicKey,
+    pub(super) parent_hash: TlsByteVecU8,
+    pub(super) unmerged_leaves: TlsVecU32<LeafIndex>,
     private_key_option: Option<HpkePrivateKey>,
 }
 

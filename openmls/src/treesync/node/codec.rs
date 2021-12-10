@@ -1,6 +1,4 @@
-use tls_codec::{
-    TlsByteSliceU8, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize, TlsSliceU32, TlsVecU32,
-};
+use tls_codec::{TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
 use crate::{ciphersuite::HpkePublicKey, prelude::KeyPackage};
 
@@ -85,31 +83,25 @@ impl tls_codec::Serialize for &LeafNode {
 
 impl tls_codec::Size for ParentNode {
     fn tls_serialized_len(&self) -> usize {
-        let parent_hash = TlsByteSliceU8(self.parent_hash());
-        let unmerged_leaves = TlsSliceU32(self.unmerged_leaves());
         self.public_key().tls_serialized_len()
-            + parent_hash.tls_serialized_len()
-            + unmerged_leaves.tls_serialized_len()
+            + self.parent_hash.tls_serialized_len()
+            + self.unmerged_leaves.tls_serialized_len()
     }
 }
 
 impl tls_codec::Size for &ParentNode {
     fn tls_serialized_len(&self) -> usize {
-        let parent_hash = TlsByteSliceU8(self.parent_hash());
-        let unmerged_leaves = TlsSliceU32(self.unmerged_leaves());
-        self.public_key().tls_serialized_len()
-            + parent_hash.tls_serialized_len()
-            + unmerged_leaves.tls_serialized_len()
+        (*self).tls_serialized_len()
     }
 }
 
 impl tls_codec::Serialize for &ParentNode {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        let parent_hash = TlsByteSliceU8(self.parent_hash());
-        let unmerged_leaves = TlsSliceU32(self.unmerged_leaves());
         let mut written = self.public_key().tls_serialize(writer)?;
-        written += parent_hash.tls_serialize(writer)?;
-        unmerged_leaves.tls_serialize(writer).map(|l| l + written)
+        written += self.parent_hash.tls_serialize(writer)?;
+        self.unmerged_leaves
+            .tls_serialize(writer)
+            .map(|l| l + written)
     }
 }
 
