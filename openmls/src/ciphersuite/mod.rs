@@ -128,6 +128,11 @@ impl Ciphersuite {
         self.name
     }
 
+    /// Get the protocol version of the ciphersuite
+    pub fn protocol_version(&self) -> ProtocolVersion {
+        ProtocolVersion::Mls10
+    }
+
     /// Get the AEAD mode
     #[cfg(any(test, feature = "test-utils"))]
     pub fn aead(&self) -> AeadType {

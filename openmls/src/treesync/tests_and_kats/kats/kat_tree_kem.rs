@@ -90,7 +90,7 @@ pub fn run_test_vector(
     )
     .expect("An unexpected error occurred.");
     let my_key_package_bundle = KeyPackageBundlePayload::from_key_package_and_leaf_secret(
-        my_leaf_secret.clone(),
+        my_leaf_secret,
         &my_key_package,
         backend,
     )
@@ -113,7 +113,7 @@ pub fn run_test_vector(
             ciphersuite,
             ratchet_tree_before.as_slice(),
             test_vector.add_sender,
-            start_secret.clone(),
+            start_secret,
             my_key_package_bundle,
         ) {
         (tree, commit_secret_option)
@@ -223,7 +223,7 @@ pub fn run_test_vector(
             );
             log::error!(
                 "got root secret:      {}",
-                crate::test_utils::bytes_to_hex(&commit_secret.as_slice())
+                crate::test_utils::bytes_to_hex(commit_secret.as_slice())
             );
             panic!("Root secret mismatch in the 'after' tree.");
         }

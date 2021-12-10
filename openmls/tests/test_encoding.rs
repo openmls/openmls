@@ -233,7 +233,7 @@ fn test_remove_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .create_remove_proposal(
                 framing_parameters,
                 credential_bundle,
-                LeafIndex::from(1u32),
+                1u32,
                 backend,
             )
             .expect("Could not create proposal.");
@@ -321,7 +321,7 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .create_remove_proposal(
                 framing_parameters,
                 alice_credential_bundle,
-                LeafIndex::from(2u32),
+                2u32,
                 backend,
             )
             .expect("Could not create proposal.");

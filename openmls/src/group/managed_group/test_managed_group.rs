@@ -267,7 +267,7 @@ fn remover(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvid
         // TODO #541: Replace this with the adequate API call
         assert_eq!(
             staged_proposal.sender().to_leaf_index(),
-            LeafIndex::from(0u32)
+            0u32
         );
     } else {
         unreachable!("Expected a StagedProposal.");
@@ -296,7 +296,7 @@ fn remover(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvid
         assert_eq!(remove.remove_proposal().removed(), 1u32);
         // Check that Alice removed Bob
         // TODO #541: Replace this with the adequate API call
-        assert_eq!(remove.sender().to_leaf_index(), LeafIndex::from(0u32));
+        assert_eq!(remove.sender().to_leaf_index(), 0u32);
     } else {
         unreachable!("Expected a StagedCommit.");
     }
@@ -426,7 +426,7 @@ fn test_invalid_plaintext(ciphersuite: &'static Ciphersuite) {
     match &mut msg_invalid_sender {
         MlsMessageOut::Plaintext(pt) => pt.set_sender(Sender {
             sender_type: pt.sender().sender_type,
-            sender: LeafIndex::from(group.members.len() as u32 + 1u32),
+            sender: (group.members.len() as u32 + 1u32),
         }),
         MlsMessageOut::Ciphertext(_) => panic!("This should be a plaintext!"),
     };

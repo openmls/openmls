@@ -340,7 +340,7 @@ pub fn generate_test_vector(
 
     let mut leaves = Vec::new();
     for leaf in 0..n_leaves {
-        let leaf = LeafIndex::from(leaf);
+        let leaf = leaf;
         let mut handshake = Vec::new();
         let mut application = Vec::new();
         for generation in 0..n_generations {

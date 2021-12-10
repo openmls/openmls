@@ -31,7 +31,7 @@ fn codec_plaintext(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     .expect("An unexpected error occurred.");
     let sender = Sender {
         sender_type: SenderType::Member,
-        sender: LeafIndex::from(2u32),
+        sender: 2u32,
     };
     let group_context =
         GroupContext::new(GroupId::random(backend), GroupEpoch(1), vec![], vec![], &[])
@@ -81,7 +81,7 @@ fn codec_ciphertext(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     .expect("An unexpected error occurred.");
     let sender = Sender {
         sender_type: SenderType::Member,
-        sender: LeafIndex::from(0u32),
+        sender: 0u32,
     };
     let group_context = GroupContext::new(
         GroupId::from_slice(&[5, 5, 5]),
@@ -507,8 +507,8 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .merge_commit(staged_commit)
         .expect("error merging commit");
 
-    _print_tree(&group_alice.treesync(), "Alice tree");
-    _print_tree(&group_charlie.treesync(), "Charlie tree");
+    _print_tree(group_alice.treesync(), "Alice tree");
+    _print_tree(group_charlie.treesync(), "Charlie tree");
 
     // Alice sends a message with a sender that points to a blank leaf
     // Expected result: MlsCiphertextError::UnknownSender
