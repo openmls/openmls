@@ -215,18 +215,53 @@ impl TreeSync {
                 tree_hash: vec![],
                 own_leaf_index: leaf_index,
             };
-            let diff = tree_sync.empty_diff()?;
             // Verify all parent hashes.
-            diff.verify_parent_hashes(backend, ciphersuite)?;
-            // Make the diff into a staged diff. This is to compute the tree
-            // hashes and poulate the tree hash caches.
-            let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
-            // Merge the diff.
-            tree_sync.merge_diff(staged_diff)?;
+            tree_sync.verify_parent_hashes(backend, ciphersuite)?;
+            // Populate tree hash caches.
+            tree_sync.populate_parent_hashes(backend, ciphersuite)?;
             Ok(tree_sync)
         } else {
             Err(TreeSyncError::MissingKeyPackage)
         }
+    }
+
+    /// Populate the parent hash caches of all nodes in the tree.
+    fn populate_parent_hashes(
+        &mut self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+    ) -> Result<(), TreeSyncError> {
+        let diff = self.empty_diff()?;
+        // Make the diff into a staged diff. This is implicitly computes the
+        // tree hashes and poulates the tree hash caches.
+        let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
+        // Merge the diff.
+        self.merge_diff(staged_diff)
+    }
+
+    /// Verify the parent hashes of all parent nodes in the tree.
+    ///
+    /// Returns an error if one of the parent nodes in the tree has an invalid
+    /// parent hash.
+    fn verify_parent_hashes(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+    ) -> Result<(), TreeSyncError> {
+        // We create a diff here and verify the parent hashes based on this. The
+        // ability to verify parent hashes is required both for diffs and
+        // treesync instances. We choose the computationally slightly more
+        // expensive solution of implementing parent hash verification for the
+        // diff and creating an empty diff whenever we need to verify parent
+        // hashes in the treem, which at the time of writing is only upon
+        // construction of a tree from a vector of nodes. The alternative
+        // solution would be to create a "`TreeLike`" trait, which allows tree
+        // navigation and node access. We could then implement `TreeLike` for
+        // both `TreeSync` and `TreeSyncDiff` and finally implement parent hash
+        // verification for any struct that implements `TreeLike`.
+        let diff = self.empty_diff()?;
+        // No need to merge the diff, since we didn't actually modify any state.
+        Ok(diff.verify_parent_hashes(backend, ciphersuite)?)
     }
 
     /// Returns the number of leaves in the tree.
