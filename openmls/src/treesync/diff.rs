@@ -85,7 +85,10 @@ impl<'a> TryFrom<&'a TreeSync> for TreeSyncDiff<'a> {
 impl<'a> TreeSyncDiff<'a> {
     /// Check if the right-most leaf and its parent are blank. If that is the
     /// case, remove the right-most leaf and its parent until either the
-    /// right-most leaf or its parent are not blank anymore.
+    /// right-most leaf or its parent are not blank anymore. This behaviour
+    /// differs from that in the MLS spec. This is because there is a suspected
+    /// bug in the trimming algorithm in the spec, which is currently under
+    /// discussion.
     pub(crate) fn trim_tree(&mut self) -> Result<(), TreeSyncDiffError> {
         // Nothing to trim if there's only one leaf left.
         if self.leaf_count() == 1 {
