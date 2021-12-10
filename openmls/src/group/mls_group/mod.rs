@@ -27,7 +27,7 @@ pub mod validation;
 
 use crate::ciphersuite::signable::{Signable, Verifiable};
 use crate::config::{check_required_capabilities_support, Config};
-use crate::credentials::{CredentialBundle, CredentialError};
+use crate::credentials::{Credential, CredentialBundle, CredentialError};
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
@@ -45,6 +45,7 @@ use serde::{
     Deserialize, Deserializer, Serialize,
 };
 use std::cell::RefCell;
+use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::io::{Error, Read, Write};
 
@@ -511,6 +512,16 @@ impl MlsGroup {
     /// Get the group ID
     pub fn group_id(&self) -> &GroupId {
         &self.group_context.group_id
+    }
+
+    /// Get the members of the group, indexed by their leaves.
+    pub fn members(&self) -> Result<BTreeMap<LeafIndex, &Credential>, MlsGroupError> {
+        Ok(self
+            .tree
+            .full_leaves()?
+            .into_iter()
+            .map(|(index, kp)| (index, kp.credential()))
+            .collect())
     }
 
     /// Get the groups extensions.
