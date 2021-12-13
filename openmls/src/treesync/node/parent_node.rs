@@ -205,7 +205,7 @@ implement_error! {
         }
         Complex {
             CryptoError(CryptoError) = "An error occurred during key derivation.",
-            DerivationError(PathSecretError) = "An error occurred during key derivation.",
+            Derivation(PathSecretError) = "An error occurred during key derivation.",
             ParentHashError(ParentHashError) = "Error while computing parent hash.",
         }
     }
