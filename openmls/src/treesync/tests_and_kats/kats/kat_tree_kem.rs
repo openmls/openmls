@@ -174,6 +174,7 @@ pub fn run_test_vector(
         .decrypt_path(
             backend,
             ciphersuite,
+            ProtocolVersion::default(),
             update_path_nodes,
             test_vector.update_sender,
             &HashSet::new(),

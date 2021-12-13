@@ -150,6 +150,7 @@ impl MlsGroup {
                 let (plain_path, commit_secret) = diff.decrypt_path(
                     backend,
                     ciphersuite,
+                    self.mls_version,
                     update_path_nodes,
                     sender,
                     &apply_proposals_values.exclusion_list(),
