@@ -212,14 +212,13 @@ impl PreSharedKeyId {
     /// Create a new `PreSharedKeyID`
     pub fn new(
         ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
+        rand: &impl OpenMlsRand,
         psk: Psk,
     ) -> Result<Self, CryptoError> {
         Ok(Self {
             psk_type: PskType::from(&psk),
             psk,
-            psk_nonce: backend
-                .rand()
+            psk_nonce: rand
                 .random_vec(ciphersuite.hash_length())
                 .map_err(|_| CryptoError::InsufficientRandomness)?
                 .into(),
@@ -302,9 +301,10 @@ impl PskSecret {
         if num_psks > u16::MAX as usize {
             return Err(PskSecretError::TooManyKeys);
         }
+        let num_psks = num_psks as u16;
 
         // Fetch the PskBundles from the key store and make sure we have all of them
-        let mut psk_bundles: Vec<PskBundle> = Vec::with_capacity(num_psks);
+        let mut psk_bundles: Vec<PskBundle> = Vec::new();
         for psk_id in psk_ids {
             if let Some(psk_bundle) = backend.key_store().read(&psk_id) {
                 psk_bundles.push(psk_bundle);
@@ -318,7 +318,7 @@ impl PskSecret {
         for (index, psk_bundle) in psk_bundles.iter().enumerate() {
             let zero_secret = Secret::zero(ciphersuite, mls_version);
             let psk_extracted = zero_secret.hkdf_extract(backend, psk_bundle.secret())?;
-            let psk_label = PskLabel::new(psk_bundle.psk_id(), index as u16, num_psks as u16)
+            let psk_label = PskLabel::new(psk_bundle.psk_id(), index as u16, num_psks)
                 .tls_serialize_detached()
                 .map_err(|_| PskSecretError::EncodingError)?;
 

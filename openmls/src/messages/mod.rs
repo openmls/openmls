@@ -456,7 +456,7 @@ impl GroupSecrets {
 
         let psk_id = PreSharedKeyId::new(
             ciphersuite,
-            backend,
+            backend.rand(),
             Psk::External(ExternalPsk::new(
                 backend
                     .rand()

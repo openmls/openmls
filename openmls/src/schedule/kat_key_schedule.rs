@@ -104,7 +104,7 @@ fn generate(
         // XXX: Test all different PSK types.
         PreSharedKeyId::new(
             ciphersuite,
-            &crypto,
+            crypto.rand(),
             Psk::Branch(BranchPsk {
                 psk_group_id: GroupId::random(&crypto),
                 psk_epoch: GroupEpoch(epoch),

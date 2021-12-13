@@ -22,8 +22,12 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
     let psk_ids = (0..33)
         .map(|_| {
             let id = prng.random_vec(12).expect("An unexpected error occurred.");
-            PreSharedKeyId::new(ciphersuite, backend, Psk::External(ExternalPsk::new(id)))
-                .expect("An unexpected error occurred.")
+            PreSharedKeyId::new(
+                ciphersuite,
+                backend.rand(),
+                Psk::External(ExternalPsk::new(id)),
+            )
+            .expect("An unexpected error occurred.")
         })
         .collect::<Vec<PreSharedKeyId>>();
 

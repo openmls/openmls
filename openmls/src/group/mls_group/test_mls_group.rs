@@ -423,8 +423,9 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
     let secret = Secret::random(ciphersuite, backend, None /* MLS version */)
         .expect("Not enough randomness.");
     let external_psk = ExternalPsk::new(psk_id);
-    let preshared_key_id = PreSharedKeyId::new(ciphersuite, backend, Psk::External(external_psk))
-        .expect("An unexpected error occured.");
+    let preshared_key_id =
+        PreSharedKeyId::new(ciphersuite, backend.rand(), Psk::External(external_psk))
+            .expect("An unexpected error occured.");
     let psk_bundle =
         PskBundle::new(preshared_key_id.clone(), secret).expect("Could not create PskBundle.");
     backend

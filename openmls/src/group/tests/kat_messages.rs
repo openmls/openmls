@@ -125,7 +125,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
 
     let psk_id = PreSharedKeyId::new(
         ciphersuite,
-        &crypto,
+        crypto.rand(),
         Psk::External(ExternalPsk::new(
             crypto
                 .rand()
