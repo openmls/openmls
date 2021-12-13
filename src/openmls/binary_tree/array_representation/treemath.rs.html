@@ -185,9 +185,6 @@
 <span id="185">185</span>
 <span id="186">186</span>
 <span id="187">187</span>
-<span id="188">188</span>
-<span id="189">189</span>
-<span id="190">190</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::cmp::Ordering</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::tree::NodeIndex</span>;
@@ -354,17 +351,14 @@
 
 <span class="attribute">#[<span class="ident">test</span>]</span>
 <span class="kw">fn</span> <span class="ident">invalid_inputs</span>() {
-    <span class="macro">assert_eq!</span>(
-        <span class="prelude-val">Err</span>(<span class="ident">TreeMathError::NodeNotInTree</span>),
-        <span class="ident">parent</span>(<span class="number">1000u32</span>.<span class="ident">into</span>(), <span class="number">100u32</span>.<span class="ident">into</span>())
-    );
+    <span class="macro">assert_eq!</span>(<span class="prelude-val">Err</span>(<span class="ident">TreeMathError::NodeNotInTree</span>), <span class="ident">parent</span>(<span class="number">1000u32</span>, <span class="number">100u32</span>));
 }
 
 <span class="attribute">#[<span class="ident">test</span>]</span>
 <span class="kw">fn</span> <span class="ident">test_node_in_tree</span>() {
     <span class="kw">let</span> <span class="ident">tests</span> <span class="op">=</span> [(<span class="number">0u32</span>, <span class="number">2u32</span>), (<span class="number">1</span>, <span class="number">2</span>), (<span class="number">2</span>, <span class="number">4</span>), (<span class="number">5</span>, <span class="number">6</span>), (<span class="number">2</span>, <span class="number">10</span>)];
     <span class="kw">for</span> <span class="ident">test</span> <span class="kw">in</span> <span class="ident">tests</span>.<span class="ident">iter</span>() {
-        <span class="ident">node_in_tree</span>(<span class="ident">test</span>.<span class="number">0</span>.<span class="ident">into</span>(), <span class="ident">test</span>.<span class="number">1</span>.<span class="ident">into</span>()).<span class="ident">unwrap</span>();
+        <span class="ident">node_in_tree</span>(<span class="ident">test</span>.<span class="number">0</span>, <span class="ident">test</span>.<span class="number">1</span>).<span class="ident">unwrap</span>();
     }
 }
 
@@ -373,7 +367,7 @@
     <span class="kw">let</span> <span class="ident">tests</span> <span class="op">=</span> [(<span class="number">3u32</span>, <span class="number">2u32</span>), (<span class="number">13</span>, <span class="number">7</span>)];
     <span class="kw">for</span> <span class="ident">test</span> <span class="kw">in</span> <span class="ident">tests</span>.<span class="ident">iter</span>() {
         <span class="macro">assert_eq!</span>(
-            <span class="ident">node_in_tree</span>(<span class="ident">test</span>.<span class="number">0</span>.<span class="ident">into</span>(), <span class="ident">test</span>.<span class="number">1</span>.<span class="ident">into</span>()),
+            <span class="ident">node_in_tree</span>(<span class="ident">test</span>.<span class="number">0</span>, <span class="ident">test</span>.<span class="number">1</span>),
             <span class="prelude-val">Err</span>(<span class="ident">TreeMathError::NodeNotInTree</span>)
         );
     }
