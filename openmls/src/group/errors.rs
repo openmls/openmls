@@ -80,6 +80,8 @@ implement_error! {
     }
 }
 
+// Errors that can occur while joining a group either through a Welcome message
+// or through an external init.
 implement_error! {
     pub enum WelcomeError {
         Simple {
@@ -88,7 +90,7 @@ implement_error! {
             JoinerSecretNotFound =
                 "No joiner secret found in the Welcome message.",
             MissingRatchetTree =
-                "No ratchet tree available to build initial tree after receiving a Welcome message.",
+                "No ratchet tree available to build initial tree.",
             TreeHashMismatch =
                 "The computed tree hash does not match the one in the GroupInfo.",
             ConfirmationTagMismatch =
@@ -98,22 +100,26 @@ implement_error! {
             GroupInfoDecryptionFailure =
                 "Unable to decrypt the GroupInfo.",
             DuplicateRatchetTreeExtension =
-                "Found a duplicate ratchet tree extension in the Welcome message.",
+                "Found a duplicate ratchet tree extension.",
             UnsupportedMlsVersion =
-                "The Welcome message uses an unsupported MLS version.",
+                "We don't support the version of the group we are trying to join.",
             MissingKeyPackage =
                 "The sender key package is missing.",
             UnknownError =
                 "An unknown error occurred.",
             UnknownSender =
                 "Sender not found in tree.",
+            InvalidPublicGroupState =
+                "The signature over the given public group state is invalid.",
+            CommitError =
+                "Error creating external commit",
             LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
             }
         Complex {
             ConfigError(ConfigError) =
                 "See [`ConfigError`](`crate::config::ConfigError`) for details.",
             InvalidRatchetTree(TreeError) =
-                "Invalid ratchet tree in Welcome message.",
+                "Invalid ratchet tree provided when trying to join the group.",
             ParentHashMismatch(ParentHashError) =
                 "The parent hash verification failed.",
             CodecError(TlsCodecError) =
@@ -132,6 +138,8 @@ implement_error! {
                 "See [`InterimTranscriptHashError`] for details.",
             CryptoError(CryptoError) =
                 "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
+            ProposalError(StagedProposalError) =
+                "See [`StagedProposalError`] for details.",
         }
     }
 }

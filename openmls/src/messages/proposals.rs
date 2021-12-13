@@ -281,7 +281,6 @@ pub struct ReInitProposal {
     pub(crate) extensions: TlsVecU32<Extension>,
 }
 
-/// TODO: #556 Implement ExternalInit
 ///
 /// ``` text
 /// struct {
@@ -293,6 +292,20 @@ pub struct ReInitProposal {
 )]
 pub struct ExternalInitProposal {
     kem_output: TlsByteVecU16,
+}
+
+impl ExternalInitProposal {
+    pub(crate) fn kem_output(&self) -> &TlsByteVecU16 {
+        &self.kem_output
+    }
+}
+
+impl From<Vec<u8>> for ExternalInitProposal {
+    fn from(kem_output: Vec<u8>) -> Self {
+        ExternalInitProposal {
+            kem_output: kem_output.into(),
+        }
+    }
 }
 
 /// TODO: This is going away in https://github.com/mlswg/mls-protocol/pull/510

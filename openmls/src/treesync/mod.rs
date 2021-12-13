@@ -179,7 +179,7 @@ impl TreeSync {
     ) -> Result<Self, TreeSyncError> {
         // Before we can instantiate the TreeSync instance, we have to figure
         // out what our leaf index is.
-        let mut ts_nodes: Vec<TreeSyncNode> = Vec::new();
+        let mut ts_nodes: Vec<TreeSyncNode> = Vec::with_capacity(node_options.len());
         let mut own_index_option = None;
         let own_key_package = key_package_bundle.key_package;
         let mut private_key = Some(key_package_bundle.private_key);
@@ -222,6 +222,58 @@ impl TreeSync {
             Ok(tree_sync)
         } else {
             Err(TreeSyncError::MissingKeyPackage)
+        }
+    }
+
+    /// Create a [`TreeSync`] instance from a vector of nodes without expecting
+    /// there to be a [`KeyPackage`] that belongs to this particular MLS client.
+    /// The `own_leaf_index` is set as follows: If there is a blank leaf in the
+    /// tree, the `own_leaf_index` is set to that leaf index. If not, a new,
+    /// blank leaf is added and the `own_leaf_index` is set to that leaf index.
+    pub(crate) fn from_nodes_without_leaf(
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+        node_options: &[Option<Node>],
+        key_package_bundle: &KeyPackageBundle,
+    ) -> Result<Self, TreeSyncError> {
+        let mut ts_nodes: Vec<TreeSyncNode> = Vec::with_capacity(node_options.len());
+        let mut own_index_option = None;
+        // Check if our own key package is in the tree.
+        for (node_index, node_option) in node_options.iter().enumerate() {
+            // Check if we're looking at a blank leaf and if we've already found
+            // one before.
+            let ts_node_option =
+                if node_option.is_none() && node_index % 2 == 0 && own_index_option.is_none() {
+                    own_index_option = Some(
+                        u32::try_from(node_index / 2).map_err(|_| TreeSyncError::LibraryError)?,
+                    );
+                    let own_leaf_node: LeafNode = key_package_bundle.clone().into();
+                    Some(Node::LeafNode(own_leaf_node)).into()
+                } else {
+                    node_option.clone().into()
+                };
+            ts_nodes.push(ts_node_option);
+        }
+        // If there was no blank leaf, we'll create a new one.
+        if own_index_option.is_none() {
+            ts_nodes.push(TreeSyncNode::blank());
+            let own_leaf_node: LeafNode = key_package_bundle.clone().into();
+            ts_nodes.push(Some(Node::LeafNode(own_leaf_node)).into());
+        }
+        let tree = MlsBinaryTree::new(ts_nodes)?;
+        if let Some(leaf_index) = own_index_option {
+            let mut tree_sync = Self {
+                tree,
+                tree_hash: vec![],
+                own_leaf_index: leaf_index,
+            };
+            // Verify all parent hashes.
+            tree_sync.verify_parent_hashes(backend, ciphersuite)?;
+            // Populate tree hash caches.
+            tree_sync.populate_parent_hashes(backend, ciphersuite)?;
+            Ok(tree_sync)
+        } else {
+            Err(TreeSyncError::LibraryError)
         }
     }
 

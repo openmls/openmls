@@ -218,6 +218,11 @@ impl Secret {
     pub(crate) fn ciphersuite(&self) -> &'static Ciphersuite {
         self.ciphersuite
     }
+
+    /// Returns the version of the secret
+    pub(crate) fn version(&self) -> ProtocolVersion {
+        self.mls_version
+    }
 }
 
 #[cfg(any(feature = "test-utils", test))]

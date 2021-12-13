@@ -10,7 +10,7 @@ use tls_codec::{Serialize, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize, 
 use crate::{
     ciphersuite::{
         signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
-        CiphersuiteName, HpkePublicKey, Signature,
+        Ciphersuite, CiphersuiteName, HpkePublicKey, Signature,
     },
     extensions::Extension,
     group::{GroupEpoch, GroupId, MlsGroup},
@@ -62,6 +62,25 @@ pub struct PublicGroupState {
 pub struct VerifiablePublicGroupState {
     tbs: PublicGroupStateTbs,
     signature: Signature,
+}
+
+impl VerifiablePublicGroupState {
+    /// Get a reference to the `Ciphersuite` of the unverified
+    /// `PublicGroupState`.
+    pub(crate) fn ciphersuite(&self) -> CiphersuiteName {
+        self.tbs.ciphersuite
+    }
+
+    /// Get the `LeafIndex` of the signer of the unverified `PublicGroupState`.
+    pub(crate) fn signer_index(&self) -> LeafIndex {
+        self.tbs.signer_index
+    }
+
+    /// Get a reference to the non [`GroupContext`] extensions of the unverified
+    /// `PublicGroupState`.
+    pub(crate) fn other_extensions(&self) -> &[Extension] {
+        self.tbs.other_extensions.as_slice()
+    }
 }
 
 mod private_mod {

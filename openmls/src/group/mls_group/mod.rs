@@ -11,6 +11,7 @@ use psk::{PreSharedKeys, PskSecret};
 mod apply_proposals;
 pub mod create_commit;
 pub mod create_commit_params;
+mod new_from_external_init;
 mod new_from_welcome;
 pub mod process;
 pub mod proposals;
@@ -31,7 +32,9 @@ use crate::credentials::{Credential, CredentialBundle, CredentialError};
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
-use crate::messages::public_group_state::{PublicGroupState, PublicGroupStateTbs};
+use crate::messages::public_group_state::{
+    PublicGroupState, PublicGroupStateTbs, VerifiablePublicGroupState,
+};
 use crate::messages::{proposals::*, *};
 use crate::schedule::*;
 use crate::tree::secret_tree::SecretTree;
@@ -51,6 +54,8 @@ use std::io::{Error, Read, Write};
 
 use std::cell::RefMut;
 use tls_codec::Serialize as TlsSerializeTrait;
+
+use self::new_from_external_init::ExternalInitResult;
 
 use super::errors::{
     ExporterError, FramingValidationError, MlsGroupError, ProposalValidationError, PskError,
@@ -211,6 +216,35 @@ impl MlsGroup {
             psk_fetcher_option,
             backend,
         )?)
+    }
+
+    /// Join a group without the help of an internal member. This function
+    /// requires a `PublicGroupState`, as well as the corresponding public tree
+    /// `nodes`. Otherwise it creates an `ExternalInit` proposal and commits it.
+    /// The commit is created in the same way as in `create_commit`, which it
+    /// why it requires the same inputs (aad, proposals by value and reference,
+    /// etc.). It returns the new `MlsGroup` object, as well as the
+    /// `MlsPlaintext` containing the commit.
+    pub fn new_from_external_init(
+        framing_parameters: FramingParameters,
+        nodes_option: Option<Vec<Option<Node>>>,
+        psk_fetcher_option: Option<PskFetcher>,
+        credential_bundle: &CredentialBundle,
+        proposals_by_reference: &[MlsPlaintext],
+        proposals_by_value: &[Proposal],
+        verifiable_public_group_state: VerifiablePublicGroupState,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> ExternalInitResult {
+        todo!()
+        //Self::new_from_external_init_internal(
+        //    framing_parameters,
+        //    nodes_option,
+        //    credential_bundle,
+        //    proposals_by_reference,
+        //    proposals_by_value,
+        //    verifiable_public_group_state,
+        //    backend,
+        //)
     }
 
     // === Create handshake messages ===

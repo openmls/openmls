@@ -37,6 +37,12 @@ impl From<TreeSyncNode> for Option<Node> {
     }
 }
 
+impl From<Option<Node>> for TreeSyncNode {
+    fn from(option_node: Option<Node>) -> Self {
+        option_node.map(|node| node.into()).unwrap_or_default()
+    }
+}
+
 impl TreeSyncNode {
     /// Create a blank [`TreeSyncNode`].
     pub(in crate::treesync) fn blank() -> Self {

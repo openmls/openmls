@@ -12,7 +12,14 @@ implement_error! {
 implement_error! {
     pub enum KeyScheduleError {
         Simple {
-            LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
+            UnsupportedCiphersuite =
+                "The ciphersuite of the given public group state is not supported.",
+            HpkeError =
+                "Error while setting up HPKE keypair for external commit.",
+            EncodingError =
+                "Error while encoding public group state.",
+            LibraryError =
+                "An unrecoverable error has occurred due to a bug in the implementation.",
         }
         Complex {
             InvalidState(ErrorState) =
