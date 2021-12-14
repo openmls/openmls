@@ -229,3 +229,6 @@ pub struct HpkeKeyPair {
     pub private: Vec<u8>,
     pub public: Vec<u8>,
 }
+
+pub type ExporterSecret = Vec<u8>;
+pub type KemOutput = Vec<u8>;

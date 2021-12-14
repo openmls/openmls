@@ -124,7 +124,7 @@ pub trait OpenMlsCrypto {
         info: &[u8],
         exporter_context: &[u8],
         exporter_length: usize,
-    ) -> Result<(Vec<u8>, Vec<u8>), CryptoError>;
+    ) -> Result<(KemOutput, ExporterSecret), CryptoError>;
 
     /// HPKE single-shot setup of a receiver and immediate export a secret.
     ///
@@ -137,7 +137,7 @@ pub trait OpenMlsCrypto {
         info: &[u8],
         exporter_context: &[u8],
         exporter_length: usize,
-    ) -> Result<Vec<u8>, CryptoError>;
+    ) -> Result<ExporterSecret, CryptoError>;
 
     /// Derive a new HPKE keypair from a given input key material.
     fn derive_hpke_keypair(&self, config: HpkeConfig, ikm: &[u8]) -> HpkeKeyPair;
