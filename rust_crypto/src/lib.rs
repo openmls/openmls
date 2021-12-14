@@ -9,7 +9,7 @@ use chacha20poly1305::ChaCha20Poly1305;
 // for the rust-analyzer issue with the following line.
 use ed25519_dalek::Signer as DalekSigner;
 use hkdf::Hkdf;
-use hpke::{Hpke, HpkePrivateKey, HpkePublicKey};
+use hpke::Hpke;
 use hpke_rs_crypto::types as hpke_types;
 use hpke_rs_rust_crypto::HpkeRustCrypto;
 use openmls_traits::{
