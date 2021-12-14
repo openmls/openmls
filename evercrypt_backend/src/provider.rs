@@ -16,8 +16,8 @@ use openmls_traits::{
     crypto::OpenMlsCrypto,
     random::OpenMlsRand,
     types::{
-        AeadType, CryptoError, HashType, HpkeAeadType, HpkeCiphertext, HpkeKdfType, HpkeKemType,
-        HpkeKeyPair, SignatureScheme,
+        AeadType, CryptoError, ExporterSecret, HashType, HpkeAeadType, HpkeCiphertext, HpkeConfig,
+        HpkeKdfType, HpkeKemType, HpkeKeyPair, KemOutput, SignatureScheme,
     },
 };
 use rand::{RngCore, SeedableRng};
@@ -249,7 +249,7 @@ impl OpenMlsCrypto for EvercryptProvider {
 
     fn hpke_seal(
         &self,
-        config: openmls_traits::types::HpkeConfig,
+        config: HpkeConfig,
         pk_r: &[u8],
         info: &[u8],
         aad: &[u8],
@@ -271,7 +271,7 @@ impl OpenMlsCrypto for EvercryptProvider {
 
     fn hpke_open(
         &self,
-        config: openmls_traits::types::HpkeConfig,
+        config: HpkeConfig,
         input: &openmls_traits::types::HpkeCiphertext,
         sk_r: &[u8],
         info: &[u8],
@@ -296,9 +296,56 @@ impl OpenMlsCrypto for EvercryptProvider {
         .map_err(|_| CryptoError::HpkeDecryptionError)
     }
 
+    fn hpke_setup_sender_and_export(
+        &self,
+        config: HpkeConfig,
+        pk_r: &[u8],
+        info: &[u8],
+        exporter_context: &[u8],
+        exporter_length: usize,
+    ) -> Result<(KemOutput, ExporterSecret), CryptoError> {
+        let hpke = Hpke::<HpkeEvercrypt>::new(
+            hpke::Mode::Base,
+            kem_mode(config.0),
+            kdf_mode(config.1),
+            aead_mode(config.2),
+        );
+        let (kem_output, context) = hpke
+            .setup_sender(&pk_r.into(), info, None, None, None)
+            .map_err(|_| CryptoError::SenderSetupError)?;
+        let exported_secret = context
+            .export(exporter_context, exporter_length)
+            .map_err(|_| CryptoError::ExporterError)?;
+        Ok((kem_output, exported_secret))
+    }
+
+    fn hpke_setup_receiver_and_export(
+        &self,
+        config: HpkeConfig,
+        enc: &[u8],
+        sk_r: &[u8],
+        info: &[u8],
+        exporter_context: &[u8],
+        exporter_length: usize,
+    ) -> Result<ExporterSecret, CryptoError> {
+        let hpke = Hpke::<HpkeEvercrypt>::new(
+            hpke::Mode::Base,
+            kem_mode(config.0),
+            kdf_mode(config.1),
+            aead_mode(config.2),
+        );
+        let context = hpke
+            .setup_receiver(enc, &sk_r.into(), info, None, None, None)
+            .map_err(|_| CryptoError::ReceiverSetupError)?;
+        let exported_secret = context
+            .export(exporter_context, exporter_length)
+            .map_err(|_| CryptoError::ExporterError)?;
+        Ok(exported_secret)
+    }
+
     fn derive_hpke_keypair(
         &self,
-        config: openmls_traits::types::HpkeConfig,
+        config: HpkeConfig,
         ikm: &[u8],
     ) -> openmls_traits::types::HpkeKeyPair {
         let kp = Hpke::<HpkeEvercrypt>::new(
