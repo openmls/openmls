@@ -8,7 +8,10 @@ use tls_codec::Serialize;
 
 use crate::{
     ciphersuite::{signable::Signable, AeadNonce},
-    group::{create_commit_params::CreateCommitParams, GroupEpoch},
+    group::{
+        create_commit_params::{CommitType, CreateCommitParams},
+        GroupEpoch,
+    },
     messages::{Commit, ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload, PathSecretError},
     prelude::*,
     schedule::psk::*,
@@ -336,10 +339,11 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         path: Some(broken_path),
     };
 
-    let mut broken_plaintext = MlsPlaintext::new_commit(
+    let mut broken_plaintext = MlsPlaintext::commit(
         framing_parameters,
         mls_plaintext_commit.sender_index(),
         broken_commit,
+        CommitType::Member,
         &bob_credential_bundle,
         group_bob.context(),
         backend,

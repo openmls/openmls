@@ -460,6 +460,7 @@ impl<'a> CreationProposalQueue<'a> {
     pub(crate) fn filter_proposals(
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
+        sender_type: SenderType,
         proposal_store: &'a ProposalStore,
         inline_proposals: &'a [Proposal],
         own_index: LeafIndex,
@@ -487,7 +488,7 @@ impl<'a> CreationProposalQueue<'a> {
         let mut contains_own_updates = false;
 
         let sender = Sender {
-            sender_type: SenderType::Member,
+            sender_type,
             sender: own_index,
         };
 
