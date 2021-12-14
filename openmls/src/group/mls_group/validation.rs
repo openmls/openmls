@@ -85,6 +85,34 @@ impl MlsGroup {
     ///  - ValSem104
     ///  - ValSem105
     ///  - TODO: ValSem106
+    ///  - TODO: Assign ValSem ID to checks relating to external init. In
+    ///  particular (quote from the spec):
+    ///
+    /// External Commits work like regular Commits, with a few differences:
+    /// The proposals included by value in an External Commit MUST meet the
+    /// following conditions:
+    ///
+    /// * There MUST be a single ExternalInit proposal
+    ///
+    /// * There MUST NOT be any Add or Update proposalsIf a Remove proposal is
+    /// present, then the credential and endpoint_id of the removed leaf MUST be
+    /// the same as the corresponding values in the Add KeyPackage.
+    ///
+    /// * The proposals included by reference in an External Commit MUST meet
+    /// the following conditions:
+    ///
+    /// * There MUST NOT be any ExternalInit proposals
+    ///
+    /// * External Commits MUST contain a path field (and is therefore a "full"
+    /// Commit). The joiner is added at the leftmost free leaf node (just as if
+    /// they were added with an Add proposal), and the path is calculated
+    /// relative to that leaf node.External Commits MUST be signed by the new
+    /// member. In particular, the signature on the enclosing MLSPlaintext MUST
+    /// verify using the public key for the credential in the leaf_key_package
+    /// of the path field.When processing a Commit, both existing and new
+    /// members MUST use the external init secret as described in Section
+    /// 8.1.The sender type for the MLSPlaintext encapsulating the External
+    /// Commit MUST be new_member
     pub fn validate_add_proposals(
         &self,
         staged_proposal_queue: &StagedProposalQueue,

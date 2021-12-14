@@ -94,7 +94,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
         .random_vec(48)
         .expect("An unexpected error occurred.");
     let framing_parameters = FramingParameters::new(&aad, WireFormat::MlsPlaintext);
-    let mut commit = MlsPlaintext::new_commit(
+    let mut commit = MlsPlaintext::commit(
         framing_parameters,
         random_u32(),
         Commit {

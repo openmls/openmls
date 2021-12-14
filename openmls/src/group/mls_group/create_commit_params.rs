@@ -2,12 +2,20 @@
 
 use super::{proposals::ProposalStore, *};
 
+/// Can be used to denote the type of a commit.
+#[derive(Debug, Copy, Clone)]
+pub enum CommitType {
+    External,
+    Internal,
+}
+
 pub struct CreateCommitParams<'a> {
     framing_parameters: FramingParameters<'a>, // Mandatory
     credential_bundle: &'a CredentialBundle,   // Mandatory
     proposal_store: &'a ProposalStore,         // Mandatory
     inline_proposals: Vec<Proposal>,           // Optional
     force_self_update: bool,                   // Optional
+    commit_type: CommitType,                   // Optional (default is `Internal`)
     psk_fetcher_option: Option<PskFetcher>,    // Optional
 }
 
@@ -56,6 +64,7 @@ impl<'a> TempBuilderCCPM2<'a> {
                 proposal_store,
                 inline_proposals: vec![],
                 force_self_update: true,
+                commit_type: CommitType::Internal,
                 psk_fetcher_option: None,
             },
         }
@@ -73,6 +82,10 @@ impl<'a> CreateCommitParamsBuilder<'a> {
     }
     pub fn psk_fetcher_option(mut self, psk_fetcher_option: Option<PskFetcher>) -> Self {
         self.ccp.psk_fetcher_option = psk_fetcher_option;
+        self
+    }
+    pub fn commit_type(mut self, commit_type: CommitType) -> Self {
+        self.ccp.commit_type = commit_type;
         self
     }
     pub fn build(self) -> CreateCommitParams<'a> {
@@ -98,6 +111,9 @@ impl<'a> CreateCommitParams<'a> {
     }
     pub fn force_self_update(&self) -> bool {
         self.force_self_update
+    }
+    pub fn commit_type(&self) -> CommitType {
+        self.commit_type
     }
     pub fn psk_fetcher_option(&self) -> &Option<PskFetcher> {
         &self.psk_fetcher_option

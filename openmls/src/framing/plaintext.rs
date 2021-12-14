@@ -24,6 +24,7 @@
 use crate::ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct};
 
 use super::*;
+use mls_group::create_commit_params::CommitType;
 use openmls_traits::OpenMlsCryptoProvider;
 use std::convert::TryFrom;
 use tls_codec::{Serialize, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize};
@@ -118,17 +119,22 @@ impl MlsPlaintext {
     fn new(
         framing_parameters: FramingParameters,
         sender_index: LeafIndex,
+        sender_type: SenderType,
         payload: Payload,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, MlsPlaintextError> {
         let serialized_context = context.tls_serialize_detached()?;
+        let sender = Sender {
+            sender_type,
+            sender: sender_index,
+        };
         let mls_plaintext = MlsPlaintextTbs::new(
             framing_parameters.wire_format(),
             context.group_id().clone(),
             context.epoch(),
-            Sender::member(sender_index),
+            sender,
             framing_parameters.aad().into(),
             payload,
         )
@@ -150,6 +156,7 @@ impl MlsPlaintext {
         let mut mls_plaintext = Self::new(
             framing_parameters,
             sender_index,
+            SenderType::Member,
             payload,
             credential_bundle,
             context,
@@ -165,7 +172,7 @@ impl MlsPlaintext {
 
     /// This constructor builds an `MlsPlaintext` containing a Proposal.
     /// The sender type is always `SenderType::Member`.
-    pub fn new_proposal(
+    pub fn member_proposal(
         framing_parameters: FramingParameters,
         sender_index: LeafIndex,
         proposal: Proposal,
@@ -188,12 +195,12 @@ impl MlsPlaintext {
         )
     }
 
-    /// This constructor builds an `MlsPlaintext` containing a Commit.
-    /// The sender type is always `SenderType::Member`.
-    pub fn new_commit(
+    /// This constructor builds an `MlsPlaintext` containing a Proposal.
+    /// The sender type is always `SenderType::NewMember`.
+    pub fn new_member_proposal(
         framing_parameters: FramingParameters,
         sender_index: LeafIndex,
-        commit: Commit,
+        proposal: Proposal,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         backend: &impl OpenMlsCryptoProvider,
@@ -201,6 +208,32 @@ impl MlsPlaintext {
         Self::new(
             framing_parameters,
             sender_index,
+            SenderType::NewMember,
+            Payload {
+                payload: MlsPlaintextContentType::Proposal(proposal),
+                content_type: ContentType::Proposal,
+            },
+            credential_bundle,
+            context,
+            backend,
+        )
+    }
+
+    /// This constructor builds an `MlsPlaintext` containing a Commit.
+    /// The sender type is always `SenderType::NewMember`.
+    pub fn commit(
+        framing_parameters: FramingParameters,
+        sender_index: LeafIndex,
+        commit: Commit,
+        commit_type: CommitType,
+        credential_bundle: &CredentialBundle,
+        context: &GroupContext,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<Self, MlsPlaintextError> {
+        Self::new(
+            framing_parameters,
+            sender_index,
+            SenderType::Member,
             Payload {
                 payload: MlsPlaintextContentType::Commit(commit),
                 content_type: ContentType::Commit,
