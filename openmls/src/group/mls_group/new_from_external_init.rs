@@ -130,7 +130,7 @@ impl MlsGroup {
 
         let external_init_proposal = Proposal::ExternalInit(ExternalInitProposal::from(kem_output));
 
-        let proposal_store = ProposalStore::default();
+        let mut proposal_store = ProposalStore::default();
         for proposal in proposals_by_reference {
             let staged_proposal =
                 StagedProposal::from_mls_plaintext(ciphersuite, backend, proposal.clone())?;
@@ -145,6 +145,7 @@ impl MlsGroup {
             .credential_bundle(credential_bundle)
             .proposal_store(&proposal_store)
             .inline_proposals(inline_proposals)
+            // Populate the path
             .force_self_update(true)
             .build();
 

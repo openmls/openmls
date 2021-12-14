@@ -266,7 +266,7 @@ impl MlsGroup {
             key_package: joiner_key_package,
         };
         let proposal = Proposal::Add(add_proposal);
-        MlsPlaintext::new_proposal(
+        MlsPlaintext::member_proposal(
             framing_parameters,
             self.sender_index(),
             proposal,
@@ -291,7 +291,7 @@ impl MlsGroup {
     ) -> Result<MlsPlaintext, MlsGroupError> {
         let update_proposal = UpdateProposal { key_package };
         let proposal = Proposal::Update(update_proposal);
-        MlsPlaintext::new_proposal(
+        MlsPlaintext::member_proposal(
             framing_parameters,
             self.sender_index(),
             proposal,
@@ -318,7 +318,7 @@ impl MlsGroup {
             removed: removed_index,
         };
         let proposal = Proposal::Remove(remove_proposal);
-        MlsPlaintext::new_proposal(
+        MlsPlaintext::member_proposal(
             framing_parameters,
             self.sender_index(),
             proposal,
@@ -343,7 +343,7 @@ impl MlsGroup {
     ) -> Result<MlsPlaintext, MlsGroupError> {
         let presharedkey_proposal = PreSharedKeyProposal::new(psk);
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
-        MlsPlaintext::new_proposal(
+        MlsPlaintext::member_proposal(
             framing_parameters,
             self.sender_index(),
             proposal,
@@ -383,7 +383,7 @@ impl MlsGroup {
         }
         let proposal = GroupContextExtensionProposal::new(extensions);
         let proposal = Proposal::GroupContextExtensions(proposal);
-        MlsPlaintext::new_proposal(
+        MlsPlaintext::member_proposal(
             framing_parameters,
             self.sender_index(),
             proposal,

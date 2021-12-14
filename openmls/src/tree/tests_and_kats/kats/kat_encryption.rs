@@ -203,7 +203,7 @@ fn build_handshake_messages(
             .expect("Not enough randomness."),
     );
     let framing_parameters = FramingParameters::new(&[1, 2, 3, 4], WireFormat::MlsCiphertext);
-    let mut plaintext = MlsPlaintext::new_proposal(
+    let mut plaintext = MlsPlaintext::member_proposal(
         framing_parameters,
         leaf,
         Proposal::Remove(RemoveProposal { removed: 0 }),

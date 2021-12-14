@@ -336,7 +336,7 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         path: Some(broken_path),
     };
 
-    let mut broken_plaintext = MlsPlaintext::new_commit(
+    let mut broken_plaintext = MlsPlaintext::commit(
         framing_parameters,
         mls_plaintext_commit.sender_index(),
         broken_commit,
