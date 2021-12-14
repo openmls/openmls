@@ -3,7 +3,8 @@
 //! This trait defines all cryptographic functions used by OpenMLS.
 
 use crate::types::{
-    AeadType, CryptoError, HashType, HpkeCiphertext, HpkeConfig, HpkeKeyPair, SignatureScheme,
+    AeadType, CryptoError, ExporterSecret, HashType, HpkeCiphertext, HpkeConfig, HpkeKeyPair,
+    KemOutput, SignatureScheme,
 };
 
 pub trait OpenMlsCrypto {
@@ -115,44 +116,25 @@ pub trait OpenMlsCrypto {
 
     /// HPKE single-shot setup of a sender and immediate export a secret.
     ///
-    /// For the base and PSK modes this encapsulates the public key `pk_r`
-    /// of the receiver.
-    /// For the Auth and AuthPSK modes this encapsulates and authenticates
-    /// the public key `pk_r` of the receiver with the senders secret key `sk_s`.
-    ///
     /// The encapsulated secret is returned together with the exported secret.
-    /// If the secret key is missing in an authenticated mode, an error is
-    /// returned.
     fn hpke_setup_sender_and_export(
         &self,
         config: HpkeConfig,
         pk_r: &[u8],
         info: &[u8],
-        psk: Option<&[u8]>,
-        psk_id: Option<&[u8]>,
-        sk_s: Option<&[u8]>,
         exporter_context: &[u8],
         exporter_length: usize,
     ) -> Result<(Vec<u8>, Vec<u8>), CryptoError>;
 
     /// HPKE single-shot setup of a receiver and immediate export a secret.
     ///
-    /// For the base and PSK modes this decapsulates `enc` with the secret key
-    /// `sk_r` of the receiver.
-    /// For the Auth and AuthPSK modes this decapsulates and authenticates `enc`
-    /// with the secret key `sk_r` of the receiver and the senders public key `pk_s`.
-    ///
-    /// Returns the exported secret. If the secret key is missing in an
-    /// authenticated mode, an error is returned.
+    /// Returns the exported secret.
     fn hpke_setup_receiver_and_export(
         &self,
         config: HpkeConfig,
         enc: &[u8],
         sk_r: &[u8],
         info: &[u8],
-        psk: Option<&[u8]>,
-        psk_id: Option<&[u8]>,
-        pk_s: Option<&[u8]>,
         exporter_context: &[u8],
         exporter_length: usize,
     ) -> Result<Vec<u8>, CryptoError>;

@@ -350,9 +350,6 @@ impl OpenMlsCrypto for RustCrypto {
         config: HpkeConfig,
         pk_r: &[u8],
         info: &[u8],
-        psk: Option<&[u8]>,
-        psk_id: Option<&[u8]>,
-        sk_s: Option<&[u8]>,
         exporter_context: &[u8],
         exporter_length: usize,
     ) -> Result<(Vec<u8>, Vec<u8>), CryptoError> {
@@ -362,9 +359,8 @@ impl OpenMlsCrypto for RustCrypto {
             kdf_mode(config.1),
             aead_mode(config.2),
         );
-        let sk: Option<HpkePrivateKey> = sk_s.map(|sk| sk.into());
         let (kem_output, context) = hpke
-            .setup_sender(&pk_r.into(), info, psk, psk_id, sk.as_ref())
+            .setup_sender(&pk_r.into(), info, None, None, None)
             .map_err(|_| CryptoError::SenderSetupError)?;
         let exported_secret = context
             .export(exporter_context, exporter_length)
@@ -378,9 +374,6 @@ impl OpenMlsCrypto for RustCrypto {
         enc: &[u8],
         sk_r: &[u8],
         info: &[u8],
-        psk: Option<&[u8]>,
-        psk_id: Option<&[u8]>,
-        pk_s: Option<&[u8]>,
         exporter_context: &[u8],
         exporter_length: usize,
     ) -> Result<Vec<u8>, CryptoError> {
@@ -390,9 +383,8 @@ impl OpenMlsCrypto for RustCrypto {
             kdf_mode(config.1),
             aead_mode(config.2),
         );
-        let pk: Option<HpkePublicKey> = pk_s.map(|pk| pk.into());
         let context = hpke
-            .setup_receiver(enc, &sk_r.into(), info, psk, psk_id, pk.as_ref())
+            .setup_receiver(enc, &sk_r.into(), info, None, None, None)
             .map_err(|_| CryptoError::ReceiverSetupError)?;
         let exported_secret = context
             .export(exporter_context, exporter_length)
