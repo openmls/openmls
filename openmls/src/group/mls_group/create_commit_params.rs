@@ -15,7 +15,7 @@ pub struct CreateCommitParams<'a> {
     proposal_store: &'a ProposalStore,         // Mandatory
     inline_proposals: Vec<Proposal>,           // Optional
     force_self_update: bool,                   // Optional
-    commit_type: CommitType,                   // Optional (default is `Internal`)
+    commit_type: CommitType,                   // Optional (default is `Member`)
     psk_fetcher_option: Option<PskFetcher>,    // Optional
 }
 
