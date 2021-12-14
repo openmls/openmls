@@ -43,7 +43,7 @@ pub enum SenderType {
 impl From<CommitType> for SenderType {
     fn from(commit_type: CommitType) -> Self {
         match commit_type {
-            CommitType::External => SenderType::NewMember,
+            CommitType::Member => SenderType::NewMember,
             CommitType::Internal => SenderType::Member,
         }
     }

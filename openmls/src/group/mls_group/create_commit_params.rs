@@ -5,7 +5,7 @@ use super::{proposals::ProposalStore, *};
 /// Can be used to denote the type of a commit.
 #[derive(Debug, Copy, Clone)]
 pub enum CommitType {
-    External,
+    Member,
     Internal,
 }
 
