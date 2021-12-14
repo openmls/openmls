@@ -892,7 +892,7 @@
             <span class="ident">key_package</span>: <span class="ident">joiner_key_package</span>,
         };
         <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="ident">Proposal::Add</span>(<span class="ident">add_proposal</span>);
-        <span class="ident">MlsPlaintext::new_proposal</span>(
+        <span class="ident">MlsPlaintext::member_proposal</span>(
             <span class="ident">framing_parameters</span>,
             <span class="self">self</span>.<span class="ident">sender_index</span>(),
             <span class="ident">proposal</span>,
@@ -917,7 +917,7 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">update_proposal</span> <span class="op">=</span> <span class="ident">UpdateProposal</span> { <span class="ident">key_package</span> };
         <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="ident">Proposal::Update</span>(<span class="ident">update_proposal</span>);
-        <span class="ident">MlsPlaintext::new_proposal</span>(
+        <span class="ident">MlsPlaintext::member_proposal</span>(
             <span class="ident">framing_parameters</span>,
             <span class="self">self</span>.<span class="ident">sender_index</span>(),
             <span class="ident">proposal</span>,
@@ -944,7 +944,7 @@
             <span class="ident">removed</span>: <span class="ident">removed_index</span>,
         };
         <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="ident">Proposal::Remove</span>(<span class="ident">remove_proposal</span>);
-        <span class="ident">MlsPlaintext::new_proposal</span>(
+        <span class="ident">MlsPlaintext::member_proposal</span>(
             <span class="ident">framing_parameters</span>,
             <span class="self">self</span>.<span class="ident">sender_index</span>(),
             <span class="ident">proposal</span>,
@@ -969,7 +969,7 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">presharedkey_proposal</span> <span class="op">=</span> <span class="ident">PreSharedKeyProposal::new</span>(<span class="ident">psk</span>);
         <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="ident">Proposal::PreSharedKey</span>(<span class="ident">presharedkey_proposal</span>);
-        <span class="ident">MlsPlaintext::new_proposal</span>(
+        <span class="ident">MlsPlaintext::member_proposal</span>(
             <span class="ident">framing_parameters</span>,
             <span class="self">self</span>.<span class="ident">sender_index</span>(),
             <span class="ident">proposal</span>,
@@ -1009,7 +1009,7 @@
         }
         <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="ident">GroupContextExtensionProposal::new</span>(<span class="ident">extensions</span>);
         <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="ident">Proposal::GroupContextExtensions</span>(<span class="ident">proposal</span>);
-        <span class="ident">MlsPlaintext::new_proposal</span>(
+        <span class="ident">MlsPlaintext::member_proposal</span>(
             <span class="ident">framing_parameters</span>,
             <span class="self">self</span>.<span class="ident">sender_index</span>(),
             <span class="ident">proposal</span>,

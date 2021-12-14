@@ -269,6 +269,12 @@
 <span id="269">269</span>
 <span id="270">270</span>
 <span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -285,7 +291,7 @@
 };
 
 <span class="kw">use</span> <span class="kw">super</span>::{
-    <span class="ident">create_commit_params::CreateCommitParams</span>,
+    <span class="ident">create_commit_params</span>::{<span class="ident">CommitType</span>, <span class="ident">CreateCommitParams</span>},
     <span class="ident">proposals</span>::{<span class="ident">CreationProposalQueue</span>, <span class="ident">ProposalStore</span>},
 };
 
@@ -313,10 +319,15 @@
     ) -&gt; <span class="ident">CreateCommitResult</span> {
         <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ciphersuite</span>();
 
+        <span class="kw">let</span> <span class="ident">sender_type</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">params</span>.<span class="ident">commit_type</span>() {
+            <span class="ident">CommitType::External</span> =&gt; <span class="ident">SenderType::NewMember</span>,
+            <span class="ident">CommitType::Member</span> =&gt; <span class="ident">SenderType::Member</span>,
+        };
         <span class="comment">// Filter proposals</span>
         <span class="kw">let</span> (<span class="ident">proposal_queue</span>, <span class="ident">contains_own_updates</span>) <span class="op">=</span> <span class="ident">CreationProposalQueue::filter_proposals</span>(
             <span class="ident">ciphersuite</span>,
             <span class="ident">backend</span>,
+            <span class="ident">sender_type</span>,
             <span class="ident">params</span>.<span class="ident">proposal_store</span>(),
             <span class="ident">params</span>.<span class="ident">inline_proposals</span>(),
             <span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">own_leaf_index</span>(),
@@ -397,10 +408,11 @@
         <span class="ident">provisional_epoch</span>.<span class="ident">increment</span>();
 
         <span class="comment">// Build MlsPlaintext</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mls_plaintext</span> <span class="op">=</span> <span class="ident">MlsPlaintext::new_commit</span>(
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mls_plaintext</span> <span class="op">=</span> <span class="ident">MlsPlaintext::commit</span>(
             <span class="kw-2">*</span><span class="ident">params</span>.<span class="ident">framing_parameters</span>(),
             <span class="ident">sender_index</span>,
             <span class="ident">commit</span>,
+            <span class="ident">params</span>.<span class="ident">commit_type</span>(),
             <span class="ident">params</span>.<span class="ident">credential_bundle</span>(),
             <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_context</span>,
             <span class="ident">backend</span>,

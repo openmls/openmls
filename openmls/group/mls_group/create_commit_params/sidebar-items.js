@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["CreateCommitParams",""],["CreateCommitParamsBuilder",""],["TempBuilderCCPM0",""],["TempBuilderCCPM1",""],["TempBuilderCCPM2",""]]});
+initSidebarItems({"enum":[["CommitType","Can be used to denote the type of a commit."]],"struct":[["CreateCommitParams",""],["CreateCommitParamsBuilder",""],["TempBuilderCCPM0",""],["TempBuilderCCPM1",""],["TempBuilderCCPM2",""]]});

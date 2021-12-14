@@ -106,6 +106,7 @@
 <span class="doccomment">//! ```</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">mls_group::create_commit_params::CommitType</span>;
 <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
 
@@ -117,6 +118,15 @@
     <span class="ident">Member</span> <span class="op">=</span> <span class="number">1</span>,
     <span class="ident">Preconfigured</span> <span class="op">=</span> <span class="number">2</span>,
     <span class="ident">NewMember</span> <span class="op">=</span> <span class="number">3</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">CommitType</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">SenderType</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">commit_type</span>: <span class="ident">CommitType</span>) -&gt; <span class="self">Self</span> {
+        <span class="kw">match</span> <span class="ident">commit_type</span> {
+            <span class="ident">CommitType::External</span> =&gt; <span class="ident">SenderType::NewMember</span>,
+            <span class="ident">CommitType::Member</span> =&gt; <span class="ident">SenderType::Member</span>,
+        }
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">SenderType</span> {
@@ -146,16 +156,6 @@
     }
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_leaf_index</span>(<span class="self">self</span>) -&gt; <span class="ident">LeafIndex</span> {
         <span class="self">self</span>.<span class="ident">sender</span>
-    }
-}
-
-<span class="comment">//Private and crate functions</span>
-<span class="kw">impl</span> <span class="ident">Sender</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">member</span>(<span class="ident">sender</span>: <span class="ident">LeafIndex</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">Sender</span> {
-            <span class="ident">sender_type</span>: <span class="ident">SenderType::Member</span>,
-            <span class="ident">sender</span>,
-        }
     }
 }
 </code></pre></div>
