@@ -125,10 +125,6 @@ impl MlsPlaintext {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, MlsPlaintextError> {
         let serialized_context = context.tls_serialize_detached()?;
-        let sender = Sender {
-            sender_type,
-            sender: sender_index,
-        };
         let mls_plaintext = MlsPlaintextTbs::new(
             framing_parameters.wire_format(),
             context.group_id().clone(),
