@@ -343,7 +343,7 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         framing_parameters,
         mls_plaintext_commit.sender_index(),
         broken_commit,
-        CommitType::Internal,
+        CommitType::Member,
         &bob_credential_bundle,
         group_bob.context(),
         backend,

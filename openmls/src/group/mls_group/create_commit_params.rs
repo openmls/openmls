@@ -5,8 +5,8 @@ use super::{proposals::ProposalStore, *};
 /// Can be used to denote the type of a commit.
 #[derive(Debug, Copy, Clone)]
 pub enum CommitType {
+    External,
     Member,
-    Internal,
 }
 
 pub struct CreateCommitParams<'a> {
@@ -64,7 +64,7 @@ impl<'a> TempBuilderCCPM2<'a> {
                 proposal_store,
                 inline_proposals: vec![],
                 force_self_update: true,
-                commit_type: CommitType::Internal,
+                commit_type: CommitType::Member,
                 psk_fetcher_option: None,
             },
         }

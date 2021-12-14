@@ -101,7 +101,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
             proposals: vec![].into(),
             path: None,
         },
-        CommitType::Internal,
+        CommitType::Member,
         &credential_bundle,
         &context,
         &crypto,

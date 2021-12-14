@@ -43,8 +43,8 @@ impl MlsGroup {
         let ciphersuite = self.ciphersuite();
 
         let sender_type = match params.commit_type() {
-            CommitType::Member => SenderType::NewMember,
-            CommitType::Internal => SenderType::Member,
+            CommitType::External => SenderType::NewMember,
+            CommitType::Member => SenderType::Member,
         };
         // Filter proposals
         let (proposal_queue, contains_own_updates) = CreationProposalQueue::filter_proposals(
