@@ -138,6 +138,9 @@ pub enum CryptoError {
     UnsupportedHashAlgorithm,
     SignatureEncodingError,
     SignatureDecodingError,
+    SenderSetupError,
+    ReceiverSetupError,
+    ExporterError,
 }
 
 impl std::fmt::Display for CryptoError {
@@ -226,3 +229,6 @@ pub struct HpkeKeyPair {
     pub private: Vec<u8>,
     pub public: Vec<u8>,
 }
+
+pub type ExporterSecret = Vec<u8>;
+pub type KemOutput = Vec<u8>;
