@@ -128,11 +128,6 @@ impl Ciphersuite {
         self.name
     }
 
-    /// Get the hpke instance of this ciphersuite.
-    pub fn hpke(&self) -> &Hpke {
-        &self.hpke
-    }
-
     /// Get the AEAD mode
     #[cfg(any(test, feature = "test-utils"))]
     pub fn aead(&self) -> AeadType {

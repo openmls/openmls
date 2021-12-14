@@ -252,18 +252,20 @@ impl InitSecret {
         let ciphersuite = Config::ciphersuite(public_group_state.ciphersuite)
             .map_err(|_| KeyScheduleError::UnsupportedCiphersuite)?;
         let version = version_from_suite(&public_group_state.ciphersuite);
-        let (kem_output, context) = ciphersuite
-            .hpke()
-            .setup_sender(&public_group_state.external_pub, &[], None, None, None)
-            .map_err(|_| KeyScheduleError::HpkeError)?;
-        let hpke_info = hpke_info_from_version(version);
-        let raw_init_secret = context.export(&hpke_info.into_bytes(), ciphersuite.hash_length());
-        Ok((
-            InitSecret {
-                secret: Secret::from_slice(&raw_init_secret, version, &ciphersuite),
-            },
-            kem_output,
-        ))
+        // FIXME: Use the new setup sender and export one-shot after #629 is merged
+        todo!();
+        //let (kem_output, context) = ciphersuite
+        //    .hpke()
+        //    .setup_sender(&public_group_state.external_pub, &[], None, None, None)
+        //    .map_err(|_| KeyScheduleError::HpkeError)?;
+        //let hpke_info = hpke_info_from_version(version);
+        //let raw_init_secret = context.export(&hpke_info.into_bytes(), ciphersuite.hash_length());
+        //Ok((
+        //    InitSecret {
+        //        secret: Secret::from_slice(&raw_init_secret, version, &ciphersuite),
+        //    },
+        //    kem_output,
+        //))
     }
 
     #[cfg(any(feature = "test-utils", test))]
