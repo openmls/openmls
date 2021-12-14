@@ -613,6 +613,9 @@ impl MlsGroup {
         &self.interim_transcript_hash
     }
 
+    /// Derive the external private key
+    fn derive_external_priv(&self)
+
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn epoch_secrets_mut(&mut self) -> &mut EpochSecrets {
         &mut self.epoch_secrets

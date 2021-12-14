@@ -121,7 +121,7 @@
 //! This means that some functions that are not expected to fail and throw an
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
-use crate::ciphersuite::version_from_suite;
+use crate::ciphersuite::{version_from_suite, HpkePrivateKey};
 use crate::framing::MlsPlaintextTbmPayload;
 use crate::messages::public_group_state::PublicGroupState;
 use crate::messages::PathSecret;
@@ -252,6 +252,30 @@ impl InitSecret {
         let ciphersuite = Config::ciphersuite(public_group_state.ciphersuite)
             .map_err(|_| KeyScheduleError::UnsupportedCiphersuite)?;
         let version = version_from_suite(&public_group_state.ciphersuite);
+        // FIXME: Use the new setup sender and export one-shot after #629 is merged
+        todo!();
+        //let (kem_output, context) = ciphersuite
+        //    .hpke()
+        //    .setup_sender(&public_group_state.external_pub, &[], None, None, None)
+        //    .map_err(|_| KeyScheduleError::HpkeError)?;
+        //let hpke_info = hpke_info_from_version(version);
+        //let raw_init_secret = context.export(&hpke_info.into_bytes(), ciphersuite.hash_length());
+        //Ok((
+        //    InitSecret {
+        //        secret: Secret::from_slice(&raw_init_secret, version, &ciphersuite),
+        //    },
+        //    kem_output,
+        //))
+    }
+
+    /// Create an `InitSecret` from a `kem_output`.
+    pub(crate) fn from_kem_output(
+        external_priv: &HpkePrivateKey,
+        kem_output: &[u8],
+    ) -> Result<Self, KeyScheduleError> {
+        //let ciphersuite = Config::ciphersuite(public_group_state.ciphersuite)
+        //    .map_err(|_| KeyScheduleError::UnsupportedCiphersuite)?;
+        //let version = version_from_suite(&public_group_state.ciphersuite);
         // FIXME: Use the new setup sender and export one-shot after #629 is merged
         todo!();
         //let (kem_output, context) = ciphersuite

@@ -486,6 +486,7 @@ impl<'a> CreationProposalQueue<'a> {
         let mut valid_proposals: HashSet<ProposalReference> = HashSet::new();
         let mut proposal_pool: HashMap<ProposalReference, QueuedProposal> = HashMap::new();
         let mut contains_own_updates = false;
+        let mut contains_external_init = false;
 
         let sender = Sender {
             sender_type,
@@ -546,7 +547,14 @@ impl<'a> CreationProposalQueue<'a> {
                     // TODO #141: Only keep one ReInit
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
-                Proposal::ExternalInit(_) => unimplemented!("See #556"),
+                Proposal::ExternalInit(_) => {
+                    // Only use the first external init proposal we find.
+                    if contains_external_init == false {
+                        valid_proposals.insert(queued_proposal.proposal_reference());
+                        proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
+                        contains_external_init = true;
+                    }
+                }
                 Proposal::AppAck(_) => unimplemented!("See #291"),
                 Proposal::GroupContextExtensions(_) => {
                     // TODO: Validate proposal?

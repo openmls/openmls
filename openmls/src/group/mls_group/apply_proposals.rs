@@ -6,7 +6,7 @@ use crate::{
     binary_tree::LeafIndex,
     key_packages::KeyPackageBundle,
     messages::proposals::{AddProposal, ProposalType},
-    schedule::{PreSharedKeyId, PreSharedKeys},
+    schedule::{InitSecret, PreSharedKeyId, PreSharedKeys},
     treesync::{diff::TreeSyncDiff, node::leaf_node::LeafNode, TreeSyncError},
 };
 
@@ -21,6 +21,7 @@ pub struct ApplyProposalsValues {
     pub self_removed: bool,
     pub invitation_list: Vec<(LeafIndex, AddProposal)>,
     pub presharedkeys: PreSharedKeys,
+    pub external_init_secret_option: Option<InitSecret>,
 }
 
 impl ApplyProposalsValues {
@@ -48,7 +49,7 @@ impl MlsGroup {
     pub(crate) fn apply_proposals(
         &self,
         diff: &mut TreeSyncDiff,
-        _backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsCryptoProvider,
         proposal_queue: CreationProposalQueue,
         key_package_bundles: &[KeyPackageBundle],
     ) -> Result<ApplyProposalsValues, TreeSyncError> {
@@ -56,6 +57,7 @@ impl MlsGroup {
         let mut has_updates = false;
         let mut has_removes = false;
         let mut self_removed = false;
+        let mut external_init_secret_option = None;
 
         // Process updates first
         for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Update) {
@@ -91,6 +93,25 @@ impl MlsGroup {
             }
             // Blank the direct path of the removed member
             diff.blank_leaf(remove_proposal.removed())?;
+        }
+
+        // Process external init proposals
+        for queued_proposal in proposal_queue.filtered_by_type(ProposalType::ExternalInit) {
+            // Unwrapping here is safe because we know the proposal type
+            let external_init_proposal = &queued_proposal.proposal().as_external_init().unwrap();
+            // Decrypt the context an derive the external init.
+            let external_priv = self
+                .epoch_secrets()
+                .external_secret()
+                .derive_external_keypair(backend.crypto(), self.ciphersuite())
+                .private
+                .into();
+            external_init_secret_option = Some(InitSecret::from_kem_output(
+                &external_priv,
+                external_init_proposal.kem_output(),
+            )?);
+            // Ignore every external init beyond the first one.
+            break;
         }
 
         // Process adds
@@ -131,6 +152,7 @@ impl MlsGroup {
             self_removed,
             invitation_list,
             presharedkeys,
+            external_init_secret_option,
         })
     }
 

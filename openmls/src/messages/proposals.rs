@@ -168,6 +168,12 @@ impl Proposal {
             _ => None,
         }
     }
+    pub(crate) fn as_external_init(&self) -> Option<ExternalInitProposal> {
+        match self {
+            Proposal::ExternalInit(external_init_proposal) => Some(external_init_proposal.clone()),
+            _ => None,
+        }
+    }
 }
 
 /// Reference to a Proposal. This can be used in Commit messages to reference
@@ -295,8 +301,8 @@ pub struct ExternalInitProposal {
 }
 
 impl ExternalInitProposal {
-    pub(crate) fn kem_output(&self) -> &TlsByteVecU16 {
-        &self.kem_output
+    pub(crate) fn kem_output(&self) -> &[u8] {
+        &self.kem_output.as_slice()
     }
 }
 
