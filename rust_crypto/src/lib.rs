@@ -9,7 +9,7 @@ use chacha20poly1305::ChaCha20Poly1305;
 // for the rust-analyzer issue with the following line.
 use ed25519_dalek::Signer as DalekSigner;
 use hkdf::Hkdf;
-use hpke::Hpke;
+use hpke::{Hpke, HpkePrivateKey, HpkePublicKey};
 use hpke_rs_crypto::types as hpke_types;
 use hpke_rs_rust_crypto::HpkeRustCrypto;
 use openmls_traits::{
@@ -343,6 +343,61 @@ impl OpenMlsCrypto for RustCrypto {
             None,
         )
         .map_err(|_| CryptoError::HpkeDecryptionError)
+    }
+
+    fn hpke_setup_sender_and_export(
+        &self,
+        config: HpkeConfig,
+        pk_r: &[u8],
+        info: &[u8],
+        psk: Option<&[u8]>,
+        psk_id: Option<&[u8]>,
+        sk_s: Option<&[u8]>,
+        exporter_context: &[u8],
+        exporter_length: usize,
+    ) -> Result<(Vec<u8>, Vec<u8>), CryptoError> {
+        let hpke = Hpke::<HpkeRustCrypto>::new(
+            hpke::Mode::Base,
+            kem_mode(config.0),
+            kdf_mode(config.1),
+            aead_mode(config.2),
+        );
+        let sk: Option<HpkePrivateKey> = sk_s.map(|sk| sk.into());
+        let (kem_output, context) = hpke
+            .setup_sender(&pk_r.into(), info, psk, psk_id, sk.as_ref())
+            .map_err(|_| CryptoError::SenderSetupError)?;
+        let exported_secret = context
+            .export(exporter_context, exporter_length)
+            .map_err(|_| CryptoError::ExporterError)?;
+        Ok((kem_output, exported_secret))
+    }
+
+    fn hpke_setup_receiver_and_export(
+        &self,
+        config: HpkeConfig,
+        enc: &[u8],
+        sk_r: &[u8],
+        info: &[u8],
+        psk: Option<&[u8]>,
+        psk_id: Option<&[u8]>,
+        pk_s: Option<&[u8]>,
+        exporter_context: &[u8],
+        exporter_length: usize,
+    ) -> Result<Vec<u8>, CryptoError> {
+        let hpke = Hpke::<HpkeRustCrypto>::new(
+            hpke::Mode::Base,
+            kem_mode(config.0),
+            kdf_mode(config.1),
+            aead_mode(config.2),
+        );
+        let pk: Option<HpkePublicKey> = pk_s.map(|pk| pk.into());
+        let context = hpke
+            .setup_receiver(enc, &sk_r.into(), info, psk, psk_id, pk.as_ref())
+            .map_err(|_| CryptoError::ReceiverSetupError)?;
+        let exported_secret = context
+            .export(exporter_context, exporter_length)
+            .map_err(|_| CryptoError::ExporterError)?;
+        Ok(exported_secret)
     }
 
     fn derive_hpke_keypair(&self, config: HpkeConfig, ikm: &[u8]) -> types::HpkeKeyPair {
