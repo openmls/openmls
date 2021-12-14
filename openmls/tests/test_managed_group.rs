@@ -157,7 +157,7 @@ fn managed_group_operations(
             );
             // Check that Alice added Bob
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(add.sender().to_leaf_index(), LeafIndex::from(0u32));
+            assert_eq!(add.sender().to_leaf_index(), 0u32);
             // Merge staged Commit
             alice_group
                 .merge_staged_commit(*staged_commit)
@@ -225,10 +225,7 @@ fn managed_group_operations(
             assert_eq!(application_message.message(), message_alice);
             // Check that Alice sent the message
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                application_message.sender().to_leaf_index(),
-                LeafIndex::from(0u32)
-            );
+            assert_eq!(application_message.sender().to_leaf_index(), 0u32);
         } else {
             unreachable!("Expected an ApplicationMessage.");
         }
@@ -265,7 +262,7 @@ fn managed_group_operations(
             );
             // Check that Alice added Bob
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(update.sender().to_leaf_index(), LeafIndex::from(1u32));
+            assert_eq!(update.sender().to_leaf_index(), 1u32);
             // Merge staged Commit
             alice_group
                 .merge_staged_commit(*staged_commit)
@@ -332,10 +329,7 @@ fn managed_group_operations(
 
             // Check that Alice added bob
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                staged_proposal.sender().to_leaf_index(),
-                LeafIndex::from(0u32)
-            );
+            assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
         } else {
             unreachable!("Expected a StagedProposal.");
         }
@@ -378,7 +372,7 @@ fn managed_group_operations(
             );
             // Check that Alice added Bob
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(update.sender().to_leaf_index(), LeafIndex::from(0u32));
+            assert_eq!(update.sender().to_leaf_index(), 0u32);
             // Merge staged Commit
             alice_group
                 .merge_staged_commit(*staged_commit)
@@ -610,7 +604,7 @@ fn managed_group_operations(
             assert_eq!(remove.remove_proposal().removed(), 1u32);
             // Check that Charlie removed Bob
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(remove.sender().to_leaf_index(), LeafIndex::from(2u32));
+            assert_eq!(remove.sender().to_leaf_index(), 2u32);
             // Merge staged Commit
             alice_group
                 .merge_staged_commit(*staged_commit)
@@ -630,7 +624,7 @@ fn managed_group_operations(
             assert_eq!(remove.remove_proposal().removed(), 1u32);
             // Check that Charlie removed Bob
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(remove.sender().to_leaf_index(), LeafIndex::from(2u32));
+            assert_eq!(remove.sender().to_leaf_index(), 2u32);
             // Merge staged Commit
             bob_group
                 .merge_staged_commit(*staged_commit)
@@ -708,10 +702,7 @@ fn managed_group_operations(
 
             // Check that Alice removed Charlie
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                staged_proposal.sender().to_leaf_index(),
-                LeafIndex::from(0u32)
-            );
+            assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
         } else {
             unreachable!("Expected a StagedProposal.");
         }
@@ -737,10 +728,7 @@ fn managed_group_operations(
 
             // Check that Alice removed Charlie
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                staged_proposal.sender().to_leaf_index(),
-                LeafIndex::from(0u32)
-            );
+            assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
         } else {
             unreachable!("Expected a StagedProposal.");
         }
@@ -767,10 +755,7 @@ fn managed_group_operations(
 
             // Check that Alice added Bob
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                staged_proposal.sender().to_leaf_index(),
-                LeafIndex::from(0u32)
-            );
+            assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
             // Store proposal
             alice_group.store_pending_proposal(*staged_proposal);
         } else {
@@ -795,10 +780,7 @@ fn managed_group_operations(
 
             // Check that Alice added Bob
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                staged_proposal.sender().to_leaf_index(),
-                LeafIndex::from(0u32)
-            );
+            assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
             // Store proposal
             charlie_group.store_pending_proposal(*staged_proposal);
         } else {
@@ -898,10 +880,7 @@ fn managed_group_operations(
             assert_eq!(application_message.message(), message_alice);
             // Check that Alice sent the message
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                application_message.sender().to_leaf_index(),
-                LeafIndex::from(0u32)
-            );
+            assert_eq!(application_message.sender().to_leaf_index(), 0u32);
         } else {
             unreachable!("Expected an ApplicationMessage.");
         }
@@ -973,7 +952,7 @@ fn managed_group_operations(
             assert_eq!(remove.remove_proposal().removed(), 1u32);
             // Check that Bob removed himself
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(remove.sender().to_leaf_index(), LeafIndex::from(1u32));
+            assert_eq!(remove.sender().to_leaf_index(), 1u32);
             // Merge staged Commit
             alice_group
                 .merge_staged_commit(*staged_commit)
@@ -999,7 +978,7 @@ fn managed_group_operations(
             assert_eq!(remove.remove_proposal().removed(), 1u32);
             // Check that Bob removed himself
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(remove.sender().to_leaf_index(), LeafIndex::from(1u32));
+            assert_eq!(remove.sender().to_leaf_index(), 1u32);
             assert!(staged_commit.self_removed());
             // Merge staged Commit
             bob_group
