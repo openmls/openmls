@@ -13,8 +13,8 @@ use crate::{
     config::{Config, ProtocolVersion},
     credentials::{Credential, CredentialBundle, CredentialType},
     group::{
-        update_confirmed_transcript_hash, update_interim_transcript_hash, GroupContext, GroupEpoch,
-        GroupId, WireFormat,
+        create_commit_params::CommitType, update_confirmed_transcript_hash,
+        update_interim_transcript_hash, GroupContext, GroupEpoch, GroupId, WireFormat,
     },
     messages::Commit,
     prelude::{
@@ -101,6 +101,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
             proposals: vec![].into(),
             path: None,
         },
+        CommitType::Internal,
         &credential_bundle,
         &context,
         &crypto,
