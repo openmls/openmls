@@ -138,6 +138,9 @@ pub enum CryptoError {
     UnsupportedHashAlgorithm,
     SignatureEncodingError,
     SignatureDecodingError,
+    SenderSetupError,
+    ReceiverSetupError,
+    ExporterError,
 }
 
 impl std::fmt::Display for CryptoError {
