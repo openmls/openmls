@@ -118,8 +118,7 @@ impl MlsPlaintext {
     #[inline]
     fn new(
         framing_parameters: FramingParameters,
-        sender_index: LeafIndex,
-        sender_type: SenderType,
+        sender: Sender,
         payload: Payload,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
@@ -153,10 +152,13 @@ impl MlsPlaintext {
         membership_key: &MembershipKey,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, MlsPlaintextError> {
+        let sender = Sender {
+            sender_type: SenderType::Member,
+            sender: sender_index,
+        };
         let mut mls_plaintext = Self::new(
             framing_parameters,
-            sender_index,
-            SenderType::Member,
+            sender,
             payload,
             credential_bundle,
             context,
@@ -205,10 +207,13 @@ impl MlsPlaintext {
         context: &GroupContext,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, MlsPlaintextError> {
+        let sender = Sender {
+            sender_type: SenderType::NewMember,
+            sender: sender_index,
+        };
         Self::new(
             framing_parameters,
-            sender_index,
-            SenderType::NewMember,
+            sender,
             Payload {
                 payload: MlsPlaintextContentType::Proposal(proposal),
                 content_type: ContentType::Proposal,
@@ -219,8 +224,9 @@ impl MlsPlaintext {
         )
     }
 
-    /// This constructor builds an `MlsPlaintext` containing a Commit.
-    /// The sender type is always `SenderType::NewMember`.
+    /// This constructor builds an `MlsPlaintext` containing a Commit. The given
+    /// `CommitType` determines the `SenderType`: If it's an `Internal` commit,
+    /// it's `SenderType::Member` and `SenderType::NewMember` otherwise.
     pub fn commit(
         framing_parameters: FramingParameters,
         sender_index: LeafIndex,
@@ -230,10 +236,13 @@ impl MlsPlaintext {
         context: &GroupContext,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, MlsPlaintextError> {
+        let sender = Sender {
+            sender_type: commit_type.into(),
+            sender: sender_index,
+        };
         Self::new(
             framing_parameters,
-            sender_index,
-            SenderType::Member,
+            sender,
             Payload {
                 payload: MlsPlaintextContentType::Commit(commit),
                 content_type: ContentType::Commit,

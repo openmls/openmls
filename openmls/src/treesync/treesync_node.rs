@@ -142,7 +142,7 @@ implement_error! {
         }
         Complex {
             ParentHashError(ParentHashError) = "Error while computing parent hash.",
-            NodeTypeError(NodeError) = "We found a node with an unexpected type.",
+            NodeType(NodeError) = "We found a node with an unexpected type.",
             HashError(CryptoError) = "Error while hashing payload.",
         }
     }

@@ -118,7 +118,7 @@ fn test_node_references() {
         .expect("leaf reference without a leaf index.");
 
     assert_eq!(leaf_index, 0);
-    assert_eq!(diff.is_leaf(leaf_reference), true);
+    assert!(diff.is_leaf(leaf_reference));
 
     let leaf = diff
         .node(leaf_reference)
@@ -185,7 +185,7 @@ fn test_node_references() {
     assert_eq!(root, &0);
 
     // Now, root should not be a leaf.
-    assert_eq!(diff.is_leaf(root_ref), false);
+    assert!(!diff.is_leaf(root_ref));
     assert_eq!(diff.leaf_index(root_ref), None);
 
     // Diff merging

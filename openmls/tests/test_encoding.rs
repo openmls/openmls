@@ -230,12 +230,7 @@ fn test_remove_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .expect("An unexpected error occurred.");
 
         let remove = group_state
-            .create_remove_proposal(
-                framing_parameters,
-                credential_bundle,
-                LeafIndex::from(1u32),
-                backend,
-            )
+            .create_remove_proposal(framing_parameters, credential_bundle, 1u32, backend)
             .expect("Could not create proposal.");
         let remove_encoded = remove
             .tls_serialize_detached()
@@ -318,12 +313,7 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
 
         // Alice removes Bob
         let remove = group_state
-            .create_remove_proposal(
-                framing_parameters,
-                alice_credential_bundle,
-                LeafIndex::from(2u32),
-                backend,
-            )
+            .create_remove_proposal(framing_parameters, alice_credential_bundle, 2u32, backend)
             .expect("Could not create proposal.");
 
         let mut proposal_store = ProposalStore::from_staged_proposal(
