@@ -255,14 +255,9 @@ impl OpenMlsCrypto for EvercryptProvider {
         aad: &[u8],
         ptxt: &[u8],
     ) -> openmls_traits::types::HpkeCiphertext {
-        let (kem_output, ciphertext) = Hpke::<HpkeEvercrypt>::new(
-            hpke::Mode::Base,
-            kem_mode(config.0),
-            kdf_mode(config.1),
-            aead_mode(config.2),
-        )
-        .seal(&pk_r.into(), info, aad, ptxt, None, None, None)
-        .unwrap();
+        let (kem_output, ciphertext) = hpke_from_config(config)
+            .seal(&pk_r.into(), info, aad, ptxt, None, None, None)
+            .unwrap();
         HpkeCiphertext {
             kem_output: kem_output.into(),
             ciphertext: ciphertext.into(),
@@ -277,23 +272,18 @@ impl OpenMlsCrypto for EvercryptProvider {
         info: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
-        Hpke::<HpkeEvercrypt>::new(
-            hpke::Mode::Base,
-            kem_mode(config.0),
-            kdf_mode(config.1),
-            aead_mode(config.2),
-        )
-        .open(
-            input.kem_output.as_slice(),
-            &sk_r.into(),
-            info,
-            aad,
-            input.ciphertext.as_slice(),
-            None,
-            None,
-            None,
-        )
-        .map_err(|_| CryptoError::HpkeDecryptionError)
+        hpke_from_config(config)
+            .open(
+                input.kem_output.as_slice(),
+                &sk_r.into(),
+                info,
+                aad,
+                input.ciphertext.as_slice(),
+                None,
+                None,
+                None,
+            )
+            .map_err(|_| CryptoError::HpkeDecryptionError)
     }
 
     fn hpke_setup_sender_and_export(
@@ -304,13 +294,7 @@ impl OpenMlsCrypto for EvercryptProvider {
         exporter_context: &[u8],
         exporter_length: usize,
     ) -> Result<(KemOutput, ExporterSecret), CryptoError> {
-        let hpke = Hpke::<HpkeEvercrypt>::new(
-            hpke::Mode::Base,
-            kem_mode(config.0),
-            kdf_mode(config.1),
-            aead_mode(config.2),
-        );
-        let (kem_output, context) = hpke
+        let (kem_output, context) = hpke_from_config(config)
             .setup_sender(&pk_r.into(), info, None, None, None)
             .map_err(|_| CryptoError::SenderSetupError)?;
         let exported_secret = context
@@ -328,13 +312,7 @@ impl OpenMlsCrypto for EvercryptProvider {
         exporter_context: &[u8],
         exporter_length: usize,
     ) -> Result<ExporterSecret, CryptoError> {
-        let hpke = Hpke::<HpkeEvercrypt>::new(
-            hpke::Mode::Base,
-            kem_mode(config.0),
-            kdf_mode(config.1),
-            aead_mode(config.2),
-        );
-        let context = hpke
+        let context = hpke_from_config(config)
             .setup_receiver(enc, &sk_r.into(), info, None, None, None)
             .map_err(|_| CryptoError::ReceiverSetupError)?;
         let exported_secret = context
@@ -348,20 +326,24 @@ impl OpenMlsCrypto for EvercryptProvider {
         config: HpkeConfig,
         ikm: &[u8],
     ) -> openmls_traits::types::HpkeKeyPair {
-        let kp = Hpke::<HpkeEvercrypt>::new(
-            hpke::Mode::Base,
-            kem_mode(config.0),
-            kdf_mode(config.1),
-            aead_mode(config.2),
-        )
-        .derive_key_pair(ikm)
-        .unwrap()
-        .into_keys();
+        let kp = hpke_from_config(config)
+            .derive_key_pair(ikm)
+            .unwrap()
+            .into_keys();
         HpkeKeyPair {
             private: kp.0.as_slice().into(),
             public: kp.1.as_slice().into(),
         }
     }
+}
+
+fn hpke_from_config(config: HpkeConfig) -> Hpke<HpkeEvercrypt> {
+    Hpke::<HpkeEvercrypt>::new(
+        hpke::Mode::Base,
+        kem_mode(config.0),
+        kdf_mode(config.1),
+        aead_mode(config.2),
+    )
 }
 
 #[inline(always)]
