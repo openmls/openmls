@@ -13,7 +13,7 @@ use crate::{
     key_packages::KeyPackageBundle,
     messages::{
         public_group_state::{PublicGroupState, VerifiablePublicGroupState},
-        LeafIndex, MlsGroup,
+        MlsGroup,
     },
     prelude::FramingParameters,
 };
@@ -92,7 +92,7 @@ fn test_pgs(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvi
         .stage_commit(
             &commit,
             &proposal_store,
-            &[kpb_option.clone().expect("No KeyPackageBundle")],
+            &[kpb_option.expect("No KeyPackageBundle")],
             None,
             backend,
         )
@@ -106,7 +106,7 @@ fn test_pgs(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvi
         .expect("Could not export the public group state");
 
     // Make sure Alice is the signer
-    assert_eq!(pgs.signer_index, LeafIndex::from(0u32));
+    assert_eq!(pgs.signer_index, 0u32);
 
     let encoded = pgs.tls_serialize_detached().expect("Could not encode");
     let verifiable_pgs = VerifiablePublicGroupState::tls_deserialize(&mut encoded.as_slice())
