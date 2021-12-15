@@ -109,5 +109,4 @@ impl<'a> CreateCommitParams<'a> {
     pub fn commit_type(&self) -> CommitType {
         self.commit_type
     }
-   
 }
