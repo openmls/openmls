@@ -36,6 +36,14 @@ impl MlsMessageIn {
             MlsMessageIn::Plaintext(m) => m.epoch(),
         }
     }
+
+    /// Get the content type
+    pub fn content_type(&self) -> ContentType {
+        match self {
+            MlsMessageIn::Ciphertext(m) => m.content_type,
+            MlsMessageIn::Plaintext(m) => m.content_type(),
+        }
+    }
 }
 
 /// Unified message type for outgoing MLS messages.

@@ -167,11 +167,10 @@ impl MlsGroup {
         key_schedule.add_context(backend, &serialized_group_context)?;
         let epoch_secrets = key_schedule.epoch_secrets(backend, true)?;
 
-        let secret_tree = epoch_secrets
-            .encryption_secret()
-            .create_secret_tree(tree.leaf_count()?);
+        let (group_epoch_secrets, message_secrets) =
+            epoch_secrets.split(serialized_group_context, tree.leaf_count()?);
 
-        let confirmation_tag = epoch_secrets
+        let confirmation_tag = message_secrets
             .confirmation_key()
             .tag(backend, group_context.confirmed_transcript_hash.as_slice())?;
         let interim_transcript_hash = update_interim_transcript_hash(
@@ -191,8 +190,8 @@ impl MlsGroup {
             Ok(MlsGroup {
                 ciphersuite,
                 group_context,
-                epoch_secrets,
-                secret_tree: RefCell::new(secret_tree),
+                group_epoch_secrets,
+                message_secrets,
                 tree,
                 interim_transcript_hash,
                 use_ratchet_tree_extension: enable_ratchet_tree_extension,

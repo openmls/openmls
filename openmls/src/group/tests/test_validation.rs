@@ -667,7 +667,7 @@ fn test_valsem10(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypto
         .expect("Could not create MlsPlaintextTbm.");
     let new_membership_tag = alice_group
         .group()
-        .epoch_secrets()
+        .message_secrets()
         .membership_key()
         .tag(backend, tbm_payload)
         .expect("Could not create membership tag.");

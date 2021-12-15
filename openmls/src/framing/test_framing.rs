@@ -13,7 +13,6 @@ use tls_codec::{Deserialize, Serialize};
 use crate::framing::*;
 use crate::prelude::KeyPackageBundle;
 use crate::prelude::_print_tree;
-use crate::tree::secret_tree::SecretTree;
 use crate::{
     ciphersuite::signable::{Signable, Verifiable},
     config::*,
@@ -127,22 +126,18 @@ fn codec_ciphertext(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .add_context(backend, &serialized_group_context)
         .expect("Could not add context to key schedule");
 
-    let epoch_secrets = key_schedule
-        .epoch_secrets(backend, false)
-        .expect("Could not generte epoch secrets");
-
-    let mut secret_tree = SecretTree::new(epoch_secrets.encryption_secret(), 1u32.into());
+    let mut message_secrets = MessageSecrets::random(ciphersuite, backend);
 
     let orig = MlsCiphertext::try_from_plaintext(
         &plaintext,
         ciphersuite,
         backend,
-        &group_context,
-        sender.to_leaf_index(),
-        Secrets {
-            epoch_secrets: &epoch_secrets,
-            secret_tree: &mut secret_tree,
+        Header {
+            group_id: group_context.group_id().clone(),
+            epoch: group_context.epoch(),
+            sender: sender.to_leaf_index(),
         },
+        &mut message_secrets,
         0,
     )
     .expect("Could not encrypt MlsPlaintext.");
@@ -215,21 +210,18 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
         .add_context(backend, &serialized_group_context)
         .expect("Could not add context to key schedule");
 
-    let epoch_secrets = key_schedule
-        .epoch_secrets(backend, false)
-        .expect("Could not generte epoch secrets");
+    let mut message_secrets = MessageSecrets::random(ciphersuite, backend);
 
-    let mut secret_tree = SecretTree::new(epoch_secrets.encryption_secret(), 1u32.into());
     let mut ciphertext = MlsCiphertext::try_from_plaintext(
         &plaintext,
         ciphersuite,
         backend,
-        &group_context,
-        sender.to_leaf_index(),
-        Secrets {
-            epoch_secrets: &epoch_secrets,
-            secret_tree: &mut secret_tree,
+        Header {
+            group_id: group_context.group_id().clone(),
+            epoch: group_context.epoch(),
+            sender: sender.to_leaf_index(),
         },
+        &mut message_secrets,
         0,
     )
     .expect("Could not encrypt MlsPlaintext.");
@@ -237,7 +229,7 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
     // Decrypt the ciphertext and expect the correct wire format
 
     let verifiable_plaintext = ciphertext
-        .to_plaintext(ciphersuite, backend, &epoch_secrets, &mut secret_tree)
+        .to_plaintext(ciphersuite, backend, &mut message_secrets)
         .expect("Could not decrypt MlsCiphertext.");
 
     assert_eq!(
@@ -251,7 +243,7 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
 
     assert_eq!(
         ciphertext
-            .to_plaintext(ciphersuite, backend, &epoch_secrets, &mut secret_tree)
+            .to_plaintext(ciphersuite, backend, &mut message_secrets)
             .expect_err("Could decrypt despite wrong wire format."),
         MlsCiphertextError::WrongWireFormat
     );
@@ -265,12 +257,12 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
             &plaintext,
             ciphersuite,
             backend,
-            &group_context,
-            sender.to_leaf_index(),
-            Secrets {
-                epoch_secrets: &epoch_secrets,
-                secret_tree: &mut secret_tree,
+            Header {
+                group_id: group_context.group_id().clone(),
+                epoch: group_context.epoch(),
+                sender: sender.to_leaf_index(),
             },
+            &mut message_secrets,
             0,
         )
         .expect_err("Could encrypt despite wrong wire format."),
@@ -531,12 +523,12 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         &bogus_sender_message,
         ciphersuite,
         backend,
-        group_alice.context(),
-        1u32,
-        Secrets {
-            epoch_secrets: group_alice.epoch_secrets(),
-            secret_tree: &mut group_alice.secret_tree_mut(),
+        Header {
+            group_id: group_alice.group_id().clone(),
+            epoch: group_alice.context().epoch(),
+            sender: 1u32,
         },
+        group_alice.message_secrets_mut(),
         0,
     )
     .expect("Encryption error");
@@ -566,21 +558,16 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     )
     .expect("Could not create new MlsPlaintext.");
 
-    let mut secret_tree = SecretTree::new(
-        EncryptionSecret::random(ciphersuite, backend),
-        100u32.into(),
-    );
-
     let enc_message = MlsCiphertext::try_from_plaintext(
         &bogus_sender_message,
         ciphersuite,
         backend,
-        group_alice.context(),
-        99u32,
-        Secrets {
-            epoch_secrets: group_alice.epoch_secrets(),
-            secret_tree: &mut secret_tree,
+        Header {
+            group_id: group_alice.group_id().clone(),
+            epoch: group_alice.context().epoch(),
+            sender: 1u32,
         },
+        group_alice.message_secrets_mut(),
         0,
     )
     .expect("Encryption error");

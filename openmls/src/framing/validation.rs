@@ -34,10 +34,11 @@
 //! ProcessedMessage (Application, Proposal, ExternalProposal, Commit, External Commit)
 //! ```
 
+use crate::schedule::MessageSecrets;
 use mls_group::{proposals::StagedProposal, staged_commit::StagedCommit};
 use openmls_traits::OpenMlsCryptoProvider;
 
-use crate::{ciphersuite::signable::Verifiable, tree::secret_tree::SecretTree};
+use crate::ciphersuite::signable::Verifiable;
 
 use super::*;
 
@@ -69,12 +70,10 @@ impl DecryptedMessage {
         inbound_message: MlsMessageIn,
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        epoch_secrets: &EpochSecrets,
-        secret_tree: &mut SecretTree,
+        message_secrets: &mut MessageSecrets,
     ) -> Result<Self, ValidationError> {
         if let MlsMessageIn::Ciphertext(ciphertext) = inbound_message {
-            let plaintext =
-                ciphertext.to_plaintext(ciphersuite, backend, epoch_secrets, secret_tree)?;
+            let plaintext = ciphertext.to_plaintext(ciphersuite, backend, message_secrets)?;
             Self::from_plaintext(plaintext)
         } else {
             Err(ValidationError::WrongWireFormat)
@@ -154,6 +153,11 @@ impl UnverifiedMessage {
         }
     }
 
+    /// Returns the epoch.
+    pub fn epoch(&self) -> GroupEpoch {
+        self.plaintext.epoch()
+    }
+
     /// Returns the AAD.
     pub fn aad(&self) -> &Option<Vec<u8>> {
         &self.aad_option
@@ -188,10 +192,9 @@ impl UnverifiedContextMessage {
     /// Constructs an [UnverifiedContextMessage] from an [UnverifiedMessage] and adds the serialized group context.
     /// This function implements the following checks:
     ///  - ValSem8
-    pub(crate) fn from_unverified_message_with_context(
+    pub(crate) fn from_unverified_message_with_message_secrets(
         unverified_message: UnverifiedMessage,
-        serialized_context: Vec<u8>,
-        membership_key: &MembershipKey,
+        message_secrets: &MessageSecrets,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, ValidationError> {
         // Decompose UnverifiedMessage
@@ -199,11 +202,11 @@ impl UnverifiedContextMessage {
 
         if plaintext.sender().is_member() {
             // Add serialized context to plaintext
-            plaintext.set_context(serialized_context);
+            plaintext.set_context(message_secrets.serialized_context().to_vec());
             // Verify the membership tag
             if plaintext.wire_format() != WireFormat::MlsCiphertext {
                 // ValSem8
-                plaintext.verify_membership(backend, membership_key)?;
+                plaintext.verify_membership(backend, message_secrets.membership_key())?;
             }
         }
         match plaintext.sender().sender_type {

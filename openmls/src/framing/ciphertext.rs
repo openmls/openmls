@@ -4,7 +4,7 @@ use tls_codec::{
     TlsDeserialize, TlsSerialize, TlsSize,
 };
 
-use crate::tree::secret_tree::{SecretTree, SecretType};
+use crate::tree::secret_tree::SecretType;
 
 use super::*;
 
@@ -22,9 +22,10 @@ pub struct MlsCiphertext {
     pub(crate) ciphertext: TlsByteVecU32,
 }
 
-pub(crate) struct Secrets<'a> {
-    pub(crate) epoch_secrets: &'a EpochSecrets,
-    pub(crate) secret_tree: &'a mut SecretTree,
+pub(crate) struct Header {
+    pub(crate) group_id: GroupId,
+    pub(crate) epoch: GroupEpoch,
+    pub(crate) sender: LeafIndex,
 }
 
 impl MlsCiphertext {
@@ -33,9 +34,8 @@ impl MlsCiphertext {
         mls_plaintext: &MlsPlaintext,
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        context: &GroupContext,
-        sender: LeafIndex,
-        secrets: Secrets,
+        header: Header,
+        message_secrets: &mut MessageSecrets,
         padding_size: usize,
     ) -> Result<MlsCiphertext, MlsCiphertextError> {
         log::debug!("MlsCiphertext::try_from_plaintext");
@@ -46,8 +46,8 @@ impl MlsCiphertext {
         }
         // Serialize the content AAD
         let mls_ciphertext_content_aad = MlsCiphertextContentAad {
-            group_id: context.group_id().clone(),
-            epoch: context.epoch(),
+            group_id: header.group_id.clone(),
+            epoch: header.epoch,
             content_type: mls_plaintext.content_type(),
             authenticated_data: mls_plaintext.authenticated_data().into(),
         };
@@ -56,9 +56,9 @@ impl MlsCiphertext {
         // Extract generation and key material for encryption
         let secret_type = SecretType::try_from(mls_plaintext)
             .map_err(|_| MlsCiphertextError::InvalidContentType)?;
-        let (generation, (ratchet_key, mut ratchet_nonce)) = secrets
-            .secret_tree
-            .secret_for_encryption(ciphersuite, backend, sender.into(), secret_type)?;
+        let (generation, (ratchet_key, mut ratchet_nonce)) = message_secrets
+            .secret_tree_mut()
+            .secret_for_encryption(ciphersuite, backend, header.sender.into(), secret_type)?;
         // Sample reuse guard uniformly at random.
         let reuse_guard: ReuseGuard = ReuseGuard::from_random(backend);
         // Prepare the nonce by xoring with the reuse guard.
@@ -80,20 +80,20 @@ impl MlsCiphertext {
                 MlsCiphertextError::EncryptionError
             })?;
         // Derive the sender data key from the key schedule using the ciphertext.
-        let sender_data_key = secrets
-            .epoch_secrets
+        let sender_data_key = message_secrets
             .sender_data_secret()
             .derive_aead_key(backend, &ciphertext)?;
         // Derive initial nonce from the key schedule using the ciphertext.
-        let sender_data_nonce = secrets
-            .epoch_secrets
-            .sender_data_secret()
-            .derive_aead_nonce(ciphersuite, backend, &ciphertext)?;
+        let sender_data_nonce = message_secrets.sender_data_secret().derive_aead_nonce(
+            ciphersuite,
+            backend,
+            &ciphertext,
+        )?;
         // Compute sender data nonce by xoring reuse guard and key schedule
         // nonce as per spec.
         let mls_sender_data_aad = MlsSenderDataAad::new(
-            context.group_id().clone(),
-            context.epoch(),
+            header.group_id.clone(),
+            header.epoch,
             mls_plaintext.content_type(),
         );
         // Serialize the sender data AAD
@@ -113,8 +113,8 @@ impl MlsCiphertext {
             })?;
         Ok(MlsCiphertext {
             wire_format: WireFormat::MlsCiphertext,
-            group_id: context.group_id().clone(),
-            epoch: context.epoch(),
+            group_id: header.group_id,
+            epoch: header.epoch,
             content_type: mls_plaintext.content_type(),
             authenticated_data: mls_plaintext.authenticated_data().into(),
             encrypted_sender_data: encrypted_sender_data.into(),
@@ -128,8 +128,7 @@ impl MlsCiphertext {
         &self,
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        epoch_secrets: &EpochSecrets,
-        secret_tree: &mut SecretTree,
+        message_secrets: &mut MessageSecrets,
     ) -> Result<VerifiableMlsPlaintext, MlsCiphertextError> {
         log::debug!("Decrypting MlsCiphertext");
         // Check the ciphertext has the correct wire format
@@ -137,11 +136,11 @@ impl MlsCiphertext {
             return Err(MlsCiphertextError::WrongWireFormat);
         }
         // Derive key from the key schedule using the ciphertext.
-        let sender_data_key = epoch_secrets
+        let sender_data_key = message_secrets
             .sender_data_secret()
             .derive_aead_key(backend, self.ciphertext.as_slice())?;
         // Derive initial nonce from the key schedule using the ciphertext.
-        let sender_data_nonce = epoch_secrets.sender_data_secret().derive_aead_nonce(
+        let sender_data_nonce = message_secrets.sender_data_secret().derive_aead_nonce(
             ciphersuite,
             backend,
             self.ciphertext.as_slice(),
@@ -167,7 +166,8 @@ impl MlsCiphertext {
         let secret_type = SecretType::try_from(&self.content_type)
             .map_err(|_| MlsCiphertextError::InvalidContentType)?;
         // Extract generation and key material for encryption
-        let (ratchet_key, mut ratchet_nonce) = secret_tree
+        let (ratchet_key, mut ratchet_nonce) = message_secrets
+            .secret_tree_mut()
             .secret_for_decryption(
                 ciphersuite,
                 backend,

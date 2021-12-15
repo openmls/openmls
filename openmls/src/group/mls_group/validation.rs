@@ -17,9 +17,21 @@ impl MlsGroup {
             return Err(FramingValidationError::WrongGroupId.into());
         }
 
-        // ValSem3
-        if message.epoch() != self.context().epoch() {
-            return Err(FramingValidationError::WrongEpoch.into());
+        // ValSem3: Check boundaries for the epoch
+        // We differentiate depending on the content type
+        match message.content_type() {
+            // For application messages we allow messages for older epochs as well
+            ContentType::Application => {
+                if message.epoch() > self.context().epoch() {
+                    return Err(FramingValidationError::WrongEpoch.into());
+                }
+            }
+            // For all other messages we only only accept the current epoch
+            _ => {
+                if message.epoch() != self.context().epoch() {
+                    return Err(FramingValidationError::WrongEpoch.into());
+                }
+            }
         }
 
         Ok(())
