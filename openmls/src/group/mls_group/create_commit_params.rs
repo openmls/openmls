@@ -6,7 +6,7 @@ use super::{proposals::ProposalStore, *};
 #[derive(Debug, Copy, Clone)]
 pub enum CommitType {
     External,
-    Internal,
+    Member,
 }
 
 pub struct CreateCommitParams<'a> {
@@ -15,7 +15,7 @@ pub struct CreateCommitParams<'a> {
     proposal_store: &'a ProposalStore,         // Mandatory
     inline_proposals: Vec<Proposal>,           // Optional
     force_self_update: bool,                   // Optional
-    commit_type: CommitType,                   // Optional (default is `Internal`)
+    commit_type: CommitType,                   // Optional (default is `Member`)
     psk_fetcher_option: Option<PskFetcher>,    // Optional
 }
 
@@ -64,7 +64,7 @@ impl<'a> TempBuilderCCPM2<'a> {
                 proposal_store,
                 inline_proposals: vec![],
                 force_self_update: true,
-                commit_type: CommitType::Internal,
+                commit_type: CommitType::Member,
                 psk_fetcher_option: None,
             },
         }

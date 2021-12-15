@@ -44,7 +44,7 @@ impl From<CommitType> for SenderType {
     fn from(commit_type: CommitType) -> Self {
         match commit_type {
             CommitType::External => SenderType::NewMember,
-            CommitType::Internal => SenderType::Member,
+            CommitType::Member => SenderType::Member,
         }
     }
 }

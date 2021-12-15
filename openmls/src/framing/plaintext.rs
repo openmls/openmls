@@ -221,7 +221,7 @@ impl MlsPlaintext {
     }
 
     /// This constructor builds an `MlsPlaintext` containing a Commit. The given
-    /// `CommitType` determines the `SenderType`: If it's an `Internal` commit,
+    /// `CommitType` determines the `SenderType`: If it's a `Member` commit,
     /// it's `SenderType::Member` and `SenderType::NewMember` otherwise.
     pub fn commit(
         framing_parameters: FramingParameters,

@@ -44,7 +44,7 @@ impl MlsGroup {
 
         let sender_type = match params.commit_type() {
             CommitType::External => SenderType::NewMember,
-            CommitType::Internal => SenderType::Member,
+            CommitType::Member => SenderType::Member,
         };
         // Filter proposals
         let (proposal_queue, contains_own_updates) = CreationProposalQueue::filter_proposals(
