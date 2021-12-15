@@ -14,7 +14,7 @@ use crate::{
 };
 
 use super::{
-    create_commit_params::CreateCommitParams,
+    create_commit_params::{CommitType, CreateCommitParams},
     proposals::{CreationProposalQueue, ProposalStore},
 };
 
@@ -42,10 +42,15 @@ impl MlsGroup {
     ) -> CreateCommitResult {
         let ciphersuite = self.ciphersuite();
 
+        let sender_type = match params.commit_type() {
+            CommitType::External => SenderType::NewMember,
+            CommitType::Member => SenderType::Member,
+        };
         // Filter proposals
         let (proposal_queue, contains_own_updates) = CreationProposalQueue::filter_proposals(
             ciphersuite,
             backend,
+            sender_type,
             params.proposal_store(),
             params.inline_proposals(),
             self.treesync().own_leaf_index(),
@@ -126,10 +131,11 @@ impl MlsGroup {
         provisional_epoch.increment();
 
         // Build MlsPlaintext
-        let mut mls_plaintext = MlsPlaintext::new_commit(
+        let mut mls_plaintext = MlsPlaintext::commit(
             *params.framing_parameters(),
             sender_index,
             commit,
+            params.commit_type(),
             params.credential_bundle(),
             &self.group_context,
             backend,

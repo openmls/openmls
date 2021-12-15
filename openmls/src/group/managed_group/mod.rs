@@ -204,7 +204,7 @@ impl ManagedGroup {
 
     #[cfg(any(feature = "test-utils", test))]
     pub fn print_tree(&self, message: &str) {
-        _print_tree(&self.group.treesync(), message)
+        _print_tree(self.group.treesync(), message)
     }
 
     /// Get the underlying [MlsGroup].

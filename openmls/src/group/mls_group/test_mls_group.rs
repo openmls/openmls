@@ -8,7 +8,10 @@ use tls_codec::Serialize;
 
 use crate::{
     ciphersuite::{signable::Signable, AeadNonce},
-    group::{create_commit_params::CreateCommitParams, GroupEpoch},
+    group::{
+        create_commit_params::{CommitType, CreateCommitParams},
+        GroupEpoch,
+    },
     messages::{Commit, ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload, PathSecretError},
     prelude::*,
     schedule::psk::*,
@@ -82,7 +85,7 @@ fn test_failed_groupinfo_decryption(
         let confirmation_tag = ConfirmationTag(Mac {
             mac_value: vec![1, 2, 3, 4, 5, 6, 7, 8, 9].into(),
         });
-        let signer_index = LeafIndex::from(8u32);
+        let signer_index = 8u32;
         let group_info = GroupInfoPayload::new(
             group_id,
             epoch,
@@ -326,7 +329,7 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     let path = commit.path.expect("An unexpected error occurred.");
 
-    let mut broken_path = path.clone();
+    let mut broken_path = path;
     // For simplicity, let's just break all the ciphertexts.
     broken_path.flip_eps_bytes();
 
@@ -336,10 +339,11 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         path: Some(broken_path),
     };
 
-    let mut broken_plaintext = MlsPlaintext::new_commit(
+    let mut broken_plaintext = MlsPlaintext::commit(
         framing_parameters,
         mls_plaintext_commit.sender_index(),
         broken_commit,
+        CommitType::Member,
         &bob_credential_bundle,
         group_bob.context(),
         backend,
