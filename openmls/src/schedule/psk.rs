@@ -113,19 +113,13 @@ impl ExternalPsk {
 /// public part that is used as a marker for injection into the key schedule.
 #[derive(Serialize, Deserialize)]
 pub struct PskBundle {
-    psk_id: PreSharedKeyId,
     secret: Secret,
 }
 
 impl PskBundle {
     /// Create a new bundle
-    pub fn new(psk_id: PreSharedKeyId, secret: Secret) -> Result<Self, CryptoError> {
-        Ok(Self { psk_id, secret })
-    }
-
-    /// Return the `PreSharedKeyID`
-    pub fn psk_id(&self) -> &PreSharedKeyId {
-        &self.psk_id
+    pub fn new(secret: Secret) -> Result<Self, CryptoError> {
+        Ok(Self { secret })
     }
 
     /// Return the secret
@@ -315,10 +309,10 @@ impl PskSecret {
 
         let mls_version = ProtocolVersion::default();
         let mut psk_secret = Secret::zero(ciphersuite, mls_version);
-        for (index, psk_bundle) in psk_bundles.iter().enumerate() {
+        for ((index, psk_bundle), psk_id) in psk_bundles.iter().enumerate().zip(psk_ids) {
             let zero_secret = Secret::zero(ciphersuite, mls_version);
             let psk_extracted = zero_secret.hkdf_extract(backend, psk_bundle.secret())?;
-            let psk_label = PskLabel::new(psk_bundle.psk_id(), index as u16, num_psks)
+            let psk_label = PskLabel::new(psk_id, index as u16, num_psks)
                 .tls_serialize_detached()
                 .map_err(|_| PskSecretError::EncodingError)?;
 

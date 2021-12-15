@@ -41,8 +41,7 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
         })
         .zip(psk_ids.clone())
     {
-        let psk_bundle =
-            PskBundle::new(psk_id.clone(), secret).expect("Could not create PskBundle.");
+        let psk_bundle = PskBundle::new(secret).expect("Could not create PskBundle.");
         backend
             .key_store()
             .store(&psk_id, &psk_bundle)

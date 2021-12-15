@@ -114,8 +114,7 @@ fn generate(
         psk_ids.push(psk_id.clone());
         psks.push(psk.secret().clone());
         psks_out.push((psk_id.clone(), psk.secret().clone()));
-        let psk_bundle = PskBundle::new(psk_id.clone(), psk.secret().clone())
-            .expect("Could not create PskBundle.");
+        let psk_bundle = PskBundle::new(psk.secret().clone()).expect("Could not create PskBundle.");
         crypto
             .key_store()
             .store(&psk_id, &psk_bundle)
@@ -367,8 +366,7 @@ pub fn run_test_vector(
                 ciphersuite,
             );
             psks.push(secret.clone());
-            let psk_bundle =
-                PskBundle::new(psk_id.clone(), secret).expect("Could not create PskBundle.");
+            let psk_bundle = PskBundle::new(secret).expect("Could not create PskBundle.");
             backend
                 .key_store()
                 .store(&psk_id, &psk_bundle)
