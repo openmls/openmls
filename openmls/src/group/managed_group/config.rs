@@ -115,7 +115,7 @@ impl ManagedGroupConfigBuilder {
     /// WARNING: This feature enables the storage of message secrets from past epochs.
     /// This allows application messages from previous epochs to be decrypted.
     /// It is a tradeoff between functionality and forward secrecy and should only be enabled
-    /// if the Delivery Service cannot guarantee that application messages will be send in
+    /// if the Delivery Service cannot guarantee that application messages will be sent in
     /// the same epoch in which they were generated.
     pub fn max_past_epochs(mut self, max_past_epochs: usize) -> Self {
         self.config.max_past_epochs = max_past_epochs;
