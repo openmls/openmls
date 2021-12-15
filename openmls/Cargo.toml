@@ -27,7 +27,7 @@ getrandom = { version = "0.2", features = ["js"] }
 itertools = { version = "0.10", optional = true }
 openmls_rust_crypto = { version = "0.1", path = "../openmls_rust_crypto", optional = true }
 evercrypt_backend = { version = "0.1", path = "../evercrypt_backend", optional = true }
-rstest = {version = "^0.11", optional = true}
+rstest = {version = "^0.12", optional = true}
 rstest_reuse = {version = "^0.1", optional = true}
 
 [features]
@@ -43,7 +43,7 @@ pretty_env_logger = "0.4"
 itertools = "0.10"
 openmls = { path = ".", features = ["test-utils"] }
 tempfile = "3"
-rstest = "^0.11"
+rstest = "^0.12"
 rstest_reuse = "^0.1"
 
 # x64 targets get evercrypt compiled into dev-dependencies.

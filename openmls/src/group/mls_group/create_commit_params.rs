@@ -2,12 +2,20 @@
 
 use super::{proposals::ProposalStore, *};
 
+/// Can be used to denote the type of a commit.
+#[derive(Debug, Copy, Clone)]
+pub enum CommitType {
+    External,
+    Member,
+}
+
 pub struct CreateCommitParams<'a> {
     framing_parameters: FramingParameters<'a>, // Mandatory
     credential_bundle: &'a CredentialBundle,   // Mandatory
     proposal_store: &'a ProposalStore,         // Mandatory
     inline_proposals: Vec<Proposal>,           // Optional
     force_self_update: bool,                   // Optional
+    commit_type: CommitType,                   // Optional (default is `Member`)
 }
 
 pub struct TempBuilderCCPM0 {}
@@ -55,6 +63,7 @@ impl<'a> TempBuilderCCPM2<'a> {
                 proposal_store,
                 inline_proposals: vec![],
                 force_self_update: true,
+                commit_type: CommitType::Member,
             },
         }
     }
@@ -67,6 +76,10 @@ impl<'a> CreateCommitParamsBuilder<'a> {
     }
     pub fn force_self_update(mut self, force_self_update: bool) -> Self {
         self.ccp.force_self_update = force_self_update;
+        self
+    }
+    pub fn commit_type(mut self, commit_type: CommitType) -> Self {
+        self.ccp.commit_type = commit_type;
         self
     }
     pub fn build(self) -> CreateCommitParams<'a> {
@@ -93,4 +106,8 @@ impl<'a> CreateCommitParams<'a> {
     pub fn force_self_update(&self) -> bool {
         self.force_self_update
     }
+    pub fn commit_type(&self) -> CommitType {
+        self.commit_type
+    }
+   
 }

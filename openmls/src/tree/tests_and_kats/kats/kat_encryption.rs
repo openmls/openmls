@@ -203,7 +203,7 @@ fn build_handshake_messages(
             .expect("Not enough randomness."),
     );
     let framing_parameters = FramingParameters::new(&[1, 2, 3, 4], WireFormat::MlsCiphertext);
-    let mut plaintext = MlsPlaintext::new_proposal(
+    let mut plaintext = MlsPlaintext::member_proposal(
         framing_parameters,
         leaf,
         Proposal::Remove(RemoveProposal { removed: 0 }),
@@ -340,7 +340,6 @@ pub fn generate_test_vector(
 
     let mut leaves = Vec::new();
     for leaf in 0..n_leaves {
-        let leaf = LeafIndex::from(leaf);
         let mut handshake = Vec::new();
         let mut application = Vec::new();
         for generation in 0..n_generations {

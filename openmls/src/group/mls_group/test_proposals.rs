@@ -105,7 +105,7 @@ fn proposal_queue_functions(
     assert!(!proposal_add_alice1.is_type(ProposalType::Remove));
 
     // Frame proposals in MlsPlaintext
-    let mls_plaintext_add_alice1 = MlsPlaintext::new_proposal(
+    let mls_plaintext_add_alice1 = MlsPlaintext::member_proposal(
         framing_parameters,
         0u32,
         proposal_add_alice1,
@@ -117,7 +117,7 @@ fn proposal_queue_functions(
         backend,
     )
     .expect("Could not create proposal.");
-    let mls_plaintext_add_alice2 = MlsPlaintext::new_proposal(
+    let mls_plaintext_add_alice2 = MlsPlaintext::member_proposal(
         framing_parameters,
         1u32,
         proposal_add_alice2,
@@ -129,7 +129,7 @@ fn proposal_queue_functions(
         backend,
     )
     .expect("Could not create proposal.");
-    let _mls_plaintext_add_bob1 = MlsPlaintext::new_proposal(
+    let _mls_plaintext_add_bob1 = MlsPlaintext::member_proposal(
         framing_parameters,
         1u32,
         proposal_add_bob1,
@@ -154,6 +154,7 @@ fn proposal_queue_functions(
     let (proposal_queue, own_update) = CreationProposalQueue::filter_proposals(
         ciphersuite,
         backend,
+        SenderType::Member,
         &proposal_store,
         &[],
         0u32,
@@ -225,7 +226,7 @@ fn proposal_queue_order(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
     let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
 
     // Frame proposals in MlsPlaintext
-    let mls_plaintext_add_alice1 = MlsPlaintext::new_proposal(
+    let mls_plaintext_add_alice1 = MlsPlaintext::member_proposal(
         framing_parameters,
         0u32,
         proposal_add_alice1.clone(),
@@ -238,7 +239,7 @@ fn proposal_queue_order(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
         backend,
     )
     .expect("Could not create proposal.");
-    let mls_plaintext_add_bob1 = MlsPlaintext::new_proposal(
+    let mls_plaintext_add_bob1 = MlsPlaintext::member_proposal(
         framing_parameters,
         1u32,
         proposal_add_bob1.clone(),
