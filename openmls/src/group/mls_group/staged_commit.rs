@@ -265,7 +265,7 @@ impl MlsGroup {
 
         let (provisional_group_epoch_secrets, provisional_message_secrets) =
             provisional_epoch_secrets
-                .split(serialized_provisional_group_context, diff.leaf_count());
+                .split_secrets(serialized_provisional_group_context, diff.leaf_count());
 
         // Make the diff a staged diff. This finalizes the diff and no more changes can be applied to it.
         let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;

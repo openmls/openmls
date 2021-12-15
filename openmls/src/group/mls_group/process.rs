@@ -35,8 +35,9 @@ impl MlsGroup {
             WireFormat::MlsPlaintext => DecryptedMessage::from_inbound_plaintext(message)?,
             WireFormat::MlsCiphertext => {
                 // If the message is older than the current epoch, we need to fetch the correct secret tree first
-                if message.epoch() < self.context().epoch() {
-                    let message_secrets = if let Some(store) = message_secrets_store.into() {
+                let ciphersuite = self.ciphersuite().clone();
+                let message_secrets = if message.epoch() < self.context().epoch() {
+                    if let Some(store) = message_secrets_store.into() {
                         if let Some(message_secrets) = store.get_epoch(message.epoch()) {
                             message_secrets
                         } else {
@@ -52,21 +53,16 @@ impl MlsGroup {
                                 SecretTreeError::TooDistantInThePast,
                             ),
                         ));
-                    };
-                    DecryptedMessage::from_inbound_ciphertext(
-                        message,
-                        self.ciphersuite(),
-                        backend,
-                        message_secrets,
-                    )?
+                    }
                 } else {
-                    DecryptedMessage::from_inbound_ciphertext(
-                        message,
-                        self.ciphersuite(),
-                        backend,
-                        self.message_secrets_mut(),
-                    )?
-                }
+                    self.message_secrets_mut()
+                };
+                DecryptedMessage::from_inbound_ciphertext(
+                    message,
+                    &ciphersuite,
+                    backend,
+                    message_secrets,
+                )?
             }
         };
 

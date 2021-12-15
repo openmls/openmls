@@ -22,7 +22,7 @@ pub struct MlsCiphertext {
     pub(crate) ciphertext: TlsByteVecU32,
 }
 
-pub(crate) struct Header {
+pub(crate) struct MlsMessageHeader {
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
     pub(crate) sender: LeafIndex,
@@ -34,7 +34,7 @@ impl MlsCiphertext {
         mls_plaintext: &MlsPlaintext,
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        header: Header,
+        header: MlsMessageHeader,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
     ) -> Result<MlsCiphertext, MlsCiphertextError> {

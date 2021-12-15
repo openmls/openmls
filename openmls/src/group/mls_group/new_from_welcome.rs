@@ -168,7 +168,7 @@ impl MlsGroup {
         let epoch_secrets = key_schedule.epoch_secrets(backend, true)?;
 
         let (group_epoch_secrets, message_secrets) =
-            epoch_secrets.split(serialized_group_context, tree.leaf_count()?);
+            epoch_secrets.split_secrets(serialized_group_context, tree.leaf_count()?);
 
         let confirmation_tag = message_secrets
             .confirmation_key()

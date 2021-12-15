@@ -1004,6 +1004,7 @@ impl PartialEq for EpochSecrets {
 
 impl EpochSecrets {
     /// Get the sender_data secret.
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn sender_data_secret(&self) -> &SenderDataSecret {
         &self.sender_data_secret
     }
@@ -1014,31 +1015,37 @@ impl EpochSecrets {
     }
 
     /// Authentication secret
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn authentication_secret(&self) -> &AuthenticationSecret {
         &self.authentication_secret
     }
 
     /// Exporter secret
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn exporter_secret(&self) -> &ExporterSecret {
         &self.exporter_secret
     }
 
     /// Membership key
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn membership_key(&self) -> &MembershipKey {
         &self.membership_key
     }
 
     /// External secret
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn external_secret(&self) -> &ExternalSecret {
         &self.external_secret
     }
 
     /// External secret
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn resumption_secret(&self) -> &ResumptionSecret {
         &self.resumption_secret
     }
 
     /// Init secret
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn init_secret(&self) -> Option<&InitSecret> {
         self.init_secret.as_ref()
     }
@@ -1097,7 +1104,7 @@ impl EpochSecrets {
         })
     }
 
-    pub(crate) fn split(
+    pub(crate) fn split_secrets(
         self,
         serialized_context: Vec<u8>,
         treesize: u32,

@@ -175,7 +175,7 @@ impl MlsGroupBuilder {
         let epoch_secrets = key_schedule.epoch_secrets(backend, true)?;
 
         let (group_epoch_secrets, message_secrets) =
-            epoch_secrets.split(serialized_group_context, 1u32);
+            epoch_secrets.split_secrets(serialized_group_context, 1u32);
 
         let interim_transcript_hash = vec![];
 
@@ -397,7 +397,7 @@ impl MlsGroup {
             &mls_plaintext,
             self.ciphersuite,
             backend,
-            Header {
+            MlsMessageHeader {
                 group_id: self.group_id().clone(),
                 epoch: self.context().epoch(),
                 sender: self.sender_index(),

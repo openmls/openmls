@@ -78,13 +78,6 @@ impl MessageSecrets {
     }
 }
 
-#[cfg(not(test))]
-impl PartialEq for MessageSecrets {
-    fn eq(&self, _other: &Self) -> bool {
-        false
-    }
-}
-
 // In tests we allow comparing secrets.
 #[cfg(test)]
 impl PartialEq for MessageSecrets {

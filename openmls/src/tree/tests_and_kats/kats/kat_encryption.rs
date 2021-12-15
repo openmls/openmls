@@ -218,7 +218,7 @@ fn build_handshake_messages(
         &plaintext,
         group.ciphersuite(),
         backend,
-        Header {
+        MlsMessageHeader {
             group_id: group.group_id().clone(),
             epoch: group.context().epoch(),
             sender: leaf,
@@ -267,7 +267,7 @@ fn build_application_messages(
         &plaintext,
         group.ciphersuite(),
         backend,
-        Header {
+        MlsMessageHeader {
             group_id: group.group_id().clone(),
             epoch: group.context().epoch(),
             sender: leaf,

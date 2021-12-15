@@ -132,7 +132,7 @@ fn codec_ciphertext(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         &plaintext,
         ciphersuite,
         backend,
-        Header {
+        MlsMessageHeader {
             group_id: group_context.group_id().clone(),
             epoch: group_context.epoch(),
             sender: sender.to_leaf_index(),
@@ -216,7 +216,7 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
         &plaintext,
         ciphersuite,
         backend,
-        Header {
+        MlsMessageHeader {
             group_id: group_context.group_id().clone(),
             epoch: group_context.epoch(),
             sender: sender.to_leaf_index(),
@@ -257,7 +257,7 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
             &plaintext,
             ciphersuite,
             backend,
-            Header {
+            MlsMessageHeader {
                 group_id: group_context.group_id().clone(),
                 epoch: group_context.epoch(),
                 sender: sender.to_leaf_index(),
@@ -523,7 +523,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         &bogus_sender_message,
         ciphersuite,
         backend,
-        Header {
+        MlsMessageHeader {
             group_id: group_alice.group_id().clone(),
             epoch: group_alice.context().epoch(),
             sender: 1u32,
@@ -562,7 +562,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         &bogus_sender_message,
         ciphersuite,
         backend,
-        Header {
+        MlsMessageHeader {
             group_id: group_alice.group_id().clone(),
             epoch: group_alice.context().epoch(),
             sender: 1u32,
