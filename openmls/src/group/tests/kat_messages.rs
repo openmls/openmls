@@ -124,18 +124,16 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     };
 
     let psk_id = PreSharedKeyId::new(
-        PskType::External,
+        ciphersuite,
+        crypto.rand(),
         Psk::External(ExternalPsk::new(
             crypto
                 .rand()
                 .random_vec(ciphersuite.hash_length())
                 .expect("An unexpected error occurred."),
         )),
-        crypto
-            .rand()
-            .random_vec(ciphersuite.hash_length())
-            .expect("An unexpected error occurred."),
-    );
+    )
+    .expect("An unexpected error occurred.");
 
     let psk_proposal = PreSharedKeyProposal::new(psk_id);
     let reinit_proposal = ReInitProposal {

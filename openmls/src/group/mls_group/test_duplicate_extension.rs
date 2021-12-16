@@ -89,7 +89,7 @@ fn duplicate_ratchet_tree_extension(
         .expect("Error creating commit");
 
     let staged_commit = alice_group
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, backend)
+        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     alice_group
         .merge_commit(staged_commit)
@@ -123,15 +123,13 @@ fn duplicate_ratchet_tree_extension(
         .config(ciphersuite, ProtocolVersion::default());
     let joiner_secret = group_secrets.joiner_secret;
 
+    // Prepare the PskSecret
+    let psk_secret = PskSecret::new(ciphersuite, backend, group_secrets.psks.psks())
+        .expect("An unexpected error occurred.");
+
     // Create key schedule
-    let key_schedule = KeySchedule::init(
-        ciphersuite,
-        backend,
-        joiner_secret,
-        psk_output(ciphersuite, backend, None, &group_secrets.psks)
-            .expect("Could not extract PSKs"),
-    )
-    .expect("Could not create KeySchedule.");
+    let key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)
+        .expect("Could not create KeySchedule.");
 
     // Derive welcome key & noce from the key schedule
     let (welcome_key, welcome_nonce) = key_schedule
@@ -171,8 +169,7 @@ fn duplicate_ratchet_tree_extension(
     welcome.set_encrypted_group_info(encrypted_group_info);
 
     // Try to join group
-    let error =
-        MlsGroup::new_from_welcome(welcome, None, bob_key_package_bundle, None, backend).err();
+    let error = MlsGroup::new_from_welcome(welcome, None, bob_key_package_bundle, backend).err();
 
     // We expect an error because the ratchet tree is duplicated
     assert_eq!(

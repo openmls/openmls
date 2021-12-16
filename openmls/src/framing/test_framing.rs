@@ -418,7 +418,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .expect("Error creating Commit");
 
     let staged_commit = group_alice
-        .stage_commit(&commit, &proposal_store, &[], None, backend)
+        .stage_commit(&commit, &proposal_store, &[], backend)
         .expect("Could not stage Commit");
     group_alice
         .merge_commit(staged_commit)
@@ -452,7 +452,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .expect("Error creating Commit");
 
     let staged_commit = group_alice
-        .stage_commit(&commit, &proposal_store, &[], None, backend)
+        .stage_commit(&commit, &proposal_store, &[], backend)
         .expect("Could not stage Commit");
     group_alice
         .merge_commit(staged_commit)
@@ -462,7 +462,6 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         welcome_option.expect("An unexpected error occurred."),
         Some(group_alice.treesync().export_nodes()),
         charlie_key_package_bundle,
-        None,
         backend,
     )
     .expect("Charlie: Error creating group from Welcome");
@@ -489,7 +488,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .expect("Error creating Commit");
 
     let staged_commit = group_charlie
-        .stage_commit(&commit, &proposal_store, &[], None, backend)
+        .stage_commit(&commit, &proposal_store, &[], backend)
         .expect("Charlie: Could not stage Commit");
     group_charlie
         .merge_commit(staged_commit)
@@ -499,7 +498,6 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
             &commit,
             &proposal_store,
             &[kpb_option.expect("An unexpected error occurred.")],
-            None,
             backend,
         )
         .expect("Alice: Could not stage Commit");
@@ -667,7 +665,7 @@ fn confirmation_tag_presence(
     commit.unset_confirmation_tag();
 
     let err = group_alice
-        .stage_commit(&commit, &proposal_store, &[], None, backend)
+        .stage_commit(&commit, &proposal_store, &[], backend)
         .expect_err("No error despite missing confirmation tag.");
 
     assert_eq!(
@@ -826,7 +824,7 @@ fn invalid_plaintext_signature(
     commit.unset_confirmation_tag();
 
     let error = group_alice
-        .stage_commit(&commit, &proposal_store, &[], None, backend)
+        .stage_commit(&commit, &proposal_store, &[], backend)
         .expect_err("Staging commit should have yielded an error.");
     assert_eq!(
         error,
@@ -849,7 +847,7 @@ fn invalid_plaintext_signature(
     );
 
     let error = group_alice
-        .stage_commit(&commit, &proposal_store, &[], None, backend)
+        .stage_commit(&commit, &proposal_store, &[], backend)
         .expect_err("Staging commit should have yielded an error.");
     assert_eq!(
         error,
@@ -883,6 +881,6 @@ fn invalid_plaintext_signature(
     );
 
     group_alice
-        .stage_commit(&decoded_commit, &proposal_store, &[], None, backend)
+        .stage_commit(&decoded_commit, &proposal_store, &[], backend)
         .expect("Alice: Error staging commit.");
 }
