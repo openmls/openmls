@@ -93,7 +93,6 @@ fn test_pgs(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvi
             &commit,
             &proposal_store,
             &[kpb_option.expect("No KeyPackageBundle")],
-            None,
             backend,
         )
         .expect("Could not stage Commit");

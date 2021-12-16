@@ -39,7 +39,7 @@ implement_error! {
     pub enum PskSecretError {
         Simple {
             TooManyKeys = "More than 2^16 PSKs were provided.",
-            DifferentLength = "The IDs and secrets vectors have different lengths.",
+            KeyNotFound = "The PSK could not be found in the key store.",
             EncodingError = "Error serializing the PSK label.",
         }
         Complex {

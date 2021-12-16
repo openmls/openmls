@@ -6,7 +6,7 @@
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
 use log::{debug, trace};
-use psk::{PreSharedKeys, PskSecret};
+use psk::PskSecret;
 
 mod apply_proposals;
 pub mod create_commit;
@@ -53,7 +53,7 @@ use std::io::{Error, Read, Write};
 use tls_codec::Serialize as TlsSerializeTrait;
 
 use super::errors::{
-    ExporterError, FramingValidationError, MlsGroupError, ProposalValidationError, PskError,
+    ExporterError, FramingValidationError, MlsGroupError, ProposalValidationError,
 };
 
 pub type CreateCommitResult =
@@ -92,7 +92,7 @@ pub struct MlsGroupBuilder {
     key_package_bundle: KeyPackageBundle,
     group_id: GroupId,
     config: Option<MlsGroupConfig>,
-    psk: Option<PskSecret>,
+    psk_ids: Vec<PreSharedKeyId>,
     version: Option<ProtocolVersion>,
     required_capabilities: Option<RequiredCapabilitiesExtension>,
 }
@@ -104,7 +104,7 @@ impl MlsGroupBuilder {
             key_package_bundle,
             group_id,
             config: None,
-            psk: None,
+            psk_ids: vec![],
             version: None,
             required_capabilities: None,
         }
@@ -114,9 +114,9 @@ impl MlsGroupBuilder {
         self.config = Some(config);
         self
     }
-    /// Set the [`PskSecret`] of the [`MlsGroup`].
-    pub fn with_psk(mut self, psk: PskSecret) -> Self {
-        self.psk = Some(psk);
+    /// Set the [`Vec<PreSharedKeyId>`] of the [`MlsGroup`].
+    pub fn with_psk(mut self, psk_ids: Vec<PreSharedKeyId>) -> Self {
+        self.psk_ids = psk_ids;
         self
     }
     /// Set the [`ProtocolVersion`] of the [`MlsGroup`].
@@ -169,7 +169,10 @@ impl MlsGroupBuilder {
 
         let serialized_group_context = group_context.tls_serialize_detached()?;
 
-        let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, self.psk)?;
+        // Prepare the PskSecret
+        let psk_secret = PskSecret::new(ciphersuite, backend, &self.psk_ids)?;
+
+        let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)?;
         key_schedule.add_context(backend, &serialized_group_context)?;
 
         let epoch_secrets = key_schedule.epoch_secrets(backend, true)?;
@@ -204,14 +207,12 @@ impl MlsGroup {
         welcome: Welcome,
         nodes_option: Option<Vec<Option<Node>>>,
         kpb: KeyPackageBundle,
-        psk_fetcher_option: Option<PskFetcher>,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, MlsGroupError> {
         Ok(Self::new_from_welcome_internal(
             welcome,
             nodes_option,
             kpb,
-            psk_fetcher_option,
             backend,
         )?)
     }
@@ -587,15 +588,6 @@ impl MlsGroup {
     }
 }
 
-// Callback functions
-
-/// This callback function is used in several places in `MlsGroup`.
-/// It gets called whenever the key schedule is advanced and references to PSKs
-/// are encountered. Since the PSKs are to be trandmitted out-of-band, they need
-/// to be fetched from wherever they are stored.
-pub type PskFetcher =
-    fn(psks: &PreSharedKeys, ciphersuite: &'static Ciphersuite) -> Option<Vec<Secret>>;
-
 // Helper functions
 
 pub(crate) fn update_confirmed_transcript_hash(
@@ -622,36 +614,4 @@ pub(crate) fn update_interim_transcript_hash(
         backend,
         &[confirmed_transcript_hash, &commit_auth_data_bytes].concat(),
     )?)
-}
-
-fn psk_output(
-    ciphersuite: &'static Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-    psk_fetcher_option: Option<PskFetcher>,
-    presharedkeys: &PreSharedKeys,
-) -> Result<Option<PskSecret>, PskError> {
-    if !presharedkeys.psks.is_empty() {
-        // Check if a PSK fetcher function was provided
-        match psk_fetcher_option {
-            Some(psk_fetcher) => {
-                // Try to fetch the PSKs with the IDs
-                match psk_fetcher(presharedkeys, ciphersuite) {
-                    Some(psks) => {
-                        // Combine the PSKs in to a PskSecret
-                        let psk_secret = PskSecret::new(
-                            ciphersuite,
-                            backend,
-                            presharedkeys.psks.as_slice(),
-                            &psks,
-                        )?;
-                        Ok(Some(psk_secret))
-                    }
-                    None => Err(PskError::PskIdNotFound),
-                }
-            }
-            None => Err(PskError::NoPskFetcherProvided),
-        }
-    } else {
-        Ok(None)
-    }
 }

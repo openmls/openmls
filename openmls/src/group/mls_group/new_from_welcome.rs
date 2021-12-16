@@ -15,7 +15,6 @@ impl MlsGroup {
         welcome: Welcome,
         nodes_option: Option<Vec<Option<Node>>>,
         key_package_bundle: KeyPackageBundle,
-        psk_fetcher_option: Option<PskFetcher>,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, WelcomeError> {
         log::debug!("MlsGroup::new_from_welcome_internal");
@@ -54,18 +53,11 @@ impl MlsGroup {
             .config(ciphersuite, mls_version);
         let joiner_secret = group_secrets.joiner_secret;
 
+        // Prepare the PskSecret
+        let psk_secret = PskSecret::new(ciphersuite, backend, group_secrets.psks.psks())?;
+
         // Create key schedule
-        let mut key_schedule = KeySchedule::init(
-            ciphersuite,
-            backend,
-            joiner_secret,
-            psk_output(
-                ciphersuite,
-                backend,
-                psk_fetcher_option,
-                &group_secrets.psks,
-            )?,
-        )?;
+        let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)?;
 
         // Derive welcome key & nonce from the key schedule
         let (welcome_key, welcome_nonce) = key_schedule

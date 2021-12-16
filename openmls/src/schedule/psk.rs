@@ -32,7 +32,7 @@
 
 use super::*;
 use crate::group::{GroupEpoch, GroupId};
-use openmls_traits::{random::OpenMlsRand, OpenMlsCryptoProvider};
+use openmls_traits::{key_store::OpenMlsKeyStore, random::OpenMlsRand, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU8, TlsVecU16};
@@ -48,7 +48,16 @@ use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU8, TlsVecU16};
 /// } PSKType;
 /// ```
 #[derive(
-    Debug, PartialEq, Clone, Copy, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Clone,
+    Copy,
+    Hash,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
 )]
 #[repr(u8)]
 pub enum PskType {
@@ -69,9 +78,19 @@ impl TryFrom<u8> for PskType {
     }
 }
 
+impl From<&Psk> for PskType {
+    fn from(psk: &Psk) -> Self {
+        match psk {
+            Psk::External(_) => PskType::External,
+            Psk::Reinit(_) => PskType::Reinit,
+            Psk::Branch(_) => PskType::Branch,
+        }
+    }
+}
+
 /// External PSK.
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug, PartialEq, Clone, Hash, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct ExternalPsk {
     psk_id: TlsByteVecU8,
@@ -90,41 +109,19 @@ impl ExternalPsk {
     }
 }
 
-/// External PSK Bundle. This contains the secret part of the PSK as well as the
+/// Contains the secret part of the PSK as well as the
 /// public part that is used as a marker for injection into the key schedule.
-pub struct ExternalPskBundle {
+#[derive(Serialize, Deserialize)]
+pub struct PskBundle {
     secret: Secret,
-    nonce: Vec<u8>,
-    external_psk: ExternalPsk,
 }
 
-impl ExternalPskBundle {
+impl PskBundle {
     /// Create a new bundle
-    pub fn new(
-        ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
-        secret: Secret,
-        psk_id: Vec<u8>,
-    ) -> Result<Self, CryptoError> {
-        Ok(Self {
-            secret,
-            nonce: backend
-                .rand()
-                .random_vec(ciphersuite.hash_length())
-                .map_err(|_| CryptoError::InsufficientRandomness)?,
-            external_psk: ExternalPsk {
-                psk_id: psk_id.into(),
-            },
-        })
+    pub fn new(secret: Secret) -> Result<Self, CryptoError> {
+        Ok(Self { secret })
     }
-    /// Return the `PreSharedKeyID`
-    pub fn to_presharedkey_id(&self) -> PreSharedKeyId {
-        PreSharedKeyId {
-            psk_type: PskType::External,
-            psk: Psk::External(self.external_psk.clone()),
-            psk_nonce: self.nonce.clone().into(),
-        }
-    }
+
     /// Return the secret
     pub fn secret(&self) -> &Secret {
         &self.secret
@@ -132,7 +129,7 @@ impl ExternalPskBundle {
 }
 /// ReInit PSK.
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug, PartialEq, Clone, Hash, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct ReinitPsk {
     pub(crate) psk_group_id: GroupId,
@@ -152,7 +149,7 @@ impl ReinitPsk {
 
 /// Branch PSK
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug, PartialEq, Clone, Hash, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct BranchPsk {
     pub(crate) psk_group_id: GroupId,
@@ -171,7 +168,7 @@ impl BranchPsk {
 }
 
 /// PSK enum that can contain the different PSK types
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Hash, Serialize, Deserialize)]
 pub enum Psk {
     External(ExternalPsk),
     Reinit(ReinitPsk),
@@ -198,7 +195,7 @@ pub enum Psk {
 ///   opaque psk_nonce<0..255>;
 /// } PreSharedKeyID;
 /// ```
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Hash, Serialize, Deserialize)]
 pub struct PreSharedKeyId {
     pub(crate) psk_type: PskType,
     pub(crate) psk: Psk,
@@ -207,12 +204,19 @@ pub struct PreSharedKeyId {
 
 impl PreSharedKeyId {
     /// Create a new `PreSharedKeyID`
-    pub fn new(psk_type: PskType, psk: Psk, psk_nonce: Vec<u8>) -> Self {
-        Self {
-            psk_type,
+    pub fn new(
+        ciphersuite: &Ciphersuite,
+        rand: &impl OpenMlsRand,
+        psk: Psk,
+    ) -> Result<Self, CryptoError> {
+        Ok(Self {
+            psk_type: PskType::from(&psk),
             psk,
-            psk_nonce: psk_nonce.into(),
-        }
+            psk_nonce: rand
+                .random_vec(ciphersuite.hash_length())
+                .map_err(|_| CryptoError::InsufficientRandomness)?
+                .into(),
+        })
     }
     /// Return the type of the PSK
     pub fn psktype(&self) -> &PskType {
@@ -285,21 +289,29 @@ impl PskSecret {
         ciphersuite: &'static Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         psk_ids: &[PreSharedKeyId],
-        psks: &[Secret],
     ) -> Result<Self, PskSecretError> {
-        if psk_ids.len() != psks.len() {
-            return Err(PskSecretError::DifferentLength);
-        }
-        let num_psks = psks.len();
+        // Check that we don't have too many PSKs
+        let num_psks = psk_ids.len();
         if num_psks > u16::MAX as usize {
             return Err(PskSecretError::TooManyKeys);
         }
         let num_psks = num_psks as u16;
+
+        // Fetch the PskBundles from the key store and make sure we have all of them
+        let mut psk_bundles: Vec<PskBundle> = Vec::new();
+        for psk_id in psk_ids {
+            if let Some(psk_bundle) = backend.key_store().read(&psk_id) {
+                psk_bundles.push(psk_bundle);
+            } else {
+                return Err(PskSecretError::KeyNotFound);
+            }
+        }
+
         let mls_version = ProtocolVersion::default();
         let mut psk_secret = Secret::zero(ciphersuite, mls_version);
-        for ((index, psk), psk_id) in psks.iter().enumerate().zip(psk_ids.iter()) {
+        for ((index, psk_bundle), psk_id) in psk_bundles.iter().enumerate().zip(psk_ids) {
             let zero_secret = Secret::zero(ciphersuite, mls_version);
-            let psk_extracted = zero_secret.hkdf_extract(backend, psk)?;
+            let psk_extracted = zero_secret.hkdf_extract(backend, psk_bundle.secret())?;
             let psk_label = PskLabel::new(psk_id, index as u16, num_psks)
                 .tls_serialize_detached()
                 .map_err(|_| PskSecretError::EncodingError)?;

@@ -69,8 +69,7 @@ impl ManagedGroup {
             })
             .ok_or(ManagedGroupError::NoMatchingKeyPackageBundle)?;
         // TODO #141
-        let group =
-            MlsGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle, None, backend)?;
+        let group = MlsGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle, backend)?;
 
         let managed_group = ManagedGroup {
             managed_group_config: managed_group_config.clone(),

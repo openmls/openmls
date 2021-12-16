@@ -65,7 +65,16 @@ impl GroupId {
 }
 
 #[derive(
-    Debug, PartialEq, Copy, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Copy,
+    Clone,
+    Hash,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct GroupEpoch(pub u64);
 

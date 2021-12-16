@@ -231,7 +231,6 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                     &commit_mls_plaintext,
                     &proposal_store,
                     &[key_package_bundle],
-                    None,
                     backend,
                 )
                 .expect("Error applying Commit");
@@ -284,7 +283,6 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                     welcome.clone(),
                     Some(mls_group.treesync().export_nodes()),
                     key_package_bundle,
-                    None, /* PSKs not supported here */
                     backend,
                 ) {
                     Ok(group) => group,
