@@ -68,10 +68,22 @@ pub struct VerifiablePublicGroupState {
 }
 
 impl VerifiablePublicGroupState {
+    /// Get the `ProtocolVersion` of the unverified
+    /// `PublicGroupState`.
+    pub(crate) fn version(&self) -> ProtocolVersion {
+        self.tbs.version
+    }
+
     /// Get a reference to the `Ciphersuite` of the unverified
     /// `PublicGroupState`.
     pub(crate) fn ciphersuite(&self) -> CiphersuiteName {
         self.tbs.ciphersuite
+    }
+
+    /// Get a reference to the `tree_hash` of the unverified
+    /// `PublicGroupState`.
+    pub(crate) fn tree_hash(&self) -> &[u8] {
+        self.tbs.tree_hash.as_slice()
     }
 
     /// Get the `LeafIndex` of the signer of the unverified `PublicGroupState`.

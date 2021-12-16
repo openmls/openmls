@@ -549,7 +549,7 @@ impl<'a> CreationProposalQueue<'a> {
                 }
                 Proposal::ExternalInit(_) => {
                     // Only use the first external init proposal we find.
-                    if contains_external_init == false {
+                    if !contains_external_init {
                         valid_proposals.insert(queued_proposal.proposal_reference());
                         proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                         contains_external_init = true;

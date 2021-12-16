@@ -3,6 +3,7 @@ use mls_group::create_commit_params::CommitType;
 use crate::{
     ciphersuite::signable::Verifiable,
     credentials::CredentialBundle,
+    group::errors::ExternalInitError,
     messages::{
         proposals::{ExternalInitProposal, Proposal},
         public_group_state::{PublicGroupState, VerifiablePublicGroupState},
@@ -10,14 +11,12 @@ use crate::{
     prelude::{plaintext::MlsPlaintext, KeyPackageBundle},
 };
 
-use crate::group::mls_group::*;
-use crate::group::WelcomeError;
-
 use super::{
     create_commit_params::CreateCommitParams,
     proposals::{ProposalStore, StagedProposal},
     MlsGroup,
 };
+use crate::group::mls_group::*;
 
 pub type ExternalInitResult = Result<
     (
@@ -26,7 +25,7 @@ pub type ExternalInitResult = Result<
         Option<Welcome>,
         Option<KeyPackageBundle>,
     ),
-    WelcomeError,
+    ExternalInitError,
 >;
 
 impl MlsGroup {
@@ -42,6 +41,10 @@ impl MlsGroup {
         verifiable_public_group_state: VerifiablePublicGroupState,
     ) -> ExternalInitResult {
         let ciphersuite = Config::ciphersuite(verifiable_public_group_state.ciphersuite())?;
+        if !Config::supported_versions().contains(&verifiable_public_group_state.version()) {
+            return Err(ExternalInitError::UnsupportedMlsVersion);
+        }
+
         let mut ratchet_tree_extensions = verifiable_public_group_state
             .other_extensions()
             .iter()
@@ -54,7 +57,7 @@ impl MlsGroup {
             let extension = ratchet_tree_extensions
                 .pop()
                 // We know we only have one element
-                .ok_or(WelcomeError::LibraryError)?
+                .ok_or(ExternalInitError::LibraryError)?
                 .as_ratchet_tree_extension()?;
             Some(extension)
         } else {
@@ -63,7 +66,7 @@ impl MlsGroup {
             // for uniqueness anyway when decoding them.
             // We have to see if this makes problems later as it's not something
             // required by the spec right now.
-            return Err(WelcomeError::DuplicateRatchetTreeExtension);
+            return Err(ExternalInitError::DuplicateRatchetTreeExtension);
         };
 
         // Set nodes either from the extension or from the `nodes_option`.
@@ -76,7 +79,7 @@ impl MlsGroup {
                 if let Some(nodes) = nodes_option {
                     (nodes, false)
                 } else {
-                    return Err(WelcomeError::MissingRatchetTree);
+                    return Err(ExternalInitError::MissingRatchetTree);
                 }
             }
         };
@@ -91,19 +94,22 @@ impl MlsGroup {
         let treesync = TreeSync::from_nodes_without_leaf(
             backend,
             ciphersuite,
-            &node_options,
+            node_options,
             &key_package_bundle,
         )?;
-        debug_assert!(treesync.own_leaf_node().is_ok());
+
+        if treesync.tree_hash() != verifiable_public_group_state.tree_hash() {
+            return Err(ExternalInitError::TreeHashMismatch);
+        }
 
         let pgs_signer_leaf = treesync.leaf(verifiable_public_group_state.signer_index())?;
         let pgs_signer_credential = pgs_signer_leaf
-            .ok_or(WelcomeError::UnknownSender)?
+            .ok_or(ExternalInitError::UnknownSender)?
             .key_package()
             .credential();
         let pgs: PublicGroupState = verifiable_public_group_state
             .verify(backend, pgs_signer_credential)
-            .map_err(|_| WelcomeError::InvalidPublicGroupState)?;
+            .map_err(|_| ExternalInitError::InvalidPublicGroupState)?;
 
         let (init_secret, kem_output) = InitSecret::from_public_group_state(backend, &pgs)?;
 
@@ -160,7 +166,7 @@ impl MlsGroup {
         // Immediately create the commit to add ourselves to the group.
         let (mls_plaintext, option_welcome, option_kpb) = group
             .create_commit(params, backend)
-            .map_err(|_| WelcomeError::CommitError)?;
+            .map_err(|_| ExternalInitError::CommitError)?;
 
         Ok((group, mls_plaintext, option_welcome, option_kpb))
     }

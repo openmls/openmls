@@ -302,7 +302,7 @@ pub struct ExternalInitProposal {
 
 impl ExternalInitProposal {
     pub(crate) fn kem_output(&self) -> &[u8] {
-        &self.kem_output.as_slice()
+        self.kem_output.as_slice()
     }
 }
 

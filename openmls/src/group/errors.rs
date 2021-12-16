@@ -82,8 +82,6 @@ implement_error! {
     }
 }
 
-// Errors that can occur while joining a group either through a Welcome message
-// or through an external init.
 implement_error! {
     pub enum WelcomeError {
         Simple {
@@ -111,10 +109,6 @@ implement_error! {
                 "An unknown error occurred.",
             UnknownSender =
                 "Sender not found in tree.",
-            InvalidPublicGroupState =
-                "The signature over the given public group state is invalid.",
-            CommitError =
-                "Error creating external commit",
             LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
             }
         Complex {
@@ -138,6 +132,46 @@ implement_error! {
                 "See [`KeyPackageError`] for details.",
             InterimTranscriptHashError(InterimTranscriptHashError) =
                 "See [`InterimTranscriptHashError`] for details.",
+            CryptoError(CryptoError) =
+                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
+            ProposalError(StagedProposalError) =
+                "See [`StagedProposalError`] for details.",
+        }
+    }
+}
+
+implement_error! {
+    pub enum ExternalInitError {
+        Simple {
+            MissingRatchetTree =
+                "No ratchet tree available to build initial tree.",
+            TreeHashMismatch =
+                "The computed tree hash does not match the one in the GroupInfo.",
+            DuplicateRatchetTreeExtension =
+                "Found a duplicate ratchet tree extension.",
+            UnsupportedMlsVersion =
+                "We don't support the version of the group we are trying to join.",
+            UnknownSender =
+                "Sender not found in tree.",
+            InvalidPublicGroupState =
+                "The signature over the given public group state is invalid.",
+            CommitError =
+                "Error creating external commit",
+            LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
+            }
+        Complex {
+            ConfigError(ConfigError) =
+                "See [`ConfigError`](`crate::config::ConfigError`) for details.",
+            CodecError(TlsCodecError) =
+                "Tls (de)serialization error occurred.",
+            KeyScheduleError(KeyScheduleError) =
+                "An error occurred in the key schedule.",
+            TreeSyncError(TreeSyncError) =
+                "An error occurred while importing the new tree.",
+            ExtensionError(ExtensionError) =
+                "See [`ExtensionError`] for details.",
+            KeyPackageError(KeyPackageError) =
+                "See [`KeyPackageError`] for details.",
             CryptoError(CryptoError) =
                 "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
             ProposalError(StagedProposalError) =

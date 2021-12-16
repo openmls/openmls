@@ -255,14 +255,14 @@ impl InitSecret {
         let version = public_group_state.version;
         let (kem_output, raw_init_secret) = backend.crypto().hpke_setup_sender_and_export(
             ciphersuite.hpke_config(),
-            &public_group_state.external_pub.as_slice(),
+            public_group_state.external_pub.as_slice(),
             &[],
             hpke_info_from_version(version).as_bytes(),
             ciphersuite.hash_length(),
         )?;
         Ok((
             InitSecret {
-                secret: Secret::from_slice(&raw_init_secret, version, &ciphersuite),
+                secret: Secret::from_slice(&raw_init_secret, version, ciphersuite),
             },
             kem_output,
         ))
@@ -285,7 +285,7 @@ impl InitSecret {
             ciphersuite.hash_length(),
         )?;
         Ok(InitSecret {
-            secret: Secret::from_slice(&raw_init_secret, version, &ciphersuite),
+            secret: Secret::from_slice(&raw_init_secret, version, ciphersuite),
         })
     }
 
