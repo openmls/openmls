@@ -148,6 +148,8 @@ pub(super) fn serialize_plaintext_tbs<'a, W: Write>(
     buffer: &mut W,
 ) -> Result<usize, tls_codec::Error> {
     let mut written = if let Some(serialized_context) = serialized_context.into() {
+        // Only a member should have a context.
+        debug_assert_eq!(sender.sender_type, SenderType::Member);
         buffer.write(serialized_context)?
     } else {
         0
