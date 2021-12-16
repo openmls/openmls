@@ -308,6 +308,11 @@ impl MlsCiphertext {
         self.epoch
     }
 
+    /// Get the `content_type` in the `MlsCiphertext`.
+    pub fn content_type(&self) -> ContentType {
+        self.content_type
+    }
+
     /// Set the wire format.
     #[cfg(test)]
     pub(super) fn set_wire_format(&mut self, wire_format: WireFormat) {

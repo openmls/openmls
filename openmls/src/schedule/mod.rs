@@ -1104,6 +1104,10 @@ impl EpochSecrets {
         })
     }
 
+    /// Splits `EpochSecrets` into two different categories:
+    ///  - [`GroupEpochSecrets`]: These secrets are only used within the same epoch
+    ///  - [`MessageSecrets`]: These secrets are potentially also used for past epochs
+    ///    to decrypt and validate messages
     pub(crate) fn split_secrets(
         self,
         serialized_context: Vec<u8>,
@@ -1119,13 +1123,13 @@ impl EpochSecrets {
                 external_secret: self.external_secret,
                 resumption_secret: self.resumption_secret,
             },
-            MessageSecrets {
-                sender_data_secret: self.sender_data_secret,
-                membership_key: self.membership_key,
-                confirmation_key: self.confirmation_key,
+            MessageSecrets::new(
+                self.sender_data_secret,
+                self.membership_key,
+                self.confirmation_key,
                 serialized_context,
                 secret_tree,
-            },
+            ),
         )
     }
 }

@@ -565,14 +565,17 @@ impl MlsGroup {
         self.tree.own_leaf_index()
     }
 
+    /// Get a reference to the group epoch secrets from the group
     pub(crate) fn group_epoch_secrets(&self) -> &GroupEpochSecrets {
         &self.group_epoch_secrets
     }
 
+    /// Get a reference to the message secrets from a group
     pub(crate) fn message_secrets(&self) -> &MessageSecrets {
         &self.message_secrets
     }
 
+    /// Get a mutable reference to the message secrets from a group
     pub(crate) fn message_secrets_mut(&mut self) -> &mut MessageSecrets {
         &mut self.message_secrets
     }

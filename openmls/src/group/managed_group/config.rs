@@ -14,7 +14,8 @@ pub struct ManagedGroupConfig {
     pub(crate) update_policy: UpdatePolicy,
     /// Size of padding in bytes
     pub(crate) padding_size: usize,
-    /// Maximum number of past epochs for which application messages can be decrypted. The default is 0.
+    /// Maximum number of past epochs for which application messages
+    /// can be decrypted. The default is 0.
     pub(crate) max_past_epochs: usize,
     /// Number of resumtion secrets to keep
     pub(crate) number_of_resumption_secrets: usize,
@@ -112,11 +113,15 @@ impl ManagedGroupConfigBuilder {
     }
 
     /// Sets the `max_past_epochs` property of the ManagedGroupConfig.
-    /// WARNING: This feature enables the storage of message secrets from past epochs.
     /// This allows application messages from previous epochs to be decrypted.
+    ///
+    /// **WARNING**
+    ///
+    /// This feature enables the storage of message secrets from past epochs.
     /// It is a tradeoff between functionality and forward secrecy and should only be enabled
     /// if the Delivery Service cannot guarantee that application messages will be sent in
-    /// the same epoch in which they were generated.
+    /// the same epoch in which they were generated. The number for `max_epochs` should be
+    /// as low as possible.
     pub fn max_past_epochs(mut self, max_past_epochs: usize) -> Self {
         self.config.max_past_epochs = max_past_epochs;
         self

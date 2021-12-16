@@ -192,7 +192,7 @@ impl UnverifiedContextMessage {
     /// Constructs an [UnverifiedContextMessage] from an [UnverifiedMessage] and adds the serialized group context.
     /// This function implements the following checks:
     ///  - ValSem8
-    pub(crate) fn from_unverified_message_with_message_secrets(
+    pub(crate) fn from_unverified_message(
         unverified_message: UnverifiedMessage,
         message_secrets: &MessageSecrets,
         backend: &impl OpenMlsCryptoProvider,

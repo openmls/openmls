@@ -40,7 +40,7 @@ impl MlsMessageIn {
     /// Get the content type
     pub fn content_type(&self) -> ContentType {
         match self {
-            MlsMessageIn::Ciphertext(m) => m.content_type,
+            MlsMessageIn::Ciphertext(m) => m.content_type(),
             MlsMessageIn::Plaintext(m) => m.content_type(),
         }
     }

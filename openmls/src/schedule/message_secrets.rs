@@ -6,15 +6,32 @@ use crate::tree::index::LeafIndex;
 /// Combined message secrets that need to be stored for later decryption/verification
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MessageSecrets {
-    pub(crate) sender_data_secret: SenderDataSecret,
-    pub(crate) membership_key: MembershipKey,
-    pub(crate) confirmation_key: ConfirmationKey,
-    pub(crate) serialized_context: Vec<u8>,
+    sender_data_secret: SenderDataSecret,
+    membership_key: MembershipKey,
+    confirmation_key: ConfirmationKey,
+    serialized_context: Vec<u8>,
     pub(crate) secret_tree: SecretTree,
 }
 
 // Public functions
 impl MessageSecrets {
+    ///Create new `MessageSecrets`
+    pub fn new(
+        sender_data_secret: SenderDataSecret,
+        membership_key: MembershipKey,
+        confirmation_key: ConfirmationKey,
+        serialized_context: Vec<u8>,
+        secret_tree: SecretTree,
+    ) -> Self {
+        Self {
+            sender_data_secret,
+            membership_key,
+            confirmation_key,
+            serialized_context,
+            secret_tree,
+        }
+    }
+
     /// Get a reference to the message secrets's sender data secret.
     pub fn sender_data_secret(&self) -> &SenderDataSecret {
         &self.sender_data_secret

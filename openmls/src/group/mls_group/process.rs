@@ -38,7 +38,7 @@ impl MlsGroup {
                 let ciphersuite = self.ciphersuite().clone();
                 let message_secrets = if message.epoch() < self.context().epoch() {
                     if let Some(store) = message_secrets_store.into() {
-                        if let Some(message_secrets) = store.get_epoch(message.epoch()) {
+                        if let Some(message_secrets) = store.secrets_for_epoch(message.epoch()) {
                             message_secrets
                         } else {
                             return Err(MlsGroupError::MlsCiphertextError(
@@ -120,7 +120,7 @@ impl MlsGroup {
         // If the message is older than the current epoch, we need to fetch the correct secret tree first.
         let message_secrets = if unverified_message.epoch() < self.context().epoch() {
             let message_secrets = if let Some(store) = message_secrets_store.into() {
-                if let Some(message_secrets) = store.get_epoch(unverified_message.epoch()) {
+                if let Some(message_secrets) = store.secrets_for_epoch(unverified_message.epoch()) {
                     message_secrets
                 } else {
                     return Err(MlsGroupError::MlsCiphertextError(
@@ -139,12 +139,11 @@ impl MlsGroup {
 
         // Checks the following semantic validation:
         //  - ValSem8
-        let context_plaintext =
-            UnverifiedContextMessage::from_unverified_message_with_message_secrets(
-                unverified_message,
-                message_secrets,
-                backend,
-            )?;
+        let context_plaintext = UnverifiedContextMessage::from_unverified_message(
+            unverified_message,
+            message_secrets,
+            backend,
+        )?;
 
         match context_plaintext {
             UnverifiedContextMessage::Member(member_message) => {

@@ -1,4 +1,4 @@
-//! This module contains tests regarding the use of [`SecretTreeStore`] in [`ManagedGroup`]
+//! This module contains tests regarding the use of [`MessageSecretsStore`] in [`ManagedGroup`]
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};

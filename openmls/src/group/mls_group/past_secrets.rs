@@ -47,8 +47,8 @@ impl MessageSecretsStore {
     }
 
     /// Get a mutable reference to a secret tree for a given epoch `group_epoch`.
-    /// If no tree is found for that epoch, `None` is returned.
-    pub fn get_epoch(&mut self, group_epoch: GroupEpoch) -> Option<&mut MessageSecrets> {
+    /// If no message secrets are found for that epoch, `None` is returned.
+    pub fn secrets_for_epoch(&mut self, group_epoch: GroupEpoch) -> Option<&mut MessageSecrets> {
         let GroupEpoch(epoch) = group_epoch;
         for epoch_tree in self.epoch_trees.iter_mut() {
             if epoch_tree.epoch == epoch {
