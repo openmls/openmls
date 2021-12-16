@@ -176,7 +176,6 @@
 <span id="176">176</span>
 <span id="177">177</span>
 <span id="178">178</span>
-<span id="179">179</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::ops::DerefMut</span>;
 
 <span class="kw">use</span> <span class="ident">mls_group</span>::{<span class="ident">proposals::StagedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
@@ -320,7 +319,6 @@
                             <span class="ident">verified_member_message</span>.<span class="ident">plaintext</span>(),
                             <span class="ident">proposal_store</span>,
                             <span class="ident">own_kpbs</span>,
-                            <span class="prelude-val">None</span>,
                             <span class="ident">backend</span>,
                         )<span class="question-mark">?</span>;
                         <span class="ident">ProcessedMessage::StagedCommitMessage</span>(<span class="ident">Box::new</span>(<span class="ident">staged_commit</span>))

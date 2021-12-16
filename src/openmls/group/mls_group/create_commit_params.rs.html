@@ -110,15 +110,6 @@
 <span id="110">110</span>
 <span id="111">111</span>
 <span id="112">112</span>
-<span id="113">113</span>
-<span id="114">114</span>
-<span id="115">115</span>
-<span id="116">116</span>
-<span id="117">117</span>
-<span id="118">118</span>
-<span id="119">119</span>
-<span id="120">120</span>
-<span id="121">121</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Builder for [CreateCommitParams] that is used in [MlsGroup::create_commit()]</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">proposals::ProposalStore</span>, <span class="kw-2">*</span>};
@@ -137,7 +128,6 @@
     <span class="ident">inline_proposals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Proposal</span><span class="op">&gt;</span>,           <span class="comment">// Optional</span>
     <span class="ident">force_self_update</span>: <span class="ident">bool</span>,                   <span class="comment">// Optional</span>
     <span class="ident">commit_type</span>: <span class="ident">CommitType</span>,                   <span class="comment">// Optional (default is `Member`)</span>
-    <span class="ident">psk_fetcher_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PskFetcher</span><span class="op">&gt;</span>,    <span class="comment">// Optional</span>
 }
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TempBuilderCCPM0</span> {}
@@ -186,7 +176,6 @@
                 <span class="ident">inline_proposals</span>: <span class="macro">vec!</span>[],
                 <span class="ident">force_self_update</span>: <span class="bool-val">true</span>,
                 <span class="ident">commit_type</span>: <span class="ident">CommitType::Member</span>,
-                <span class="ident">psk_fetcher_option</span>: <span class="prelude-val">None</span>,
             },
         }
     }
@@ -199,10 +188,6 @@
     }
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">force_self_update</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">force_self_update</span>: <span class="ident">bool</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">ccp</span>.<span class="ident">force_self_update</span> <span class="op">=</span> <span class="ident">force_self_update</span>;
-        <span class="self">self</span>
-    }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">psk_fetcher_option</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">psk_fetcher_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PskFetcher</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">ccp</span>.<span class="ident">psk_fetcher_option</span> <span class="op">=</span> <span class="ident">psk_fetcher_option</span>;
         <span class="self">self</span>
     }
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">commit_type</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">commit_type</span>: <span class="ident">CommitType</span>) -&gt; <span class="self">Self</span> {
@@ -235,9 +220,6 @@
     }
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">commit_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">CommitType</span> {
         <span class="self">self</span>.<span class="ident">commit_type</span>
-    }
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">psk_fetcher_option</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PskFetcher</span><span class="op">&gt;</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">psk_fetcher_option</span>
     }
 }
 </code></pre></div>

@@ -84,7 +84,6 @@
 <span id="84">84</span>
 <span id="85">85</span>
 <span id="86">86</span>
-<span id="87">87</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
 <span class="kw">impl</span> <span class="ident">ManagedGroup</span> {
@@ -155,8 +154,7 @@
             })
             .<span class="ident">ok_or</span>(<span class="ident">ManagedGroupError::NoMatchingKeyPackageBundle</span>)<span class="question-mark">?</span>;
         <span class="comment">// TODO #141</span>
-        <span class="kw">let</span> <span class="ident">group</span> <span class="op">=</span>
-            <span class="ident">MlsGroup::new_from_welcome</span>(<span class="ident">welcome</span>, <span class="ident">ratchet_tree</span>, <span class="ident">key_package_bundle</span>, <span class="prelude-val">None</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">MlsGroup::new_from_welcome</span>(<span class="ident">welcome</span>, <span class="ident">ratchet_tree</span>, <span class="ident">key_package_bundle</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">managed_group</span> <span class="op">=</span> <span class="ident">ManagedGroup</span> {
             <span class="ident">managed_group_config</span>: <span class="ident">managed_group_config</span>.<span class="ident">clone</span>(),

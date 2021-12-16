@@ -618,46 +618,6 @@
 <span id="618">618</span>
 <span id="619">619</span>
 <span id="620">620</span>
-<span id="621">621</span>
-<span id="622">622</span>
-<span id="623">623</span>
-<span id="624">624</span>
-<span id="625">625</span>
-<span id="626">626</span>
-<span id="627">627</span>
-<span id="628">628</span>
-<span id="629">629</span>
-<span id="630">630</span>
-<span id="631">631</span>
-<span id="632">632</span>
-<span id="633">633</span>
-<span id="634">634</span>
-<span id="635">635</span>
-<span id="636">636</span>
-<span id="637">637</span>
-<span id="638">638</span>
-<span id="639">639</span>
-<span id="640">640</span>
-<span id="641">641</span>
-<span id="642">642</span>
-<span id="643">643</span>
-<span id="644">644</span>
-<span id="645">645</span>
-<span id="646">646</span>
-<span id="647">647</span>
-<span id="648">648</span>
-<span id="649">649</span>
-<span id="650">650</span>
-<span id="651">651</span>
-<span id="652">652</span>
-<span id="653">653</span>
-<span id="654">654</span>
-<span id="655">655</span>
-<span id="656">656</span>
-<span id="657">657</span>
-<span id="658">658</span>
-<span id="659">659</span>
-<span id="660">660</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Functions in this module should never panic. However, if there is a bug in</span>
@@ -666,7 +626,7 @@
 <span class="doccomment">//! error, will still return a `Result` since they may throw a `LibraryError`.</span>
 
 <span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">trace</span>};
-<span class="kw">use</span> <span class="ident">psk</span>::{<span class="ident">PreSharedKeys</span>, <span class="ident">PskSecret</span>};
+<span class="kw">use</span> <span class="ident">psk::PskSecret</span>;
 
 <span class="kw">mod</span> <span class="ident">apply_proposals</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">create_commit</span>;
@@ -713,7 +673,7 @@
 <span class="kw">use</span> <span class="ident">tls_codec::Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::errors</span>::{
-    <span class="ident">ExporterError</span>, <span class="ident">FramingValidationError</span>, <span class="ident">MlsGroupError</span>, <span class="ident">ProposalValidationError</span>, <span class="ident">PskError</span>,
+    <span class="ident">ExporterError</span>, <span class="ident">FramingValidationError</span>, <span class="ident">MlsGroupError</span>, <span class="ident">ProposalValidationError</span>,
 };
 
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">CreateCommitResult</span> <span class="op">=</span>
@@ -752,7 +712,7 @@
     <span class="ident">key_package_bundle</span>: <span class="ident">KeyPackageBundle</span>,
     <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
     <span class="ident">config</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MlsGroupConfig</span><span class="op">&gt;</span>,
-    <span class="ident">psk</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PskSecret</span><span class="op">&gt;</span>,
+    <span class="ident">psk_ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PreSharedKeyId</span><span class="op">&gt;</span>,
     <span class="ident">version</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ProtocolVersion</span><span class="op">&gt;</span>,
     <span class="ident">required_capabilities</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RequiredCapabilitiesExtension</span><span class="op">&gt;</span>,
 }
@@ -764,7 +724,7 @@
             <span class="ident">key_package_bundle</span>,
             <span class="ident">group_id</span>,
             <span class="ident">config</span>: <span class="prelude-val">None</span>,
-            <span class="ident">psk</span>: <span class="prelude-val">None</span>,
+            <span class="ident">psk_ids</span>: <span class="macro">vec!</span>[],
             <span class="ident">version</span>: <span class="prelude-val">None</span>,
             <span class="ident">required_capabilities</span>: <span class="prelude-val">None</span>,
         }
@@ -774,9 +734,9 @@
         <span class="self">self</span>.<span class="ident">config</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">config</span>);
         <span class="self">self</span>
     }
-    <span class="doccomment">/// Set the [`PskSecret`] of the [`MlsGroup`].</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_psk</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">psk</span>: <span class="ident">PskSecret</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">psk</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">psk</span>);
+    <span class="doccomment">/// Set the [`Vec&lt;PreSharedKeyId&gt;`] of the [`MlsGroup`].</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_psk</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">psk_ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PreSharedKeyId</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
+        <span class="self">self</span>.<span class="ident">psk_ids</span> <span class="op">=</span> <span class="ident">psk_ids</span>;
         <span class="self">self</span>
     }
     <span class="doccomment">/// Set the [`ProtocolVersion`] of the [`MlsGroup`].</span>
@@ -829,7 +789,10 @@
 
         <span class="kw">let</span> <span class="ident">serialized_group_context</span> <span class="op">=</span> <span class="ident">group_context</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">key_schedule</span> <span class="op">=</span> <span class="ident">KeySchedule::init</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">joiner_secret</span>, <span class="self">self</span>.<span class="ident">psk</span>)<span class="question-mark">?</span>;
+        <span class="comment">// Prepare the PskSecret</span>
+        <span class="kw">let</span> <span class="ident">psk_secret</span> <span class="op">=</span> <span class="ident">PskSecret::new</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">psk_ids</span>)<span class="question-mark">?</span>;
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">key_schedule</span> <span class="op">=</span> <span class="ident">KeySchedule::init</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">joiner_secret</span>, <span class="ident">psk_secret</span>)<span class="question-mark">?</span>;
         <span class="ident">key_schedule</span>.<span class="ident">add_context</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">serialized_group_context</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">epoch_secrets</span> <span class="op">=</span> <span class="ident">key_schedule</span>.<span class="ident">epoch_secrets</span>(<span class="ident">backend</span>, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
 
@@ -861,14 +824,12 @@
         <span class="ident">welcome</span>: <span class="ident">Welcome</span>,
         <span class="ident">nodes_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">kpb</span>: <span class="ident">KeyPackageBundle</span>,
-        <span class="ident">psk_fetcher_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PskFetcher</span><span class="op">&gt;</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::new_from_welcome_internal</span>(
             <span class="ident">welcome</span>,
             <span class="ident">nodes_option</span>,
             <span class="ident">kpb</span>,
-            <span class="ident">psk_fetcher_option</span>,
             <span class="ident">backend</span>,
         )<span class="question-mark">?</span>)
     }
@@ -1250,15 +1211,6 @@
     }
 }
 
-<span class="comment">// Callback functions</span>
-
-<span class="doccomment">/// This callback function is used in several places in `MlsGroup`.</span>
-<span class="doccomment">/// It gets called whenever the key schedule is advanced and references to PSKs</span>
-<span class="doccomment">/// are encountered. Since the PSKs are to be trandmitted out-of-band, they need</span>
-<span class="doccomment">/// to be fetched from wherever they are stored.</span>
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">PskFetcher</span> <span class="op">=</span>
-    <span class="kw">fn</span>(<span class="ident">psks</span>: <span class="kw-2">&amp;</span><span class="ident">PreSharedKeys</span>, <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Secret</span><span class="op">&gt;</span><span class="op">&gt;</span>;
-
 <span class="comment">// Helper functions</span>
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">update_confirmed_transcript_hash</span>(
@@ -1285,38 +1237,6 @@
         <span class="ident">backend</span>,
         <span class="kw-2">&amp;</span>[<span class="ident">confirmed_transcript_hash</span>, <span class="kw-2">&amp;</span><span class="ident">commit_auth_data_bytes</span>].<span class="ident">concat</span>(),
     )<span class="question-mark">?</span>)
-}
-
-<span class="kw">fn</span> <span class="ident">psk_output</span>(
-    <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
-    <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    <span class="ident">psk_fetcher_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PskFetcher</span><span class="op">&gt;</span>,
-    <span class="ident">presharedkeys</span>: <span class="kw-2">&amp;</span><span class="ident">PreSharedKeys</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PskSecret</span><span class="op">&gt;</span>, <span class="ident">PskError</span><span class="op">&gt;</span> {
-    <span class="kw">if</span> <span class="op">!</span><span class="ident">presharedkeys</span>.<span class="ident">psks</span>.<span class="ident">is_empty</span>() {
-        <span class="comment">// Check if a PSK fetcher function was provided</span>
-        <span class="kw">match</span> <span class="ident">psk_fetcher_option</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">psk_fetcher</span>) =&gt; {
-                <span class="comment">// Try to fetch the PSKs with the IDs</span>
-                <span class="kw">match</span> <span class="ident">psk_fetcher</span>(<span class="ident">presharedkeys</span>, <span class="ident">ciphersuite</span>) {
-                    <span class="prelude-val">Some</span>(<span class="ident">psks</span>) =&gt; {
-                        <span class="comment">// Combine the PSKs in to a PskSecret</span>
-                        <span class="kw">let</span> <span class="ident">psk_secret</span> <span class="op">=</span> <span class="ident">PskSecret::new</span>(
-                            <span class="ident">ciphersuite</span>,
-                            <span class="ident">backend</span>,
-                            <span class="ident">presharedkeys</span>.<span class="ident">psks</span>.<span class="ident">as_slice</span>(),
-                            <span class="kw-2">&amp;</span><span class="ident">psks</span>,
-                        )<span class="question-mark">?</span>;
-                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">psk_secret</span>))
-                    }
-                    <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">PskError::PskIdNotFound</span>),
-                }
-            }
-            <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">PskError::NoPskFetcherProvided</span>),
-        }
-    } <span class="kw">else</span> {
-        <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
-    }
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-search-index-js="../../../../search-index.js" data-search-js="../../../../search.js"></div>

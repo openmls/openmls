@@ -119,7 +119,7 @@
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PskSecretError</span> {
         <span class="ident">Simple</span> {
             <span class="ident">TooManyKeys</span> <span class="op">=</span> <span class="string">&quot;More than 2^16 PSKs were provided.&quot;</span>,
-            <span class="ident">DifferentLength</span> <span class="op">=</span> <span class="string">&quot;The IDs and secrets vectors have different lengths.&quot;</span>,
+            <span class="ident">KeyNotFound</span> <span class="op">=</span> <span class="string">&quot;The PSK could not be found in the key store.&quot;</span>,
             <span class="ident">EncodingError</span> <span class="op">=</span> <span class="string">&quot;Error serializing the PSK label.&quot;</span>,
         }
         <span class="ident">Complex</span> {

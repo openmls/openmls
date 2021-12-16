@@ -269,23 +269,6 @@
 <span id="269">269</span>
 <span id="270">270</span>
 <span id="271">271</span>
-<span id="272">272</span>
-<span id="273">273</span>
-<span id="274">274</span>
-<span id="275">275</span>
-<span id="276">276</span>
-<span id="277">277</span>
-<span id="278">278</span>
-<span id="279">279</span>
-<span id="280">280</span>
-<span id="281">281</span>
-<span id="282">282</span>
-<span id="283">283</span>
-<span id="284">284</span>
-<span id="285">285</span>
-<span id="286">286</span>
-<span id="287">287</span>
-<span id="288">288</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS Group errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -336,8 +319,8 @@
                 <span class="string">&quot;TLS (de)serialization error occurred.&quot;</span>,
             <span class="ident">KeyScheduleError</span>(<span class="ident">KeyScheduleError</span>) <span class="op">=</span>
                 <span class="string">&quot;An error occurred in the key schedule.&quot;</span>,
-            <span class="ident">PskError</span>(<span class="ident">PskError</span>) <span class="op">=</span>
-                <span class="string">&quot;A PSK error occurred.&quot;</span>,
+            <span class="ident">PskSecretError</span>(<span class="ident">PskSecretError</span>) <span class="op">=</span>
+                <span class="string">&quot;A PskSecret error occurred.&quot;</span>,
             <span class="ident">CredentialError</span>(<span class="ident">CredentialError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`CredentialError`](crate::credentials::CredentialError) for details.&quot;</span>,
             <span class="ident">TreeError</span>(<span class="ident">TreeError</span>) <span class="op">=</span>
@@ -408,8 +391,8 @@
                 <span class="string">&quot;Tls (de)serialization error occurred.&quot;</span>,
             <span class="ident">KeyScheduleError</span>(<span class="ident">KeyScheduleError</span>) <span class="op">=</span>
                 <span class="string">&quot;An error occurred in the key schedule.&quot;</span>,
-            <span class="ident">PskError</span>(<span class="ident">PskError</span>) <span class="op">=</span>
-                <span class="string">&quot;A PSK error occured.&quot;</span>,
+            <span class="ident">PskSecretError</span>(<span class="ident">PskSecretError</span>) <span class="op">=</span>
+                <span class="string">&quot;A PskSecret error occured.&quot;</span>,
             <span class="ident">TreeSyncError</span>(<span class="ident">TreeSyncError</span>) <span class="op">=</span>
                 <span class="string">&quot;An error occurred while importing the new tree.&quot;</span>,
             <span class="ident">ExtensionError</span>(<span class="ident">ExtensionError</span>) <span class="op">=</span>
@@ -461,8 +444,6 @@
                 <span class="string">&quot;Tls (de)serialization error occurred.&quot;</span>,
             <span class="ident">KeyScheduleError</span>(<span class="ident">KeyScheduleError</span>) <span class="op">=</span>
                 <span class="string">&quot;An error occurred in the key schedule.&quot;</span>,
-            <span class="ident">PskError</span>(<span class="ident">PskError</span>) <span class="op">=</span>
-                <span class="string">&quot;A PSK error occurred.&quot;</span>,
         }
     }
 }
@@ -480,21 +461,6 @@
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExporterError</span> {
         <span class="ident">KeyLengthTooLong</span> <span class="op">=</span>
             <span class="string">&quot;The requested key length is not supported (too large).&quot;</span>,
-    }
-}
-
-<span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PskError</span> {
-        <span class="ident">Simple</span> {
-            <span class="ident">NoPskFetcherProvided</span> <span class="op">=</span>
-                <span class="string">&quot;A PSK was needed, but no PSK fetcher function was provided.&quot;</span>,
-            <span class="ident">PskIdNotFound</span> <span class="op">=</span>
-                <span class="string">&quot;No PSK was found for PSK ID.&quot;</span>,
-        }
-        <span class="ident">Complex</span> {
-            <span class="ident">PskSecretError</span>(<span class="ident">PskSecretError</span>) <span class="op">=</span>
-                <span class="string">&quot;An error occured when concatenating the PSKs.&quot;</span>,
-        }
     }
 }
 
