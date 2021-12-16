@@ -505,7 +505,7 @@ impl MlsClient for MlsClientImpl {
                     "No key package could be found for the given Welcome message.",
                 )
             })?;
-        let group = MlsGroup::new_from_welcome(welcome, None, kpb, None, &self.crypto_provider)
+        let group = MlsGroup::new_from_welcome(welcome, None, kpb, &self.crypto_provider)
             .map_err(into_status)?;
 
         let interop_group = InteropGroup {
@@ -993,7 +993,6 @@ impl MlsClient for MlsClientImpl {
                 &commit,
                 &proposal_store,
                 &interop_group.own_kpbs,
-                None,
                 &self.crypto_provider,
             )
             .map_err(into_status)?;

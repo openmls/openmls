@@ -223,7 +223,6 @@ impl User {
                                 &msg,
                                 &proposal_store,
                                 &[], // TODO: store key packages.
-                                None,
                                 &self.crypto,
                             ) {
                                 Ok(staged_commit) => {
@@ -356,7 +355,7 @@ impl User {
         let staged_commit = group
             .mls_group
             .borrow_mut()
-            .stage_commit(&commit, &proposal_store, &[], None, &self.crypto)
+            .stage_commit(&commit, &proposal_store, &[], &self.crypto)
             .expect("error applying commit");
         group
             .mls_group
@@ -404,7 +403,6 @@ impl User {
             welcome,
             None, /* no public tree here, has to be in the extension */
             kpb,
-            None, /* PSK fetcher */
             &self.crypto,
         ) {
             Ok(g) => g,

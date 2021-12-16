@@ -165,7 +165,7 @@ fn ratchet_tree_extension(ciphersuite: &'static Ciphersuite, backend: &impl Open
         .expect("Error creating commit");
 
     let staged_commit = alice_group
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, backend)
+        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     alice_group
         .merge_commit(staged_commit)
@@ -175,7 +175,6 @@ fn ratchet_tree_extension(ciphersuite: &'static Ciphersuite, backend: &impl Open
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         None,
         bob_key_package_bundle,
-        None,
         backend,
     ) {
         Ok(g) => g,
@@ -248,7 +247,7 @@ fn ratchet_tree_extension(ciphersuite: &'static Ciphersuite, backend: &impl Open
         .expect("Error creating commit");
 
     let staged_commit = alice_group
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], None, backend)
+        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     alice_group
         .merge_commit(staged_commit)
@@ -258,7 +257,6 @@ fn ratchet_tree_extension(ciphersuite: &'static Ciphersuite, backend: &impl Open
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         None,
         bob_key_package_bundle,
-        None,
         backend,
     )
     .err();

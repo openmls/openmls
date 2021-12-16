@@ -20,7 +20,6 @@ fn build_create_commit_params(backend: &impl OpenMlsCryptoProvider) {
     let proposal_store: &ProposalStore = &ProposalStore::new();
     let inline_proposals: Vec<Proposal> = vec![];
     let force_self_update: bool = true;
-    let psk_fetcher_option: Option<PskFetcher> = None;
 
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
@@ -28,7 +27,6 @@ fn build_create_commit_params(backend: &impl OpenMlsCryptoProvider) {
         .proposal_store(proposal_store)
         .inline_proposals(inline_proposals.clone())
         .force_self_update(force_self_update)
-        .psk_fetcher_option(psk_fetcher_option)
         .build();
 
     assert_eq!(params.framing_parameters(), &framing_parameters);
