@@ -643,13 +643,10 @@ pub(crate) fn update_confirmed_transcript_hash(
     mls_plaintext_commit_content: &MlsPlaintextCommitContent,
     interim_transcript_hash: &[u8],
 ) -> Result<Vec<u8>, MlsGroupError> {
+    let commit_content_bytes = mls_plaintext_commit_content.tls_serialize_detached()?;
     Ok(ciphersuite.hash(
         backend,
-        &[
-            interim_transcript_hash,
-            &mls_plaintext_commit_content.tls_serialize_detached()?,
-        ]
-        .concat(),
+        &[interim_transcript_hash, &commit_content_bytes].concat(),
     )?)
 }
 

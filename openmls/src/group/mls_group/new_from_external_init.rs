@@ -132,7 +132,7 @@ impl MlsGroup {
             tree: treesync,
             interim_transcript_hash: pgs.interim_transcript_hash.into(),
             use_ratchet_tree_extension: enable_ratchet_tree_extension,
-            mls_version: version_from_suite(&ciphersuite.name()),
+            mls_version: pgs.version,
         };
 
         let external_init_proposal = Proposal::ExternalInit(ExternalInitProposal::from(kem_output));

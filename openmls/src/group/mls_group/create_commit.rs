@@ -85,11 +85,10 @@ impl MlsGroup {
                 || contains_own_updates
                 || params.force_self_update()
             {
-                let own_key_package = self.treesync().own_leaf_node()?.key_package();
                 // Create a new key package bundle payload from the existing key
                 // package.
                 let key_package_bundle_payload = KeyPackageBundlePayload::from_rekeyed_key_package(
-                    own_key_package,
+                    self.treesync().own_leaf_node()?.key_package(),
                     backend,
                 )?;
 
@@ -166,19 +165,13 @@ impl MlsGroup {
             self.group_context.extensions(),
         )?;
 
-        // Check if we need to include the init secret from an external commit
-        // we made or if we use the one from the previous epoch.
-        let init_secret =
-            if let Some(ref init_secret) = apply_proposals_values.external_init_secret_option {
-                init_secret
-            } else {
-                self.epoch_secrets()
-                    .init_secret()
-                    .ok_or(MlsGroupError::InitSecretNotFound)?
-            };
-
-        let joiner_secret =
-            JoinerSecret::new(backend, path_processing_result.commit_secret, init_secret)?;
+        let joiner_secret = JoinerSecret::new(
+            backend,
+            path_processing_result.commit_secret,
+            self.epoch_secrets()
+                .init_secret()
+                .ok_or(MlsGroupError::InitSecretNotFound)?,
+        )?;
 
         // Create group secrets for later use, so we can afterwards consume the
         // `joiner_secret`.

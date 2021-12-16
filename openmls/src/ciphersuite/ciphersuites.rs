@@ -178,16 +178,3 @@ pub(crate) fn aead_from_suite(ciphersuite_name: &CiphersuiteName) -> AeadType {
         }
     }
 }
-
-#[inline(always)]
-pub(crate) fn version_from_suite(ciphersuite_name: &CiphersuiteName) -> ProtocolVersion {
-    match ciphersuite_name {
-        CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
-        | CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256
-        | CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
-        | CiphersuiteName::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448
-        | CiphersuiteName::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521
-        | CiphersuiteName::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448
-        | CiphersuiteName::MLS10_256_DHKEMP384_AES256GCM_SHA384_P384 => ProtocolVersion::Mls10,
-    }
-}
