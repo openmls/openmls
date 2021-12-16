@@ -90,7 +90,7 @@ implement_error! {
             JoinerSecretNotFound =
                 "No joiner secret found in the Welcome message.",
             MissingRatchetTree =
-                "No ratchet tree available to build initial tree.",
+                "No ratchet tree available to build initial tree after receiving a Welcome message.",
             TreeHashMismatch =
                 "The computed tree hash does not match the one in the GroupInfo.",
             ConfirmationTagMismatch =
@@ -100,9 +100,9 @@ implement_error! {
             GroupInfoDecryptionFailure =
                 "Unable to decrypt the GroupInfo.",
             DuplicateRatchetTreeExtension =
-                "Found a duplicate ratchet tree extension.",
+                "Found a duplicate ratchet tree extension in the Welcome message.",
             UnsupportedMlsVersion =
-                "We don't support the version of the group we are trying to join.",
+                "The Welcome message uses an unsupported MLS version.",
             MissingKeyPackage =
                 "The sender key package is missing.",
             UnknownError =
@@ -115,7 +115,7 @@ implement_error! {
             ConfigError(ConfigError) =
                 "See [`ConfigError`](`crate::config::ConfigError`) for details.",
             InvalidRatchetTree(TreeError) =
-                "Invalid ratchet tree provided when trying to join the group.",
+                "Invalid ratchet tree in Welcome message.",
             ParentHashMismatch(ParentHashError) =
                 "The parent hash verification failed.",
             CodecError(TlsCodecError) =
