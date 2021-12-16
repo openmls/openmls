@@ -4,10 +4,11 @@ use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
     binary_tree::LeafIndex,
+    group::MlsGroupError,
     key_packages::KeyPackageBundle,
     messages::proposals::{AddProposal, ProposalType},
     schedule::{InitSecret, PreSharedKeyId, PreSharedKeys},
-    treesync::{diff::TreeSyncDiff, node::leaf_node::LeafNode, TreeSyncError},
+    treesync::{diff::TreeSyncDiff, node::leaf_node::LeafNode},
 };
 
 use super::{
@@ -17,11 +18,11 @@ use super::{
 
 /// This struct contain the return values of the `apply_proposals()` function
 pub struct ApplyProposalsValues {
-    pub path_required: bool,
-    pub self_removed: bool,
-    pub invitation_list: Vec<(LeafIndex, AddProposal)>,
-    pub presharedkeys: PreSharedKeys,
-    pub external_init_secret_option: Option<InitSecret>,
+    pub(crate) path_required: bool,
+    pub(crate) self_removed: bool,
+    pub(crate) invitation_list: Vec<(LeafIndex, AddProposal)>,
+    pub(crate) presharedkeys: PreSharedKeys,
+    pub(crate) external_init_secret_option: Option<InitSecret>,
 }
 
 impl ApplyProposalsValues {
@@ -52,7 +53,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
         proposal_queue: CreationProposalQueue,
         key_package_bundles: &[KeyPackageBundle],
-    ) -> Result<ApplyProposalsValues, TreeSyncError> {
+    ) -> Result<ApplyProposalsValues, MlsGroupError> {
         log::debug!("Applying proposal");
         let mut has_updates = false;
         let mut has_removes = false;
@@ -73,7 +74,7 @@ impl MlsGroup {
                 {
                     Some(kpb) => kpb,
                     // We lost the KeyPackageBundle apparently
-                    None => return Err(TreeSyncError::MissingKeyPackage),
+                    None => return Err(MlsGroupError::MissingKeyPackageBundle),
                 };
                 own_kpb.clone().into()
             } else {
@@ -97,21 +98,29 @@ impl MlsGroup {
 
         // Process external init proposals
         for queued_proposal in proposal_queue.filtered_by_type(ProposalType::ExternalInit) {
-            // Unwrapping here is safe because we know the proposal type
-            let external_init_proposal = &queued_proposal.proposal().as_external_init().unwrap();
-            // Decrypt the context an derive the external init.
-            let external_priv = self
-                .epoch_secrets()
-                .external_secret()
-                .derive_external_keypair(backend.crypto(), self.ciphersuite())
-                .private
-                .into();
-            external_init_secret_option = Some(InitSecret::from_kem_output(
-                &external_priv,
-                external_init_proposal.kem_output(),
-            )?);
-            // Ignore every external init beyond the first one.
-            break;
+            // If we are the originator of the external init, we don't need to
+            // get the init secret from the proposal.
+            if queued_proposal.sender().to_leaf_index() != self.treesync().own_leaf_index() {
+                // Unwrapping here is safe because we know the proposal type
+                let external_init_proposal =
+                    &queued_proposal.proposal().as_external_init().unwrap();
+                // Decrypt the context an derive the external init.
+                let external_priv = self
+                    .epoch_secrets()
+                    .external_secret()
+                    .derive_external_keypair(backend.crypto(), self.ciphersuite())
+                    .private
+                    .into();
+                external_init_secret_option = Some(InitSecret::from_kem_output(
+                    backend,
+                    self.ciphersuite(),
+                    self.mls_version,
+                    &external_priv,
+                    external_init_proposal.kem_output(),
+                )?);
+                // Ignore every external init beyond the first one.
+                break;
+            }
         }
 
         // Process adds
@@ -164,14 +173,15 @@ impl MlsGroup {
     pub(crate) fn apply_staged_proposals(
         &self,
         diff: &mut TreeSyncDiff,
-        _backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsCryptoProvider,
         proposal_queue: &StagedProposalQueue,
         key_package_bundles: &[KeyPackageBundle],
-    ) -> Result<ApplyProposalsValues, TreeSyncError> {
+    ) -> Result<ApplyProposalsValues, MlsGroupError> {
         log::debug!("Applying proposal");
         let mut has_updates = false;
         let mut has_removes = false;
         let mut self_removed = false;
+        let mut external_init_secret_option = None;
 
         // Process updates first
         for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Update) {
@@ -187,7 +197,7 @@ impl MlsGroup {
                 {
                     Some(kpb) => kpb,
                     // We lost the KeyPackageBundle apparently
-                    None => return Err(TreeSyncError::MissingKeyPackage),
+                    None => return Err(MlsGroupError::MissingKeyPackageBundle),
                 };
                 own_kpb.clone().into()
             } else {
@@ -207,6 +217,33 @@ impl MlsGroup {
             }
             // Blank the direct path of the removed member
             diff.blank_leaf(remove_proposal.removed())?;
+        }
+
+        // Process external init proposals
+        for queued_proposal in proposal_queue.filtered_by_type(ProposalType::ExternalInit) {
+            // If we are the originator of the external init, we don't need to
+            // get the init secret from the proposal.
+            if queued_proposal.sender().to_leaf_index() != self.treesync().own_leaf_index() {
+                // Unwrapping here is safe because we know the proposal type
+                let external_init_proposal =
+                    &queued_proposal.proposal().as_external_init().unwrap();
+                // Decrypt the context an derive the external init.
+                let external_priv = self
+                    .epoch_secrets()
+                    .external_secret()
+                    .derive_external_keypair(backend.crypto(), self.ciphersuite())
+                    .private
+                    .into();
+                external_init_secret_option = Some(InitSecret::from_kem_output(
+                    backend,
+                    self.ciphersuite(),
+                    self.mls_version,
+                    &external_priv,
+                    external_init_proposal.kem_output(),
+                )?);
+                // Ignore every external init beyond the first one.
+                break;
+            }
         }
 
         // Process adds
@@ -246,6 +283,7 @@ impl MlsGroup {
             path_required,
             self_removed,
             invitation_list,
+            external_init_secret_option,
             presharedkeys,
         })
     }

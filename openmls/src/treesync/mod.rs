@@ -259,6 +259,9 @@ impl TreeSync {
             ts_nodes.push(TreeSyncNode::blank());
             let own_leaf_node: LeafNode = key_package_bundle.clone().into();
             ts_nodes.push(Some(Node::LeafNode(own_leaf_node)).into());
+            own_index_option = Some(
+                u32::try_from((ts_nodes.len() - 1) / 2).map_err(|_| TreeSyncError::LibraryError)?,
+            );
         }
         let tree = MlsBinaryTree::new(ts_nodes)?;
         if let Some(leaf_index) = own_index_option {

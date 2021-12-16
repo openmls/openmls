@@ -1,3 +1,5 @@
+use mls_group::create_commit_params::CommitType;
+
 use crate::{
     ciphersuite::signable::Verifiable,
     credentials::CredentialBundle,
@@ -38,7 +40,6 @@ impl MlsGroup {
         proposals_by_reference: &[MlsPlaintext],
         proposals_by_value: &[Proposal],
         verifiable_public_group_state: VerifiablePublicGroupState,
-        key_package_bundle: KeyPackageBundle,
     ) -> ExternalInitResult {
         let ciphersuite = Config::ciphersuite(verifiable_public_group_state.ciphersuite())?;
         let mut ratchet_tree_extensions = verifiable_public_group_state
@@ -80,6 +81,10 @@ impl MlsGroup {
             }
         };
 
+        // Generate a fresh KeyPackageBundle for the new group.
+        let key_package_bundle =
+            KeyPackageBundle::new(&[ciphersuite.name()], credential_bundle, backend, vec![])?;
+
         // Create a RatchetTree from the given nodes. We have to do this before
         // verifying the PGS, since we need to find the Credential to verify the
         // signature against.
@@ -89,6 +94,7 @@ impl MlsGroup {
             &node_options,
             &key_package_bundle,
         )?;
+        debug_assert!(treesync.own_leaf_node().is_ok());
 
         let pgs_signer_leaf = treesync.leaf(verifiable_public_group_state.signer_index())?;
         let pgs_signer_credential = pgs_signer_leaf
@@ -99,7 +105,7 @@ impl MlsGroup {
             .verify(backend, pgs_signer_credential)
             .map_err(|_| WelcomeError::InvalidPublicGroupState)?;
 
-        let (init_secret, kem_output) = InitSecret::from_public_group_state(&pgs)?;
+        let (init_secret, kem_output) = InitSecret::from_public_group_state(backend, &pgs)?;
 
         // Leaving he confirmed_transcript_hash empty for now. It will later be
         // set using the interim transcrip hash from the PGS.
@@ -107,7 +113,7 @@ impl MlsGroup {
             pgs.group_id,
             pgs.epoch,
             pgs.tree_hash.as_slice().to_vec(),
-            vec![],
+            pgs.confirmed_transcript_hash.into(),
             pgs.group_context_extensions.as_slice(),
         )?;
 
@@ -117,13 +123,14 @@ impl MlsGroup {
             treesync.leaf_count()?.into(),
         );
 
+        // Prepare interim transcript hash
         let group = MlsGroup {
             ciphersuite,
             group_context,
             epoch_secrets,
             secret_tree: RefCell::new(secret_tree),
             tree: treesync,
-            interim_transcript_hash: pgs.interim_transcript_hash.into_vec(),
+            interim_transcript_hash: pgs.interim_transcript_hash.into(),
             use_ratchet_tree_extension: enable_ratchet_tree_extension,
             mls_version: version_from_suite(&ciphersuite.name()),
         };
@@ -145,6 +152,7 @@ impl MlsGroup {
             .credential_bundle(credential_bundle)
             .proposal_store(&proposal_store)
             .inline_proposals(inline_proposals)
+            .commit_type(CommitType::External)
             // Populate the path
             .force_self_update(true)
             .build();

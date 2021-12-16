@@ -22,6 +22,8 @@ implement_error! {
         Simple {
             InitSecretNotFound =
                 "Missing init secret when creating commit.",
+            MissingKeyPackageBundle =
+                "Couldn't find KeyPackageBundle corresponding to own update proposal.",
             NoSignatureKey = "No signature key was found.",
             LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
         }

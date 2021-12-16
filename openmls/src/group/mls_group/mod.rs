@@ -21,6 +21,8 @@ mod test_create_commit_params;
 #[cfg(test)]
 mod test_duplicate_extension;
 #[cfg(test)]
+mod test_external_init;
+#[cfg(test)]
 mod test_mls_group;
 #[cfg(test)]
 mod test_proposals;
@@ -227,24 +229,22 @@ impl MlsGroup {
     /// `MlsPlaintext` containing the commit.
     pub fn new_from_external_init(
         framing_parameters: FramingParameters,
-        nodes_option: Option<Vec<Option<Node>>>,
-        psk_fetcher_option: Option<PskFetcher>,
+        nodes_option: Option<&[Option<Node>]>,
         credential_bundle: &CredentialBundle,
         proposals_by_reference: &[MlsPlaintext],
         proposals_by_value: &[Proposal],
         verifiable_public_group_state: VerifiablePublicGroupState,
         backend: &impl OpenMlsCryptoProvider,
     ) -> ExternalInitResult {
-        todo!()
-        //Self::new_from_external_init_internal(
-        //    framing_parameters,
-        //    nodes_option,
-        //    credential_bundle,
-        //    proposals_by_reference,
-        //    proposals_by_value,
-        //    verifiable_public_group_state,
-        //    backend,
-        //)
+        Self::new_from_external_init_internal(
+            backend,
+            framing_parameters,
+            nodes_option,
+            credential_bundle,
+            proposals_by_reference,
+            proposals_by_value,
+            verifiable_public_group_state,
+        )
     }
 
     // === Create handshake messages ===
@@ -538,6 +538,11 @@ impl MlsGroup {
         self.ciphersuite
     }
 
+    /// Get the MLS version used in this group.
+    pub fn version(&self) -> ProtocolVersion {
+        self.mls_version
+    }
+
     /// Get the group context
     pub fn context(&self) -> &GroupContext {
         &self.group_context
@@ -608,13 +613,15 @@ impl MlsGroup {
         self.secret_tree.borrow_mut()
     }
 
+    /// Current confirmed transcript hash of the group
+    pub(crate) fn confirmed_transcript_hash(&self) -> &[u8] {
+        self.group_context.confirmed_transcript_hash.as_slice()
+    }
+
     /// Current interim transcript hash of the group
     pub(crate) fn interim_transcript_hash(&self) -> &[u8] {
         &self.interim_transcript_hash
     }
-
-    /// Derive the external private key
-    fn derive_external_priv(&self)
 
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn epoch_secrets_mut(&mut self) -> &mut EpochSecrets {
@@ -644,10 +651,13 @@ pub(crate) fn update_confirmed_transcript_hash(
     mls_plaintext_commit_content: &MlsPlaintextCommitContent,
     interim_transcript_hash: &[u8],
 ) -> Result<Vec<u8>, MlsGroupError> {
-    let commit_content_bytes = mls_plaintext_commit_content.tls_serialize_detached()?;
     Ok(ciphersuite.hash(
         backend,
-        &[interim_transcript_hash, &commit_content_bytes].concat(),
+        &[
+            interim_transcript_hash,
+            &mls_plaintext_commit_content.tls_serialize_detached()?,
+        ]
+        .concat(),
     )?)
 }
 

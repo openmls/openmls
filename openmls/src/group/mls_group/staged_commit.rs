@@ -86,7 +86,7 @@ impl MlsGroup {
 
         let sender_key_package_tuple = path_key_package
             .as_ref()
-            .map(|key_package| (sender.to_leaf_index(), key_package));
+            .map(|key_package| (sender, key_package));
 
         // Validate the staged proposals by doing the following checks:
 
@@ -144,9 +144,19 @@ impl MlsGroup {
                     .ok_or(StageCommitError::MissingOwnKeyPackage)?;
                 diff.re_apply_own_update_path(backend, ciphersuite, own_kpb)?
             } else {
-                // Decrypt the UpdatePath
                 let (key_package, update_path_nodes) = path.into_parts();
 
+                // If the committer is a `NewMember`, we have to add the leaf to
+                // the tree before we can apply or even decrypt an update path.
+                // While `apply_received_update_path` will happily update a
+                // blank leaf, we still have to call `add_leaf` here in case
+                // there are no blanks and the new member extended the tree to
+                // fit in.
+                if apply_proposals_values.external_init_secret_option.is_some() {
+                    diff.add_leaf(key_package.clone())?;
+                }
+
+                // Decrypt the UpdatePath
                 let (plain_path, commit_secret) = diff.decrypt_path(
                     backend,
                     ciphersuite,
@@ -174,13 +184,18 @@ impl MlsGroup {
             CommitSecret::zero_secret(ciphersuite, self.mls_version)
         };
 
-        let joiner_secret = JoinerSecret::new(
-            backend,
-            commit_secret,
-            self.epoch_secrets
-                .init_secret()
-                .ok_or(StageCommitError::InitSecretNotFound)?,
-        )?;
+        // Check if we need to include the init secret from an external commit
+        // we applied earlier or if we use the one from the previous epoch.
+        let init_secret =
+            if let Some(ref init_secret) = apply_proposals_values.external_init_secret_option {
+                init_secret
+            } else {
+                self.epoch_secrets()
+                    .init_secret()
+                    .ok_or(MlsGroupError::InitSecretNotFound)?
+            };
+
+        let joiner_secret = JoinerSecret::new(backend, commit_secret, init_secret)?;
 
         // Create provisional group state
         let mut provisional_epoch = self.group_context.epoch;

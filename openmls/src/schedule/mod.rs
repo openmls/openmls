@@ -121,7 +121,7 @@
 //! This means that some functions that are not expected to fail and throw an
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
-use crate::ciphersuite::{version_from_suite, HpkePrivateKey};
+use crate::ciphersuite::HpkePrivateKey;
 use crate::framing::MlsPlaintextTbmPayload;
 use crate::messages::public_group_state::PublicGroupState;
 use crate::messages::PathSecret;
@@ -247,49 +247,46 @@ impl InitSecret {
     /// Create an `InitSecret` and the corresponding `kem_output` from a public
     /// group state.
     pub(crate) fn from_public_group_state(
+        backend: &impl OpenMlsCryptoProvider,
         public_group_state: &PublicGroupState,
     ) -> Result<(Self, Vec<u8>), KeyScheduleError> {
         let ciphersuite = Config::ciphersuite(public_group_state.ciphersuite)
             .map_err(|_| KeyScheduleError::UnsupportedCiphersuite)?;
-        let version = version_from_suite(&public_group_state.ciphersuite);
-        // FIXME: Use the new setup sender and export one-shot after #629 is merged
-        todo!();
-        //let (kem_output, context) = ciphersuite
-        //    .hpke()
-        //    .setup_sender(&public_group_state.external_pub, &[], None, None, None)
-        //    .map_err(|_| KeyScheduleError::HpkeError)?;
-        //let hpke_info = hpke_info_from_version(version);
-        //let raw_init_secret = context.export(&hpke_info.into_bytes(), ciphersuite.hash_length());
-        //Ok((
-        //    InitSecret {
-        //        secret: Secret::from_slice(&raw_init_secret, version, &ciphersuite),
-        //    },
-        //    kem_output,
-        //))
+        let version = public_group_state.version;
+        let (kem_output, raw_init_secret) = backend.crypto().hpke_setup_sender_and_export(
+            ciphersuite.hpke_config(),
+            &public_group_state.external_pub.as_slice(),
+            &[],
+            hpke_info_from_version(version).as_bytes(),
+            ciphersuite.hash_length(),
+        )?;
+        Ok((
+            InitSecret {
+                secret: Secret::from_slice(&raw_init_secret, version, &ciphersuite),
+            },
+            kem_output,
+        ))
     }
 
     /// Create an `InitSecret` from a `kem_output`.
     pub(crate) fn from_kem_output(
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &'static Ciphersuite,
+        version: ProtocolVersion,
         external_priv: &HpkePrivateKey,
         kem_output: &[u8],
     ) -> Result<Self, KeyScheduleError> {
-        //let ciphersuite = Config::ciphersuite(public_group_state.ciphersuite)
-        //    .map_err(|_| KeyScheduleError::UnsupportedCiphersuite)?;
-        //let version = version_from_suite(&public_group_state.ciphersuite);
-        // FIXME: Use the new setup sender and export one-shot after #629 is merged
-        todo!();
-        //let (kem_output, context) = ciphersuite
-        //    .hpke()
-        //    .setup_sender(&public_group_state.external_pub, &[], None, None, None)
-        //    .map_err(|_| KeyScheduleError::HpkeError)?;
-        //let hpke_info = hpke_info_from_version(version);
-        //let raw_init_secret = context.export(&hpke_info.into_bytes(), ciphersuite.hash_length());
-        //Ok((
-        //    InitSecret {
-        //        secret: Secret::from_slice(&raw_init_secret, version, &ciphersuite),
-        //    },
-        //    kem_output,
-        //))
+        let raw_init_secret = backend.crypto().hpke_setup_receiver_and_export(
+            ciphersuite.hpke_config(),
+            kem_output,
+            external_priv.as_slice(),
+            &[],
+            hpke_info_from_version(version).as_bytes(),
+            ciphersuite.hash_length(),
+        )?;
+        Ok(InitSecret {
+            secret: Secret::from_slice(&raw_init_secret, version, &ciphersuite),
+        })
     }
 
     #[cfg(any(feature = "test-utils", test))]

@@ -46,12 +46,17 @@ impl<'a> TreeSyncDiff<'a> {
         key_package: &KeyPackage,
     ) -> Result<UpdatePath, TreeKemError> {
         let copath_resolutions = self.copath_resolutions(self.own_leaf_index(), exclusion_list)?;
+        println!(
+            "Encrypting path to copath resolutions: {:?}",
+            copath_resolutions
+        );
 
         // There should be as many copath resolutions.
         if copath_resolutions.len() != path.len() {
             return Err(TreeKemError::PathLengthError);
         }
 
+        println!("Encrypting with group context: {:?}", group_context);
         let mut update_path_nodes = Vec::with_capacity(path.len());
         // Encrypt the secrets
         for (node, resolution) in path.iter().zip(copath_resolutions.iter()) {
@@ -94,6 +99,7 @@ impl<'a> TreeSyncDiff<'a> {
             .encrypted_path_secrets(resolution_position)
             .ok_or(TreeKemError::EncryptedCiphertextNotFound)?;
 
+        println!("Decrypting with group context: {:?}", group_context);
         let path_secret = PathSecret::decrypt(
             backend,
             ciphersuite,
