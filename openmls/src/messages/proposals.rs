@@ -287,6 +287,7 @@ pub struct ReInitProposal {
     pub(crate) extensions: TlsVecU32<Extension>,
 }
 
+/// TODO: #556 Implement ExternalInit
 ///
 /// ``` text
 /// struct {
