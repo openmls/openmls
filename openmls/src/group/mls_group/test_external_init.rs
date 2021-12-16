@@ -92,7 +92,6 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
             &mls_plaintext_commit,
             &proposal_store,
             &[kpb_option.unwrap()],
-            None,
             backend,
         )
         .expect("error staging commit");
@@ -105,7 +104,6 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
         welcome_bundle_alice_bob_option.unwrap(),
         Some(ratchet_tree),
         bob_key_package_bundle,
-        None,
         backend,
     )
     .unwrap();
@@ -147,14 +145,14 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
     // Have alice and bob process the commit resulting from external init.
     let proposal_store = ProposalStore::default();
     let staged_commit = group_alice
-        .stage_commit(&ext_init_commit, &proposal_store, &[], None, backend)
+        .stage_commit(&ext_init_commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     group_alice
         .merge_commit(staged_commit)
         .expect("error merging commit");
 
     let staged_commit = group_bob
-        .stage_commit(&ext_init_commit, &proposal_store, &[], None, backend)
+        .stage_commit(&ext_init_commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     group_bob
         .merge_commit(staged_commit)
