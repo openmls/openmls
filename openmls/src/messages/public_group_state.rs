@@ -12,9 +12,9 @@ use crate::{
         signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
         CiphersuiteName, HpkePublicKey, Signature,
     },
+    config::ProtocolVersion,
     extensions::Extension,
     group::{CoreGroup, GroupEpoch, GroupId},
-    prelude::ProtocolVersion,
     treesync::LeafIndex,
 };
 

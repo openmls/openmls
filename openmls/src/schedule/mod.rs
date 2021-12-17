@@ -122,10 +122,10 @@
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
 use crate::ciphersuite::HpkePrivateKey;
+use crate::config::Config;
 use crate::framing::MlsPlaintextTbmPayload;
 use crate::messages::public_group_state::PublicGroupState;
 use crate::messages::PathSecret;
-use crate::prelude::Config;
 use crate::tree::secret_tree::SecretTree;
 use crate::treesync::LeafIndex;
 use crate::{ciphersuite::Mac, prelude::MembershipTag};
