@@ -16,11 +16,11 @@ use crate::{
     framing::{
         ContentType, MembershipTag, MlsCiphertext, MlsCiphertextError, MlsMessageIn,
         MlsPlaintextContentType, MlsPlaintextError, MlsPlaintextTbmPayload, Sender,
-        ValidationError, VerifiableMlsPlaintext, VerificationError,
+        ValidationError, VerifiableMlsPlaintext, VerificationError, WireFormat,
     },
     group::{
         CoreGroupError, FramingValidationError, GroupEpoch, GroupId, MlsGroup, MlsGroupConfig,
-        MlsGroupError, WireFormat,
+        MlsGroupError,
     },
     key_packages::{KeyPackage, KeyPackageBundle, KeyPackageError},
     prelude::ProcessedMessage,

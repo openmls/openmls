@@ -10,8 +10,8 @@ use crate::{
     ciphersuite::{Ciphersuite, CiphersuiteName},
     config::Config,
     credentials::{CredentialBundle, CredentialType},
-    framing::{MlsCiphertextError, ProcessedMessage},
-    group::{CoreGroupError, GroupId, MlsGroup, MlsGroupConfig, MlsGroupError, WireFormat},
+    framing::{MlsCiphertextError, ProcessedMessage, WireFormat},
+    group::{CoreGroupError, GroupId, MlsGroup, MlsGroupConfig, MlsGroupError},
     key_packages::KeyPackageBundle,
     tree::secret_tree::SecretTreeError,
 };

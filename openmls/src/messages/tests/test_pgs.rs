@@ -5,10 +5,11 @@ use crate::{
     ciphersuite::signable::Verifiable,
     config::Config,
     credentials::{CredentialBundle, CredentialType},
+    framing::WireFormat,
     group::{
         create_commit_params::CreateCommitParams,
         proposals::{ProposalStore, StagedProposal},
-        GroupId, WireFormat,
+        GroupId,
     },
     key_packages::KeyPackageBundle,
     messages::{

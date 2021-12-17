@@ -57,6 +57,8 @@ use super::errors::{
     CoreGroupError, ExporterError, FramingValidationError, ProposalValidationError,
 };
 
+use super::group_context::*;
+
 pub type CreateCommitResult =
     Result<(MlsPlaintext, Option<Welcome>, Option<KeyPackageBundle>), CoreGroupError>;
 
@@ -516,7 +518,7 @@ impl CoreGroup {
 
     /// Get the group ID
     pub fn group_id(&self) -> &GroupId {
-        &self.group_context.group_id
+        self.group_context.group_id()
     }
 
     /// Get the members of the group, indexed by their leaves.
@@ -628,4 +630,31 @@ pub(crate) fn update_interim_transcript_hash(
         backend,
         &[confirmed_transcript_hash, &commit_auth_data_bytes].concat(),
     )?)
+}
+
+/// Configuration for core group.
+#[derive(Clone, Copy, Debug)]
+pub struct CoreGroupConfig {
+    /// Flag whether to send the ratchet tree along with the `GroupInfo` or not.
+    /// Defaults to false.
+    pub add_ratchet_tree_extension: bool,
+    pub padding_block_size: u32,
+    pub additional_as_epochs: u32,
+}
+
+impl CoreGroupConfig {
+    /// Get the padding block size used in this config.
+    pub fn padding_block_size(&self) -> u32 {
+        self.padding_block_size
+    }
+}
+
+impl Default for CoreGroupConfig {
+    fn default() -> Self {
+        Self {
+            add_ratchet_tree_extension: false,
+            padding_block_size: 10,
+            additional_as_epochs: 0,
+        }
+    }
 }
