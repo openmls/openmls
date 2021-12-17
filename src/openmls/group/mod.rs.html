@@ -153,7 +153,7 @@
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">core_group</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">errors</span>;
 <span class="kw">mod</span> <span class="ident">group_context</span>;
-<span class="kw">mod</span> <span class="ident">managed_group</span>;
+<span class="kw">mod</span> <span class="ident">mls_group</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">tests</span>;
@@ -173,7 +173,7 @@
     <span class="ident">InterimTranscriptHashError</span>, <span class="ident">ProposalValidationError</span>, <span class="ident">StageCommitError</span>, <span class="ident">WelcomeError</span>,
 };
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">group_context</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">managed_group</span>::<span class="kw-2">*</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">mls_group</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use</span> <span class="ident">tls_codec::TlsVecU32</span>;
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">TlsByteVecU8</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
