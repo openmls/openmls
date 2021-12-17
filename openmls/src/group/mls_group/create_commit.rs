@@ -79,33 +79,7 @@ impl CoreGroup {
         // and add our leaf. Also, we have to generate the
         // [`KeyPackageBundlePayload`] slightly differently, because we can't
         // just pull it from the tree if we're a `NewMember`.
-        let key_package_bundle_payload = if params.commit_type() == CommitType::External {
-            // Set our own index in the diff.
-            diff.set_own_index(own_leaf_index);
-
-            // Generate a KeyPackageBundle to generate a payload from for later
-            // path generation.
-            let key_package_bundle = KeyPackageBundle::new(
-                &[ciphersuite.name()],
-                params.credential_bundle(),
-                backend,
-                vec![],
-            )?;
-
-            let _leaf_index = diff.add_leaf(key_package_bundle.key_package().clone())?;
-            debug_assert_eq!(own_leaf_index, _leaf_index);
-            KeyPackageBundlePayload::from_rekeyed_key_package(
-                key_package_bundle.key_package(),
-                backend,
-            )?
-        } else {
-            // Create a new key package bundle payload from the existing key
-            // package.
-            KeyPackageBundlePayload::from_rekeyed_key_package(
-                self.treesync().own_leaf_node()?.key_package(),
-                backend,
-            )?
-        };
+        let key_package_bundle_payload = self.prepare_kpb_payload(backend, &params, &mut diff)?;
 
         // Apply proposals to tree
         let apply_proposals_values =
@@ -303,5 +277,42 @@ impl CoreGroup {
                 path_processing_result.key_package_bundle,
             ))
         }
+    }
+
+    /// Helper function that prepares the [`KeyPackageBundlePayload`] for use in
+    /// a commit depending on the [`CommitType`].
+    fn prepare_kpb_payload(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        params: &CreateCommitParams,
+        diff: &mut TreeSyncDiff,
+    ) -> Result<KeyPackageBundlePayload, CoreGroupError> {
+        let kpb_payload = if params.commit_type() == CommitType::External {
+            // Generate a KeyPackageBundle to generate a payload from for later
+            // path generation.
+            let key_package_bundle = KeyPackageBundle::new(
+                &[self.ciphersuite().name()],
+                params.credential_bundle(),
+                backend,
+                vec![],
+            )?;
+
+            let own_leaf_index = diff.add_leaf(key_package_bundle.key_package().clone())?;
+            // Set our own index in the diff.
+            diff.set_own_index(own_leaf_index);
+
+            KeyPackageBundlePayload::from_rekeyed_key_package(
+                key_package_bundle.key_package(),
+                backend,
+            )?
+        } else {
+            // Create a new key package bundle payload from the existing key
+            // package.
+            KeyPackageBundlePayload::from_rekeyed_key_package(
+                self.treesync().own_leaf_node()?.key_package(),
+                backend,
+            )?
+        };
+        Ok(kpb_payload)
     }
 }
