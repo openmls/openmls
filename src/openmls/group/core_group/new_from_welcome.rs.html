@@ -373,12 +373,12 @@
 
         <span class="kw">let</span> <span class="ident">confirmation_tag</span> <span class="op">=</span> <span class="ident">message_secrets</span>
             .<span class="ident">confirmation_key</span>()
-            .<span class="ident">tag</span>(<span class="ident">backend</span>, <span class="ident">group_context</span>.<span class="ident">confirmed_transcript_hash</span>.<span class="ident">as_slice</span>())<span class="question-mark">?</span>;
+            .<span class="ident">tag</span>(<span class="ident">backend</span>, <span class="ident">group_context</span>.<span class="ident">confirmed_transcript_hash</span>())<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">interim_transcript_hash</span> <span class="op">=</span> <span class="ident">update_interim_transcript_hash</span>(
             <span class="ident">ciphersuite</span>,
             <span class="ident">backend</span>,
             <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextCommitAuthData::from</span>(<span class="kw-2">&amp;</span><span class="ident">confirmation_tag</span>),
-            <span class="ident">group_context</span>.<span class="ident">confirmed_transcript_hash</span>.<span class="ident">as_slice</span>(),
+            <span class="ident">group_context</span>.<span class="ident">confirmed_transcript_hash</span>(),
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Verify confirmation tag</span>

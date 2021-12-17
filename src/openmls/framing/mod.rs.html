@@ -50,6 +50,16 @@
 <span id="50">50</span>
 <span id="51">51</span>
 <span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Message framing</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module implements framing for MLS messages.</span>
@@ -78,10 +88,20 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">message</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">plaintext</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">sender</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">validation</span>::<span class="kw-2">*</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">test_framing</span>;
+
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
+)]</span>
+<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u8</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">WireFormat</span> {
+    <span class="ident">MlsPlaintext</span> <span class="op">=</span> <span class="number">1</span>,
+    <span class="ident">MlsCiphertext</span> <span class="op">=</span> <span class="number">2</span>,
+}
 
 <span class="doccomment">/// This struct is used to group common framing parameters</span>
 <span class="doccomment">/// in order to reduce the number of arguments in function calls.</span>

@@ -44,14 +44,16 @@
 <span id="44">44</span>
 <span id="45">45</span>
 <span id="46">46</span>
+<span id="47">47</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Prelude for OpenMLS.</span>
 <span class="doccomment">//! Include this to get access to all the public functions of OpenMLS.</span>
 
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::framing::WireFormat</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::CoreGroup</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::CoreGroupConfig</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group</span>::{
     <span class="ident">proposals</span>::{<span class="ident">ProposalStore</span>, <span class="ident">StagedProposal</span>},
-    <span class="ident">InvalidMessageError</span>, <span class="ident">MlsGroup</span>, <span class="ident">MlsGroupConfig</span>, <span class="ident">MlsGroupError</span>, <span class="ident">UpdatePolicy</span>, <span class="ident">WireFormat</span>,
+    <span class="ident">InvalidMessageError</span>, <span class="ident">MlsGroup</span>, <span class="ident">MlsGroupConfig</span>, <span class="ident">MlsGroupError</span>, <span class="ident">UpdatePolicy</span>,
 };
 <span class="comment">// Errors</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::errors</span>::{

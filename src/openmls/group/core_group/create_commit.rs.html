@@ -401,7 +401,7 @@
         };
 
         <span class="comment">// Create provisional group state</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">provisional_epoch</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">epoch</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">provisional_epoch</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">epoch</span>();
         <span class="ident">provisional_epoch</span>.<span class="ident">increment</span>();
 
         <span class="comment">// Build MlsPlaintext</span>
@@ -431,7 +431,7 @@
 
         <span class="comment">// Calculate group context</span>
         <span class="kw">let</span> <span class="ident">provisional_group_context</span> <span class="op">=</span> <span class="ident">GroupContext::new</span>(
-            <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(),
+            <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
             <span class="ident">provisional_epoch</span>,
             <span class="ident">tree_hash</span>.<span class="ident">clone</span>(),
             <span class="ident">confirmed_transcript_hash</span>.<span class="ident">clone</span>(),
@@ -501,8 +501,8 @@
             };
             <span class="comment">// Create GroupInfo object</span>
             <span class="kw">let</span> <span class="ident">group_info</span> <span class="op">=</span> <span class="ident">GroupInfoPayload::new</span>(
-                <span class="ident">provisional_group_context</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(),
-                <span class="ident">provisional_group_context</span>.<span class="ident">epoch</span>,
+                <span class="ident">provisional_group_context</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
+                <span class="ident">provisional_group_context</span>.<span class="ident">epoch</span>(),
                 <span class="ident">tree_hash</span>,
                 <span class="ident">confirmed_transcript_hash</span>,
                 <span class="self">self</span>.<span class="ident">group_context_extensions</span>(),
