@@ -1,4 +1,4 @@
-use mls_group::{proposals::StagedProposal, staged_commit::StagedCommit};
+use core_group::{proposals::StagedProposal, staged_commit::StagedCommit};
 
 use crate::tree::secret_tree::SecretTreeError;
 

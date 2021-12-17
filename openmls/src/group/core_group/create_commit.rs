@@ -4,7 +4,7 @@ use crate::{
     ciphersuite::signable::Signable,
     config::Config,
     framing::*,
-    group::{mls_group::*, *},
+    group::{core_group::*, *},
     messages::*,
     treesync::{
         diff::TreeSyncDiff,

@@ -26,7 +26,7 @@
 //! ```
 
 use super::*;
-use mls_group::create_commit_params::CommitType;
+use core_group::create_commit_params::CommitType;
 use std::convert::TryFrom;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 

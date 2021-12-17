@@ -5,10 +5,10 @@
 //! The low-level standard API is described in the `Api` trait.\
 //! The high-level API is exposed in `ManagedGroup`.
 
+pub mod core_group;
 pub mod errors;
 mod group_context;
 mod managed_group;
-pub mod mls_group;
 
 #[cfg(any(feature = "test-utils", test))]
 pub mod tests;
@@ -22,13 +22,13 @@ use openmls_traits::random::OpenMlsRand;
 use openmls_traits::OpenMlsCryptoProvider;
 pub(crate) use serde::{Deserialize, Serialize};
 
+pub use core_group::*;
 pub use errors::{
     CoreGroupError, CreateCommitError, ExporterError, FramingValidationError,
     InterimTranscriptHashError, ProposalValidationError, StageCommitError, WelcomeError,
 };
 pub use group_context::*;
 pub use managed_group::*;
-pub use mls_group::*;
 
 use tls_codec::TlsVecU32;
 use tls_codec::{TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize};
