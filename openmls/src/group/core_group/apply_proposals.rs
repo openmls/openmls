@@ -228,7 +228,7 @@ impl CoreGroup {
             // get the init secret from the proposal. This branching will not be
             // necessary after #617.
             if queued_proposal.sender().to_leaf_index() != self.treesync().own_leaf_index() {
-                // Unwrapping here is safe because we know the proposal type
+                // We know the proposal type, so this should not fail
                 let external_init_proposal = &queued_proposal
                     .proposal()
                     .as_external_init()
