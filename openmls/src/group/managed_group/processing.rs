@@ -5,7 +5,7 @@ use core_group::{
 
 use super::*;
 
-impl ManagedGroup {
+impl MlsGroup {
     /// This function is used to parse messages from the DS.
     /// It checks for syntactic errors and makes some semantic checks as well.
     /// If the input is a [MlsCiphertext] message, it will be decrypted.
@@ -15,10 +15,10 @@ impl ManagedGroup {
         &mut self,
         message: MlsMessageIn,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<UnverifiedMessage, ManagedGroupError> {
+    ) -> Result<UnverifiedMessage, MlsGroupError> {
         // Make sure we are still a member of the group
         if !self.active {
-            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
+            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
         // Since the state of the group might be changed, arm the state flag
@@ -27,7 +27,7 @@ impl ManagedGroup {
         // Parse the message
         self.group
             .parse_message(message, &mut self.message_secrets_store, backend)
-            .map_err(ManagedGroupError::Group)
+            .map_err(MlsGroupError::Group)
     }
 
     /// This processing function does most of the semantic verifications.
@@ -37,7 +37,7 @@ impl ManagedGroup {
         unverified_message: UnverifiedMessage,
         signature_key: Option<&SignaturePublicKey>,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<ProcessedMessage, ManagedGroupError> {
+    ) -> Result<ProcessedMessage, MlsGroupError> {
         self.group
             .process_unverified_message(
                 unverified_message,
@@ -64,16 +64,16 @@ impl ManagedGroup {
     pub fn commit_to_pending_proposals(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<(MlsMessageOut, Option<Welcome>), ManagedGroupError> {
+    ) -> Result<(MlsMessageOut, Option<Welcome>), MlsGroupError> {
         if !self.active {
-            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
+            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
             .read(credential.signature_key())
-            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+            .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
         // Create Commit over all pending proposals
         // TODO #141
@@ -103,7 +103,7 @@ impl ManagedGroup {
     pub fn merge_staged_commit(
         &mut self,
         staged_commit: StagedCommit,
-    ) -> Result<(), ManagedGroupError> {
+    ) -> Result<(), MlsGroupError> {
         // Check if we were removed from the group
         if staged_commit.self_removed() {
             self.active = false;
@@ -119,7 +119,7 @@ impl ManagedGroup {
                 &mut self.proposal_store,
                 &mut self.message_secrets_store,
             )
-            .map_err(ManagedGroupError::Group)?;
+            .map_err(MlsGroupError::Group)?;
 
         // Extract and store the resumption secret for the current epoch
         let resumption_secret = self.group.group_epoch_secrets().resumption_secret();

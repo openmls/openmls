@@ -2,7 +2,7 @@ use core_group::create_commit_params::CreateCommitParams;
 
 use super::*;
 
-impl ManagedGroup {
+impl MlsGroup {
     /// Updates the own leaf node
     ///
     /// A [`KeyPackageBundle`](crate::prelude::KeyPackageBundle) can optionally
@@ -14,16 +14,16 @@ impl ManagedGroup {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         key_package_bundle_option: Option<KeyPackageBundle>,
-    ) -> Result<(MlsMessageOut, Option<Welcome>), ManagedGroupError> {
+    ) -> Result<(MlsMessageOut, Option<Welcome>), MlsGroupError> {
         if !self.active {
-            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
+            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
             .read(credential.signature_key())
-            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+            .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
         // Create Commit over all proposals. If a `KeyPackageBundle` was passed
         // in, use it to create an update proposal by value. TODO #141
@@ -52,7 +52,7 @@ impl ManagedGroup {
 
         // Take the new KeyPackageBundle and save it for later
         let kpb = kpb_option.ok_or_else(|| {
-            ManagedGroupError::LibraryError(
+            MlsGroupError::LibraryError(
                 "We didn't get a key package for a full commit on self update.".into(),
             )
         })?;
@@ -74,16 +74,16 @@ impl ManagedGroup {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         key_package_bundle_option: Option<KeyPackageBundle>,
-    ) -> Result<MlsMessageOut, ManagedGroupError> {
+    ) -> Result<MlsMessageOut, MlsGroupError> {
         if !self.active {
-            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
+            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
             .read(credential.signature_key())
-            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+            .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
         let tree = self.group.treesync();
         let existing_key_package = tree.own_leaf_node()?.key_package();
