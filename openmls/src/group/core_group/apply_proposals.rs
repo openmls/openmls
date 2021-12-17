@@ -157,7 +157,7 @@ impl CoreGroup {
         let presharedkeys = PreSharedKeys { psks: psks.into() };
 
         // Determine if Commit needs a path field
-        let path_required = has_updates || has_removes;
+        let path_required = has_updates || has_removes || external_init_secret_option.is_some();
 
         Ok(ApplyProposalsValues {
             path_required,
@@ -283,7 +283,7 @@ impl CoreGroup {
         let presharedkeys = PreSharedKeys { psks: psks.into() };
 
         // Determine if Commit needs a path field
-        let path_required = has_updates || has_removes;
+        let path_required = has_updates || has_removes || external_init_secret_option.is_some();
 
         Ok(ApplyProposalsValues {
             path_required,

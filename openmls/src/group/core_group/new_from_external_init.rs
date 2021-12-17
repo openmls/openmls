@@ -134,8 +134,6 @@ impl CoreGroup {
             .proposal_store(&proposal_store)
             .inline_proposals(inline_proposals)
             .commit_type(CommitType::External)
-            // Populate the path
-            .force_self_update(true)
             .build();
 
         // Immediately create the commit to add ourselves to the group.
