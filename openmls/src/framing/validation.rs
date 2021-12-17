@@ -72,6 +72,7 @@ impl DecryptedMessage {
         backend: &impl OpenMlsCryptoProvider,
         message_secrets: &mut MessageSecrets,
     ) -> Result<Self, ValidationError> {
+        // This will be refactored with #265.
         if let MlsMessageIn::Ciphertext(ciphertext) = inbound_message {
             let plaintext = ciphertext.to_plaintext(ciphersuite, backend, message_secrets)?;
             Self::from_plaintext(plaintext)
@@ -201,15 +202,17 @@ impl UnverifiedContextMessage {
         let (mut plaintext, credential_option) = unverified_message.into_parts();
 
         if plaintext.sender().is_member() {
-            // Add serialized context to plaintext
+            // Add serialized context to plaintext. This is needed for signature & membership verification.
             plaintext.set_context(message_secrets.serialized_context().to_vec());
-            // Verify the membership tag
+            // Verify the membership tag. This needs to be done explicitly for MlsPlaintext messages,
+            // it is implicit for MlsCiphertext messages (because the encryption can only be known by members).
             if plaintext.wire_format() != WireFormat::MlsCiphertext {
                 // ValSem8
                 plaintext.verify_membership(backend, message_secrets.membership_key())?;
             }
         }
         match plaintext.sender().sender_type {
+            // We want to return a credential when the sender type is member
             SenderType::Member => {
                 if let Some(credential) = credential_option {
                     Ok(UnverifiedContextMessage::Member(UnverifiedMemberMessage {

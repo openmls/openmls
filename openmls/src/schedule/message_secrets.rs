@@ -10,7 +10,7 @@ pub struct MessageSecrets {
     membership_key: MembershipKey,
     confirmation_key: ConfirmationKey,
     serialized_context: Vec<u8>,
-    pub(crate) secret_tree: SecretTree,
+    secret_tree: SecretTree,
 }
 
 // Public functions
