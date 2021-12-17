@@ -1,10 +1,11 @@
-use crate::group::{GroupId, WireFormat};
+use crate::group::GroupId;
 use crate::{
     ciphersuite::Ciphersuite,
     config::Config,
     credentials::{CredentialBundle, CredentialType},
+    framing::{FramingParameters, WireFormat},
+    key_packages::KeyPackageBundle,
     messages::public_group_state::VerifiablePublicGroupState,
-    prelude::{FramingParameters, KeyPackageBundle},
     test_utils::*,
 };
 
