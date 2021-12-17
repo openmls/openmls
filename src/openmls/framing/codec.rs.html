@@ -324,6 +324,8 @@
 <span id="324">324</span>
 <span id="325">325</span>
 <span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Size</span>, <span class="ident">TlsByteVecU16</span>, <span class="ident">TlsByteVecU32</span>, <span class="ident">TlsByteVecU8</span>};
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
@@ -474,6 +476,8 @@
     <span class="ident">buffer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>,
 ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">written</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">serialized_context</span>) <span class="op">=</span> <span class="ident">serialized_context</span>.<span class="ident">into</span>() {
+        <span class="comment">// Only a member should have a context.</span>
+        <span class="macro">debug_assert_eq!</span>(<span class="ident">sender</span>.<span class="ident">sender_type</span>, <span class="ident">SenderType::Member</span>);
         <span class="ident">buffer</span>.<span class="ident">write</span>(<span class="ident">serialized_context</span>)<span class="question-mark">?</span>
     } <span class="kw">else</span> {
         <span class="number">0</span>
