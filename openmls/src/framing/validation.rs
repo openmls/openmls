@@ -35,7 +35,7 @@
 //! ```
 
 use crate::schedule::MessageSecrets;
-use mls_group::{proposals::StagedProposal, staged_commit::StagedCommit};
+use core_group::{proposals::StagedProposal, staged_commit::StagedCommit};
 use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::ciphersuite::signable::Verifiable;

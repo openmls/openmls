@@ -2,9 +2,9 @@ use super::*;
 
 use serde::{Deserialize, Serialize};
 
-/// Specifies the configuration parameters for a [`ManagedGroup`]
+/// Specifies the configuration parameters for a [`MlsGroup`]
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct ManagedGroupConfig {
+pub struct MlsGroupConfig {
     /// Defines whether handshake messages (Proposals & Commits) are encrypted.
     /// Application are always encrypted regardless. `Plaintext`: Handshake messages
     /// are returned as MlsPlaintext messages `Ciphertext`: Handshake messages are
@@ -25,38 +25,38 @@ pub struct ManagedGroupConfig {
     pub(crate) required_capabilities: RequiredCapabilitiesExtension,
 }
 
-impl ManagedGroupConfig {
-    /// Returns a builder for [`ManagedGroupConfig`]
-    pub fn builder() -> ManagedGroupConfigBuilder {
-        ManagedGroupConfigBuilder::new()
+impl MlsGroupConfig {
+    /// Returns a builder for [`MlsGroupConfig`]
+    pub fn builder() -> MlsGroupConfigBuilder {
+        MlsGroupConfigBuilder::new()
     }
 
-    /// Get the [`ManagedGroupConfig`] wire format.
+    /// Get the [`MlsGroupConfig`] wire format.
     pub fn wire_format(&self) -> WireFormat {
         self.wire_format
     }
 
-    /// Get the [`ManagedGroupConfig`] padding size.
+    /// Get the [`MlsGroupConfig`] padding size.
     pub fn padding_size(&self) -> usize {
         self.padding_size
     }
 
-    /// Get the [`ManagedGroupConfig`] max past epochs.
+    /// Get the [`MlsGroupConfig`] max past epochs.
     pub fn max_past_epochs(&self) -> usize {
         self.max_past_epochs
     }
 
-    /// Get a reference to the [`ManagedGroupConfig`] update policy.
+    /// Get a reference to the [`MlsGroupConfig`] update policy.
     pub fn update_policy(&self) -> &UpdatePolicy {
         &self.update_policy
     }
 
-    /// Get the [`ManagedGroupConfig`] number of resumption secrets.
+    /// Get the [`MlsGroupConfig`] number of resumption secrets.
     pub fn number_of_resumption_secrets(&self) -> usize {
         self.number_of_resumption_secrets
     }
 
-    /// Get the [`ManagedGroupConfig`] boolean flag that indicates whether ratchet_tree_extension should be used.
+    /// Get the [`MlsGroupConfig`] boolean flag that indicates whether ratchet_tree_extension should be used.
     pub fn use_ratchet_tree_extension(&self) -> bool {
         self.use_ratchet_tree_extension
     }
@@ -69,9 +69,9 @@ impl ManagedGroupConfig {
     }
 }
 
-impl Default for ManagedGroupConfig {
+impl Default for MlsGroupConfig {
     fn default() -> Self {
-        ManagedGroupConfig {
+        MlsGroupConfig {
             wire_format: WireFormat::MlsCiphertext,
             update_policy: UpdatePolicy::default(),
             padding_size: 0,
@@ -84,35 +84,35 @@ impl Default for ManagedGroupConfig {
 }
 
 #[derive(Default)]
-pub struct ManagedGroupConfigBuilder {
-    config: ManagedGroupConfig,
+pub struct MlsGroupConfigBuilder {
+    config: MlsGroupConfig,
 }
-impl ManagedGroupConfigBuilder {
+impl MlsGroupConfigBuilder {
     pub fn new() -> Self {
-        ManagedGroupConfigBuilder {
-            config: ManagedGroupConfig::default(),
+        MlsGroupConfigBuilder {
+            config: MlsGroupConfig::default(),
         }
     }
 
-    /// Sets the `wire_format` property of the ManagedGroupConfig.
+    /// Sets the `wire_format` property of the MlsGroupConfig.
     pub fn wire_format(mut self, wire_format: WireFormat) -> Self {
         self.config.wire_format = wire_format;
         self
     }
 
-    /// Sets the `update_policy` property of the ManagedGroupConfig.
+    /// Sets the `update_policy` property of the MlsGroupConfig.
     pub fn update_policy(mut self, update_policy: UpdatePolicy) -> Self {
         self.config.update_policy = update_policy;
         self
     }
 
-    /// Sets the `padding_size` property of the ManagedGroupConfig.
+    /// Sets the `padding_size` property of the MlsGroupConfig.
     pub fn padding_size(mut self, padding_size: usize) -> Self {
         self.config.padding_size = padding_size;
         self
     }
 
-    /// Sets the `max_past_epochs` property of the ManagedGroupConfig.
+    /// Sets the `max_past_epochs` property of the MlsGroupConfig.
     /// This allows application messages from previous epochs to be decrypted.
     ///
     /// **WARNING**
@@ -127,19 +127,19 @@ impl ManagedGroupConfigBuilder {
         self
     }
 
-    /// Sets the `number_of_resumption_secrets` property of the ManagedGroupConfig.
+    /// Sets the `number_of_resumption_secrets` property of the MlsGroupConfig.
     pub fn number_of_resumtion_secrets(mut self, number_of_resumption_secrets: usize) -> Self {
         self.config.number_of_resumption_secrets = number_of_resumption_secrets;
         self
     }
 
-    /// Sets the `use_ratchet_tree_extension` property of the ManagedGroupConfig.
+    /// Sets the `use_ratchet_tree_extension` property of the MlsGroupConfig.
     pub fn use_ratchet_tree_extension(mut self, use_ratchet_tree_extension: bool) -> Self {
         self.config.use_ratchet_tree_extension = use_ratchet_tree_extension;
         self
     }
 
-    pub fn build(self) -> ManagedGroupConfig {
+    pub fn build(self) -> MlsGroupConfig {
         self.config
     }
 }

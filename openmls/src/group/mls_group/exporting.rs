@@ -1,6 +1,6 @@
 use super::*;
 
-impl ManagedGroup {
+impl MlsGroup {
     // === Export secrets ===
 
     /// Exports a secret from the current epoch
@@ -10,13 +10,13 @@ impl ManagedGroup {
         label: &str,
         context: &[u8],
         key_length: usize,
-    ) -> Result<Vec<u8>, ManagedGroupError> {
+    ) -> Result<Vec<u8>, MlsGroupError> {
         if self.active {
             Ok(self
                 .group
                 .export_secret(backend, label, context, key_length)?)
         } else {
-            Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error))
+            Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error))
         }
     }
 

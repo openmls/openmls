@@ -90,7 +90,7 @@ impl MlsClientImpl {
 }
 
 fn into_status(e: CoreGroupError) -> Status {
-    let message = "managed group error ".to_string() + &e.to_string();
+    let message = "mls group error ".to_string() + &e.to_string();
     tonic::Status::new(tonic::Code::Aborted, message)
 }
 

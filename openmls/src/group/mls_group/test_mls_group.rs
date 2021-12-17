@@ -1,52 +1,90 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{
-    crypto::OpenMlsCrypto,
-    key_store::OpenMlsKeyStore,
-    types::{CryptoError, HpkeCiphertext},
-    OpenMlsCryptoProvider,
-};
-use tls_codec::Serialize;
+use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMlsCryptoProvider};
 
 use crate::{
-    ciphersuite::{signable::Signable, AeadNonce},
-    group::{
-        create_commit_params::{CommitType, CreateCommitParams},
-        GroupEpoch,
-    },
-    messages::{Commit, ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload, PathSecretError},
+    group::InnerState,
     prelude::*,
-    schedule::psk::*,
+    test_utils::test_framework::{
+        errors::ClientError, ActionType::Commit, CodecUse, MlsGroupTestSetup,
+    },
     test_utils::*,
-    treesync::treekem::TreeKemError,
 };
 
+fn generate_credential_bundle(
+    key_store: &impl OpenMlsCryptoProvider,
+    identity: Vec<u8>,
+    credential_type: CredentialType,
+    signature_scheme: SignatureScheme,
+) -> Result<Credential, CredentialError> {
+    let cb = CredentialBundle::new(identity, credential_type, signature_scheme, key_store)?;
+    let credential = cb.credential().clone();
+    key_store
+        .key_store()
+        .store(credential.signature_key(), &cb)
+        .expect("An unexpected error occurred.");
+    Ok(credential)
+}
+
+fn generate_key_package_bundle(
+    key_store: &impl OpenMlsCryptoProvider,
+    ciphersuites: &[CiphersuiteName],
+    credential: &Credential,
+    extensions: Vec<Extension>,
+) -> Result<KeyPackage, KeyPackageError> {
+    let credential_bundle = key_store
+        .key_store()
+        .read(credential.signature_key())
+        .expect("An unexpected error occurred.");
+    let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, key_store, extensions)?;
+    let kp = kpb.key_package().clone();
+    key_store
+        .key_store()
+        .store(
+            &kp.hash(key_store).expect("Could not hash KeyPackage."),
+            &kpb,
+        )
+        .expect("An unexpected error occurred.");
+    Ok(kp)
+}
+
 #[apply(ciphersuites_and_backends)]
-fn test_core_group_persistence(
+fn test_mls_group_persistence(
     ciphersuite: &'static Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
-    // Define credential bundles
-    let alice_credential_bundle = CredentialBundle::new(
+    let group_id = GroupId::from_slice(b"Test Group");
+
+    // Generate credential bundles
+    let alice_credential = generate_credential_bundle(
+        backend,
         "Alice".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
-        backend,
     )
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &alice_credential_bundle,
+    let alice_key_package =
+        generate_key_package_bundle(backend, &[ciphersuite.name()], &alice_credential, vec![])
+            .expect("An unexpected error occurred.");
+
+    // Define the MlsGroup configuration
+    let mls_group_config = MlsGroupConfig::test_default();
+
+    // === Alice creates a group ===
+
+    let mut alice_group = MlsGroup::new(
         backend,
-        Vec::new(),
+        &mls_group_config,
+        group_id,
+        &alice_key_package
+            .hash(backend)
+            .expect("Could not hash KeyPackage."),
     )
     .expect("An unexpected error occurred.");
 
-    // Alice creates a group
-    let alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(backend)
-        .expect("Error creating group.");
+    // Check the internal state has changed
+    assert_eq!(alice_group.state_changed(), InnerState::Changed);
 
     let mut file_out = tempfile::NamedTempFile::new().expect("Could not create file");
     alice_group
@@ -56,476 +94,347 @@ fn test_core_group_persistence(
     let file_in = file_out
         .reopen()
         .expect("Error re-opening serialized group state file");
-    let alice_group_deserialized =
-        CoreGroup::load(file_in).expect("Could not deserialize managed group");
+    let alice_group_deserialized = MlsGroup::load(file_in).expect("Could not deserialize MlsGroup");
 
-    assert_eq!(alice_group, alice_group_deserialized);
+    assert_eq!(
+        (
+            alice_group.export_ratchet_tree(),
+            alice_group.export_secret(backend, "test", &[], 32)
+        ),
+        (
+            alice_group_deserialized.export_ratchet_tree(),
+            alice_group_deserialized.export_secret(backend, "test", &[], 32)
+        )
+    );
 }
 
-/// This function flips the last byte of the ciphertext.
-pub fn flip_last_byte(ctxt: &mut HpkeCiphertext) {
-    let mut last_bits = ctxt
-        .ciphertext
-        .pop()
-        .expect("An unexpected error occurred.");
-    last_bits ^= 0xff;
-    ctxt.ciphertext.push(last_bits);
-}
-
+// This tests if the remover is correctly passed to the callback when one member
+// issues a RemoveProposal and another members issues the next Commit.
 #[apply(ciphersuites_and_backends)]
-fn test_failed_groupinfo_decryption(
-    ciphersuite: &'static Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
-    for version in Config::supported_versions() {
-        let epoch = GroupEpoch(123);
-        let group_id = GroupId::random(backend);
-        let tree_hash = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
-        let confirmed_transcript_hash = vec![1, 1, 1];
-        let extensions = Vec::new();
-        let confirmation_tag = ConfirmationTag(Mac {
-            mac_value: vec![1, 2, 3, 4, 5, 6, 7, 8, 9].into(),
-        });
-        let signer_index = 8u32;
-        let group_info = GroupInfoPayload::new(
-            group_id,
-            epoch,
-            tree_hash,
-            confirmed_transcript_hash,
-            &Vec::new(),
-            &extensions,
-            confirmation_tag,
-            signer_index,
-        );
+fn remover(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let group_id = GroupId::from_slice(b"Test Group");
 
-        // Generate key and nonce for the symmetric cipher.
-        let welcome_key = AeadKey::random(ciphersuite, backend.rand());
-        let welcome_nonce = AeadNonce::random(backend);
+    // Generate credential bundles
+    let alice_credential = generate_credential_bundle(
+        backend,
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+    )
+    .expect("An unexpected error occurred.");
 
-        // Generate receiver key pair.
-        let receiver_key_pair = backend.crypto().derive_hpke_keypair(
-            ciphersuite.hpke_config(),
-            Secret::random(ciphersuite, backend, None)
-                .expect("Not enough randomness.")
-                .as_slice(),
-        );
-        let hpke_info = b"group info welcome test info";
-        let hpke_aad = b"group info welcome test aad";
-        let hpke_input = b"these should be the group secrets";
-        let mut encrypted_group_secrets = backend.crypto().hpke_seal(
-            ciphersuite.hpke_config(),
-            receiver_key_pair.public.as_slice(),
-            hpke_info,
-            hpke_aad,
-            hpke_input,
-        );
+    let bob_credential = generate_credential_bundle(
+        backend,
+        "Bob".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+    )
+    .expect("An unexpected error occurred.");
 
-        let alice_credential_bundle = CredentialBundle::new(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-            backend,
-        )
-        .expect("An unexpected error occurred.");
-        let group_info = group_info
-            .sign(backend, &alice_credential_bundle)
-            .expect("Error signing group info");
+    let charlie_credential = generate_credential_bundle(
+        backend,
+        "Charly".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+    )
+    .expect("An unexpected error occurred.");
 
-        let key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
-            &alice_credential_bundle,
-            backend,
-            vec![],
-        )
-        .expect("An unexpected error occurred.");
-
-        // Mess with the ciphertext by flipping the last byte.
-        flip_last_byte(&mut encrypted_group_secrets);
-
-        let broken_secrets = vec![EncryptedGroupSecrets {
-            key_package_hash: key_package_bundle
-                .key_package
-                .hash(backend)
-                .expect("Could not hash KeyPackage.")
-                .into(),
-            encrypted_group_secrets,
-        }];
-
-        // Encrypt the group info.
-        let encrypted_group_info = welcome_key
-            .aead_seal(
-                backend,
-                &group_info
-                    .tls_serialize_detached()
-                    .expect("An unexpected error occurred."),
-                &[],
-                &welcome_nonce,
-            )
+    // Generate KeyPackages
+    let alice_key_package =
+        generate_key_package_bundle(backend, &[ciphersuite.name()], &alice_credential, vec![])
             .expect("An unexpected error occurred.");
 
-        // Now build the welcome message.
-        let broken_welcome = Welcome::new(
-            *version,
-            ciphersuite,
-            broken_secrets,
-            encrypted_group_info.clone(),
-        );
+    let bob_key_package =
+        generate_key_package_bundle(backend, &[ciphersuite.name()], &bob_credential, vec![])
+            .expect("An unexpected error occurred.");
 
-        let error =
-            CoreGroup::new_from_welcome_internal(broken_welcome, None, key_package_bundle, backend)
-                .expect_err("Creation of core group from a broken Welcome was successful.");
+    let charlie_key_package =
+        generate_key_package_bundle(backend, &[ciphersuite.name()], &charlie_credential, vec![])
+            .expect("An unexpected error occurred.");
 
-        assert_eq!(
-            error,
-            WelcomeError::CryptoError(CryptoError::HpkeDecryptionError)
-        )
-    }
-}
-
-/// Test what happens if the KEM ciphertext for the receiver in the UpdatePath
-/// is broken.
-#[apply(ciphersuites_and_backends)]
-fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    // Basic group setup.
-    let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
-
-    // Define credential bundles
-    let alice_credential_bundle = CredentialBundle::new(
-        "Alice".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_scheme(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
-    let bob_credential_bundle = CredentialBundle::new(
-        "Bob".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_scheme(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
-
-    // Generate KeyPackages
-    let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &alice_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
-
-    let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &bob_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
-    let bob_key_package = bob_key_package_bundle.key_package();
+    // Define the MlsGroup configuration
+    let mls_group_config = MlsGroupConfig::default();
 
     // === Alice creates a group ===
-    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(backend)
-        .expect("Error creating group.");
+    let mut alice_group = MlsGroup::new(
+        backend,
+        &mls_group_config,
+        group_id,
+        &alice_key_package
+            .hash(backend)
+            .expect("Could not hash KeyPackage."),
+    )
+    .expect("An unexpected error occurred.");
 
     // === Alice adds Bob ===
-    let bob_add_proposal = alice_group
-        .create_add_proposal(
-            framing_parameters,
-            &alice_credential_bundle,
-            bob_key_package.clone(),
-            backend,
-        )
-        .expect("Could not create proposal.");
-    let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create StagedProposal."),
-    );
-    let params = CreateCommitParams::builder()
-        .framing_parameters(framing_parameters)
-        .credential_bundle(&alice_credential_bundle)
-        .proposal_store(&proposal_store)
-        .force_self_update(false)
-        .build();
-    let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = alice_group
-        .create_commit(params, backend)
-        .expect("Error creating commit");
+    let (queued_message, welcome) = alice_group
+        .add_members(backend, &[bob_key_package])
+        .expect("Could not add member to group.");
 
-    let commit = match mls_plaintext_commit.content() {
-        MlsPlaintextContentType::Commit(commit) => commit,
-        _ => panic!("Wrong content type"),
-    };
-    assert!(!commit.has_path() && kpb_option.is_none());
-    // Check that the function returned a Welcome message
-    assert!(welcome_bundle_alice_bob_option.is_some());
+    let unverified_message = alice_group
+        .parse_message(queued_message.into(), backend)
+        .expect("Could not parse message.");
 
-    println!(
-        " *** Confirmation tag: {:?}",
-        mls_plaintext_commit.confirmation_tag()
-    );
+    let alice_processed_message = alice_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect("Could not process unverified message.");
 
-    let staged_commit = alice_group
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
-        .expect("error staging commit");
-    alice_group
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
-    let ratchet_tree = alice_group.treesync().export_nodes();
+    if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+        alice_group
+            .merge_staged_commit(*staged_commit)
+            .expect("Could not merge StagedCommit");
+    } else {
+        unreachable!("Expected a StagedCommit.");
+    }
 
-    let group_bob = CoreGroup::new_from_welcome(
-        welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
-        Some(ratchet_tree),
-        bob_key_package_bundle,
+    let mut bob_group = MlsGroup::new_from_welcome(
         backend,
+        &mls_group_config,
+        welcome,
+        Some(alice_group.export_ratchet_tree()),
     )
-    .expect("An unexpected error occurred.");
+    .expect("Error creating group from Welcome");
 
-    // === Bob updates and commits ===
-    let bob_update_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &bob_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
-
-    let update_proposal_bob = group_bob
-        .create_update_proposal(
-            framing_parameters,
-            &bob_credential_bundle,
-            bob_update_key_package_bundle.key_package().clone(),
-            backend,
-        )
-        .expect("Could not create proposal.");
-    let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_bob)
-            .expect("Could not create StagedProposal."),
-    );
-    let params = CreateCommitParams::builder()
-        .framing_parameters(framing_parameters)
-        .credential_bundle(&bob_credential_bundle)
-        .proposal_store(&proposal_store)
-        .force_self_update(false)
-        .build();
-    let (mls_plaintext_commit, _welcome_option, _kpb_option) = group_bob
-        .create_commit(params, backend)
-        .expect("An unexpected error occurred.");
-
-    // Now we break Alice's HPKE ciphertext in Bob's commit by breaking
-    // apart the commit, manipulating the ciphertexts and the piecing it
-    // back together.
-    let commit = match mls_plaintext_commit.content() {
-        MlsPlaintextContentType::Commit(commit) => commit,
-        _ => panic!("Bob created a commit, which does not contain an actual commit."),
+    // === Bob adds Charlie ===
+    let (queued_messages, welcome) = match bob_group.add_members(backend, &[charlie_key_package]) {
+        Ok((qm, welcome)) => (qm, welcome),
+        Err(e) => panic!("Could not add member to group: {:?}", e),
     };
 
-    let commit = commit.clone();
+    let unverified_message = alice_group
+        .parse_message(queued_messages.clone().into(), backend)
+        .expect("Could not parse message.");
+    let alice_processed_message = alice_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect("Could not process unverified message.");
+    if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+        alice_group
+            .merge_staged_commit(*staged_commit)
+            .expect("Could not merge StagedCommit");
+    } else {
+        unreachable!("Expected a StagedCommit.");
+    }
 
-    let path = commit.path.expect("An unexpected error occurred.");
+    let unverified_message = bob_group
+        .parse_message(queued_messages.into(), backend)
+        .expect("Could not parse message.");
+    let bob_processed_message = bob_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect("Could not process unverified message.");
+    if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
+        bob_group
+            .merge_staged_commit(*staged_commit)
+            .expect("Could not merge StagedCommit");
+    } else {
+        unreachable!("Expected a StagedCommit.");
+    }
 
-    let mut broken_path = path;
-    // For simplicity, let's just break all the ciphertexts.
-    broken_path.flip_eps_bytes();
-
-    // Now let's create a new commit from out broken update path.
-    let broken_commit = Commit {
-        proposals: commit.proposals,
-        path: Some(broken_path),
-    };
-
-    let mut broken_plaintext = MlsPlaintext::commit(
-        framing_parameters,
-        mls_plaintext_commit.sender_index(),
-        broken_commit,
-        CommitType::Member,
-        &bob_credential_bundle,
-        group_bob.context(),
+    let mut charlie_group = MlsGroup::new_from_welcome(
         backend,
+        &mls_group_config,
+        welcome,
+        Some(bob_group.export_ratchet_tree()),
     )
-    .expect("Could not create plaintext.");
+    .expect("Error creating group from Welcome");
 
-    broken_plaintext.set_confirmation_tag(
-        mls_plaintext_commit
-            .confirmation_tag()
-            .cloned()
-            .expect("An unexpected error occurred."),
-    );
+    // === Alice removes Bob & Charlie commits ===
 
-    println!(
-        "Confirmation tag: {:?}",
-        broken_plaintext.confirmation_tag()
-    );
+    let queued_messages = alice_group
+        .propose_remove_member(backend, 1)
+        .expect("Could not propose removal");
 
-    let serialized_context = &group_bob
-        .group_context
-        .tls_serialize_detached()
-        .expect("An unexpected error occurred.") as &[u8];
+    let unverified_message = charlie_group
+        .parse_message(queued_messages.into(), backend)
+        .expect("Could not parse message.");
+    let charlie_processed_message = charlie_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect("Could not process unverified message.");
 
-    broken_plaintext
-        .set_membership_tag(
-            backend,
-            serialized_context,
-            group_bob.message_secrets.membership_key(),
-        )
-        .expect("Could not add membership key");
+    // Check that we received the correct proposals
+    if let ProcessedMessage::ProposalMessage(staged_proposal) = charlie_processed_message {
+        if let Proposal::Remove(ref remove_proposal) = staged_proposal.proposal() {
+            // Check that Bob was removed
+            // TODO #541: Replace this with the adequate API call
+            assert_eq!(remove_proposal.removed(), 1u32);
+            // Store proposal
+            charlie_group.store_pending_proposal(*staged_proposal.clone());
+        } else {
+            unreachable!("Expected a Proposal.");
+        }
 
-    let staged_commit_res =
-        alice_group.stage_commit(&broken_plaintext, &proposal_store, &[], backend);
-    assert_eq!(
-        staged_commit_res.expect_err("Successful processing of a broken commit."),
-        CoreGroupError::TreeKemError(TreeKemError::PathSecretError(
-            PathSecretError::DecryptionError(CryptoError::HpkeDecryptionError)
-        ))
-    );
+        // Check that Alice removed Charlie
+        // TODO #541: Replace this with the adequate API call
+        assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
+    } else {
+        unreachable!("Expected a StagedProposal.");
+    }
+
+    // Charlie commits
+    let (queued_messages, _welcome) = charlie_group
+        .commit_to_pending_proposals(backend)
+        .expect("Could not commit proposal");
+
+    let unverified_message = charlie_group
+        .parse_message(queued_messages.into(), backend)
+        .expect("Could not parse message.");
+    let charlie_processed_message = charlie_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect("Could not process unverified message.");
+
+    // Check that we receive the correct proposal
+    if let ProcessedMessage::StagedCommitMessage(staged_commit) = charlie_processed_message {
+        let remove = staged_commit
+            .remove_proposals()
+            .next()
+            .expect("Expected a proposal.");
+        // Check that Bob was removed
+        // TODO #541: Replace this with the adequate API call
+        assert_eq!(remove.remove_proposal().removed(), 1u32);
+        // Check that Alice removed Bob
+        // TODO #541: Replace this with the adequate API call
+        assert_eq!(remove.sender().to_leaf_index(), 0u32);
+    } else {
+        unreachable!("Expected a StagedCommit.");
+    }
+
+    // TODO #524: Check that Alice removed Bob
 }
 
-// Test several scenarios when PSKs are used in a group
 #[apply(ciphersuites_and_backends)]
-fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    // Basic group setup.
-    let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+fn export_secret(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let group_id = GroupId::from_slice(b"Test Group");
 
-    // Define credential bundles
-    let alice_credential_bundle = CredentialBundle::new(
+    // Generate credential bundles
+    let alice_credential = generate_credential_bundle(
+        backend,
         "Alice".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
-    let bob_credential_bundle = CredentialBundle::new(
-        "Bob".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_scheme(),
-        backend,
     )
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &alice_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let alice_key_package =
+        generate_key_package_bundle(backend, &[ciphersuite.name()], &alice_credential, vec![])
+            .expect("An unexpected error occurred.");
 
-    let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &bob_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
-    let bob_key_package = bob_key_package_bundle.key_package();
-
-    // === Alice creates a group with a PSK ===
-    let psk_id = vec![1u8, 2, 3];
-
-    let secret = Secret::random(ciphersuite, backend, None /* MLS version */)
-        .expect("Not enough randomness.");
-    let external_psk = ExternalPsk::new(psk_id);
-    let preshared_key_id =
-        PreSharedKeyId::new(ciphersuite, backend.rand(), Psk::External(external_psk))
-            .expect("An unexpected error occured.");
-    let psk_bundle = PskBundle::new(secret).expect("Could not create PskBundle.");
-    backend
-        .key_store()
-        .store(&preshared_key_id, &psk_bundle)
-        .expect("An unexpected error occured.");
-    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .with_psk(vec![preshared_key_id.clone()])
-        .build(backend)
-        .expect("Error creating group.");
-
-    // === Alice creates a PSK proposal ===
-    log::info!(" >>> Creating psk proposal ...");
-    let psk_proposal = alice_group
-        .create_presharedkey_proposal(
-            framing_parameters,
-            &alice_credential_bundle,
-            preshared_key_id,
-            backend,
-        )
-        .expect("Could not create PSK proposal");
-
-    // === Alice adds Bob ===
-    let bob_add_proposal = alice_group
-        .create_add_proposal(
-            framing_parameters,
-            &alice_credential_bundle,
-            bob_key_package.clone(),
-            backend,
-        )
-        .expect("Could not create proposal");
-
-    let mut proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create StagedProposal."),
-    );
-    proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, psk_proposal)
-            .expect("Could not create StagedProposal."),
-    );
-    log::info!(" >>> Creating commit ...");
-    let params = CreateCommitParams::builder()
-        .framing_parameters(framing_parameters)
-        .credential_bundle(&alice_credential_bundle)
-        .proposal_store(&proposal_store)
-        .force_self_update(false)
+    // Define the MlsGroup configuration
+    let mls_group_config = MlsGroupConfig::builder()
+        .wire_format(WireFormat::MlsPlaintext)
         .build();
-    let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
-        .create_commit(params, backend)
-        .expect("Error creating commit");
 
-    log::info!(" >>> Staging & merging commit ...");
-
-    let staged_commit = alice_group
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
-        .expect("error staging commit");
-    alice_group
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
-    let ratchet_tree = alice_group.treesync().export_nodes();
-
-    let group_bob = CoreGroup::new_from_welcome(
-        welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
-        Some(ratchet_tree),
-        bob_key_package_bundle,
+    // === Alice creates a group ===
+    let alice_group = MlsGroup::new(
         backend,
-    )
-    .expect("Could not create new group from Welcome");
-
-    // === Bob updates and commits ===
-    let bob_update_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &bob_credential_bundle,
-        backend,
-        Vec::new(),
+        &mls_group_config,
+        group_id,
+        &alice_key_package
+            .hash(backend)
+            .expect("Could not hash KeyPackage."),
     )
     .expect("An unexpected error occurred.");
 
-    let update_proposal_bob = group_bob
-        .create_update_proposal(
-            framing_parameters,
-            &bob_credential_bundle,
-            bob_update_key_package_bundle.key_package().clone(),
-            backend,
-        )
-        .expect("Could not create proposal.");
-    let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_bob)
-            .expect("Could not create StagedProposal."),
+    assert!(
+        alice_group
+            .export_secret(backend, "test1", &[], ciphersuite.hash_length())
+            .expect("An unexpected error occurred.")
+            != alice_group
+                .export_secret(backend, "test2", &[], ciphersuite.hash_length())
+                .expect("An unexpected error occurred.")
     );
-    let params = CreateCommitParams::builder()
-        .framing_parameters(framing_parameters)
-        .credential_bundle(&bob_credential_bundle)
-        .proposal_store(&proposal_store)
-        .force_self_update(false)
+    assert!(
+        alice_group
+            .export_secret(backend, "test", &[0u8], ciphersuite.hash_length())
+            .expect("An unexpected error occurred.")
+            != alice_group
+                .export_secret(backend, "test", &[1u8], ciphersuite.hash_length())
+                .expect("An unexpected error occurred.")
+    )
+}
+
+#[apply(ciphersuites)]
+fn test_invalid_plaintext(ciphersuite: &'static Ciphersuite) {
+    // Some basic setup functions for the MlsGroup.
+    let mls_group_config = MlsGroupConfig::builder()
+        .wire_format(WireFormat::MlsPlaintext)
+        .padding_size(10)
         .build();
-    let (_mls_plaintext_commit, _welcome_option, _kpb_option) = group_bob
-        .create_commit(params, backend)
+
+    let number_of_clients = 20;
+    let setup = MlsGroupTestSetup::new(
+        mls_group_config,
+        number_of_clients,
+        CodecUse::StructMessages,
+    );
+    // Create a basic group with more than 4 members to create a tree with intermediate nodes.
+    let group_id = setup
+        .create_random_group(10, ciphersuite)
         .expect("An unexpected error occurred.");
+    let mut groups = setup.groups.borrow_mut();
+    let group = groups
+        .get_mut(&group_id)
+        .expect("An unexpected error occurred.");
+
+    let (_, client_id) = &group
+        .members
+        .iter()
+        .find(|(index, _)| index == &0)
+        .expect("An unexpected error occurred.")
+        .clone();
+
+    let clients = setup.clients.borrow();
+    let client = clients
+        .get(client_id)
+        .expect("An unexpected error occurred.")
+        .borrow();
+
+    let (mls_message, _welcome_option) = client
+        .self_update(Commit, &group_id, None)
+        .expect("error creating self update");
+
+    drop(client);
+    drop(clients);
+
+    // Tamper with the message such that signature verification fails
+    // Once #574 is addressed the new function from there should be used to manipulate the signature.
+    // Right now the membership tag is verified first, wihich yields `VerificationError::InvalidMembershipTag`
+    // error instead of a `CredentialError:InvalidSignature`.
+    let mut msg_invalid_signature = mls_message.clone();
+    if let MlsMessageOut::Plaintext(ref mut pt) = msg_invalid_signature {
+        pt.invalidate_signature()
+    };
+
+    let error = setup
+        .distribute_to_members(client_id, group, &msg_invalid_signature)
+        .expect_err("No error when distributing message with invalid signature.");
+
+    assert_eq!(
+        ClientError::MlsGroupError(MlsGroupError::Group(CoreGroupError::ValidationError(
+            ValidationError::MlsPlaintextError(MlsPlaintextError::VerificationError(
+                VerificationError::InvalidMembershipTag
+            ))
+        ))),
+        error
+    );
+
+    // Tamper with the message such that sender lookup fails
+    let mut msg_invalid_sender = mls_message;
+    match &mut msg_invalid_sender {
+        MlsMessageOut::Plaintext(pt) => pt.set_sender(Sender {
+            sender_type: pt.sender().sender_type,
+            sender: (group.members.len() as u32 + 1u32),
+        }),
+        MlsMessageOut::Ciphertext(_) => panic!("This should be a plaintext!"),
+    };
+
+    let error = setup
+        .distribute_to_members(client_id, group, &msg_invalid_sender)
+        .expect_err("No error when distributing message with invalid signature.");
+
+    assert_eq!(
+        ClientError::MlsGroupError(MlsGroupError::Group(
+            CoreGroupError::FramingValidationError(FramingValidationError::UnknownMember)
+        )),
+        error
+    );
 }

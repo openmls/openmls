@@ -1,4 +1,4 @@
-use mls_group::{create_commit_params::CreateCommitParams, proposals::ProposalStore};
+use core_group::{create_commit_params::CreateCommitParams, proposals::ProposalStore};
 use openmls_traits::types::SignatureScheme;
 
 use crate::{credentials::CredentialType, test_utils::*};

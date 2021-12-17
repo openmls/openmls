@@ -5,8 +5,7 @@ pub use crate::group::CoreGroup;
 pub use crate::group::CoreGroupConfig;
 pub use crate::group::{
     proposals::{ProposalStore, StagedProposal},
-    InvalidMessageError, ManagedGroup, ManagedGroupConfig, ManagedGroupError, UpdatePolicy,
-    WireFormat,
+    InvalidMessageError, MlsGroup, MlsGroupConfig, MlsGroupError, UpdatePolicy, WireFormat,
 };
 // Errors
 pub use crate::group::errors::{

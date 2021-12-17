@@ -24,7 +24,7 @@
 use crate::ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct};
 
 use super::*;
-use mls_group::create_commit_params::CommitType;
+use core_group::create_commit_params::CommitType;
 use openmls_traits::OpenMlsCryptoProvider;
 use std::convert::TryFrom;
 use tls_codec::{Serialize, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize};

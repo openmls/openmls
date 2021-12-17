@@ -1,5 +1,3 @@
-use mls_group::create_commit_params::CommitType;
-
 use crate::{
     ciphersuite::signable::Verifiable,
     credentials::CredentialBundle,
@@ -12,11 +10,11 @@ use crate::{
 };
 
 use super::{
-    create_commit_params::CreateCommitParams,
+    create_commit_params::{CommitType, CreateCommitParams},
     proposals::{ProposalStore, StagedProposal},
     CoreGroup,
 };
-use crate::group::mls_group::*;
+use crate::group::core_group::*;
 
 pub type ExternalInitResult = Result<
     (
