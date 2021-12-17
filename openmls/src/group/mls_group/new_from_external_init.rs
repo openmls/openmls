@@ -29,9 +29,15 @@ pub type ExternalInitResult = Result<
 >;
 
 impl MlsGroup {
-    /// Join a group based on a public group state and the given key package
-    /// bundle.
-    pub(crate) fn new_from_external_init_internal(
+    /// Join a group without the help of an internal member. This function
+    /// requires a `PublicGroupState`, as well as the corresponding public tree
+    /// `nodes`. After the group state is initialized, this function creates an
+    /// `ExternalInit` proposal and commits it along with the given proposals by
+    /// reference and by value.
+    ///
+    /// Returns the new `MlsGroup` object, as well as the `MlsPlaintext`
+    /// containing the commit.
+    pub fn new_from_external_init(
         backend: &impl OpenMlsCryptoProvider,
         framing_parameters: FramingParameters,
         nodes_option: Option<&[Option<Node>]>,
@@ -63,9 +69,9 @@ impl MlsGroup {
         } else {
             // Throw an error if there is more than one ratchet tree extension.
             // This shouldn't be the case anyway, because extensions are checked
-            // for uniqueness anyway when decoding them.
-            // We have to see if this makes problems later as it's not something
-            // required by the spec right now.
+            // for uniqueness when decoding them. We have to see if this makes
+            // problems later as it's not something required by the spec right
+            // now (Note issue #530 of the MLS spec.).
             return Err(ExternalInitError::DuplicateRatchetTreeExtension);
         };
 
@@ -100,7 +106,7 @@ impl MlsGroup {
             .credential();
         let pgs: PublicGroupState = verifiable_public_group_state
             .verify(backend, pgs_signer_credential)
-            .map_err(|_| ExternalInitError::InvalidPublicGroupState)?;
+            .map_err(|_| ExternalInitError::InvalidPublicGroupStateSignature)?;
 
         let (init_secret, kem_output) = InitSecret::from_public_group_state(backend, &pgs)?;
 

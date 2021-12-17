@@ -221,34 +221,6 @@ impl MlsGroup {
         )?)
     }
 
-    /// Join a group without the help of an internal member. This function
-    /// requires a `PublicGroupState`, as well as the corresponding public tree
-    /// `nodes`. After the group state is initialized, this function creates an
-    /// `ExternalInit` proposal and commits it along with the given proposals by
-    /// reference and by value.
-    ///
-    /// Returns the new `MlsGroup` object, as well as the `MlsPlaintext`
-    /// containing the commit.
-    pub fn new_from_external_init(
-        framing_parameters: FramingParameters,
-        nodes_option: Option<&[Option<Node>]>,
-        credential_bundle: &CredentialBundle,
-        proposals_by_reference: &[MlsPlaintext],
-        proposals_by_value: &[Proposal],
-        verifiable_public_group_state: VerifiablePublicGroupState,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> ExternalInitResult {
-        Self::new_from_external_init_internal(
-            backend,
-            framing_parameters,
-            nodes_option,
-            credential_bundle,
-            proposals_by_reference,
-            proposals_by_value,
-            verifiable_public_group_state,
-        )
-    }
-
     // === Create handshake messages ===
     // TODO: share functionality between these.
 

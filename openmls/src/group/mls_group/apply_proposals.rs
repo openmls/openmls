@@ -99,11 +99,14 @@ impl MlsGroup {
         // Process external init proposals
         for queued_proposal in proposal_queue.filtered_by_type(ProposalType::ExternalInit) {
             // If we are the originator of the external init, we don't need to
-            // get the init secret from the proposal.
+            // get the init secret from the proposal. This branching will not be
+            // necessary after #617.
             if queued_proposal.sender().to_leaf_index() != self.treesync().own_leaf_index() {
                 // Unwrapping here is safe because we know the proposal type
-                let external_init_proposal =
-                    &queued_proposal.proposal().as_external_init().unwrap();
+                let external_init_proposal = &queued_proposal
+                    .proposal()
+                    .as_external_init()
+                    .ok_or(MlsGroupError::LibraryError)?;
                 // Decrypt the context an derive the external init.
                 let external_priv = self
                     .epoch_secrets()
@@ -222,11 +225,14 @@ impl MlsGroup {
         // Process external init proposals
         for queued_proposal in proposal_queue.filtered_by_type(ProposalType::ExternalInit) {
             // If we are the originator of the external init, we don't need to
-            // get the init secret from the proposal.
+            // get the init secret from the proposal. This branching will not be
+            // necessary after #617.
             if queued_proposal.sender().to_leaf_index() != self.treesync().own_leaf_index() {
                 // Unwrapping here is safe because we know the proposal type
-                let external_init_proposal =
-                    &queued_proposal.proposal().as_external_init().unwrap();
+                let external_init_proposal = &queued_proposal
+                    .proposal()
+                    .as_external_init()
+                    .ok_or(MlsGroupError::LibraryError)?;
                 // Decrypt the context an derive the external init.
                 let external_priv = self
                     .epoch_secrets()
