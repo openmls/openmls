@@ -3,7 +3,7 @@
 //! This file contains the API to interact with groups.
 //!
 //! The low-level standard API is described in the `Api` trait.\
-//! The high-level API is exposed in `ManagedGroup`.
+//! The high-level API is exposed in `MlsGroup`.
 
 pub mod core_group;
 pub mod errors;

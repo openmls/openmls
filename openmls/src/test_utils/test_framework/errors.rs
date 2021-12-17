@@ -19,9 +19,9 @@ impl From<ClientError> for SetupError {
     }
 }
 
-impl From<ManagedGroupError> for SetupError {
-    fn from(e: ManagedGroupError) -> Self {
-        SetupError::ClientError(ClientError::ManagedGroupError(e))
+impl From<MlsGroupError> for SetupError {
+    fn from(e: MlsGroupError) -> Self {
+        SetupError::ClientError(ClientError::MlsGroupError(e))
     }
 }
 
@@ -46,7 +46,7 @@ pub enum ClientError {
     NoCiphersuite,
     FailedToJoinGroup(WelcomeError),
     InvalidMessage(CoreGroupError),
-    ManagedGroupError(ManagedGroupError),
+    MlsGroupError(MlsGroupError),
     GroupError(CoreGroupError),
     TlsCodecError(tls_codec::Error),
     KeyPackageError(KeyPackageError),
@@ -59,9 +59,9 @@ impl From<WelcomeError> for ClientError {
     }
 }
 
-impl From<ManagedGroupError> for ClientError {
-    fn from(e: ManagedGroupError) -> Self {
-        ClientError::ManagedGroupError(e)
+impl From<MlsGroupError> for ClientError {
+    fn from(e: MlsGroupError) -> Self {
+        ClientError::MlsGroupError(e)
     }
 }
 

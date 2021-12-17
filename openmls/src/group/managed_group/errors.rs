@@ -1,4 +1,4 @@
-//! # MLS Managed Group errors
+//! # MLS MlsGroup errors
 //!
 //! `WelcomeError`, `StageCommitError`, `DecryptionError`, and
 //! `CreateCommitError`.
@@ -14,7 +14,7 @@ use openmls_traits::types::CryptoError;
 use tls_codec::Error as TlsCodecError;
 
 implement_error! {
-    pub enum ManagedGroupError {
+    pub enum MlsGroupError {
         Simple {
             NoMatchingCredentialBundle = "Couldn't find a `CredentialBundle` in the `KeyStore` that matches the one in my leaf.",
             NoMatchingKeyPackageBundle = "Couldn't find a `KeyPackageBundle` in the `KeyStore` that matches the given `KeyPackage` hash.",

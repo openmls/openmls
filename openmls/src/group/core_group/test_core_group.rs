@@ -57,7 +57,7 @@ fn test_core_group_persistence(
         .reopen()
         .expect("Error re-opening serialized group state file");
     let alice_group_deserialized =
-        CoreGroup::load(file_in).expect("Could not deserialize managed group");
+        CoreGroup::load(file_in).expect("Could not deserialize mls group");
 
     assert_eq!(alice_group, alice_group_deserialized);
 }

@@ -1,4 +1,4 @@
-//! This module contains tests regarding the use of [`MessageSecretsStore`] in [`ManagedGroup`]
+//! This module contains tests regarding the use of [`MessageSecretsStore`] in [`MlsGroup`]
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
@@ -11,9 +11,7 @@ use crate::{
     config::Config,
     credentials::{CredentialBundle, CredentialType},
     framing::{MlsCiphertextError, ProcessedMessage},
-    group::{
-        CoreGroupError, GroupId, ManagedGroup, ManagedGroupConfig, ManagedGroupError, WireFormat,
-    },
+    group::{CoreGroupError, GroupId, MlsGroup, MlsGroupConfig, MlsGroupError, WireFormat},
     key_packages::KeyPackageBundle,
     tree::secret_tree::SecretTreeError,
 };
@@ -93,17 +91,17 @@ fn test_past_secrets_in_group(
             )
             .expect("An unexpected error occurred.");
 
-        // Define the managed group configuration
+        // Define the MlsGroup configuration
 
-        let managed_group_config = ManagedGroupConfig::builder()
+        let mls_group_config = MlsGroupConfig::builder()
             .wire_format(WireFormat::MlsCiphertext)
             .max_past_epochs(max_epochs / 2)
             .build();
 
         // === Alice creates a group ===
-        let mut alice_group = ManagedGroup::new(
+        let mut alice_group = MlsGroup::new(
             backend,
-            &managed_group_config,
+            &mls_group_config,
             group_id,
             &alice_key_package
                 .hash(backend)
@@ -132,9 +130,9 @@ fn test_past_secrets_in_group(
             unreachable!("Expected a StagedCommit.");
         }
 
-        let mut bob_group = ManagedGroup::new_from_welcome(
+        let mut bob_group = MlsGroup::new_from_welcome(
             backend,
-            &managed_group_config,
+            &mls_group_config,
             welcome,
             Some(alice_group.export_ratchet_tree()),
         )
@@ -204,7 +202,7 @@ fn test_past_secrets_in_group(
                 .expect_err("An unexpected error occurred.");
             assert_eq!(
                 err,
-                ManagedGroupError::Group(CoreGroupError::MlsCiphertextError(
+                MlsGroupError::Group(CoreGroupError::MlsCiphertextError(
                     MlsCiphertextError::SecretTreeError(SecretTreeError::TooDistantInThePast,),
                 ))
             );

@@ -210,7 +210,7 @@ async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Res
     // about.
     // XXX: There's no test for this block in here right now because it's pretty
     //      painful to test in the current setting. This should get tested through
-    //      the client and maybe later with the managed API.
+    //      the client and maybe later with the MlsGroup API.
     if group_msg.msg.is_handshake_message() {
         let epoch = group_msg.epoch();
         let group_id = group_msg.group_id();

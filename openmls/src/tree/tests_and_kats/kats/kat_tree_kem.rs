@@ -33,7 +33,7 @@ use crate::{
     test_utils::*,
     test_utils::{
         bytes_to_hex,
-        test_framework::{ActionType, ManagedTestSetup},
+        test_framework::{ActionType, MlsGroupTestSetup},
     },
     tree::{treemath::*, CiphersuiteName, HashSet, LeafIndex, NodeIndex, RatchetTree, UpdatePath},
 };
@@ -324,7 +324,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
 
     use crate::{
         extensions::RatchetTreeExtension,
-        prelude::{KeyPackageBundle, ManagedGroupConfig},
+        prelude::{KeyPackageBundle, MlsGroupConfig},
         test_utils::test_framework::CodecUse,
     };
 
@@ -335,10 +335,10 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         panic!("test vector can only be generated with two or more members")
     }
     // Set up a group with `n_leaves` members.
-    let managed_group_config = ManagedGroupConfig::test_default();
+    let mls_group_config = MlsGroupConfig::test_default();
 
-    let setup = ManagedTestSetup::new(
-        managed_group_config,
+    let setup = MlsGroupTestSetup::new(
+        mls_group_config,
         n_leaves as usize,
         CodecUse::SerializedMessages,
     );

@@ -56,7 +56,7 @@ impl ClientInfo {
     }
 }
 
-/// Unified message type similar to the one in the managed group.
+/// Unified message type similar to the one in the MlsGroup.
 /// But this version only operates on [`VerifiableMlsPlaintext`].
 #[derive(Debug, Clone)]
 pub enum DsMlsMessage {
