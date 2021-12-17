@@ -37,6 +37,7 @@ pub use errors::{
 pub(crate) use resumption::ResumptionSecretStore;
 use ser::*;
 
+use super::past_secrets::MessageSecretsStore;
 use super::proposals::{ProposalStore, StagedProposal};
 
 /// A `ManagedGroup` represents an [MlsGroup] with
@@ -77,6 +78,9 @@ pub struct ManagedGroup {
     // A [ProposalStore] that stores incoming proposals from the DS within one epoch.
     // The store is emptied after every epoch change.
     proposal_store: ProposalStore,
+    // A [MessageSecretsStore] that stores message secrets from past epochs in order to be able to decrypt
+    // application messages from previous epochs.
+    message_secrets_store: MessageSecretsStore,
     // Own `KeyPackageBundle`s that were created for update proposals or commits. The vector is
     // emptied after every epoch change.
     own_kpbs: Vec<KeyPackageBundle>,

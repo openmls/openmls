@@ -167,7 +167,7 @@ impl MlsGroup {
         let joiner_secret = JoinerSecret::new(
             backend,
             path_processing_result.commit_secret,
-            self.epoch_secrets()
+            self.group_epoch_secrets()
                 .init_secret()
                 .ok_or(MlsGroupError::InitSecretNotFound)?,
         )?;
@@ -212,7 +212,7 @@ impl MlsGroup {
         mls_plaintext.set_membership_tag(
             backend,
             &serialized_group_context,
-            self.epoch_secrets().membership_key(),
+            self.message_secrets().membership_key(),
         )?;
 
         // Check if new members were added and, if so, create welcome messages

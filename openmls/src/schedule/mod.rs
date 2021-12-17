@@ -141,6 +141,7 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 pub mod codec;
 pub mod errors;
+pub mod message_secrets;
 pub(crate) mod psk;
 
 #[cfg(test)]
@@ -150,6 +151,7 @@ mod unit_tests;
 pub mod kat_key_schedule;
 
 pub use errors::*;
+pub use message_secrets::*;
 pub use psk::{PreSharedKeyId, PreSharedKeys, PskSecret};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
@@ -758,6 +760,15 @@ impl ConfirmationKey {
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
+
+    #[cfg(any(feature = "test-utils", test))]
+    #[doc(hidden)]
+    pub fn random(ciphersuite: &'static Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
+        Self {
+            secret: Secret::random(ciphersuite, rng, None /* MLS version */)
+                .expect("Not enough randomness."),
+        }
+    }
 }
 
 /// The membership key is used to calculate the `MembershipTag`.
@@ -805,6 +816,15 @@ impl MembershipKey {
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
+
+    #[cfg(any(feature = "test-utils", test))]
+    #[doc(hidden)]
+    pub fn random(ciphersuite: &'static Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
+        Self {
+            secret: Secret::random(ciphersuite, rng, None /* MLS version */)
+                .expect("Not enough randomness."),
+        }
+    }
 }
 
 /// A secret used in cross-group operations.
@@ -844,7 +864,7 @@ fn ciphertext_sample<'a>(ciphersuite: &Ciphersuite, ciphertext: &'a [u8]) -> &'a
 /// A key that can be used to derive an `AeadKey` and an `AeadNonce`.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
-pub(crate) struct SenderDataSecret {
+pub struct SenderDataSecret {
     secret: Secret,
 }
 
@@ -984,6 +1004,7 @@ impl PartialEq for EpochSecrets {
 
 impl EpochSecrets {
     /// Get the sender_data secret.
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn sender_data_secret(&self) -> &SenderDataSecret {
         &self.sender_data_secret
     }
@@ -994,31 +1015,37 @@ impl EpochSecrets {
     }
 
     /// Authentication secret
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn authentication_secret(&self) -> &AuthenticationSecret {
         &self.authentication_secret
     }
 
     /// Exporter secret
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn exporter_secret(&self) -> &ExporterSecret {
         &self.exporter_secret
     }
 
     /// Membership key
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn membership_key(&self) -> &MembershipKey {
         &self.membership_key
     }
 
     /// External secret
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn external_secret(&self) -> &ExternalSecret {
         &self.external_secret
     }
 
     /// External secret
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn resumption_secret(&self) -> &ResumptionSecret {
         &self.resumption_secret
     }
 
     /// Init secret
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn init_secret(&self) -> Option<&InitSecret> {
         self.init_secret.as_ref()
     }
@@ -1077,9 +1104,93 @@ impl EpochSecrets {
         })
     }
 
-    #[cfg(any(feature = "test-utils", test))]
-    #[doc(hidden)]
-    pub(crate) fn sender_data_secret_mut(&mut self) -> &mut SenderDataSecret {
-        &mut self.sender_data_secret
+    /// Splits `EpochSecrets` into two different categories:
+    ///  - [`GroupEpochSecrets`]: These secrets are only used within the same epoch
+    ///  - [`MessageSecrets`]: These secrets are potentially also used for past epochs
+    ///    to decrypt and validate messages
+    pub(crate) fn split_secrets(
+        self,
+        serialized_context: Vec<u8>,
+        treesize: u32,
+    ) -> (GroupEpochSecrets, MessageSecrets) {
+        let secret_tree = self.encryption_secret().create_secret_tree(treesize);
+        (
+            GroupEpochSecrets {
+                init_secret: self.init_secret,
+                encryption_secret: self.encryption_secret,
+                exporter_secret: self.exporter_secret,
+                authentication_secret: self.authentication_secret,
+                external_secret: self.external_secret,
+                resumption_secret: self.resumption_secret,
+            },
+            MessageSecrets::new(
+                self.sender_data_secret,
+                self.membership_key,
+                self.confirmation_key,
+                serialized_context,
+                secret_tree,
+            ),
+        )
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub(crate) struct GroupEpochSecrets {
+    init_secret: Option<InitSecret>,
+    encryption_secret: RefCell<EncryptionSecret>,
+    exporter_secret: ExporterSecret,
+    authentication_secret: AuthenticationSecret,
+    external_secret: ExternalSecret,
+    resumption_secret: ResumptionSecret,
+}
+
+impl std::fmt::Debug for GroupEpochSecrets {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("GroupEpochSecrets { *** }")
+    }
+}
+
+#[cfg(not(test))]
+impl PartialEq for GroupEpochSecrets {
+    fn eq(&self, _other: &Self) -> bool {
+        false
+    }
+}
+
+// In tests we allow comparing secrets.
+#[cfg(test)]
+impl PartialEq for GroupEpochSecrets {
+    fn eq(&self, other: &Self) -> bool {
+        self.exporter_secret == other.exporter_secret
+            && self.authentication_secret == other.authentication_secret
+            && self.external_secret == other.external_secret
+            && self.resumption_secret == other.resumption_secret
+    }
+}
+
+impl GroupEpochSecrets {
+    /// Init secret
+    pub(crate) fn init_secret(&self) -> Option<&InitSecret> {
+        self.init_secret.as_ref()
+    }
+
+    /// Authentication secret
+    pub(crate) fn authentication_secret(&self) -> &AuthenticationSecret {
+        &self.authentication_secret
+    }
+
+    /// Exporter secret
+    pub(crate) fn exporter_secret(&self) -> &ExporterSecret {
+        &self.exporter_secret
+    }
+
+    /// External secret
+    pub(crate) fn external_secret(&self) -> &ExternalSecret {
+        &self.external_secret
+    }
+
+    /// External secret
+    pub(crate) fn resumption_secret(&self) -> &ResumptionSecret {
+        &self.resumption_secret
     }
 }

@@ -26,7 +26,7 @@ impl ManagedGroup {
 
         // Parse the message
         self.group
-            .parse_message(message, backend)
+            .parse_message(message, &mut self.message_secrets_store, backend)
             .map_err(ManagedGroupError::Group)
     }
 
@@ -43,6 +43,7 @@ impl ManagedGroup {
                 unverified_message,
                 signature_key,
                 &self.proposal_store,
+                &mut self.message_secrets_store,
                 &self.own_kpbs,
                 backend,
             )
@@ -113,11 +114,15 @@ impl ManagedGroup {
 
         // Merge staged commit
         self.group
-            .merge_staged_commit(staged_commit, &mut self.proposal_store)
+            .merge_staged_commit(
+                staged_commit,
+                &mut self.proposal_store,
+                &mut self.message_secrets_store,
+            )
             .map_err(ManagedGroupError::Group)?;
 
         // Extract and store the resumption secret for the current epoch
-        let resumption_secret = self.group.epoch_secrets().resumption_secret();
+        let resumption_secret = self.group.group_epoch_secrets().resumption_secret();
         self.resumption_secret_store
             .add(self.group.context().epoch(), resumption_secret.clone());
 
