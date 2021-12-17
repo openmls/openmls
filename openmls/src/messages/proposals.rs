@@ -302,6 +302,7 @@ pub struct ExternalInitProposal {
 }
 
 impl ExternalInitProposal {
+    /// Get the `kem_output` contained in the proposal.
     pub(crate) fn kem_output(&self) -> &[u8] {
         self.kem_output.as_slice()
     }

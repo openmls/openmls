@@ -115,7 +115,13 @@ impl MlsGroup {
             pgs.group_context_extensions.as_slice(),
         )?;
 
+        // The `EpochSecrets` we create here are essentially zero, with the
+        // exception of the `InitSecret`, which is all we need here for the
+        // external commit.
         let epoch_secrets = EpochSecrets::with_init_secret(backend, init_secret)?;
+
+        // The secret tree is created from a zero-secret. That is ok, because
+        // we're immediately creating a commit afterwards.
         let secret_tree = SecretTree::new(
             epoch_secrets.encryption_secret(),
             treesync.leaf_count()?.into(),

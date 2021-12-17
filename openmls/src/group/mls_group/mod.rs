@@ -223,11 +223,12 @@ impl MlsGroup {
 
     /// Join a group without the help of an internal member. This function
     /// requires a `PublicGroupState`, as well as the corresponding public tree
-    /// `nodes`. Otherwise it creates an `ExternalInit` proposal and commits it.
-    /// The commit is created in the same way as in `create_commit`, which it
-    /// why it requires the same inputs (aad, proposals by value and reference,
-    /// etc.). It returns the new `MlsGroup` object, as well as the
-    /// `MlsPlaintext` containing the commit.
+    /// `nodes`. After the group state is initialized, this function creates an
+    /// `ExternalInit` proposal and commits it along with the given proposals by
+    /// reference and by value.
+    ///
+    /// Returns the new `MlsGroup` object, as well as the `MlsPlaintext`
+    /// containing the commit.
     pub fn new_from_external_init(
         framing_parameters: FramingParameters,
         nodes_option: Option<&[Option<Node>]>,

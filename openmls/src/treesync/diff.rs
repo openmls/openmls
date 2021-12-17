@@ -302,10 +302,6 @@ impl<'a> TreeSyncDiff<'a> {
 
         key_package_bundle_payload.update_parent_hash(&parent_hash);
         let key_package_bundle = key_package_bundle_payload.sign(backend, credential_bundle)?;
-        debug_assert!(
-            key_package_bundle.key_package().credential() == credential_bundle.credential()
-        );
-        debug_assert!(key_package_bundle.key_package().verify(backend).is_ok());
 
         let node = Node::LeafNode(key_package_bundle.key_package().clone().into());
 

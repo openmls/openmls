@@ -131,8 +131,6 @@ impl MlsGroup {
                     params.credential_bundle(),
                 )?;
 
-                //debug_assert!(key_package_bundle.key_package().verify(backend).is_ok());
-
                 // Encrypt the path to the correct recipient nodes.
                 let encrypted_path = diff.encrypt_path(
                     backend,
