@@ -164,12 +164,12 @@ impl CoreGroup {
 
         let confirmation_tag = message_secrets
             .confirmation_key()
-            .tag(backend, group_context.confirmed_transcript_hash.as_slice())?;
+            .tag(backend, group_context.confirmed_transcript_hash())?;
         let interim_transcript_hash = update_interim_transcript_hash(
             ciphersuite,
             backend,
             &MlsPlaintextCommitAuthData::from(&confirmation_tag),
-            group_context.confirmed_transcript_hash.as_slice(),
+            group_context.confirmed_transcript_hash(),
         )?;
 
         // Verify confirmation tag

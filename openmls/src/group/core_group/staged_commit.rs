@@ -47,11 +47,11 @@ impl CoreGroup {
         let sender = *mls_plaintext.sender();
 
         // Verify epoch
-        if mls_plaintext.epoch() != self.group_context.epoch {
+        if mls_plaintext.epoch() != self.group_context.epoch() {
             log::error!(
                 "Epoch mismatch. Got {:?}, expected {:?}",
                 mls_plaintext.epoch(),
-                self.group_context.epoch
+                self.group_context.epoch()
             );
             return Err(StageCommitError::EpochMismatch.into());
         }
@@ -183,7 +183,7 @@ impl CoreGroup {
         )?;
 
         // Create provisional group state
-        let mut provisional_epoch = self.group_context.epoch;
+        let mut provisional_epoch = self.group_context.epoch();
         provisional_epoch.increment();
 
         let confirmed_transcript_hash = update_confirmed_transcript_hash(
@@ -196,7 +196,7 @@ impl CoreGroup {
         )?;
 
         let provisional_group_context = GroupContext::new(
-            self.group_context.group_id.clone(),
+            self.group_context.group_id().clone(),
             provisional_epoch,
             diff.compute_tree_hashes(backend, ciphersuite)?,
             confirmed_transcript_hash.clone(),
