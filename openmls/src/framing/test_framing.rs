@@ -4,9 +4,9 @@ use openmls_traits::OpenMlsCryptoProvider;
 use rstest::*;
 use rstest_reuse::{self, *};
 
-use mls_group::create_commit_params::CreateCommitParams;
-use mls_group::proposals::ProposalStore;
-use mls_group::proposals::StagedProposal;
+use core_group::create_commit_params::CreateCommitParams;
+use core_group::proposals::ProposalStore;
+use core_group::proposals::StagedProposal;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 

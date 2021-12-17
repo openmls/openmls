@@ -4,7 +4,7 @@ use tls_codec::Deserialize;
 
 use crate::ciphersuite::signable::Verifiable;
 use crate::extensions::ExtensionType;
-use crate::group::{mls_group::*, *};
+use crate::group::{core_group::*, *};
 use crate::key_packages::*;
 use crate::messages::*;
 use crate::schedule::*;

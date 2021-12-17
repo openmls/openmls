@@ -17,11 +17,11 @@ pub mod process;
 pub mod proposals;
 pub mod staged_commit;
 #[cfg(test)]
+mod test_core_group;
+#[cfg(test)]
 mod test_create_commit_params;
 #[cfg(test)]
 mod test_duplicate_extension;
-#[cfg(test)]
-mod test_mls_group;
 #[cfg(test)]
 mod test_past_secrets;
 #[cfg(test)]
