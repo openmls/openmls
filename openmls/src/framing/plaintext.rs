@@ -224,11 +224,11 @@ impl MlsPlaintext {
         )
     }
 
-    /// This constructor builds an `MlsPlaintext` containing a Commit. The given
-    /// `CommitType` determines the `SenderType`: If it's a `Member` commit,
-    /// it's `SenderType::Member` and `SenderType::NewMember` otherwise. If it
-    /// is an `External` commit, the context is not signed along with the rest
-    /// of the commit.
+    /// This constructor builds an `MlsPlaintext` containing a Commit. If the
+    /// given `CommitType` is `Member`, the `SenderType` is `Member` as well. If
+    /// it's an `External` commit, the `SenderType` is `NewMember`. If it is an
+    /// `External` commit, the context is not signed along with the rest of the
+    /// commit.
     pub fn commit(
         framing_parameters: FramingParameters,
         sender_index: LeafIndex,
