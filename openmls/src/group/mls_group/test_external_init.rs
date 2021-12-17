@@ -134,7 +134,7 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
         CoreGroup::new_from_external_init(
             backend,
             framing_parameters,
-            Some(&nodes_option),
+            Some(nodes_option),
             &charly_credential_bundle,
             &[], // proposals by reference
             &[], // proposals by value

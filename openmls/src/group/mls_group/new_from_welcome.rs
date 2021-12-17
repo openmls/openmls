@@ -88,41 +88,19 @@ impl CoreGroup {
         let path_secret_option = group_secrets.path_secret;
 
         // Build the ratchet tree
-        // First check the extensions to see if the tree is in there.
-        let mut ratchet_tree_extension = group_info
-            .other_extensions()
-            .iter()
-            .filter(|e| e.extension_type() == ExtensionType::RatchetTree)
-            .map(|e| e.as_ratchet_tree_extension().ok())
-            .collect::<Vec<Option<&RatchetTreeExtension>>>();
-        if ratchet_tree_extension.len() > 1 {
-            // Throw an error if there is more than one ratchet tree extension.
-            // This shouldn't be the case anyway, because extensions are checked
-            // for uniqueness anyway when decoding them.
-            // We have to see if this makes problems later as it's not something
-            // required by the spec right now.
-            return Err(WelcomeError::DuplicateRatchetTreeExtension);
-        }
-
-        let ratchet_tree_extension = if ratchet_tree_extension.is_empty() {
-            None
-        } else {
-            ratchet_tree_extension
-                .pop()
-                .ok_or(WelcomeError::UnknownError)?
-        };
 
         // Set nodes either from the extension or from the `nodes_option`.
         // If we got a ratchet tree extension in the welcome, we enable it for
         // this group. Note that this is not strictly necessary. But there's
         // currently no other mechanism to enable the extension.
-        let (nodes, enable_ratchet_tree_extension) = match ratchet_tree_extension {
-            Some(tree) => (tree.as_slice(), true),
-            None => match nodes_option.as_ref() {
-                Some(n) => (n.as_slice(), false),
-                None => return Err(WelcomeError::MissingRatchetTree),
-            },
-        };
+        let (nodes, enable_ratchet_tree_extension) =
+            match try_nodes_from_extensions(&group_info.other_extensions())? {
+                Some(nodes) => (nodes, true),
+                None => match nodes_option.as_ref() {
+                    Some(n) => (n.as_slice(), false),
+                    None => return Err(WelcomeError::MissingRatchetTree),
+                },
+            };
 
         // Commit secret is ignored when joining a group, since we already have
         // the joiner_secret.

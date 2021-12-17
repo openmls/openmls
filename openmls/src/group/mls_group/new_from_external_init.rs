@@ -40,7 +40,7 @@ impl CoreGroup {
     pub fn new_from_external_init(
         backend: &impl OpenMlsCryptoProvider,
         framing_parameters: FramingParameters,
-        nodes_option: Option<&[Option<Node>]>,
+        nodes_option: Option<Vec<Option<Node>>>,
         credential_bundle: &CredentialBundle,
         proposals_by_reference: &[MlsPlaintext],
         proposals_by_value: &[Proposal],
@@ -51,49 +51,25 @@ impl CoreGroup {
             return Err(ExternalInitError::UnsupportedMlsVersion);
         }
 
-        let mut ratchet_tree_extensions = verifiable_public_group_state
-            .other_extensions()
-            .iter()
-            .filter(|e| e.extension_type() == ExtensionType::RatchetTree)
-            .collect::<Vec<&Extension>>();
-
-        let ratchet_tree_extension = if ratchet_tree_extensions.is_empty() {
-            None
-        } else if ratchet_tree_extensions.len() == 1 {
-            let extension = ratchet_tree_extensions
-                .pop()
-                // We know we only have one element
-                .ok_or(ExternalInitError::LibraryError)?
-                .as_ratchet_tree_extension()?;
-            Some(extension)
-        } else {
-            // Throw an error if there is more than one ratchet tree extension.
-            // This shouldn't be the case anyway, because extensions are checked
-            // for uniqueness when decoding them. We have to see if this makes
-            // problems later as it's not something required by the spec right
-            // now (Note issue #530 of the MLS spec.).
-            return Err(ExternalInitError::DuplicateRatchetTreeExtension);
-        };
+        // Build the ratchet tree
 
         // Set nodes either from the extension or from the `nodes_option`.
         // If we got a ratchet tree extension in the welcome, we enable it for
         // this group. Note that this is not strictly necessary. But there's
         // currently no other mechanism to enable the extension.
-        let (node_options, enable_ratchet_tree_extension) = match ratchet_tree_extension {
-            Some(tree) => (tree.as_slice(), true),
-            None => {
-                if let Some(nodes) = nodes_option {
-                    (nodes, false)
-                } else {
-                    return Err(ExternalInitError::MissingRatchetTree);
-                }
-            }
-        };
+        let (nodes, enable_ratchet_tree_extension) =
+            match try_nodes_from_extensions(&verifiable_public_group_state.other_extensions())? {
+                Some(nodes) => (nodes, true),
+                None => match nodes_option.as_ref() {
+                    Some(n) => (n.as_slice(), false),
+                    None => return Err(ExternalInitError::MissingRatchetTree),
+                },
+            };
 
         // Create a RatchetTree from the given nodes. We have to do this before
         // verifying the PGS, since we need to find the Credential to verify the
         // signature against.
-        let treesync = TreeSync::from_nodes_without_leaf(backend, ciphersuite, node_options)?;
+        let treesync = TreeSync::from_nodes_without_leaf(backend, ciphersuite, nodes)?;
 
         if treesync.tree_hash() != verifiable_public_group_state.tree_hash() {
             return Err(ExternalInitError::TreeHashMismatch);

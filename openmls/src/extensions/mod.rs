@@ -42,6 +42,8 @@ pub use parent_hash_extension::ParentHashExtension;
 pub use ratchet_tree_extension::RatchetTreeExtension;
 pub use required_capabilities::RequiredCapabilitiesExtension;
 
+use crate::treesync::node::Node;
+
 #[cfg(test)]
 mod test_extensions;
 
@@ -313,4 +315,25 @@ impl Ord for Extension {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.extension_type().cmp(&other.extension_type())
     }
+}
+
+/// This function tries to extract a vector of nodes from the given slice of
+/// [`Extension`]s.
+///
+/// Returns the vector of nodes if it finds one and `None` otherwise. Returns an
+/// error if there is either no [`RatchetTreeExtension`] or more than one.
+pub(crate) fn try_nodes_from_extensions(
+    other_extensions: &[Extension],
+) -> Result<Option<&[Option<Node>]>, ExtensionError> {
+    let ratchet_tree_extension_option = other_extensions
+        .iter()
+        .find(|e| e.extension_type() == ExtensionType::RatchetTree);
+    let rte = if let Some(rte) = ratchet_tree_extension_option {
+        rte.as_ratchet_tree_extension()
+            .map_err(|_| ExtensionError::LibraryError)?
+    } else {
+        return Ok(None);
+    };
+
+    Ok(Some(rte.as_slice()))
 }

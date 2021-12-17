@@ -17,24 +17,29 @@ use tls_codec::Error as TlsCodecError;
 
 implement_error! {
     pub enum ExtensionError {
-        InvalidExtensionType(ErrorString) =
-            "Invalid extension type error.",
-        Capabilities(CapabilitiesExtensionError) =
-            "Capabilities extension error. See `CapabilitiesExtensionError` for details.",
-        Lifetime(LifetimeExtensionError) =
-            "Lifetime extension error. See `LifetimeExtensionError` for details.",
-        KeyPackageId(KeyPackageIdError) =
-            "Key package ID extension error. See `KeyPackageIdError` for details.",
-        ParentHash(ParentHashError) =
-            "Parent hash extension error. See `ParentHashError` for details.",
-        RatchetTree(RatchetTreeError) =
-            "Ratchet tree extension error. See `RatchetTreeError` for details.",
-        CodecError(TlsCodecError) =
-            "Error decoding or encoding an extension.",
-        ConfigError(ConfigError) =
-            "Configuration error. See `ConfigError` for details.",
-        InvalidExtension(InvalidExtensionError) =
-            "The extension is malformed. See [`InvalidExtensionError`](`InvalidExtensionError`) for details.",
+        Simple {
+            LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
+        }
+        Complex {
+            InvalidExtensionType(ErrorString) =
+                "Invalid extension type error.",
+            Capabilities(CapabilitiesExtensionError) =
+                "Capabilities extension error. See `CapabilitiesExtensionError` for details.",
+            Lifetime(LifetimeExtensionError) =
+                "Lifetime extension error. See `LifetimeExtensionError` for details.",
+            KeyPackageId(KeyPackageIdError) =
+                "Key package ID extension error. See `KeyPackageIdError` for details.",
+            ParentHash(ParentHashError) =
+                "Parent hash extension error. See `ParentHashError` for details.",
+            RatchetTree(RatchetTreeError) =
+                "Ratchet tree extension error. See `RatchetTreeError` for details.",
+            CodecError(TlsCodecError) =
+                "Error decoding or encoding an extension.",
+            ConfigError(ConfigError) =
+                "Configuration error. See `ConfigError` for details.",
+            InvalidExtension(InvalidExtensionError) =
+                "The extension is malformed. See [`InvalidExtensionError`](`InvalidExtensionError`) for details.",
+        }
     }
 }
 
