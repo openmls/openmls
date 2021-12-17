@@ -8,7 +8,7 @@ pub mod processing;
 mod resumption;
 mod ser;
 #[cfg(test)]
-mod test_managed_group;
+mod test_mls_group;
 mod updates;
 
 use crate::credentials::CredentialBundle;

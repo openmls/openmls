@@ -8,7 +8,7 @@
 pub mod core_group;
 pub mod errors;
 mod group_context;
-mod managed_group;
+mod mls_group;
 
 #[cfg(any(feature = "test-utils", test))]
 pub mod tests;
@@ -28,7 +28,7 @@ pub use errors::{
     InterimTranscriptHashError, ProposalValidationError, StageCommitError, WelcomeError,
 };
 pub use group_context::*;
-pub use managed_group::*;
+pub use mls_group::*;
 
 use tls_codec::TlsVecU32;
 use tls_codec::{TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize};
