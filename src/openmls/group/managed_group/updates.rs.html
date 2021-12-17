@@ -116,7 +116,7 @@
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
-<span class="kw">impl</span> <span class="ident">ManagedGroup</span> {
+<span class="kw">impl</span> <span class="ident">MlsGroup</span> {
     <span class="doccomment">/// Updates the own leaf node</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// A [`KeyPackageBundle`](crate::prelude::KeyPackageBundle) can optionally</span>
@@ -128,16 +128,16 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">key_package_bundle_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">MlsMessageOut</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Welcome</span><span class="op">&gt;</span>), <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">MlsMessageOut</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Welcome</span><span class="op">&gt;</span>), <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError::UseAfterEviction</span>(<span class="ident">UseAfterEviction::Error</span>));
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::UseAfterEviction</span>(<span class="ident">UseAfterEviction::Error</span>));
         }
 
         <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">credential</span>()<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">credential_bundle</span>: <span class="ident">CredentialBundle</span> <span class="op">=</span> <span class="ident">backend</span>
             .<span class="ident">key_store</span>()
             .<span class="ident">read</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
-            .<span class="ident">ok_or</span>(<span class="ident">ManagedGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
+            .<span class="ident">ok_or</span>(<span class="ident">MlsGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Create Commit over all proposals. If a `KeyPackageBundle` was passed</span>
         <span class="comment">// in, use it to create an update proposal by value. TODO #141</span>
@@ -166,7 +166,7 @@
 
         <span class="comment">// Take the new KeyPackageBundle and save it for later</span>
         <span class="kw">let</span> <span class="ident">kpb</span> <span class="op">=</span> <span class="ident">kpb_option</span>.<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="ident">ManagedGroupError::LibraryError</span>(
+            <span class="ident">MlsGroupError::LibraryError</span>(
                 <span class="string">&quot;We didn&#39;t get a key package for a full commit on self update.&quot;</span>.<span class="ident">into</span>(),
             )
         })<span class="question-mark">?</span>;
@@ -188,16 +188,16 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">key_package_bundle_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsMessageOut</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsMessageOut</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError::UseAfterEviction</span>(<span class="ident">UseAfterEviction::Error</span>));
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::UseAfterEviction</span>(<span class="ident">UseAfterEviction::Error</span>));
         }
 
         <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">credential</span>()<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">credential_bundle</span>: <span class="ident">CredentialBundle</span> <span class="op">=</span> <span class="ident">backend</span>
             .<span class="ident">key_store</span>()
             .<span class="ident">read</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
-            .<span class="ident">ok_or</span>(<span class="ident">ManagedGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
+            .<span class="ident">ok_or</span>(<span class="ident">MlsGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">treesync</span>();
         <span class="kw">let</span> <span class="ident">existing_key_package</span> <span class="op">=</span> <span class="ident">tree</span>.<span class="ident">own_leaf_node</span>()<span class="question-mark">?</span>.<span class="ident">key_package</span>();

@@ -33,7 +33,7 @@
 <span id="33">33</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
-<span class="kw">impl</span> <span class="ident">ManagedGroup</span> {
+<span class="kw">impl</span> <span class="ident">MlsGroup</span> {
     <span class="comment">// === Export secrets ===</span>
 
     <span class="doccomment">/// Exports a secret from the current epoch</span>
@@ -43,13 +43,13 @@
         <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">key_length</span>: <span class="ident">usize</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ManagedGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">active</span> {
             <span class="prelude-val">Ok</span>(<span class="self">self</span>
                 .<span class="ident">group</span>
                 .<span class="ident">export_secret</span>(<span class="ident">backend</span>, <span class="ident">label</span>, <span class="ident">context</span>, <span class="ident">key_length</span>)<span class="question-mark">?</span>)
         } <span class="kw">else</span> {
-            <span class="prelude-val">Err</span>(<span class="ident">ManagedGroupError::UseAfterEviction</span>(<span class="ident">UseAfterEviction::Error</span>))
+            <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::UseAfterEviction</span>(<span class="ident">UseAfterEviction::Error</span>))
         }
     }
 

@@ -99,7 +99,7 @@
 <span id="99"> 99</span>
 <span id="100">100</span>
 <span id="101">101</span>
-</pre><pre class="rust"><code><span class="doccomment">//! # MLS Managed Group errors</span>
+</pre><pre class="rust"><code><span class="doccomment">//! # MLS MlsGroup errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
 <span class="doccomment">//! `CreateCommitError`.</span>
@@ -115,7 +115,7 @@
 <span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
 
 <span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ManagedGroupError</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsGroupError</span> {
         <span class="ident">Simple</span> {
             <span class="ident">NoMatchingCredentialBundle</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t find a `CredentialBundle` in the `KeyStore` that matches the one in my leaf.&quot;</span>,
             <span class="ident">NoMatchingKeyPackageBundle</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t find a `KeyPackageBundle` in the `KeyStore` that matches the given `KeyPackage` hash.&quot;</span>,

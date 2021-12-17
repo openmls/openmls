@@ -168,9 +168,9 @@
 
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
-<span class="doccomment">/// Specifies the configuration parameters for a [`ManagedGroup`]</span>
+<span class="doccomment">/// Specifies the configuration parameters for a [`MlsGroup`]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ManagedGroupConfig</span> {
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MlsGroupConfig</span> {
     <span class="doccomment">/// Defines whether handshake messages (Proposals &amp; Commits) are encrypted.</span>
     <span class="doccomment">/// Application are always encrypted regardless. `Plaintext`: Handshake messages</span>
     <span class="doccomment">/// are returned as MlsPlaintext messages `Ciphertext`: Handshake messages are</span>
@@ -191,38 +191,38 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">required_capabilities</span>: <span class="ident">RequiredCapabilitiesExtension</span>,
 }
 
-<span class="kw">impl</span> <span class="ident">ManagedGroupConfig</span> {
-    <span class="doccomment">/// Returns a builder for [`ManagedGroupConfig`]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">builder</span>() -&gt; <span class="ident">ManagedGroupConfigBuilder</span> {
-        <span class="ident">ManagedGroupConfigBuilder::new</span>()
+<span class="kw">impl</span> <span class="ident">MlsGroupConfig</span> {
+    <span class="doccomment">/// Returns a builder for [`MlsGroupConfig`]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">builder</span>() -&gt; <span class="ident">MlsGroupConfigBuilder</span> {
+        <span class="ident">MlsGroupConfigBuilder::new</span>()
     }
 
-    <span class="doccomment">/// Get the [`ManagedGroupConfig`] wire format.</span>
+    <span class="doccomment">/// Get the [`MlsGroupConfig`] wire format.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wire_format</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">WireFormat</span> {
         <span class="self">self</span>.<span class="ident">wire_format</span>
     }
 
-    <span class="doccomment">/// Get the [`ManagedGroupConfig`] padding size.</span>
+    <span class="doccomment">/// Get the [`MlsGroupConfig`] padding size.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">padding_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         <span class="self">self</span>.<span class="ident">padding_size</span>
     }
 
-    <span class="doccomment">/// Get the [`ManagedGroupConfig`] max past epochs.</span>
+    <span class="doccomment">/// Get the [`MlsGroupConfig`] max past epochs.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">max_past_epochs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         <span class="self">self</span>.<span class="ident">max_past_epochs</span>
     }
 
-    <span class="doccomment">/// Get a reference to the [`ManagedGroupConfig`] update policy.</span>
+    <span class="doccomment">/// Get a reference to the [`MlsGroupConfig`] update policy.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_policy</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">UpdatePolicy</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">update_policy</span>
     }
 
-    <span class="doccomment">/// Get the [`ManagedGroupConfig`] number of resumption secrets.</span>
+    <span class="doccomment">/// Get the [`MlsGroupConfig`] number of resumption secrets.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">number_of_resumption_secrets</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
         <span class="self">self</span>.<span class="ident">number_of_resumption_secrets</span>
     }
 
-    <span class="doccomment">/// Get the [`ManagedGroupConfig`] boolean flag that indicates whether ratchet_tree_extension should be used.</span>
+    <span class="doccomment">/// Get the [`MlsGroupConfig`] boolean flag that indicates whether ratchet_tree_extension should be used.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">use_ratchet_tree_extension</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">use_ratchet_tree_extension</span>
     }
@@ -235,9 +235,9 @@
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">ManagedGroupConfig</span> {
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">MlsGroupConfig</span> {
     <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">ManagedGroupConfig</span> {
+        <span class="ident">MlsGroupConfig</span> {
             <span class="ident">wire_format</span>: <span class="ident">WireFormat::MlsCiphertext</span>,
             <span class="ident">update_policy</span>: <span class="ident">UpdatePolicy::default</span>(),
             <span class="ident">padding_size</span>: <span class="number">0</span>,
@@ -250,35 +250,35 @@
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ManagedGroupConfigBuilder</span> {
-    <span class="ident">config</span>: <span class="ident">ManagedGroupConfig</span>,
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MlsGroupConfigBuilder</span> {
+    <span class="ident">config</span>: <span class="ident">MlsGroupConfig</span>,
 }
-<span class="kw">impl</span> <span class="ident">ManagedGroupConfigBuilder</span> {
+<span class="kw">impl</span> <span class="ident">MlsGroupConfigBuilder</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-        <span class="ident">ManagedGroupConfigBuilder</span> {
-            <span class="ident">config</span>: <span class="ident">ManagedGroupConfig::default</span>(),
+        <span class="ident">MlsGroupConfigBuilder</span> {
+            <span class="ident">config</span>: <span class="ident">MlsGroupConfig::default</span>(),
         }
     }
 
-    <span class="doccomment">/// Sets the `wire_format` property of the ManagedGroupConfig.</span>
+    <span class="doccomment">/// Sets the `wire_format` property of the MlsGroupConfig.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wire_format</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">wire_format</span>: <span class="ident">WireFormat</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">wire_format</span> <span class="op">=</span> <span class="ident">wire_format</span>;
         <span class="self">self</span>
     }
 
-    <span class="doccomment">/// Sets the `update_policy` property of the ManagedGroupConfig.</span>
+    <span class="doccomment">/// Sets the `update_policy` property of the MlsGroupConfig.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_policy</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">update_policy</span>: <span class="ident">UpdatePolicy</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">update_policy</span> <span class="op">=</span> <span class="ident">update_policy</span>;
         <span class="self">self</span>
     }
 
-    <span class="doccomment">/// Sets the `padding_size` property of the ManagedGroupConfig.</span>
+    <span class="doccomment">/// Sets the `padding_size` property of the MlsGroupConfig.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">padding_size</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">padding_size</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">padding_size</span> <span class="op">=</span> <span class="ident">padding_size</span>;
         <span class="self">self</span>
     }
 
-    <span class="doccomment">/// Sets the `max_past_epochs` property of the ManagedGroupConfig.</span>
+    <span class="doccomment">/// Sets the `max_past_epochs` property of the MlsGroupConfig.</span>
     <span class="doccomment">/// This allows application messages from previous epochs to be decrypted.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// **WARNING**</span>
@@ -293,19 +293,19 @@
         <span class="self">self</span>
     }
 
-    <span class="doccomment">/// Sets the `number_of_resumption_secrets` property of the ManagedGroupConfig.</span>
+    <span class="doccomment">/// Sets the `number_of_resumption_secrets` property of the MlsGroupConfig.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">number_of_resumtion_secrets</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">number_of_resumption_secrets</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">number_of_resumption_secrets</span> <span class="op">=</span> <span class="ident">number_of_resumption_secrets</span>;
         <span class="self">self</span>
     }
 
-    <span class="doccomment">/// Sets the `use_ratchet_tree_extension` property of the ManagedGroupConfig.</span>
+    <span class="doccomment">/// Sets the `use_ratchet_tree_extension` property of the MlsGroupConfig.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">use_ratchet_tree_extension</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">use_ratchet_tree_extension</span>: <span class="ident">bool</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">use_ratchet_tree_extension</span> <span class="op">=</span> <span class="ident">use_ratchet_tree_extension</span>;
         <span class="self">self</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(<span class="self">self</span>) -&gt; <span class="ident">ManagedGroupConfig</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(<span class="self">self</span>) -&gt; <span class="ident">MlsGroupConfig</span> {
         <span class="self">self</span>.<span class="ident">config</span>
     }
 }

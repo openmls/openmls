@@ -56,8 +56,8 @@
     <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>,
 };
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SerializedManagedGroup</span> {
-    <span class="ident">managed_group_config</span>: <span class="ident">ManagedGroupConfig</span>,
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SerializedMlsGroup</span> {
+    <span class="ident">mls_group_config</span>: <span class="ident">MlsGroupConfig</span>,
     <span class="ident">group</span>: <span class="ident">CoreGroup</span>,
     <span class="ident">proposal_store</span>: <span class="ident">ProposalStore</span>,
     <span class="ident">message_secrets_store</span>: <span class="ident">MessageSecretsStore</span>,
@@ -67,10 +67,10 @@
     <span class="ident">active</span>: <span class="ident">bool</span>,
 }
 
-<span class="kw">impl</span> <span class="ident">SerializedManagedGroup</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">into_managed_group</span>(<span class="self">self</span>) -&gt; <span class="ident">ManagedGroup</span> {
-        <span class="ident">ManagedGroup</span> {
-            <span class="ident">managed_group_config</span>: <span class="self">self</span>.<span class="ident">managed_group_config</span>,
+<span class="kw">impl</span> <span class="ident">SerializedMlsGroup</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">into_mls_group</span>(<span class="self">self</span>) -&gt; <span class="ident">MlsGroup</span> {
+        <span class="ident">MlsGroup</span> {
+            <span class="ident">mls_group_config</span>: <span class="self">self</span>.<span class="ident">mls_group_config</span>,
             <span class="ident">group</span>: <span class="self">self</span>.<span class="ident">group</span>,
             <span class="ident">proposal_store</span>: <span class="self">self</span>.<span class="ident">proposal_store</span>,
             <span class="ident">message_secrets_store</span>: <span class="self">self</span>.<span class="ident">message_secrets_store</span>,
@@ -83,13 +83,13 @@
     }
 }
 
-<span class="kw">impl</span> <span class="ident">Serialize</span> <span class="kw">for</span> <span class="ident">ManagedGroup</span> {
+<span class="kw">impl</span> <span class="ident">Serialize</span> <span class="kw">for</span> <span class="ident">MlsGroup</span> {
     <span class="kw">fn</span> <span class="ident">serialize</span><span class="op">&lt;</span><span class="ident">S</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">serializer</span>: <span class="ident">S</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">S::Ok</span>, <span class="ident">S::Error</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">S</span>: <span class="ident">Serializer</span>,
     {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">serializer</span>.<span class="ident">serialize_struct</span>(<span class="string">&quot;SerializedManagedGroup&quot;</span>, <span class="number">6</span>)<span class="question-mark">?</span>;
-        <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;managed_group_config&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">managed_group_config</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">serializer</span>.<span class="ident">serialize_struct</span>(<span class="string">&quot;SerializedMlsGroup&quot;</span>, <span class="number">6</span>)<span class="question-mark">?</span>;
+        <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;mls_group_config&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">mls_group_config</span>)<span class="question-mark">?</span>;
         <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;group&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group</span>)<span class="question-mark">?</span>;
         <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;proposal_store&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">proposal_store</span>)<span class="question-mark">?</span>;
         <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;message_secrets_store&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">message_secrets_store</span>)<span class="question-mark">?</span>;

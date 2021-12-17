@@ -1,1 +1,1 @@
-initSidebarItems({"struct":[["ManagedGroupConfig","Specifies the configuration parameters for a [`ManagedGroup`]"],["ManagedGroupConfigBuilder",""],["UpdatePolicy","Specifies in which intervals the own leaf node should be updated"]]});
+initSidebarItems({"struct":[["MlsGroupConfig","Specifies the configuration parameters for a [`MlsGroup`]"],["MlsGroupConfigBuilder",""],["UpdatePolicy","Specifies in which intervals the own leaf node should be updated"]]});
