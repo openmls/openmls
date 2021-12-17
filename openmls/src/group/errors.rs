@@ -168,6 +168,8 @@ implement_error! {
                 "An error occurred in the key schedule.",
             TreeSyncError(TreeSyncError) =
                 "An error occurred while importing the new tree.",
+            TreeSyncDiffError(TreeSyncDiffError) =
+                "An error occurred while adding our own leaf to the new tree.",
             ExtensionError(ExtensionError) =
                 "See [`ExtensionError`] for details.",
             KeyPackageError(KeyPackageError) =

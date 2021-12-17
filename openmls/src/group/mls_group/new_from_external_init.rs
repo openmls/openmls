@@ -84,19 +84,10 @@ impl MlsGroup {
             }
         };
 
-        // Generate a fresh KeyPackageBundle for the new group.
-        let key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite.name()], credential_bundle, backend, vec![])?;
-
         // Create a RatchetTree from the given nodes. We have to do this before
         // verifying the PGS, since we need to find the Credential to verify the
         // signature against.
-        let treesync = TreeSync::from_nodes_without_leaf(
-            backend,
-            ciphersuite,
-            node_options,
-            &key_package_bundle,
-        )?;
+        let treesync = TreeSync::from_nodes_without_leaf(backend, ciphersuite, node_options)?;
 
         if treesync.tree_hash() != verifiable_public_group_state.tree_hash() {
             return Err(ExternalInitError::TreeHashMismatch);
@@ -113,8 +104,9 @@ impl MlsGroup {
 
         let (init_secret, kem_output) = InitSecret::from_public_group_state(backend, &pgs)?;
 
-        // Leaving he confirmed_transcript_hash empty for now. It will later be
-        // set using the interim transcrip hash from the PGS.
+        // We create the GroupContext with the values from the PGS, even though
+        // we already changed the tree by adding our own leaf, thus invalidating
+        // the tree hash.
         let group_context = GroupContext::new(
             pgs.group_id,
             pgs.epoch,
