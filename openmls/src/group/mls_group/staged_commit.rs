@@ -10,7 +10,7 @@ use super::*;
 use core::fmt::Debug;
 use std::mem;
 
-impl MlsGroup {
+impl CoreGroup {
     /// Stages a commit message.
     /// This function does the following:
     ///  - Applies the proposals covered by the commit to the tree
@@ -19,7 +19,7 @@ impl MlsGroup {
     ///  - Initializes the key schedule for epoch rollover
     ///  - Verifies the confirmation tag/membership tag
     /// Returns a [StagedCommit] that can be inspected and later merged
-    /// into the group state with [MlsGroup::merge_commit()]
+    /// into the group state with [CoreGroup::merge_commit()]
     /// This function does the following checks:
     ///  - ValSem100
     ///  - ValSem101
@@ -40,7 +40,7 @@ impl MlsGroup {
         proposal_store: &ProposalStore,
         own_key_packages: &[KeyPackageBundle],
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<StagedCommit, MlsGroupError> {
+    ) -> Result<StagedCommit, CoreGroupError> {
         let ciphersuite = self.ciphersuite();
 
         // Extract the sender of the Commit message
@@ -191,7 +191,7 @@ impl MlsGroup {
             backend,
             // It is ok to use return a library error here, because we know the MlsPlaintext contains a Commit
             &MlsPlaintextCommitContent::try_from(mls_plaintext)
-                .map_err(|_| MlsGroupError::LibraryError)?,
+                .map_err(|_| CoreGroupError::LibraryError)?,
             &self.interim_transcript_hash,
         )?;
 
@@ -255,7 +255,7 @@ impl MlsGroup {
                 proposal,
                 *mls_plaintext.sender(),
             )
-            .map_err(|_| MlsGroupError::LibraryError)?;
+            .map_err(|_| CoreGroupError::LibraryError)?;
             proposal_queue.add(staged_proposal);
         }
 
@@ -282,7 +282,7 @@ impl MlsGroup {
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a `LibraryError`.
-    pub fn merge_commit(&mut self, staged_commit: StagedCommit) -> Result<(), MlsGroupError> {
+    pub fn merge_commit(&mut self, staged_commit: StagedCommit) -> Result<(), CoreGroupError> {
         if let Some(state) = staged_commit.state {
             self.group_context = state.group_context;
             self.group_epoch_secrets = state.group_epoch_secrets;
@@ -301,7 +301,7 @@ impl MlsGroup {
     pub fn merge_commit_take_message_secrets(
         &mut self,
         staged_commit: StagedCommit,
-    ) -> Result<Option<MessageSecrets>, MlsGroupError> {
+    ) -> Result<Option<MessageSecrets>, CoreGroupError> {
         Ok(if let Some(state) = staged_commit.state {
             self.group_context = state.group_context;
             self.group_epoch_secrets = state.group_epoch_secrets;

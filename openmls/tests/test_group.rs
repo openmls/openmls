@@ -62,9 +62,9 @@ fn create_commit_optional_path(
     assert!(alice_update_key_package.verify(backend,).is_ok());
 
     // Alice creates a group
-    let mut group_alice = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .build(backend)
-        .expect("Error creating MlsGroup.");
+        .expect("Error creating CoreGroup.");
 
     // Alice proposes to add Bob with forced self-update
     // Even though there are only Add Proposals, this should generated a path field
@@ -147,7 +147,7 @@ fn create_commit_optional_path(
     let ratchet_tree = group_alice.treesync().export_nodes();
 
     // Bob creates group from Welcome
-    let group_bob = match MlsGroup::new_from_welcome(
+    let group_bob = match CoreGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,
@@ -251,9 +251,9 @@ fn basic_group_setup(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCr
     .expect("An unexpected error occurred.");
 
     // Alice creates a group
-    let group_alice = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .build(backend)
-        .expect("Error creating MlsGroup.");
+        .expect("Error creating CoreGroup.");
 
     // Alice adds Bob
     let bob_add_proposal = group_alice
@@ -344,9 +344,9 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group ===
-    let mut group_alice = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .build(backend)
-        .expect("Error creating MlsGroup.");
+        .expect("Error creating CoreGroup.");
 
     // === Alice adds Bob ===
     let bob_add_proposal = group_alice
@@ -388,7 +388,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .expect("error merging commit");
     let ratchet_tree = group_alice.treesync().export_nodes();
 
-    let mut group_bob = match MlsGroup::new_from_welcome(
+    let mut group_bob = match CoreGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,
@@ -686,7 +686,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .expect("error merging commit");
 
     let ratchet_tree = group_alice.treesync().export_nodes();
-    let mut group_charlie = match MlsGroup::new_from_welcome(
+    let mut group_charlie = match CoreGroup::new_from_welcome(
         welcome_for_charlie_option.expect("An unexpected error occurred."),
         Some(ratchet_tree),
         charlie_key_package_bundle,

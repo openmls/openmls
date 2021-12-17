@@ -65,7 +65,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     let lifetime = LifetimeExtension::default();
 
     // Let's create a group
-    let mut group = MlsGroup::builder(GroupId::random(&crypto), key_package_bundle)
+    let mut group = CoreGroup::builder(GroupId::random(&crypto), key_package_bundle)
         .build(&crypto)
         .expect("Could not create group.");
 

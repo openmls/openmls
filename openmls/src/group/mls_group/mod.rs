@@ -53,15 +53,15 @@ use std::io::{Error, Read, Write};
 use tls_codec::Serialize as TlsSerializeTrait;
 
 use super::errors::{
-    ExporterError, FramingValidationError, MlsGroupError, ProposalValidationError,
+    CoreGroupError, ExporterError, FramingValidationError, ProposalValidationError,
 };
 
 pub type CreateCommitResult =
-    Result<(MlsPlaintext, Option<Welcome>, Option<KeyPackageBundle>), MlsGroupError>;
+    Result<(MlsPlaintext, Option<Welcome>, Option<KeyPackageBundle>), CoreGroupError>;
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct MlsGroup {
+pub struct CoreGroup {
     ciphersuite: &'static Ciphersuite,
     group_context: GroupContext,
     group_epoch_secrets: GroupEpochSecrets,
@@ -77,7 +77,7 @@ pub struct MlsGroup {
 }
 
 implement_persistence!(
-    MlsGroup,
+    CoreGroup,
     group_context,
     group_epoch_secrets,
     message_secrets,
@@ -87,18 +87,18 @@ implement_persistence!(
     mls_version
 );
 
-/// Builder for [`MlsGroup`].
-pub struct MlsGroupBuilder {
+/// Builder for [`CoreGroup`].
+pub struct CoreGroupBuilder {
     key_package_bundle: KeyPackageBundle,
     group_id: GroupId,
-    config: Option<MlsGroupConfig>,
+    config: Option<CoreGroupConfig>,
     psk_ids: Vec<PreSharedKeyId>,
     version: Option<ProtocolVersion>,
     required_capabilities: Option<RequiredCapabilitiesExtension>,
 }
 
-impl MlsGroupBuilder {
-    /// Create a new [`MlsGroupBuilder`].
+impl CoreGroupBuilder {
+    /// Create a new [`CoreGroupBuilder`].
     pub fn new(group_id: GroupId, key_package_bundle: KeyPackageBundle) -> Self {
         Self {
             key_package_bundle,
@@ -109,22 +109,22 @@ impl MlsGroupBuilder {
             required_capabilities: None,
         }
     }
-    /// Set the [`MlsGroupConfig`] of the [`MlsGroup`].
-    pub fn with_config(mut self, config: MlsGroupConfig) -> Self {
+    /// Set the [`CoreGroupConfig`] of the [`CoreGroup`].
+    pub fn with_config(mut self, config: CoreGroupConfig) -> Self {
         self.config = Some(config);
         self
     }
-    /// Set the [`Vec<PreSharedKeyId>`] of the [`MlsGroup`].
+    /// Set the [`Vec<PreSharedKeyId>`] of the [`CoreGroup`].
     pub fn with_psk(mut self, psk_ids: Vec<PreSharedKeyId>) -> Self {
         self.psk_ids = psk_ids;
         self
     }
-    /// Set the [`ProtocolVersion`] of the [`MlsGroup`].
+    /// Set the [`ProtocolVersion`] of the [`CoreGroup`].
     pub fn with_version(mut self, version: ProtocolVersion) -> Self {
         self.version = Some(version);
         self
     }
-    /// Set the [`RequiredCapabilitiesExtension`] of the [`MlsGroup`].
+    /// Set the [`RequiredCapabilitiesExtension`] of the [`CoreGroup`].
     pub fn with_required_capabilities(
         mut self,
         required_capabilities: RequiredCapabilitiesExtension,
@@ -133,13 +133,13 @@ impl MlsGroupBuilder {
         self
     }
 
-    /// Build the [`MlsGroup`].
+    /// Build the [`CoreGroup`].
     /// Any values that haven't been set in the builder are set to their default
     /// values (which might be random).
     ///
     /// This function performs cryptographic operations and there requires an
     /// [`OpenMlsCryptoProvider`].
-    pub fn build(self, backend: &impl OpenMlsCryptoProvider) -> Result<MlsGroup, MlsGroupError> {
+    pub fn build(self, backend: &impl OpenMlsCryptoProvider) -> Result<CoreGroup, CoreGroupError> {
         let ciphersuite = self.key_package_bundle.key_package().ciphersuite();
         let config = self.config.unwrap_or_default();
         let required_capabilities = self.required_capabilities.unwrap_or_default();
@@ -182,7 +182,7 @@ impl MlsGroupBuilder {
 
         let interim_transcript_hash = vec![];
 
-        Ok(MlsGroup {
+        Ok(CoreGroup {
             ciphersuite,
             group_context,
             group_epoch_secrets,
@@ -195,11 +195,11 @@ impl MlsGroupBuilder {
     }
 }
 
-/// Public [`MlsGroup`] functions.
-impl MlsGroup {
-    /// Get a builder for [`MlsGroup`].
-    pub fn builder(group_id: GroupId, key_package_bundle: KeyPackageBundle) -> MlsGroupBuilder {
-        MlsGroupBuilder::new(group_id, key_package_bundle)
+/// Public [`CoreGroup`] functions.
+impl CoreGroup {
+    /// Get a builder for [`CoreGroup`].
+    pub fn builder(group_id: GroupId, key_package_bundle: KeyPackageBundle) -> CoreGroupBuilder {
+        CoreGroupBuilder::new(group_id, key_package_bundle)
     }
 
     // Join a group from a welcome message
@@ -208,7 +208,7 @@ impl MlsGroup {
         nodes_option: Option<Vec<Option<Node>>>,
         kpb: KeyPackageBundle,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, MlsGroupError> {
+    ) -> Result<Self, CoreGroupError> {
         Ok(Self::new_from_welcome_internal(
             welcome,
             nodes_option,
@@ -230,7 +230,7 @@ impl MlsGroup {
         credential_bundle: &CredentialBundle,
         joiner_key_package: KeyPackage,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsPlaintext, MlsGroupError> {
+    ) -> Result<MlsPlaintext, CoreGroupError> {
         joiner_key_package.validate_required_capabilities(self.required_capabilities())?;
         let add_proposal = AddProposal {
             key_package: joiner_key_package,
@@ -258,7 +258,7 @@ impl MlsGroup {
         credential_bundle: &CredentialBundle,
         key_package: KeyPackage,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsPlaintext, MlsGroupError> {
+    ) -> Result<MlsPlaintext, CoreGroupError> {
         let update_proposal = UpdateProposal { key_package };
         let proposal = Proposal::Update(update_proposal);
         MlsPlaintext::member_proposal(
@@ -283,7 +283,7 @@ impl MlsGroup {
         credential_bundle: &CredentialBundle,
         removed_index: LeafIndex,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsPlaintext, MlsGroupError> {
+    ) -> Result<MlsPlaintext, CoreGroupError> {
         let remove_proposal = RemoveProposal {
             removed: removed_index,
         };
@@ -310,7 +310,7 @@ impl MlsGroup {
         credential_bundle: &CredentialBundle,
         psk: PreSharedKeyId,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsPlaintext, MlsGroupError> {
+    ) -> Result<MlsPlaintext, CoreGroupError> {
         let presharedkey_proposal = PreSharedKeyProposal::new(psk);
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
         MlsPlaintext::member_proposal(
@@ -332,7 +332,7 @@ impl MlsGroup {
         credential_bundle: &CredentialBundle,
         extensions: &[Extension],
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsPlaintext, MlsGroupError> {
+    ) -> Result<MlsPlaintext, CoreGroupError> {
         // Ensure that the group supports all the extensions that are wanted.
         let required_extension = extensions
             .iter()
@@ -373,7 +373,7 @@ impl MlsGroup {
         credential_bundle: &CredentialBundle,
         padding_size: usize,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsCiphertext, MlsGroupError> {
+    ) -> Result<MlsCiphertext, CoreGroupError> {
         let mls_plaintext = MlsPlaintext::new_application(
             self.sender_index(),
             aad,
@@ -392,7 +392,7 @@ impl MlsGroup {
         mls_plaintext: MlsPlaintext,
         padding_size: usize,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsCiphertext, MlsGroupError> {
+    ) -> Result<MlsCiphertext, CoreGroupError> {
         log::trace!("{:?}", mls_plaintext.confirmation_tag());
         MlsCiphertext::try_from_plaintext(
             &mls_plaintext,
@@ -406,7 +406,7 @@ impl MlsGroup {
             self.message_secrets_mut(),
             padding_size,
         )
-        .map_err(MlsGroupError::MlsCiphertextError)
+        .map_err(CoreGroupError::MlsCiphertextError)
     }
 
     /// Decrypt an MlsCiphertext into an MlsPlaintext
@@ -414,7 +414,7 @@ impl MlsGroup {
         &mut self,
         mls_ciphertext: &MlsCiphertext,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<VerifiableMlsPlaintext, MlsGroupError> {
+    ) -> Result<VerifiableMlsPlaintext, CoreGroupError> {
         Ok(mls_ciphertext.to_plaintext(self.ciphersuite(), backend, &mut self.message_secrets)?)
     }
 
@@ -424,7 +424,7 @@ impl MlsGroup {
         &self,
         mut verifiable: VerifiableMlsPlaintext,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsPlaintext, MlsGroupError> {
+    ) -> Result<MlsPlaintext, CoreGroupError> {
         // Verify the signature on the plaintext.
         let tree = self.treesync();
 
@@ -453,7 +453,7 @@ impl MlsGroup {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         verifiable_mls_plaintext: &mut VerifiableMlsPlaintext,
-    ) -> Result<(), MlsGroupError> {
+    ) -> Result<(), CoreGroupError> {
         verifiable_mls_plaintext.set_context(self.context().tls_serialize_detached()?);
         Ok(verifiable_mls_plaintext
             .verify_membership(backend, self.message_secrets().membership_key())?)
@@ -466,7 +466,7 @@ impl MlsGroup {
         label: &str,
         context: &[u8],
         key_length: usize,
-    ) -> Result<Vec<u8>, MlsGroupError> {
+    ) -> Result<Vec<u8>, CoreGroupError> {
         if key_length > u16::MAX.into() {
             log::error!("Got a key that is larger than u16::MAX");
             return Err(ExporterError::KeyLengthTooLong.into());
@@ -483,14 +483,14 @@ impl MlsGroup {
     }
 
     /// Loads the state from persisted state
-    pub fn load<R: Read>(reader: R) -> Result<MlsGroup, Error> {
+    pub fn load<R: Read>(reader: R) -> Result<CoreGroup, Error> {
         serde_json::from_reader(reader).map_err(|e| e.into())
     }
 
     /// Persists the state
     pub fn save<W: Write>(&self, writer: &mut W) -> Result<(), Error> {
-        let serialized_mls_group = serde_json::to_string_pretty(self)?;
-        writer.write_all(&serialized_mls_group.into_bytes())
+        let serialized_core_group = serde_json::to_string_pretty(self)?;
+        writer.write_all(&serialized_core_group.into_bytes())
     }
 
     /// Returns the ratchet tree
@@ -514,7 +514,7 @@ impl MlsGroup {
     }
 
     /// Get the members of the group, indexed by their leaves.
-    pub fn members(&self) -> Result<BTreeMap<LeafIndex, &Credential>, MlsGroupError> {
+    pub fn members(&self) -> Result<BTreeMap<LeafIndex, &Credential>, CoreGroupError> {
         Ok(self
             .tree
             .full_leaves()?
@@ -560,7 +560,7 @@ impl MlsGroup {
 }
 
 // Private and crate functions
-impl MlsGroup {
+impl CoreGroup {
     pub(crate) fn sender_index(&self) -> LeafIndex {
         self.tree.own_leaf_index()
     }
@@ -598,7 +598,7 @@ pub(crate) fn update_confirmed_transcript_hash(
     backend: &impl OpenMlsCryptoProvider,
     mls_plaintext_commit_content: &MlsPlaintextCommitContent,
     interim_transcript_hash: &[u8],
-) -> Result<Vec<u8>, MlsGroupError> {
+) -> Result<Vec<u8>, CoreGroupError> {
     let commit_content_bytes = mls_plaintext_commit_content.tls_serialize_detached()?;
     Ok(ciphersuite.hash(
         backend,

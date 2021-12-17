@@ -34,7 +34,7 @@ struct PathProcessingResult {
     key_package_bundle: Option<KeyPackageBundle>,
 }
 
-impl MlsGroup {
+impl CoreGroup {
     pub fn create_commit(
         &self,
         params: CreateCommitParams,
@@ -148,7 +148,7 @@ impl MlsGroup {
             // It is ok to a library error here, because we know the MlsPlaintext contains a
             // Commit
             &MlsPlaintextCommitContent::try_from(&mls_plaintext)
-                .map_err(|_| MlsGroupError::LibraryError)?,
+                .map_err(|_| CoreGroupError::LibraryError)?,
             &self.interim_transcript_hash,
         )?;
 
@@ -169,7 +169,7 @@ impl MlsGroup {
             path_processing_result.commit_secret,
             self.group_epoch_secrets()
                 .init_secret()
-                .ok_or(MlsGroupError::InitSecretNotFound)?,
+                .ok_or(CoreGroupError::InitSecretNotFound)?,
         )?;
 
         // Create group secrets for later use, so we can afterwards consume the

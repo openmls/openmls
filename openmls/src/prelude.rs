@@ -1,8 +1,8 @@
 //! Prelude for OpenMLS.
 //! Include this to get access to all the public functions of OpenMLS.
 
-pub use crate::group::MlsGroup;
-pub use crate::group::MlsGroupConfig;
+pub use crate::group::CoreGroup;
+pub use crate::group::CoreGroupConfig;
 pub use crate::group::{
     proposals::{ProposalStore, StagedProposal},
     InvalidMessageError, ManagedGroup, ManagedGroupConfig, ManagedGroupError, UpdatePolicy,
@@ -10,7 +10,7 @@ pub use crate::group::{
 };
 // Errors
 pub use crate::group::errors::{
-    CreateCommitError, FramingValidationError, MlsGroupError, StageCommitError, WelcomeError,
+    CoreGroupError, CreateCommitError, FramingValidationError, StageCommitError, WelcomeError,
 };
 
 // Indexes

@@ -13,7 +13,7 @@ use crate::{
     key_packages::KeyPackageBundle,
     messages::{
         public_group_state::{PublicGroupState, VerifiablePublicGroupState},
-        MlsGroup,
+        CoreGroup,
     },
     prelude::FramingParameters,
 };
@@ -60,7 +60,7 @@ fn test_pgs(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvi
     .expect("An unexpected error occurred.");
 
     // Alice creates a group
-    let mut group_alice = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .build(backend)
         .expect("Could not create group.");
 

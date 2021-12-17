@@ -10,14 +10,14 @@ use crate::messages::*;
 use crate::schedule::*;
 use crate::treesync::node::Node;
 
-impl MlsGroup {
+impl CoreGroup {
     pub(crate) fn new_from_welcome_internal(
         welcome: Welcome,
         nodes_option: Option<Vec<Option<Node>>>,
         key_package_bundle: KeyPackageBundle,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, WelcomeError> {
-        log::debug!("MlsGroup::new_from_welcome_internal");
+        log::debug!("CoreGroup::new_from_welcome_internal");
         let mls_version = *welcome.version();
         if !Config::supported_versions().contains(&mls_version) {
             return Err(WelcomeError::UnsupportedMlsVersion);
@@ -179,7 +179,7 @@ impl MlsGroup {
             log_crypto!(trace, "  Expected: {:x?}", group_info.confirmation_tag());
             Err(WelcomeError::ConfirmationTagMismatch)
         } else {
-            Ok(MlsGroup {
+            Ok(CoreGroup {
                 ciphersuite,
                 group_context,
                 group_epoch_secrets,
