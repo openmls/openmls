@@ -373,13 +373,18 @@
 <span id="373">373</span>
 <span id="374">374</span>
 <span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{
     <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Size</span>, <span class="ident">TlsByteSliceU16</span>, <span class="ident">TlsByteVecU16</span>, <span class="ident">TlsByteVecU32</span>, <span class="ident">TlsByteVecU8</span>,
     <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
 };
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree::secret_tree</span>::{<span class="ident">SecretTree</span>, <span class="ident">SecretType</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree::secret_tree::SecretType</span>;
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
@@ -397,9 +402,10 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">ciphertext</span>: <span class="ident">TlsByteVecU32</span>,
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">Secrets</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">epoch_secrets</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">EpochSecrets</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">secret_tree</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw-2">mut</span> <span class="ident">SecretTree</span>,
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">MlsMessageHeader</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">sender</span>: <span class="ident">LeafIndex</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">MlsCiphertext</span> {
@@ -408,9 +414,8 @@
         <span class="ident">mls_plaintext</span>: <span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">context</span>: <span class="kw-2">&amp;</span><span class="ident">GroupContext</span>,
-        <span class="ident">sender</span>: <span class="ident">LeafIndex</span>,
-        <span class="ident">secrets</span>: <span class="ident">Secrets</span>,
+        <span class="ident">header</span>: <span class="ident">MlsMessageHeader</span>,
+        <span class="ident">message_secrets</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">MessageSecrets</span>,
         <span class="ident">padding_size</span>: <span class="ident">usize</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsCiphertext</span>, <span class="ident">MlsCiphertextError</span><span class="op">&gt;</span> {
         <span class="macro">log::debug!</span>(<span class="string">&quot;MlsCiphertext::try_from_plaintext&quot;</span>);
@@ -421,8 +426,8 @@
         }
         <span class="comment">// Serialize the content AAD</span>
         <span class="kw">let</span> <span class="ident">mls_ciphertext_content_aad</span> <span class="op">=</span> <span class="ident">MlsCiphertextContentAad</span> {
-            <span class="ident">group_id</span>: <span class="ident">context</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
-            <span class="ident">epoch</span>: <span class="ident">context</span>.<span class="ident">epoch</span>(),
+            <span class="ident">group_id</span>: <span class="ident">header</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(),
+            <span class="ident">epoch</span>: <span class="ident">header</span>.<span class="ident">epoch</span>,
             <span class="ident">content_type</span>: <span class="ident">mls_plaintext</span>.<span class="ident">content_type</span>(),
             <span class="ident">authenticated_data</span>: <span class="ident">mls_plaintext</span>.<span class="ident">authenticated_data</span>().<span class="ident">into</span>(),
         };
@@ -431,9 +436,9 @@
         <span class="comment">// Extract generation and key material for encryption</span>
         <span class="kw">let</span> <span class="ident">secret_type</span> <span class="op">=</span> <span class="ident">SecretType::try_from</span>(<span class="ident">mls_plaintext</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MlsCiphertextError::InvalidContentType</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> (<span class="ident">generation</span>, (<span class="ident">ratchet_key</span>, <span class="kw-2">mut</span> <span class="ident">ratchet_nonce</span>)) <span class="op">=</span> <span class="ident">secrets</span>
-            .<span class="ident">secret_tree</span>
-            .<span class="ident">secret_for_encryption</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">sender</span>.<span class="ident">into</span>(), <span class="ident">secret_type</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> (<span class="ident">generation</span>, (<span class="ident">ratchet_key</span>, <span class="kw-2">mut</span> <span class="ident">ratchet_nonce</span>)) <span class="op">=</span> <span class="ident">message_secrets</span>
+            .<span class="ident">secret_tree_mut</span>()
+            .<span class="ident">secret_for_encryption</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">header</span>.<span class="ident">sender</span>.<span class="ident">into</span>(), <span class="ident">secret_type</span>)<span class="question-mark">?</span>;
         <span class="comment">// Sample reuse guard uniformly at random.</span>
         <span class="kw">let</span> <span class="ident">reuse_guard</span>: <span class="ident">ReuseGuard</span> <span class="op">=</span> <span class="ident">ReuseGuard::from_random</span>(<span class="ident">backend</span>);
         <span class="comment">// Prepare the nonce by xoring with the reuse guard.</span>
@@ -455,20 +460,20 @@
                 <span class="ident">MlsCiphertextError::EncryptionError</span>
             })<span class="question-mark">?</span>;
         <span class="comment">// Derive the sender data key from the key schedule using the ciphertext.</span>
-        <span class="kw">let</span> <span class="ident">sender_data_key</span> <span class="op">=</span> <span class="ident">secrets</span>
-            .<span class="ident">epoch_secrets</span>
+        <span class="kw">let</span> <span class="ident">sender_data_key</span> <span class="op">=</span> <span class="ident">message_secrets</span>
             .<span class="ident">sender_data_secret</span>()
             .<span class="ident">derive_aead_key</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">ciphertext</span>)<span class="question-mark">?</span>;
         <span class="comment">// Derive initial nonce from the key schedule using the ciphertext.</span>
-        <span class="kw">let</span> <span class="ident">sender_data_nonce</span> <span class="op">=</span> <span class="ident">secrets</span>
-            .<span class="ident">epoch_secrets</span>
-            .<span class="ident">sender_data_secret</span>()
-            .<span class="ident">derive_aead_nonce</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">ciphertext</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">sender_data_nonce</span> <span class="op">=</span> <span class="ident">message_secrets</span>.<span class="ident">sender_data_secret</span>().<span class="ident">derive_aead_nonce</span>(
+            <span class="ident">ciphersuite</span>,
+            <span class="ident">backend</span>,
+            <span class="kw-2">&amp;</span><span class="ident">ciphertext</span>,
+        )<span class="question-mark">?</span>;
         <span class="comment">// Compute sender data nonce by xoring reuse guard and key schedule</span>
         <span class="comment">// nonce as per spec.</span>
         <span class="kw">let</span> <span class="ident">mls_sender_data_aad</span> <span class="op">=</span> <span class="ident">MlsSenderDataAad::new</span>(
-            <span class="ident">context</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
-            <span class="ident">context</span>.<span class="ident">epoch</span>(),
+            <span class="ident">header</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(),
+            <span class="ident">header</span>.<span class="ident">epoch</span>,
             <span class="ident">mls_plaintext</span>.<span class="ident">content_type</span>(),
         );
         <span class="comment">// Serialize the sender data AAD</span>
@@ -488,8 +493,8 @@
             })<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">MlsCiphertext</span> {
             <span class="ident">wire_format</span>: <span class="ident">WireFormat::MlsCiphertext</span>,
-            <span class="ident">group_id</span>: <span class="ident">context</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
-            <span class="ident">epoch</span>: <span class="ident">context</span>.<span class="ident">epoch</span>(),
+            <span class="ident">group_id</span>: <span class="ident">header</span>.<span class="ident">group_id</span>,
+            <span class="ident">epoch</span>: <span class="ident">header</span>.<span class="ident">epoch</span>,
             <span class="ident">content_type</span>: <span class="ident">mls_plaintext</span>.<span class="ident">content_type</span>(),
             <span class="ident">authenticated_data</span>: <span class="ident">mls_plaintext</span>.<span class="ident">authenticated_data</span>().<span class="ident">into</span>(),
             <span class="ident">encrypted_sender_data</span>: <span class="ident">encrypted_sender_data</span>.<span class="ident">into</span>(),
@@ -503,8 +508,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">epoch_secrets</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecrets</span>,
-        <span class="ident">secret_tree</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">SecretTree</span>,
+        <span class="ident">message_secrets</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">MessageSecrets</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">VerifiableMlsPlaintext</span>, <span class="ident">MlsCiphertextError</span><span class="op">&gt;</span> {
         <span class="macro">log::debug!</span>(<span class="string">&quot;Decrypting MlsCiphertext&quot;</span>);
         <span class="comment">// Check the ciphertext has the correct wire format</span>
@@ -512,11 +516,11 @@
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsCiphertextError::WrongWireFormat</span>);
         }
         <span class="comment">// Derive key from the key schedule using the ciphertext.</span>
-        <span class="kw">let</span> <span class="ident">sender_data_key</span> <span class="op">=</span> <span class="ident">epoch_secrets</span>
+        <span class="kw">let</span> <span class="ident">sender_data_key</span> <span class="op">=</span> <span class="ident">message_secrets</span>
             .<span class="ident">sender_data_secret</span>()
             .<span class="ident">derive_aead_key</span>(<span class="ident">backend</span>, <span class="self">self</span>.<span class="ident">ciphertext</span>.<span class="ident">as_slice</span>())<span class="question-mark">?</span>;
         <span class="comment">// Derive initial nonce from the key schedule using the ciphertext.</span>
-        <span class="kw">let</span> <span class="ident">sender_data_nonce</span> <span class="op">=</span> <span class="ident">epoch_secrets</span>.<span class="ident">sender_data_secret</span>().<span class="ident">derive_aead_nonce</span>(
+        <span class="kw">let</span> <span class="ident">sender_data_nonce</span> <span class="op">=</span> <span class="ident">message_secrets</span>.<span class="ident">sender_data_secret</span>().<span class="ident">derive_aead_nonce</span>(
             <span class="ident">ciphersuite</span>,
             <span class="ident">backend</span>,
             <span class="self">self</span>.<span class="ident">ciphertext</span>.<span class="ident">as_slice</span>(),
@@ -542,7 +546,8 @@
         <span class="kw">let</span> <span class="ident">secret_type</span> <span class="op">=</span> <span class="ident">SecretType::try_from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">content_type</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MlsCiphertextError::InvalidContentType</span>)<span class="question-mark">?</span>;
         <span class="comment">// Extract generation and key material for encryption</span>
-        <span class="kw">let</span> (<span class="ident">ratchet_key</span>, <span class="kw-2">mut</span> <span class="ident">ratchet_nonce</span>) <span class="op">=</span> <span class="ident">secret_tree</span>
+        <span class="kw">let</span> (<span class="ident">ratchet_key</span>, <span class="kw-2">mut</span> <span class="ident">ratchet_nonce</span>) <span class="op">=</span> <span class="ident">message_secrets</span>
+            .<span class="ident">secret_tree_mut</span>()
             .<span class="ident">secret_for_decryption</span>(
                 <span class="ident">ciphersuite</span>,
                 <span class="ident">backend</span>,
@@ -681,6 +686,11 @@
     <span class="doccomment">/// Get the `epoch` in the `MlsCiphertext`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">epoch</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">GroupEpoch</span> {
         <span class="self">self</span>.<span class="ident">epoch</span>
+    }
+
+    <span class="doccomment">/// Get the `content_type` in the `MlsCiphertext`.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">content_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ContentType</span> {
+        <span class="self">self</span>.<span class="ident">content_type</span>
     }
 
     <span class="doccomment">/// Set the wire format.</span>

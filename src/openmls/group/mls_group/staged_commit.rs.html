@@ -339,6 +339,31 @@
 <span id="339">339</span>
 <span id="340">340</span>
 <span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::diff::StagedTreeSyncDiff</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::proposals</span>::{<span class="ident">ProposalStore</span>, <span class="ident">StagedProposal</span>, <span class="ident">StagedProposalQueue</span>};
@@ -349,6 +374,7 @@
 };
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">core::fmt::Debug</span>;
+<span class="kw">use</span> <span class="ident">std::mem</span>;
 
 <span class="kw">impl</span> <span class="ident">MlsGroup</span> {
     <span class="doccomment">/// Stages a commit message.</span>
@@ -517,7 +543,7 @@
         <span class="kw">let</span> <span class="ident">joiner_secret</span> <span class="op">=</span> <span class="ident">JoinerSecret::new</span>(
             <span class="ident">backend</span>,
             <span class="ident">commit_secret</span>,
-            <span class="self">self</span>.<span class="ident">epoch_secrets</span>
+            <span class="self">self</span>.<span class="ident">group_epoch_secrets</span>
                 .<span class="ident">init_secret</span>()
                 .<span class="ident">ok_or</span>(<span class="ident">StageCommitError::InitSecretNotFound</span>)<span class="question-mark">?</span>,
         )<span class="question-mark">?</span>;
@@ -599,11 +625,9 @@
             <span class="ident">proposal_queue</span>.<span class="ident">add</span>(<span class="ident">staged_proposal</span>);
         }
 
-        <span class="comment">// Create a secret_tree, consuming the `encryption_secret` in the</span>
-        <span class="comment">// process.</span>
-        <span class="kw">let</span> <span class="ident">secret_tree</span> <span class="op">=</span> <span class="ident">provisional_epoch_secrets</span>
-            .<span class="ident">encryption_secret</span>()
-            .<span class="ident">create_secret_tree</span>(<span class="ident">diff</span>.<span class="ident">leaf_count</span>());
+        <span class="kw">let</span> (<span class="ident">provisional_group_epoch_secrets</span>, <span class="ident">provisional_message_secrets</span>) <span class="op">=</span>
+            <span class="ident">provisional_epoch_secrets</span>
+                .<span class="ident">split_secrets</span>(<span class="ident">serialized_provisional_group_context</span>, <span class="ident">diff</span>.<span class="ident">leaf_count</span>());
 
         <span class="comment">// Make the diff a staged diff. This finalizes the diff and no more changes can be applied to it.</span>
         <span class="kw">let</span> <span class="ident">staged_diff</span> <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">into_staged_diff</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)<span class="question-mark">?</span>;
@@ -612,9 +636,9 @@
             <span class="ident">staged_proposal_queue</span>: <span class="ident">proposal_queue</span>,
             <span class="ident">state</span>: <span class="prelude-val">Some</span>(<span class="ident">StagedCommitState</span> {
                 <span class="ident">group_context</span>: <span class="ident">provisional_group_context</span>,
-                <span class="ident">epoch_secrets</span>: <span class="ident">provisional_epoch_secrets</span>,
+                <span class="ident">group_epoch_secrets</span>: <span class="ident">provisional_group_epoch_secrets</span>,
+                <span class="ident">message_secrets</span>: <span class="ident">provisional_message_secrets</span>,
                 <span class="ident">interim_transcript_hash</span>,
-                <span class="ident">secret_tree</span>: <span class="ident">RefCell::new</span>(<span class="ident">secret_tree</span>),
                 <span class="ident">staged_diff</span>,
             }),
         })
@@ -627,12 +651,38 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">merge_commit</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">staged_commit</span>: <span class="ident">StagedCommit</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">state</span>) <span class="op">=</span> <span class="ident">staged_commit</span>.<span class="ident">state</span> {
             <span class="self">self</span>.<span class="ident">group_context</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">group_context</span>;
-            <span class="self">self</span>.<span class="ident">epoch_secrets</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">epoch_secrets</span>;
+            <span class="self">self</span>.<span class="ident">group_epoch_secrets</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">group_epoch_secrets</span>;
+            <span class="self">self</span>.<span class="ident">message_secrets</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">message_secrets</span>;
             <span class="self">self</span>.<span class="ident">interim_transcript_hash</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">interim_transcript_hash</span>;
-            <span class="self">self</span>.<span class="ident">secret_tree</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">secret_tree</span>;
             <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">merge_diff</span>(<span class="ident">state</span>.<span class="ident">staged_diff</span>)<span class="question-mark">?</span>;
         };
         <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="doccomment">/// Merges a [StagedCommit] into the group state and optionally return a [`SecretTree`]</span>
+    <span class="doccomment">/// from the previous epoch. The secret tree is returned if the Commit does not contain a self removal.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// This function should not fail and only returns a [`Result`], because it</span>
+    <span class="doccomment">/// might throw a `LibraryError`.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">merge_commit_take_message_secrets</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">staged_commit</span>: <span class="ident">StagedCommit</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MessageSecrets</span><span class="op">&gt;</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Ok</span>(<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">state</span>) <span class="op">=</span> <span class="ident">staged_commit</span>.<span class="ident">state</span> {
+            <span class="self">self</span>.<span class="ident">group_context</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">group_context</span>;
+            <span class="self">self</span>.<span class="ident">group_epoch_secrets</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">group_epoch_secrets</span>;
+
+            <span class="comment">// Replace the previous message secrets with the new ones and return the previous message secrets</span>
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">message_secrets</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">message_secrets</span>;
+            <span class="ident">mem::swap</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">message_secrets</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">message_secrets</span>);
+
+            <span class="self">self</span>.<span class="ident">interim_transcript_hash</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">interim_transcript_hash</span>;
+
+            <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">merge_diff</span>(<span class="ident">state</span>.<span class="ident">staged_diff</span>)<span class="question-mark">?</span>;
+            <span class="prelude-val">Some</span>(<span class="ident">message_secrets</span>)
+        } <span class="kw">else</span> {
+            <span class="prelude-val">None</span>
+        })
     }
 }
 
@@ -675,9 +725,9 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">StagedCommitState</span> {
     <span class="ident">group_context</span>: <span class="ident">GroupContext</span>,
-    <span class="ident">epoch_secrets</span>: <span class="ident">EpochSecrets</span>,
+    <span class="ident">group_epoch_secrets</span>: <span class="ident">GroupEpochSecrets</span>,
+    <span class="ident">message_secrets</span>: <span class="ident">MessageSecrets</span>,
     <span class="ident">interim_transcript_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="ident">secret_tree</span>: <span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">SecretTree</span><span class="op">&gt;</span>,
     <span class="ident">staged_diff</span>: <span class="ident">StagedTreeSyncDiff</span>,
 }
 </code></pre></div>

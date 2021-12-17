@@ -251,6 +251,10 @@
 <span id="251">251</span>
 <span id="252">252</span>
 <span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">application</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
 <span class="kw">mod</span> <span class="ident">creation</span>;
@@ -290,6 +294,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">resumption::ResumptionSecretStore</span>;
 <span class="kw">use</span> <span class="ident">ser</span>::<span class="kw-2">*</span>;
 
+<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::past_secrets::MessageSecretsStore</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::proposals</span>::{<span class="ident">ProposalStore</span>, <span class="ident">StagedProposal</span>};
 
 <span class="doccomment">/// A `ManagedGroup` represents an [MlsGroup] with</span>
@@ -330,6 +335,9 @@
     <span class="comment">// A [ProposalStore] that stores incoming proposals from the DS within one epoch.</span>
     <span class="comment">// The store is emptied after every epoch change.</span>
     <span class="ident">proposal_store</span>: <span class="ident">ProposalStore</span>,
+    <span class="comment">// A [MessageSecretsStore] that stores message secrets from past epochs in order to be able to decrypt</span>
+    <span class="comment">// application messages from previous epochs.</span>
+    <span class="ident">message_secrets_store</span>: <span class="ident">MessageSecretsStore</span>,
     <span class="comment">// Own `KeyPackageBundle`s that were created for update proposals or commits. The vector is</span>
     <span class="comment">// emptied after every epoch change.</span>
     <span class="ident">own_kpbs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>,

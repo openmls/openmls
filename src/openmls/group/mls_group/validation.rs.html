@@ -250,6 +250,18 @@
 <span id="250">250</span>
 <span id="251">251</span>
 <span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages</span>
 <span class="doccomment">//! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;</span>
 
@@ -269,9 +281,21 @@
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">FramingValidationError::WrongGroupId</span>.<span class="ident">into</span>());
         }
 
-        <span class="comment">// ValSem3</span>
-        <span class="kw">if</span> <span class="ident">message</span>.<span class="ident">epoch</span>() <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">context</span>().<span class="ident">epoch</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">FramingValidationError::WrongEpoch</span>.<span class="ident">into</span>());
+        <span class="comment">// ValSem3: Check boundaries for the epoch</span>
+        <span class="comment">// We differentiate depending on the content type</span>
+        <span class="kw">match</span> <span class="ident">message</span>.<span class="ident">content_type</span>() {
+            <span class="comment">// For application messages we allow messages for older epochs as well</span>
+            <span class="ident">ContentType::Application</span> =&gt; {
+                <span class="kw">if</span> <span class="ident">message</span>.<span class="ident">epoch</span>() <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">context</span>().<span class="ident">epoch</span>() {
+                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">FramingValidationError::WrongEpoch</span>.<span class="ident">into</span>());
+                }
+            }
+            <span class="comment">// For all other messages we only only accept the current epoch</span>
+            <span class="kw">_</span> =&gt; {
+                <span class="kw">if</span> <span class="ident">message</span>.<span class="ident">epoch</span>() <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">context</span>().<span class="ident">epoch</span>() {
+                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">FramingValidationError::WrongEpoch</span>.<span class="ident">into</span>());
+                }
+            }
         }
 
         <span class="prelude-val">Ok</span>(())

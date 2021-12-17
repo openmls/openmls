@@ -207,7 +207,6 @@
 <span id="207">207</span>
 <span id="208">208</span>
 <span id="209">209</span>
-<span id="210">210</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">log::debug</span>;
 <span class="kw">use</span> <span class="ident">openmls_traits::crypto::OpenMlsCrypto</span>;
 <span class="kw">use</span> <span class="ident">tls_codec::Deserialize</span>;
@@ -369,11 +368,10 @@
         <span class="ident">key_schedule</span>.<span class="ident">add_context</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">serialized_group_context</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">epoch_secrets</span> <span class="op">=</span> <span class="ident">key_schedule</span>.<span class="ident">epoch_secrets</span>(<span class="ident">backend</span>, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">secret_tree</span> <span class="op">=</span> <span class="ident">epoch_secrets</span>
-            .<span class="ident">encryption_secret</span>()
-            .<span class="ident">create_secret_tree</span>(<span class="ident">tree</span>.<span class="ident">leaf_count</span>()<span class="question-mark">?</span>);
+        <span class="kw">let</span> (<span class="ident">group_epoch_secrets</span>, <span class="ident">message_secrets</span>) <span class="op">=</span>
+            <span class="ident">epoch_secrets</span>.<span class="ident">split_secrets</span>(<span class="ident">serialized_group_context</span>, <span class="ident">tree</span>.<span class="ident">leaf_count</span>()<span class="question-mark">?</span>);
 
-        <span class="kw">let</span> <span class="ident">confirmation_tag</span> <span class="op">=</span> <span class="ident">epoch_secrets</span>
+        <span class="kw">let</span> <span class="ident">confirmation_tag</span> <span class="op">=</span> <span class="ident">message_secrets</span>
             .<span class="ident">confirmation_key</span>()
             .<span class="ident">tag</span>(<span class="ident">backend</span>, <span class="ident">group_context</span>.<span class="ident">confirmed_transcript_hash</span>.<span class="ident">as_slice</span>())<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">interim_transcript_hash</span> <span class="op">=</span> <span class="ident">update_interim_transcript_hash</span>(
@@ -393,8 +391,8 @@
             <span class="prelude-val">Ok</span>(<span class="ident">MlsGroup</span> {
                 <span class="ident">ciphersuite</span>,
                 <span class="ident">group_context</span>,
-                <span class="ident">epoch_secrets</span>,
-                <span class="ident">secret_tree</span>: <span class="ident">RefCell::new</span>(<span class="ident">secret_tree</span>),
+                <span class="ident">group_epoch_secrets</span>,
+                <span class="ident">message_secrets</span>,
                 <span class="ident">tree</span>,
                 <span class="ident">interim_transcript_hash</span>,
                 <span class="ident">use_ratchet_tree_extension</span>: <span class="ident">enable_ratchet_tree_extension</span>,

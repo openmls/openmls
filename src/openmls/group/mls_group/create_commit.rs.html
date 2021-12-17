@@ -441,7 +441,7 @@
         <span class="kw">let</span> <span class="ident">joiner_secret</span> <span class="op">=</span> <span class="ident">JoinerSecret::new</span>(
             <span class="ident">backend</span>,
             <span class="ident">path_processing_result</span>.<span class="ident">commit_secret</span>,
-            <span class="self">self</span>.<span class="ident">epoch_secrets</span>()
+            <span class="self">self</span>.<span class="ident">group_epoch_secrets</span>()
                 .<span class="ident">init_secret</span>()
                 .<span class="ident">ok_or</span>(<span class="ident">MlsGroupError::InitSecretNotFound</span>)<span class="question-mark">?</span>,
         )<span class="question-mark">?</span>;
@@ -486,7 +486,7 @@
         <span class="ident">mls_plaintext</span>.<span class="ident">set_membership_tag</span>(
             <span class="ident">backend</span>,
             <span class="kw-2">&amp;</span><span class="ident">serialized_group_context</span>,
-            <span class="self">self</span>.<span class="ident">epoch_secrets</span>().<span class="ident">membership_key</span>(),
+            <span class="self">self</span>.<span class="ident">message_secrets</span>().<span class="ident">membership_key</span>(),
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Check if new members were added and, if so, create welcome messages</span>
