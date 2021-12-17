@@ -15,7 +15,7 @@ use tls_codec::{Deserialize, Serialize};
 use super::{
     create_commit_params::CreateCommitParams,
     proposals::{ProposalStore, StagedProposal},
-    MlsGroup,
+    CoreGroup,
 };
 
 #[apply(ciphersuites_and_backends)]
@@ -61,7 +61,7 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
     // === Alice creates a group ===
     let group_id = GroupId::random(backend);
 
-    let mut group_alice = MlsGroup::builder(group_id, alice_key_package_bundle)
+    let mut group_alice = CoreGroup::builder(group_id, alice_key_package_bundle)
         .build(backend)
         .unwrap();
 
@@ -100,7 +100,7 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
         .expect("error merging commit");
     let ratchet_tree = group_alice.treesync().export_nodes();
 
-    let mut group_bob = MlsGroup::new_from_welcome(
+    let mut group_bob = CoreGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.unwrap(),
         Some(ratchet_tree),
         bob_key_package_bundle,
@@ -131,7 +131,7 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
     let nodes_option = group_alice.treesync().export_nodes();
 
     let (_group_charly, ext_init_commit, _option_welcome, _option_kpb) =
-        MlsGroup::new_from_external_init(
+        CoreGroup::new_from_external_init(
             backend,
             framing_parameters,
             Some(&nodes_option),

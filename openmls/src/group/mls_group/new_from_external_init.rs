@@ -14,13 +14,13 @@ use crate::{
 use super::{
     create_commit_params::CreateCommitParams,
     proposals::{ProposalStore, StagedProposal},
-    MlsGroup,
+    CoreGroup,
 };
 use crate::group::mls_group::*;
 
 pub type ExternalInitResult = Result<
     (
-        MlsGroup,
+        CoreGroup,
         MlsPlaintext,
         Option<Welcome>,
         Option<KeyPackageBundle>,
@@ -28,14 +28,14 @@ pub type ExternalInitResult = Result<
     ExternalInitError,
 >;
 
-impl MlsGroup {
+impl CoreGroup {
     /// Join a group without the help of an internal member. This function
     /// requires a `PublicGroupState`, as well as the corresponding public tree
     /// `nodes`. After the group state is initialized, this function creates an
     /// `ExternalInit` proposal and commits it along with the given proposals by
     /// reference and by value.
     ///
-    /// Returns the new `MlsGroup` object, as well as the `MlsPlaintext`
+    /// Returns the new `CoreGroup` object, as well as the `MlsPlaintext`
     /// containing the commit.
     pub fn new_from_external_init(
         backend: &impl OpenMlsCryptoProvider,
@@ -131,7 +131,7 @@ impl MlsGroup {
         );
 
         // Prepare interim transcript hash
-        let group = MlsGroup {
+        let group = CoreGroup {
             ciphersuite,
             group_context,
             tree: treesync,

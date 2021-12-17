@@ -136,7 +136,7 @@ pub struct EncryptionTestVector {
 fn group(
     ciphersuite: &Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
-) -> (MlsGroup, CredentialBundle) {
+) -> (CoreGroup, CredentialBundle) {
     let credential_bundle = CredentialBundle::new(
         "Kreator".into(),
         CredentialType::Basic,
@@ -152,9 +152,9 @@ fn group(
     )
     .expect("An unexpected error occurred.");
     (
-        MlsGroup::builder(GroupId::random(backend), key_package_bundle)
+        CoreGroup::builder(GroupId::random(backend), key_package_bundle)
             .build(backend)
-            .expect("Error creating MlsGroup"),
+            .expect("Error creating CoreGroup"),
         credential_bundle,
     )
 }
@@ -164,7 +164,7 @@ fn receiver_group(
     ciphersuite: &Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     group_id: &GroupId,
-) -> MlsGroup {
+) -> CoreGroup {
     let credential_bundle = CredentialBundle::new(
         "Receiver".into(),
         CredentialType::Basic,
@@ -179,16 +179,16 @@ fn receiver_group(
         Vec::new(),
     )
     .expect("An unexpected error occurred.");
-    MlsGroup::builder(group_id.clone(), key_package_bundle)
+    CoreGroup::builder(group_id.clone(), key_package_bundle)
         .build(backend)
-        .expect("Error creating MlsGroup")
+        .expect("Error creating CoreGroup")
 }
 
 // XXX: we could be more creative in generating these messages.
 #[cfg(any(feature = "test-utils", test))]
 fn build_handshake_messages(
     leaf: LeafIndex,
-    group: &mut MlsGroup,
+    group: &mut CoreGroup,
     credential_bundle: &CredentialBundle,
     backend: &impl OpenMlsCryptoProvider,
 ) -> (Vec<u8>, Vec<u8>) {
@@ -240,7 +240,7 @@ fn build_handshake_messages(
 #[cfg(any(feature = "test-utils", test))]
 fn build_application_messages(
     leaf: LeafIndex,
-    group: &mut MlsGroup,
+    group: &mut CoreGroup,
     credential_bundle: &CredentialBundle,
     backend: &impl OpenMlsCryptoProvider,
 ) -> (Vec<u8>, Vec<u8>) {

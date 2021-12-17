@@ -4,7 +4,7 @@ use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
     binary_tree::LeafIndex,
-    group::MlsGroupError,
+    group::CoreGroupError,
     key_packages::KeyPackageBundle,
     messages::proposals::{AddProposal, ProposalType},
     schedule::{InitSecret, PreSharedKeyId, PreSharedKeys},
@@ -13,7 +13,7 @@ use crate::{
 
 use super::{
     proposals::{CreationProposalQueue, StagedProposalQueue},
-    MlsGroup,
+    CoreGroup,
 };
 
 /// This struct contain the return values of the `apply_proposals()` function
@@ -46,14 +46,14 @@ impl ApplyProposalsValues {
 /// current epoch `updates_key_package_bundles` is the list of own
 /// KeyPackageBundles corresponding to updates or commits sent in the
 /// current epoch
-impl MlsGroup {
+impl CoreGroup {
     pub(crate) fn apply_proposals(
         &self,
         diff: &mut TreeSyncDiff,
         backend: &impl OpenMlsCryptoProvider,
         proposal_queue: CreationProposalQueue,
         key_package_bundles: &[KeyPackageBundle],
-    ) -> Result<ApplyProposalsValues, MlsGroupError> {
+    ) -> Result<ApplyProposalsValues, CoreGroupError> {
         log::debug!("Applying proposal");
         let mut has_updates = false;
         let mut has_removes = false;
@@ -74,7 +74,7 @@ impl MlsGroup {
                 {
                     Some(kpb) => kpb,
                     // We lost the KeyPackageBundle apparently
-                    None => return Err(MlsGroupError::MissingKeyPackageBundle),
+                    None => return Err(CoreGroupError::MissingKeyPackageBundle),
                 };
                 own_kpb.clone().into()
             } else {
@@ -106,7 +106,7 @@ impl MlsGroup {
                 let external_init_proposal = &queued_proposal
                     .proposal()
                     .as_external_init()
-                    .ok_or(MlsGroupError::LibraryError)?;
+                    .ok_or(CoreGroupError::LibraryError)?;
                 // Decrypt the context an derive the external init.
                 let external_priv = self
                     .group_epoch_secrets()
@@ -179,7 +179,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
         proposal_queue: &StagedProposalQueue,
         key_package_bundles: &[KeyPackageBundle],
-    ) -> Result<ApplyProposalsValues, MlsGroupError> {
+    ) -> Result<ApplyProposalsValues, CoreGroupError> {
         log::debug!("Applying proposal");
         let mut has_updates = false;
         let mut has_removes = false;
@@ -200,7 +200,7 @@ impl MlsGroup {
                 {
                     Some(kpb) => kpb,
                     // We lost the KeyPackageBundle apparently
-                    None => return Err(MlsGroupError::MissingKeyPackageBundle),
+                    None => return Err(CoreGroupError::MissingKeyPackageBundle),
                 };
                 own_kpb.clone().into()
             } else {
@@ -232,7 +232,7 @@ impl MlsGroup {
                 let external_init_proposal = &queued_proposal
                     .proposal()
                     .as_external_init()
-                    .ok_or(MlsGroupError::LibraryError)?;
+                    .ok_or(CoreGroupError::LibraryError)?;
                 // Decrypt the context an derive the external init.
                 let external_priv = self
                     .group_epoch_secrets()

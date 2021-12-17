@@ -23,8 +23,8 @@ use openmls_traits::OpenMlsCryptoProvider;
 pub(crate) use serde::{Deserialize, Serialize};
 
 pub use errors::{
-    CreateCommitError, ExporterError, FramingValidationError, InterimTranscriptHashError,
-    MlsGroupError, ProposalValidationError, StageCommitError, WelcomeError,
+    CoreGroupError, CreateCommitError, ExporterError, FramingValidationError,
+    InterimTranscriptHashError, ProposalValidationError, StageCommitError, WelcomeError,
 };
 pub use group_context::*;
 pub use managed_group::*;
@@ -108,9 +108,9 @@ impl GroupContext {
     }
 }
 
-/// Configuration for an MLS group.
+/// Configuration for core group.
 #[derive(Clone, Copy, Debug)]
-pub struct MlsGroupConfig {
+pub struct CoreGroupConfig {
     /// Flag whether to send the ratchet tree along with the `GroupInfo` or not.
     /// Defaults to false.
     pub add_ratchet_tree_extension: bool,
@@ -118,14 +118,14 @@ pub struct MlsGroupConfig {
     pub additional_as_epochs: u32,
 }
 
-impl MlsGroupConfig {
+impl CoreGroupConfig {
     /// Get the padding block size used in this config.
     pub fn padding_block_size(&self) -> u32 {
         self.padding_block_size
     }
 }
 
-impl Default for MlsGroupConfig {
+impl Default for CoreGroupConfig {
     fn default() -> Self {
         Self {
             add_ratchet_tree_extension: false,
