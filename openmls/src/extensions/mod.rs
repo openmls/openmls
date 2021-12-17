@@ -325,15 +325,22 @@ impl Ord for Extension {
 pub(crate) fn try_nodes_from_extensions(
     other_extensions: &[Extension],
 ) -> Result<Option<&[Option<Node>]>, ExtensionError> {
-    let ratchet_tree_extension_option = other_extensions
+    let ratchet_tree_extensions = other_extensions
         .iter()
-        .find(|e| e.extension_type() == ExtensionType::RatchetTree);
-    let rte = if let Some(rte) = ratchet_tree_extension_option {
-        rte.as_ratchet_tree_extension()
-            .map_err(|_| ExtensionError::LibraryError)?
-    } else {
-        return Ok(None);
+        .filter(|e| e.extension_type() == ExtensionType::RatchetTree)
+        .collect::<Vec<&Extension>>();
+    if ratchet_tree_extensions.len() > 1 {
+        // Throw an error if there is more than one ratchet tree extension.
+        // This shouldn't be the case anyway, because extensions are checked
+        // for uniqueness when decoding them. We have to see if this makes
+        // problems later as it's not something required by the spec right
+        // now (Note issue #530 of the MLS spec.).
+        return Err(ExtensionError::DuplicateRatchetTreeExtension);
     };
 
-    Ok(Some(rte.as_slice()))
+    let nodes_option = match ratchet_tree_extensions.first() {
+        Some(e) => Some(e.as_ratchet_tree_extension()?.as_slice()),
+        None => None,
+    };
+    Ok(nodes_option)
 }

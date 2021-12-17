@@ -18,6 +18,8 @@ use tls_codec::Error as TlsCodecError;
 implement_error! {
     pub enum ExtensionError {
         Simple {
+            DuplicateRatchetTreeExtension =
+                "Found a duplicate ratchet tree extension.",
             LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
         }
         Complex {
