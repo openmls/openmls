@@ -239,12 +239,14 @@ impl MlsGroup {
         // Set the confirmation tag
         mls_plaintext.set_confirmation_tag(confirmation_tag.clone());
 
-        // Add membership tag
-        mls_plaintext.set_membership_tag(
-            backend,
-            &serialized_group_context,
-            self.epoch_secrets().membership_key(),
-        )?;
+        // Add membership tag if it's a `Member` commit
+        if params.commit_type() == CommitType::Member {
+            mls_plaintext.set_membership_tag(
+                backend,
+                &serialized_group_context,
+                self.epoch_secrets().membership_key(),
+            )?;
+        }
 
         // Check if new members were added and, if so, create welcome messages
         if !plaintext_secrets.is_empty() {
