@@ -153,7 +153,7 @@ implement_error! {
                 "We don't support the version of the group we are trying to join.",
             UnknownSender =
                 "Sender not found in tree.",
-            InvalidPublicGroupState =
+            InvalidPublicGroupStateSignature =
                 "The signature over the given public group state is invalid.",
             CommitError =
                 "Error creating external commit",
