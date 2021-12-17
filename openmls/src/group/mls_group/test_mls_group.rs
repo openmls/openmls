@@ -21,7 +21,7 @@ use crate::{
 };
 
 #[apply(ciphersuites_and_backends)]
-fn test_mls_group_persistence(
+fn test_core_group_persistence(
     ciphersuite: &'static Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
@@ -44,7 +44,7 @@ fn test_mls_group_persistence(
     .expect("An unexpected error occurred.");
 
     // Alice creates a group
-    let alice_group = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .build(backend)
         .expect("Error creating group.");
 
@@ -57,7 +57,7 @@ fn test_mls_group_persistence(
         .reopen()
         .expect("Error re-opening serialized group state file");
     let alice_group_deserialized =
-        MlsGroup::load(file_in).expect("Could not deserialize managed group");
+        CoreGroup::load(file_in).expect("Could not deserialize managed group");
 
     assert_eq!(alice_group, alice_group_deserialized);
 }
@@ -172,8 +172,8 @@ fn test_failed_groupinfo_decryption(
         );
 
         let error =
-            MlsGroup::new_from_welcome_internal(broken_welcome, None, key_package_bundle, backend)
-                .expect_err("Creation of MLS group from a broken Welcome was successful.");
+            CoreGroup::new_from_welcome_internal(broken_welcome, None, key_package_bundle, backend)
+                .expect_err("Creation of core group from a broken Welcome was successful.");
 
         assert_eq!(
             error,
@@ -225,7 +225,7 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group ===
-    let mut alice_group = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .build(backend)
         .expect("Error creating group.");
 
@@ -273,7 +273,7 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .expect("error merging commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
-    let group_bob = MlsGroup::new_from_welcome(
+    let group_bob = CoreGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,
@@ -374,7 +374,7 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         alice_group.stage_commit(&broken_plaintext, &proposal_store, &[], backend);
     assert_eq!(
         staged_commit_res.expect_err("Successful processing of a broken commit."),
-        MlsGroupError::TreeKemError(TreeKemError::PathSecretError(
+        CoreGroupError::TreeKemError(TreeKemError::PathSecretError(
             PathSecretError::DecryptionError(CryptoError::HpkeDecryptionError)
         ))
     );
@@ -435,7 +435,7 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
         .key_store()
         .store(&preshared_key_id, &psk_bundle)
         .expect("An unexpected error occured.");
-    let mut alice_group = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_psk(vec![preshared_key_id.clone()])
         .build(backend)
         .expect("Error creating group.");
@@ -490,7 +490,7 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
         .expect("error merging commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
-    let group_bob = MlsGroup::new_from_welcome(
+    let group_bob = CoreGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,

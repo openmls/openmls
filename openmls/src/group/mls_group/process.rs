@@ -4,7 +4,7 @@ use crate::tree::secret_tree::SecretTreeError;
 
 use super::{past_secrets::MessageSecretsStore, proposals::ProposalStore, *};
 
-impl MlsGroup {
+impl CoreGroup {
     /// This function is used to parse messages from the DS.
     /// It checks for syntactic errors and makes some semantic checks as well.
     /// If the input is a [MlsCiphertext] message, it will be decrypted.
@@ -23,7 +23,7 @@ impl MlsGroup {
         message: MlsMessageIn,
         message_secrets_store: impl Into<Option<&'a mut MessageSecretsStore>>,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<UnverifiedMessage, MlsGroupError> {
+    ) -> Result<UnverifiedMessage, CoreGroupError> {
         // Checks the following semantic validation:
         //  - ValSem2
         //  - ValSem3
@@ -41,14 +41,14 @@ impl MlsGroup {
                         if let Some(message_secrets) = store.secrets_for_epoch(message.epoch()) {
                             message_secrets
                         } else {
-                            return Err(MlsGroupError::MlsCiphertextError(
+                            return Err(CoreGroupError::MlsCiphertextError(
                                 MlsCiphertextError::SecretTreeError(
                                     SecretTreeError::TooDistantInThePast,
                                 ),
                             ));
                         }
                     } else {
-                        return Err(MlsGroupError::MlsCiphertextError(
+                        return Err(CoreGroupError::MlsCiphertextError(
                             MlsCiphertextError::SecretTreeError(
                                 SecretTreeError::TooDistantInThePast,
                             ),
@@ -115,7 +115,7 @@ impl MlsGroup {
         message_secrets_store: impl Into<Option<&'a mut MessageSecretsStore>>,
         own_kpbs: &[KeyPackageBundle],
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<ProcessedMessage, MlsGroupError> {
+    ) -> Result<ProcessedMessage, CoreGroupError> {
         // Add the context to the message and verify the membership tag if necessary.
         // If the message is older than the current epoch, we need to fetch the correct secret tree first.
         let message_secrets = if unverified_message.epoch() < self.context().epoch() {
@@ -123,12 +123,12 @@ impl MlsGroup {
                 if let Some(message_secrets) = store.secrets_for_epoch(unverified_message.epoch()) {
                     message_secrets
                 } else {
-                    return Err(MlsGroupError::MlsCiphertextError(
+                    return Err(CoreGroupError::MlsCiphertextError(
                         MlsCiphertextError::SecretTreeError(SecretTreeError::TooDistantInThePast),
                     ));
                 }
             } else {
-                return Err(MlsGroupError::MlsCiphertextError(
+                return Err(CoreGroupError::MlsCiphertextError(
                     MlsCiphertextError::SecretTreeError(SecretTreeError::TooDistantInThePast),
                 ));
             };
@@ -195,7 +195,7 @@ impl MlsGroup {
                     let _verified_external_message =
                         external_message.into_verified(backend, signature_public_key)?;
                 } else {
-                    return Err(MlsGroupError::NoSignatureKey);
+                    return Err(CoreGroupError::NoSignatureKey);
                 }
 
                 // We don't support external messages yet
@@ -211,7 +211,7 @@ impl MlsGroup {
         staged_commit: StagedCommit,
         proposal_store: &mut ProposalStore,
         message_secrets_store: &mut MessageSecretsStore,
-    ) -> Result<(), MlsGroupError> {
+    ) -> Result<(), CoreGroupError> {
         // Save the past epoch
         let past_epoch = self.context().epoch();
         // Merge the staged commit into the group state and store the secret tree from the

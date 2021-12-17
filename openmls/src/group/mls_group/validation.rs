@@ -5,13 +5,13 @@ use std::collections::HashSet;
 
 use super::{proposals::StagedProposalQueue, *};
 
-impl MlsGroup {
+impl CoreGroup {
     // === Messages ===
 
     /// Checks the following semantic validation:
     ///  - ValSem2
     ///  - ValSem3
-    pub fn validate_framing(&self, message: &MlsMessageIn) -> Result<(), MlsGroupError> {
+    pub fn validate_framing(&self, message: &MlsMessageIn) -> Result<(), CoreGroupError> {
         // ValSem2
         if message.group_id() != self.group_id() {
             return Err(FramingValidationError::WrongGroupId.into());
@@ -45,7 +45,7 @@ impl MlsGroup {
     pub fn validate_plaintext(
         &self,
         plaintext: &VerifiableMlsPlaintext,
-    ) -> Result<(), MlsGroupError> {
+    ) -> Result<(), CoreGroupError> {
         // ValSem4
         let sender = plaintext.sender();
         if sender.is_member() {
@@ -100,7 +100,7 @@ impl MlsGroup {
     pub fn validate_add_proposals(
         &self,
         staged_proposal_queue: &StagedProposalQueue,
-    ) -> Result<(), MlsGroupError> {
+    ) -> Result<(), CoreGroupError> {
         let add_proposals = staged_proposal_queue.add_proposals();
 
         let mut identity_set = HashSet::new();
@@ -167,7 +167,7 @@ impl MlsGroup {
     pub fn validate_remove_proposals(
         &self,
         staged_proposal_queue: &StagedProposalQueue,
-    ) -> Result<(), MlsGroupError> {
+    ) -> Result<(), CoreGroupError> {
         let remove_proposals = staged_proposal_queue.remove_proposals();
 
         let mut removes_set = HashSet::new();
@@ -198,7 +198,7 @@ impl MlsGroup {
         &self,
         staged_proposal_queue: &StagedProposalQueue,
         path_key_package: Option<(LeafIndex, &KeyPackage)>,
-    ) -> Result<(), MlsGroupError> {
+    ) -> Result<(), CoreGroupError> {
         let mut public_key_set = HashSet::new();
         for (_index, key_package) in self.treesync().full_leaves()? {
             let public_key = key_package.hpke_init_key().as_slice().to_vec();

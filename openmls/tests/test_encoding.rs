@@ -31,7 +31,7 @@ fn create_encoding_test_setup(backend: &impl OpenMlsCryptoProvider) -> TestSetup
     for ciphersuite_name in Config::supported_ciphersuite_names() {
         let test_group = TestGroupConfig {
             ciphersuite: *ciphersuite_name,
-            config: MlsGroupConfig {
+            config: CoreGroupConfig {
                 add_ratchet_tree_extension: true,
                 padding_block_size: 10,
                 additional_as_epochs: 0,
@@ -439,7 +439,7 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
 
         // This makes Charlie decode the internals of the Welcome message, for
         // example the RatchetTreeExtension.
-        assert!(MlsGroup::new_from_welcome(
+        assert!(CoreGroup::new_from_welcome(
             welcome,
             Some(group_state.treesync().export_nodes()),
             charlie_key_package_bundle,

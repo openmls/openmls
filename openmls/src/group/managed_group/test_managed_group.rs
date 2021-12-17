@@ -410,7 +410,7 @@ fn test_invalid_plaintext(ciphersuite: &'static Ciphersuite) {
         .expect_err("No error when distributing message with invalid signature.");
 
     assert_eq!(
-        ClientError::ManagedGroupError(ManagedGroupError::Group(MlsGroupError::ValidationError(
+        ClientError::ManagedGroupError(ManagedGroupError::Group(CoreGroupError::ValidationError(
             ValidationError::MlsPlaintextError(MlsPlaintextError::VerificationError(
                 VerificationError::InvalidMembershipTag
             ))
@@ -434,7 +434,7 @@ fn test_invalid_plaintext(ciphersuite: &'static Ciphersuite) {
 
     assert_eq!(
         ClientError::ManagedGroupError(ManagedGroupError::Group(
-            MlsGroupError::FramingValidationError(FramingValidationError::UnknownMember)
+            CoreGroupError::FramingValidationError(FramingValidationError::UnknownMember)
         )),
         error
     );

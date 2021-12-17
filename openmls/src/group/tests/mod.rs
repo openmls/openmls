@@ -1,4 +1,4 @@
-//! Unit tests for the MLS group
+//! Unit tests for the core group
 
 pub mod kat_messages;
 pub mod kat_transcripts;

@@ -12,7 +12,7 @@ use crate::{
     credentials::{CredentialBundle, CredentialType},
     framing::{MlsCiphertextError, ProcessedMessage},
     group::{
-        GroupId, ManagedGroup, ManagedGroupConfig, ManagedGroupError, MlsGroupError, WireFormat,
+        CoreGroupError, GroupId, ManagedGroup, ManagedGroupConfig, ManagedGroupError, WireFormat,
     },
     key_packages::KeyPackageBundle,
     tree::secret_tree::SecretTreeError,
@@ -204,7 +204,7 @@ fn test_past_secrets_in_group(
                 .expect_err("An unexpected error occurred.");
             assert_eq!(
                 err,
-                ManagedGroupError::Group(MlsGroupError::MlsCiphertextError(
+                ManagedGroupError::Group(CoreGroupError::MlsCiphertextError(
                     MlsCiphertextError::SecretTreeError(SecretTreeError::TooDistantInThePast,),
                 ))
             );
