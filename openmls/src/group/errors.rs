@@ -99,8 +99,6 @@ implement_error! {
                 "The signature on the GroupInfo is not valid.",
             GroupInfoDecryptionFailure =
                 "Unable to decrypt the GroupInfo.",
-            DuplicateRatchetTreeExtension =
-                "Found a duplicate ratchet tree extension in the Welcome message.",
             UnsupportedMlsVersion =
                 "The Welcome message uses an unsupported MLS version.",
             MissingKeyPackage =
@@ -147,8 +145,6 @@ implement_error! {
                 "No ratchet tree available to build initial tree.",
             TreeHashMismatch =
                 "The computed tree hash does not match the one in the GroupInfo.",
-            DuplicateRatchetTreeExtension =
-                "Found a duplicate ratchet tree extension.",
             UnsupportedMlsVersion =
                 "We don't support the version of the group we are trying to join.",
             UnknownSender =
