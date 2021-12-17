@@ -12,9 +12,10 @@ use crate::{
     ciphersuite::{signable::Verifiable, Ciphersuite, CiphersuiteName, Secret},
     config::{Config, ProtocolVersion},
     credentials::{Credential, CredentialBundle, CredentialType},
+    framing::WireFormat,
     group::{
         create_commit_params::CommitType, update_confirmed_transcript_hash,
-        update_interim_transcript_hash, GroupContext, GroupEpoch, GroupId, WireFormat,
+        update_interim_transcript_hash, GroupContext, GroupEpoch, GroupId,
     },
     messages::Commit,
     prelude::{

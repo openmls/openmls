@@ -127,7 +127,7 @@ impl CoreGroup {
         };
 
         // Create provisional group state
-        let mut provisional_epoch = self.group_context.epoch;
+        let mut provisional_epoch = self.group_context.epoch();
         provisional_epoch.increment();
 
         // Build MlsPlaintext
@@ -157,7 +157,7 @@ impl CoreGroup {
 
         // Calculate group context
         let provisional_group_context = GroupContext::new(
-            self.group_context.group_id.clone(),
+            self.group_context.group_id().clone(),
             provisional_epoch,
             tree_hash.clone(),
             confirmed_transcript_hash.clone(),
@@ -227,8 +227,8 @@ impl CoreGroup {
             };
             // Create GroupInfo object
             let group_info = GroupInfoPayload::new(
-                provisional_group_context.group_id.clone(),
-                provisional_group_context.epoch,
+                provisional_group_context.group_id().clone(),
+                provisional_group_context.epoch(),
                 tree_hash,
                 confirmed_transcript_hash,
                 self.group_context_extensions(),

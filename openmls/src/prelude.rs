@@ -1,11 +1,12 @@
 //! Prelude for OpenMLS.
 //! Include this to get access to all the public functions of OpenMLS.
 
+pub use crate::framing::WireFormat;
 pub use crate::group::CoreGroup;
 pub use crate::group::CoreGroupConfig;
 pub use crate::group::{
     proposals::{ProposalStore, StagedProposal},
-    InvalidMessageError, MlsGroup, MlsGroupConfig, MlsGroupError, UpdatePolicy, WireFormat,
+    InvalidMessageError, MlsGroup, MlsGroupConfig, MlsGroupError, UpdatePolicy,
 };
 // Errors
 pub use crate::group::errors::{

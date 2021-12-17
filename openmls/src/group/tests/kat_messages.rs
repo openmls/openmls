@@ -6,7 +6,8 @@
 
 use crate::{
     ciphersuite::signable::Signable,
-    group::{create_commit_params::CreateCommitParams, GroupEpoch, WireFormat},
+    framing::WireFormat,
+    group::{create_commit_params::CreateCommitParams, GroupEpoch},
     messages::{public_group_state::VerifiablePublicGroupState, Commit, GroupInfo, GroupSecrets},
     messages::{ConfirmationTag, GroupInfoPayload},
     prelude::*,
