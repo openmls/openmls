@@ -230,7 +230,7 @@
 
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">past_secrets::MessageSecretsStore</span>, <span class="ident">proposals::ProposalStore</span>, <span class="kw-2">*</span>};
 
-<span class="kw">impl</span> <span class="ident">MlsGroup</span> {
+<span class="kw">impl</span> <span class="ident">CoreGroup</span> {
     <span class="doccomment">/// This function is used to parse messages from the DS.</span>
     <span class="doccomment">/// It checks for syntactic errors and makes some semantic checks as well.</span>
     <span class="doccomment">/// If the input is a [MlsCiphertext] message, it will be decrypted.</span>
@@ -249,7 +249,7 @@
         <span class="ident">message</span>: <span class="ident">MlsMessageIn</span>,
         <span class="ident">message_secrets_store</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw-2">mut</span> <span class="ident">MessageSecretsStore</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnverifiedMessage</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnverifiedMessage</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="comment">// Checks the following semantic validation:</span>
         <span class="comment">//  - ValSem2</span>
         <span class="comment">//  - ValSem3</span>
@@ -267,14 +267,14 @@
                         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">message_secrets</span>) <span class="op">=</span> <span class="ident">store</span>.<span class="ident">secrets_for_epoch</span>(<span class="ident">message</span>.<span class="ident">epoch</span>()) {
                             <span class="ident">message_secrets</span>
                         } <span class="kw">else</span> {
-                            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::MlsCiphertextError</span>(
+                            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CoreGroupError::MlsCiphertextError</span>(
                                 <span class="ident">MlsCiphertextError::SecretTreeError</span>(
                                     <span class="ident">SecretTreeError::TooDistantInThePast</span>,
                                 ),
                             ));
                         }
                     } <span class="kw">else</span> {
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::MlsCiphertextError</span>(
+                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CoreGroupError::MlsCiphertextError</span>(
                             <span class="ident">MlsCiphertextError::SecretTreeError</span>(
                                 <span class="ident">SecretTreeError::TooDistantInThePast</span>,
                             ),
@@ -341,7 +341,7 @@
         <span class="ident">message_secrets_store</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw-2">mut</span> <span class="ident">MessageSecretsStore</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">own_kpbs</span>: <span class="kw-2">&amp;</span>[<span class="ident">KeyPackageBundle</span>],
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ProcessedMessage</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ProcessedMessage</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="comment">// Add the context to the message and verify the membership tag if necessary.</span>
         <span class="comment">// If the message is older than the current epoch, we need to fetch the correct secret tree first.</span>
         <span class="kw">let</span> <span class="ident">message_secrets</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">unverified_message</span>.<span class="ident">epoch</span>() <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">context</span>().<span class="ident">epoch</span>() {
@@ -349,12 +349,12 @@
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">message_secrets</span>) <span class="op">=</span> <span class="ident">store</span>.<span class="ident">secrets_for_epoch</span>(<span class="ident">unverified_message</span>.<span class="ident">epoch</span>()) {
                     <span class="ident">message_secrets</span>
                 } <span class="kw">else</span> {
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::MlsCiphertextError</span>(
+                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CoreGroupError::MlsCiphertextError</span>(
                         <span class="ident">MlsCiphertextError::SecretTreeError</span>(<span class="ident">SecretTreeError::TooDistantInThePast</span>),
                     ));
                 }
             } <span class="kw">else</span> {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::MlsCiphertextError</span>(
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CoreGroupError::MlsCiphertextError</span>(
                     <span class="ident">MlsCiphertextError::SecretTreeError</span>(<span class="ident">SecretTreeError::TooDistantInThePast</span>),
                 ));
             };
@@ -421,7 +421,7 @@
                     <span class="kw">let</span> <span class="ident">_verified_external_message</span> <span class="op">=</span>
                         <span class="ident">external_message</span>.<span class="ident">into_verified</span>(<span class="ident">backend</span>, <span class="ident">signature_public_key</span>)<span class="question-mark">?</span>;
                 } <span class="kw">else</span> {
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::NoSignatureKey</span>);
+                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CoreGroupError::NoSignatureKey</span>);
                 }
 
                 <span class="comment">// We don&#39;t support external messages yet</span>
@@ -437,7 +437,7 @@
         <span class="ident">staged_commit</span>: <span class="ident">StagedCommit</span>,
         <span class="ident">proposal_store</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ProposalStore</span>,
         <span class="ident">message_secrets_store</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">MessageSecretsStore</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="comment">// Save the past epoch</span>
         <span class="kw">let</span> <span class="ident">past_epoch</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">context</span>().<span class="ident">epoch</span>();
         <span class="comment">// Merge the staged commit into the group state and store the secret tree from the</span>

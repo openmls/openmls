@@ -673,15 +673,15 @@
 <span class="kw">use</span> <span class="ident">tls_codec::Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::errors</span>::{
-    <span class="ident">ExporterError</span>, <span class="ident">FramingValidationError</span>, <span class="ident">MlsGroupError</span>, <span class="ident">ProposalValidationError</span>,
+    <span class="ident">CoreGroupError</span>, <span class="ident">ExporterError</span>, <span class="ident">FramingValidationError</span>, <span class="ident">ProposalValidationError</span>,
 };
 
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">CreateCommitResult</span> <span class="op">=</span>
-    <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">MlsPlaintext</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Welcome</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>), <span class="ident">MlsGroupError</span><span class="op">&gt;</span>;
+    <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">MlsPlaintext</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Welcome</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>), <span class="ident">CoreGroupError</span><span class="op">&gt;</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MlsGroup</span> {
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CoreGroup</span> {
     <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
     <span class="ident">group_context</span>: <span class="ident">GroupContext</span>,
     <span class="ident">group_epoch_secrets</span>: <span class="ident">GroupEpochSecrets</span>,
@@ -697,7 +697,7 @@
 }
 
 <span class="macro">implement_persistence!</span>(
-    <span class="ident">MlsGroup</span>,
+    <span class="ident">CoreGroup</span>,
     <span class="ident">group_context</span>,
     <span class="ident">group_epoch_secrets</span>,
     <span class="ident">message_secrets</span>,
@@ -707,18 +707,18 @@
     <span class="ident">mls_version</span>
 );
 
-<span class="doccomment">/// Builder for [`MlsGroup`].</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MlsGroupBuilder</span> {
+<span class="doccomment">/// Builder for [`CoreGroup`].</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CoreGroupBuilder</span> {
     <span class="ident">key_package_bundle</span>: <span class="ident">KeyPackageBundle</span>,
     <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
-    <span class="ident">config</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MlsGroupConfig</span><span class="op">&gt;</span>,
+    <span class="ident">config</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CoreGroupConfig</span><span class="op">&gt;</span>,
     <span class="ident">psk_ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PreSharedKeyId</span><span class="op">&gt;</span>,
     <span class="ident">version</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ProtocolVersion</span><span class="op">&gt;</span>,
     <span class="ident">required_capabilities</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RequiredCapabilitiesExtension</span><span class="op">&gt;</span>,
 }
 
-<span class="kw">impl</span> <span class="ident">MlsGroupBuilder</span> {
-    <span class="doccomment">/// Create a new [`MlsGroupBuilder`].</span>
+<span class="kw">impl</span> <span class="ident">CoreGroupBuilder</span> {
+    <span class="doccomment">/// Create a new [`CoreGroupBuilder`].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">group_id</span>: <span class="ident">GroupId</span>, <span class="ident">key_package_bundle</span>: <span class="ident">KeyPackageBundle</span>) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">key_package_bundle</span>,
@@ -729,22 +729,22 @@
             <span class="ident">required_capabilities</span>: <span class="prelude-val">None</span>,
         }
     }
-    <span class="doccomment">/// Set the [`MlsGroupConfig`] of the [`MlsGroup`].</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_config</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">config</span>: <span class="ident">MlsGroupConfig</span>) -&gt; <span class="self">Self</span> {
+    <span class="doccomment">/// Set the [`CoreGroupConfig`] of the [`CoreGroup`].</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_config</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">config</span>: <span class="ident">CoreGroupConfig</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">config</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">config</span>);
         <span class="self">self</span>
     }
-    <span class="doccomment">/// Set the [`Vec&lt;PreSharedKeyId&gt;`] of the [`MlsGroup`].</span>
+    <span class="doccomment">/// Set the [`Vec&lt;PreSharedKeyId&gt;`] of the [`CoreGroup`].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_psk</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">psk_ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PreSharedKeyId</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">psk_ids</span> <span class="op">=</span> <span class="ident">psk_ids</span>;
         <span class="self">self</span>
     }
-    <span class="doccomment">/// Set the [`ProtocolVersion`] of the [`MlsGroup`].</span>
+    <span class="doccomment">/// Set the [`ProtocolVersion`] of the [`CoreGroup`].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_version</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">version</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">version</span>);
         <span class="self">self</span>
     }
-    <span class="doccomment">/// Set the [`RequiredCapabilitiesExtension`] of the [`MlsGroup`].</span>
+    <span class="doccomment">/// Set the [`RequiredCapabilitiesExtension`] of the [`CoreGroup`].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_required_capabilities</span>(
         <span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">required_capabilities</span>: <span class="ident">RequiredCapabilitiesExtension</span>,
@@ -753,13 +753,13 @@
         <span class="self">self</span>
     }
 
-    <span class="doccomment">/// Build the [`MlsGroup`].</span>
+    <span class="doccomment">/// Build the [`CoreGroup`].</span>
     <span class="doccomment">/// Any values that haven&#39;t been set in the builder are set to their default</span>
     <span class="doccomment">/// values (which might be random).</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// This function performs cryptographic operations and there requires an</span>
     <span class="doccomment">/// [`OpenMlsCryptoProvider`].</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(<span class="self">self</span>, <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsGroup</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(<span class="self">self</span>, <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CoreGroup</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>().<span class="ident">ciphersuite</span>();
         <span class="kw">let</span> <span class="ident">config</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">unwrap_or_default</span>();
         <span class="kw">let</span> <span class="ident">required_capabilities</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">required_capabilities</span>.<span class="ident">unwrap_or_default</span>();
@@ -802,7 +802,7 @@
 
         <span class="kw">let</span> <span class="ident">interim_transcript_hash</span> <span class="op">=</span> <span class="macro">vec!</span>[];
 
-        <span class="prelude-val">Ok</span>(<span class="ident">MlsGroup</span> {
+        <span class="prelude-val">Ok</span>(<span class="ident">CoreGroup</span> {
             <span class="ident">ciphersuite</span>,
             <span class="ident">group_context</span>,
             <span class="ident">group_epoch_secrets</span>,
@@ -815,11 +815,11 @@
     }
 }
 
-<span class="doccomment">/// Public [`MlsGroup`] functions.</span>
-<span class="kw">impl</span> <span class="ident">MlsGroup</span> {
-    <span class="doccomment">/// Get a builder for [`MlsGroup`].</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">builder</span>(<span class="ident">group_id</span>: <span class="ident">GroupId</span>, <span class="ident">key_package_bundle</span>: <span class="ident">KeyPackageBundle</span>) -&gt; <span class="ident">MlsGroupBuilder</span> {
-        <span class="ident">MlsGroupBuilder::new</span>(<span class="ident">group_id</span>, <span class="ident">key_package_bundle</span>)
+<span class="doccomment">/// Public [`CoreGroup`] functions.</span>
+<span class="kw">impl</span> <span class="ident">CoreGroup</span> {
+    <span class="doccomment">/// Get a builder for [`CoreGroup`].</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">builder</span>(<span class="ident">group_id</span>: <span class="ident">GroupId</span>, <span class="ident">key_package_bundle</span>: <span class="ident">KeyPackageBundle</span>) -&gt; <span class="ident">CoreGroupBuilder</span> {
+        <span class="ident">CoreGroupBuilder::new</span>(<span class="ident">group_id</span>, <span class="ident">key_package_bundle</span>)
     }
 
     <span class="comment">// Join a group from a welcome message</span>
@@ -828,7 +828,7 @@
         <span class="ident">nodes_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">kpb</span>: <span class="ident">KeyPackageBundle</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::new_from_welcome_internal</span>(
             <span class="ident">welcome</span>,
             <span class="ident">nodes_option</span>,
@@ -850,7 +850,7 @@
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">joiner_key_package</span>: <span class="ident">KeyPackage</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="ident">joiner_key_package</span>.<span class="ident">validate_required_capabilities</span>(<span class="self">self</span>.<span class="ident">required_capabilities</span>())<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">add_proposal</span> <span class="op">=</span> <span class="ident">AddProposal</span> {
             <span class="ident">key_package</span>: <span class="ident">joiner_key_package</span>,
@@ -878,7 +878,7 @@
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">key_package</span>: <span class="ident">KeyPackage</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">update_proposal</span> <span class="op">=</span> <span class="ident">UpdateProposal</span> { <span class="ident">key_package</span> };
         <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="ident">Proposal::Update</span>(<span class="ident">update_proposal</span>);
         <span class="ident">MlsPlaintext::member_proposal</span>(
@@ -903,7 +903,7 @@
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">removed_index</span>: <span class="ident">LeafIndex</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">remove_proposal</span> <span class="op">=</span> <span class="ident">RemoveProposal</span> {
             <span class="ident">removed</span>: <span class="ident">removed_index</span>,
         };
@@ -930,7 +930,7 @@
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">psk</span>: <span class="ident">PreSharedKeyId</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">presharedkey_proposal</span> <span class="op">=</span> <span class="ident">PreSharedKeyProposal::new</span>(<span class="ident">psk</span>);
         <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="ident">Proposal::PreSharedKey</span>(<span class="ident">presharedkey_proposal</span>);
         <span class="ident">MlsPlaintext::member_proposal</span>(
@@ -952,7 +952,7 @@
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">extensions</span>: <span class="kw-2">&amp;</span>[<span class="ident">Extension</span>],
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="comment">// Ensure that the group supports all the extensions that are wanted.</span>
         <span class="kw">let</span> <span class="ident">required_extension</span> <span class="op">=</span> <span class="ident">extensions</span>
             .<span class="ident">iter</span>()
@@ -993,7 +993,7 @@
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">padding_size</span>: <span class="ident">usize</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsCiphertext</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsCiphertext</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">mls_plaintext</span> <span class="op">=</span> <span class="ident">MlsPlaintext::new_application</span>(
             <span class="self">self</span>.<span class="ident">sender_index</span>(),
             <span class="ident">aad</span>,
@@ -1012,7 +1012,7 @@
         <span class="ident">mls_plaintext</span>: <span class="ident">MlsPlaintext</span>,
         <span class="ident">padding_size</span>: <span class="ident">usize</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsCiphertext</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsCiphertext</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="macro">log::trace!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">mls_plaintext</span>.<span class="ident">confirmation_tag</span>());
         <span class="ident">MlsCiphertext::try_from_plaintext</span>(
             <span class="kw-2">&amp;</span><span class="ident">mls_plaintext</span>,
@@ -1026,7 +1026,7 @@
             <span class="self">self</span>.<span class="ident">message_secrets_mut</span>(),
             <span class="ident">padding_size</span>,
         )
-        .<span class="ident">map_err</span>(<span class="ident">MlsGroupError::MlsCiphertextError</span>)
+        .<span class="ident">map_err</span>(<span class="ident">CoreGroupError::MlsCiphertextError</span>)
     }
 
     <span class="doccomment">/// Decrypt an MlsCiphertext into an MlsPlaintext</span>
@@ -1034,7 +1034,7 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">mls_ciphertext</span>: <span class="kw-2">&amp;</span><span class="ident">MlsCiphertext</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">VerifiableMlsPlaintext</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">VerifiableMlsPlaintext</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">mls_ciphertext</span>.<span class="ident">to_plaintext</span>(<span class="self">self</span>.<span class="ident">ciphersuite</span>(), <span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">message_secrets</span>)<span class="question-mark">?</span>)
     }
 
@@ -1044,7 +1044,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="kw-2">mut</span> <span class="ident">verifiable</span>: <span class="ident">VerifiableMlsPlaintext</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="comment">// Verify the signature on the plaintext.</span>
         <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">treesync</span>();
 
@@ -1073,7 +1073,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">verifiable_mls_plaintext</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">VerifiableMlsPlaintext</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="ident">verifiable_mls_plaintext</span>.<span class="ident">set_context</span>(<span class="self">self</span>.<span class="ident">context</span>().<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>);
         <span class="prelude-val">Ok</span>(<span class="ident">verifiable_mls_plaintext</span>
             .<span class="ident">verify_membership</span>(<span class="ident">backend</span>, <span class="self">self</span>.<span class="ident">message_secrets</span>().<span class="ident">membership_key</span>())<span class="question-mark">?</span>)
@@ -1086,7 +1086,7 @@
         <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">key_length</span>: <span class="ident">usize</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">key_length</span> <span class="op">&gt;</span> <span class="ident">u16::MAX</span>.<span class="ident">into</span>() {
             <span class="macro">log::error!</span>(<span class="string">&quot;Got a key that is larger than u16::MAX&quot;</span>);
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ExporterError::KeyLengthTooLong</span>.<span class="ident">into</span>());
@@ -1103,14 +1103,14 @@
     }
 
     <span class="doccomment">/// Loads the state from persisted state</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">load</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">reader</span>: <span class="ident">R</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsGroup</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">load</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">reader</span>: <span class="ident">R</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CoreGroup</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="ident">serde_json::from_reader</span>(<span class="ident">reader</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">into</span>())
     }
 
     <span class="doccomment">/// Persists the state</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">save</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">serialized_mls_group</span> <span class="op">=</span> <span class="ident">serde_json::to_string_pretty</span>(<span class="self">self</span>)<span class="question-mark">?</span>;
-        <span class="ident">writer</span>.<span class="ident">write_all</span>(<span class="kw-2">&amp;</span><span class="ident">serialized_mls_group</span>.<span class="ident">into_bytes</span>())
+        <span class="kw">let</span> <span class="ident">serialized_core_group</span> <span class="op">=</span> <span class="ident">serde_json::to_string_pretty</span>(<span class="self">self</span>)<span class="question-mark">?</span>;
+        <span class="ident">writer</span>.<span class="ident">write_all</span>(<span class="kw-2">&amp;</span><span class="ident">serialized_core_group</span>.<span class="ident">into_bytes</span>())
     }
 
     <span class="doccomment">/// Returns the ratchet tree</span>
@@ -1134,7 +1134,7 @@
     }
 
     <span class="doccomment">/// Get the members of the group, indexed by their leaves.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">members</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">LeafIndex</span>, <span class="kw-2">&amp;</span><span class="ident">Credential</span><span class="op">&gt;</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">members</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">LeafIndex</span>, <span class="kw-2">&amp;</span><span class="ident">Credential</span><span class="op">&gt;</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="self">self</span>
             .<span class="ident">tree</span>
             .<span class="ident">full_leaves</span>()<span class="question-mark">?</span>
@@ -1180,7 +1180,7 @@
 }
 
 <span class="comment">// Private and crate functions</span>
-<span class="kw">impl</span> <span class="ident">MlsGroup</span> {
+<span class="kw">impl</span> <span class="ident">CoreGroup</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">sender_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">LeafIndex</span> {
         <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">own_leaf_index</span>()
     }
@@ -1218,7 +1218,7 @@
     <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     <span class="ident">mls_plaintext_commit_content</span>: <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextCommitContent</span>,
     <span class="ident">interim_transcript_hash</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">commit_content_bytes</span> <span class="op">=</span> <span class="ident">mls_plaintext_commit_content</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
     <span class="prelude-val">Ok</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash</span>(
         <span class="ident">backend</span>,

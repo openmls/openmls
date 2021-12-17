@@ -48,8 +48,8 @@
 </pre><pre class="rust"><code><span class="doccomment">//! Prelude for OpenMLS.</span>
 <span class="doccomment">//! Include this to get access to all the public functions of OpenMLS.</span>
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::MlsGroup</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::MlsGroupConfig</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::CoreGroup</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::CoreGroupConfig</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group</span>::{
     <span class="ident">proposals</span>::{<span class="ident">ProposalStore</span>, <span class="ident">StagedProposal</span>},
     <span class="ident">InvalidMessageError</span>, <span class="ident">ManagedGroup</span>, <span class="ident">ManagedGroupConfig</span>, <span class="ident">ManagedGroupError</span>, <span class="ident">UpdatePolicy</span>,
@@ -57,7 +57,7 @@
 };
 <span class="comment">// Errors</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::errors</span>::{
-    <span class="ident">CreateCommitError</span>, <span class="ident">FramingValidationError</span>, <span class="ident">MlsGroupError</span>, <span class="ident">StageCommitError</span>, <span class="ident">WelcomeError</span>,
+    <span class="ident">CoreGroupError</span>, <span class="ident">CreateCommitError</span>, <span class="ident">FramingValidationError</span>, <span class="ident">StageCommitError</span>, <span class="ident">WelcomeError</span>,
 };
 
 <span class="comment">// Indexes</span>

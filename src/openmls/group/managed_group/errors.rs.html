@@ -108,7 +108,7 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credentials::CredentialError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ErrorString</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::framing::MlsCiphertextError</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group</span>::{<span class="ident">CreateCommitError</span>, <span class="ident">ExporterError</span>, <span class="ident">MlsGroupError</span>, <span class="ident">StageCommitError</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group</span>::{<span class="ident">CoreGroupError</span>, <span class="ident">CreateCommitError</span>, <span class="ident">ExporterError</span>, <span class="ident">StageCommitError</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude::ValidationError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::TreeSyncError</span>;
 <span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
@@ -128,8 +128,8 @@
                 <span class="string">&quot;An internal library error occurred. Additional detail is provided.&quot;</span>,
             <span class="ident">Config</span>(<span class="ident">ConfigError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`ConfigError`](`crate::config::ConfigError`) for details&quot;</span>,
-            <span class="ident">Group</span>(<span class="ident">MlsGroupError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`MlsGroupError`](`crate::group::MlsGroupError`) for details&quot;</span>,
+            <span class="ident">Group</span>(<span class="ident">CoreGroupError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`CoreGroupError`](`crate::group::CoreGroupError`) for details&quot;</span>,
             <span class="ident">CreateCommit</span>(<span class="ident">CreateCommitError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`CreateCommitError`](`crate::group::CreateCommitError`) for details&quot;</span>,
             <span class="ident">UseAfterEviction</span>(<span class="ident">UseAfterEviction</span>) <span class="op">=</span>
@@ -195,8 +195,8 @@
                 <span class="string">&quot;An invalid ciphertext was provided. The error returns the associated data of the ciphertext.&quot;</span>,
             <span class="ident">CommitError</span>(<span class="ident">StageCommitError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`StageCommitError`](`crate::group::StageCommitError`) for details&quot;</span>,
-            <span class="ident">GroupError</span>(<span class="ident">MlsGroupError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`MlsGroupError`](`crate::group::MlsGroupError`) for details&quot;</span>,
+            <span class="ident">GroupError</span>(<span class="ident">CoreGroupError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`CoreGroupError`](`crate::group::CoreGroupError`) for details&quot;</span>,
         }
     }
 }

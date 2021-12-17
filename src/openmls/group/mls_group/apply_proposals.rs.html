@@ -242,7 +242,7 @@
 
 <span class="kw">use</span> <span class="kw">super</span>::{
     <span class="ident">proposals</span>::{<span class="ident">CreationProposalQueue</span>, <span class="ident">StagedProposalQueue</span>},
-    <span class="ident">MlsGroup</span>,
+    <span class="ident">CoreGroup</span>,
 };
 
 <span class="doccomment">/// This struct contain the return values of the `apply_proposals()` function</span>
@@ -274,7 +274,7 @@
 <span class="doccomment">/// current epoch `updates_key_package_bundles` is the list of own</span>
 <span class="doccomment">/// KeyPackageBundles corresponding to updates or commits sent in the</span>
 <span class="doccomment">/// current epoch</span>
-<span class="kw">impl</span> <span class="ident">MlsGroup</span> {
+<span class="kw">impl</span> <span class="ident">CoreGroup</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">apply_proposals</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">TreeSyncDiff</span>,

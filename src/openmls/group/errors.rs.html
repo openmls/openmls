@@ -269,7 +269,7 @@
 <span id="269">269</span>
 <span id="270">270</span>
 <span id="271">271</span>
-</pre><pre class="rust"><code><span class="doccomment">//! # MLS Group errors</span>
+</pre><pre class="rust"><code><span class="doccomment">//! # MLS CoreGroup errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
 <span class="doccomment">//! `CreateCommitError`.</span>
@@ -289,7 +289,7 @@
 <span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
 
 <span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsGroupError</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CoreGroupError</span> {
         <span class="ident">Simple</span> {
             <span class="ident">InitSecretNotFound</span> <span class="op">=</span>
                 <span class="string">&quot;Missing init secret when creating commit.&quot;</span>,
