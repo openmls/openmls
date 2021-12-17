@@ -125,24 +125,21 @@ impl MlsGroup {
         // exception of the `InitSecret`, which is all we need here for the
         // external commit.
         let epoch_secrets = EpochSecrets::with_init_secret(backend, init_secret)?;
-
-        // The secret tree is created from a zero-secret. That is ok, because
-        // we're immediately creating a commit afterwards.
-        let secret_tree = SecretTree::new(
-            epoch_secrets.encryption_secret(),
-            treesync.leaf_count()?.into(),
+        let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
+            group_context.tls_serialize_detached()?,
+            treesync.leaf_count()?,
         );
 
         // Prepare interim transcript hash
         let group = MlsGroup {
             ciphersuite,
             group_context,
-            epoch_secrets,
-            secret_tree: RefCell::new(secret_tree),
             tree: treesync,
             interim_transcript_hash: pgs.interim_transcript_hash.into(),
             use_ratchet_tree_extension: enable_ratchet_tree_extension,
             mls_version: pgs.version,
+            group_epoch_secrets,
+            message_secrets,
         };
 
         let external_init_proposal = Proposal::ExternalInit(ExternalInitProposal::from(kem_output));

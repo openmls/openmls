@@ -191,7 +191,7 @@ impl PublicGroupStateTbs {
     ) -> Result<Self, CryptoError> {
         let ciphersuite = mls_group.ciphersuite();
         let external_pub = mls_group
-            .epoch_secrets()
+            .group_epoch_secrets()
             .external_secret()
             .derive_external_keypair(backend.crypto(), ciphersuite)
             .public;

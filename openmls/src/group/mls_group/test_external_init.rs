@@ -132,13 +132,13 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
 
     let (_group_charly, ext_init_commit, _option_welcome, _option_kpb) =
         MlsGroup::new_from_external_init(
+            backend,
             framing_parameters,
             Some(&nodes_option),
             &charly_credential_bundle,
             &[], // proposals by reference
             &[], // proposals by value
             verifiable_public_group_state,
-            backend,
         )
         .expect("Error initializing group externally.");
 

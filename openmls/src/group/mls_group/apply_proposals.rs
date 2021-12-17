@@ -109,7 +109,7 @@ impl MlsGroup {
                     .ok_or(MlsGroupError::LibraryError)?;
                 // Decrypt the context an derive the external init.
                 let external_priv = self
-                    .epoch_secrets()
+                    .group_epoch_secrets()
                     .external_secret()
                     .derive_external_keypair(backend.crypto(), self.ciphersuite())
                     .private
@@ -235,7 +235,7 @@ impl MlsGroup {
                     .ok_or(MlsGroupError::LibraryError)?;
                 // Decrypt the context an derive the external init.
                 let external_priv = self
-                    .epoch_secrets()
+                    .group_epoch_secrets()
                     .external_secret()
                     .derive_external_keypair(backend.crypto(), self.ciphersuite())
                     .private

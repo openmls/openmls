@@ -14,6 +14,9 @@ pub struct ManagedGroupConfig {
     pub(crate) update_policy: UpdatePolicy,
     /// Size of padding in bytes
     pub(crate) padding_size: usize,
+    /// Maximum number of past epochs for which application messages
+    /// can be decrypted. The default is 0.
+    pub(crate) max_past_epochs: usize,
     /// Number of resumtion secrets to keep
     pub(crate) number_of_resumption_secrets: usize,
     /// Flag to indicate the Ratchet Tree Extension should be used
@@ -36,6 +39,11 @@ impl ManagedGroupConfig {
     /// Get the [`ManagedGroupConfig`] padding size.
     pub fn padding_size(&self) -> usize {
         self.padding_size
+    }
+
+    /// Get the [`ManagedGroupConfig`] max past epochs.
+    pub fn max_past_epochs(&self) -> usize {
+        self.max_past_epochs
     }
 
     /// Get a reference to the [`ManagedGroupConfig`] update policy.
@@ -67,6 +75,7 @@ impl Default for ManagedGroupConfig {
             wire_format: WireFormat::MlsCiphertext,
             update_policy: UpdatePolicy::default(),
             padding_size: 0,
+            max_past_epochs: 0,
             number_of_resumption_secrets: 0,
             use_ratchet_tree_extension: false,
             required_capabilities: RequiredCapabilitiesExtension::default(),
@@ -100,6 +109,21 @@ impl ManagedGroupConfigBuilder {
     /// Sets the `padding_size` property of the ManagedGroupConfig.
     pub fn padding_size(mut self, padding_size: usize) -> Self {
         self.config.padding_size = padding_size;
+        self
+    }
+
+    /// Sets the `max_past_epochs` property of the ManagedGroupConfig.
+    /// This allows application messages from previous epochs to be decrypted.
+    ///
+    /// **WARNING**
+    ///
+    /// This feature enables the storage of message secrets from past epochs.
+    /// It is a tradeoff between functionality and forward secrecy and should only be enabled
+    /// if the Delivery Service cannot guarantee that application messages will be sent in
+    /// the same epoch in which they were generated. The number for `max_epochs` should be
+    /// as low as possible.
+    pub fn max_past_epochs(mut self, max_past_epochs: usize) -> Self {
+        self.config.max_past_epochs = max_past_epochs;
         self
     }
 

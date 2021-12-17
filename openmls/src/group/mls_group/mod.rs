@@ -13,6 +13,7 @@ pub mod create_commit;
 pub mod create_commit_params;
 mod new_from_external_init;
 mod new_from_welcome;
+pub mod past_secrets;
 pub mod process;
 pub mod proposals;
 pub mod staged_commit;
@@ -25,6 +26,8 @@ mod test_external_init;
 #[cfg(test)]
 mod test_mls_group;
 #[cfg(test)]
+mod test_past_secrets;
+#[cfg(test)]
 mod test_proposals;
 pub mod validation;
 
@@ -34,12 +37,9 @@ use crate::credentials::{Credential, CredentialBundle, CredentialError};
 use crate::framing::*;
 use crate::group::*;
 use crate::key_packages::*;
-use crate::messages::public_group_state::{
-    PublicGroupState, PublicGroupStateTbs, VerifiablePublicGroupState,
-};
+use crate::messages::public_group_state::{PublicGroupState, PublicGroupStateTbs};
 use crate::messages::{proposals::*, *};
 use crate::schedule::*;
-use crate::tree::secret_tree::SecretTree;
 use crate::treesync::node::Node;
 use crate::treesync::*;
 use crate::{ciphersuite::*, config::ProtocolVersion};
@@ -49,15 +49,11 @@ use serde::{
     ser::{SerializeStruct, Serializer},
     Deserialize, Deserializer, Serialize,
 };
-use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::io::{Error, Read, Write};
 
-use std::cell::RefMut;
 use tls_codec::Serialize as TlsSerializeTrait;
-
-use self::new_from_external_init::ExternalInitResult;
 
 use super::errors::{
     ExporterError, FramingValidationError, MlsGroupError, ProposalValidationError,
@@ -71,8 +67,8 @@ pub type CreateCommitResult =
 pub struct MlsGroup {
     ciphersuite: &'static Ciphersuite,
     group_context: GroupContext,
-    epoch_secrets: EpochSecrets,
-    secret_tree: RefCell<SecretTree>,
+    group_epoch_secrets: GroupEpochSecrets,
+    message_secrets: MessageSecrets,
     tree: TreeSync,
     interim_transcript_hash: Vec<u8>,
     // Group config.
@@ -86,8 +82,8 @@ pub struct MlsGroup {
 implement_persistence!(
     MlsGroup,
     group_context,
-    epoch_secrets,
-    secret_tree,
+    group_epoch_secrets,
+    message_secrets,
     tree,
     interim_transcript_hash,
     use_ratchet_tree_extension,
@@ -181,16 +177,19 @@ impl MlsGroupBuilder {
 
         let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)?;
         key_schedule.add_context(backend, &serialized_group_context)?;
+
         let epoch_secrets = key_schedule.epoch_secrets(backend, true)?;
 
-        let secret_tree = epoch_secrets.encryption_secret().create_secret_tree(1u32);
+        let (group_epoch_secrets, message_secrets) =
+            epoch_secrets.split_secrets(serialized_group_context, 1u32);
+
         let interim_transcript_hash = vec![];
 
         Ok(MlsGroup {
             ciphersuite,
             group_context,
-            epoch_secrets,
-            secret_tree: RefCell::new(secret_tree),
+            group_epoch_secrets,
+            message_secrets,
             tree,
             interim_transcript_hash,
             use_ratchet_tree_extension: config.add_ratchet_tree_extension,
@@ -246,7 +245,7 @@ impl MlsGroup {
             proposal,
             credential_bundle,
             self.context(),
-            self.epoch_secrets().membership_key(),
+            self.message_secrets().membership_key(),
             backend,
         )
         .map_err(|e| e.into())
@@ -271,7 +270,7 @@ impl MlsGroup {
             proposal,
             credential_bundle,
             self.context(),
-            self.epoch_secrets().membership_key(),
+            self.message_secrets().membership_key(),
             backend,
         )
         .map_err(|e| e.into())
@@ -298,7 +297,7 @@ impl MlsGroup {
             proposal,
             credential_bundle,
             self.context(),
-            self.epoch_secrets().membership_key(),
+            self.message_secrets().membership_key(),
             backend,
         )
         .map_err(|e| e.into())
@@ -323,7 +322,7 @@ impl MlsGroup {
             proposal,
             credential_bundle,
             self.context(),
-            self.epoch_secrets().membership_key(),
+            self.message_secrets().membership_key(),
             backend,
         )
         .map_err(|e| e.into())
@@ -363,7 +362,7 @@ impl MlsGroup {
             proposal,
             credential_bundle,
             self.context(),
-            self.epoch_secrets().membership_key(),
+            self.message_secrets().membership_key(),
             backend,
         )
         .map_err(|e| e.into())
@@ -384,7 +383,7 @@ impl MlsGroup {
             msg,
             credential_bundle,
             self.context(),
-            self.epoch_secrets().membership_key(),
+            self.message_secrets().membership_key(),
             backend,
         )?;
         self.encrypt(mls_plaintext, padding_size, backend)
@@ -402,12 +401,12 @@ impl MlsGroup {
             &mls_plaintext,
             self.ciphersuite,
             backend,
-            self.context(),
-            self.sender_index(),
-            Secrets {
-                epoch_secrets: self.epoch_secrets(),
-                secret_tree: &mut self.secret_tree_mut(),
+            MlsMessageHeader {
+                group_id: self.group_id().clone(),
+                epoch: self.context().epoch(),
+                sender: self.sender_index(),
             },
+            self.message_secrets_mut(),
             padding_size,
         )
         .map_err(MlsGroupError::MlsCiphertextError)
@@ -419,12 +418,7 @@ impl MlsGroup {
         mls_ciphertext: &MlsCiphertext,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<VerifiableMlsPlaintext, MlsGroupError> {
-        Ok(mls_ciphertext.to_plaintext(
-            self.ciphersuite(),
-            backend,
-            &self.epoch_secrets,
-            &mut self.secret_tree.borrow_mut(),
-        )?)
+        Ok(mls_ciphertext.to_plaintext(self.ciphersuite(), backend, &mut self.message_secrets)?)
     }
 
     /// Set the context of the [`VerifiableMlsPlaintext`] (if it has not been
@@ -465,7 +459,7 @@ impl MlsGroup {
     ) -> Result<(), MlsGroupError> {
         verifiable_mls_plaintext.set_context(self.context().tls_serialize_detached()?);
         Ok(verifiable_mls_plaintext
-            .verify_membership(backend, self.epoch_secrets().membership_key())?)
+            .verify_membership(backend, self.message_secrets().membership_key())?)
     }
 
     /// Exporter
@@ -481,14 +475,14 @@ impl MlsGroup {
             return Err(ExporterError::KeyLengthTooLong.into());
         }
         Ok(self
-            .epoch_secrets
+            .group_epoch_secrets
             .exporter_secret()
             .derive_exported_secret(self.ciphersuite(), backend, label, context, key_length)?)
     }
 
     /// Returns the authentication secret
     pub fn authentication_secret(&self) -> Vec<u8> {
-        self.epoch_secrets().authentication_secret().export()
+        self.group_epoch_secrets().authentication_secret().export()
     }
 
     /// Loads the state from persisted state
@@ -579,12 +573,19 @@ impl MlsGroup {
         self.tree.own_leaf_index()
     }
 
-    pub(crate) fn epoch_secrets(&self) -> &EpochSecrets {
-        &self.epoch_secrets
+    /// Get a reference to the group epoch secrets from the group
+    pub(crate) fn group_epoch_secrets(&self) -> &GroupEpochSecrets {
+        &self.group_epoch_secrets
     }
 
-    pub(crate) fn secret_tree_mut(&self) -> RefMut<SecretTree> {
-        self.secret_tree.borrow_mut()
+    /// Get a reference to the message secrets from a group
+    pub(crate) fn message_secrets(&self) -> &MessageSecrets {
+        &self.message_secrets
+    }
+
+    /// Get a mutable reference to the message secrets from a group
+    pub(crate) fn message_secrets_mut(&mut self) -> &mut MessageSecrets {
+        &mut self.message_secrets
     }
 
     /// Current confirmed transcript hash of the group
@@ -595,11 +596,6 @@ impl MlsGroup {
     /// Current interim transcript hash of the group
     pub(crate) fn interim_transcript_hash(&self) -> &[u8] {
         &self.interim_transcript_hash
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn epoch_secrets_mut(&mut self) -> &mut EpochSecrets {
-        &mut self.epoch_secrets
     }
 
     #[cfg(any(feature = "test-utils", test))]
