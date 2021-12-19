@@ -18,7 +18,7 @@ use crate::test_utils::{read, write};
 use crate::{
     ciphersuite::signable::Signable,
     credentials::{CredentialBundle, CredentialType},
-    prelude::KeyPackageBundlePayload,
+    key_packages::KeyPackageBundlePayload,
     test_utils::hex_to_bytes,
     tree::node::Node,
 };
@@ -27,9 +27,9 @@ use crate::{
     config::Config,
     config::ProtocolVersion,
     framing::MlsMessageOut,
+    framing::MlsPlaintextContentType,
     key_packages::KeyPackage,
     messages::PathSecret,
-    prelude::MlsPlaintextContentType,
     test_utils::*,
     test_utils::{
         bytes_to_hex,
@@ -323,8 +323,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     use openmls_traits::key_store::OpenMlsKeyStore;
 
     use crate::{
-        extensions::RatchetTreeExtension,
-        prelude::{KeyPackageBundle, MlsGroupConfig},
+        extensions::RatchetTreeExtension, group::MlsGroupConfig, key_packages::KeyPackageBundle,
         test_utils::test_framework::CodecUse,
     };
 

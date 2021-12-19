@@ -11,8 +11,8 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::framing::*;
-use crate::prelude::KeyPackageBundle;
-use crate::prelude::_print_tree;
+use crate::key_packages::KeyPackageBundle;
+use crate::utils::_print_tree;
 use crate::{
     ciphersuite::signable::{Signable, Verifiable},
     config::*,

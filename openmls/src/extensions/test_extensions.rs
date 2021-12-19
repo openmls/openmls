@@ -9,7 +9,7 @@ use tls_codec::{Deserialize, Serialize};
 use super::*;
 
 use crate::{
-    group::create_commit_params::CreateCommitParams, messages::proposals::ProposalType, prelude::*,
+    credentials::*, framing::*, group::*, key_packages::*, messages::proposals::ProposalType,
 };
 
 #[test]

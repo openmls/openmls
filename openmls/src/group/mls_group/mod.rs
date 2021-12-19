@@ -21,9 +21,9 @@ use crate::{
     credentials::Credential,
     framing::*,
     group::*,
+    key_packages::KeyPackageBundlePayload,
     key_packages::{KeyPackage, KeyPackageBundle},
     messages::{proposals::*, Welcome},
-    prelude::KeyPackageBundlePayload,
     schedule::ResumptionSecret,
 };
 

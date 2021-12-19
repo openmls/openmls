@@ -215,7 +215,7 @@ impl tls_codec::Deserialize for MlsCiphertext {
             ));
         }
 
-        let mls_ciphertext = MlsCiphertext {
+        let mls_ciphertext = MlsCiphertext::new(
             wire_format,
             group_id,
             epoch,
@@ -223,7 +223,7 @@ impl tls_codec::Deserialize for MlsCiphertext {
             authenticated_data,
             encrypted_sender_data,
             ciphertext,
-        };
+        );
 
         Ok(mls_ciphertext)
     }

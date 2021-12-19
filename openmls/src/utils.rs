@@ -7,17 +7,17 @@ use crate::treesync::TreeSync;
 use rand::{rngs::OsRng, RngCore};
 
 #[cfg(any(feature = "test-utils", test))]
-pub(crate) fn random_u32() -> u32 {
+pub fn random_u32() -> u32 {
     OsRng.next_u32()
 }
 
 #[cfg(any(feature = "test-utils", test))]
-pub(crate) fn random_u64() -> u64 {
+pub fn random_u64() -> u64 {
     OsRng.next_u64()
 }
 
 #[cfg(any(feature = "test-utils", test))]
-pub(crate) fn random_u8() -> u8 {
+pub fn random_u8() -> u8 {
     let mut b = [0u8; 1];
     OsRng.fill_bytes(&mut b);
     b[0]
@@ -219,7 +219,7 @@ macro_rules! implement_enum_display {
     };
 }
 
-fn log2(x: u32) -> usize {
+fn _log2(x: u32) -> usize {
     if x == 0 {
         return 0;
     }
@@ -230,7 +230,7 @@ fn log2(x: u32) -> usize {
     k - 1
 }
 
-fn level(index: u32) -> usize {
+fn _level(index: u32) -> usize {
     let x = index;
     if (x & 0x01) == 0 {
         return 0;
@@ -242,8 +242,8 @@ fn level(index: u32) -> usize {
     k
 }
 
-fn root(size: u32) -> u32 {
-    (1 << log2(size)) - 1
+fn _root(size: u32) -> u32 {
+    (1 << _log2(size)) - 1
 }
 
 pub fn _print_tree(tree: &TreeSync, message: &str) {
@@ -252,7 +252,7 @@ pub fn _print_tree(tree: &TreeSync, message: &str) {
     let nodes = tree.export_nodes();
     let tree_size = nodes.len() as u32;
     for (i, node) in nodes.iter().enumerate() {
-        let level = level(i as u32);
+        let level = _level(i as u32);
         print!("{:04}", i);
         if let Some(node) = node {
             let (key_bytes, parent_hash_bytes) = match node {
@@ -263,7 +263,7 @@ pub fn _print_tree(tree: &TreeSync, message: &str) {
                     (key_bytes, parent_hash_bytes.unwrap_or_default())
                 }
                 Node::ParentNode(parent_node) => {
-                    if root(tree_size) == i as u32 {
+                    if _root(tree_size) == i as u32 {
                         print!("\tP(R)");
                     } else {
                         print!("\tP");
@@ -282,7 +282,7 @@ pub fn _print_tree(tree: &TreeSync, message: &str) {
             }
             print!("◼︎");
         } else {
-            if root(tree_size) == i as u32 {
+            if _root(tree_size) == i as u32 {
                 print!("\tB(R)\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t| ");
             } else {
                 print!("\tB\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t| ");

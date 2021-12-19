@@ -1,6 +1,6 @@
 //! # Key package tests
 
-use openmls::{ciphersuite::signable::Signable, prelude::*, test_utils::*, *};
+use openmls::{prelude::*, test_utils::*, *};
 
 #[macro_use]
 mod utils;

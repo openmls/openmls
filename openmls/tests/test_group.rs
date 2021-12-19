@@ -1,4 +1,5 @@
-use openmls::{group::create_commit_params::CreateCommitParams, prelude::*};
+use openmls::prelude::*;
+use openmls::prelude_test::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use openmls::test_utils::*;

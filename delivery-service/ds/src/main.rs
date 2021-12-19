@@ -44,6 +44,9 @@ use ds_lib::*;
 use openmls::prelude::*;
 
 #[cfg(test)]
+use openmls::prelude_test::*;
+
+#[cfg(test)]
 mod test;
 
 /// The DS state.
