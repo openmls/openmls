@@ -5,12 +5,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::{random::OpenMlsRand, OpenMlsCryptoProvider};
 
-use crate::{
-    ciphersuite::Secret,
-    config::Config,
-    prelude::{ExternalPsk, PreSharedKeyId, Psk},
-    schedule::psk::PskBundle,
-};
+use crate::{ciphersuite::Secret, config::Config, schedule::psk::PskBundle, schedule::psk::*};
 
 use super::PskSecret;
 

@@ -1,6 +1,8 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
-use crate::{config::Config, prelude::Secret, test_utils::*, tree::sender_ratchet::SenderRatchet};
+use crate::{
+    ciphersuite::Secret, config::Config, test_utils::*, tree::sender_ratchet::SenderRatchet,
+};
 
 #[apply(ciphersuites_and_backends)]
 fn test_ratchet_generations(

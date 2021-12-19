@@ -7,14 +7,7 @@
 
 use std::convert::TryFrom;
 
-use crate::{
-    ciphersuite::{Ciphersuite, CiphersuiteName, Secret},
-    config::{Config, ProtocolVersion},
-    group::{GroupContext, GroupEpoch, GroupId},
-    prelude::{BranchPsk, Psk, PskBundle},
-    schedule::{EpochSecrets, InitSecret, JoinerSecret, KeySchedule, WelcomeSecret},
-    test_utils::*,
-};
+use crate::{ciphersuite::*, config::*, group::*, schedule::*, test_utils::*};
 
 #[cfg(test)]
 use crate::test_utils::{read, write};
@@ -186,7 +179,6 @@ pub fn generate_test_vector(
 ) -> KeyScheduleTestVector {
     use tls_codec::Serialize;
 
-    use crate::ciphersuite::HpkePublicKey;
     let crypto = OpenMlsRustCrypto::default();
 
     // Set up setting.
@@ -313,8 +305,6 @@ pub fn run_test_vector(
     backend: &impl OpenMlsCryptoProvider,
 ) -> Result<(), KsTestVectorError> {
     use tls_codec::{Deserialize, Serialize};
-
-    use crate::{ciphersuite::HpkePublicKey, messages::PathSecret};
 
     let ciphersuite =
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");

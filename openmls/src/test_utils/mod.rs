@@ -6,7 +6,7 @@ pub use rstest::*;
 pub use rstest_reuse::{self, *};
 
 pub use crate::{
-    ciphersuite::{Ciphersuite, CiphersuiteName},
+    ciphersuite::{ciphersuites::CiphersuiteName, Ciphersuite},
     config::Config,
     utils::*,
 };

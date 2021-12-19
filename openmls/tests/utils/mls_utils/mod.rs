@@ -8,8 +8,8 @@ use std::collections::HashMap;
 
 use ::rand::rngs::OsRng;
 use ::rand::RngCore;
-use openmls::group::create_commit_params::CreateCommitParams;
 use openmls::prelude::*;
+use openmls::prelude_test::*;
 use openmls::{test_utils::*, *};
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsCryptoProvider;

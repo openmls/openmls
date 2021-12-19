@@ -1,6 +1,5 @@
 mod codec;
 mod errors;
-pub use codec::*;
 pub use errors::*;
 #[cfg(test)]
 mod tests;

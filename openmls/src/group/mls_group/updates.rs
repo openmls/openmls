@@ -5,7 +5,7 @@ use super::*;
 impl MlsGroup {
     /// Updates the own leaf node
     ///
-    /// A [`KeyPackageBundle`](crate::prelude::KeyPackageBundle) can optionally
+    /// A [`KeyPackageBundle`](crate::key_packages::KeyPackageBundle) can optionally
     /// be provided. If not, a new one will be created on the fly.
     ///
     /// If successful, it returns a tuple of [`MlsMessageOut`] and an optional [`Welcome`].

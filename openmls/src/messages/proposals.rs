@@ -248,6 +248,7 @@ pub struct PreSharedKeyProposal {
 
 impl PreSharedKeyProposal {
     /// Create a new PSK proposal
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn new(psk: PreSharedKeyId) -> Self {
         Self { psk }
     }
@@ -357,6 +358,7 @@ pub struct GroupContextExtensionProposal {
 
 impl GroupContextExtensionProposal {
     /// Create a new [`GroupContextExtensionProposal`].
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn new(extensions: &[Extension]) -> Self {
         Self {
             extensions: extensions.into(),

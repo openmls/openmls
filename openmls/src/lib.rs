@@ -21,8 +21,20 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(not(test), forbid(unsafe_code))]
 
+// === Testing ===
+
+/// Single place, re-exporting all structs and functions needed for integration tests
+#[cfg(any(feature = "test-utils", test))]
+pub mod prelude_test;
+
 #[cfg(any(feature = "test-utils", test))]
 pub use rstest_reuse;
+
+#[cfg(any(feature = "test-utils", test))]
+#[macro_use]
+pub mod test_utils;
+
+// === Modules ===
 
 #[macro_use]
 mod utils;
@@ -30,30 +42,19 @@ mod utils;
 #[macro_use]
 pub mod error;
 
-#[cfg(any(feature = "test-utils", test))]
-#[macro_use]
-pub mod test_utils;
-
 mod binary_tree;
-#[cfg(not(any(feature = "test-utils", test)))]
-mod treesync;
-#[cfg(any(feature = "test-utils", test))]
-pub mod treesync;
-
-pub mod ciphersuite;
-pub mod config;
+mod ciphersuite;
+mod config;
 mod credentials;
 mod extensions;
-pub mod framing;
-pub mod group;
+mod framing;
+mod group;
 mod key_packages;
-pub mod key_store;
-pub mod messages;
-#[cfg(any(feature = "test-utils", test))]
-pub mod schedule;
-#[cfg(not(any(feature = "test-utils", test)))]
+mod key_store;
+mod messages;
 mod schedule;
-pub mod tree;
+mod tree;
+mod treesync;
 
 /// Single place, re-exporting the most used public functions.
 pub mod prelude;
