@@ -41,6 +41,9 @@ pub use crate::key_packages::*;
 // Key store
 pub use crate::key_store::*;
 
+// Tree
+pub use crate::tree::SenderRatchetConfiguration;
+
 // PSKs
 // TODO #141
 pub use crate::schedule::psk::{

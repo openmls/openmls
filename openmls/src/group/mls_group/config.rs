@@ -1,3 +1,5 @@
+use crate::tree::sender_ratchet::SenderRatchetConfiguration;
+
 use super::*;
 
 use serde::{Deserialize, Serialize};
@@ -23,6 +25,8 @@ pub struct MlsGroupConfig {
     pub(crate) use_ratchet_tree_extension: bool,
     /// Required capabilities (extensions and proposal types)
     pub(crate) required_capabilities: RequiredCapabilitiesExtension,
+    /// Sender ratchet configuration
+    pub(crate) sender_ratchet_configuration: SenderRatchetConfiguration,
 }
 
 impl MlsGroupConfig {
@@ -61,6 +65,11 @@ impl MlsGroupConfig {
         self.use_ratchet_tree_extension
     }
 
+    /// Get the [`MlsGroupConfig`] sender ratchet configuration.
+    pub fn sender_ratchet_configuration(&self) -> &SenderRatchetConfiguration {
+        &self.sender_ratchet_configuration
+    }
+
     #[cfg(any(feature = "test-utils", test))]
     pub fn test_default() -> Self {
         Self::builder()
@@ -79,6 +88,7 @@ impl Default for MlsGroupConfig {
             number_of_resumption_secrets: 0,
             use_ratchet_tree_extension: false,
             required_capabilities: RequiredCapabilitiesExtension::default(),
+            sender_ratchet_configuration: SenderRatchetConfiguration::default(),
         }
     }
 }
@@ -136,6 +146,16 @@ impl MlsGroupConfigBuilder {
     /// Sets the `use_ratchet_tree_extension` property of the MlsGroupConfig.
     pub fn use_ratchet_tree_extension(mut self, use_ratchet_tree_extension: bool) -> Self {
         self.config.use_ratchet_tree_extension = use_ratchet_tree_extension;
+        self
+    }
+
+    /// Sets the `sender_ratchet_configuration` property of the MlsGroupConfig.
+    /// See [`SenderRatchetConfiguration`] for more information.
+    pub fn sender_ratchet_configuration(
+        mut self,
+        sender_ratchet_configuration: SenderRatchetConfiguration,
+    ) -> Self {
+        self.config.sender_ratchet_configuration = sender_ratchet_configuration;
         self
     }
 
