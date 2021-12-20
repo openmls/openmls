@@ -325,11 +325,16 @@ impl Ord for Extension {
 pub(crate) fn try_nodes_from_extensions(
     other_extensions: &[Extension],
 ) -> Result<Option<&[Option<Node>]>, ExtensionError> {
-    let ratchet_tree_extensions = other_extensions
+    let mut ratchet_tree_extensions = other_extensions
         .iter()
-        .filter(|e| e.extension_type() == ExtensionType::RatchetTree)
-        .collect::<Vec<&Extension>>();
-    if ratchet_tree_extensions.len() > 1 {
+        .filter(|e| e.extension_type() == ExtensionType::RatchetTree);
+
+    let nodes_option = match ratchet_tree_extensions.next() {
+        Some(e) => Some(e.as_ratchet_tree_extension()?.as_slice()),
+        None => None,
+    };
+
+    if ratchet_tree_extensions.next().is_some() {
         // Throw an error if there is more than one ratchet tree extension.
         // This shouldn't be the case anyway, because extensions are checked
         // for uniqueness when decoding them. We have to see if this makes
@@ -338,9 +343,5 @@ pub(crate) fn try_nodes_from_extensions(
         return Err(ExtensionError::DuplicateRatchetTreeExtension);
     };
 
-    let nodes_option = match ratchet_tree_extensions.first() {
-        Some(e) => Some(e.as_ratchet_tree_extension()?.as_slice()),
-        None => None,
-    };
     Ok(nodes_option)
 }
