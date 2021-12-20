@@ -10,12 +10,12 @@ use core_group::proposals::StagedProposal;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
-use crate::framing::*;
-use crate::key_packages::KeyPackageBundle;
-use crate::utils::_print_tree;
 use crate::{
     ciphersuite::signable::{Signable, Verifiable},
     config::*,
+    framing::*,
+    key_packages::KeyPackageBundle,
+    utils::print_tree,
 };
 
 /// This tests serializing/deserializing MlsPlaintext
@@ -497,8 +497,8 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .merge_commit(staged_commit)
         .expect("error merging commit");
 
-    _print_tree(group_alice.treesync(), "Alice tree");
-    _print_tree(group_charlie.treesync(), "Charlie tree");
+    print_tree(group_alice.treesync(), "Alice tree");
+    print_tree(group_charlie.treesync(), "Charlie tree");
 
     // Alice sends a message with a sender that points to a blank leaf
     // Expected result: MlsCiphertextError::UnknownSender

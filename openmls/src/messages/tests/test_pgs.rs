@@ -1,8 +1,7 @@
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
-    config::*, credentials::*, framing::*, group::*, key_packages::*,
-    messages::public_group_state::*, messages::*, test_utils::*,
+    config::*, credentials::*, framing::*, group::*, key_packages::*, messages::*, test_utils::*,
 };
 
 /// Tests the creation of a `PublicGroupState` and verifies it was correctly
