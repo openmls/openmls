@@ -17,15 +17,12 @@ use super::{
 };
 use crate::group::core_group::*;
 
-pub type ExternalInitResult = Result<
-    (
-        CoreGroup,
-        MlsPlaintext,
-        Option<Welcome>,
-        Option<KeyPackageBundle>,
-    ),
-    ExternalInitError,
->;
+pub struct ExternalInitResult {
+    pub core_group: CoreGroup,
+    pub commit: MlsPlaintext,
+    pub welcome_option: Option<Welcome>,
+    pub key_package_bundle_option: Option<KeyPackageBundle>,
+}
 
 impl CoreGroup {
     /// Join a group without the help of an internal member. This function
@@ -39,12 +36,12 @@ impl CoreGroup {
     pub fn new_from_external_init(
         backend: &impl OpenMlsCryptoProvider,
         framing_parameters: FramingParameters,
-        nodes_option: Option<Vec<Option<Node>>>,
+        tree_option: Option<&[Option<Node>]>,
         credential_bundle: &CredentialBundle,
         proposals_by_reference: &[MlsPlaintext],
         proposals_by_value: &[Proposal],
         verifiable_public_group_state: VerifiablePublicGroupState,
-    ) -> ExternalInitResult {
+    ) -> Result<ExternalInitResult, ExternalInitError> {
         let ciphersuite = Config::ciphersuite(verifiable_public_group_state.ciphersuite())?;
         if !Config::supported_versions().contains(&verifiable_public_group_state.version()) {
             return Err(ExternalInitError::UnsupportedMlsVersion);
@@ -56,14 +53,15 @@ impl CoreGroup {
         // If we got a ratchet tree extension in the welcome, we enable it for
         // this group. Note that this is not strictly necessary. But there's
         // currently no other mechanism to enable the extension.
-        let (nodes, enable_ratchet_tree_extension) =
-            match try_nodes_from_extensions(&verifiable_public_group_state.other_extensions())? {
-                Some(nodes) => (nodes, true),
-                None => match nodes_option.as_ref() {
-                    Some(n) => (n.as_slice(), false),
-                    None => return Err(ExternalInitError::MissingRatchetTree),
-                },
-            };
+        let extension_tree_option =
+            try_nodes_from_extensions(&verifiable_public_group_state.other_extensions())?;
+        let (nodes, enable_ratchet_tree_extension) = match extension_tree_option {
+            Some(ref nodes) => (nodes, true),
+            None => match tree_option.as_ref() {
+                Some(n) => (n, false),
+                None => return Err(ExternalInitError::MissingRatchetTree),
+            },
+        };
 
         // Create a RatchetTree from the given nodes. We have to do this before
         // verifying the PGS, since we need to find the Credential to verify the
@@ -138,10 +136,15 @@ impl CoreGroup {
             .build();
 
         // Immediately create the commit to add ourselves to the group.
-        let (mls_plaintext, option_welcome, option_kpb) = group
+        let (mls_plaintext, welcome_option, kpb_option) = group
             .create_commit(params, backend)
             .map_err(|_| ExternalInitError::CommitError)?;
 
-        Ok((group, mls_plaintext, option_welcome, option_kpb))
+        Ok(ExternalInitResult {
+            core_group: group,
+            commit: mls_plaintext,
+            welcome_option,
+            key_package_bundle_option: kpb_option,
+        })
     }
 }
