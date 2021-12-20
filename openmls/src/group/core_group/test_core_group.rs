@@ -533,3 +533,102 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
         .create_commit(params, backend)
         .expect("An unexpected error occurred.");
 }
+
+// Test several scenarios when PSKs are used in a group
+#[apply(ciphersuites_and_backends)]
+fn test_staged_commit_creation(
+    ciphersuite: &'static Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+) {
+    // Basic group setup.
+    let group_aad = b"Alice's test group";
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+
+    // Define credential bundles
+    let alice_credential_bundle = CredentialBundle::new(
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
+    let bob_credential_bundle = CredentialBundle::new(
+        "Bob".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
+
+    // Generate KeyPackages
+    let alice_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &alice_credential_bundle,
+        backend,
+        Vec::new(),
+    )
+    .expect("An unexpected error occurred.");
+
+    let bob_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &bob_credential_bundle,
+        backend,
+        Vec::new(),
+    )
+    .expect("An unexpected error occurred.");
+    let bob_key_package = bob_key_package_bundle.key_package();
+
+    // === Alice creates a group ===
+    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+        .build(backend)
+        .expect("Error creating group.");
+
+    // === Alice adds Bob ===
+    let bob_add_proposal = alice_group
+        .create_add_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            bob_key_package.clone(),
+            backend,
+        )
+        .expect("Could not create proposal.");
+    let proposal_store = ProposalStore::from_staged_proposal(
+        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create StagedProposal."),
+    );
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .force_self_update(false)
+        .build();
+    let create_commit_result = alice_group
+        .create_commit(params, backend)
+        .expect("Error creating commit");
+
+    // === Alice merges her own commit ===
+    alice_group
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error processing own staged commit");
+
+    // === Bob joins the group using Alice's tree ===
+    let group_bob = CoreGroup::new_from_welcome(
+        create_commit_result
+            .welcome_option
+            .expect("An unexpected error occurred."),
+        Some(alice_group.treesync().export_nodes()),
+        bob_key_package_bundle,
+        backend,
+    )
+    .expect("An unexpected error occurred.");
+
+    // Let's make sure we end up in the same group state.
+    assert_eq!(
+        group_bob.export_secret(backend, "", b"test", ciphersuite.hash_length()),
+        alice_group.export_secret(backend, "", b"test", ciphersuite.hash_length())
+    );
+    assert_eq!(
+        group_bob.treesync().export_nodes(),
+        alice_group.treesync().export_nodes()
+    )
+}
