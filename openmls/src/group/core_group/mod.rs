@@ -614,6 +614,7 @@ impl CoreGroup {
     }
 
     /// Current confirmed transcript hash of the group
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn confirmed_transcript_hash(&self) -> &[u8] {
         self.group_context.confirmed_transcript_hash()
     }

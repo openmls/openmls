@@ -132,7 +132,6 @@ use crate::{
 
 use openmls_traits::{types::*, OpenMlsCryptoProvider};
 
-#[cfg(any(feature = "test-utils", test))]
 use openmls_traits::crypto::OpenMlsCrypto;
 
 use serde::{Deserialize, Serialize};
@@ -750,7 +749,6 @@ impl ExternalSecret {
     }
 
     /// Derive the external keypair for External Commits
-    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn derive_external_keypair(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -1259,7 +1257,6 @@ impl GroupEpochSecrets {
     }
 
     /// External secret
-    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn external_secret(&self) -> &ExternalSecret {
         &self.external_secret
     }
