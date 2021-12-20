@@ -16,7 +16,7 @@ use crate::{
 use super::{
     create_commit_params::{CommitType, CreateCommitParams},
     proposals::CreationProposalQueue,
-    staged_commit::{StagedCommit, StagedCommitState},
+    staged_commit::StagedCommit,
 };
 
 /// A helper struct which contains the values resulting from the preparation of
