@@ -5,10 +5,10 @@
 //!
 //! Clients are represented by the `ClientInfo` struct.
 
-use openmls::{framing::VerifiableMlsPlaintext, prelude::*};
+use openmls::prelude::*;
 use tls_codec::{
-    TlsByteSliceU16, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8, TlsDeserialize,
-    TlsSerialize, TlsSize, TlsVecU32,
+    TlsByteSliceU16, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8, TlsDeserialize, TlsSerialize,
+    TlsSize, TlsVecU32,
 };
 
 /// Information about a client.
@@ -56,7 +56,7 @@ impl ClientInfo {
     }
 }
 
-/// Unified message type similar to the one in the managed group.
+/// Unified message type similar to the one in the MlsGroup.
 /// But this version only operates on [`VerifiableMlsPlaintext`].
 #[derive(Debug, Clone)]
 pub enum DsMlsMessage {
@@ -119,7 +119,7 @@ pub enum MessageType {
     Welcome = 2,
 }
 
-/// An MLS group message.
+/// An core group message.
 /// This is an `MLSMessage` plus the list of recipients as a vector of client
 /// names.
 #[derive(Debug)]

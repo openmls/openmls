@@ -3,35 +3,41 @@
 //! This file contains the API to interact with groups.
 //!
 //! The low-level standard API is described in the `Api` trait.\
-//! The high-level API is exposed in `ManagedGroup`.
+//! The high-level API is exposed in `MlsGroup`.
 
-pub mod errors;
 mod group_context;
-mod managed_group;
-pub mod mls_group;
-
-#[cfg(any(feature = "test-utils", test))]
-pub mod tests;
+mod mls_group;
 
 use crate::ciphersuite::*;
 use crate::extensions::*;
 use crate::utils::*;
 
-#[cfg(any(feature = "test-utils", test))]
-use openmls_traits::random::OpenMlsRand;
 use openmls_traits::OpenMlsCryptoProvider;
-pub(crate) use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
+use tls_codec::*;
 
-pub use errors::{
-    CreateCommitError, ExporterError, FramingValidationError, InterimTranscriptHashError,
-    MlsGroupError, ProposalValidationError, StageCommitError, WelcomeError,
+// Crate
+pub(crate) mod core_group;
+pub mod errors;
+pub use core_group::*;
+pub(crate) use errors::{
+    CoreGroupError, CreateCommitError, ExporterError, InterimTranscriptHashError, StageCommitError,
+    WelcomeError,
 };
-pub use group_context::*;
-pub use managed_group::*;
+pub(crate) use group_context::*;
+
+// Public
 pub use mls_group::*;
 
-use tls_codec::TlsVecU32;
-use tls_codec::{TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize};
+// Tests
+#[cfg(any(feature = "test-utils", test))]
+pub(crate) mod tests;
+#[cfg(any(feature = "test-utils", test))]
+pub use create_commit_params::*;
+#[cfg(any(feature = "test-utils", test))]
+use openmls_traits::random::OpenMlsRand;
+#[cfg(any(feature = "test-utils", test))]
+pub use proposals::*;
 
 #[derive(
     Hash, Eq, Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
@@ -65,7 +71,16 @@ impl GroupId {
 }
 
 #[derive(
-    Debug, PartialEq, Copy, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug,
+    PartialEq,
+    Copy,
+    Clone,
+    Hash,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct GroupEpoch(pub u64);
 
@@ -75,56 +90,8 @@ impl GroupEpoch {
     }
 }
 
-#[derive(
-    Debug, Clone, PartialEq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-)]
-pub struct GroupContext {
-    group_id: GroupId,
-    epoch: GroupEpoch,
-    tree_hash: TlsByteVecU8,
-    confirmed_transcript_hash: TlsByteVecU8,
-    extensions: TlsVecU32<Extension>,
-}
-
-#[cfg(any(feature = "test-utils", test))]
-impl GroupContext {
-    pub(crate) fn set_epoch(&mut self, epoch: GroupEpoch) {
-        self.epoch = epoch;
+impl PartialOrd for GroupEpoch {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.0.partial_cmp(&other.0)
     }
-}
-
-/// Configuration for an MLS group.
-#[derive(Clone, Copy, Debug)]
-pub struct MlsGroupConfig {
-    /// Flag whether to send the ratchet tree along with the `GroupInfo` or not.
-    /// Defaults to false.
-    pub add_ratchet_tree_extension: bool,
-    pub padding_block_size: u32,
-    pub additional_as_epochs: u32,
-}
-
-impl MlsGroupConfig {
-    /// Get the padding block size used in this config.
-    pub fn padding_block_size(&self) -> u32 {
-        self.padding_block_size
-    }
-}
-
-impl Default for MlsGroupConfig {
-    fn default() -> Self {
-        Self {
-            add_ratchet_tree_extension: false,
-            padding_block_size: 10,
-            additional_as_epochs: 0,
-        }
-    }
-}
-
-#[derive(
-    PartialEq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
-)]
-#[repr(u8)]
-pub enum WireFormat {
-    MlsPlaintext = 1,
-    MlsCiphertext = 2,
 }

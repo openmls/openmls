@@ -21,19 +21,24 @@ use std::hash::Hash;
 use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8};
 
 mod aead;
-mod ciphersuites;
 mod codec;
+// TODO #541 This will change once hash based identifiers have been fully implemented
+pub mod hash_ref;
 mod hpke;
 mod kdf_label;
 mod mac;
 mod reuse_guard;
 mod secret;
 mod ser;
-pub mod signable;
-pub(crate) mod signature;
+mod signature;
 
+// Public
+pub mod ciphersuites;
+pub mod signable;
+
+// Crate
 pub(crate) use aead::*;
-pub use ciphersuites::*;
+pub(crate) use ciphersuites::*;
 pub(crate) use hpke::*;
 pub(crate) use mac::*;
 pub(crate) use reuse_guard::*;
@@ -104,7 +109,7 @@ impl Ciphersuite {
             signature_scheme: SignatureScheme::from(name),
             hash: hash_from_suite(&name),
             aead: aead_from_suite(&name),
-            hpke_kem: kem_from_suite(&name)?,
+            hpke_kem: kem_from_suite(&name),
             hpke_kdf: hpke_kdf_from_suite(&name),
             hpke_aead: hpke_aead_from_suite(&name),
         })

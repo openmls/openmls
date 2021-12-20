@@ -1,4 +1,4 @@
-//! # MLS Group errors
+//! # MLS CoreGroup errors
 //!
 //! `WelcomeError`, `StageCommitError`, `DecryptionError`, and
 //! `CreateCommitError`.
@@ -12,12 +12,13 @@ use crate::framing::errors::{
 use crate::key_packages::KeyPackageError;
 use crate::messages::errors::{ProposalError, ProposalQueueError};
 use crate::schedule::errors::{KeyScheduleError, PskSecretError};
-use crate::tree::{treemath::TreeMathError, ParentHashError, TreeError};
+use crate::tree::{ParentHashError, TreeError};
+use crate::treesync::{diff::TreeSyncDiffError, treekem::TreeKemError, TreeSyncError};
 use openmls_traits::types::CryptoError;
 use tls_codec::Error as TlsCodecError;
 
 implement_error! {
-    pub enum MlsGroupError {
+    pub enum CoreGroupError {
         Simple {
             InitSecretNotFound =
                 "Missing init secret when creating commit.",
@@ -47,14 +48,18 @@ implement_error! {
                 "TLS (de)serialization error occurred.",
             KeyScheduleError(KeyScheduleError) =
                 "An error occurred in the key schedule.",
-            MathError(TreeMathError) =
-                "An error occurred during a tree math operation.",
-            PskError(PskError) =
-                "A PSK error occurred.",
+            PskSecretError(PskSecretError) =
+                "A PskSecret error occurred.",
             CredentialError(CredentialError) =
                 "See [`CredentialError`](crate::credentials::CredentialError) for details.",
             TreeError(TreeError) =
                 "See [`TreeError`](crate::tree::TreeError) for details.",
+            TreeSyncError(TreeSyncError) =
+                "See [`TreeSyncError`](crate::treesync::TreeSyncError) for details.",
+            TreeSyncDiffError(TreeSyncDiffError) =
+                "See [`TreeSyncDiffError`](crate::treesync::diff::TreeSyncDiffError) for details.",
+            TreeKemError(TreeKemError) =
+                "See [`TreeKemError`](crate::treesync::treekem::TreeKemError) for details.",
             KeyPackageError(KeyPackageError) =
                 "See [`KeyPackageError`] for details.",
             ExtensionError(ExtensionError) =
@@ -100,6 +105,8 @@ implement_error! {
                 "The sender key package is missing.",
             UnknownError =
                 "An unknown error occurred.",
+            UnknownSender =
+                "Sender not found in tree.",
             LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
             }
         Complex {
@@ -113,8 +120,10 @@ implement_error! {
                 "Tls (de)serialization error occurred.",
             KeyScheduleError(KeyScheduleError) =
                 "An error occurred in the key schedule.",
-            PskError(PskError) =
-                "A PSK error occured.",
+            PskSecretError(PskSecretError) =
+                "A PskSecret error occured.",
+            TreeSyncError(TreeSyncError) =
+                "An error occurred while importing the new tree.",
             ExtensionError(ExtensionError) =
                 "See [`ExtensionError`] for details.",
             KeyPackageError(KeyPackageError) =
@@ -160,14 +169,10 @@ implement_error! {
         Complex {
             PlaintextSignatureFailure(VerificationError) =
                 "MlsPlaintext signature is invalid.",
-            DecryptionFailure(TreeError) =
-                "A matching EncryptedPathSecret failed to decrypt.",
             CodecError(TlsCodecError) =
                 "Tls (de)serialization error occurred.",
             KeyScheduleError(KeyScheduleError) =
                 "An error occurred in the key schedule.",
-            PskError(PskError) =
-                "A PSK error occurred.",
         }
     }
 }
@@ -185,21 +190,6 @@ implement_error! {
     pub enum ExporterError {
         KeyLengthTooLong =
             "The requested key length is not supported (too large).",
-    }
-}
-
-implement_error! {
-    pub enum PskError {
-        Simple {
-            NoPskFetcherProvided =
-                "A PSK was needed, but no PSK fetcher function was provided.",
-            PskIdNotFound =
-                "No PSK was found for PSK ID.",
-        }
-        Complex {
-            PskSecretError(PskSecretError) =
-                "An error occured when concatenating the PSKs.",
-        }
     }
 }
 
@@ -231,6 +221,7 @@ implement_error! {
     pub enum CreationProposalQueueError {
         Simple {
             ProposalNotFound = "Not all proposals in the Commit were found locally.",
+            ArchitectureError = "Couldn't fit a `u32` into a `usize`.",
         }
         Complex {
             NotAProposal(StagedProposalError) = "The given MLS Plaintext was not a Proposal.",

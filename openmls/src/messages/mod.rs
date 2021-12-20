@@ -1,32 +1,35 @@
-use crate::ciphersuite::{signable::*, *};
-use crate::config::ProtocolVersion;
-use crate::extensions::*;
-use crate::group::*;
-use crate::schedule::psk::PreSharedKeys;
-use crate::schedule::JoinerSecret;
-use crate::tree::{index::*, *};
+use crate::{
+    binary_tree::LeafIndex,
+    ciphersuite::{signable::*, *},
+    config::ProtocolVersion,
+    extensions::*,
+    group::*,
+    schedule::{psk::PreSharedKeys, JoinerSecret},
+    treesync::treekem::UpdatePath,
+};
 
-use openmls_traits::types::HpkeCiphertext;
-
-#[cfg(any(feature = "test-utils", test))]
-use openmls_traits::OpenMlsCryptoProvider;
-
+use openmls_traits::{
+    crypto::OpenMlsCrypto,
+    types::{CryptoError as CryptoTraitError, HpkeCiphertext},
+    OpenMlsCryptoProvider,
+};
 use serde::{Deserialize, Serialize};
 
+// Private
 mod codec;
+use tls_codec::{Serialize as TlsSerializeTrait, *};
 
+// Public
 pub mod errors;
-pub(crate) mod proposals;
-pub(crate) mod public_group_state;
+pub mod proposals;
+pub mod public_group_state;
 
 pub use codec::*;
 pub use errors::*;
-use proposals::*;
-use tls_codec::{
-    Serialize as TlsSerializeTrait, TlsByteVecU32, TlsByteVecU8, TlsDeserialize, TlsSerialize,
-    TlsSize, TlsVecU32,
-};
+pub use proposals::*;
+pub use public_group_state::*;
 
+// Tests
 #[cfg(test)]
 mod tests;
 
@@ -35,7 +38,7 @@ use crate::credentials::{CredentialBundle, CredentialError};
 
 #[cfg(any(feature = "test-utils", test))]
 use crate::schedule::{
-    psk::{ExternalPsk, Psk, PskType::External},
+    psk::{ExternalPsk, Psk},
     PreSharedKeyId,
 };
 
@@ -71,6 +74,7 @@ pub struct Welcome {
 /// ```
 #[derive(Clone, Debug, PartialEq, TlsDeserialize, TlsSerialize, TlsSize)]
 pub struct EncryptedGroupSecrets {
+    // TODO: #541 replace key_package_hash with [`KeyPackageRef`]
     pub key_package_hash: TlsByteVecU8,
     pub encrypted_group_secrets: HpkeCiphertext,
 }
@@ -154,6 +158,7 @@ pub(crate) struct GroupInfoPayload {
     group_context_extensions: TlsVecU32<Extension>,
     other_extensions: TlsVecU32<Extension>,
     confirmation_tag: ConfirmationTag,
+    // TODO: #541 replace sender_index with [`KeyPackageRef`]
     signer_index: LeafIndex,
 }
 
@@ -216,11 +221,6 @@ pub(crate) struct GroupInfo {
 }
 
 impl GroupInfo {
-    /// Get the tree hash as byte slice.
-    pub(crate) fn tree_hash(&self) -> &[u8] {
-        self.payload.tree_hash.as_slice()
-    }
-
     /// Get the signer index.
     pub(crate) fn signer_index(&self) -> LeafIndex {
         self.payload.signer_index
@@ -310,6 +310,91 @@ impl From<Secret> for PathSecret {
     }
 }
 
+impl PathSecret {
+    /// Derives a node secret which in turn is used to derive an HpkeKeyPair.
+    pub(crate) fn derive_key_pair(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+    ) -> Result<(HpkePublicKey, HpkePrivateKey), CryptoTraitError> {
+        let node_secret =
+            self.path_secret
+                .kdf_expand_label(backend, "node", &[], ciphersuite.hash_length())?;
+        let key_pair = backend
+            .crypto()
+            .derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice());
+
+        Ok((
+            HpkePublicKey::from(key_pair.public),
+            HpkePrivateKey::from(key_pair.private),
+        ))
+    }
+
+    /// Derives a path secret.
+    pub(crate) fn derive_path_secret(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+    ) -> Result<Self, PathSecretError> {
+        let path_secret =
+            self.path_secret
+                .kdf_expand_label(backend, "path", &[], ciphersuite.hash_length())?;
+        Ok(Self { path_secret })
+    }
+
+    /// Encrypt the path secret under the given `HpkePublicKey` using the given
+    /// `group_context`.
+    pub(crate) fn encrypt(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+        public_key: &HpkePublicKey,
+        group_context: &[u8],
+    ) -> HpkeCiphertext {
+        backend.crypto().hpke_seal(
+            ciphersuite.hpke_config(),
+            public_key.as_slice(),
+            group_context,
+            &[],
+            self.path_secret.as_slice(),
+        )
+    }
+
+    /// Consume the `PathSecret`, returning the internal `Secret` value.
+    pub(crate) fn secret(self) -> Secret {
+        self.path_secret
+    }
+
+    /// Decrypt a given `HpkeCiphertext` using the `private_key` and `group_context`.
+    ///
+    /// Returns the decrypted `PathSecret`. Returns an error if the decryption
+    /// was unsuccessful.
+    pub(crate) fn decrypt(
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &'static Ciphersuite,
+        version: ProtocolVersion,
+        ciphertext: &HpkeCiphertext,
+        private_key: &HpkePrivateKey,
+        group_context: &[u8],
+    ) -> Result<PathSecret, PathSecretError> {
+        let secret_bytes = backend.crypto().hpke_open(
+            ciphersuite.hpke_config(),
+            ciphertext,
+            private_key.as_slice(),
+            group_context,
+            &[],
+        )?;
+        let path_secret = Secret::from_slice(&secret_bytes, version, ciphersuite);
+        Ok(Self { path_secret })
+    }
+}
+
+implement_error! {
+    pub enum PathSecretError {
+        DecryptionError(CryptoTraitError) = "Error decrypting PathSecret.",
+    }
+}
+
 /// GroupSecrets
 ///
 /// > 11.2.2. Welcoming New Members
@@ -372,18 +457,16 @@ impl GroupSecrets {
         use openmls_traits::random::OpenMlsRand;
 
         let psk_id = PreSharedKeyId::new(
-            External,
+            ciphersuite,
+            backend.rand(),
             Psk::External(ExternalPsk::new(
                 backend
                     .rand()
                     .random_vec(ciphersuite.hash_length())
                     .expect("Not enough randomness."),
             )),
-            backend
-                .rand()
-                .random_vec(ciphersuite.hash_length())
-                .expect("Not enough randomness."),
-        );
+        )
+        .expect("An unexpected error occurred.");
         let psks = PreSharedKeys {
             psks: vec![psk_id].into(),
         };

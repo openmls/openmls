@@ -9,27 +9,39 @@ use crate::credentials::*;
 use crate::group::*;
 use crate::messages::{proposals::*, *};
 use crate::schedule::*;
-use crate::tree::{index::*, secret_tree::*};
-
+use crate::treesync::*;
 pub(crate) use serde::{Deserialize, Serialize};
+use tls_codec::*;
 
-pub mod ciphertext;
-#[doc(hidden)]
-pub mod codec;
-pub mod errors;
-pub mod message;
-pub mod plaintext;
-pub mod sender;
-pub mod validation;
+pub(crate) mod ciphertext;
+pub(crate) mod codec;
+pub(crate) mod errors;
+pub(crate) mod message;
+pub(crate) mod plaintext;
+pub(crate) mod sender;
+pub(crate) mod validation;
+
+// Crate
+pub(crate) use errors::*;
+pub(crate) use message::*;
+pub(crate) use sender::*;
+
+// Public
 pub use ciphertext::*;
-pub use errors::*;
-pub use message::*;
 pub use plaintext::*;
-pub use sender::*;
 pub use validation::*;
 
 #[cfg(test)]
 mod test_framing;
+
+#[derive(
+    PartialEq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
+#[repr(u8)]
+pub enum WireFormat {
+    MlsPlaintext = 1,
+    MlsCiphertext = 2,
+}
 
 /// This struct is used to group common framing parameters
 /// in order to reduce the number of arguments in function calls.

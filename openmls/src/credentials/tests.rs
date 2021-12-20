@@ -1,4 +1,5 @@
-use openmls_rust_crypto::OpenMlsRustCrypto;
+use crate::config::Config;
+use crate::test_utils::*;
 
 use super::*;
 
@@ -19,11 +20,13 @@ fn test_protocol_version() {
     assert_eq!(default_e[0], 1);
 }
 
-#[test]
-fn test_credential_bundle_from_parts() {
-    let backend = OpenMlsRustCrypto::default();
-    let signature_scheme = SignatureScheme::ED25519;
-    let keypair = SignatureKeypair::new(signature_scheme, &backend)
+#[apply(ciphersuites_and_backends)]
+fn test_credential_bundle_from_parts(
+    ciphersuite: &'static Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+) {
+    let signature_scheme = ciphersuite.signature_scheme();
+    let keypair = SignatureKeypair::new(signature_scheme, backend)
         .expect("Could not create signature keypair.");
 
     let _credential_bundle = CredentialBundle::from_parts(vec![1, 2, 3], keypair);

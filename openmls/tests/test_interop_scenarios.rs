@@ -1,6 +1,8 @@
 use openmls::{
     prelude::*,
-    test_utils::test_framework::{ActionType, CodecUse, ManagedTestSetup},
+    test_utils::test_framework::{ActionType, CodecUse, MlsGroupTestSetup},
+    test_utils::*,
+    *,
 };
 
 #[macro_use]
@@ -11,8 +13,8 @@ mod utils;
 // The tests are conducted for every available ciphersuite, but currently only
 // using BasicCredentials. We can change the test setup once #134 is fixed.
 
-fn default_managed_group_config() -> ManagedGroupConfig {
-    ManagedGroupConfig::builder()
+fn default_mls_group_config() -> MlsGroupConfig {
+    MlsGroupConfig::builder()
         .wire_format(WireFormat::MlsPlaintext)
         .padding_size(10)
         .build()
@@ -23,12 +25,12 @@ fn default_managed_group_config() -> ManagedGroupConfig {
 // B->A: KeyPackage
 // A->B: Welcome
 // ***:  Verify group state
-ctest_ciphersuites!(one_to_one_join, test(ciphersuite_name: CiphersuiteName) {
-    println!("Testing ciphersuite {:?}", ciphersuite_name);
-    let ciphersuite = Config::ciphersuite(ciphersuite_name).expect("An unexpected error occurred.");
+#[apply(ciphersuites)]
+fn one_to_one_join(ciphersuite: &'static Ciphersuite) {
+    println!("Testing ciphersuite {:?}", ciphersuite.name());
     let number_of_clients = 2;
-    let setup = ManagedTestSetup::new(
-        default_managed_group_config(),
+    let setup = MlsGroupTestSetup::new(
+        default_mls_group_config(),
         number_of_clients,
         CodecUse::StructMessages,
     );
@@ -38,12 +40,20 @@ ctest_ciphersuites!(one_to_one_join, test(ciphersuite_name: CiphersuiteName) {
         .create_group(ciphersuite)
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.borrow_mut();
-    let group = groups.get_mut(&group_id).expect("An unexpected error occurred.");
+    let group = groups
+        .get_mut(&group_id)
+        .expect("An unexpected error occurred.");
 
-    let (_, alice_id) = group.members.first().expect("An unexpected error occurred.").clone();
+    let (_, alice_id) = group
+        .members
+        .first()
+        .expect("An unexpected error occurred.")
+        .clone();
 
     // A vector including bob's id.
-    let bob_id = setup.random_new_members_for_group(group, 1).expect("An unexpected error occurred.");
+    let bob_id = setup
+        .random_new_members_for_group(group, 1)
+        .expect("An unexpected error occurred.");
 
     setup
         .add_clients(ActionType::Commit, group, &alice_id, bob_id)
@@ -51,7 +61,7 @@ ctest_ciphersuites!(one_to_one_join, test(ciphersuite_name: CiphersuiteName) {
 
     // Check that group members agree on a group state.
     setup.check_group_states(group);
-});
+}
 
 // # 3-party join
 // A: Create group
@@ -61,13 +71,13 @@ ctest_ciphersuites!(one_to_one_join, test(ciphersuite_name: CiphersuiteName) {
 // A->B: Add(C), Commit
 // A->C: Welcome
 // ***:  Verify group state
-ctest_ciphersuites!(three_party_join, test(ciphersuite_name: CiphersuiteName) {
-    println!("Testing ciphersuite {:?}", ciphersuite_name);
-    let ciphersuite = Config::ciphersuite(ciphersuite_name).expect("An unexpected error occurred.");
+#[apply(ciphersuites)]
+fn three_party_join(ciphersuite: &'static Ciphersuite) {
+    println!("Testing ciphersuite {:?}", ciphersuite.name());
 
     let number_of_clients = 3;
-    let setup = ManagedTestSetup::new(
-        default_managed_group_config(),
+    let setup = MlsGroupTestSetup::new(
+        default_mls_group_config(),
         number_of_clients,
         CodecUse::StructMessages,
     );
@@ -77,12 +87,20 @@ ctest_ciphersuites!(three_party_join, test(ciphersuite_name: CiphersuiteName) {
         .create_group(ciphersuite)
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.borrow_mut();
-    let group = groups.get_mut(&group_id).expect("An unexpected error occurred.");
+    let group = groups
+        .get_mut(&group_id)
+        .expect("An unexpected error occurred.");
 
-    let (_, alice_id) = group.members.first().expect("An unexpected error occurred.").clone();
+    let (_, alice_id) = group
+        .members
+        .first()
+        .expect("An unexpected error occurred.")
+        .clone();
 
     // A vector including Bob's id.
-    let bob_id = setup.random_new_members_for_group(group, 1).expect("An unexpected error occurred.");
+    let bob_id = setup
+        .random_new_members_for_group(group, 1)
+        .expect("An unexpected error occurred.");
 
     // Create the add commit and deliver the welcome.
     setup
@@ -90,7 +108,9 @@ ctest_ciphersuites!(three_party_join, test(ciphersuite_name: CiphersuiteName) {
         .expect("Error adding Bob");
 
     // A vector including Charly's id.
-    let charly_id = setup.random_new_members_for_group(group, 1).expect("An unexpected error occurred.");
+    let charly_id = setup
+        .random_new_members_for_group(group, 1)
+        .expect("An unexpected error occurred.");
 
     setup
         .add_clients(ActionType::Commit, group, &alice_id, charly_id)
@@ -98,7 +118,7 @@ ctest_ciphersuites!(three_party_join, test(ciphersuite_name: CiphersuiteName) {
 
     // Check that group members agree on a group state.
     setup.check_group_states(group);
-});
+}
 
 // # Multiple joins at once
 // A:    Create group
@@ -107,13 +127,13 @@ ctest_ciphersuites!(three_party_join, test(ciphersuite_name: CiphersuiteName) {
 // A->B: Welcome
 // A->C: Welcome
 // ***:  Verify group state
-ctest_ciphersuites!(multiple_joins, test(ciphersuite_name: CiphersuiteName) {
-    println!("Testing ciphersuite {:?}", ciphersuite_name);
-    let ciphersuite = Config::ciphersuite(ciphersuite_name).expect("An unexpected error occurred.");
+#[apply(ciphersuites)]
+fn multiple_joins(ciphersuite: &'static Ciphersuite) {
+    println!("Testing ciphersuite {:?}", ciphersuite.name());
 
     let number_of_clients = 3;
-    let setup = ManagedTestSetup::new(
-        default_managed_group_config(),
+    let setup = MlsGroupTestSetup::new(
+        default_mls_group_config(),
         number_of_clients,
         CodecUse::StructMessages,
     );
@@ -123,12 +143,20 @@ ctest_ciphersuites!(multiple_joins, test(ciphersuite_name: CiphersuiteName) {
         .create_group(ciphersuite)
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.borrow_mut();
-    let group = groups.get_mut(&group_id).expect("An unexpected error occurred.");
+    let group = groups
+        .get_mut(&group_id)
+        .expect("An unexpected error occurred.");
 
-    let (_, alice_id) = group.members.first().expect("An unexpected error occurred.").clone();
+    let (_, alice_id) = group
+        .members
+        .first()
+        .expect("An unexpected error occurred.")
+        .clone();
 
     // A vector including Bob's and Charly's id.
-    let bob_charly_id = setup.random_new_members_for_group(group, 2).expect("An unexpected error occurred.");
+    let bob_charly_id = setup
+        .random_new_members_for_group(group, 2)
+        .expect("An unexpected error occurred.");
 
     // Create the add commit and deliver the welcome.
     setup
@@ -137,7 +165,7 @@ ctest_ciphersuites!(multiple_joins, test(ciphersuite_name: CiphersuiteName) {
 
     // Check that group members agree on a group state.
     setup.check_group_states(group);
-});
+}
 
 // TODO #192, #286, #289: The external join test should go here.
 
@@ -147,13 +175,13 @@ ctest_ciphersuites!(multiple_joins, test(ciphersuite_name: CiphersuiteName) {
 // A->B: Welcome
 // A->B: Update, Commit
 // ***:  Verify group state
-ctest_ciphersuites!(update, test(ciphersuite_name: CiphersuiteName) {
-    println!("Testing ciphersuite {:?}", ciphersuite_name);
-    let ciphersuite = Config::ciphersuite(ciphersuite_name).expect("An unexpected error occurred.");
+#[apply(ciphersuites)]
+fn update(ciphersuite: &'static Ciphersuite) {
+    println!("Testing ciphersuite {:?}", ciphersuite.name());
 
     let number_of_clients = 2;
-    let setup = ManagedTestSetup::new(
-        default_managed_group_config(),
+    let setup = MlsGroupTestSetup::new(
+        default_mls_group_config(),
         number_of_clients,
         CodecUse::StructMessages,
     );
@@ -163,9 +191,15 @@ ctest_ciphersuites!(update, test(ciphersuite_name: CiphersuiteName) {
         .create_random_group(2, ciphersuite)
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.borrow_mut();
-    let group = groups.get_mut(&group_id).expect("An unexpected error occurred.");
+    let group = groups
+        .get_mut(&group_id)
+        .expect("An unexpected error occurred.");
 
-    let (_, alice_id) = group.members.first().expect("An unexpected error occurred.").clone();
+    let (_, alice_id) = group
+        .members
+        .first()
+        .expect("An unexpected error occurred.")
+        .clone();
 
     // Let Alice create an update with a self-generated KeyPackageBundle.
     setup
@@ -174,7 +208,7 @@ ctest_ciphersuites!(update, test(ciphersuite_name: CiphersuiteName) {
 
     // Check that group members agree on a group state.
     setup.check_group_states(group);
-});
+}
 
 // # Remove
 // A:    Create group
@@ -184,13 +218,13 @@ ctest_ciphersuites!(update, test(ciphersuite_name: CiphersuiteName) {
 // A->C: Welcome
 // A->B: Remove(B), Commit
 // ***:  Verify group state
-ctest_ciphersuites!(remove, test(ciphersuite_name: CiphersuiteName) {
-    println!("Testing ciphersuite {:?}", ciphersuite_name);
-    let ciphersuite = Config::ciphersuite(ciphersuite_name).expect("An unexpected error occurred.");
+#[apply(ciphersuites)]
+fn remove(ciphersuite: &'static Ciphersuite) {
+    println!("Testing ciphersuite {:?}", ciphersuite.name());
 
     let number_of_clients = 2;
-    let setup = ManagedTestSetup::new(
-        default_managed_group_config(),
+    let setup = MlsGroupTestSetup::new(
+        default_mls_group_config(),
         number_of_clients,
         CodecUse::StructMessages,
     );
@@ -200,10 +234,20 @@ ctest_ciphersuites!(remove, test(ciphersuite_name: CiphersuiteName) {
         .create_random_group(2, ciphersuite)
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.borrow_mut();
-    let group = groups.get_mut(&group_id).expect("An unexpected error occurred.");
+    let group = groups
+        .get_mut(&group_id)
+        .expect("An unexpected error occurred.");
 
-    let (_, alice_id) = group.members.first().expect("An unexpected error occurred.").clone();
-    let (_, bob_id) = group.members.last().expect("An unexpected error occurred.").clone();
+    let (_, alice_id) = group
+        .members
+        .first()
+        .expect("An unexpected error occurred.")
+        .clone();
+    let (_, bob_id) = group
+        .members
+        .last()
+        .expect("An unexpected error occurred.")
+        .clone();
 
     // Have alice remove Bob.
     setup
@@ -212,7 +256,7 @@ ctest_ciphersuites!(remove, test(ciphersuite_name: CiphersuiteName) {
 
     // Check that group members agree on a group state.
     setup.check_group_states(group);
-});
+}
 
 // TODO #141, #284: The external PSK, resumption and re-init tests should go
 // here.
@@ -225,14 +269,14 @@ ctest_ciphersuites!(remove, test(ciphersuite_name: CiphersuiteName) {
 // * All members update
 // * While the group size is >1, a randomly-chosen group member removes a
 //   randomly-chosen other group member
-ctest_ciphersuites!(large_group_lifecycle, test(ciphersuite_name: CiphersuiteName) {
-    println!("Testing ciphersuite {:?}", ciphersuite_name);
-    let ciphersuite = Config::ciphersuite(ciphersuite_name).expect("An unexpected error occurred.");
+#[apply(ciphersuites)]
+fn large_group_lifecycle(ciphersuite: &'static Ciphersuite) {
+    println!("Testing ciphersuite {:?}", ciphersuite.name());
 
     // "Large" is 20 for now.
     let number_of_clients = 20;
-    let setup = ManagedTestSetup::new(
-        default_managed_group_config(),
+    let setup = MlsGroupTestSetup::new(
+        default_mls_group_config(),
         number_of_clients,
         CodecUse::StructMessages,
     );
@@ -244,7 +288,9 @@ ctest_ciphersuites!(large_group_lifecycle, test(ciphersuite_name: CiphersuiteNam
         .create_random_group(number_of_clients, ciphersuite)
         .expect("Error while trying to create group.");
     let mut groups = setup.groups.borrow_mut();
-    let group = groups.get_mut(&group_id).expect("An unexpected error occurred.");
+    let group = groups
+        .get_mut(&group_id)
+        .expect("An unexpected error occurred.");
 
     let mut group_members = group.members.clone();
 
@@ -272,4 +318,4 @@ ctest_ciphersuites!(large_group_lifecycle, test(ciphersuite_name: CiphersuiteNam
 
     // Check that group members agree on a group state.
     setup.check_group_states(group);
-});
+}

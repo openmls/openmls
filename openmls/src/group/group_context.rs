@@ -1,5 +1,23 @@
 use super::*;
 
+#[derive(
+    Debug, Clone, PartialEq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
+pub struct GroupContext {
+    group_id: GroupId,
+    epoch: GroupEpoch,
+    tree_hash: TlsByteVecU8,
+    confirmed_transcript_hash: TlsByteVecU8,
+    extensions: TlsVecU32<Extension>,
+}
+
+#[cfg(any(feature = "test-utils", test))]
+impl GroupContext {
+    pub(crate) fn set_epoch(&mut self, epoch: GroupEpoch) {
+        self.epoch = epoch;
+    }
+}
+
 impl GroupContext {
     /// Create a new group context
     pub fn new(
@@ -53,5 +71,9 @@ impl GroupContext {
             .find(|e| e.extension_type() == ExtensionType::RequiredCapabilities)
             .map(|e| e.as_required_capabilities_extension().ok())
             .flatten()
+    }
+    /// Return the confirmed transcript hash
+    pub fn confirmed_transcript_hash(&self) -> &[u8] {
+        self.confirmed_transcript_hash.as_slice()
     }
 }

@@ -5,14 +5,9 @@
 //! for more description on the test vectors.
 
 use crate::{
-    ciphersuite::signable::Signable,
-    group::{create_commit_params::CreateCommitParams, GroupEpoch, WireFormat},
-    messages::{public_group_state::VerifiablePublicGroupState, Commit, GroupInfo, GroupSecrets},
-    messages::{ConfirmationTag, GroupInfoPayload},
-    prelude::*,
-    test_utils::*,
-    tree::node::Node,
-    utils::*,
+    ciphersuite::signable::Signable, config::*, credentials::*, framing::*, group::*,
+    key_packages::*, messages::proposals::*, messages::public_group_state::*, messages::*,
+    schedule::*, test_utils::*, treesync::node::Node,
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -66,11 +61,11 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     let lifetime = LifetimeExtension::default();
 
     // Let's create a group
-    let mut group = MlsGroup::builder(GroupId::random(&crypto), key_package_bundle)
+    let mut group = CoreGroup::builder(GroupId::random(&crypto), key_package_bundle)
         .build(&crypto)
         .expect("Could not create group.");
 
-    let ratchet_tree = group.tree().public_key_tree_copy();
+    let ratchet_tree: Vec<Option<Node>> = group.treesync().export_nodes();
 
     // We can't easily get a "natural" GroupInfo, so we just create one here.
     let group_info = GroupInfoPayload::new(
@@ -97,7 +92,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
                 .expect("An unexpected error occurred.")
                 .into(),
         }),
-        LeafIndex::from(random_u32()),
+        random_u32(),
     );
     let group_info = group_info
         .sign(&crypto, &credential_bundle)
@@ -125,18 +120,16 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     };
 
     let psk_id = PreSharedKeyId::new(
-        PskType::External,
+        ciphersuite,
+        crypto.rand(),
         Psk::External(ExternalPsk::new(
             crypto
                 .rand()
                 .random_vec(ciphersuite.hash_length())
                 .expect("An unexpected error occurred."),
         )),
-        crypto
-            .rand()
-            .random_vec(ciphersuite.hash_length())
-            .expect("An unexpected error occurred."),
-    );
+    )
+    .expect("An unexpected error occurred.");
 
     let psk_proposal = PreSharedKeyProposal::new(psk_id);
     let reinit_proposal = ReInitProposal {
@@ -629,7 +622,7 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
 }
 
 #[test]
-fn read_test_vectors() {
+fn read_test_vectors_messages() {
     let tests: Vec<MessagesTestVector> = read("test_vectors/kat_messages.json");
 
     for test_vector in tests {

@@ -121,25 +121,29 @@
 //! This means that some functions that are not expected to fail and throw an
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
-use crate::framing::MlsPlaintextTbmPayload;
-use crate::tree::index::LeafIndex;
-use crate::tree::secret_tree::SecretTree;
-use crate::{ciphersuite::Mac, prelude::MembershipTag};
 use crate::{
-    ciphersuite::{AeadKey, AeadNonce, Ciphersuite, Secret},
+    ciphersuite::{AeadKey, AeadNonce, Ciphersuite, Mac, Secret},
     config::ProtocolVersion,
-    messages::ConfirmationTag,
+    framing::{MembershipTag, MlsPlaintextTbmPayload},
+    messages::{ConfirmationTag, PathSecret},
+    tree::secret_tree::SecretTree,
+    treesync::LeafIndex,
 };
 
+use openmls_traits::{types::*, OpenMlsCryptoProvider};
+
+#[cfg(any(feature = "test-utils", test))]
 use openmls_traits::crypto::OpenMlsCrypto;
-use openmls_traits::types::{CryptoError, HpkeKeyPair};
-use openmls_traits::OpenMlsCryptoProvider;
+
 use serde::{Deserialize, Serialize};
-use std::cell::RefCell;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
+// Public
 pub mod codec;
 pub mod errors;
+
+// Crate
+pub(crate) mod message_secrets;
 pub(crate) mod psk;
 
 #[cfg(test)]
@@ -148,41 +152,29 @@ mod unit_tests;
 #[cfg(any(feature = "test-utils", test))]
 pub mod kat_key_schedule;
 
+//Public
 pub use errors::*;
-pub use psk::{PreSharedKeyId, PreSharedKeys, PskSecret};
 
-#[derive(Debug, Serialize, Deserialize)]
+// Crate
+pub(crate) use message_secrets::*;
+pub(crate) use psk::*;
+
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(any(feature = "test-utils", test), derive(Clone))]
 pub(crate) struct CommitSecret {
     secret: Secret,
 }
 
-impl Default for CommitSecret {
-    fn default() -> Self {
+impl From<PathSecret> for CommitSecret {
+    fn from(path_secret: PathSecret) -> Self {
         CommitSecret {
-            secret: Secret::default(),
+            secret: path_secret.secret(),
         }
     }
 }
 
-impl From<Secret> for CommitSecret {
-    fn from(secret: Secret) -> Self {
-        Self { secret }
-    }
-}
-
 impl CommitSecret {
-    pub(crate) fn new(
-        ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
-        path_secret: &Secret,
-    ) -> Result<Self, CryptoError> {
-        let secret =
-            path_secret.kdf_expand_label(backend, "path", &[], ciphersuite.hash_length())?;
-
-        Ok(Self { secret })
-    }
-
     /// Create a CommitSecret consisting of an all-zero string of length
     /// `hash_length`.
     pub(crate) fn zero_secret(ciphersuite: &'static Ciphersuite, version: ProtocolVersion) -> Self {
@@ -265,16 +257,16 @@ impl JoinerSecret {
     /// Derive a `JoinerSecret` from an optional `CommitSecret` and an
     /// `EpochSecrets` object, which contains the necessary `InitSecret`. The
     /// `CommitSecret` needs to be present if the current commit is not a
-    /// partial commit. TODO: For now, this takes a reference to a
-    /// `CommitSecret` as input. This should change with #224.
-    pub(crate) fn new<'a>(
+    /// partial commit.
+    pub(crate) fn new(
         backend: &impl OpenMlsCryptoProvider,
-        commit_secret_option: impl Into<Option<&'a CommitSecret>>,
+        commit_secret_option: impl Into<Option<CommitSecret>>,
         init_secret: &InitSecret,
     ) -> Result<Self, CryptoError> {
-        let intermediate_secret = init_secret
-            .secret
-            .hkdf_extract(backend, commit_secret_option.into().map(|cs| &cs.secret))?;
+        let intermediate_secret = init_secret.secret.hkdf_extract(
+            backend,
+            commit_secret_option.into().as_ref().map(|cs| &cs.secret),
+        )?;
         let secret = intermediate_secret.derive_secret(backend, "joiner")?;
         log_crypto!(trace, "Joiner secret: {:x?}", secret);
         Ok(JoinerSecret { secret })
@@ -363,7 +355,7 @@ impl KeySchedule {
     ) -> Result<WelcomeSecret, KeyScheduleError> {
         if self.state != State::Initial || self.intermediate_secret.is_none() {
             log::error!("Trying to derive a welcome secret while not in the initial state.");
-            return Err(KeyScheduleError::InvalidState(ErrorState::NotInit));
+            return Err(KeyScheduleError::InvalidState(ErrorState::Init));
         }
 
         // We can return a library error here, because there must be a mistake in the state machine
@@ -389,7 +381,7 @@ impl KeySchedule {
             log::error!(
                 "Trying to add context to the key schedule while not in the initial state."
             );
-            return Err(KeyScheduleError::InvalidState(ErrorState::NotInit));
+            return Err(KeyScheduleError::InvalidState(ErrorState::Init));
         }
         self.state = State::Context;
 
@@ -425,7 +417,7 @@ impl KeySchedule {
     ) -> Result<EpochSecrets, KeyScheduleError> {
         if self.state != State::Context || self.epoch_secret.is_none() {
             log::error!("Trying to derive the epoch secrets while not in the right state.");
-            return Err(KeyScheduleError::InvalidState(ErrorState::NotContext));
+            return Err(KeyScheduleError::InvalidState(ErrorState::Context));
         }
         self.state = State::Done;
 
@@ -553,7 +545,6 @@ impl EpochSecret {
 }
 
 /// The `EncryptionSecret` is used to create a `SecretTree`.
-#[derive(Serialize, Deserialize, Default)] // FIXME: what do we want serialization do here?
 pub(crate) struct EncryptionSecret {
     secret: Secret,
 }
@@ -570,10 +561,9 @@ impl EncryptionSecret {
     }
 
     /// Create a `SecretTree` from the `encryption_secret` contained in the
-    /// `EpochSecrets`. The `encryption_secret` is replaced with `None` in the
-    /// process, allowing us to achieve FS.
+    /// `EpochSecrets`. The `encryption_secret` is consumed, allowing us to achieve FS.
     pub(crate) fn create_secret_tree(self, treesize: LeafIndex) -> SecretTree {
-        SecretTree::new(self, treesize)
+        SecretTree::new(self, treesize.into())
     }
 
     pub(crate) fn consume_secret(self) -> Secret {
@@ -636,7 +626,7 @@ impl ExporterSecret {
 
     /// Derive a `Secret` from the exporter secret. We return `Vec<u8>` here, so
     /// it can be used outside of OpenMLS. This function is made available for
-    /// use from the outside through [`crate::group::mls_group::export_secret`].
+    /// use from the outside through [`crate::group::core_group::export_secret`].
     pub(crate) fn derive_exported_secret(
         &self,
         ciphersuite: &Ciphersuite,
@@ -704,6 +694,7 @@ impl ExternalSecret {
     }
 
     /// Derive the external keypair for External Commits
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn derive_external_keypair(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -749,7 +740,7 @@ impl ConfirmationKey {
     /// MLSPlaintext.confirmation_tag =
     ///     MAC(confirmation_key, GroupContext.confirmed_transcript_hash)
     /// ```
-    pub fn tag(
+    pub(crate) fn tag(
         &self,
         backend: &impl OpenMlsCryptoProvider,
         confirmed_transcript_hash: &[u8],
@@ -772,6 +763,15 @@ impl ConfirmationKey {
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
+    }
+
+    #[cfg(any(feature = "test-utils", test))]
+    #[doc(hidden)]
+    pub fn random(ciphersuite: &'static Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
+        Self {
+            secret: Secret::random(ciphersuite, rng, None /* MLS version */)
+                .expect("Not enough randomness."),
+        }
     }
 }
 
@@ -820,6 +820,15 @@ impl MembershipKey {
     pub(crate) fn as_slice(&self) -> &[u8] {
         self.secret.as_slice()
     }
+
+    #[cfg(any(feature = "test-utils", test))]
+    #[doc(hidden)]
+    pub fn random(ciphersuite: &'static Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
+        Self {
+            secret: Secret::random(ciphersuite, rng, None /* MLS version */)
+                .expect("Not enough randomness."),
+        }
+    }
 }
 
 /// A secret used in cross-group operations.
@@ -859,7 +868,7 @@ fn ciphertext_sample<'a>(ciphersuite: &Ciphersuite, ciphertext: &'a [u8]) -> &'a
 /// A key that can be used to derive an `AeadKey` and an `AeadNonce`.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
-pub(crate) struct SenderDataSecret {
+pub struct SenderDataSecret {
     secret: Secret,
 }
 
@@ -957,11 +966,10 @@ impl SenderDataSecret {
 /// | `confirmation_key`      | "confirm"       |
 /// | `membership_key`        | "membership"    |
 /// | `resumption_secret`     | "resumption"    |
-#[derive(Serialize, Deserialize)]
 pub(crate) struct EpochSecrets {
     init_secret: Option<InitSecret>,
     sender_data_secret: SenderDataSecret,
-    encryption_secret: RefCell<EncryptionSecret>,
+    encryption_secret: EncryptionSecret,
     exporter_secret: ExporterSecret,
     authentication_secret: AuthenticationSecret,
     external_secret: ExternalSecret,
@@ -999,6 +1007,7 @@ impl PartialEq for EpochSecrets {
 
 impl EpochSecrets {
     /// Get the sender_data secret.
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn sender_data_secret(&self) -> &SenderDataSecret {
         &self.sender_data_secret
     }
@@ -1009,41 +1018,45 @@ impl EpochSecrets {
     }
 
     /// Authentication secret
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn authentication_secret(&self) -> &AuthenticationSecret {
         &self.authentication_secret
     }
 
     /// Exporter secret
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn exporter_secret(&self) -> &ExporterSecret {
         &self.exporter_secret
     }
 
     /// Membership key
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn membership_key(&self) -> &MembershipKey {
         &self.membership_key
     }
 
     /// External secret
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn external_secret(&self) -> &ExternalSecret {
         &self.external_secret
     }
 
     /// External secret
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn resumption_secret(&self) -> &ResumptionSecret {
         &self.resumption_secret
     }
 
     /// Init secret
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn init_secret(&self) -> Option<&InitSecret> {
         self.init_secret.as_ref()
     }
 
     /// Encryption secret
-    /// Note that this consumes the encryption secret.
-    pub(crate) fn encryption_secret(&self) -> EncryptionSecret {
-        // Note that we need to use a `RefCell` and not a `Cell` here because
-        // we don't want to implement `Copy` for secrets.
-        self.encryption_secret.take()
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn encryption_secret(&self) -> &EncryptionSecret {
+        &self.encryption_secret
     }
 
     /// Derive `EpochSecrets` from an `EpochSecret`.
@@ -1082,7 +1095,7 @@ impl EpochSecrets {
         Ok(EpochSecrets {
             init_secret,
             sender_data_secret,
-            encryption_secret: RefCell::new(encryption_secret),
+            encryption_secret,
             exporter_secret,
             authentication_secret,
             external_secret,
@@ -1092,9 +1105,92 @@ impl EpochSecrets {
         })
     }
 
+    /// Splits `EpochSecrets` into two different categories:
+    ///  - [`GroupEpochSecrets`]: These secrets are only used within the same epoch
+    ///  - [`MessageSecrets`]: These secrets are potentially also used for past epochs
+    ///    to decrypt and validate messages
+    pub(crate) fn split_secrets(
+        self,
+        serialized_context: Vec<u8>,
+        treesize: u32,
+    ) -> (GroupEpochSecrets, MessageSecrets) {
+        let secret_tree = self.encryption_secret.create_secret_tree(treesize);
+        (
+            GroupEpochSecrets {
+                init_secret: self.init_secret,
+                exporter_secret: self.exporter_secret,
+                authentication_secret: self.authentication_secret,
+                external_secret: self.external_secret,
+                resumption_secret: self.resumption_secret,
+            },
+            MessageSecrets::new(
+                self.sender_data_secret,
+                self.membership_key,
+                self.confirmation_key,
+                serialized_context,
+                secret_tree,
+            ),
+        )
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub(crate) struct GroupEpochSecrets {
+    init_secret: Option<InitSecret>,
+    exporter_secret: ExporterSecret,
+    authentication_secret: AuthenticationSecret,
+    external_secret: ExternalSecret,
+    resumption_secret: ResumptionSecret,
+}
+
+impl std::fmt::Debug for GroupEpochSecrets {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("GroupEpochSecrets { *** }")
+    }
+}
+
+#[cfg(not(test))]
+impl PartialEq for GroupEpochSecrets {
+    fn eq(&self, _other: &Self) -> bool {
+        false
+    }
+}
+
+// In tests we allow comparing secrets.
+#[cfg(test)]
+impl PartialEq for GroupEpochSecrets {
+    fn eq(&self, other: &Self) -> bool {
+        self.exporter_secret == other.exporter_secret
+            && self.authentication_secret == other.authentication_secret
+            && self.external_secret == other.external_secret
+            && self.resumption_secret == other.resumption_secret
+    }
+}
+
+impl GroupEpochSecrets {
+    /// Init secret
+    pub(crate) fn init_secret(&self) -> Option<&InitSecret> {
+        self.init_secret.as_ref()
+    }
+
+    /// Authentication secret
+    pub(crate) fn authentication_secret(&self) -> &AuthenticationSecret {
+        &self.authentication_secret
+    }
+
+    /// Exporter secret
+    pub(crate) fn exporter_secret(&self) -> &ExporterSecret {
+        &self.exporter_secret
+    }
+
+    /// External secret
     #[cfg(any(feature = "test-utils", test))]
-    #[doc(hidden)]
-    pub(crate) fn sender_data_secret_mut(&mut self) -> &mut SenderDataSecret {
-        &mut self.sender_data_secret
+    pub(crate) fn external_secret(&self) -> &ExternalSecret {
+        &self.external_secret
+    }
+
+    /// External secret
+    pub(crate) fn resumption_secret(&self) -> &ResumptionSecret {
+        &self.resumption_secret
     }
 }

@@ -1,11 +1,11 @@
 use openmls::prelude::*;
+use openmls::prelude_test::*;
 mod utils;
-use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls::{test_utils::*, *};
 use utils::mls_utils::*;
 
-#[test]
-fn padding() {
-    let crypto = OpenMlsRustCrypto::default();
+#[apply(backends)]
+fn padding(backend: &impl OpenMlsCryptoProvider) {
     // Create a test config for a single client supporting all possible
     // ciphersuites.
     let alice_config = TestClientConfig {
@@ -19,7 +19,7 @@ fn padding() {
     for ciphersuite_name in Config::supported_ciphersuite_names() {
         let test_group = TestGroupConfig {
             ciphersuite: *ciphersuite_name,
-            config: MlsGroupConfig::default(),
+            config: CoreGroupConfig::default(),
             members: vec![alice_config.clone()],
         };
         test_group_configs.push(test_group);
@@ -32,7 +32,7 @@ fn padding() {
     };
 
     // Initialize the test setup according to config.
-    let test_setup = setup(test_setup_config);
+    let test_setup = setup(test_setup_config, backend);
 
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
@@ -56,7 +56,7 @@ fn padding() {
                         &message,
                         credential_bundle,
                         padding_size,
-                        &crypto,
+                        backend,
                     )
                     .expect("An unexpected error occurred.");
                 let ciphertext = mls_ciphertext.ciphertext();

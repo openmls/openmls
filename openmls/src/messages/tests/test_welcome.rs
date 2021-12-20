@@ -1,151 +1,132 @@
 #![allow(non_snake_case)]
 
 use crate::{
-    ciphersuite::{signable::Signable, AeadKey, AeadNonce, CiphersuiteName, Mac, Secret},
-    config::Config,
+    ciphersuite::{
+        signable::Signable, AeadKey, AeadNonce, Ciphersuite, CiphersuiteName, Mac, Secret,
+    },
+    config::{Config, ProtocolVersion},
     credentials::{CredentialBundle, CredentialType},
     group::{GroupEpoch, GroupId},
     messages::{ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload, Welcome},
-    tree::index::LeafIndex,
 };
+
+use rstest::*;
+use rstest_reuse::{self, *};
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
 use tls_codec::{Deserialize, Serialize};
 
-macro_rules! test_welcome_msg {
-    ($name:ident, $ciphersuite:expr, $version:expr) => {
-        #[test]
-        fn $name() {
-            let crypto = OpenMlsRustCrypto::default();
-            // We use this dummy group info in all test cases.
-            let group_info = GroupInfoPayload::new(
-                GroupId::random(&crypto),
-                GroupEpoch(123),
-                vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
-                vec![1, 1, 1],
-                &Vec::new(),
-                &Vec::new(),
-                ConfirmationTag(Mac {
-                    mac_value: vec![1, 2, 3, 4, 5].into(),
-                }),
-                LeafIndex::from(8u32),
-            );
-
-            // We need a credential bundle to sign the group info.
-            let credential_bundle = CredentialBundle::new(
-                "XXX".into(),
-                CredentialType::Basic,
-                $ciphersuite.signature_scheme(),
-                &crypto,
-            )
-            .expect("An unexpected error occurred.");
-            let group_info = group_info
-                .sign(&crypto, &credential_bundle)
-                .expect("Error signing GroupInfo");
-
-            // Generate key and nonce for the symmetric cipher.
-            let welcome_key = AeadKey::random($ciphersuite, crypto.rand());
-            let welcome_nonce = AeadNonce::random(&crypto);
-
-            // Generate receiver key pair.
-            let receiver_key_pair = crypto.crypto().derive_hpke_keypair(
-                $ciphersuite.hpke_config(),
-                Secret::random($ciphersuite, &crypto, None)
-                    .expect("Not enough randomness.")
-                    .as_slice(),
-            );
-            let hpke_info = b"group info welcome test info";
-            let hpke_aad = b"group info welcome test aad";
-            let hpke_input = b"these should be the group secrets";
-            let key_package_hash = vec![0, 0, 0, 0];
-            let secrets = vec![EncryptedGroupSecrets {
-                key_package_hash: key_package_hash.clone().into(),
-                encrypted_group_secrets: crypto.crypto().hpke_seal(
-                    $ciphersuite.hpke_config(),
-                    receiver_key_pair.public.as_slice(),
-                    hpke_info,
-                    hpke_aad,
-                    hpke_input,
-                ),
-            }];
-
-            // Encrypt the group info.
-            let encrypted_group_info = welcome_key
-                .aead_seal(
-                    &crypto,
-                    &group_info
-                        .tls_serialize_detached()
-                        .expect("An unexpected error occurred."),
-                    &[],
-                    &welcome_nonce,
-                )
-                .expect("An unexpected error occurred.");
-
-            // Now build the welcome message.
-            let msg = Welcome::new(
-                $version,
-                $ciphersuite,
-                secrets,
-                encrypted_group_info.clone(),
-            );
-
-            // Encode, decode and re-assemble
-            let msg_encoded = msg
-                .tls_serialize_detached()
-                .expect("An unexpected error occurred.");
-            println!("encoded msg: {:?}", msg_encoded);
-            let msg_decoded = Welcome::tls_deserialize(&mut msg_encoded.as_slice())
-                .expect("An unexpected error occurred.");
-
-            // Check that the welcome message is the same
-            assert_eq!(msg_decoded.version, $version);
-            assert_eq!(msg_decoded.cipher_suite, $ciphersuite.name());
-            for secret in msg_decoded.secrets.iter() {
-                assert_eq!(
-                    key_package_hash.as_slice(),
-                    secret.key_package_hash.as_slice()
-                );
-                let ptxt = crypto
-                    .crypto()
-                    .hpke_open(
-                        $ciphersuite.hpke_config(),
-                        &secret.encrypted_group_secrets,
-                        &receiver_key_pair.private,
-                        hpke_info,
-                        hpke_aad,
-                    )
-                    .expect("Error decrypting valid ciphertext in Welcome message test.");
-                assert_eq!(&hpke_input[..], &ptxt[..]);
-            }
-            assert_eq!(
-                msg_decoded.encrypted_group_info.as_slice(),
-                encrypted_group_info.as_slice()
-            );
-        }
-    };
+#[apply(ciphersuites_and_backends)]
+fn test_welcome_msg(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    test_welcome_message_with_version(ciphersuite, backend, Config::supported_versions()[0]);
 }
 
-test_welcome_msg!(
-    test_welcome_MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-    Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519)
-        .expect("An unexpected error occurred."),
-    Config::supported_versions()[0]
-);
+fn test_welcome_message_with_version(
+    ciphersuite: &'static Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+    version: ProtocolVersion,
+) {
+    // We use this dummy group info in all test cases.
+    let group_info = GroupInfoPayload::new(
+        GroupId::random(backend),
+        GroupEpoch(123),
+        vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+        vec![1, 1, 1],
+        &Vec::new(),
+        &Vec::new(),
+        ConfirmationTag(Mac {
+            mac_value: vec![1, 2, 3, 4, 5].into(),
+        }),
+        8u32,
+    );
 
-test_welcome_msg!(
-    test_welcome_MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-    Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519)
-        .expect("An unexpected error occurred."),
-    Config::supported_versions()[0]
-);
+    // We need a credential bundle to sign the group info.
+    let credential_bundle = CredentialBundle::new(
+        "XXX".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
+    let group_info = group_info
+        .sign(backend, &credential_bundle)
+        .expect("Error signing GroupInfo");
 
-test_welcome_msg!(
-    test_welcome_MLS10_128_DHKEMP256_AES128GCM_SHA256_P256,
-    Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256)
-        .expect("An unexpected error occurred."),
-    Config::supported_versions()[0]
-);
+    // Generate key and nonce for the symmetric cipher.
+    let welcome_key = AeadKey::random(ciphersuite, backend.rand());
+    let welcome_nonce = AeadNonce::random(backend);
+
+    // Generate receiver key pair.
+    let receiver_key_pair = backend.crypto().derive_hpke_keypair(
+        ciphersuite.hpke_config(),
+        Secret::random(ciphersuite, backend, None)
+            .expect("Not enough randomness.")
+            .as_slice(),
+    );
+    let hpke_info = b"group info welcome test info";
+    let hpke_aad = b"group info welcome test aad";
+    let hpke_input = b"these should be the group secrets";
+    let key_package_hash = vec![0, 0, 0, 0];
+    let secrets = vec![EncryptedGroupSecrets {
+        key_package_hash: key_package_hash.clone().into(),
+        encrypted_group_secrets: backend.crypto().hpke_seal(
+            ciphersuite.hpke_config(),
+            receiver_key_pair.public.as_slice(),
+            hpke_info,
+            hpke_aad,
+            hpke_input,
+        ),
+    }];
+
+    // Encrypt the group info.
+    let encrypted_group_info = welcome_key
+        .aead_seal(
+            backend,
+            &group_info
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+            &[],
+            &welcome_nonce,
+        )
+        .expect("An unexpected error occurred.");
+
+    // Now build the welcome message.
+    let msg = Welcome::new(version, ciphersuite, secrets, encrypted_group_info.clone());
+
+    // Encode, decode and re-assemble
+    let msg_encoded = msg
+        .tls_serialize_detached()
+        .expect("An unexpected error occurred.");
+    println!("encoded msg: {:?}", msg_encoded);
+    let msg_decoded = Welcome::tls_deserialize(&mut msg_encoded.as_slice())
+        .expect("An unexpected error occurred.");
+
+    // Check that the welcome message is the same
+    assert_eq!(msg_decoded.version, version);
+    assert_eq!(msg_decoded.cipher_suite, ciphersuite.name());
+    for secret in msg_decoded.secrets.iter() {
+        assert_eq!(
+            key_package_hash.as_slice(),
+            secret.key_package_hash.as_slice()
+        );
+        let ptxt = backend
+            .crypto()
+            .hpke_open(
+                ciphersuite.hpke_config(),
+                &secret.encrypted_group_secrets,
+                &receiver_key_pair.private,
+                hpke_info,
+                hpke_aad,
+            )
+            .expect("Error decrypting valid ciphertext in Welcome message test.");
+        assert_eq!(&hpke_input[..], &ptxt[..]);
+    }
+    assert_eq!(
+        msg_decoded.encrypted_group_info.as_slice(),
+        encrypted_group_info.as_slice()
+    );
+}
 
 #[test]
 fn invalid_welcomes() {

@@ -37,7 +37,7 @@ impl AeadKey {
 
     #[cfg(any(feature = "test-utils", test))]
     /// Get a slice to the key value.
-    pub(crate) fn as_slice(&self) -> &[u8] {
+    pub fn as_slice(&self) -> &[u8] {
         &self.value
     }
 
@@ -137,18 +137,16 @@ pub(crate) fn aead_key_gen(
 
 #[cfg(test)]
 mod unit_tests {
-    use openmls_rust_crypto::OpenMlsRustCrypto;
-
     use super::*;
+    use crate::test_utils::*;
 
     /// Make sure that xoring works by xoring a nonce with a reuse guard, testing if
     /// it has changed, xoring it again and testing that it's back in its original
     /// state.
-    #[test]
-    fn test_xor() {
-        let crypto = &OpenMlsRustCrypto::default();
-        let reuse_guard: ReuseGuard = ReuseGuard::from_random(crypto);
-        let original_nonce = AeadNonce::random(crypto);
+    #[apply(backends)]
+    fn test_xor(backend: &impl OpenMlsCryptoProvider) {
+        let reuse_guard: ReuseGuard = ReuseGuard::from_random(backend);
+        let original_nonce = AeadNonce::random(backend);
         let mut nonce = original_nonce.clone();
         nonce.xor_with_reuse_guard(&reuse_guard);
         assert_ne!(

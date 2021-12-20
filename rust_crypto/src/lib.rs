@@ -25,7 +25,7 @@ use p256::{
     EncodedPoint,
 };
 use rand::{RngCore, SeedableRng};
-use sha2::{Digest, Sha256, Sha512};
+use sha2::{Digest, Sha256, Sha384, Sha512};
 
 #[derive(Debug)]
 pub struct RustCrypto {
@@ -90,6 +90,7 @@ impl OpenMlsCrypto for RustCrypto {
     ) -> Result<Vec<u8>, openmls_traits::types::CryptoError> {
         match hash_type {
             HashType::Sha2_256 => Ok(Hkdf::<Sha256>::extract(Some(salt), ikm).0.as_slice().into()),
+            HashType::Sha2_384 => Ok(Hkdf::<Sha384>::extract(Some(salt), ikm).0.as_slice().into()),
             HashType::Sha2_512 => Ok(Hkdf::<Sha512>::extract(Some(salt), ikm).0.as_slice().into()),
         }
     }
@@ -118,6 +119,14 @@ impl OpenMlsCrypto for RustCrypto {
                     .map_err(|_| CryptoError::HkdfOutputLengthInvalid)?;
                 Ok(okm)
             }
+            HashType::Sha2_384 => {
+                let hkdf = Hkdf::<Sha384>::from_prk(prk)
+                    .map_err(|_| CryptoError::HkdfOutputLengthInvalid)?;
+                let mut okm = vec![0u8; okm_len];
+                hkdf.expand(info, &mut okm)
+                    .map_err(|_| CryptoError::HkdfOutputLengthInvalid)?;
+                Ok(okm)
+            }
         }
     }
 
@@ -128,6 +137,7 @@ impl OpenMlsCrypto for RustCrypto {
     ) -> Result<Vec<u8>, openmls_traits::types::CryptoError> {
         match hash_type {
             HashType::Sha2_256 => Ok(Sha256::digest(data).as_slice().into()),
+            HashType::Sha2_384 => Ok(Sha384::digest(data).as_slice().into()),
             HashType::Sha2_512 => Ok(Sha512::digest(data).as_slice().into()),
         }
     }
@@ -294,14 +304,9 @@ impl OpenMlsCrypto for RustCrypto {
         aad: &[u8],
         ptxt: &[u8],
     ) -> types::HpkeCiphertext {
-        let (kem_output, ciphertext) = Hpke::<HpkeRustCrypto>::new(
-            hpke::Mode::Base,
-            kem_mode(config.0),
-            kdf_mode(config.1),
-            aead_mode(config.2),
-        )
-        .seal(&pk_r.into(), info, aad, ptxt, None, None, None)
-        .unwrap();
+        let (kem_output, ciphertext) = hpke_from_config(config)
+            .seal(&pk_r.into(), info, aad, ptxt, None, None, None)
+            .unwrap();
         HpkeCiphertext {
             kem_output: kem_output.into(),
             ciphertext: ciphertext.into(),
@@ -316,40 +321,74 @@ impl OpenMlsCrypto for RustCrypto {
         info: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
-        Hpke::<HpkeRustCrypto>::new(
-            hpke::Mode::Base,
-            kem_mode(config.0),
-            kdf_mode(config.1),
-            aead_mode(config.2),
-        )
-        .open(
-            input.kem_output.as_slice(),
-            &sk_r.into(),
-            info,
-            aad,
-            input.ciphertext.as_slice(),
-            None,
-            None,
-            None,
-        )
-        .map_err(|_| CryptoError::HpkeDecryptionError)
+        hpke_from_config(config)
+            .open(
+                input.kem_output.as_slice(),
+                &sk_r.into(),
+                info,
+                aad,
+                input.ciphertext.as_slice(),
+                None,
+                None,
+                None,
+            )
+            .map_err(|_| CryptoError::HpkeDecryptionError)
+    }
+
+    fn hpke_setup_sender_and_export(
+        &self,
+        config: HpkeConfig,
+        pk_r: &[u8],
+        info: &[u8],
+        exporter_context: &[u8],
+        exporter_length: usize,
+    ) -> Result<(Vec<u8>, Vec<u8>), CryptoError> {
+        let (kem_output, context) = hpke_from_config(config)
+            .setup_sender(&pk_r.into(), info, None, None, None)
+            .map_err(|_| CryptoError::SenderSetupError)?;
+        let exported_secret = context
+            .export(exporter_context, exporter_length)
+            .map_err(|_| CryptoError::ExporterError)?;
+        Ok((kem_output, exported_secret))
+    }
+
+    fn hpke_setup_receiver_and_export(
+        &self,
+        config: HpkeConfig,
+        enc: &[u8],
+        sk_r: &[u8],
+        info: &[u8],
+        exporter_context: &[u8],
+        exporter_length: usize,
+    ) -> Result<Vec<u8>, CryptoError> {
+        let context = hpke_from_config(config)
+            .setup_receiver(enc, &sk_r.into(), info, None, None, None)
+            .map_err(|_| CryptoError::ReceiverSetupError)?;
+        let exported_secret = context
+            .export(exporter_context, exporter_length)
+            .map_err(|_| CryptoError::ExporterError)?;
+        Ok(exported_secret)
     }
 
     fn derive_hpke_keypair(&self, config: HpkeConfig, ikm: &[u8]) -> types::HpkeKeyPair {
-        let kp = Hpke::<HpkeRustCrypto>::new(
-            hpke::Mode::Base,
-            kem_mode(config.0),
-            kdf_mode(config.1),
-            aead_mode(config.2),
-        )
-        .derive_key_pair(ikm)
-        .unwrap()
-        .into_keys();
+        let kp = hpke_from_config(config)
+            .derive_key_pair(ikm)
+            .unwrap()
+            .into_keys();
         HpkeKeyPair {
             private: kp.0.as_slice().into(),
             public: kp.1.as_slice().into(),
         }
     }
+}
+
+fn hpke_from_config(config: HpkeConfig) -> Hpke<HpkeRustCrypto> {
+    Hpke::<HpkeRustCrypto>::new(
+        hpke::Mode::Base,
+        kem_mode(config.0),
+        kdf_mode(config.1),
+        aead_mode(config.2),
+    )
 }
 
 impl OpenMlsRand for RustCrypto {

@@ -1,5 +1,5 @@
-use crate::extensions::*;
-use crate::tree::{index::*, node::*, *};
+#[cfg(any(feature = "test-utils", test))]
+use crate::treesync::{node::Node, TreeSync};
 
 // === The folowing functions aren't necessarily cryptographically secure!
 
@@ -7,17 +7,17 @@ use crate::tree::{index::*, node::*, *};
 use rand::{rngs::OsRng, RngCore};
 
 #[cfg(any(feature = "test-utils", test))]
-pub(crate) fn random_u32() -> u32 {
+pub fn random_u32() -> u32 {
     OsRng.next_u32()
 }
 
 #[cfg(any(feature = "test-utils", test))]
-pub(crate) fn random_u64() -> u64 {
+pub fn random_u64() -> u64 {
     OsRng.next_u64()
 }
 
 #[cfg(any(feature = "test-utils", test))]
-pub(crate) fn random_u8() -> u8 {
+pub fn random_u8() -> u8 {
     let mut b = [0u8; 1];
     OsRng.fill_bytes(&mut b);
     b[0]
@@ -219,71 +219,74 @@ macro_rules! implement_enum_display {
     };
 }
 
-pub fn _print_tree(tree: &RatchetTree, message: &str) {
+#[cfg(any(feature = "test-utils", test))]
+fn log2(x: u32) -> usize {
+    if x == 0 {
+        return 0;
+    }
+    let mut k = 0;
+    while (x >> k) > 0 {
+        k += 1
+    }
+    k - 1
+}
+
+#[cfg(any(feature = "test-utils", test))]
+fn level(index: u32) -> usize {
+    let x = index;
+    if (x & 0x01) == 0 {
+        return 0;
+    }
+    let mut k = 0;
+    while ((x >> k) & 0x01) == 1 {
+        k += 1;
+    }
+    k
+}
+
+#[cfg(any(feature = "test-utils", test))]
+fn root(size: u32) -> u32 {
+    (1 << log2(size)) - 1
+}
+
+#[cfg(any(feature = "test-utils", test))]
+pub fn print_tree(tree: &TreeSync, message: &str) {
     let factor = 3;
     println!("{}", message);
-    for (i, node) in tree.nodes.iter().enumerate() {
-        let level = treemath::level(NodeIndex::from(i));
+    let nodes = tree.export_nodes();
+    let tree_size = nodes.len() as u32;
+    for (i, node) in nodes.iter().enumerate() {
+        let level = level(i as u32);
         print!("{:04}", i);
-        if !node.is_blank() {
-            let (key_bytes, parent_hash_bytes) = match node.node_type {
-                NodeType::Leaf => {
+        if let Some(node) = node {
+            let (key_bytes, parent_hash_bytes) = match node {
+                Node::LeafNode(leaf_node) => {
                     print!("\tL");
-                    let key_bytes = if let Some(kp) = &node.key_package {
-                        kp.hpke_init_key().as_slice()
-                    } else {
-                        &[]
-                    };
-                    let parent_hash_bytes = if let Some(kp) = &node.key_package {
-                        if let Some(phe) = kp.extension_with_type(ExtensionType::ParentHash) {
-                            let parent_hash_extension: &ParentHashExtension =
-                                phe.as_parent_hash_extension().expect("Library error");
-                            parent_hash_extension.parent_hash().to_vec()
-                        } else {
-                            vec![]
-                        }
-                    } else {
-                        vec![]
-                    };
-                    (key_bytes, parent_hash_bytes)
+                    let key_bytes = leaf_node.public_key().as_slice();
+                    let parent_hash_bytes = node.parent_hash().unwrap();
+                    (key_bytes, parent_hash_bytes.unwrap_or_default())
                 }
-                NodeType::Parent => {
-                    if treemath::root(tree.leaf_count()) == NodeIndex::from(i) {
+                Node::ParentNode(parent_node) => {
+                    if root(tree_size) == i as u32 {
                         print!("\tP(R)");
                     } else {
                         print!("\tP");
                     }
-                    let key_bytes = if let Some(n) = &node.node {
-                        n.public_key().as_slice()
-                    } else {
-                        &[]
-                    };
-                    let parent_hash_bytes = if let Some(ph) = node.parent_hash() {
-                        ph.to_vec()
-                    } else {
-                        vec![]
-                    };
-                    (key_bytes, parent_hash_bytes)
+                    let key_bytes = parent_node.public_key().as_slice();
+                    let parent_hash_bytes = node.parent_hash().unwrap();
+                    (key_bytes, parent_hash_bytes.unwrap_or_default())
                 }
             };
-            if !key_bytes.is_empty() {
-                print!("\tPK: {}", _bytes_to_hex(key_bytes));
-            } else {
-                print!("\tPK:\t\t\t");
-            }
+            print!("\tPK: {}", _bytes_to_hex(key_bytes));
 
-            if !parent_hash_bytes.is_empty() {
-                print!("\tPH: {}", _bytes_to_hex(&parent_hash_bytes));
-            } else {
-                print!("\tPH:\t\t\t\t\t\t\t\t");
-            }
+            print!("\tPH: {}", _bytes_to_hex(parent_hash_bytes));
             print!("\t| ");
             for _ in 0..level * factor {
                 print!(" ");
             }
             print!("◼︎");
         } else {
-            if treemath::root(tree.leaf_count()) == NodeIndex::from(i) {
+            if root(tree_size) == i as u32 {
                 print!("\tB(R)\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t| ");
             } else {
                 print!("\tB\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t| ");

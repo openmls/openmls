@@ -1,13 +1,11 @@
-use openmls::{
-    ciphersuite::signable::Verifiable, group::create_commit_params::CreateCommitParams, prelude::*,
-};
+use openmls::{prelude::*, prelude_test::*, test_utils::*, *};
 pub mod utils;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 use utils::mls_utils::*;
 
 /// Creates a simple test setup for various encoding tests.
-fn create_encoding_test_setup() -> TestSetup {
+fn create_encoding_test_setup(backend: &impl OpenMlsCryptoProvider) -> TestSetup {
     // Create a test config for a single client supporting all possible
     // ciphersuites.
     let alice_config = TestClientConfig {
@@ -30,7 +28,7 @@ fn create_encoding_test_setup() -> TestSetup {
     for ciphersuite_name in Config::supported_ciphersuite_names() {
         let test_group = TestGroupConfig {
             ciphersuite: *ciphersuite_name,
-            config: MlsGroupConfig {
+            config: CoreGroupConfig {
                 add_ratchet_tree_extension: true,
                 padding_block_size: 10,
                 additional_as_epochs: 0,
@@ -47,14 +45,13 @@ fn create_encoding_test_setup() -> TestSetup {
     };
 
     // Initialize the test setup according to config.
-    setup(test_setup_config)
+    setup(test_setup_config, backend)
 }
 
-#[test]
 /// This test tests encoding and decoding of application messages.
-fn test_application_message_encoding() {
-    let crypto = OpenMlsRustCrypto::default();
-    let test_setup = create_encoding_test_setup();
+#[apply(backends)]
+fn test_application_message_encoding(backend: &impl OpenMlsCryptoProvider) {
+    let test_setup = create_encoding_test_setup(backend);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
         .get("alice")
@@ -72,7 +69,7 @@ fn test_application_message_encoding() {
             let message = randombytes(random_usize() % 1000);
             let aad = randombytes(random_usize() % 1000);
             let encrypted_message = group_state
-                .create_application_message(&aad, &message, credential_bundle, 0, &crypto)
+                .create_application_message(&aad, &message, credential_bundle, 0, backend)
                 .expect("An unexpected error occurred.");
             let encrypted_message_bytes = encrypted_message
                 .tls_serialize_detached()
@@ -87,11 +84,10 @@ fn test_application_message_encoding() {
     }
 }
 
-#[test]
 /// This test tests encoding and decoding of update proposals.
-fn test_update_proposal_encoding() {
-    let crypto = OpenMlsRustCrypto::default();
-    let test_setup = create_encoding_test_setup();
+#[apply(backends)]
+fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
+    let test_setup = create_encoding_test_setup(backend);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
         .get("alice")
@@ -118,7 +114,7 @@ fn test_update_proposal_encoding() {
         let key_package_bundle = KeyPackageBundle::new(
             &[group_state.ciphersuite().name()],
             credential_bundle,
-            &crypto,
+            backend,
             mandatory_extensions,
         )
         .expect("An unexpected error occurred.");
@@ -128,7 +124,7 @@ fn test_update_proposal_encoding() {
                 framing_parameters,
                 credential_bundle,
                 key_package_bundle.key_package().clone(),
-                &crypto,
+                backend,
             )
             .expect("Could not create proposal.");
         let update_encoded = update
@@ -146,18 +142,17 @@ fn test_update_proposal_encoding() {
                 .expect("An unexpected error occurred."),
         );
         let update_decoded = update_decoded
-            .verify(&crypto, credential_bundle.credential())
+            .verify(backend, credential_bundle.credential())
             .expect("Error verifying MlsPlaintext");
 
         assert_eq!(update, update_decoded);
     }
 }
 
-#[test]
 /// This test tests encoding and decoding of add proposals.
-fn test_add_proposal_encoding() {
-    let crypto = OpenMlsRustCrypto::default();
-    let test_setup = create_encoding_test_setup();
+#[apply(backends)]
+fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
+    let test_setup = create_encoding_test_setup(backend);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
         .get("alice")
@@ -184,7 +179,7 @@ fn test_add_proposal_encoding() {
         let key_package_bundle = KeyPackageBundle::new(
             &[group_state.ciphersuite().name()],
             credential_bundle,
-            &crypto,
+            backend,
             mandatory_extensions,
         )
         .expect("An unexpected error occurred.");
@@ -195,7 +190,7 @@ fn test_add_proposal_encoding() {
                 framing_parameters,
                 credential_bundle,
                 key_package_bundle.key_package().clone(),
-                &crypto,
+                backend,
             )
             .expect("Could not create proposal.");
         let add_encoded = add
@@ -204,7 +199,7 @@ fn test_add_proposal_encoding() {
         let add_decoded = match VerifiableMlsPlaintext::tls_deserialize(&mut add_encoded.as_slice())
         {
             Ok(a) => group_state
-                .verify(a, &crypto)
+                .verify(a, backend)
                 .expect("Error verifying MlsPlaintext"),
             Err(err) => panic!("Error decoding MPLSPlaintext Add: {:?}", err),
         };
@@ -213,11 +208,10 @@ fn test_add_proposal_encoding() {
     }
 }
 
-#[test]
 /// This test tests encoding and decoding of remove proposals.
-fn test_remove_proposal_encoding() {
-    let crypto = OpenMlsRustCrypto::default();
-    let test_setup = create_encoding_test_setup();
+#[apply(backends)]
+fn test_remove_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
+    let test_setup = create_encoding_test_setup(backend);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
         .get("alice")
@@ -233,12 +227,7 @@ fn test_remove_proposal_encoding() {
             .expect("An unexpected error occurred.");
 
         let remove = group_state
-            .create_remove_proposal(
-                framing_parameters,
-                credential_bundle,
-                LeafIndex::from(1u32),
-                &crypto,
-            )
+            .create_remove_proposal(framing_parameters, credential_bundle, 1u32, backend)
             .expect("Could not create proposal.");
         let remove_encoded = remove
             .tls_serialize_detached()
@@ -246,7 +235,7 @@ fn test_remove_proposal_encoding() {
         let remove_decoded =
             match VerifiableMlsPlaintext::tls_deserialize(&mut remove_encoded.as_slice()) {
                 Ok(a) => group_state
-                    .verify(a, &crypto)
+                    .verify(a, backend)
                     .expect("Error verifying MlsPlaintext"),
                 Err(err) => panic!("Error decoding MPLSPlaintext Remove: {:?}", err),
             };
@@ -256,10 +245,9 @@ fn test_remove_proposal_encoding() {
 }
 
 /// This test tests encoding and decoding of commit messages.
-#[test]
-fn test_commit_encoding() {
-    let crypto = OpenMlsRustCrypto::default();
-    let test_setup = create_encoding_test_setup();
+#[apply(backends)]
+fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
+    let test_setup = create_encoding_test_setup(backend);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
         .get("alice")
@@ -286,7 +274,7 @@ fn test_commit_encoding() {
         let alice_key_package_bundle = KeyPackageBundle::new(
             &[group_state.ciphersuite().name()],
             alice_credential_bundle,
-            &crypto,
+            backend,
             mandatory_extensions.clone(),
         )
         .expect("An unexpected error occurred.");
@@ -299,7 +287,7 @@ fn test_commit_encoding() {
                 framing_parameters,
                 alice_credential_bundle,
                 alice_key_package_bundle.key_package().clone(),
-                &crypto,
+                backend,
             )
             .expect("Could not create proposal.");
 
@@ -316,30 +304,25 @@ fn test_commit_encoding() {
                 framing_parameters,
                 alice_credential_bundle,
                 charlie_key_package.clone(),
-                &crypto,
+                backend,
             )
             .expect("Could not create proposal.");
 
         // Alice removes Bob
         let remove = group_state
-            .create_remove_proposal(
-                framing_parameters,
-                alice_credential_bundle,
-                LeafIndex::from(2u32),
-                &crypto,
-            )
+            .create_remove_proposal(framing_parameters, alice_credential_bundle, 2u32, backend)
             .expect("Could not create proposal.");
 
         let mut proposal_store = ProposalStore::from_staged_proposal(
-            StagedProposal::from_mls_plaintext(group_state.ciphersuite(), &crypto, add)
+            StagedProposal::from_mls_plaintext(group_state.ciphersuite(), backend, add)
                 .expect("Could not create StagedProposal."),
         );
         proposal_store.add(
-            StagedProposal::from_mls_plaintext(group_state.ciphersuite(), &crypto, remove)
+            StagedProposal::from_mls_plaintext(group_state.ciphersuite(), backend, remove)
                 .expect("Could not create StagedProposal."),
         );
         proposal_store.add(
-            StagedProposal::from_mls_plaintext(group_state.ciphersuite(), &crypto, update)
+            StagedProposal::from_mls_plaintext(group_state.ciphersuite(), backend, update)
                 .expect("Could not create StagedProposal."),
         );
 
@@ -349,7 +332,7 @@ fn test_commit_encoding() {
             .proposal_store(&proposal_store)
             .build();
         let (commit, _welcome_option, _key_package_bundle_option) = group_state
-            .create_commit(params, &crypto)
+            .create_commit(params, backend)
             .expect("An unexpected error occurred.");
         let commit_encoded = commit
             .tls_serialize_detached()
@@ -357,7 +340,7 @@ fn test_commit_encoding() {
         let commit_decoded =
             match VerifiableMlsPlaintext::tls_deserialize(&mut commit_encoded.as_slice()) {
                 Ok(a) => group_state
-                    .verify(a, &crypto)
+                    .verify(a, backend)
                     .expect("Error verifying MlsPlaintext"),
                 Err(err) => panic!("Error decoding MPLSPlaintext Commit: {:?}", err),
             };
@@ -366,10 +349,9 @@ fn test_commit_encoding() {
     }
 }
 
-#[test]
-fn test_welcome_message_encoding() {
-    let crypto = OpenMlsRustCrypto::default();
-    let test_setup = create_encoding_test_setup();
+#[apply(backends)]
+fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
+    let test_setup = create_encoding_test_setup(backend);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
         .get("alice")
@@ -399,12 +381,12 @@ fn test_welcome_message_encoding() {
                 framing_parameters,
                 credential_bundle,
                 charlie_key_package.clone(),
-                &crypto,
+                backend,
             )
             .expect("Could not create proposal.");
 
         let proposal_store = ProposalStore::from_staged_proposal(
-            StagedProposal::from_mls_plaintext(group_state.ciphersuite(), &crypto, add)
+            StagedProposal::from_mls_plaintext(group_state.ciphersuite(), backend, add)
                 .expect("Could not create StagedProposal."),
         );
 
@@ -414,7 +396,7 @@ fn test_welcome_message_encoding() {
             .proposal_store(&proposal_store)
             .build();
         let (commit, welcome_option, key_package_bundle_option) = group_state
-            .create_commit(params, &crypto)
+            .create_commit(params, backend)
             .expect("An unexpected error occurred.");
         // Alice applies the commit
         let staged_commit = group_state
@@ -422,11 +404,12 @@ fn test_welcome_message_encoding() {
                 &commit,
                 &proposal_store,
                 &[key_package_bundle_option.expect("An unexpected error occurred.")],
-                None,
-                &crypto,
+                backend,
             )
             .expect("Could not stage the commit");
-        group_state.merge_commit(staged_commit);
+        group_state
+            .merge_commit(staged_commit)
+            .expect("error merging commit");
 
         // Welcome messages
 
@@ -448,17 +431,16 @@ fn test_welcome_message_encoding() {
             .borrow();
 
         let charlie_key_package_bundle = charlie
-            .find_key_package_bundle(&charlie_key_package, &crypto)
+            .find_key_package_bundle(&charlie_key_package, backend)
             .expect("An unexpected error occurred.");
 
         // This makes Charlie decode the internals of the Welcome message, for
         // example the RatchetTreeExtension.
-        assert!(MlsGroup::new_from_welcome(
+        assert!(CoreGroup::new_from_welcome(
             welcome,
-            Some(group_state.tree().public_key_tree_copy()),
+            Some(group_state.treesync().export_nodes()),
             charlie_key_package_bundle,
-            None,
-            &crypto
+            backend
         )
         .is_ok());
     }

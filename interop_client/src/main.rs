@@ -4,23 +4,8 @@
 //! It is based on the Mock client written by Richard Barnes.
 
 use clap::Parser;
-use openmls::{
-    ciphersuite::signable::Verifiable,
-    group::{
-        create_commit_params::CreateCommitParams,
-        tests::{
-            kat_messages::{self, MessagesTestVector},
-            kat_transcripts::{self, TranscriptTestVector},
-        },
-    },
-    prelude::*,
-    schedule::kat_key_schedule::{self, KeyScheduleTestVector},
-    tree::tests_and_kats::kats::{
-        kat_encryption::{self, EncryptionTestVector},
-        kat_tree_kem::{self, TreeKemTestVector},
-        kat_treemath,
-    },
-};
+use clap_derive::*;
+use openmls::{prelude::*, prelude_test::*};
 
 use serde::{self, Serialize};
 use std::{collections::HashMap, convert::TryFrom, fs::File, io::Write, sync::Mutex};
@@ -58,7 +43,7 @@ impl TryFrom<i32> for TestVectorType {
 /// doesn't consider scenarios where a credential is re-used across groups, so
 /// this simple structure is sufficient.
 pub struct InteropGroup {
-    group: MlsGroup,
+    group: CoreGroup,
     wire_format: WireFormat,
     credential_bundle: CredentialBundle,
     own_kpbs: Vec<KeyPackageBundle>,
@@ -90,8 +75,8 @@ impl MlsClientImpl {
     }
 }
 
-fn into_status(e: MlsGroupError) -> Status {
-    let message = "managed group error ".to_string() + &e.to_string();
+fn into_status(e: CoreGroupError) -> Status {
+    let message = "mls group error ".to_string() + &e.to_string();
     tonic::Status::new(tonic::Code::Aborted, message)
 }
 
@@ -205,11 +190,10 @@ impl MlsClient for MlsClientImpl {
                 ("Transcript", kat_bytes)
             }
             Ok(TestVectorType::Treekem) => {
-                let ciphersuite = to_ciphersuite(obj.cipher_suite)?;
-                let kat_tree_kem =
-                    kat_tree_kem::generate_test_vector(obj.n_leaves as u32, ciphersuite);
-                let kat_bytes = into_bytes(kat_tree_kem);
-                ("TreeKEM", kat_bytes)
+                return Err(tonic::Status::new(
+                    tonic::Code::InvalidArgument,
+                    "OpenMLS currently can't generate TreeKEM test vectors. See GitHub issue #423 for more information.",
+                ));
             }
             Ok(TestVectorType::Messages) => {
                 let ciphersuite: &'static Ciphersuite =
@@ -237,6 +221,7 @@ impl MlsClient for MlsClientImpl {
         request: tonic::Request<VerifyTestVectorRequest>,
     ) -> Result<tonic::Response<VerifyTestVectorResponse>, tonic::Status> {
         println!("Got VerifyTestVector request");
+        let backend = &OpenMlsRustCrypto::default();
 
         let obj = request.get_ref();
         let (type_msg, _result) = match TestVectorType::try_from(obj.test_vector_type) {
@@ -278,7 +263,7 @@ impl MlsClient for MlsClientImpl {
                     ),
                     &obj.test_vector,
                 );
-                match kat_encryption::run_test_vector(kat_encryption) {
+                match kat_encryption::run_test_vector(kat_encryption, backend) {
                     Ok(result) => ("Encryption", result),
                     Err(e) => {
                         let message = "Error while running encryption test vector: ".to_string()
@@ -302,7 +287,7 @@ impl MlsClient for MlsClientImpl {
                     &format!("mlspp_key_schedule_{}.json", kat_key_schedule.cipher_suite),
                     &obj.test_vector,
                 );
-                match kat_key_schedule::run_test_vector(kat_key_schedule) {
+                match kat_key_schedule::run_test_vector(kat_key_schedule, backend) {
                     Ok(result) => ("Key Schedule", result),
                     Err(e) => {
                         let message = "Error while running key schedule test vector: ".to_string()
@@ -327,7 +312,7 @@ impl MlsClient for MlsClientImpl {
                     &format!("mlspp_transcript_{}.json", kat_transcript.cipher_suite),
                     &obj.test_vector,
                 );
-                match kat_transcripts::run_test_vector(kat_transcript) {
+                match kat_transcripts::run_test_vector(kat_transcript, backend) {
                     Ok(result) => ("Transcript", result),
                     Err(e) => {
                         let message = "Error while running transcript test vector: ".to_string()
@@ -351,7 +336,7 @@ impl MlsClient for MlsClientImpl {
                     &format!("mlspp_tree_kem_{}.json", kat_tree_kem.cipher_suite),
                     &obj.test_vector,
                 );
-                match kat_tree_kem::run_test_vector(kat_tree_kem) {
+                match kat_tree_kem::run_test_vector(kat_tree_kem, backend) {
                     Ok(result) => ("TreeKEM", result),
                     Err(e) => {
                         let message = "Error while running TreeKEM test vector: ".to_string()
@@ -415,11 +400,11 @@ impl MlsClient for MlsClientImpl {
             vec![],
         )
         .unwrap();
-        let config = MlsGroupConfig {
+        let config = CoreGroupConfig {
             add_ratchet_tree_extension: true,
             ..Default::default()
         };
-        let group = MlsGroup::builder(
+        let group = CoreGroup::builder(
             GroupId::from_slice(&create_group_request.group_id),
             key_package_bundle,
         )
@@ -506,7 +491,7 @@ impl MlsClient for MlsClientImpl {
                     "No key package could be found for the given Welcome message.",
                 )
             })?;
-        let group = MlsGroup::new_from_welcome(welcome, None, kpb, None, &self.crypto_provider)
+        let group = CoreGroup::new_from_welcome(welcome, None, kpb, &self.crypto_provider)
             .map_err(into_status)?;
 
         let interop_group = InteropGroup {
@@ -746,7 +731,7 @@ impl MlsClient for MlsClientImpl {
             .create_remove_proposal(
                 framing_parameters,
                 &interop_group.credential_bundle,
-                LeafIndex::from(remove_proposal_request.removed as usize),
+                remove_proposal_request.removed,
                 &self.crypto_provider,
             )
             .map_err(into_status)?;
@@ -994,11 +979,13 @@ impl MlsClient for MlsClientImpl {
                 &commit,
                 &proposal_store,
                 &interop_group.own_kpbs,
-                None,
                 &self.crypto_provider,
             )
             .map_err(into_status)?;
-        interop_group.group.merge_commit(staged_commit);
+        interop_group
+            .group
+            .merge_commit(staged_commit)
+            .map_err(into_status)?;
 
         Ok(Response::new(HandleCommitResponse {
             state_id: handle_commit_request.state_id,

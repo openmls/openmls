@@ -3,7 +3,8 @@
 //! This trait defines all cryptographic functions used by OpenMLS.
 
 use crate::types::{
-    AeadType, CryptoError, HashType, HpkeCiphertext, HpkeConfig, HpkeKeyPair, SignatureScheme,
+    AeadType, CryptoError, ExporterSecret, HashType, HpkeCiphertext, HpkeConfig, HpkeKeyPair,
+    KemOutput, SignatureScheme,
 };
 
 pub trait OpenMlsCrypto {
@@ -112,6 +113,31 @@ pub trait OpenMlsCrypto {
         info: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError>;
+
+    /// HPKE single-shot setup of a sender and immediate export a secret.
+    ///
+    /// The encapsulated secret is returned together with the exported secret.
+    fn hpke_setup_sender_and_export(
+        &self,
+        config: HpkeConfig,
+        pk_r: &[u8],
+        info: &[u8],
+        exporter_context: &[u8],
+        exporter_length: usize,
+    ) -> Result<(KemOutput, ExporterSecret), CryptoError>;
+
+    /// HPKE single-shot setup of a receiver and immediate export a secret.
+    ///
+    /// Returns the exported secret.
+    fn hpke_setup_receiver_and_export(
+        &self,
+        config: HpkeConfig,
+        enc: &[u8],
+        sk_r: &[u8],
+        info: &[u8],
+        exporter_context: &[u8],
+        exporter_length: usize,
+    ) -> Result<ExporterSecret, CryptoError>;
 
     /// Derive a new HPKE keypair from a given input key material.
     fn derive_hpke_keypair(&self, config: HpkeConfig, ikm: &[u8]) -> HpkeKeyPair;

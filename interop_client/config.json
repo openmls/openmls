@@ -7,7 +7,6 @@
     "encryption",
     "key_schedule",
     "transcript",
-    "treekem",
     "messages"
   ]
 }

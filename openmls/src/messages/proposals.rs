@@ -101,6 +101,7 @@ impl TryFrom<u8> for ProposalOrRefType {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum ProposalOrRef {
     Proposal(Proposal),
+    // TODO: #541 replace ProposalReference with [`ProposalRef`]
     Reference(ProposalReference),
 }
 
@@ -222,6 +223,7 @@ impl UpdateProposal {
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct RemoveProposal {
+    // TODO: #541 replace removed with [`KeyPackageRef`]
     pub(crate) removed: u32,
 }
 
@@ -246,6 +248,7 @@ pub struct PreSharedKeyProposal {
 
 impl PreSharedKeyProposal {
     /// Create a new PSK proposal
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn new(psk: PreSharedKeyId) -> Self {
         Self { psk }
     }
@@ -318,6 +321,7 @@ pub struct KeyPackageId {
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct MessageRange {
+    // TODO: #541 replace sender with [`KeyPackageRef`]
     sender: KeyPackageId,
     first_generation: u32,
     last_generation: u32,
@@ -354,6 +358,7 @@ pub struct GroupContextExtensionProposal {
 
 impl GroupContextExtensionProposal {
     /// Create a new [`GroupContextExtensionProposal`].
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn new(extensions: &[Extension]) -> Self {
         Self {
             extensions: extensions.into(),

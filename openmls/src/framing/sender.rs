@@ -26,6 +26,7 @@
 //! ```
 
 use super::*;
+use core_group::create_commit_params::CommitType;
 use std::convert::TryFrom;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -37,6 +38,15 @@ pub enum SenderType {
     Member = 1,
     Preconfigured = 2,
     NewMember = 3,
+}
+
+impl From<CommitType> for SenderType {
+    fn from(commit_type: CommitType) -> Self {
+        match commit_type {
+            CommitType::External => SenderType::NewMember,
+            CommitType::Member => SenderType::Member,
+        }
+    }
 }
 
 impl TryFrom<u8> for SenderType {
@@ -56,6 +66,7 @@ impl TryFrom<u8> for SenderType {
 )]
 pub struct Sender {
     pub(crate) sender_type: SenderType,
+    // TODO: #541 replace sender with [`KeyPackageRef`] (and preconfigured/new)
     pub(crate) sender: LeafIndex,
 }
 // Public functions
@@ -65,15 +76,5 @@ impl Sender {
     }
     pub fn to_leaf_index(self) -> LeafIndex {
         self.sender
-    }
-}
-
-//Private and crate functions
-impl Sender {
-    pub(crate) fn member(sender: LeafIndex) -> Self {
-        Sender {
-            sender_type: SenderType::Member,
-            sender,
-        }
     }
 }

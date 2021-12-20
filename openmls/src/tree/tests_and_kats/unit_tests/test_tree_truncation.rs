@@ -3,16 +3,18 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use crate::{
     ciphersuite::Ciphersuite,
     credentials::{CredentialBundle, CredentialType},
-    group::ManagedGroupConfig,
-    prelude::{KeyPackageBundle, LeafIndex},
-    test_utils::test_framework::{ActionType, CodecUse, ManagedTestSetup},
+    group::MlsGroupConfig,
+    key_packages::{KeyPackageBundle, LeafIndex},
+    test_utils::{
+        test_framework::{ActionType, CodecUse, MlsGroupTestSetup},
+        *,
+    },
     tree::node::{Node, NodeType},
     tree::RatchetTree,
 };
 
-#[test]
-fn test_trim() {
-    let crypto = OpenMlsRustCrypto::default();
+#[apply(backends)]
+fn test_trim(backend: &impl OpenMlsCryptoProvider) {
     // Build a list of nodes, for which we need credentials and key package bundles
     let mut nodes = vec![];
     let mut key_package_bundles = vec![];
@@ -25,11 +27,11 @@ fn test_trim() {
                 vec![i as u8],
                 CredentialType::Basic,
                 ciphersuite.signature_scheme(),
-                &crypto,
+                backend,
             )
             .expect("An unexpected error occurred.");
             let key_package_bundle =
-                KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, &crypto, vec![])
+                KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, backend, vec![])
                     .expect("An unexpected error occurred.");
 
             // We build a leaf node from the key packages
@@ -51,7 +53,7 @@ fn test_trim() {
         println!("final number of nodes: {:?}", nodes.len());
 
         let key_package_bundle = key_package_bundles.remove(0);
-        let mut tree = RatchetTree::new_from_nodes(&crypto, key_package_bundle, &nodes)
+        let mut tree = RatchetTree::new_from_nodes(backend, key_package_bundle, &nodes)
             .expect("An unexpected error occurred.");
 
         let size_untrimmed = tree.tree_size();
@@ -78,11 +80,11 @@ fn test_trim() {
 #[test]
 fn test_truncation_after_removal() {
     // Set up a group with 8 members.
-    let managed_group_config = ManagedGroupConfig::test_default();
+    let mls_group_config = MlsGroupConfig::test_default();
     let test_group_sizes = vec![5, 15, 21, 65];
     for number_of_clients in test_group_sizes {
-        let setup = ManagedTestSetup::new(
-            managed_group_config.clone(),
+        let setup = MlsGroupTestSetup::new(
+            mls_group_config.clone(),
             number_of_clients,
             CodecUse::SerializedMessages,
         );
@@ -123,11 +125,11 @@ fn test_truncation_after_removal() {
 #[test]
 fn test_truncation_after_update() {
     // Set up a group with 8 members.
-    let managed_group_config = ManagedGroupConfig::test_default();
+    let mls_group_config = MlsGroupConfig::test_default();
     let test_group_sizes = vec![5, 15, 21, 65];
     for number_of_clients in test_group_sizes {
-        let setup = ManagedTestSetup::new(
-            managed_group_config.clone(),
+        let setup = MlsGroupTestSetup::new(
+            mls_group_config.clone(),
             number_of_clients,
             CodecUse::SerializedMessages,
         );

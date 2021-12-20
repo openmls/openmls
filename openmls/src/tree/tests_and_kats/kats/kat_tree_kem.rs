@@ -18,7 +18,7 @@ use crate::test_utils::{read, write};
 use crate::{
     ciphersuite::signable::Signable,
     credentials::{CredentialBundle, CredentialType},
-    prelude::KeyPackageBundlePayload,
+    key_packages::KeyPackageBundlePayload,
     test_utils::hex_to_bytes,
     tree::node::Node,
 };
@@ -26,20 +26,20 @@ use crate::{
     ciphersuite::Secret,
     config::Config,
     config::ProtocolVersion,
+    framing::MlsMessageOut,
+    framing::MlsPlaintextContentType,
     key_packages::KeyPackage,
     messages::PathSecret,
-    tree::{treemath::*, CiphersuiteName, HashSet, LeafIndex, NodeIndex, RatchetTree, UpdatePath},
-};
-use crate::{
-    framing::MlsMessageOut,
-    prelude::MlsPlaintextContentType,
+    test_utils::*,
     test_utils::{
         bytes_to_hex,
-        test_framework::{ActionType, ManagedTestSetup},
+        test_framework::{ActionType, MlsGroupTestSetup},
     },
+    tree::{treemath::*, CiphersuiteName, HashSet, LeafIndex, NodeIndex, RatchetTree, UpdatePath},
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::OpenMlsCryptoProvider;
 use serde::{self, Deserialize, Serialize};
 use std::convert::TryFrom;
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerializeTrait, TlsVecU32};
@@ -68,10 +68,12 @@ pub struct TreeKemTestVector {
     pub tree_hash_after: String,
 }
 
-pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTestVectorError> {
+pub fn run_test_vector(
+    test_vector: TreeKemTestVector,
+    backend: &impl OpenMlsCryptoProvider,
+) -> Result<(), TreeKemTestVectorError> {
     log::debug!("Running TreeKEM test vector");
     log::trace!("{:?}", test_vector);
-    let crypto = OpenMlsRustCrypto::default();
     let ciphersuite =
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
     let ciphersuite = Config::ciphersuite(ciphersuite).expect("Invalid ciphersuite");
@@ -98,21 +100,21 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
         "username".into(),
         CredentialType::Basic,
         ciphersuite.signature_scheme(),
-        &crypto,
+        backend,
     )
     .expect("An unexpected error occurred.");
     let my_key_package_bundle = KeyPackageBundlePayload::from_key_package_and_leaf_secret(
         my_leaf_secret.clone(),
         &my_key_package,
-        &crypto,
+        backend,
     )
     .expect("Coul not create KeyPackage.")
-    .sign(&crypto, &credential_bundle)
+    .sign(backend, &credential_bundle)
     .expect("An unexpected error occurred.");
 
     // Check tree hashes.
     let mut tree_before = RatchetTree::new_from_nodes(
-        &crypto,
+        backend,
         my_key_package_bundle,
         ratchet_tree_before.as_slice(),
     )
@@ -120,7 +122,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     crate::utils::_print_tree(&tree_before, "Tree before");
 
     if hex_to_bytes(&test_vector.tree_hash_before)
-        != tree_before.tree_hash(&crypto).expect("Could not hash.")
+        != tree_before.tree_hash(backend).expect("Could not hash.")
     {
         if cfg!(test) {
             panic!("Tree hash mismatch in the 'before' tree.");
@@ -136,13 +138,13 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     let my_key_package_bundle = KeyPackageBundlePayload::from_key_package_and_leaf_secret(
         my_leaf_secret,
         &my_key_package,
-        &crypto,
+        backend,
     )
     .expect("Coul not create KeyPackage.")
-    .sign(&crypto, &credential_bundle)
+    .sign(backend, &credential_bundle)
     .expect("An unexpected error occurred.");
     let tree_after = RatchetTree::new_from_nodes(
-        &crypto,
+        backend,
         my_key_package_bundle,
         ratchet_tree_after.as_slice(),
     )
@@ -150,7 +152,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     crate::utils::_print_tree(&tree_after, "Tree after");
 
     if hex_to_bytes(&test_vector.tree_hash_after)
-        != tree_after.tree_hash(&crypto).expect("Could not hash.")
+        != tree_after.tree_hash(backend).expect("Could not hash.")
     {
         if cfg!(test) {
             panic!("Tree hash mismatch in the 'after' tree.");
@@ -159,13 +161,13 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     }
 
     // Verify parent hashes
-    if tree_before.verify_parent_hashes(&crypto).is_err() {
+    if tree_before.verify_parent_hashes(backend).is_err() {
         if cfg!(test) {
             panic!("Parent hash mismatch in the 'before' tree.");
         }
         return Err(TreeKemTestVectorError::BeforeParentHashMismatch);
     }
-    if tree_after.verify_parent_hashes(&crypto).is_err() {
+    if tree_after.verify_parent_hashes(backend).is_err() {
         if cfg!(test) {
             panic!("Parent hash mismatch in the 'after' tree.");
         }
@@ -203,7 +205,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
 
     tree_before
         .private_tree_mut()
-        .continue_path_secrets(ciphersuite, &crypto, start_secret, &path)
+        .continue_path_secrets(ciphersuite, backend, start_secret, &path)
         .expect("Could not continue path secrets.");
 
     // Check if the root secrets match up.
@@ -233,7 +235,7 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     let group_context = hex_to_bytes(&test_vector.update_group_context);
     let _commit_secret = tree_before
         .update_path(
-            &crypto,
+            backend,
             LeafIndex::from(test_vector.update_sender),
             &update_path,
             &group_context,
@@ -291,12 +293,12 @@ pub fn run_test_vector(test_vector: TreeKemTestVector) -> Result<(), TreeKemTest
     Ok(())
 }
 
-#[test]
-fn read_test_vector() {
+#[apply(backends)]
+fn read_test_vectors_tree_kem(backend: &impl OpenMlsCryptoProvider) {
     let tests: Vec<TreeKemTestVector> = read("test_vectors/kat_tree_kem_openmls.json");
 
     for test_vector in tests {
-        run_test_vector(test_vector).expect("error while checking tree kem test vector.");
+        run_test_vector(test_vector, backend).expect("error while checking tree kem test vector.");
     }
 }
 
@@ -318,11 +320,10 @@ fn write_test_vector() {
 
 #[cfg(any(feature = "test-utils", test))]
 pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) -> TreeKemTestVector {
-    use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
+    use openmls_traits::key_store::OpenMlsKeyStore;
 
     use crate::{
-        extensions::RatchetTreeExtension,
-        prelude::{KeyPackageBundle, ManagedGroupConfig},
+        extensions::RatchetTreeExtension, group::MlsGroupConfig, key_packages::KeyPackageBundle,
         test_utils::test_framework::CodecUse,
     };
 
@@ -333,10 +334,10 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         panic!("test vector can only be generated with two or more members")
     }
     // Set up a group with `n_leaves` members.
-    let managed_group_config = ManagedGroupConfig::test_default();
+    let mls_group_config = MlsGroupConfig::test_default();
 
-    let setup = ManagedTestSetup::new(
-        managed_group_config,
+    let setup = MlsGroupTestSetup::new(
+        mls_group_config,
         n_leaves as usize,
         CodecUse::SerializedMessages,
     );

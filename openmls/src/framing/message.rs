@@ -1,13 +1,15 @@
 use super::*;
 
-/// Unified message type for incoming MLS messages
+/// Unified message type for incoming MLS messages.
+/// Since the memory footprint can differ considerably between [`VerifiableMlsPlaintext`]
+/// and [`MlsCiphertext`], we use `Box<T>` for more efficient memory allocation.
 #[derive(Debug, Clone)]
 pub enum MlsMessageIn {
     /// An OpenMLS `VerifiableMlsPlaintext`.
-    Plaintext(VerifiableMlsPlaintext),
+    Plaintext(Box<VerifiableMlsPlaintext>),
 
     /// An OpenMLS `MlsCiphertext`.
-    Ciphertext(MlsCiphertext),
+    Ciphertext(Box<MlsCiphertext>),
 }
 
 impl MlsMessageIn {
@@ -30,31 +32,41 @@ impl MlsMessageIn {
     /// Get the epoch
     pub fn epoch(&self) -> GroupEpoch {
         match self {
-            MlsMessageIn::Ciphertext(m) => m.epoch,
+            MlsMessageIn::Ciphertext(m) => m.epoch(),
             MlsMessageIn::Plaintext(m) => m.epoch(),
+        }
+    }
+
+    /// Get the content type
+    pub fn content_type(&self) -> ContentType {
+        match self {
+            MlsMessageIn::Ciphertext(m) => m.content_type(),
+            MlsMessageIn::Plaintext(m) => m.content_type(),
         }
     }
 }
 
-/// Unified message type for outgoing MLS messages
+/// Unified message type for outgoing MLS messages.
+/// Since the memory footprint can differ considerably between [`MlsPlaintext`]
+/// and [`MlsCiphertext`], we use `Box<T>` for more efficient memory allocation.
 #[derive(PartialEq, Debug, Clone)]
 pub enum MlsMessageOut {
     /// An OpenMLS `MlsPlaintext`.
-    Plaintext(MlsPlaintext),
+    Plaintext(Box<MlsPlaintext>),
 
     /// An OpenMLS `MlsCiphertext`.
-    Ciphertext(MlsCiphertext),
+    Ciphertext(Box<MlsCiphertext>),
 }
 
 impl From<MlsPlaintext> for MlsMessageOut {
     fn from(mls_plaintext: MlsPlaintext) -> Self {
-        MlsMessageOut::Plaintext(mls_plaintext)
+        MlsMessageOut::Plaintext(Box::new(mls_plaintext))
     }
 }
 
 impl From<MlsCiphertext> for MlsMessageOut {
     fn from(mls_ciphertext: MlsCiphertext) -> Self {
-        MlsMessageOut::Ciphertext(mls_ciphertext)
+        MlsMessageOut::Ciphertext(Box::new(mls_ciphertext))
     }
 }
 
@@ -70,7 +82,7 @@ impl MlsMessageOut {
     /// Get the epoch as plain u64.
     pub fn epoch(&self) -> u64 {
         match self {
-            MlsMessageOut::Ciphertext(m) => m.epoch.0,
+            MlsMessageOut::Ciphertext(m) => m.epoch().0,
             MlsMessageOut::Plaintext(m) => m.epoch().0,
         }
     }
@@ -89,9 +101,9 @@ impl From<MlsMessageOut> for MlsMessageIn {
     fn from(message: MlsMessageOut) -> Self {
         match message {
             MlsMessageOut::Plaintext(pt) => {
-                MlsMessageIn::Plaintext(VerifiableMlsPlaintext::from_plaintext(pt, None))
+                MlsMessageIn::Plaintext(Box::new(VerifiableMlsPlaintext::from_plaintext(*pt, None)))
             }
-            MlsMessageOut::Ciphertext(ct) => MlsMessageIn::Ciphertext(ct),
+            MlsMessageOut::Ciphertext(ct) => MlsMessageIn::Ciphertext(Box::new(*ct)),
         }
     }
 }
@@ -99,13 +111,13 @@ impl From<MlsMessageOut> for MlsMessageIn {
 #[cfg(any(feature = "test-utils", test))]
 impl From<VerifiableMlsPlaintext> for MlsMessageIn {
     fn from(plaintext: VerifiableMlsPlaintext) -> Self {
-        MlsMessageIn::Plaintext(plaintext)
+        MlsMessageIn::Plaintext(Box::new(plaintext))
     }
 }
 
 #[cfg(any(feature = "test-utils", test))]
 impl From<MlsCiphertext> for MlsMessageIn {
     fn from(ciphertext: MlsCiphertext) -> Self {
-        MlsMessageIn::Ciphertext(ciphertext)
+        MlsMessageIn::Ciphertext(Box::new(ciphertext))
     }
 }

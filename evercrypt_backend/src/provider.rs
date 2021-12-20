@@ -16,8 +16,8 @@ use openmls_traits::{
     crypto::OpenMlsCrypto,
     random::OpenMlsRand,
     types::{
-        AeadType, CryptoError, HashType, HpkeAeadType, HpkeCiphertext, HpkeKdfType, HpkeKemType,
-        HpkeKeyPair, SignatureScheme,
+        AeadType, CryptoError, ExporterSecret, HashType, HpkeAeadType, HpkeCiphertext, HpkeConfig,
+        HpkeKdfType, HpkeKemType, HpkeKeyPair, KemOutput, SignatureScheme,
     },
 };
 use rand::{RngCore, SeedableRng};
@@ -45,6 +45,9 @@ fn signature_mode(signature_scheme: SignatureScheme) -> Result<SignatureMode, &'
         SignatureScheme::ECDSA_SECP521R1_SHA512 => {
             Err("SignatureScheme ecdsa_secp521r1 is not supported.")
         }
+        SignatureScheme::ECDSA_SECP384R1_SHA384 => {
+            Err("SignatureScheme ecdsa_secp384r1 is not supported.")
+        }
     }
 }
 
@@ -58,6 +61,9 @@ fn hash_from_signature(signature_scheme: SignatureScheme) -> Result<DigestMode, 
         SignatureScheme::ECDSA_SECP521R1_SHA512 => {
             Err("SignatureScheme ecdsa_secp521r1 is not supported.")
         }
+        SignatureScheme::ECDSA_SECP384R1_SHA384 => {
+            Err("SignatureScheme ecdsa_secp384r1 is not supported.")
+        }
     }
 }
 
@@ -65,6 +71,7 @@ fn hash_from_signature(signature_scheme: SignatureScheme) -> Result<DigestMode, 
 fn hash_from_algorithm(hash_type: HashType) -> DigestMode {
     match hash_type {
         HashType::Sha2_256 => DigestMode::Sha256,
+        HashType::Sha2_384 => DigestMode::Sha384,
         HashType::Sha2_512 => DigestMode::Sha512,
     }
 }
@@ -82,6 +89,7 @@ fn aead_from_algorithm(alg: AeadType) -> AeadMode {
 fn hmac_from_hash(hash_type: HashType) -> HmacMode {
     match hash_type {
         HashType::Sha2_256 => HmacMode::Sha256,
+        HashType::Sha2_384 => HmacMode::Sha384,
         HashType::Sha2_512 => HmacMode::Sha512,
     }
 }
@@ -241,20 +249,15 @@ impl OpenMlsCrypto for EvercryptProvider {
 
     fn hpke_seal(
         &self,
-        config: openmls_traits::types::HpkeConfig,
+        config: HpkeConfig,
         pk_r: &[u8],
         info: &[u8],
         aad: &[u8],
         ptxt: &[u8],
     ) -> openmls_traits::types::HpkeCiphertext {
-        let (kem_output, ciphertext) = Hpke::<HpkeEvercrypt>::new(
-            hpke::Mode::Base,
-            kem_mode(config.0),
-            kdf_mode(config.1),
-            aead_mode(config.2),
-        )
-        .seal(&pk_r.into(), info, aad, ptxt, None, None, None)
-        .unwrap();
+        let (kem_output, ciphertext) = hpke_from_config(config)
+            .seal(&pk_r.into(), info, aad, ptxt, None, None, None)
+            .unwrap();
         HpkeCiphertext {
             kem_output: kem_output.into(),
             ciphertext: ciphertext.into(),
@@ -263,50 +266,84 @@ impl OpenMlsCrypto for EvercryptProvider {
 
     fn hpke_open(
         &self,
-        config: openmls_traits::types::HpkeConfig,
+        config: HpkeConfig,
         input: &openmls_traits::types::HpkeCiphertext,
         sk_r: &[u8],
         info: &[u8],
         aad: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
-        Hpke::<HpkeEvercrypt>::new(
-            hpke::Mode::Base,
-            kem_mode(config.0),
-            kdf_mode(config.1),
-            aead_mode(config.2),
-        )
-        .open(
-            input.kem_output.as_slice(),
-            &sk_r.into(),
-            info,
-            aad,
-            input.ciphertext.as_slice(),
-            None,
-            None,
-            None,
-        )
-        .map_err(|_| CryptoError::HpkeDecryptionError)
+        hpke_from_config(config)
+            .open(
+                input.kem_output.as_slice(),
+                &sk_r.into(),
+                info,
+                aad,
+                input.ciphertext.as_slice(),
+                None,
+                None,
+                None,
+            )
+            .map_err(|_| CryptoError::HpkeDecryptionError)
+    }
+
+    fn hpke_setup_sender_and_export(
+        &self,
+        config: HpkeConfig,
+        pk_r: &[u8],
+        info: &[u8],
+        exporter_context: &[u8],
+        exporter_length: usize,
+    ) -> Result<(KemOutput, ExporterSecret), CryptoError> {
+        let (kem_output, context) = hpke_from_config(config)
+            .setup_sender(&pk_r.into(), info, None, None, None)
+            .map_err(|_| CryptoError::SenderSetupError)?;
+        let exported_secret = context
+            .export(exporter_context, exporter_length)
+            .map_err(|_| CryptoError::ExporterError)?;
+        Ok((kem_output, exported_secret))
+    }
+
+    fn hpke_setup_receiver_and_export(
+        &self,
+        config: HpkeConfig,
+        enc: &[u8],
+        sk_r: &[u8],
+        info: &[u8],
+        exporter_context: &[u8],
+        exporter_length: usize,
+    ) -> Result<ExporterSecret, CryptoError> {
+        let context = hpke_from_config(config)
+            .setup_receiver(enc, &sk_r.into(), info, None, None, None)
+            .map_err(|_| CryptoError::ReceiverSetupError)?;
+        let exported_secret = context
+            .export(exporter_context, exporter_length)
+            .map_err(|_| CryptoError::ExporterError)?;
+        Ok(exported_secret)
     }
 
     fn derive_hpke_keypair(
         &self,
-        config: openmls_traits::types::HpkeConfig,
+        config: HpkeConfig,
         ikm: &[u8],
     ) -> openmls_traits::types::HpkeKeyPair {
-        let kp = Hpke::<HpkeEvercrypt>::new(
-            hpke::Mode::Base,
-            kem_mode(config.0),
-            kdf_mode(config.1),
-            aead_mode(config.2),
-        )
-        .derive_key_pair(ikm)
-        .unwrap()
-        .into_keys();
+        let kp = hpke_from_config(config)
+            .derive_key_pair(ikm)
+            .unwrap()
+            .into_keys();
         HpkeKeyPair {
             private: kp.0.as_slice().into(),
             public: kp.1.as_slice().into(),
         }
     }
+}
+
+fn hpke_from_config(config: HpkeConfig) -> Hpke<HpkeEvercrypt> {
+    Hpke::<HpkeEvercrypt>::new(
+        hpke::Mode::Base,
+        kem_mode(config.0),
+        kdf_mode(config.1),
+        aead_mode(config.2),
+    )
 }
 
 #[inline(always)]

@@ -3,9 +3,9 @@ use tls_codec::Error as TlsCodecError;
 
 implement_error! {
     pub enum ErrorState {
-        NotInit = "Expected to be in initial state.",
-        NotEpoch = "Expected to be in epoch state.",
-        NotContext = "Expected to be in a state where the context is added.",
+        Init = "Expected to be in initial state.",
+        Epoch = "Expected to be in epoch state.",
+        Context = "Expected to be in a state where the context is added.",
     }
 }
 
@@ -39,7 +39,7 @@ implement_error! {
     pub enum PskSecretError {
         Simple {
             TooManyKeys = "More than 2^16 PSKs were provided.",
-            DifferentLength = "The IDs and secrets vectors have different lengths.",
+            KeyNotFound = "The PSK could not be found in the key store.",
             EncodingError = "Error serializing the PSK label.",
         }
         Complex {

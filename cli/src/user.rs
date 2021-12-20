@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use ds_lib::{ClientKeyPackages, DsMlsMessage, GroupMessage, Message};
-use openmls::{group::create_commit_params::CreateCommitParams, prelude::*};
+use openmls::{prelude::*, prelude_test::*};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use super::{backend::Backend, conversation::Conversation, identity::Identity};
@@ -25,7 +25,7 @@ pub struct Group {
     group_aad: Vec<u8>,
     members: Vec<Vec<u8>>,
     conversation: Conversation,
-    mls_group: RefCell<MlsGroup>,
+    core_group: RefCell<CoreGroup>,
     pending_proposals: Vec<MlsPlaintext>,
 }
 
@@ -95,7 +95,7 @@ impl User {
             None => return Err("Unknown group".to_string()),
         };
 
-        let mls_ciphertext = match group.mls_group.borrow_mut().create_application_message(
+        let mls_ciphertext = match group.core_group.borrow_mut().create_application_message(
             &group.group_aad,
             msg.as_bytes(),
             &self.identity.borrow().credential,
@@ -135,7 +135,7 @@ impl User {
                 Message::MlsMessage(message) => {
                     let mut groups = self.groups.borrow_mut();
                     let mut group = match groups.get(message.group_id()) {
-                        Some(g) => g.mls_group.borrow_mut(),
+                        Some(g) => g.core_group.borrow_mut(),
                         None => {
                             log::error!(
                                 "Error getting group {:?} for a message. Dropping message.",
@@ -218,16 +218,17 @@ impl User {
                                     .map_err(|e| format!("{}", e))?,
                                 )
                             }
-                            let mut mls_group = group.mls_group.borrow_mut();
-                            match mls_group.stage_commit(
+                            let mut core_group = group.core_group.borrow_mut();
+                            match core_group.stage_commit(
                                 &msg,
                                 &proposal_store,
                                 &[], // TODO: store key packages.
-                                None,
                                 &self.crypto,
                             ) {
                                 Ok(staged_commit) => {
-                                    mls_group.merge_commit(staged_commit);
+                                    core_group
+                                        .merge_commit(staged_commit)
+                                        .map_err(|e| format!("{}", e))?;
                                 }
                                 Err(e) => {
                                     let s = format!("Error applying commit: {:?}", e);
@@ -272,11 +273,11 @@ impl User {
         let mut group_aad = group_id.to_vec();
         group_aad.extend(b" AAD");
         let kpb = self.identity.borrow_mut().update(&self.crypto);
-        let config = MlsGroupConfig {
+        let config = CoreGroupConfig {
             add_ratchet_tree_extension: true,
             ..Default::default()
         };
-        let mls_group = MlsGroup::builder(GroupId::from_slice(group_id), kpb)
+        let core_group = CoreGroup::builder(GroupId::from_slice(group_id), kpb)
             .with_config(config)
             .build(&self.crypto)
             .unwrap();
@@ -285,7 +286,7 @@ impl User {
             group_name: name.clone(),
             members: Vec::new(),
             conversation: Conversation::default(),
-            mls_group: RefCell::new(mls_group),
+            core_group: RefCell::new(core_group),
             group_aad,
             pending_proposals: Vec::new(),
         };
@@ -326,7 +327,7 @@ impl User {
         // Framing parameters
         let framing_parameters = FramingParameters::new(&group.group_aad, WireFormat::MlsPlaintext);
         let add_proposal = group
-            .mls_group
+            .core_group
             .borrow()
             .create_add_proposal(framing_parameters, credentials, key_package, &self.crypto)
             .expect("Could not create proposal.");
@@ -345,18 +346,22 @@ impl User {
             .force_self_update(false)
             .build();
         let (commit, welcome_msg, _kpb) = group
-            .mls_group
+            .core_group
             .borrow()
             .create_commit(params, &self.crypto)
             .expect("Error creating commit");
         let welcome_msg = welcome_msg.expect("Welcome message wasn't created by create_commit.");
 
         let staged_commit = group
-            .mls_group
+            .core_group
             .borrow_mut()
-            .stage_commit(&commit, &proposal_store, &[], None, &self.crypto)
+            .stage_commit(&commit, &proposal_store, &[], &self.crypto)
             .expect("error applying commit");
-        group.mls_group.borrow_mut().merge_commit(staged_commit);
+        group
+            .core_group
+            .borrow_mut()
+            .merge_commit(staged_commit)
+            .map_err(|e| format!("{}", e))?;
 
         // Send Welcome to the client.
         log::trace!("Sending welcome");
@@ -394,11 +399,10 @@ impl User {
         log::debug!("{} joining group ...", self.username);
 
         let kpb = self.identity.borrow_mut().update(&self.crypto);
-        let mls_group = match MlsGroup::new_from_welcome(
+        let core_group = match CoreGroup::new_from_welcome(
             welcome,
             None, /* no public tree here, has to be in the extension */
             kpb,
-            None, /* PSK fetcher */
             &self.crypto,
         ) {
             Ok(g) => g,
@@ -409,30 +413,26 @@ impl User {
             }
         };
 
-        let group_id = mls_group.group_id();
+        let group_id = core_group.group_id();
         // XXX: Add application layer protocol for name etc.
         let group_name = String::from_utf8(group_id.to_vec()).unwrap();
         let group_aad = group_name.clone() + " AAD";
         let group_id = group_id.to_vec();
 
         // FIXME
-        let tree = mls_group.tree();
-        let leaf_count = tree.leaf_count();
-        let mut members = Vec::new();
-        for index in 0..leaf_count.as_usize() {
-            let leaf = &tree.nodes[LeafIndex::from(index)];
-            if let Some(leaf_node) = leaf.key_package() {
-                members.push(leaf_node.credential().identity().to_vec());
-            }
-        }
-        drop(tree);
+        let members: Vec<Vec<u8>> = core_group
+            .members()
+            .map_err(|e| format!("{}", e))?
+            .into_iter()
+            .map(|(_index, cred)| cred.identity().to_vec())
+            .collect();
 
         let group = Group {
             group_id: group_id.clone(),
             group_name: group_name.clone(),
             members,
             conversation: Conversation::default(),
-            mls_group: RefCell::new(mls_group),
+            core_group: RefCell::new(core_group),
             group_aad: group_aad.as_bytes().to_vec(),
             pending_proposals: Vec::new(),
         };

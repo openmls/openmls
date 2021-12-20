@@ -7,20 +7,15 @@
 
 use std::convert::TryFrom;
 
-use crate::{
-    ciphersuite::{Ciphersuite, CiphersuiteName, Secret},
-    config::{Config, ProtocolVersion},
-    group::{GroupContext, GroupEpoch, GroupId},
-    prelude::{BranchPsk, Psk, PskType::Branch},
-    schedule::{EpochSecrets, InitSecret, JoinerSecret, KeySchedule, WelcomeSecret},
-    test_utils::{bytes_to_hex, hex_to_bytes},
-};
+use crate::{ciphersuite::*, config::*, group::*, schedule::*, test_utils::*};
 
 #[cfg(test)]
 use crate::test_utils::{read, write};
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{random::OpenMlsRand, types::HpkeKeyPair, OpenMlsCryptoProvider};
+use openmls_traits::{
+    key_store::OpenMlsKeyStore, random::OpenMlsRand, types::HpkeKeyPair, OpenMlsCryptoProvider,
+};
 use rand::{rngs::OsRng, RngCore};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::Serialize as TlsSerialize;
@@ -101,22 +96,27 @@ fn generate(
         let psk_id =
         // XXX: Test all different PSK types.
         PreSharedKeyId::new(
-            Branch,
+            ciphersuite,
+            crypto.rand(),
             Psk::Branch(BranchPsk {
                 psk_group_id: GroupId::random(&crypto),
                 psk_epoch: GroupEpoch(epoch),
             }),
-            crypto.rand().random_vec(13).expect("An unexpected error occurred."),
-        );
+        ).expect("An unexpected error occurred.");
         let psk = PskSecret::random(ciphersuite, &crypto);
         psk_ids.push(psk_id.clone());
         psks.push(psk.secret().clone());
-        psks_out.push((psk_id, psk.secret().clone()));
+        psks_out.push((psk_id.clone(), psk.secret().clone()));
+        let psk_bundle = PskBundle::new(psk.secret().clone()).expect("Could not create PskBundle.");
+        crypto
+            .key_store()
+            .store(&psk_id, &psk_bundle)
+            .expect("Could not store PskBundle in key store.");
     }
-    let psk_secret = PskSecret::new(ciphersuite, &crypto, &psk_ids, &psks)
-        .expect("An unexpected error occurred.");
+    let psk_secret =
+        PskSecret::new(ciphersuite, &crypto, &psk_ids).expect("Could not create PskSecret.");
 
-    let joiner_secret = JoinerSecret::new(&crypto, &commit_secret, init_secret)
+    let joiner_secret = JoinerSecret::new(&crypto, commit_secret.clone(), init_secret)
         .expect("Could not create JoinerSecret.");
     let mut key_schedule = KeySchedule::init(
         ciphersuite,
@@ -179,7 +179,6 @@ pub fn generate_test_vector(
 ) -> KeyScheduleTestVector {
     use tls_codec::Serialize;
 
-    use crate::ciphersuite::HpkePublicKey;
     let crypto = OpenMlsRustCrypto::default();
 
     // Set up setting.
@@ -277,11 +276,11 @@ fn write_test_vectors() {
     write("test_vectors/kat_key_schedule_openmls-new.json", &tests);
 }
 
-#[test]
-fn read_test_vectors() {
+#[apply(backends)]
+fn read_test_vectors_key_schedule(backend: &impl OpenMlsCryptoProvider) {
     let tests: Vec<KeyScheduleTestVector> = read("test_vectors/kat_key_schedule_openmls.json");
     for test_vector in tests {
-        match run_test_vector(test_vector) {
+        match run_test_vector(test_vector, backend) {
             Ok(_) => {}
             Err(e) => panic!("Error while checking key schedule test vector.\n{:?}", e),
         }
@@ -301,10 +300,11 @@ fn read_test_vectors() {
 }
 
 #[cfg(any(feature = "test-utils", test))]
-pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestVectorError> {
+pub fn run_test_vector(
+    test_vector: KeyScheduleTestVector,
+    backend: &impl OpenMlsCryptoProvider,
+) -> Result<(), KsTestVectorError> {
     use tls_codec::{Deserialize, Serialize};
-
-    use crate::ciphersuite::HpkePublicKey;
 
     let ciphersuite =
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
@@ -318,7 +318,6 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
             return Ok(());
         }
     };
-    let crypto = OpenMlsRustCrypto::default();
     log::debug!("Testing test vector for ciphersuite {:?}", ciphersuite);
     log::trace!("  {:?}", test_vector);
 
@@ -337,31 +336,37 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
     for (i, epoch) in test_vector.epochs.iter().enumerate() {
         log::debug!("  Epoch {:?}", i);
         let tree_hash = hex_to_bytes(&epoch.tree_hash);
-        let commit_secret = hex_to_bytes(&epoch.commit_secret);
-        let commit_secret = CommitSecret::from(Secret::from_slice(
-            &commit_secret,
+        let secret = hex_to_bytes(&epoch.commit_secret);
+        let commit_secret = CommitSecret::from(PathSecret::from(Secret::from_slice(
+            &secret,
             ProtocolVersion::default(),
             ciphersuite,
-        ));
+        )));
         log::trace!("    CommitSecret from tve {:?}", epoch.commit_secret);
         let mut psks = Vec::new();
         let mut psk_ids = Vec::new();
         for psk_value in epoch.psks.iter() {
-            psk_ids.push(
+            let psk_id =
                 PreSharedKeyId::tls_deserialize(&mut hex_to_bytes(&psk_value.psk_id).as_slice())
-                    .expect("An unexpected error occurred."),
-            );
-            psks.push(Secret::from_slice(
+                    .expect("An unexpected error occurred.");
+            psk_ids.push(psk_id.clone());
+            let secret = Secret::from_slice(
                 &hex_to_bytes(&psk_value.psk),
                 ProtocolVersion::default(),
                 ciphersuite,
-            ));
+            );
+            psks.push(secret.clone());
+            let psk_bundle = PskBundle::new(secret).expect("Could not create PskBundle.");
+            backend
+                .key_store()
+                .store(&psk_id, &psk_bundle)
+                .expect("Could not store PskBundle in key store.");
         }
-        // let psk = Vec::new();
-        let psk_secret = PskSecret::new(ciphersuite, &crypto, &psk_ids, &psks)
-            .expect("An unexpected error occurred.");
 
-        let joiner_secret = JoinerSecret::new(&crypto, &commit_secret, &init_secret)
+        let psk_secret =
+            PskSecret::new(ciphersuite, backend, &psk_ids).expect("An unexpected error occurred.");
+
+        let joiner_secret = JoinerSecret::new(backend, commit_secret, &init_secret)
             .expect("Could not create JoinerSecret.");
         if hex_to_bytes(&epoch.joiner_secret) != joiner_secret.as_slice() {
             if cfg!(test) {
@@ -372,13 +377,13 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
 
         let mut key_schedule = KeySchedule::init(
             ciphersuite,
-            &crypto,
+            backend,
             joiner_secret.clone(),
             Some(psk_secret),
         )
         .expect("Could not create KeySchedule.");
         let welcome_secret = key_schedule
-            .welcome(&crypto)
+            .welcome(backend)
             .expect("An unexpected error occurred.");
 
         if hex_to_bytes(&epoch.welcome_secret) != welcome_secret.as_slice() {
@@ -414,11 +419,11 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
         }
 
         key_schedule
-            .add_context(&crypto, &group_context_serialized)
+            .add_context(backend, &group_context_serialized)
             .expect("An unexpected error occurred.");
 
         let epoch_secrets = key_schedule
-            .epoch_secrets(&crypto, true)
+            .epoch_secrets(backend, true)
             .expect("An unexpected error occurred.");
 
         init_secret = epoch_secrets
@@ -492,7 +497,7 @@ pub fn run_test_vector(test_vector: KeyScheduleTestVector) -> Result<(), KsTestV
         // Calculate external HPKE key pair
         let external_key_pair = epoch_secrets
             .external_secret()
-            .derive_external_keypair(crypto.crypto(), ciphersuite);
+            .derive_external_keypair(backend.crypto(), ciphersuite);
         if hex_to_bytes(&epoch.external_pub)
             != HpkePublicKey::from(external_key_pair.public.clone())
                 .tls_serialize_detached()

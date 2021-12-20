@@ -8,9 +8,9 @@ use std::collections::HashMap;
 
 use ::rand::rngs::OsRng;
 use ::rand::RngCore;
-use openmls::group::create_commit_params::CreateCommitParams;
 use openmls::prelude::*;
-use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls::prelude_test::*;
+use openmls::{test_utils::*, *};
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsCryptoProvider;
 
@@ -26,7 +26,7 @@ pub(crate) struct TestClientConfig {
 /// Configuration of a group meant to be used in a test setup.
 pub(crate) struct TestGroupConfig {
     pub(crate) ciphersuite: CiphersuiteName,
-    pub(crate) config: MlsGroupConfig,
+    pub(crate) config: CoreGroupConfig,
     pub(crate) members: Vec<TestClientConfig>,
 }
 
@@ -41,7 +41,7 @@ pub(crate) struct TestSetupConfig {
 pub(crate) struct TestClient {
     pub(crate) credential_bundles: HashMap<CiphersuiteName, CredentialBundle>,
     pub(crate) key_package_bundles: RefCell<Vec<KeyPackageBundle>>,
-    pub(crate) group_states: RefCell<HashMap<GroupId, MlsGroup>>,
+    pub(crate) group_states: RefCell<HashMap<GroupId, CoreGroup>>,
 }
 
 impl TestClient {
@@ -72,8 +72,7 @@ pub(crate) struct TestSetup {
 const KEY_PACKAGE_COUNT: usize = 10;
 
 /// The setup function creates a set of groups and clients.
-pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
-    let crypto = OpenMlsRustCrypto::default();
+pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvider) -> TestSetup {
     let mut test_clients: HashMap<&'static str, RefCell<TestClient>> = HashMap::new();
     let mut key_store: HashMap<(&'static str, CiphersuiteName), Vec<KeyPackage>> = HashMap::new();
     // Initialize the clients for which we have configurations.
@@ -89,7 +88,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 client.name.as_bytes().to_vec(),
                 CredentialType::Basic,
                 SignatureScheme::from(ciphersuite),
-                &crypto,
+                backend,
             )
             .expect("An unexpected error occurred.");
             // Create a number of key packages.
@@ -107,7 +106,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 let key_package_bundle: KeyPackageBundle = KeyPackageBundle::new(
                     &[ciphersuite],
                     &credential_bundle,
-                    &crypto,
+                    backend,
                     mandatory_extensions,
                 )
                 .expect("An unexpected error occurred.");
@@ -146,7 +145,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             .expect("An unexpected error occurred.");
         // Figure out which KeyPackageBundle that key package corresponds to.
         let initial_key_package_bundle = initial_group_member
-            .find_key_package_bundle(&initial_key_package, &crypto)
+            .find_key_package_bundle(&initial_key_package, backend)
             .expect("An unexpected error occurred.");
         // Get the credential bundle corresponding to the ciphersuite.
         let initial_credential_bundle = initial_group_member
@@ -154,13 +153,13 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
             .get(&group_config.ciphersuite)
             .expect("An unexpected error occurred.");
         // Initialize the group state for the initial member.
-        let mls_group = MlsGroup::builder(
+        let core_group = CoreGroup::builder(
             GroupId::from_slice(&group_id.to_be_bytes()),
             initial_key_package_bundle,
         )
         .with_config(group_config.config)
-        .build(&crypto)
-        .expect("Error creating new MlsGroup");
+        .build(backend)
+        .expect("Error creating new CoreGroup");
         let mut proposal_list = Vec::new();
         let group_aad = b"";
         // Framing parameters
@@ -168,13 +167,13 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
         initial_group_member
             .group_states
             .borrow_mut()
-            .insert(mls_group.context().group_id().clone(), mls_group);
+            .insert(core_group.context().group_id().clone(), core_group);
         // If there is more than one member in the group, prepare proposals and
         // commit. Then distribute the Welcome message to the new
         // members.
         if group_config.members.len() > 1 {
             let mut group_states = initial_group_member.group_states.borrow_mut();
-            let mls_group = group_states
+            let core_group = group_states
                 .get_mut(&GroupId::from_slice(&group_id.to_be_bytes()))
                 .expect("An unexpected error occurred.");
             for client_id in 1..group_config.members.len() {
@@ -189,12 +188,12 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     .expect("An unexpected error occurred.");
                 // Have the initial member create an Add proposal using the new
                 // KeyPackage.
-                let add_proposal = mls_group
+                let add_proposal = core_group
                     .create_add_proposal(
                         framing_parameters,
                         initial_credential_bundle,
                         next_member_key_package,
-                        &crypto,
+                        backend,
                     )
                     .expect("An unexpected error occurred.");
                 proposal_list.push(add_proposal);
@@ -207,7 +206,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     StagedProposal::from_mls_plaintext(
                         &Ciphersuite::new(group_config.ciphersuite)
                             .expect("Could not create ciphersuite."),
-                        &crypto,
+                        backend,
                         proposal,
                     )
                     .expect("Could not create staged proposal."),
@@ -218,8 +217,8 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                 .credential_bundle(initial_credential_bundle)
                 .proposal_store(&proposal_store)
                 .build();
-            let (commit_mls_plaintext, welcome_option, key_package_bundle_option) = mls_group
-                .create_commit(params, &crypto)
+            let (commit_mls_plaintext, welcome_option, key_package_bundle_option) = core_group
+                .create_commit(params, backend)
                 .expect("An unexpected error occurred.");
             let welcome = welcome_option.expect("An unexpected error occurred.");
             let key_package_bundle =
@@ -227,16 +226,17 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
 
             // Apply the commit to the initial group member's group state using
             // the key package bundle returned by the create_commit earlier.
-            let staged_commit = mls_group
+            let staged_commit = core_group
                 .stage_commit(
                     &commit_mls_plaintext,
                     &proposal_store,
                     &[key_package_bundle],
-                    None,
-                    &crypto,
+                    backend,
                 )
                 .expect("Error applying Commit");
-            mls_group.merge_commit(staged_commit);
+            core_group
+                .merge_commit(staged_commit)
+                .expect("error merging commit");
 
             // Distribute the Welcome message to the other members.
             for client_id in 1..group_config.members.len() {
@@ -256,7 +256,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                             .iter()
                             .any(|y| {
                                 y.key_package()
-                                    .hash(&crypto)
+                                    .hash(backend)
                                     .expect("Could not hash KeyPackage.")
                                     == x.key_package_hash.as_slice()
                             })
@@ -268,7 +268,7 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     .iter()
                     .position(|y| {
                         y.key_package()
-                            .hash(&crypto)
+                            .hash(backend)
                             .expect("Could not hash KeyPackage.")
                             == member_secret.key_package_hash.as_slice()
                     })
@@ -279,12 +279,11 @@ pub(crate) fn setup(config: TestSetupConfig) -> TestSetup {
                     .remove(kpb_position);
                 // Create the local group state of the new member based on the
                 // Welcome.
-                let new_group = match MlsGroup::new_from_welcome(
+                let new_group = match CoreGroup::new_from_welcome(
                     welcome.clone(),
-                    Some(mls_group.tree().public_key_tree_copy()),
+                    Some(core_group.treesync().export_nodes()),
                     key_package_bundle,
-                    None, /* PSKs not supported here */
-                    &crypto,
+                    backend,
                 ) {
                     Ok(group) => group,
                     Err(err) => panic!("Error creating new group from Welcome: {:?}", err),
@@ -320,8 +319,8 @@ fn test_random() {
     randombytes(0);
 }
 
-#[test]
-fn test_setup() {
+#[apply(backends)]
+fn test_setup(backend: &impl OpenMlsCryptoProvider) {
     let test_client_config_a = TestClientConfig {
         name: "TestClientConfigA",
         ciphersuites: vec![CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519],
@@ -330,7 +329,7 @@ fn test_setup() {
         name: "TestClientConfigB",
         ciphersuites: vec![CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519],
     };
-    let group_config = MlsGroupConfig::default();
+    let group_config = CoreGroupConfig::default();
     let test_group_config = TestGroupConfig {
         ciphersuite: CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         config: group_config,
@@ -340,5 +339,5 @@ fn test_setup() {
         clients: vec![test_client_config_a, test_client_config_b],
         groups: vec![test_group_config],
     };
-    let _test_setup = setup(test_setup_config);
+    let _test_setup = setup(test_setup_config, backend);
 }
