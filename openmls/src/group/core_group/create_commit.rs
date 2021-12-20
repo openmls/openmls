@@ -40,7 +40,7 @@ impl CoreGroup {
         &self,
         params: CreateCommitParams,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> CreateCommitResult {
+    ) -> Result<CreateCommitResult, CoreGroupError> {
         let ciphersuite = self.ciphersuite();
 
         let sender_type = match params.commit_type() {
@@ -231,10 +231,10 @@ impl CoreGroup {
                 provisional_group_context.group_id().clone(),
                 provisional_group_context.epoch(),
                 tree_hash,
-                confirmed_transcript_hash,
+                confirmed_transcript_hash.clone(),
                 self.group_context_extensions(),
                 &other_extensions,
-                confirmation_tag,
+                confirmation_tag.clone(),
                 sender_index,
             );
             let group_info = group_info.sign(backend, params.credential_bundle())?;
@@ -294,11 +294,11 @@ impl CoreGroup {
         );
 
         let staged_commit = StagedCommit::new(staged_proposal_queue, Some(staged_commit_state));
-        Ok((
-            mls_plaintext,
+        Ok(CreateCommitResult {
+            commit: mls_plaintext,
             welcome_option,
-            key_package_bundle,
+            key_package_bundle_option: key_package_bundle,
             staged_commit,
-        ))
+        })
     }
 }

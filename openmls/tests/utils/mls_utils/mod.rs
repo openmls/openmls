@@ -217,18 +217,21 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                 .credential_bundle(initial_credential_bundle)
                 .proposal_store(&proposal_store)
                 .build();
-            let (commit_mls_plaintext, welcome_option, key_package_bundle_option) = core_group
+            let create_commit_result = core_group
                 .create_commit(params, backend)
                 .expect("An unexpected error occurred.");
-            let welcome = welcome_option.expect("An unexpected error occurred.");
-            let key_package_bundle =
-                key_package_bundle_option.expect("An unexpected error occurred.");
+            let welcome = create_commit_result
+                .welcome_option
+                .expect("An unexpected error occurred.");
+            let key_package_bundle = create_commit_result
+                .key_package_bundle_option
+                .expect("An unexpected error occurred.");
 
             // Apply the commit to the initial group member's group state using
             // the key package bundle returned by the create_commit earlier.
             let staged_commit = core_group
                 .stage_commit(
-                    &commit_mls_plaintext,
+                    &create_commit_result.commit,
                     &proposal_store,
                     &[key_package_bundle],
                     backend,

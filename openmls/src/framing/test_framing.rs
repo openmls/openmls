@@ -405,12 +405,12 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (commit, _welcome_option, _kpb_option) = group_alice
+    let create_commit_result = group_alice
         .create_commit(params, backend)
         .expect("Error creating Commit");
 
     let staged_commit = group_alice
-        .stage_commit(&commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Could not stage Commit");
     group_alice
         .merge_commit(staged_commit)
@@ -439,19 +439,21 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (commit, welcome_option, _kpb_option) = group_alice
+    let create_commit_result = group_alice
         .create_commit(params, backend)
         .expect("Error creating Commit");
 
     let staged_commit = group_alice
-        .stage_commit(&commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Could not stage Commit");
     group_alice
         .merge_commit(staged_commit)
         .expect("error merging commit");
 
     let mut group_charlie = CoreGroup::new_from_welcome(
-        welcome_option.expect("An unexpected error occurred."),
+        create_commit_result
+            .welcome_option
+            .expect("An unexpected error occurred."),
         Some(group_alice.treesync().export_nodes()),
         charlie_key_package_bundle,
         backend,
@@ -475,21 +477,23 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (commit, _welcome_option, kpb_option) = group_alice
+    let create_commit_result = group_alice
         .create_commit(params, backend)
         .expect("Error creating Commit");
 
     let staged_commit = group_charlie
-        .stage_commit(&commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Charlie: Could not stage Commit");
     group_charlie
         .merge_commit(staged_commit)
         .expect("error merging commit");
     let staged_commit = group_alice
         .stage_commit(
-            &commit,
+            &create_commit_result.commit,
             &proposal_store,
-            &[kpb_option.expect("An unexpected error occurred.")],
+            &[create_commit_result
+                .key_package_bundle_option
+                .expect("An unexpected error occurred.")],
             backend,
         )
         .expect("Alice: Could not stage Commit");
@@ -645,14 +649,14 @@ fn confirmation_tag_presence(
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (mut commit, _welcome_option, _kpb_option) = group_alice
+    let mut create_commit_result = group_alice
         .create_commit(params, backend)
         .expect("Error creating Commit");
 
-    commit.unset_confirmation_tag();
+    create_commit_result.commit.unset_confirmation_tag();
 
     let err = group_alice
-        .stage_commit(&commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect_err("No error despite missing confirmation tag.");
 
     assert_eq!(
@@ -729,11 +733,12 @@ fn invalid_plaintext_signature(
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (mut commit, _welcome, _kpb_option) = group_alice
+    let mut create_commit_result = group_alice
         .create_commit(params, backend)
         .expect("Error creating Commit");
 
-    let original_encoded_commit = commit
+    let original_encoded_commit = create_commit_result
+        .commit
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
     let mut input_commit =
@@ -785,9 +790,10 @@ fn invalid_plaintext_signature(
     );
 
     // Tamper with signature.
-    let good_signature = commit.signature().clone();
-    commit.invalidate_signature();
-    let encoded_commit = commit
+    let good_signature = create_commit_result.commit.signature().clone();
+    create_commit_result.commit.invalidate_signature();
+    let encoded_commit = create_commit_result
+        .commit
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
     let input_commit = VerifiableMlsPlaintext::tls_deserialize(&mut encoded_commit.as_slice())
@@ -803,15 +809,17 @@ fn invalid_plaintext_signature(
     );
 
     // Fix commit
-    commit.set_signature(good_signature);
-    commit.set_membership_tag_test(good_membership_tag.expect("An unexpected error occurred."));
+    create_commit_result.commit.set_signature(good_signature);
+    create_commit_result
+        .commit
+        .set_membership_tag_test(good_membership_tag.expect("An unexpected error occurred."));
 
     // Remove confirmation tag.
-    let good_confirmation_tag = commit.confirmation_tag().cloned();
-    commit.unset_confirmation_tag();
+    let good_confirmation_tag = create_commit_result.commit.confirmation_tag().cloned();
+    create_commit_result.commit.unset_confirmation_tag();
 
     let error = group_alice
-        .stage_commit(&commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect_err("Staging commit should have yielded an error.");
     assert_eq!(
         error,
@@ -823,7 +831,9 @@ fn invalid_plaintext_signature(
         .clone()
         .expect("There should have been a membership tag.");
     modified_confirmation_tag.0.mac_value[0] ^= 0xFF;
-    commit.set_confirmation_tag(modified_confirmation_tag);
+    create_commit_result
+        .commit
+        .set_confirmation_tag(modified_confirmation_tag);
     let serialized_group_before =
         serde_json::to_string(&group_alice).expect("An unexpected error occurred.");
 
@@ -834,7 +844,7 @@ fn invalid_plaintext_signature(
     );
 
     let error = group_alice
-        .stage_commit(&commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect_err("Staging commit should have yielded an error.");
     assert_eq!(
         error,
@@ -845,8 +855,11 @@ fn invalid_plaintext_signature(
     assert_eq!(serialized_group_before, serialized_group_after);
 
     // Fix commit again and stage it.
-    commit.set_confirmation_tag(good_confirmation_tag.expect("An unexpected error occurred."));
-    let encoded_commit = commit
+    create_commit_result
+        .commit
+        .set_confirmation_tag(good_confirmation_tag.expect("An unexpected error occurred."));
+    let encoded_commit = create_commit_result
+        .commit
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
     let input_commit = VerifiableMlsPlaintext::tls_deserialize(&mut encoded_commit.as_slice())

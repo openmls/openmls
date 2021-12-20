@@ -248,25 +248,25 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = alice_group
+    let create_commit_result = alice_group
         .create_commit(params, backend)
         .expect("Error creating commit");
 
-    let commit = match mls_plaintext_commit.content() {
+    let commit = match create_commit_result.commit.content() {
         MlsPlaintextContentType::Commit(commit) => commit,
         _ => panic!("Wrong content type"),
     };
-    assert!(!commit.has_path() && kpb_option.is_none());
+    assert!(!commit.has_path() && create_commit_result.key_package_bundle_option.is_none());
     // Check that the function returned a Welcome message
-    assert!(welcome_bundle_alice_bob_option.is_some());
+    assert!(create_commit_result.welcome_option.is_some());
 
     println!(
         " *** Confirmation tag: {:?}",
-        mls_plaintext_commit.confirmation_tag()
+        create_commit_result.commit.confirmation_tag()
     );
 
     let staged_commit = alice_group
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     alice_group
         .merge_commit(staged_commit)
@@ -274,7 +274,9 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     let ratchet_tree = alice_group.treesync().export_nodes();
 
     let group_bob = CoreGroup::new_from_welcome(
-        welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
+        create_commit_result
+            .welcome_option
+            .expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,
         backend,
@@ -308,14 +310,14 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (mls_plaintext_commit, _welcome_option, _kpb_option) = group_bob
+    let create_commit_result = group_bob
         .create_commit(params, backend)
         .expect("An unexpected error occurred.");
 
     // Now we break Alice's HPKE ciphertext in Bob's commit by breaking
     // apart the commit, manipulating the ciphertexts and the piecing it
     // back together.
-    let commit = match mls_plaintext_commit.content() {
+    let commit = match create_commit_result.commit.content() {
         MlsPlaintextContentType::Commit(commit) => commit,
         _ => panic!("Bob created a commit, which does not contain an actual commit."),
     };
@@ -336,7 +338,7 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     let mut broken_plaintext = MlsPlaintext::commit(
         framing_parameters,
-        mls_plaintext_commit.sender_index(),
+        create_commit_result.commit.sender_index(),
         broken_commit,
         CommitType::Member,
         &bob_credential_bundle,
@@ -346,7 +348,8 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     .expect("Could not create plaintext.");
 
     broken_plaintext.set_confirmation_tag(
-        mls_plaintext_commit
+        create_commit_result
+            .commit
             .confirmation_tag()
             .cloned()
             .expect("An unexpected error occurred."),
@@ -476,14 +479,14 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
+    let create_commit_result = alice_group
         .create_commit(params, backend)
         .expect("Error creating commit");
 
     log::info!(" >>> Staging & merging commit ...");
 
     let staged_commit = alice_group
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     alice_group
         .merge_commit(staged_commit)
@@ -491,7 +494,9 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
     let ratchet_tree = alice_group.treesync().export_nodes();
 
     let group_bob = CoreGroup::new_from_welcome(
-        welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
+        create_commit_result
+            .welcome_option
+            .expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,
         backend,
@@ -525,7 +530,7 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (_mls_plaintext_commit, _welcome_option, _kpb_option) = group_bob
+    let _create_commit_result = group_bob
         .create_commit(params, backend)
         .expect("An unexpected error occurred.");
 }

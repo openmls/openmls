@@ -60,15 +60,12 @@ use super::errors::{
 
 use super::group_context::*;
 
-pub type CreateCommitResult = Result<
-    (
-        MlsPlaintext,
-        Option<Welcome>,
-        Option<KeyPackageBundle>,
-        StagedCommit,
-    ),
-    CoreGroupError,
->;
+pub struct CreateCommitResult {
+    pub commit: MlsPlaintext,
+    pub welcome_option: Option<Welcome>,
+    pub key_package_bundle_option: Option<KeyPackageBundle>,
+    pub staged_commit: StagedCommit,
+}
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]

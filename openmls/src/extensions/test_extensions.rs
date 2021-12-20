@@ -160,19 +160,21 @@ fn ratchet_tree_extension(ciphersuite: &'static Ciphersuite, backend: &impl Open
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
+    let create_commit_result = alice_group
         .create_commit(params, backend)
         .expect("Error creating commit");
 
     let staged_commit = alice_group
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     alice_group
         .merge_commit(staged_commit)
         .expect("error merging commit");
 
     let bob_group = match CoreGroup::new_from_welcome(
-        welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
+        create_commit_result
+            .welcome_option
+            .expect("An unexpected error occurred."),
         None,
         bob_key_package_bundle,
         backend,
@@ -242,19 +244,21 @@ fn ratchet_tree_extension(ciphersuite: &'static Ciphersuite, backend: &impl Open
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
+    let create_commit_result = alice_group
         .create_commit(params, backend)
         .expect("Error creating commit");
 
     let staged_commit = alice_group
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     alice_group
         .merge_commit(staged_commit)
         .expect("error merging commit");
 
     let error = CoreGroup::new_from_welcome(
-        welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
+        create_commit_result
+            .welcome_option
+            .expect("An unexpected error occurred."),
         None,
         bob_key_package_bundle,
         backend,

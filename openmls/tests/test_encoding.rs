@@ -334,10 +334,11 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .credential_bundle(alice_credential_bundle)
             .proposal_store(&proposal_store)
             .build();
-        let (commit, _welcome_option, _key_package_bundle_option) = group_state
+        let create_commit_result = group_state
             .create_commit(params, backend)
             .expect("An unexpected error occurred.");
-        let commit_encoded = commit
+        let commit_encoded = create_commit_result
+            .commit
             .tls_serialize_detached()
             .expect("An unexpected error occurred.");
         let commit_decoded =
@@ -348,7 +349,7 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
                 Err(err) => panic!("Error decoding MPLSPlaintext Commit: {:?}", err),
             };
 
-        assert_eq!(commit, commit_decoded);
+        assert_eq!(create_commit_result.commit, commit_decoded);
     }
 }
 
@@ -398,15 +399,17 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
             .credential_bundle(credential_bundle)
             .proposal_store(&proposal_store)
             .build();
-        let (commit, welcome_option, key_package_bundle_option) = group_state
+        let create_commit_result = group_state
             .create_commit(params, backend)
             .expect("An unexpected error occurred.");
         // Alice applies the commit
         let staged_commit = group_state
             .stage_commit(
-                &commit,
+                &create_commit_result.commit,
                 &proposal_store,
-                &[key_package_bundle_option.expect("An unexpected error occurred.")],
+                &[create_commit_result
+                    .key_package_bundle_option
+                    .expect("An unexpected error occurred.")],
                 backend,
             )
             .expect("Could not stage the commit");
@@ -416,7 +419,9 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
 
         // Welcome messages
 
-        let welcome = welcome_option.expect("An unexpected error occurred.");
+        let welcome = create_commit_result
+            .welcome_option
+            .expect("An unexpected error occurred.");
 
         let welcome_encoded = welcome
             .tls_serialize_detached()

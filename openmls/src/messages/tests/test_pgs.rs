@@ -84,16 +84,18 @@ fn test_pgs(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvi
         .credential_bundle(&alice_credential_bundle)
         .proposal_store(&proposal_store)
         .build();
-    let (commit, _welcome_option, kpb_option) = match group_alice.create_commit(params, backend) {
+    let create_commit_result = match group_alice.create_commit(params, backend) {
         Ok(c) => c,
         Err(e) => panic!("Error creating commit: {:?}", e),
     };
 
     let staged_commit = group_alice
         .stage_commit(
-            &commit,
+            &create_commit_result.commit,
             &proposal_store,
-            &[kpb_option.expect("No KeyPackageBundle")],
+            &[create_commit_result
+                .key_package_bundle_option
+                .expect("No KeyPackageBundle")],
             backend,
         )
         .expect("Could not stage Commit");

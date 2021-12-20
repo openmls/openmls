@@ -88,17 +88,17 @@ fn create_commit_optional_path(
         .credential_bundle(&alice_credential_bundle)
         .proposal_store(&proposal_store)
         .build();
-    let (mls_plaintext_commit, _welcome_bundle_alice_bob_option, kpb_option) =
+    let create_commit_result =
         match group_alice.create_commit(params /* No PSK fetcher */, backend) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
-    let commit = match mls_plaintext_commit.content() {
+    let commit = match create_commit_result.commit.content() {
         MlsPlaintextContentType::Commit(commit) => commit,
         _ => panic!(),
     };
     assert!(commit.has_path());
-    assert!(commit.has_path() && kpb_option.is_some());
+    assert!(commit.has_path() && create_commit_result.key_package_bundle_option.is_some());
 
     // Alice adds Bob without forced self-update
     // Since there are only Add Proposals, this does not generate a path field on
@@ -125,21 +125,20 @@ fn create_commit_optional_path(
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) =
-        match group_alice.create_commit(params, backend) {
-            Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {:?}", e),
-        };
-    let commit = match mls_plaintext_commit.content() {
+    let create_commit_result = match group_alice.create_commit(params, backend) {
+        Ok(c) => c,
+        Err(e) => panic!("Error creating commit: {:?}", e),
+    };
+    let commit = match create_commit_result.commit.content() {
         MlsPlaintextContentType::Commit(commit) => commit,
         _ => panic!(),
     };
-    assert!(!commit.has_path() && kpb_option.is_none());
+    assert!(!commit.has_path() && create_commit_result.key_package_bundle_option.is_none());
 
     // Alice applies the Commit without the forced self-update
 
     let staged_commit = group_alice
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Error staging commit");
     group_alice
         .merge_commit(staged_commit)
@@ -148,7 +147,9 @@ fn create_commit_optional_path(
 
     // Bob creates group from Welcome
     let group_bob = match CoreGroup::new_from_welcome(
-        welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
+        create_commit_result
+            .welcome_option
+            .expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,
         backend,
@@ -185,23 +186,24 @@ fn create_commit_optional_path(
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (commit_mls_plaintext, _welcome_option, kpb_option) =
-        match group_alice.create_commit(params, backend) {
-            Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {:?}", e),
-        };
-    let commit = match commit_mls_plaintext.content() {
+    let create_commit_result = match group_alice.create_commit(params, backend) {
+        Ok(c) => c,
+        Err(e) => panic!("Error creating commit: {:?}", e),
+    };
+    let commit = match create_commit_result.commit.content() {
         MlsPlaintextContentType::Commit(commit) => commit,
         _ => panic!(),
     };
-    assert!(commit.has_path() && kpb_option.is_some());
+    assert!(commit.has_path() && create_commit_result.key_package_bundle_option.is_some());
 
     // Apply UpdateProposal
     let staged_commit = group_alice
         .stage_commit(
-            &commit_mls_plaintext,
+            &create_commit_result.commit,
             &proposal_store,
-            &[kpb_option.expect("An unexpected error occurred.")],
+            &[create_commit_result
+                .key_package_bundle_option
+                .expect("An unexpected error occurred.")],
             backend,
         )
         .expect("Error staging commit");
@@ -369,19 +371,19 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = group_alice
+    let create_commit_result = group_alice
         .create_commit(params, backend)
         .expect("Error creating commit");
-    let commit = match mls_plaintext_commit.content() {
+    let commit = match create_commit_result.commit.content() {
         MlsPlaintextContentType::Commit(commit) => commit,
         _ => panic!("Wrong content type"),
     };
-    assert!(!commit.has_path() && kpb_option.is_none());
+    assert!(!commit.has_path() && create_commit_result.key_package_bundle_option.is_none());
     // Check that the function returned a Welcome message
-    assert!(welcome_bundle_alice_bob_option.is_some());
+    assert!(create_commit_result.welcome_option.is_some());
 
     let staged_commit = group_alice
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Error staging commit");
     group_alice
         .merge_commit(staged_commit)
@@ -389,7 +391,9 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     let ratchet_tree = group_alice.treesync().export_nodes();
 
     let mut group_bob = match CoreGroup::new_from_welcome(
-        welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
+        create_commit_result
+            .welcome_option
+            .expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,
         backend,
@@ -456,28 +460,29 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (mls_plaintext_commit, welcome_option, kpb_option) =
-        match group_bob.create_commit(params, backend) {
-            Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {:?}", e),
-        };
+    let create_commit_result = match group_bob.create_commit(params, backend) {
+        Ok(c) => c,
+        Err(e) => panic!("Error creating commit: {:?}", e),
+    };
 
     // Check that there is a new KeyPackageBundle
-    assert!(kpb_option.is_some());
+    assert!(create_commit_result.key_package_bundle_option.is_some());
     // Check there is no Welcome message
-    assert!(welcome_option.is_none());
+    assert!(create_commit_result.welcome_option.is_none());
 
     let staged_commit = group_alice
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Alice)");
     group_alice
         .merge_commit(staged_commit)
         .expect("error merging commit");
     let staged_commit = group_bob
         .stage_commit(
-            &mls_plaintext_commit,
+            &create_commit_result.commit,
             &proposal_store,
-            &[kpb_option.expect("An unexpected error occurred.")],
+            &[create_commit_result
+                .key_package_bundle_option
+                .expect("An unexpected error occurred.")],
             backend,
         )
         .expect("Error applying commit (Bob)");
@@ -521,20 +526,22 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (mls_plaintext_commit, _, kpb_option) =
+    let create_commit_result =
         match group_alice.create_commit(params /* PSK fetcher */, backend) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
 
     // Check that there is a new KeyPackageBundle
-    assert!(kpb_option.is_some());
+    assert!(create_commit_result.key_package_bundle_option.is_some());
 
     let staged_commit = group_alice
         .stage_commit(
-            &mls_plaintext_commit,
+            &create_commit_result.commit,
             &proposal_store,
-            &[kpb_option.expect("An unexpected error occurred.")],
+            &[create_commit_result
+                .key_package_bundle_option
+                .expect("An unexpected error occurred.")],
             backend,
         )
         .expect("Error applying commit (Alice)");
@@ -542,7 +549,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .merge_commit(staged_commit)
         .expect("error merging commit");
     let staged_commit = group_bob
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Bob)");
     group_bob
         .merge_commit(staged_commit)
@@ -584,19 +591,21 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (mls_plaintext_commit, _, kpb_option) = match group_alice.create_commit(params, backend) {
+    let create_commit_result = match group_alice.create_commit(params, backend) {
         Ok(c) => c,
         Err(e) => panic!("Error creating commit: {:?}", e),
     };
 
     // Check that there is a new KeyPackageBundle
-    assert!(kpb_option.is_some());
+    assert!(create_commit_result.key_package_bundle_option.is_some());
 
     let staged_commit = group_alice
         .stage_commit(
-            &mls_plaintext_commit,
+            &create_commit_result.commit,
             &proposal_store,
-            &[kpb_option.expect("An unexpected error occurred.")],
+            &[create_commit_result
+                .key_package_bundle_option
+                .expect("An unexpected error occurred.")],
             backend,
         )
         .expect("Error applying commit (Alice)");
@@ -605,7 +614,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .expect("error merging commit");
     let staged_commit = group_bob
         .stage_commit(
-            &mls_plaintext_commit,
+            &create_commit_result.commit,
             &proposal_store,
             &[bob_update_key_package_bundle],
             backend,
@@ -660,26 +669,25 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (mls_plaintext_commit, welcome_for_charlie_option, kpb_option) =
-        match group_bob.create_commit(params, backend) {
-            Ok(c) => c,
-            Err(e) => panic!("Error creating commit: {:?}", e),
-        };
+    let create_commit_result = match group_bob.create_commit(params, backend) {
+        Ok(c) => c,
+        Err(e) => panic!("Error creating commit: {:?}", e),
+    };
 
     // Check there is no KeyPackageBundle since there are only Add Proposals and no
     // forced self-update
-    assert!(kpb_option.is_none());
+    assert!(create_commit_result.key_package_bundle_option.is_none());
     // Make sure the is a Welcome message for Charlie
-    assert!(welcome_for_charlie_option.is_some());
+    assert!(create_commit_result.welcome_option.is_some());
 
     let staged_commit = group_alice
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Alice)");
     group_alice
         .merge_commit(staged_commit)
         .expect("error merging commit");
     let staged_commit = group_bob
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Bob)");
     group_bob
         .merge_commit(staged_commit)
@@ -687,7 +695,9 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     let ratchet_tree = group_alice.treesync().export_nodes();
     let mut group_charlie = match CoreGroup::new_from_welcome(
-        welcome_for_charlie_option.expect("An unexpected error occurred."),
+        create_commit_result
+            .welcome_option
+            .expect("An unexpected error occurred."),
         Some(ratchet_tree),
         charlie_key_package_bundle,
         backend,
@@ -772,31 +782,33 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (mls_plaintext_commit, _, kpb_option) = match group_charlie.create_commit(params, backend) {
+    let create_commit_result = match group_charlie.create_commit(params, backend) {
         Ok(c) => c,
         Err(e) => panic!("Error creating commit: {:?}", e),
     };
 
     // Check that there is a new KeyPackageBundle
-    assert!(kpb_option.is_some());
+    assert!(create_commit_result.key_package_bundle_option.is_some());
 
     let staged_commit = group_alice
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Alice)");
     group_alice
         .merge_commit(staged_commit)
         .expect("error merging commit");
     let staged_commit = group_bob
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Bob)");
     group_bob
         .merge_commit(staged_commit)
         .expect("error merging commit");
     let staged_commit = group_charlie
         .stage_commit(
-            &mls_plaintext_commit,
+            &create_commit_result.commit,
             &proposal_store,
-            &[kpb_option.expect("An unexpected error occurred.")],
+            &[create_commit_result
+                .key_package_bundle_option
+                .expect("An unexpected error occurred.")],
             backend,
         )
         .expect("Error applying commit (Charlie)");
@@ -836,30 +848,32 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (mls_plaintext_commit, _, kpb_option) =
+    let create_commit_result =
         match group_charlie.create_commit(params /* PSK fetcher */, backend) {
             Ok(c) => c,
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
 
     // Check that there is a new KeyPackageBundle
-    assert!(kpb_option.is_some());
+    assert!(create_commit_result.key_package_bundle_option.is_some());
 
     let staged_commit = group_alice
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Alice)");
     group_alice
         .merge_commit(staged_commit)
         .expect("error merging commit");
     assert!(group_bob
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend,)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend,)
         .expect("Could not stage commit.")
         .self_removed());
     let staged_commit = group_charlie
         .stage_commit(
-            &mls_plaintext_commit,
+            &create_commit_result.commit,
             &proposal_store,
-            &[kpb_option.expect("An unexpected error occurred.")],
+            &[create_commit_result
+                .key_package_bundle_option
+                .expect("An unexpected error occurred.")],
             backend,
         )
         .expect("Error applying commit (Charlie)");
