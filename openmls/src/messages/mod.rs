@@ -17,18 +17,17 @@ use serde::{Deserialize, Serialize};
 
 // Private
 mod codec;
-use proposals::*;
 use tls_codec::{Serialize as TlsSerializeTrait, *};
 
 // Public
 pub mod errors;
+pub mod proposals;
+pub mod public_group_state;
 
 pub use codec::*;
 pub use errors::*;
-
-// Crate
-pub(crate) mod proposals;
-pub(crate) mod public_group_state;
+pub use proposals::*;
+pub use public_group_state::*;
 
 // Tests
 #[cfg(test)]

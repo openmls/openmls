@@ -14,7 +14,6 @@ pub(crate) use serde::{Deserialize, Serialize};
 use tls_codec::*;
 
 pub(crate) mod ciphertext;
-#[doc(hidden)]
 pub(crate) mod codec;
 pub(crate) mod errors;
 pub(crate) mod message;

@@ -32,10 +32,11 @@ mod secret;
 mod ser;
 mod signature;
 
-// Crate
-pub(crate) mod ciphersuites;
-pub(crate) mod signable;
+// Public
+pub mod ciphersuites;
+pub mod signable;
 
+// Crate
 pub(crate) use aead::*;
 pub(crate) use ciphersuites::*;
 pub(crate) use hpke::*;

@@ -42,17 +42,20 @@ mod utils;
 #[macro_use]
 pub mod error;
 
+// Public
+pub mod ciphersuite;
+pub mod config;
+pub mod credentials;
+pub mod extensions;
+pub mod framing;
+pub mod group;
+pub mod key_packages;
+pub mod key_store;
+pub mod messages;
+pub mod schedule;
+
+// Private
 mod binary_tree;
-mod ciphersuite;
-mod config;
-mod credentials;
-mod extensions;
-mod framing;
-mod group;
-mod key_packages;
-mod key_store;
-mod messages;
-mod schedule;
 mod tree;
 mod treesync;
 

@@ -18,8 +18,8 @@ use tls_codec::*;
 
 // Crate
 pub(crate) mod core_group;
-pub(crate) mod errors;
-pub(crate) use core_group::*;
+pub mod errors;
+pub use core_group::*;
 pub(crate) use errors::{
     CoreGroupError, CreateCommitError, ExporterError, InterimTranscriptHashError, StageCommitError,
     WelcomeError,

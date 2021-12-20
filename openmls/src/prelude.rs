@@ -16,20 +16,11 @@ pub use crate::group::errors::{
 // Indexes
 pub use crate::binary_tree::LeafIndex;
 
-// PSKs
-pub use crate::schedule::psk::PskBundle;
-
 // Ciphersuite
 pub use crate::ciphersuite::{ciphersuites::*, signable::*, *};
 
 // Messages
-pub use crate::messages::{
-    proposals::{
-        AddProposal, PreSharedKeyProposal, Proposal, ReInitProposal, RemoveProposal, UpdateProposal,
-    },
-    public_group_state::*,
-    Welcome,
-};
+pub use crate::messages::*;
 
 // Credentials
 pub use crate::credentials::{CredentialError, *};
@@ -53,7 +44,7 @@ pub use crate::key_store::*;
 // PSKs
 // TODO #141
 pub use crate::schedule::psk::{
-    BranchPsk, ExternalPsk, PreSharedKeyId, PreSharedKeys, Psk, PskType, ReinitPsk,
+    BranchPsk, ExternalPsk, PreSharedKeyId, PreSharedKeys, Psk, PskBundle, PskType, ReinitPsk,
 };
 
 // TLS codec traits
@@ -61,3 +52,6 @@ pub use crate::schedule::psk::{
 pub use tls_codec::{
     Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size as TlsSizeTrait,
 };
+
+// Errors
+pub use crate::error::*;

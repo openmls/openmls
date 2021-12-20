@@ -401,7 +401,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     // Make sure that both groups have the same public tree
     if group_alice.treesync().export_nodes() != group_bob.treesync().export_nodes() {
-        _print_tree(group_alice.treesync(), "Alice added Bob");
+        print_tree(group_alice.treesync(), "Alice added Bob");
         panic!("Different public trees");
     }
     // Make sure that both groups have the same group context
@@ -488,7 +488,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     // Make sure that both groups have the same public tree
     if group_alice.treesync().export_nodes() != group_bob.treesync().export_nodes() {
-        _print_tree(group_alice.treesync(), "Alice added Bob");
+        print_tree(group_alice.treesync(), "Alice added Bob");
         panic!("Different public trees");
     }
 
@@ -551,7 +551,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     // Make sure that both groups have the same public tree
     if group_alice.treesync().export_nodes() != group_bob.treesync().export_nodes() {
-        _print_tree(group_alice.treesync(), "Alice added Bob");
+        print_tree(group_alice.treesync(), "Alice added Bob");
         panic!("Different public trees");
     }
 
@@ -618,7 +618,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     // Make sure that both groups have the same public tree
     if group_alice.treesync().export_nodes() != group_bob.treesync().export_nodes() {
-        _print_tree(group_alice.treesync(), "Alice added Bob");
+        print_tree(group_alice.treesync(), "Alice added Bob");
         panic!("Different public trees");
     }
 
@@ -699,11 +699,11 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     // Make sure that all groups have the same public tree
     if group_alice.treesync().export_nodes() != group_bob.treesync().export_nodes() {
-        _print_tree(group_alice.treesync(), "Bob added Charlie");
+        print_tree(group_alice.treesync(), "Bob added Charlie");
         panic!("Different public trees");
     }
     if group_alice.treesync().export_nodes() != group_charlie.treesync().export_nodes() {
-        _print_tree(group_alice.treesync(), "Bob added Charlie");
+        print_tree(group_alice.treesync(), "Bob added Charlie");
         panic!("Different public trees");
     }
 
@@ -807,11 +807,11 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     // Make sure that all groups have the same public tree
     if group_alice.treesync().export_nodes() != group_bob.treesync().export_nodes() {
-        _print_tree(group_alice.treesync(), "Charlie updated");
+        print_tree(group_alice.treesync(), "Charlie updated");
         panic!("Different public trees");
     }
     if group_alice.treesync().export_nodes() != group_charlie.treesync().export_nodes() {
-        _print_tree(group_alice.treesync(), "Charlie updated");
+        print_tree(group_alice.treesync(), "Charlie updated");
         panic!("Different public trees");
     }
 
@@ -870,11 +870,11 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     // Make sure that all groups have the same public tree
     if group_alice.treesync().export_nodes() == group_bob.treesync().export_nodes() {
-        _print_tree(group_alice.treesync(), "Charlie removed Bob");
+        print_tree(group_alice.treesync(), "Charlie removed Bob");
         panic!("Same public trees");
     }
     if group_alice.treesync().export_nodes() != group_charlie.treesync().export_nodes() {
-        _print_tree(group_alice.treesync(), "Charlie removed Bob");
+        print_tree(group_alice.treesync(), "Charlie removed Bob");
         panic!("Different public trees");
     }
 
