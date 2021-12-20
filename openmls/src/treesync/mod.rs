@@ -118,7 +118,7 @@ impl TreeSync {
         &mut self,
         tree_sync_diff: StagedTreeSyncDiff,
     ) -> Result<(), TreeSyncError> {
-        let (diff, new_tree_hash, own_leaf_index) = tree_sync_diff.into_parts();
+        let (own_leaf_index, diff, new_tree_hash) = tree_sync_diff.into_parts();
         self.own_leaf_index = own_leaf_index;
         self.tree_hash = new_tree_hash;
         Ok(self.tree.merge_diff(diff)?)

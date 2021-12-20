@@ -56,8 +56,8 @@ pub(crate) struct StagedTreeSyncDiff {
 }
 
 impl StagedTreeSyncDiff {
-    pub(super) fn into_parts(self) -> (StagedMlsBinaryTreeDiff<TreeSyncNode>, Vec<u8>, LeafIndex) {
-        (self.diff, self.new_tree_hash, self.own_leaf_index)
+    pub(super) fn into_parts(self) -> (LeafIndex, StagedMlsBinaryTreeDiff<TreeSyncNode>, Vec<u8>) {
+        (self.own_leaf_index, self.diff, self.new_tree_hash)
     }
 }
 
