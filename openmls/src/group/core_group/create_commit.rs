@@ -266,28 +266,16 @@ impl CoreGroup {
             )
         };
 
-        let (provisional_group_epoch_secrets, provisional_message_secrets) =
-            provisional_epoch_secrets
-                .split_secrets(serialized_provisional_group_context, diff.leaf_count());
-
-        let provisional_interim_transcript_hash = update_interim_transcript_hash(
-            ciphersuite,
+        let staged_commit = StagedCommit::from_provisional_state(
             backend,
-            &(&confirmation_tag).into(),
+            ciphersuite,
+            provisional_epoch_secrets,
+            provisional_group_context,
             &confirmed_transcript_hash,
+            confirmation_tag,
+            diff,
+            proposal_queue,
         )?;
-        let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
-
-        let staged_proposal_queue = proposal_queue.into();
-        let staged_commit_state = StagedCommitState::new(
-            provisional_group_context.clone(),
-            provisional_group_epoch_secrets,
-            provisional_message_secrets,
-            provisional_interim_transcript_hash,
-            staged_diff,
-        );
-
-        let staged_commit = StagedCommit::new(staged_proposal_queue, Some(staged_commit_state));
         Ok(CreateCommitResult {
             commit: mls_plaintext,
             welcome_option,
