@@ -15,14 +15,8 @@ use crate::{
 
 use super::{
     create_commit_params::{CommitType, CreateCommitParams},
-    proposals::{CreationProposalQueue, ProposalStore},
+    proposals::CreationProposalQueue,
 };
-
-/// Wrapper for proposals by value and reference.
-pub struct Proposals<'a> {
-    pub proposals_by_reference: &'a ProposalStore,
-    pub proposals_by_value: &'a [&'a Proposal],
-}
 
 /// A helper struct which contains the values resulting from the preparation of
 /// a commit with path.

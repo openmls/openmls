@@ -5,21 +5,7 @@
 
 use clap::Parser;
 use clap_derive::*;
-use openmls::{
-    ciphersuite::signable::Verifiable,
-    group::{
-        create_commit_params::CreateCommitParams,
-        tests::{
-            kat_messages::{self, MessagesTestVector},
-            kat_transcripts::{self, TranscriptTestVector},
-        },
-    },
-    prelude::kat_treemath,
-    prelude::*,
-    schedule::kat_key_schedule::{self, KeyScheduleTestVector},
-    tree::tests_and_kats::kats::kat_encryption::{self, EncryptionTestVector},
-    treesync::tests_and_kats::kats::kat_tree_kem::{self, TreeKemTestVector},
-};
+use openmls::{prelude::*, prelude_test::*};
 
 use serde::{self, Serialize};
 use std::{collections::HashMap, convert::TryFrom, fs::File, io::Write, sync::Mutex};

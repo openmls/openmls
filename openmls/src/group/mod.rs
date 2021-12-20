@@ -5,33 +5,39 @@
 //! The low-level standard API is described in the `Api` trait.\
 //! The high-level API is exposed in `MlsGroup`.
 
-pub mod core_group;
-pub mod errors;
 mod group_context;
 mod mls_group;
-
-#[cfg(any(feature = "test-utils", test))]
-pub mod tests;
 
 use crate::ciphersuite::*;
 use crate::extensions::*;
 use crate::utils::*;
 
-#[cfg(any(feature = "test-utils", test))]
-use openmls_traits::random::OpenMlsRand;
 use openmls_traits::OpenMlsCryptoProvider;
-pub(crate) use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
+use tls_codec::*;
 
+// Crate
+pub(crate) mod core_group;
+pub mod errors;
 pub use core_group::*;
-pub use errors::{
-    CoreGroupError, CreateCommitError, ExporterError, FramingValidationError,
-    InterimTranscriptHashError, ProposalValidationError, StageCommitError, WelcomeError,
+pub(crate) use errors::{
+    CoreGroupError, CreateCommitError, ExporterError, InterimTranscriptHashError, StageCommitError,
+    WelcomeError,
 };
-pub use group_context::*;
+pub(crate) use group_context::*;
+
+// Public
 pub use mls_group::*;
 
-use tls_codec::TlsVecU32;
-use tls_codec::{TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize};
+// Tests
+#[cfg(any(feature = "test-utils", test))]
+pub(crate) mod tests;
+#[cfg(any(feature = "test-utils", test))]
+pub use create_commit_params::*;
+#[cfg(any(feature = "test-utils", test))]
+use openmls_traits::random::OpenMlsRand;
+#[cfg(any(feature = "test-utils", test))]
+pub use proposals::*;
 
 #[derive(
     Hash, Eq, Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,

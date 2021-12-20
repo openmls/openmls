@@ -1,6 +1,6 @@
 use tls_codec::{TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
-use crate::{ciphersuite::HpkePublicKey, prelude::KeyPackage};
+use crate::{ciphersuite::HpkePublicKey, key_packages::KeyPackage};
 
 use super::{leaf_node::LeafNode, parent_node::ParentNode, Node};
 

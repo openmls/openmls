@@ -21,19 +21,17 @@
 //! can be manipulated manually via the `Client` struct, which contains their
 //! group states.
 
-#![allow(dead_code)]
-use crate::framing::MlsMessageIn;
-/// We allow dead code here due to the following issue:
-/// https://github.com/rust-lang/rust/issues/46379, which would otherwise create
-/// a lot of unused code warnings.
-use crate::prelude::*;
-use crate::treesync::node::Node;
+use crate::{
+    ciphersuite::*, config::*, credentials::*, framing::*, group::*, key_packages::*, messages::*,
+    treesync::node::Node,
+};
 use ::rand::{rngs::OsRng, RngCore};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsCryptoProvider;
 use std::{cell::RefCell, collections::HashMap};
+use tls_codec::*;
 
 pub mod client;
 pub mod errors;

@@ -121,26 +121,29 @@
 //! This means that some functions that are not expected to fail and throw an
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
-use crate::framing::MlsPlaintextTbmPayload;
-use crate::messages::PathSecret;
-use crate::tree::secret_tree::SecretTree;
-use crate::treesync::LeafIndex;
-use crate::{ciphersuite::Mac, prelude::MembershipTag};
 use crate::{
-    ciphersuite::{AeadKey, AeadNonce, Ciphersuite, Secret},
+    ciphersuite::{AeadKey, AeadNonce, Ciphersuite, Mac, Secret},
     config::ProtocolVersion,
-    messages::ConfirmationTag,
+    framing::{MembershipTag, MlsPlaintextTbmPayload},
+    messages::{ConfirmationTag, PathSecret},
+    tree::secret_tree::SecretTree,
+    treesync::LeafIndex,
 };
 
+use openmls_traits::{types::*, OpenMlsCryptoProvider};
+
+#[cfg(any(feature = "test-utils", test))]
 use openmls_traits::crypto::OpenMlsCrypto;
-use openmls_traits::types::{CryptoError, HpkeKeyPair};
-use openmls_traits::OpenMlsCryptoProvider;
+
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
+// Public
 pub mod codec;
 pub mod errors;
-pub mod message_secrets;
+
+// Crate
+pub(crate) mod message_secrets;
 pub(crate) mod psk;
 
 #[cfg(test)]
@@ -149,9 +152,12 @@ mod unit_tests;
 #[cfg(any(feature = "test-utils", test))]
 pub mod kat_key_schedule;
 
+//Public
 pub use errors::*;
-pub use message_secrets::*;
-pub use psk::{PreSharedKeyId, PreSharedKeys, PskSecret};
+
+// Crate
+pub(crate) use message_secrets::*;
+pub(crate) use psk::*;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -688,6 +694,7 @@ impl ExternalSecret {
     }
 
     /// Derive the external keypair for External Commits
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn derive_external_keypair(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -733,7 +740,7 @@ impl ConfirmationKey {
     /// MLSPlaintext.confirmation_tag =
     ///     MAC(confirmation_key, GroupContext.confirmed_transcript_hash)
     /// ```
-    pub fn tag(
+    pub(crate) fn tag(
         &self,
         backend: &impl OpenMlsCryptoProvider,
         confirmed_transcript_hash: &[u8],
@@ -1177,6 +1184,7 @@ impl GroupEpochSecrets {
     }
 
     /// External secret
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn external_secret(&self) -> &ExternalSecret {
         &self.external_secret
     }

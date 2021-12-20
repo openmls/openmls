@@ -1,14 +1,14 @@
 //! Prelude for OpenMLS.
 //! Include this to get access to all the public functions of OpenMLS.
 
-pub use crate::framing::WireFormat;
-pub use crate::group::CoreGroup;
-pub use crate::group::CoreGroupConfig;
+// MlsGroup
 pub use crate::group::{
     proposals::{ProposalStore, StagedProposal},
-    InvalidMessageError, MlsGroup, MlsGroupConfig, MlsGroupError, UpdatePolicy,
+    EmptyInputError, GroupEpoch, GroupId, InnerState, InvalidMessageError, MlsGroup,
+    MlsGroupConfig, MlsGroupError, UpdatePolicy,
 };
-// Errors
+
+// Group errors
 pub use crate::group::errors::{
     CoreGroupError, CreateCommitError, FramingValidationError, StageCommitError, WelcomeError,
 };
@@ -16,32 +16,42 @@ pub use crate::group::errors::{
 // Indexes
 pub use crate::binary_tree::LeafIndex;
 
-// PSKs
-pub use crate::schedule::psk::PskBundle;
+// Ciphersuite
+pub use crate::ciphersuite::{ciphersuites::*, signable::*, *};
 
-pub use crate::ciphersuite::*;
+// Messages
+pub use crate::messages::*;
+
+// Credentials
+pub use crate::credentials::{CredentialError, *};
+
+// Configuration
 pub use crate::config::*;
-pub use crate::credentials::*;
-pub use crate::extensions::*;
-pub use crate::framing::{errors::*, sender::Sender, *};
-pub use crate::group::GroupId;
-pub use crate::key_packages::*;
-pub use crate::key_store::*;
-pub use crate::messages::{
-    proposals::{
-        AddProposal, PreSharedKeyProposal, Proposal, ReInitProposal, RemoveProposal, UpdateProposal,
-    },
-    Welcome,
-};
-pub use crate::schedule::psk::{
-    BranchPsk, ExternalPsk, PreSharedKeyId, PreSharedKeys, Psk, PskType, ReinitPsk,
-};
-pub use crate::utils::*;
 
-#[cfg(any(feature = "test-utils", test))]
-pub use crate::binary_tree::array_representation::kat_treemath;
+// Extensions
+pub use crate::extensions::*;
+
+// Framing
+// TODO #265: This should mostly disappear
+pub use crate::framing::{errors::*, sender::Sender, *};
+
+// Key packages
+pub use crate::key_packages::*;
+
+// Key store
+pub use crate::key_store::*;
+
+// PSKs
+// TODO #141
+pub use crate::schedule::psk::{
+    BranchPsk, ExternalPsk, PreSharedKeyId, PreSharedKeys, Psk, PskBundle, PskType, ReinitPsk,
+};
 
 // TLS codec traits
+// TODO #265: This should mostly disappear
 pub use tls_codec::{
     Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size as TlsSizeTrait,
 };
+
+// Errors
+pub use crate::error::*;
