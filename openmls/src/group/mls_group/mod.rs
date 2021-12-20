@@ -141,15 +141,13 @@ impl MlsGroup {
     }
 
     /// Returns own credential. If the group is inactive, it returns a
-    /// `UseAfterEviction` error. This function currently returns a full
-    /// `Credential` rather than just a reference. This issue is tracked in
-    /// issue #387.
-    pub fn credential(&self) -> Result<Credential, MlsGroupError> {
+    /// `UseAfterEviction` error.
+    pub fn credential(&self) -> Result<&Credential, MlsGroupError> {
         if !self.is_active() {
             return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
         let tree = self.group.treesync();
-        Ok(tree.own_leaf_node()?.key_package().credential().clone())
+        Ok(tree.own_leaf_node()?.key_package().credential())
     }
 
     /// Get group ID
