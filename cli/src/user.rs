@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use ds_lib::{ClientKeyPackages, DsMlsMessage, GroupMessage, Message};
-use openmls::{group::create_commit_params::CreateCommitParams, prelude::*};
+use openmls::{prelude::*, prelude_test::*};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use super::{backend::Backend, conversation::Conversation, identity::Identity};

@@ -1,7 +1,7 @@
 //! # Ratchet tree extensions unit test
 use super::*;
 
-use crate::{messages::GroupSecrets, prelude::*, schedule::KeySchedule, test_utils::*};
+use crate::{credentials::*, messages::GroupSecrets, schedule::KeySchedule, test_utils::*};
 use core_group::create_commit_params::CreateCommitParams;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::crypto::OpenMlsCrypto;

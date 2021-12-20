@@ -547,7 +547,7 @@ pub fn run_test_vector(
                 MlsCiphertext::tls_deserialize(&mut ctxt_bytes.as_slice())
                     .expect("Error parsing MlsCiphertext");
             let mut group =
-                receiver_group(ciphersuite, backend, &mls_ciphertext_application.group_id);
+                receiver_group(ciphersuite, backend, mls_ciphertext_application.group_id());
             *group.message_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
                 hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
                 ProtocolVersion::default(),
@@ -661,7 +661,7 @@ pub fn run_test_vector(
                 MlsCiphertext::tls_deserialize(&mut handshake_bytes.as_slice())
                     .expect("Error parsing MLSCiphertext");
             let mut group =
-                receiver_group(ciphersuite, backend, &mls_ciphertext_handshake.group_id);
+                receiver_group(ciphersuite, backend, mls_ciphertext_handshake.group_id());
             *group.message_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
                 &hex_to_bytes(&test_vector.sender_data_secret),
                 ProtocolVersion::default(),

@@ -327,7 +327,7 @@ impl MlsPlaintext {
 
     /// Remove the membership tag for testing.
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn remove_membership_tag(&mut self) {
+    pub fn remove_membership_tag(&mut self) {
         self.membership_tag = None;
     }
 
@@ -612,6 +612,7 @@ impl VerifiableMlsPlaintext {
     }
 
     /// Get the sender index as [`LeafIndex`].
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn sender_index(&self) -> LeafIndex {
         self.tbs.sender.sender
     }

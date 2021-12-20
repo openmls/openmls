@@ -1,33 +1,35 @@
-use crate::binary_tree::LeafIndex;
-use crate::ciphersuite::{signable::*, *};
-use crate::config::ProtocolVersion;
-use crate::extensions::*;
-use crate::group::*;
-use crate::schedule::psk::PreSharedKeys;
-use crate::schedule::JoinerSecret;
-use crate::treesync::treekem::UpdatePath;
+use crate::{
+    binary_tree::LeafIndex,
+    ciphersuite::{signable::*, *},
+    config::ProtocolVersion,
+    extensions::*,
+    group::*,
+    schedule::{psk::PreSharedKeys, JoinerSecret},
+    treesync::treekem::UpdatePath,
+};
 
-use openmls_traits::crypto::OpenMlsCrypto;
-use openmls_traits::types::{CryptoError as CryptoTraitError, HpkeCiphertext};
-
-use openmls_traits::OpenMlsCryptoProvider;
-
+use openmls_traits::{
+    crypto::OpenMlsCrypto,
+    types::{CryptoError as CryptoTraitError, HpkeCiphertext},
+    OpenMlsCryptoProvider,
+};
 use serde::{Deserialize, Serialize};
 
+// Private
 mod codec;
+use tls_codec::{Serialize as TlsSerializeTrait, *};
 
+// Public
 pub mod errors;
-pub(crate) mod proposals;
-pub(crate) mod public_group_state;
+pub mod proposals;
+pub mod public_group_state;
 
 pub use codec::*;
 pub use errors::*;
-use proposals::*;
-use tls_codec::{
-    Serialize as TlsSerializeTrait, TlsByteVecU32, TlsByteVecU8, TlsDeserialize, TlsSerialize,
-    TlsSize, TlsVecU32,
-};
+pub use proposals::*;
+pub use public_group_state::*;
 
+// Tests
 #[cfg(test)]
 mod tests;
 

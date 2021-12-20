@@ -121,27 +121,29 @@
 //! This means that some functions that are not expected to fail and throw an
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
-use crate::framing::MlsPlaintextTbmPayload;
-use crate::messages::PathSecret;
-use crate::tree::secret_tree::SecretTree;
-use crate::treesync::LeafIndex;
-use crate::{ciphersuite::Mac, prelude::MembershipTag};
 use crate::{
-    ciphersuite::{AeadKey, AeadNonce, Ciphersuite, Secret},
+    ciphersuite::{AeadKey, AeadNonce, Ciphersuite, Mac, Secret},
     config::ProtocolVersion,
-    messages::ConfirmationTag,
+    framing::{MembershipTag, MlsPlaintextTbmPayload},
+    messages::{ConfirmationTag, PathSecret},
+    tree::secret_tree::SecretTree,
+    treesync::LeafIndex,
 };
 
+use openmls_traits::{types::*, OpenMlsCryptoProvider};
+
+#[cfg(any(feature = "test-utils", test))]
 use openmls_traits::crypto::OpenMlsCrypto;
-use openmls_traits::types::{CryptoError, HpkeKeyPair};
-use openmls_traits::OpenMlsCryptoProvider;
+
 use serde::{Deserialize, Serialize};
-use std::cell::RefCell;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
+// Public
 pub mod codec;
 pub mod errors;
-pub mod message_secrets;
+
+// Crate
+pub(crate) mod message_secrets;
 pub(crate) mod psk;
 
 #[cfg(test)]
@@ -150,9 +152,12 @@ mod unit_tests;
 #[cfg(any(feature = "test-utils", test))]
 pub mod kat_key_schedule;
 
+//Public
 pub use errors::*;
-pub use message_secrets::*;
-pub use psk::{PreSharedKeyId, PreSharedKeys, PskSecret};
+
+// Crate
+pub(crate) use message_secrets::*;
+pub(crate) use psk::*;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -540,7 +545,6 @@ impl EpochSecret {
 }
 
 /// The `EncryptionSecret` is used to create a `SecretTree`.
-#[derive(Serialize, Deserialize, Default)] // FIXME: what do we want serialization do here?
 pub(crate) struct EncryptionSecret {
     secret: Secret,
 }
@@ -557,8 +561,7 @@ impl EncryptionSecret {
     }
 
     /// Create a `SecretTree` from the `encryption_secret` contained in the
-    /// `EpochSecrets`. The `encryption_secret` is replaced with `None` in the
-    /// process, allowing us to achieve FS.
+    /// `EpochSecrets`. The `encryption_secret` is consumed, allowing us to achieve FS.
     pub(crate) fn create_secret_tree(self, treesize: LeafIndex) -> SecretTree {
         SecretTree::new(self, treesize.into())
     }
@@ -691,6 +694,7 @@ impl ExternalSecret {
     }
 
     /// Derive the external keypair for External Commits
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn derive_external_keypair(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -736,7 +740,7 @@ impl ConfirmationKey {
     /// MLSPlaintext.confirmation_tag =
     ///     MAC(confirmation_key, GroupContext.confirmed_transcript_hash)
     /// ```
-    pub fn tag(
+    pub(crate) fn tag(
         &self,
         backend: &impl OpenMlsCryptoProvider,
         confirmed_transcript_hash: &[u8],
@@ -962,11 +966,10 @@ impl SenderDataSecret {
 /// | `confirmation_key`      | "confirm"       |
 /// | `membership_key`        | "membership"    |
 /// | `resumption_secret`     | "resumption"    |
-#[derive(Serialize, Deserialize)]
 pub(crate) struct EpochSecrets {
     init_secret: Option<InitSecret>,
     sender_data_secret: SenderDataSecret,
-    encryption_secret: RefCell<EncryptionSecret>,
+    encryption_secret: EncryptionSecret,
     exporter_secret: ExporterSecret,
     authentication_secret: AuthenticationSecret,
     external_secret: ExternalSecret,
@@ -1051,11 +1054,9 @@ impl EpochSecrets {
     }
 
     /// Encryption secret
-    /// Note that this consumes the encryption secret.
-    pub(crate) fn encryption_secret(&self) -> EncryptionSecret {
-        // Note that we need to use a `RefCell` and not a `Cell` here because
-        // we don't want to implement `Copy` for secrets.
-        self.encryption_secret.take()
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn encryption_secret(&self) -> &EncryptionSecret {
+        &self.encryption_secret
     }
 
     /// Derive `EpochSecrets` from an `EpochSecret`.
@@ -1094,7 +1095,7 @@ impl EpochSecrets {
         Ok(EpochSecrets {
             init_secret,
             sender_data_secret,
-            encryption_secret: RefCell::new(encryption_secret),
+            encryption_secret,
             exporter_secret,
             authentication_secret,
             external_secret,
@@ -1113,11 +1114,10 @@ impl EpochSecrets {
         serialized_context: Vec<u8>,
         treesize: u32,
     ) -> (GroupEpochSecrets, MessageSecrets) {
-        let secret_tree = self.encryption_secret().create_secret_tree(treesize);
+        let secret_tree = self.encryption_secret.create_secret_tree(treesize);
         (
             GroupEpochSecrets {
                 init_secret: self.init_secret,
-                encryption_secret: self.encryption_secret,
                 exporter_secret: self.exporter_secret,
                 authentication_secret: self.authentication_secret,
                 external_secret: self.external_secret,
@@ -1137,7 +1137,6 @@ impl EpochSecrets {
 #[derive(Serialize, Deserialize)]
 pub(crate) struct GroupEpochSecrets {
     init_secret: Option<InitSecret>,
-    encryption_secret: RefCell<EncryptionSecret>,
     exporter_secret: ExporterSecret,
     authentication_secret: AuthenticationSecret,
     external_secret: ExternalSecret,
@@ -1185,6 +1184,7 @@ impl GroupEpochSecrets {
     }
 
     /// External secret
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn external_secret(&self) -> &ExternalSecret {
         &self.external_secret
     }

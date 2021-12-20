@@ -5,17 +5,20 @@
 //! This means that some functions that are not expected to fail and throw an
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
-use log::{debug, trace};
-use psk::PskSecret;
-
+// Private
 mod apply_proposals;
-pub mod create_commit;
-pub mod create_commit_params;
 mod new_from_welcome;
-pub mod past_secrets;
-pub mod process;
-pub mod proposals;
-pub mod staged_commit;
+mod validation;
+
+// Crate
+pub(crate) mod create_commit;
+pub(crate) mod create_commit_params;
+pub(crate) mod past_secrets;
+pub(crate) mod process;
+pub(crate) mod proposals;
+pub(crate) mod staged_commit;
+
+// Tests
 #[cfg(test)]
 mod test_core_group;
 #[cfg(test)]
@@ -26,39 +29,42 @@ mod test_duplicate_extension;
 mod test_past_secrets;
 #[cfg(test)]
 mod test_proposals;
-pub mod validation;
 
-use crate::ciphersuite::signable::{Signable, Verifiable};
-use crate::config::{check_required_capabilities_support, Config};
-use crate::credentials::{Credential, CredentialBundle, CredentialError};
-use crate::framing::*;
-use crate::group::*;
-use crate::key_packages::*;
-use crate::messages::public_group_state::{PublicGroupState, PublicGroupStateTbs};
-use crate::messages::{proposals::*, *};
-use crate::schedule::*;
-use crate::treesync::node::Node;
-use crate::treesync::*;
-use crate::{ciphersuite::*, config::ProtocolVersion};
+use crate::{
+    config::*,
+    credentials::*,
+    framing::*,
+    group::*,
+    key_packages::*,
+    messages::{proposals::*, *},
+    schedule::psk::*,
+    schedule::*,
+    treesync::{node::Node, *},
+};
 
+#[cfg(any(feature = "test-utils", test))]
+use crate::{ciphersuite::signable::*, messages::public_group_state::*};
+
+use log::{debug, trace};
 use serde::{
     de::{self, MapAccess, SeqAccess, Visitor},
     ser::{SerializeStruct, Serializer},
     Deserialize, Deserializer, Serialize,
 };
+#[cfg(any(feature = "test-utils", test))]
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
+#[cfg(any(feature = "test-utils", test))]
 use std::io::{Error, Read, Write};
 
 use tls_codec::Serialize as TlsSerializeTrait;
 
 use self::staged_commit::StagedCommit;
 
-use super::errors::{
-    CoreGroupError, ExporterError, FramingValidationError, ProposalValidationError,
+use super::{
+    errors::{CoreGroupError, ExporterError, FramingValidationError, ProposalValidationError},
+    group_context::*,
 };
-
-use super::group_context::*;
 
 pub struct CreateCommitResult {
     pub commit: MlsPlaintext,
@@ -123,11 +129,13 @@ impl CoreGroupBuilder {
         self
     }
     /// Set the [`Vec<PreSharedKeyId>`] of the [`CoreGroup`].
+    #[cfg(any(feature = "test-utils", test))]
     pub fn with_psk(mut self, psk_ids: Vec<PreSharedKeyId>) -> Self {
         self.psk_ids = psk_ids;
         self
     }
     /// Set the [`ProtocolVersion`] of the [`CoreGroup`].
+    #[cfg(any(feature = "test-utils", test))]
     pub fn with_version(mut self, version: ProtocolVersion) -> Self {
         self.version = Some(version);
         self
@@ -312,6 +320,7 @@ impl CoreGroup {
     // struct {
     //     PreSharedKeyID psk;
     // } PreSharedKey;
+    #[cfg(any(feature = "test-utils", test))]
     pub fn create_presharedkey_proposal(
         &self,
         framing_parameters: FramingParameters,
@@ -334,6 +343,7 @@ impl CoreGroup {
     }
 
     /// Create a `GroupContextExtensions` proposal.
+    #[cfg(any(feature = "test-utils", test))]
     pub fn create_group_context_ext_proposal(
         &self,
         framing_parameters: FramingParameters,
@@ -418,6 +428,7 @@ impl CoreGroup {
     }
 
     /// Decrypt an MlsCiphertext into an MlsPlaintext
+    #[cfg(any(feature = "test-utils", test))]
     pub fn decrypt(
         &mut self,
         mls_ciphertext: &MlsCiphertext,
@@ -428,6 +439,7 @@ impl CoreGroup {
 
     /// Set the context of the [`VerifiableMlsPlaintext`] (if it has not been
     /// set already), verify it and return the [`MlsPlaintext`].
+    #[cfg(any(feature = "test-utils", test))]
     pub fn verify(
         &self,
         mut verifiable: VerifiableMlsPlaintext,
@@ -457,6 +469,7 @@ impl CoreGroup {
 
     /// Set the context of the `UnverifiedMlsPlaintext` and verify its
     /// membership tag.
+    #[cfg(any(feature = "test-utils", test))]
     pub fn verify_membership_tag(
         &self,
         backend: &impl OpenMlsCryptoProvider,
@@ -491,11 +504,13 @@ impl CoreGroup {
     }
 
     /// Loads the state from persisted state
+    #[cfg(any(feature = "test-utils", test))]
     pub fn load<R: Read>(reader: R) -> Result<CoreGroup, Error> {
         serde_json::from_reader(reader).map_err(|e| e.into())
     }
 
     /// Persists the state
+    #[cfg(any(feature = "test-utils", test))]
     pub fn save<W: Write>(&self, writer: &mut W) -> Result<(), Error> {
         let serialized_core_group = serde_json::to_string_pretty(self)?;
         writer.write_all(&serialized_core_group.into_bytes())
@@ -522,6 +537,7 @@ impl CoreGroup {
     }
 
     /// Get the members of the group, indexed by their leaves.
+    #[cfg(any(feature = "test-utils", test))]
     pub fn members(&self) -> Result<BTreeMap<LeafIndex, &Credential>, CoreGroupError> {
         Ok(self
             .tree
@@ -534,6 +550,7 @@ impl CoreGroup {
     /// Get the groups extensions.
     /// Right now this is limited to the ratchet tree extension which is built
     /// on the fly when calling this function.
+    #[cfg(any(feature = "test-utils", test))]
     pub fn other_extensions(&self) -> Vec<Extension> {
         vec![Extension::RatchetTree(RatchetTreeExtension::new(
             self.treesync().export_nodes(),
@@ -551,6 +568,7 @@ impl CoreGroup {
     }
 
     /// Export the `PublicGroupState`
+    #[cfg(any(feature = "test-utils", test))]
     pub fn export_public_group_state(
         &self,
         backend: &impl OpenMlsCryptoProvider,
@@ -562,6 +580,7 @@ impl CoreGroup {
 
     /// Returns `true` if the group uses the ratchet tree extension anf `false
     /// otherwise
+    #[cfg(any(feature = "test-utils", test))]
     pub fn use_ratchet_tree_extension(&self) -> bool {
         self.use_ratchet_tree_extension
     }
@@ -589,12 +608,13 @@ impl CoreGroup {
     }
 
     /// Current interim transcript hash of the group
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn interim_transcript_hash(&self) -> &[u8] {
         &self.interim_transcript_hash
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
+    pub fn context_mut(&mut self) -> &mut GroupContext {
         &mut self.group_context
     }
 }
@@ -635,13 +655,6 @@ pub struct CoreGroupConfig {
     pub add_ratchet_tree_extension: bool,
     pub padding_block_size: u32,
     pub additional_as_epochs: u32,
-}
-
-impl CoreGroupConfig {
-    /// Get the padding block size used in this config.
-    pub fn padding_block_size(&self) -> u32 {
-        self.padding_block_size
-    }
 }
 
 impl Default for CoreGroupConfig {
