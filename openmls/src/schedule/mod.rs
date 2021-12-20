@@ -213,7 +213,7 @@ impl From<Secret> for InitSecret {
 
 /// Creates a string from the given MLS `ProtocolVersion` for the computation of
 /// the `init_secret` when creating or processing a commit with an external init
-/// proposal.
+/// proposal. TODO: #628.
 fn hpke_info_from_version(version: ProtocolVersion) -> String {
     match version {
         ProtocolVersion::Reserved => "Reserved",
