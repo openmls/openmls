@@ -4,7 +4,7 @@ use crate::{
     ciphersuite::Ciphersuite,
     credentials::{CredentialBundle, CredentialType},
     group::MlsGroupConfig,
-    prelude::{KeyPackageBundle, LeafIndex},
+    key_packages::{KeyPackageBundle, LeafIndex},
     test_utils::{
         test_framework::{ActionType, CodecUse, MlsGroupTestSetup},
         *,

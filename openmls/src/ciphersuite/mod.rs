@@ -21,21 +21,24 @@ use std::hash::Hash;
 use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8};
 
 mod aead;
-mod ciphersuites;
 mod codec;
-mod hash_ref;
+// TODO #541 This will change once hash based identifiers have been fully implemented
+pub mod hash_ref;
 mod hpke;
 mod kdf_label;
 mod mac;
 mod reuse_guard;
 mod secret;
 mod ser;
-pub mod signable;
 mod signature;
 
+// Public
+pub mod ciphersuites;
+pub mod signable;
+
+// Crate
 pub(crate) use aead::*;
-pub use ciphersuites::*;
-pub use hash_ref::*;
+pub(crate) use ciphersuites::*;
 pub(crate) use hpke::*;
 pub(crate) use mac::*;
 pub(crate) use reuse_guard::*;

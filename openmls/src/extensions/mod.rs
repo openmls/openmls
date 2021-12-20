@@ -32,7 +32,7 @@ mod life_time_extension;
 mod parent_hash_extension;
 mod ratchet_tree_extension;
 mod required_capabilities;
-use tls_codec::{Size, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize, TlsSliceU32};
+use tls_codec::*;
 
 pub use capabilities_extension::CapabilitiesExtension;
 pub use errors::*;

@@ -13,13 +13,13 @@ use super::*;
 /// Service.
 #[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize)]
 pub struct MlsCiphertext {
-    pub(crate) wire_format: WireFormat,
-    pub(crate) group_id: GroupId,
-    pub(crate) epoch: GroupEpoch,
-    pub(crate) content_type: ContentType,
-    pub(crate) authenticated_data: TlsByteVecU32,
-    pub(crate) encrypted_sender_data: TlsByteVecU8,
-    pub(crate) ciphertext: TlsByteVecU32,
+    wire_format: WireFormat,
+    group_id: GroupId,
+    epoch: GroupEpoch,
+    content_type: ContentType,
+    authenticated_data: TlsByteVecU32,
+    encrypted_sender_data: TlsByteVecU8,
+    ciphertext: TlsByteVecU32,
 }
 
 pub(crate) struct MlsMessageHeader {
@@ -29,6 +29,25 @@ pub(crate) struct MlsMessageHeader {
 }
 
 impl MlsCiphertext {
+    pub(crate) fn new(
+        wire_format: WireFormat,
+        group_id: GroupId,
+        epoch: GroupEpoch,
+        content_type: ContentType,
+        authenticated_data: TlsByteVecU32,
+        encrypted_sender_data: TlsByteVecU8,
+        ciphertext: TlsByteVecU32,
+    ) -> Self {
+        Self {
+            wire_format,
+            group_id,
+            epoch,
+            content_type,
+            authenticated_data,
+            encrypted_sender_data,
+            ciphertext,
+        }
+    }
     /// Try to create a new `MlsCiphertext` from an `MlsPlaintext`
     pub(crate) fn try_from_plaintext(
         mls_plaintext: &MlsPlaintext,
@@ -309,7 +328,7 @@ impl MlsCiphertext {
     }
 
     /// Get the `content_type` in the `MlsCiphertext`.
-    pub fn content_type(&self) -> ContentType {
+    pub(crate) fn content_type(&self) -> ContentType {
         self.content_type
     }
 

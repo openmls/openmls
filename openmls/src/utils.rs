@@ -1,5 +1,5 @@
-use crate::treesync::node::Node;
-use crate::treesync::TreeSync;
+#[cfg(any(feature = "test-utils", test))]
+use crate::treesync::{node::Node, TreeSync};
 
 // === The folowing functions aren't necessarily cryptographically secure!
 
@@ -7,17 +7,17 @@ use crate::treesync::TreeSync;
 use rand::{rngs::OsRng, RngCore};
 
 #[cfg(any(feature = "test-utils", test))]
-pub(crate) fn random_u32() -> u32 {
+pub fn random_u32() -> u32 {
     OsRng.next_u32()
 }
 
 #[cfg(any(feature = "test-utils", test))]
-pub(crate) fn random_u64() -> u64 {
+pub fn random_u64() -> u64 {
     OsRng.next_u64()
 }
 
 #[cfg(any(feature = "test-utils", test))]
-pub(crate) fn random_u8() -> u8 {
+pub fn random_u8() -> u8 {
     let mut b = [0u8; 1];
     OsRng.fill_bytes(&mut b);
     b[0]
@@ -219,6 +219,7 @@ macro_rules! implement_enum_display {
     };
 }
 
+#[cfg(any(feature = "test-utils", test))]
 fn log2(x: u32) -> usize {
     if x == 0 {
         return 0;
@@ -230,6 +231,7 @@ fn log2(x: u32) -> usize {
     k - 1
 }
 
+#[cfg(any(feature = "test-utils", test))]
 fn level(index: u32) -> usize {
     let x = index;
     if (x & 0x01) == 0 {
@@ -242,11 +244,13 @@ fn level(index: u32) -> usize {
     k
 }
 
+#[cfg(any(feature = "test-utils", test))]
 fn root(size: u32) -> u32 {
     (1 << log2(size)) - 1
 }
 
-pub fn _print_tree(tree: &TreeSync, message: &str) {
+#[cfg(any(feature = "test-utils", test))]
+pub fn print_tree(tree: &TreeSync, message: &str) {
     let factor = 3;
     println!("{}", message);
     let nodes = tree.export_nodes();

@@ -5,7 +5,7 @@
 //!
 //! Clients are represented by the `ClientInfo` struct.
 
-use openmls::{framing::VerifiableMlsPlaintext, prelude::*};
+use openmls::prelude::*;
 use tls_codec::{
     TlsByteSliceU16, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8, TlsDeserialize, TlsSerialize,
     TlsSize, TlsVecU32,

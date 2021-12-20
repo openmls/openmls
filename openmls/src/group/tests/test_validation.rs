@@ -9,21 +9,8 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::{
-    ciphersuite::{Ciphersuite, CiphersuiteName, Mac, Secret},
-    config::Config,
-    credentials::{Credential, CredentialBundle, CredentialError, CredentialType},
-    extensions::Extension,
-    framing::{
-        ContentType, MembershipTag, MlsCiphertext, MlsCiphertextError, MlsMessageIn,
-        MlsPlaintextContentType, MlsPlaintextError, MlsPlaintextTbmPayload, Sender,
-        ValidationError, VerifiableMlsPlaintext, VerificationError, WireFormat,
-    },
-    group::{
-        CoreGroupError, FramingValidationError, GroupEpoch, GroupId, MlsGroup, MlsGroupConfig,
-        MlsGroupError,
-    },
-    key_packages::{KeyPackage, KeyPackageBundle, KeyPackageError},
-    prelude::ProcessedMessage,
+    config::*, credentials::*, framing::*, group::errors::FramingValidationError, group::*,
+    key_packages::*,
 };
 
 // Helper function to generate a CredentialBundle
@@ -351,7 +338,7 @@ fn test_valsem4(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
     let original_message = plaintext.clone();
 
     plaintext.set_sender(Sender {
-        sender_type: crate::prelude::SenderType::Member,
+        sender_type: SenderType::Member,
         sender: 100u32,
     });
 
