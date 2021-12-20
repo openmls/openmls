@@ -295,8 +295,12 @@
 <span id="295">295</span>
 <span id="296">296</span>
 <span id="297">297</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::node::Node</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::TreeSync</span>;
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+</pre><pre class="rust"><code><span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync</span>::{<span class="ident">node::Node</span>, <span class="ident">TreeSync</span>};
 
 <span class="comment">// === The folowing functions aren&#39;t necessarily cryptographically secure!</span>
 
@@ -304,17 +308,17 @@
 <span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">rngs::OsRng</span>, <span class="ident">RngCore</span>};
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random_u32</span>() -&gt; <span class="ident">u32</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">random_u32</span>() -&gt; <span class="ident">u32</span> {
     <span class="ident">OsRng</span>.<span class="ident">next_u32</span>()
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random_u64</span>() -&gt; <span class="ident">u64</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">random_u64</span>() -&gt; <span class="ident">u64</span> {
     <span class="ident">OsRng</span>.<span class="ident">next_u64</span>()
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random_u8</span>() -&gt; <span class="ident">u8</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">random_u8</span>() -&gt; <span class="ident">u8</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">b</span> <span class="op">=</span> [<span class="number">0u8</span>; <span class="number">1</span>];
     <span class="ident">OsRng</span>.<span class="ident">fill_bytes</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">b</span>);
     <span class="ident">b</span>[<span class="number">0</span>]
@@ -516,6 +520,7 @@
     };
 }
 
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">fn</span> <span class="ident">log2</span>(<span class="ident">x</span>: <span class="ident">u32</span>) -&gt; <span class="ident">usize</span> {
     <span class="kw">if</span> <span class="ident">x</span> <span class="op">==</span> <span class="number">0</span> {
         <span class="kw">return</span> <span class="number">0</span>;
@@ -527,6 +532,7 @@
     <span class="ident">k</span> <span class="op">-</span> <span class="number">1</span>
 }
 
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">fn</span> <span class="ident">level</span>(<span class="ident">index</span>: <span class="ident">u32</span>) -&gt; <span class="ident">usize</span> {
     <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">index</span>;
     <span class="kw">if</span> (<span class="ident">x</span> <span class="op">&amp;</span> <span class="number">0x01</span>) <span class="op">==</span> <span class="number">0</span> {
@@ -539,11 +545,13 @@
     <span class="ident">k</span>
 }
 
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">fn</span> <span class="ident">root</span>(<span class="ident">size</span>: <span class="ident">u32</span>) -&gt; <span class="ident">u32</span> {
     (<span class="number">1</span> <span class="op">&lt;</span><span class="op">&lt;</span> <span class="ident">log2</span>(<span class="ident">size</span>)) <span class="op">-</span> <span class="number">1</span>
 }
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">_print_tree</span>(<span class="ident">tree</span>: <span class="kw-2">&amp;</span><span class="ident">TreeSync</span>, <span class="ident">message</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">print_tree</span>(<span class="ident">tree</span>: <span class="kw-2">&amp;</span><span class="ident">TreeSync</span>, <span class="ident">message</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
     <span class="kw">let</span> <span class="ident">factor</span> <span class="op">=</span> <span class="number">3</span>;
     <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">message</span>);
     <span class="kw">let</span> <span class="ident">nodes</span> <span class="op">=</span> <span class="ident">tree</span>.<span class="ident">export_nodes</span>();

@@ -183,12 +183,15 @@
 <span id="183">183</span>
 <span id="184">184</span>
 <span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the types and implementations for the</span>
 <span class="doccomment">//! `PublicGroupState` and `PublicGroupStateTbs` structs of the MLS spec. The</span>
 <span class="doccomment">//! `PublicGroupState` implements type-enforced verification in the same way as</span>
 <span class="doccomment">//! the `MlsPlaintext` and as described in the [`OpenMLS Wiki`].</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! [`OpenMLS Wiki`]: https://github.com/openmls/openmls/wiki/Signable</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">types::CryptoError</span>, <span class="ident">OpenMlsCryptoProvider</span>};
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Serialize</span>, <span class="ident">TlsByteVecU8</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsVecU32</span>};
 
@@ -198,7 +201,7 @@
         <span class="ident">CiphersuiteName</span>, <span class="ident">HpkePublicKey</span>, <span class="ident">Signature</span>,
     },
     <span class="ident">extensions::Extension</span>,
-    <span class="ident">group</span>::{<span class="ident">CoreGroup</span>, <span class="ident">GroupEpoch</span>, <span class="ident">GroupId</span>},
+    <span class="ident">group</span>::<span class="kw-2">*</span>,
     <span class="ident">treesync::LeafIndex</span>,
 };
 
@@ -330,6 +333,7 @@
 <span class="kw">impl</span> <span class="ident">PublicGroupStateTbs</span> {
     <span class="doccomment">/// Creates a new `PublicGroupStateTbs` struct from the current internal state</span>
     <span class="doccomment">/// of the group.</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">core_group</span>: <span class="kw-2">&amp;</span><span class="ident">CoreGroup</span>,

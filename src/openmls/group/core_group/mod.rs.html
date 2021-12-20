@@ -647,6 +647,19 @@
 <span id="647">647</span>
 <span id="648">648</span>
 <span id="649">649</span>
+<span id="650">650</span>
+<span id="651">651</span>
+<span id="652">652</span>
+<span id="653">653</span>
+<span id="654">654</span>
+<span id="655">655</span>
+<span id="656">656</span>
+<span id="657">657</span>
+<span id="658">658</span>
+<span id="659">659</span>
+<span id="660">660</span>
+<span id="661">661</span>
+<span id="662">662</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Functions in this module should never panic. However, if there is a bug in</span>
@@ -654,17 +667,20 @@
 <span class="doccomment">//! This means that some functions that are not expected to fail and throw an</span>
 <span class="doccomment">//! error, will still return a `Result` since they may throw a `LibraryError`.</span>
 
-<span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">trace</span>};
-<span class="kw">use</span> <span class="ident">psk::PskSecret</span>;
-
+<span class="comment">// Private</span>
 <span class="kw">mod</span> <span class="ident">apply_proposals</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">create_commit</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">create_commit_params</span>;
 <span class="kw">mod</span> <span class="ident">new_from_welcome</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">past_secrets</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">process</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">proposals</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">staged_commit</span>;
+<span class="kw">mod</span> <span class="ident">validation</span>;
+
+<span class="comment">// Crate</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">create_commit</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">create_commit_params</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">past_secrets</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">process</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">proposals</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">staged_commit</span>;
+
+<span class="comment">// Tests</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">test_core_group</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
@@ -675,37 +691,40 @@
 <span class="kw">mod</span> <span class="ident">test_past_secrets</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">test_proposals</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">validation</span>;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite::signable</span>::{<span class="ident">Signable</span>, <span class="ident">Verifiable</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config</span>::{<span class="ident">check_required_capabilities_support</span>, <span class="ident">Config</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credentials</span>::{<span class="ident">Credential</span>, <span class="ident">CredentialBundle</span>, <span class="ident">CredentialError</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::framing</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::key_packages</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::public_group_state</span>::{<span class="ident">PublicGroupState</span>, <span class="ident">PublicGroupStateTbs</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages</span>::{<span class="ident">proposals</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schedule</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::node::Node</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ciphersuite</span>::<span class="kw-2">*</span>, <span class="ident">config::ProtocolVersion</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="ident">config</span>::<span class="kw-2">*</span>,
+    <span class="ident">credentials</span>::<span class="kw-2">*</span>,
+    <span class="ident">framing</span>::<span class="kw-2">*</span>,
+    <span class="ident">group</span>::<span class="kw-2">*</span>,
+    <span class="ident">key_packages</span>::<span class="kw-2">*</span>,
+    <span class="ident">messages</span>::{<span class="ident">proposals</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>},
+    <span class="ident">schedule::psk</span>::<span class="kw-2">*</span>,
+    <span class="ident">schedule</span>::<span class="kw-2">*</span>,
+    <span class="ident">treesync</span>::{<span class="ident">node::Node</span>, <span class="kw-2">*</span>},
+};
 
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ciphersuite::signable</span>::<span class="kw-2">*</span>, <span class="ident">messages::public_group_state</span>::<span class="kw-2">*</span>};
+
+<span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">trace</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{
     <span class="ident">de</span>::{<span class="self">self</span>, <span class="ident">MapAccess</span>, <span class="ident">SeqAccess</span>, <span class="ident">Visitor</span>},
     <span class="ident">ser</span>::{<span class="ident">SerializeStruct</span>, <span class="ident">Serializer</span>},
     <span class="ident">Deserialize</span>, <span class="ident">Deserializer</span>, <span class="ident">Serialize</span>,
 };
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
 <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">use</span> <span class="ident">std::io</span>::{<span class="ident">Error</span>, <span class="ident">Read</span>, <span class="ident">Write</span>};
 
 <span class="kw">use</span> <span class="ident">tls_codec::Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::errors</span>::{
-    <span class="ident">CoreGroupError</span>, <span class="ident">ExporterError</span>, <span class="ident">FramingValidationError</span>, <span class="ident">ProposalValidationError</span>,
+<span class="kw">use</span> <span class="kw">super</span>::{
+    <span class="ident">errors</span>::{<span class="ident">CoreGroupError</span>, <span class="ident">ExporterError</span>, <span class="ident">FramingValidationError</span>, <span class="ident">ProposalValidationError</span>},
+    <span class="ident">group_context</span>::<span class="kw-2">*</span>,
 };
-
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::group_context</span>::<span class="kw-2">*</span>;
 
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">CreateCommitResult</span> <span class="op">=</span>
     <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">MlsPlaintext</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Welcome</span><span class="op">&gt;</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>), <span class="ident">CoreGroupError</span><span class="op">&gt;</span>;
@@ -766,11 +785,13 @@
         <span class="self">self</span>
     }
     <span class="doccomment">/// Set the [`Vec&lt;PreSharedKeyId&gt;`] of the [`CoreGroup`].</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_psk</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">psk_ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PreSharedKeyId</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">psk_ids</span> <span class="op">=</span> <span class="ident">psk_ids</span>;
         <span class="self">self</span>
     }
     <span class="doccomment">/// Set the [`ProtocolVersion`] of the [`CoreGroup`].</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_version</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">version</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">version</span>);
         <span class="self">self</span>
@@ -955,6 +976,7 @@
     <span class="comment">// struct {</span>
     <span class="comment">//     PreSharedKeyID psk;</span>
     <span class="comment">// } PreSharedKey;</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_presharedkey_proposal</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">framing_parameters</span>: <span class="ident">FramingParameters</span>,
@@ -977,6 +999,7 @@
     }
 
     <span class="doccomment">/// Create a `GroupContextExtensions` proposal.</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_group_context_ext_proposal</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">framing_parameters</span>: <span class="ident">FramingParameters</span>,
@@ -1061,6 +1084,7 @@
     }
 
     <span class="doccomment">/// Decrypt an MlsCiphertext into an MlsPlaintext</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">decrypt</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">mls_ciphertext</span>: <span class="kw-2">&amp;</span><span class="ident">MlsCiphertext</span>,
@@ -1071,6 +1095,7 @@
 
     <span class="doccomment">/// Set the context of the [`VerifiableMlsPlaintext`] (if it has not been</span>
     <span class="doccomment">/// set already), verify it and return the [`MlsPlaintext`].</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="kw-2">mut</span> <span class="ident">verifiable</span>: <span class="ident">VerifiableMlsPlaintext</span>,
@@ -1100,6 +1125,7 @@
 
     <span class="doccomment">/// Set the context of the `UnverifiedMlsPlaintext` and verify its</span>
     <span class="doccomment">/// membership tag.</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_membership_tag</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
@@ -1134,11 +1160,13 @@
     }
 
     <span class="doccomment">/// Loads the state from persisted state</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">load</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">reader</span>: <span class="ident">R</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CoreGroup</span>, <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="ident">serde_json::from_reader</span>(<span class="ident">reader</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">into</span>())
     }
 
     <span class="doccomment">/// Persists the state</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">save</span><span class="op">&lt;</span><span class="ident">W</span>: <span class="ident">Write</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">writer</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">W</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">serialized_core_group</span> <span class="op">=</span> <span class="ident">serde_json::to_string_pretty</span>(<span class="self">self</span>)<span class="question-mark">?</span>;
         <span class="ident">writer</span>.<span class="ident">write_all</span>(<span class="kw-2">&amp;</span><span class="ident">serialized_core_group</span>.<span class="ident">into_bytes</span>())
@@ -1165,6 +1193,7 @@
     }
 
     <span class="doccomment">/// Get the members of the group, indexed by their leaves.</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">members</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">LeafIndex</span>, <span class="kw-2">&amp;</span><span class="ident">Credential</span><span class="op">&gt;</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="self">self</span>
             .<span class="ident">tree</span>
@@ -1177,6 +1206,7 @@
     <span class="doccomment">/// Get the groups extensions.</span>
     <span class="doccomment">/// Right now this is limited to the ratchet tree extension which is built</span>
     <span class="doccomment">/// on the fly when calling this function.</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">other_extensions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span> {
         <span class="macro">vec!</span>[<span class="ident">Extension::RatchetTree</span>(<span class="ident">RatchetTreeExtension::new</span>(
             <span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">export_nodes</span>(),
@@ -1194,6 +1224,7 @@
     }
 
     <span class="doccomment">/// Export the `PublicGroupState`</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">export_public_group_state</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
@@ -1205,6 +1236,7 @@
 
     <span class="doccomment">/// Returns `true` if the group uses the ratchet tree extension anf `false</span>
     <span class="doccomment">/// otherwise</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">use_ratchet_tree_extension</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">use_ratchet_tree_extension</span>
     }
@@ -1232,12 +1264,13 @@
     }
 
     <span class="doccomment">/// Current interim transcript hash of the group</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">interim_transcript_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">interim_transcript_hash</span>
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">context_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">GroupContext</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">context_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">GroupContext</span> {
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">group_context</span>
     }
 }
@@ -1278,13 +1311,6 @@
     <span class="kw">pub</span> <span class="ident">add_ratchet_tree_extension</span>: <span class="ident">bool</span>,
     <span class="kw">pub</span> <span class="ident">padding_block_size</span>: <span class="ident">u32</span>,
     <span class="kw">pub</span> <span class="ident">additional_as_epochs</span>: <span class="ident">u32</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">CoreGroupConfig</span> {
-    <span class="doccomment">/// Get the padding block size used in this config.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">padding_block_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u32</span> {
-        <span class="self">self</span>.<span class="ident">padding_block_size</span>
-    }
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">CoreGroupConfig</span> {

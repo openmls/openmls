@@ -266,12 +266,6 @@
 <span id="266">266</span>
 <span id="267">267</span>
 <span id="268">268</span>
-<span id="269">269</span>
-<span id="270">270</span>
-<span id="271">271</span>
-<span id="272">272</span>
-<span id="273">273</span>
-<span id="274">274</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -289,14 +283,8 @@
 
 <span class="kw">use</span> <span class="kw">super</span>::{
     <span class="ident">create_commit_params</span>::{<span class="ident">CommitType</span>, <span class="ident">CreateCommitParams</span>},
-    <span class="ident">proposals</span>::{<span class="ident">CreationProposalQueue</span>, <span class="ident">ProposalStore</span>},
+    <span class="ident">proposals::CreationProposalQueue</span>,
 };
-
-<span class="doccomment">/// Wrapper for proposals by value and reference.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Proposals</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="ident">proposals_by_reference</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ProposalStore</span>,
-    <span class="kw">pub</span> <span class="ident">proposals_by_value</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> [<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Proposal</span>],
-}
 
 <span class="doccomment">/// A helper struct which contains the values resulting from the preparation of</span>
 <span class="doccomment">/// a commit with path.</span>

@@ -179,6 +179,9 @@
 <span id="179">179</span>
 <span id="180">180</span>
 <span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Ciphersuites for MLS</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This file contains the API to interact with ciphersuites.</span>
@@ -202,21 +205,24 @@
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>, <span class="ident">TlsByteVecU16</span>, <span class="ident">TlsByteVecU32</span>, <span class="ident">TlsByteVecU8</span>};
 
 <span class="kw">mod</span> <span class="ident">aead</span>;
-<span class="kw">mod</span> <span class="ident">ciphersuites</span>;
 <span class="kw">mod</span> <span class="ident">codec</span>;
-<span class="kw">mod</span> <span class="ident">hash_ref</span>;
+<span class="comment">// TODO #541 This will change once hash based identifiers have been fully implemented</span>
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">hash_ref</span>;
 <span class="kw">mod</span> <span class="ident">hpke</span>;
 <span class="kw">mod</span> <span class="ident">kdf_label</span>;
 <span class="kw">mod</span> <span class="ident">mac</span>;
 <span class="kw">mod</span> <span class="ident">reuse_guard</span>;
 <span class="kw">mod</span> <span class="ident">secret</span>;
 <span class="kw">mod</span> <span class="ident">ser</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">signable</span>;
 <span class="kw">mod</span> <span class="ident">signature</span>;
 
+<span class="comment">// Public</span>
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">ciphersuites</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">signable</span>;
+
+<span class="comment">// Crate</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">aead</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ciphersuites</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">hash_ref</span>::<span class="kw-2">*</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">ciphersuites</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">hpke</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">mac</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">reuse_guard</span>::<span class="kw-2">*</span>;

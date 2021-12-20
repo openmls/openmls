@@ -1,1 +1,0 @@
-initSidebarItems({"enum":[["ContentType",""],["MlsPlaintextContentType",""]],"struct":[["MembershipTag","Wrapper around a `Mac` used for type safety."],["MlsPlaintext","`MLSPlaintext` is a framing structure for MLS messages. It can contain Proposals, Commits and application messages."],["MlsPlaintextTbs",""],["VerifiableMlsPlaintext",""]]});

@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["MlsCiphertext","`MlsCiphertext` is the framing struct for an encrypted `MlsPlaintext`. This message format is meant to be sent to and received from the Delivery Service."]]});

@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["MessageSecretsStore","Can store message secrets for up to `max_epochs`. The trees are added with [`self::add()`] and can be queried with [`Self::get_epoch()`]."]]});

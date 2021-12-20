@@ -1,1 +1,0 @@
-initSidebarItems({"struct":[["Proposals","Wrapper for proposals by value and reference."]]});

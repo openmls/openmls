@@ -45,17 +45,27 @@
 <span id="45">45</span>
 <span id="46">46</span>
 <span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Prelude for OpenMLS.</span>
 <span class="doccomment">//! Include this to get access to all the public functions of OpenMLS.</span>
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::framing::WireFormat</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::CoreGroup</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::CoreGroupConfig</span>;
+<span class="comment">// MlsGroup</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group</span>::{
     <span class="ident">proposals</span>::{<span class="ident">ProposalStore</span>, <span class="ident">StagedProposal</span>},
-    <span class="ident">InvalidMessageError</span>, <span class="ident">MlsGroup</span>, <span class="ident">MlsGroupConfig</span>, <span class="ident">MlsGroupError</span>, <span class="ident">UpdatePolicy</span>,
+    <span class="ident">EmptyInputError</span>, <span class="ident">GroupEpoch</span>, <span class="ident">GroupId</span>, <span class="ident">InnerState</span>, <span class="ident">InvalidMessageError</span>, <span class="ident">MlsGroup</span>,
+    <span class="ident">MlsGroupConfig</span>, <span class="ident">MlsGroupError</span>, <span class="ident">UpdatePolicy</span>,
 };
-<span class="comment">// Errors</span>
+
+<span class="comment">// Group errors</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::errors</span>::{
     <span class="ident">CoreGroupError</span>, <span class="ident">CreateCommitError</span>, <span class="ident">FramingValidationError</span>, <span class="ident">StageCommitError</span>, <span class="ident">WelcomeError</span>,
 };
@@ -63,35 +73,45 @@
 <span class="comment">// Indexes</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::binary_tree::LeafIndex</span>;
 
-<span class="comment">// PSKs</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schedule::psk::PskBundle</span>;
+<span class="comment">// Ciphersuite</span>
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite</span>::{<span class="ident">ciphersuites</span>::<span class="kw-2">*</span>, <span class="ident">signable</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite</span>::<span class="kw-2">*</span>;
+<span class="comment">// Messages</span>
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages</span>::<span class="kw-2">*</span>;
+
+<span class="comment">// Credentials</span>
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credentials</span>::{<span class="ident">CredentialError</span>, <span class="kw-2">*</span>};
+
+<span class="comment">// Configuration</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credentials</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::extensions</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::framing</span>::{<span class="ident">errors</span>::<span class="kw-2">*</span>, <span class="ident">sender::Sender</span>, <span class="kw-2">*</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::GroupId</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::key_packages</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::key_store</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages</span>::{
-    <span class="ident">proposals</span>::{
-        <span class="ident">AddProposal</span>, <span class="ident">PreSharedKeyProposal</span>, <span class="ident">Proposal</span>, <span class="ident">ReInitProposal</span>, <span class="ident">RemoveProposal</span>, <span class="ident">UpdateProposal</span>,
-    },
-    <span class="ident">Welcome</span>,
-};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schedule::psk</span>::{
-    <span class="ident">BranchPsk</span>, <span class="ident">ExternalPsk</span>, <span class="ident">PreSharedKeyId</span>, <span class="ident">PreSharedKeys</span>, <span class="ident">Psk</span>, <span class="ident">PskType</span>, <span class="ident">ReinitPsk</span>,
-};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils</span>::<span class="kw-2">*</span>;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::binary_tree::array_representation::kat_treemath</span>;
+<span class="comment">// Extensions</span>
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::extensions</span>::<span class="kw-2">*</span>;
+
+<span class="comment">// Framing</span>
+<span class="comment">// TODO #265: This should mostly disappear</span>
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::framing</span>::{<span class="ident">errors</span>::<span class="kw-2">*</span>, <span class="ident">sender::Sender</span>, <span class="kw-2">*</span>};
+
+<span class="comment">// Key packages</span>
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::key_packages</span>::<span class="kw-2">*</span>;
+
+<span class="comment">// Key store</span>
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::key_store</span>::<span class="kw-2">*</span>;
+
+<span class="comment">// PSKs</span>
+<span class="comment">// TODO #141</span>
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schedule::psk</span>::{
+    <span class="ident">BranchPsk</span>, <span class="ident">ExternalPsk</span>, <span class="ident">PreSharedKeyId</span>, <span class="ident">PreSharedKeys</span>, <span class="ident">Psk</span>, <span class="ident">PskBundle</span>, <span class="ident">PskType</span>, <span class="ident">ReinitPsk</span>,
+};
 
 <span class="comment">// TLS codec traits</span>
+<span class="comment">// TODO #265: This should mostly disappear</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">tls_codec</span>::{
     <span class="ident">Deserialize</span> <span class="kw">as</span> <span class="ident">TlsDeserializeTrait</span>, <span class="ident">Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>, <span class="ident">Size</span> <span class="kw">as</span> <span class="ident">TlsSizeTrait</span>,
 };
+
+<span class="comment">// Errors</span>
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error</span>::<span class="kw-2">*</span>;
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="openmls" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div>
     <script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script>

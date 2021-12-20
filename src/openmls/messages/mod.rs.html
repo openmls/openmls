@@ -479,36 +479,40 @@
 <span id="479">479</span>
 <span id="480">480</span>
 <span id="481">481</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::binary_tree::LeafIndex</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite</span>::{<span class="ident">signable</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config::ProtocolVersion</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::extensions</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schedule::psk::PreSharedKeys</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schedule::JoinerSecret</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::treekem::UpdatePath</span>;
+<span id="482">482</span>
+<span id="483">483</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="ident">binary_tree::LeafIndex</span>,
+    <span class="ident">ciphersuite</span>::{<span class="ident">signable</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>},
+    <span class="ident">config::ProtocolVersion</span>,
+    <span class="ident">extensions</span>::<span class="kw-2">*</span>,
+    <span class="ident">group</span>::<span class="kw-2">*</span>,
+    <span class="ident">schedule</span>::{<span class="ident">psk::PreSharedKeys</span>, <span class="ident">JoinerSecret</span>},
+    <span class="ident">treesync::treekem::UpdatePath</span>,
+};
 
-<span class="kw">use</span> <span class="ident">openmls_traits::crypto::OpenMlsCrypto</span>;
-<span class="kw">use</span> <span class="ident">openmls_traits::types</span>::{<span class="ident">CryptoError</span> <span class="kw">as</span> <span class="ident">CryptoTraitError</span>, <span class="ident">HpkeCiphertext</span>};
-
-<span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
-
+<span class="kw">use</span> <span class="ident">openmls_traits</span>::{
+    <span class="ident">crypto::OpenMlsCrypto</span>,
+    <span class="ident">types</span>::{<span class="ident">CryptoError</span> <span class="kw">as</span> <span class="ident">CryptoTraitError</span>, <span class="ident">HpkeCiphertext</span>},
+    <span class="ident">OpenMlsCryptoProvider</span>,
+};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
+<span class="comment">// Private</span>
 <span class="kw">mod</span> <span class="ident">codec</span>;
+<span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>, <span class="kw-2">*</span>};
 
+<span class="comment">// Public</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">errors</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">proposals</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">public_group_state</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">proposals</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">public_group_state</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">codec</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">proposals</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">tls_codec</span>::{
-    <span class="ident">Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>, <span class="ident">TlsByteVecU32</span>, <span class="ident">TlsByteVecU8</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>,
-    <span class="ident">TlsSize</span>, <span class="ident">TlsVecU32</span>,
-};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">proposals</span>::<span class="kw-2">*</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">public_group_state</span>::<span class="kw-2">*</span>;
 
+<span class="comment">// Tests</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span>;
 

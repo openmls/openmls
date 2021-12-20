@@ -364,6 +364,7 @@
 <span id="364">364</span>
 <span id="365">365</span>
 <span id="366">366</span>
+<span id="367">367</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::diff::StagedTreeSyncDiff</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::proposals</span>::{<span class="ident">ProposalStore</span>, <span class="ident">StagedProposal</span>, <span class="ident">StagedProposalQueue</span>};
@@ -648,6 +649,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// This function should not fail and only returns a [`Result`], because it</span>
     <span class="doccomment">/// might throw a `LibraryError`.</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">merge_commit</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">staged_commit</span>: <span class="ident">StagedCommit</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">state</span>) <span class="op">=</span> <span class="ident">staged_commit</span>.<span class="ident">state</span> {
             <span class="self">self</span>.<span class="ident">group_context</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">group_context</span>;
