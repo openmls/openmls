@@ -52,14 +52,23 @@ use std::io::{Error, Read, Write};
 
 use tls_codec::Serialize as TlsSerializeTrait;
 
+use self::staged_commit::StagedCommit;
+
 use super::errors::{
     CoreGroupError, ExporterError, FramingValidationError, ProposalValidationError,
 };
 
 use super::group_context::*;
 
-pub type CreateCommitResult =
-    Result<(MlsPlaintext, Option<Welcome>, Option<KeyPackageBundle>), CoreGroupError>;
+pub type CreateCommitResult = Result<
+    (
+        MlsPlaintext,
+        Option<Welcome>,
+        Option<KeyPackageBundle>,
+        StagedCommit,
+    ),
+    CoreGroupError,
+>;
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]

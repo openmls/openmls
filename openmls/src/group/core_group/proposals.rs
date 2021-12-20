@@ -117,6 +117,25 @@ pub struct StagedProposalQueue {
     queued_proposals: HashMap<ProposalReference, StagedProposal>,
 }
 
+impl<'a> From<CreationProposalQueue<'a>> for StagedProposalQueue {
+    fn from(cpq: CreationProposalQueue) -> Self {
+        let mut queued_proposals = HashMap::new();
+        for (proposal_ref, queued_proposal) in cpq.queued_proposals {
+            let staged_proposal = StagedProposal {
+                proposal: queued_proposal.proposal.clone(),
+                proposal_reference: queued_proposal.proposal_reference,
+                sender: queued_proposal.sender,
+                proposal_or_ref_type: queued_proposal.proposal_or_ref_type,
+            };
+            queued_proposals.insert(proposal_ref, staged_proposal);
+        }
+        Self {
+            proposal_references: cpq.proposal_references,
+            queued_proposals,
+        }
+    }
+}
+
 impl StagedProposalQueue {
     /// Returns a new `StagedProposalQueue` from proposals that were committed and
     /// don't need filtering.

@@ -16,6 +16,7 @@ use crate::{
 use super::{
     create_commit_params::{CommitType, CreateCommitParams},
     proposals::{CreationProposalQueue, ProposalStore},
+    staged_commit::{StagedCommit, StagedCommitState},
 };
 
 /// Wrapper for proposals by value and reference.
@@ -72,7 +73,7 @@ impl CoreGroup {
 
         // Apply proposals to tree
         let apply_proposals_values =
-            self.apply_proposals(&mut diff, backend, proposal_queue, &[])?;
+            self.apply_proposals(&mut diff, backend, &proposal_queue, &[])?;
         if apply_proposals_values.self_removed {
             return Err(CreateCommitError::CannotRemoveSelf.into());
         }
@@ -216,7 +217,7 @@ impl CoreGroup {
         )?;
 
         // Check if new members were added and, if so, create welcome messages
-        if !plaintext_secrets.is_empty() {
+        let (mls_plaintext, welcome_option, key_package_bundle) = if !plaintext_secrets.is_empty() {
             // Create the ratchet tree extension if necessary
             let other_extensions: Vec<Extension> = if self.use_ratchet_tree_extension {
                 vec![Extension::RatchetTree(RatchetTreeExtension::new(
@@ -258,17 +259,46 @@ impl CoreGroup {
                 secrets,
                 encrypted_group_info,
             );
-            Ok((
+            (
                 mls_plaintext,
                 Some(welcome),
                 path_processing_result.key_package_bundle,
-            ))
+            )
         } else {
-            Ok((
+            (
                 mls_plaintext,
                 None,
                 path_processing_result.key_package_bundle,
-            ))
-        }
+            )
+        };
+
+        let (provisional_group_epoch_secrets, provisional_message_secrets) =
+            provisional_epoch_secrets
+                .split_secrets(serialized_provisional_group_context, diff.leaf_count());
+
+        let provisional_interim_transcript_hash = update_interim_transcript_hash(
+            ciphersuite,
+            backend,
+            &(&confirmation_tag).into(),
+            &confirmed_transcript_hash,
+        )?;
+        let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
+
+        let staged_proposal_queue = proposal_queue.into();
+        let staged_commit_state = StagedCommitState::new(
+            provisional_group_context.clone(),
+            provisional_group_epoch_secrets,
+            provisional_message_secrets,
+            provisional_interim_transcript_hash,
+            staged_diff,
+        );
+
+        let staged_commit = StagedCommit::new(staged_proposal_queue, Some(staged_commit_state));
+        Ok((
+            mls_plaintext,
+            welcome_option,
+            key_package_bundle,
+            staged_commit,
+        ))
     }
 }
