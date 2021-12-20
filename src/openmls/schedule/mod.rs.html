@@ -1194,14 +1194,6 @@
 <span id="1194">1194</span>
 <span id="1195">1195</span>
 <span id="1196">1196</span>
-<span id="1197">1197</span>
-<span id="1198">1198</span>
-<span id="1199">1199</span>
-<span id="1200">1200</span>
-<span id="1201">1201</span>
-<span id="1202">1202</span>
-<span id="1203">1203</span>
-<span id="1204">1204</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module represents the key schedule as introduced in Section 8 of the</span>
 <span class="doccomment">//! MLS specification. The key schedule evolves in epochs, where in each epoch</span>
 <span class="doccomment">//! new key material is injected.</span>
@@ -1340,7 +1332,6 @@
 <span class="kw">use</span> <span class="ident">openmls_traits::crypto::OpenMlsCrypto</span>;
 
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std::cell::RefCell</span>;
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
 
 <span class="comment">// Public</span>
@@ -1750,7 +1741,6 @@
 }
 
 <span class="doccomment">/// The `EncryptionSecret` is used to create a `SecretTree`.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Default</span>)]</span> <span class="comment">// FIXME: what do we want serialization do here?</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">EncryptionSecret</span> {
     <span class="ident">secret</span>: <span class="ident">Secret</span>,
 }
@@ -1767,8 +1757,7 @@
     }
 
     <span class="doccomment">/// Create a `SecretTree` from the `encryption_secret` contained in the</span>
-    <span class="doccomment">/// `EpochSecrets`. The `encryption_secret` is replaced with `None` in the</span>
-    <span class="doccomment">/// process, allowing us to achieve FS.</span>
+    <span class="doccomment">/// `EpochSecrets`. The `encryption_secret` is consumed, allowing us to achieve FS.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">create_secret_tree</span>(<span class="self">self</span>, <span class="ident">treesize</span>: <span class="ident">LeafIndex</span>) -&gt; <span class="ident">SecretTree</span> {
         <span class="ident">SecretTree::new</span>(<span class="self">self</span>, <span class="ident">treesize</span>.<span class="ident">into</span>())
     }
@@ -2173,11 +2162,10 @@
 <span class="doccomment">/// | `confirmation_key`      | &quot;confirm&quot;       |</span>
 <span class="doccomment">/// | `membership_key`        | &quot;membership&quot;    |</span>
 <span class="doccomment">/// | `resumption_secret`     | &quot;resumption&quot;    |</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">EpochSecrets</span> {
     <span class="ident">init_secret</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">InitSecret</span><span class="op">&gt;</span>,
     <span class="ident">sender_data_secret</span>: <span class="ident">SenderDataSecret</span>,
-    <span class="ident">encryption_secret</span>: <span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">EncryptionSecret</span><span class="op">&gt;</span>,
+    <span class="ident">encryption_secret</span>: <span class="ident">EncryptionSecret</span>,
     <span class="ident">exporter_secret</span>: <span class="ident">ExporterSecret</span>,
     <span class="ident">authentication_secret</span>: <span class="ident">AuthenticationSecret</span>,
     <span class="ident">external_secret</span>: <span class="ident">ExternalSecret</span>,
@@ -2262,11 +2250,9 @@
     }
 
     <span class="doccomment">/// Encryption secret</span>
-    <span class="doccomment">/// Note that this consumes the encryption secret.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">encryption_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">EncryptionSecret</span> {
-        <span class="comment">// Note that we need to use a `RefCell` and not a `Cell` here because</span>
-        <span class="comment">// we don&#39;t want to implement `Copy` for secrets.</span>
-        <span class="self">self</span>.<span class="ident">encryption_secret</span>.<span class="ident">take</span>()
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">encryption_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">EncryptionSecret</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">encryption_secret</span>
     }
 
     <span class="doccomment">/// Derive `EpochSecrets` from an `EpochSecret`.</span>
@@ -2305,7 +2291,7 @@
         <span class="prelude-val">Ok</span>(<span class="ident">EpochSecrets</span> {
             <span class="ident">init_secret</span>,
             <span class="ident">sender_data_secret</span>,
-            <span class="ident">encryption_secret</span>: <span class="ident">RefCell::new</span>(<span class="ident">encryption_secret</span>),
+            <span class="ident">encryption_secret</span>,
             <span class="ident">exporter_secret</span>,
             <span class="ident">authentication_secret</span>,
             <span class="ident">external_secret</span>,
@@ -2324,11 +2310,10 @@
         <span class="ident">serialized_context</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
         <span class="ident">treesize</span>: <span class="ident">u32</span>,
     ) -&gt; (<span class="ident">GroupEpochSecrets</span>, <span class="ident">MessageSecrets</span>) {
-        <span class="kw">let</span> <span class="ident">secret_tree</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">encryption_secret</span>().<span class="ident">create_secret_tree</span>(<span class="ident">treesize</span>);
+        <span class="kw">let</span> <span class="ident">secret_tree</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">encryption_secret</span>.<span class="ident">create_secret_tree</span>(<span class="ident">treesize</span>);
         (
             <span class="ident">GroupEpochSecrets</span> {
                 <span class="ident">init_secret</span>: <span class="self">self</span>.<span class="ident">init_secret</span>,
-                <span class="ident">encryption_secret</span>: <span class="self">self</span>.<span class="ident">encryption_secret</span>,
                 <span class="ident">exporter_secret</span>: <span class="self">self</span>.<span class="ident">exporter_secret</span>,
                 <span class="ident">authentication_secret</span>: <span class="self">self</span>.<span class="ident">authentication_secret</span>,
                 <span class="ident">external_secret</span>: <span class="self">self</span>.<span class="ident">external_secret</span>,
@@ -2348,7 +2333,6 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">GroupEpochSecrets</span> {
     <span class="ident">init_secret</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">InitSecret</span><span class="op">&gt;</span>,
-    <span class="ident">encryption_secret</span>: <span class="ident">RefCell</span><span class="op">&lt;</span><span class="ident">EncryptionSecret</span><span class="op">&gt;</span>,
     <span class="ident">exporter_secret</span>: <span class="ident">ExporterSecret</span>,
     <span class="ident">authentication_secret</span>: <span class="ident">AuthenticationSecret</span>,
     <span class="ident">external_secret</span>: <span class="ident">ExternalSecret</span>,
