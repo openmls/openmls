@@ -12,6 +12,7 @@ use crate::{
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
+// Verifies that when we add a leaf to a tree with blank leaf nodes, the leaf will be added at the leftmost free leaf index
 #[apply(ciphersuites_and_backends)]
 fn test_free_leaf_computation(
     ciphersuite: &'static Ciphersuite,
@@ -38,7 +39,7 @@ fn test_free_leaf_computation(
     let kpb_3 = KeyPackageBundle::new(&[ciphersuite.name()], &cb_3, backend, vec![])
         .expect("error creating kpb");
 
-    // Build a rudimentary tree with two empty leaf nodes.
+    // Build a rudimentary tree with two populated and two empty leaf nodes.
     let nodes: Vec<Option<Node>> = vec![
         Some(Node::LeafNode(kpb_0.key_package().clone().into())), // Leaf 0
         None,
