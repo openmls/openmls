@@ -39,7 +39,7 @@ fn one_to_one_join(ciphersuite: &'static Ciphersuite) {
     let group_id = setup
         .create_group(ciphersuite)
         .expect("Error while trying to create group.");
-    let mut groups = setup.groups.borrow_mut();
+    let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
         .get_mut(&group_id)
         .expect("An unexpected error occurred.");
@@ -86,7 +86,7 @@ fn three_party_join(ciphersuite: &'static Ciphersuite) {
     let group_id = setup
         .create_group(ciphersuite)
         .expect("Error while trying to create group.");
-    let mut groups = setup.groups.borrow_mut();
+    let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
         .get_mut(&group_id)
         .expect("An unexpected error occurred.");
@@ -142,7 +142,7 @@ fn multiple_joins(ciphersuite: &'static Ciphersuite) {
     let group_id = setup
         .create_group(ciphersuite)
         .expect("Error while trying to create group.");
-    let mut groups = setup.groups.borrow_mut();
+    let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
         .get_mut(&group_id)
         .expect("An unexpected error occurred.");
@@ -190,7 +190,7 @@ fn update(ciphersuite: &'static Ciphersuite) {
     let group_id = setup
         .create_random_group(2, ciphersuite)
         .expect("Error while trying to create group.");
-    let mut groups = setup.groups.borrow_mut();
+    let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
         .get_mut(&group_id)
         .expect("An unexpected error occurred.");
@@ -233,7 +233,7 @@ fn remove(ciphersuite: &'static Ciphersuite) {
     let group_id = setup
         .create_random_group(2, ciphersuite)
         .expect("Error while trying to create group.");
-    let mut groups = setup.groups.borrow_mut();
+    let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
         .get_mut(&group_id)
         .expect("An unexpected error occurred.");
@@ -287,7 +287,7 @@ fn large_group_lifecycle(ciphersuite: &'static Ciphersuite) {
     let group_id = setup
         .create_random_group(number_of_clients, ciphersuite)
         .expect("Error while trying to create group.");
-    let mut groups = setup.groups.borrow_mut();
+    let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
         .get_mut(&group_id)
         .expect("An unexpected error occurred.");

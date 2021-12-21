@@ -374,7 +374,7 @@ fn test_invalid_plaintext(ciphersuite: &'static Ciphersuite) {
     let group_id = setup
         .create_random_group(10, ciphersuite)
         .expect("An unexpected error occurred.");
-    let mut groups = setup.groups.borrow_mut();
+    let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
         .get_mut(&group_id)
         .expect("An unexpected error occurred.");
@@ -386,11 +386,12 @@ fn test_invalid_plaintext(ciphersuite: &'static Ciphersuite) {
         .expect("An unexpected error occurred.")
         .clone();
 
-    let clients = setup.clients.borrow();
+    let clients = setup.clients.read().expect("An unexpected error occurred.");
     let client = clients
         .get(client_id)
         .expect("An unexpected error occurred.")
-        .borrow();
+        .read()
+        .expect("An unexpected error occurred.");
 
     let (mls_message, _welcome_option) = client
         .self_update(Commit, &group_id, None)
