@@ -11,7 +11,7 @@ use core::fmt::Debug;
 use std::mem;
 
 impl CoreGroup {
-    /// Stages a commit message.
+    /// Stages a commit message that was sent by another group member.
     /// This function does the following:
     ///  - Applies the proposals covered by the commit to the tree
     ///  - Applies the (optional) update path to the tree
@@ -34,6 +34,8 @@ impl CoreGroup {
     ///  - ValSem110
     ///  - ValSem201
     ///  - ValSem205
+    /// Returns an error if the given commit was sent by the owner of this
+    /// group.
     pub fn stage_commit(
         &mut self,
         mls_plaintext: &MlsPlaintext,
@@ -41,10 +43,15 @@ impl CoreGroup {
         own_key_packages: &[KeyPackageBundle],
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<StagedCommit, CoreGroupError> {
-        let ciphersuite = self.ciphersuite();
-
         // Extract the sender of the Commit message
         let sender = *mls_plaintext.sender();
+
+        // Own commits have to be merged directly instead of staging them.
+        if sender.sender == self.treesync().own_leaf_index() {
+            return Err(CoreGroupError::OwnCommitError);
+        };
+
+        let ciphersuite = self.ciphersuite();
 
         // Verify epoch
         if mls_plaintext.epoch() != self.group_context.epoch() {
@@ -122,7 +129,6 @@ impl CoreGroup {
 
         // Determine if Commit is own Commit
         let sender = mls_plaintext.sender_index();
-        let is_own_commit = sender == self.treesync().own_leaf_index();
 
         // Determine if Commit has a path
         let commit_secret = if let Some(path) = commit.path.clone() {
@@ -135,37 +141,21 @@ impl CoreGroup {
             }
             let serialized_context = self.group_context.tls_serialize_detached()?;
 
-            if is_own_commit {
-                // Find the right KeyPackageBundle among the pending bundles and
-                // clone out the one that we need.
-                let own_kpb = own_key_packages
-                    .iter()
-                    .find(|kpb| kpb.key_package() == kp)
-                    .ok_or(StageCommitError::MissingOwnKeyPackage)?;
-                diff.re_apply_own_update_path(backend, ciphersuite, own_kpb)?
-            } else {
-                // Decrypt the UpdatePath
-                let (key_package, update_path_nodes) = path.into_parts();
+            // Decrypt the UpdatePath
+            let (key_package, update_path_nodes) = path.into_parts();
 
-                let (plain_path, commit_secret) = diff.decrypt_path(
-                    backend,
-                    ciphersuite,
-                    self.mls_version,
-                    update_path_nodes,
-                    sender,
-                    &apply_proposals_values.exclusion_list(),
-                    &serialized_context,
-                )?;
+            let (plain_path, commit_secret) = diff.decrypt_path(
+                backend,
+                ciphersuite,
+                self.mls_version,
+                update_path_nodes,
+                sender,
+                &apply_proposals_values.exclusion_list(),
+                &serialized_context,
+            )?;
 
-                diff.apply_received_update_path(
-                    backend,
-                    ciphersuite,
-                    sender,
-                    key_package,
-                    plain_path,
-                )?;
-                commit_secret
-            }
+            diff.apply_received_update_path(backend, ciphersuite, sender, key_package, plain_path)?;
+            commit_secret
         } else {
             if apply_proposals_values.path_required {
                 // ValSem201
