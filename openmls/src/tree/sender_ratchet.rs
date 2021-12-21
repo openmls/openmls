@@ -29,7 +29,7 @@ impl SenderRatchetConfiguration {
     /// The dafault value is 0.
     ///  - maximum_forward_distance:
     /// This parameter defines how many incoming messages can be skipped. This is useful if the DS
-    /// drops application messages.
+    /// drops application messages. The default value is 1000.
     pub fn new(out_of_order_tolerance: u32, maximum_forward_distance: u32) -> Self {
         Self {
             out_of_order_tolerance,
