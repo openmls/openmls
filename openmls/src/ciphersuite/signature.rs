@@ -149,7 +149,7 @@ impl SignaturePublicKey {
             .map_err(|_| CryptoError::InvalidSignature)
     }
 
-    /// Get the signature scheme of the keypair
+    /// Get the signature scheme of the public key
     pub fn signature_scheme(&self) -> SignatureScheme {
         self.signature_scheme
     }
