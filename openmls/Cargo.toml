@@ -32,6 +32,7 @@ rstest_reuse = {version = "^0.1", optional = true}
 
 [features]
 default = []
+crypto-subtle = [] # Enable subtle crypto APIs that have to be used with care.
 test-utils = ["itertools", "openmls_rust_crypto", "rand", "rstest", "rstest_reuse"]
 evercrypt = ["evercrypt_backend"] # Evercrypt needs to be enabled individually
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
