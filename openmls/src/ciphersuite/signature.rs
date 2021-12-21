@@ -176,7 +176,7 @@ impl SignaturePrivateKey {
         }
     }
 
-    /// Get the signature scheme of the keypair
+    /// Get the signature scheme of the private key
     pub fn signature_scheme(&self) -> SignatureScheme {
         self.signature_scheme
     }
