@@ -976,7 +976,7 @@
                 <span class="ident">u32::try_from</span>(<span class="ident">leaf_index</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">TreeSyncDiffError::LibraryError</span>)<span class="question-mark">?</span>;
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">node</span>(<span class="kw-2">*</span><span class="ident">leaf_id</span>)<span class="question-mark">?</span>.<span class="ident">node</span>().<span class="ident">is_none</span>() {
                 <span class="ident">leaf_index_option</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">leaf_index</span>);
-                <span class="kw">continue</span>;
+                <span class="kw">break</span>;
             }
         }
         <span class="comment">// If we found a free leaf, replace it with the new one, otherwise</span>
