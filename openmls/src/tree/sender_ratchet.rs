@@ -14,6 +14,18 @@ use super::*;
 // TODO #265: This should disappear
 pub(crate) const OUT_OF_ORDER_TOLERANCE: u32 = 5;
 
+/// Stores the configuration parameters for sender ratchets.
+///
+/// **Parameters**
+///
+///  - out_of_order_tolerance:
+/// This parameter defines a window for which decryption secrets are kept.
+/// This is useful in case the DS cannot guarantee that all application messages have total order within an epoch.
+/// Use this carefully, since keeping decryption secrets affects forward secrecy within an epoch.
+/// The default value is 0.
+///  - maximum_forward_distance:
+/// This parameter defines how many incoming messages can be skipped. This is useful if the DS
+/// drops application messages. The default value is 1000.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SenderRatchetConfiguration {
     out_of_order_tolerance: u32,
@@ -21,15 +33,7 @@ pub struct SenderRatchetConfiguration {
 }
 
 impl SenderRatchetConfiguration {
-    /// Create a new configuration with the following parameters:
-    ///  - out_of_order_tolerance:
-    /// This parameter defines a window for which decryption secrets are kept.
-    /// This is useful in case the DS cannot guarantee that all application messages have total order within an epoch.
-    /// Use this carefully, since keeping decryption secrets affects forward secrecy within an epoch.
-    /// The default value is 0.
-    ///  - maximum_forward_distance:
-    /// This parameter defines how many incoming messages can be skipped. This is useful if the DS
-    /// drops application messages. The default value is 1000.
+    /// Create a new configuration
     pub fn new(out_of_order_tolerance: u32, maximum_forward_distance: u32) -> Self {
         Self {
             out_of_order_tolerance,
