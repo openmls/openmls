@@ -4,19 +4,18 @@ use openmls_traits::OpenMlsCryptoProvider;
 use rstest::*;
 use rstest_reuse::{self, *};
 
-use mls_group::create_commit_params::CreateCommitParams;
-use mls_group::proposals::ProposalStore;
-use mls_group::proposals::StagedProposal;
+use core_group::create_commit_params::CreateCommitParams;
+use core_group::proposals::ProposalStore;
+use core_group::proposals::StagedProposal;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
-use crate::framing::*;
-use crate::prelude::KeyPackageBundle;
-use crate::prelude::_print_tree;
-use crate::tree::secret_tree::SecretTree;
 use crate::{
     ciphersuite::signable::{Signable, Verifiable},
     config::*,
+    framing::*,
+    key_packages::KeyPackageBundle,
+    utils::print_tree,
 };
 
 /// This tests serializing/deserializing MlsPlaintext
@@ -127,22 +126,18 @@ fn codec_ciphertext(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .add_context(backend, &serialized_group_context)
         .expect("Could not add context to key schedule");
 
-    let epoch_secrets = key_schedule
-        .epoch_secrets(backend, false)
-        .expect("Could not generte epoch secrets");
-
-    let mut secret_tree = SecretTree::new(epoch_secrets.encryption_secret(), 1u32.into());
+    let mut message_secrets = MessageSecrets::random(ciphersuite, backend);
 
     let orig = MlsCiphertext::try_from_plaintext(
         &plaintext,
         ciphersuite,
         backend,
-        &group_context,
-        sender.to_leaf_index(),
-        Secrets {
-            epoch_secrets: &epoch_secrets,
-            secret_tree: &mut secret_tree,
+        MlsMessageHeader {
+            group_id: group_context.group_id().clone(),
+            epoch: group_context.epoch(),
+            sender: sender.to_leaf_index(),
         },
+        &mut message_secrets,
         0,
     )
     .expect("Could not encrypt MlsPlaintext.");
@@ -215,21 +210,18 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
         .add_context(backend, &serialized_group_context)
         .expect("Could not add context to key schedule");
 
-    let epoch_secrets = key_schedule
-        .epoch_secrets(backend, false)
-        .expect("Could not generte epoch secrets");
+    let mut message_secrets = MessageSecrets::random(ciphersuite, backend);
 
-    let mut secret_tree = SecretTree::new(epoch_secrets.encryption_secret(), 1u32.into());
     let mut ciphertext = MlsCiphertext::try_from_plaintext(
         &plaintext,
         ciphersuite,
         backend,
-        &group_context,
-        sender.to_leaf_index(),
-        Secrets {
-            epoch_secrets: &epoch_secrets,
-            secret_tree: &mut secret_tree,
+        MlsMessageHeader {
+            group_id: group_context.group_id().clone(),
+            epoch: group_context.epoch(),
+            sender: sender.to_leaf_index(),
         },
+        &mut message_secrets,
         0,
     )
     .expect("Could not encrypt MlsPlaintext.");
@@ -237,7 +229,7 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
     // Decrypt the ciphertext and expect the correct wire format
 
     let verifiable_plaintext = ciphertext
-        .to_plaintext(ciphersuite, backend, &epoch_secrets, &mut secret_tree)
+        .to_plaintext(ciphersuite, backend, &mut message_secrets)
         .expect("Could not decrypt MlsCiphertext.");
 
     assert_eq!(
@@ -251,7 +243,7 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
 
     assert_eq!(
         ciphertext
-            .to_plaintext(ciphersuite, backend, &epoch_secrets, &mut secret_tree)
+            .to_plaintext(ciphersuite, backend, &mut message_secrets)
             .expect_err("Could decrypt despite wrong wire format."),
         MlsCiphertextError::WrongWireFormat
     );
@@ -265,12 +257,12 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
             &plaintext,
             ciphersuite,
             backend,
-            &group_context,
-            sender.to_leaf_index(),
-            Secrets {
-                epoch_secrets: &epoch_secrets,
-                secret_tree: &mut secret_tree,
+            MlsMessageHeader {
+                group_id: group_context.group_id().clone(),
+                epoch: group_context.epoch(),
+                sender: sender.to_leaf_index(),
             },
+            &mut message_secrets,
             0,
         )
         .expect_err("Could encrypt despite wrong wire format."),
@@ -388,7 +380,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     .expect("An unexpected error occurred.");
 
     // Alice creates a group
-    let mut group_alice = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .build(backend)
         .expect("Error creating group.");
 
@@ -458,7 +450,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .merge_commit(staged_commit)
         .expect("error merging commit");
 
-    let mut group_charlie = MlsGroup::new_from_welcome(
+    let mut group_charlie = CoreGroup::new_from_welcome(
         welcome_option.expect("An unexpected error occurred."),
         Some(group_alice.treesync().export_nodes()),
         charlie_key_package_bundle,
@@ -505,8 +497,8 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .merge_commit(staged_commit)
         .expect("error merging commit");
 
-    _print_tree(group_alice.treesync(), "Alice tree");
-    _print_tree(group_charlie.treesync(), "Charlie tree");
+    print_tree(group_alice.treesync(), "Alice tree");
+    print_tree(group_charlie.treesync(), "Charlie tree");
 
     // Alice sends a message with a sender that points to a blank leaf
     // Expected result: MlsCiphertextError::UnknownSender
@@ -529,12 +521,12 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         &bogus_sender_message,
         ciphersuite,
         backend,
-        group_alice.context(),
-        1u32,
-        Secrets {
-            epoch_secrets: group_alice.epoch_secrets(),
-            secret_tree: &mut group_alice.secret_tree_mut(),
+        MlsMessageHeader {
+            group_id: group_alice.group_id().clone(),
+            epoch: group_alice.context().epoch(),
+            sender: 1u32,
         },
+        group_alice.message_secrets_mut(),
         0,
     )
     .expect("Encryption error");
@@ -545,7 +537,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     let received_message = group_charlie.verify(received_message, backend);
     assert_eq!(
         received_message.unwrap_err(),
-        MlsGroupError::MlsPlaintextError(MlsPlaintextError::UnknownSender)
+        CoreGroupError::MlsPlaintextError(MlsPlaintextError::UnknownSender)
     );
 
     // Alice sends a message with a sender that is outside of the group
@@ -564,21 +556,16 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     )
     .expect("Could not create new MlsPlaintext.");
 
-    let mut secret_tree = SecretTree::new(
-        EncryptionSecret::random(ciphersuite, backend),
-        100u32.into(),
-    );
-
     let enc_message = MlsCiphertext::try_from_plaintext(
         &bogus_sender_message,
         ciphersuite,
         backend,
-        group_alice.context(),
-        99u32,
-        Secrets {
-            epoch_secrets: group_alice.epoch_secrets(),
-            secret_tree: &mut secret_tree,
+        MlsMessageHeader {
+            group_id: group_alice.group_id().clone(),
+            epoch: group_alice.context().epoch(),
+            sender: 1u32,
         },
+        group_alice.message_secrets_mut(),
         0,
     )
     .expect("Encryption error");
@@ -586,7 +573,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     let received_message = group_charlie.decrypt(&enc_message, backend);
     assert_eq!(
         received_message.unwrap_err(),
-        MlsGroupError::MlsCiphertextError(MlsCiphertextError::GenerationOutOfBound)
+        CoreGroupError::MlsCiphertextError(MlsCiphertextError::GenerationOutOfBound)
     );
 }
 
@@ -633,7 +620,7 @@ fn confirmation_tag_presence(
     .expect("An unexpected error occurred.");
 
     // Alice creates a group
-    let mut group_alice = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .build(backend)
         .expect("Error creating group.");
 
@@ -670,7 +657,7 @@ fn confirmation_tag_presence(
 
     assert_eq!(
         err,
-        MlsGroupError::StageCommitError(StageCommitError::ConfirmationTagMissing)
+        CoreGroupError::StageCommitError(StageCommitError::ConfirmationTagMissing)
     );
 }
 
@@ -717,7 +704,7 @@ fn invalid_plaintext_signature(
     .expect("An unexpected error occurred.");
 
     // Alice creates a group
-    let mut group_alice = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .build(backend)
         .expect("Error creating group.");
 
@@ -764,7 +751,7 @@ fn invalid_plaintext_signature(
 
     assert_eq!(
         membership_error,
-        MlsGroupError::MlsPlaintextError(MlsPlaintextError::VerificationError(
+        CoreGroupError::MlsPlaintextError(MlsPlaintextError::VerificationError(
             VerificationError::MissingMembershipTag
         ))
     );
@@ -782,7 +769,7 @@ fn invalid_plaintext_signature(
 
     assert_eq!(
         membership_error,
-        MlsGroupError::MlsPlaintextError(MlsPlaintextError::VerificationError(
+        CoreGroupError::MlsPlaintextError(MlsPlaintextError::VerificationError(
             VerificationError::InvalidMembershipTag
         ))
     );
@@ -810,7 +797,7 @@ fn invalid_plaintext_signature(
         decoded_commit
             .err()
             .expect("group.verify() should have returned an error"),
-        MlsGroupError::MlsPlaintextError(MlsPlaintextError::CredentialError(
+        CoreGroupError::MlsPlaintextError(MlsPlaintextError::CredentialError(
             CredentialError::InvalidSignature
         ))
     );
@@ -828,7 +815,7 @@ fn invalid_plaintext_signature(
         .expect_err("Staging commit should have yielded an error.");
     assert_eq!(
         error,
-        MlsGroupError::StageCommitError(StageCommitError::ConfirmationTagMissing)
+        CoreGroupError::StageCommitError(StageCommitError::ConfirmationTagMissing)
     );
 
     // Tamper with confirmation tag.
@@ -851,7 +838,7 @@ fn invalid_plaintext_signature(
         .expect_err("Staging commit should have yielded an error.");
     assert_eq!(
         error,
-        MlsGroupError::StageCommitError(StageCommitError::ConfirmationTagMismatch)
+        CoreGroupError::StageCommitError(StageCommitError::ConfirmationTagMismatch)
     );
     let serialized_group_after =
         serde_json::to_string(&group_alice).expect("An unexpected error occurred.");

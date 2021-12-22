@@ -1,11 +1,11 @@
 #[cfg(any(feature = "test-utils", test))]
 use std::collections::BTreeMap;
 
-use mls_group::create_commit_params::CreateCommitParams;
+use core_group::create_commit_params::CreateCommitParams;
 
 use super::*;
 
-impl ManagedGroup {
+impl MlsGroup {
     // === Membership management ===
 
     /// Adds members to the group
@@ -20,13 +20,13 @@ impl ManagedGroup {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         key_packages: &[KeyPackage],
-    ) -> Result<(MlsMessageOut, Welcome), ManagedGroupError> {
+    ) -> Result<(MlsMessageOut, Welcome), MlsGroupError> {
         if !self.active {
-            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
+            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
         if key_packages.is_empty() {
-            return Err(ManagedGroupError::EmptyInput(EmptyInputError::AddMembers));
+            return Err(MlsGroupError::EmptyInput(EmptyInputError::AddMembers));
         }
 
         // Create inline add proposals from key packages
@@ -43,7 +43,7 @@ impl ManagedGroup {
         let credential_bundle: CredentialBundle = backend
             .key_store()
             .read(credential.signature_key())
-            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+            .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
         // Create Commit over all proposals
         // TODO #141
@@ -59,7 +59,7 @@ impl ManagedGroup {
         let welcome = match welcome_option {
             Some(welcome) => welcome,
             None => {
-                return Err(ManagedGroupError::LibraryError(
+                return Err(MlsGroupError::LibraryError(
                     "No secrets to generate commit message.".into(),
                 ))
             }
@@ -90,15 +90,13 @@ impl ManagedGroup {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         members: &[usize],
-    ) -> Result<(MlsMessageOut, Option<Welcome>), ManagedGroupError> {
+    ) -> Result<(MlsMessageOut, Option<Welcome>), MlsGroupError> {
         if !self.active {
-            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
+            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
         if members.is_empty() {
-            return Err(ManagedGroupError::EmptyInput(
-                EmptyInputError::RemoveMembers,
-            ));
+            return Err(MlsGroupError::EmptyInput(EmptyInputError::RemoveMembers));
         }
 
         // Create inline remove proposals
@@ -115,7 +113,7 @@ impl ManagedGroup {
         let credential_bundle: CredentialBundle = backend
             .key_store()
             .read(credential.signature_key())
-            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+            .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
         // Create Commit over all proposals
         // TODO #141
@@ -131,7 +129,7 @@ impl ManagedGroup {
         if let Some(kpb) = kpb_option {
             self.own_kpbs.push(kpb);
         } else {
-            return Err(ManagedGroupError::LibraryError(
+            return Err(MlsGroupError::LibraryError(
                 "We didn't get a key package for a full commit.".into(),
             ));
         }
@@ -152,16 +150,16 @@ impl ManagedGroup {
         backend: &impl OpenMlsCryptoProvider,
 
         key_package: &KeyPackage,
-    ) -> Result<MlsMessageOut, ManagedGroupError> {
+    ) -> Result<MlsMessageOut, MlsGroupError> {
         if !self.active {
-            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
+            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
             .read(credential.signature_key())
-            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+            .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
         let add_proposal = self.group.create_add_proposal(
             self.framing_parameters(),
@@ -183,16 +181,16 @@ impl ManagedGroup {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         member: LeafIndex,
-    ) -> Result<MlsMessageOut, ManagedGroupError> {
+    ) -> Result<MlsMessageOut, MlsGroupError> {
         if !self.active {
-            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
+            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
             .read(credential.signature_key())
-            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+            .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
         let remove_proposal = self.group.create_remove_proposal(
             self.framing_parameters(),
@@ -213,16 +211,16 @@ impl ManagedGroup {
     pub fn leave_group(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsMessageOut, ManagedGroupError> {
+    ) -> Result<MlsMessageOut, MlsGroupError> {
         if !self.active {
-            return Err(ManagedGroupError::UseAfterEviction(UseAfterEviction::Error));
+            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
             .read(credential.signature_key())
-            .ok_or(ManagedGroupError::NoMatchingCredentialBundle)?;
+            .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
         let remove_proposal = self.group.create_remove_proposal(
             self.framing_parameters(),
@@ -235,7 +233,7 @@ impl ManagedGroup {
     }
 
     /// Gets the current list of members
-    pub fn members(&self) -> Result<Vec<&Credential>, ManagedGroupError> {
+    pub fn members(&self) -> Result<Vec<&Credential>, MlsGroupError> {
         Ok(self
             .group
             .treesync()
@@ -247,7 +245,7 @@ impl ManagedGroup {
 
     /// Gets the current list of members
     #[cfg(any(feature = "test-utils", test))]
-    pub fn indexed_members(&self) -> Result<BTreeMap<LeafIndex, &KeyPackage>, ManagedGroupError> {
+    pub fn indexed_members(&self) -> Result<BTreeMap<LeafIndex, &KeyPackage>, MlsGroupError> {
         Ok(self.group.treesync().full_leaves()?)
     }
 }

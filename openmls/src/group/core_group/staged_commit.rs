@@ -8,8 +8,9 @@ use super::proposals::{
 };
 use super::*;
 use core::fmt::Debug;
+use std::mem;
 
-impl MlsGroup {
+impl CoreGroup {
     /// Stages a commit message.
     /// This function does the following:
     ///  - Applies the proposals covered by the commit to the tree
@@ -18,7 +19,7 @@ impl MlsGroup {
     ///  - Initializes the key schedule for epoch rollover
     ///  - Verifies the confirmation tag/membership tag
     /// Returns a [StagedCommit] that can be inspected and later merged
-    /// into the group state with [MlsGroup::merge_commit()]
+    /// into the group state with [CoreGroup::merge_commit()]
     /// This function does the following checks:
     ///  - ValSem100
     ///  - ValSem101
@@ -39,18 +40,18 @@ impl MlsGroup {
         proposal_store: &ProposalStore,
         own_key_packages: &[KeyPackageBundle],
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<StagedCommit, MlsGroupError> {
+    ) -> Result<StagedCommit, CoreGroupError> {
         let ciphersuite = self.ciphersuite();
 
         // Extract the sender of the Commit message
         let sender = *mls_plaintext.sender();
 
         // Verify epoch
-        if mls_plaintext.epoch() != self.group_context.epoch {
+        if mls_plaintext.epoch() != self.group_context.epoch() {
             log::error!(
                 "Epoch mismatch. Got {:?}, expected {:?}",
                 mls_plaintext.epoch(),
-                self.group_context.epoch
+                self.group_context.epoch()
             );
             return Err(StageCommitError::EpochMismatch.into());
         }
@@ -176,13 +177,13 @@ impl MlsGroup {
         let joiner_secret = JoinerSecret::new(
             backend,
             commit_secret,
-            self.epoch_secrets
+            self.group_epoch_secrets
                 .init_secret()
                 .ok_or(StageCommitError::InitSecretNotFound)?,
         )?;
 
         // Create provisional group state
-        let mut provisional_epoch = self.group_context.epoch;
+        let mut provisional_epoch = self.group_context.epoch();
         provisional_epoch.increment();
 
         let confirmed_transcript_hash = update_confirmed_transcript_hash(
@@ -190,12 +191,12 @@ impl MlsGroup {
             backend,
             // It is ok to use return a library error here, because we know the MlsPlaintext contains a Commit
             &MlsPlaintextCommitContent::try_from(mls_plaintext)
-                .map_err(|_| MlsGroupError::LibraryError)?,
+                .map_err(|_| CoreGroupError::LibraryError)?,
             &self.interim_transcript_hash,
         )?;
 
         let provisional_group_context = GroupContext::new(
-            self.group_context.group_id.clone(),
+            self.group_context.group_id().clone(),
             provisional_epoch,
             diff.compute_tree_hashes(backend, ciphersuite)?,
             confirmed_transcript_hash.clone(),
@@ -254,15 +255,13 @@ impl MlsGroup {
                 proposal,
                 *mls_plaintext.sender(),
             )
-            .map_err(|_| MlsGroupError::LibraryError)?;
+            .map_err(|_| CoreGroupError::LibraryError)?;
             proposal_queue.add(staged_proposal);
         }
 
-        // Create a secret_tree, consuming the `encryption_secret` in the
-        // process.
-        let secret_tree = provisional_epoch_secrets
-            .encryption_secret()
-            .create_secret_tree(diff.leaf_count());
+        let (provisional_group_epoch_secrets, provisional_message_secrets) =
+            provisional_epoch_secrets
+                .split_secrets(serialized_provisional_group_context, diff.leaf_count());
 
         // Make the diff a staged diff. This finalizes the diff and no more changes can be applied to it.
         let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
@@ -271,9 +270,9 @@ impl MlsGroup {
             staged_proposal_queue: proposal_queue,
             state: Some(StagedCommitState {
                 group_context: provisional_group_context,
-                epoch_secrets: provisional_epoch_secrets,
+                group_epoch_secrets: provisional_group_epoch_secrets,
+                message_secrets: provisional_message_secrets,
                 interim_transcript_hash,
-                secret_tree: RefCell::new(secret_tree),
                 staged_diff,
             }),
         })
@@ -283,15 +282,42 @@ impl MlsGroup {
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a `LibraryError`.
-    pub fn merge_commit(&mut self, staged_commit: StagedCommit) -> Result<(), MlsGroupError> {
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn merge_commit(&mut self, staged_commit: StagedCommit) -> Result<(), CoreGroupError> {
         if let Some(state) = staged_commit.state {
             self.group_context = state.group_context;
-            self.epoch_secrets = state.epoch_secrets;
+            self.group_epoch_secrets = state.group_epoch_secrets;
+            self.message_secrets = state.message_secrets;
             self.interim_transcript_hash = state.interim_transcript_hash;
-            self.secret_tree = state.secret_tree;
             self.tree.merge_diff(state.staged_diff)?;
         };
         Ok(())
+    }
+
+    /// Merges a [StagedCommit] into the group state and optionally return a [`SecretTree`]
+    /// from the previous epoch. The secret tree is returned if the Commit does not contain a self removal.
+    ///
+    /// This function should not fail and only returns a [`Result`], because it
+    /// might throw a `LibraryError`.
+    pub fn merge_commit_take_message_secrets(
+        &mut self,
+        staged_commit: StagedCommit,
+    ) -> Result<Option<MessageSecrets>, CoreGroupError> {
+        Ok(if let Some(state) = staged_commit.state {
+            self.group_context = state.group_context;
+            self.group_epoch_secrets = state.group_epoch_secrets;
+
+            // Replace the previous message secrets with the new ones and return the previous message secrets
+            let mut message_secrets = state.message_secrets;
+            mem::swap(&mut message_secrets, &mut self.message_secrets);
+
+            self.interim_transcript_hash = state.interim_transcript_hash;
+
+            self.tree.merge_diff(state.staged_diff)?;
+            Some(message_secrets)
+        } else {
+            None
+        })
     }
 }
 
@@ -334,8 +360,8 @@ impl StagedCommit {
 #[derive(Debug)]
 pub(crate) struct StagedCommitState {
     group_context: GroupContext,
-    epoch_secrets: EpochSecrets,
+    group_epoch_secrets: GroupEpochSecrets,
+    message_secrets: MessageSecrets,
     interim_transcript_hash: Vec<u8>,
-    secret_tree: RefCell<SecretTree>,
     staged_diff: StagedTreeSyncDiff,
 }

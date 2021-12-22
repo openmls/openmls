@@ -12,7 +12,7 @@ use crate::{
 
 use super::{
     proposals::{CreationProposalQueue, StagedProposalQueue},
-    MlsGroup,
+    CoreGroup,
 };
 
 /// This struct contain the return values of the `apply_proposals()` function
@@ -44,7 +44,7 @@ impl ApplyProposalsValues {
 /// current epoch `updates_key_package_bundles` is the list of own
 /// KeyPackageBundles corresponding to updates or commits sent in the
 /// current epoch
-impl MlsGroup {
+impl CoreGroup {
     pub(crate) fn apply_proposals(
         &self,
         diff: &mut TreeSyncDiff,

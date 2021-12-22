@@ -8,19 +8,19 @@ use crate::{
     credentials::{CredentialBundle, CredentialType},
     extensions::{Extension, ExtensionType, KeyIdExtension, RequiredCapabilitiesExtension},
     framing::sender::{Sender, SenderType},
-    framing::{FramingParameters, MlsPlaintext},
+    framing::{FramingParameters, MlsPlaintext, WireFormat},
     group::{
         create_commit_params::CreateCommitParams,
-        errors::MlsGroupError,
+        errors::CoreGroupError,
         proposals::{CreationProposalQueue, ProposalStore, StagedProposal, StagedProposalQueue},
-        GroupContext, GroupEpoch, GroupId, WireFormat,
+        GroupContext, GroupEpoch, GroupId,
     },
     key_packages::{KeyPackageBundle, KeyPackageError},
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalReference, ProposalType},
     schedule::MembershipKey,
 };
 
-use super::MlsGroup;
+use super::CoreGroup;
 
 fn setup_client(
     id: &str,
@@ -306,15 +306,15 @@ fn test_required_unsupported_proposals(
     let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
 
     // This must fail because we don't actually support AppAck proposals
-    let e = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let e = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_required_capabilities(required_capabilities)
         .build(backend)
         .expect_err(
-            "MlsGroup creation must fail because AppAck proposals aren't supported in OpenMLS yet.",
+            "CoreGroup creation must fail because AppAck proposals aren't supported in OpenMLS yet.",
         );
     assert_eq!(
         e,
-        MlsGroupError::ConfigError(ConfigError::UnsupportedProposalType)
+        CoreGroupError::ConfigError(ConfigError::UnsupportedProposalType)
     )
 }
 
@@ -347,10 +347,10 @@ fn test_required_extension_key_package_mismatch(
     ];
     let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
 
-    let alice_group = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_required_capabilities(required_capabilities)
         .build(backend)
-        .expect("Error creating MlsGroup.");
+        .expect("Error creating CoreGroup.");
 
     let e = alice_group
         .create_add_proposal(
@@ -362,7 +362,7 @@ fn test_required_extension_key_package_mismatch(
         .expect_err("Proposal was created even though the key package didn't support the required extensions.");
     assert_eq!(
         e,
-        MlsGroupError::KeyPackageError(KeyPackageError::UnsupportedExtension)
+        CoreGroupError::KeyPackageError(KeyPackageError::UnsupportedExtension)
     );
 }
 
@@ -398,10 +398,10 @@ fn test_group_context_extensions(
     ];
     let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
 
-    let mut alice_group = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_required_capabilities(required_capabilities)
         .build(backend)
-        .expect("Error creating MlsGroup.");
+        .expect("Error creating CoreGroup.");
 
     let bob_add_proposal = alice_group
         .create_add_proposal(
@@ -439,7 +439,7 @@ fn test_group_context_extensions(
 
     // Make sure that Bob can join the group with the required extension in place
     // and Bob's key package supporting them.
-    let _bob_group = MlsGroup::new_from_welcome(
+    let _bob_group = CoreGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,
@@ -480,10 +480,10 @@ fn test_group_context_extension_proposal_fails(
     ];
     let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
 
-    let mut alice_group = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_required_capabilities(required_capabilities)
         .build(backend)
-        .expect("Error creating MlsGroup.");
+        .expect("Error creating CoreGroup.");
 
     // Alice tries to add a required capability she doesn't support herself.
     let required_key_id = Extension::RequiredCapabilities(RequiredCapabilitiesExtension::new(
@@ -498,7 +498,7 @@ fn test_group_context_extension_proposal_fails(
     ).expect_err("Alice was able to create a gce proposal with a required extensions she doesn't support.");
     assert_eq!(
         e,
-        MlsGroupError::KeyPackageError(KeyPackageError::UnsupportedExtension)
+        CoreGroupError::KeyPackageError(KeyPackageError::UnsupportedExtension)
     );
 
     // Well, this failed luckily.
@@ -538,7 +538,7 @@ fn test_group_context_extension_proposal_fails(
         .expect("error merging commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
-    let bob_group = MlsGroup::new_from_welcome(
+    let bob_group = CoreGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,
@@ -558,7 +558,7 @@ fn test_group_context_extension_proposal_fails(
         .expect_err("Bob was able to create a gce proposal for an extension not supported by all other parties.");
     assert_eq!(
         e,
-        MlsGroupError::KeyPackageError(KeyPackageError::UnsupportedExtension)
+        CoreGroupError::KeyPackageError(KeyPackageError::UnsupportedExtension)
     );
 }
 
@@ -600,10 +600,10 @@ fn test_group_context_extension_proposal(
     ];
     let required_capabilities = RequiredCapabilitiesExtension::new(extensions, proposals);
 
-    let mut alice_group = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_required_capabilities(required_capabilities)
         .build(backend)
-        .expect("Error creating MlsGroup.");
+        .expect("Error creating CoreGroup.");
 
     // Adding Bob
     let bob_add_proposal = alice_group
@@ -640,7 +640,7 @@ fn test_group_context_extension_proposal(
         .expect("error merging commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
-    let mut bob_group = MlsGroup::new_from_welcome(
+    let mut bob_group = CoreGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,

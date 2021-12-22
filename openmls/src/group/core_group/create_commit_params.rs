@@ -1,4 +1,4 @@
-//! Builder for [CreateCommitParams] that is used in [MlsGroup::create_commit()]
+//! Builder for [CreateCommitParams] that is used in [CoreGroup::create_commit()]
 
 use super::{proposals::ProposalStore, *};
 
@@ -74,10 +74,12 @@ impl<'a> CreateCommitParamsBuilder<'a> {
         self.ccp.inline_proposals = inline_proposals;
         self
     }
+    #[cfg(any(feature = "test-utils", test))]
     pub fn force_self_update(mut self, force_self_update: bool) -> Self {
         self.ccp.force_self_update = force_self_update;
         self
     }
+    #[cfg(any(feature = "test-utils", test))]
     pub fn commit_type(mut self, commit_type: CommitType) -> Self {
         self.ccp.commit_type = commit_type;
         self

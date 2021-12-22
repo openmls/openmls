@@ -1,4 +1,4 @@
-//! # MLS Group errors
+//! # MLS CoreGroup errors
 //!
 //! `WelcomeError`, `StageCommitError`, `DecryptionError`, and
 //! `CreateCommitError`.
@@ -18,7 +18,7 @@ use openmls_traits::types::CryptoError;
 use tls_codec::Error as TlsCodecError;
 
 implement_error! {
-    pub enum MlsGroupError {
+    pub enum CoreGroupError {
         Simple {
             InitSecretNotFound =
                 "Missing init secret when creating commit.",

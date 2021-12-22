@@ -5,21 +5,7 @@
 
 use clap::Parser;
 use clap_derive::*;
-use openmls::{
-    ciphersuite::signable::Verifiable,
-    group::{
-        create_commit_params::CreateCommitParams,
-        tests::{
-            kat_messages::{self, MessagesTestVector},
-            kat_transcripts::{self, TranscriptTestVector},
-        },
-    },
-    prelude::kat_treemath,
-    prelude::*,
-    schedule::kat_key_schedule::{self, KeyScheduleTestVector},
-    tree::tests_and_kats::kats::kat_encryption::{self, EncryptionTestVector},
-    treesync::tests_and_kats::kats::kat_tree_kem::{self, TreeKemTestVector},
-};
+use openmls::{prelude::*, prelude_test::*};
 
 use serde::{self, Serialize};
 use std::{collections::HashMap, convert::TryFrom, fs::File, io::Write, sync::Mutex};
@@ -57,7 +43,7 @@ impl TryFrom<i32> for TestVectorType {
 /// doesn't consider scenarios where a credential is re-used across groups, so
 /// this simple structure is sufficient.
 pub struct InteropGroup {
-    group: MlsGroup,
+    group: CoreGroup,
     wire_format: WireFormat,
     credential_bundle: CredentialBundle,
     own_kpbs: Vec<KeyPackageBundle>,
@@ -89,8 +75,8 @@ impl MlsClientImpl {
     }
 }
 
-fn into_status(e: MlsGroupError) -> Status {
-    let message = "managed group error ".to_string() + &e.to_string();
+fn into_status(e: CoreGroupError) -> Status {
+    let message = "mls group error ".to_string() + &e.to_string();
     tonic::Status::new(tonic::Code::Aborted, message)
 }
 
@@ -414,11 +400,11 @@ impl MlsClient for MlsClientImpl {
             vec![],
         )
         .unwrap();
-        let config = MlsGroupConfig {
+        let config = CoreGroupConfig {
             add_ratchet_tree_extension: true,
             ..Default::default()
         };
-        let group = MlsGroup::builder(
+        let group = CoreGroup::builder(
             GroupId::from_slice(&create_group_request.group_id),
             key_package_bundle,
         )
@@ -505,7 +491,7 @@ impl MlsClient for MlsClientImpl {
                     "No key package could be found for the given Welcome message.",
                 )
             })?;
-        let group = MlsGroup::new_from_welcome(welcome, None, kpb, &self.crypto_provider)
+        let group = CoreGroup::new_from_welcome(welcome, None, kpb, &self.crypto_provider)
             .map_err(into_status)?;
 
         let interop_group = InteropGroup {

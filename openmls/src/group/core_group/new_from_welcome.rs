@@ -4,20 +4,20 @@ use tls_codec::Deserialize;
 
 use crate::ciphersuite::signable::Verifiable;
 use crate::extensions::ExtensionType;
-use crate::group::{mls_group::*, *};
+use crate::group::{core_group::*, *};
 use crate::key_packages::*;
 use crate::messages::*;
 use crate::schedule::*;
 use crate::treesync::node::Node;
 
-impl MlsGroup {
+impl CoreGroup {
     pub(crate) fn new_from_welcome_internal(
         welcome: Welcome,
         nodes_option: Option<Vec<Option<Node>>>,
         key_package_bundle: KeyPackageBundle,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, WelcomeError> {
-        log::debug!("MlsGroup::new_from_welcome_internal");
+        log::debug!("CoreGroup::new_from_welcome_internal");
         let mls_version = *welcome.version();
         if !Config::supported_versions().contains(&mls_version) {
             return Err(WelcomeError::UnsupportedMlsVersion);
@@ -159,18 +159,17 @@ impl MlsGroup {
         key_schedule.add_context(backend, &serialized_group_context)?;
         let epoch_secrets = key_schedule.epoch_secrets(backend, true)?;
 
-        let secret_tree = epoch_secrets
-            .encryption_secret()
-            .create_secret_tree(tree.leaf_count()?);
+        let (group_epoch_secrets, message_secrets) =
+            epoch_secrets.split_secrets(serialized_group_context, tree.leaf_count()?);
 
-        let confirmation_tag = epoch_secrets
+        let confirmation_tag = message_secrets
             .confirmation_key()
-            .tag(backend, group_context.confirmed_transcript_hash.as_slice())?;
+            .tag(backend, group_context.confirmed_transcript_hash())?;
         let interim_transcript_hash = update_interim_transcript_hash(
             ciphersuite,
             backend,
             &MlsPlaintextCommitAuthData::from(&confirmation_tag),
-            group_context.confirmed_transcript_hash.as_slice(),
+            group_context.confirmed_transcript_hash(),
         )?;
 
         // Verify confirmation tag
@@ -180,11 +179,11 @@ impl MlsGroup {
             log_crypto!(trace, "  Expected: {:x?}", group_info.confirmation_tag());
             Err(WelcomeError::ConfirmationTagMismatch)
         } else {
-            Ok(MlsGroup {
+            Ok(CoreGroup {
                 ciphersuite,
                 group_context,
-                epoch_secrets,
-                secret_tree: RefCell::new(secret_tree),
+                group_epoch_secrets,
+                message_secrets,
                 tree,
                 interim_transcript_hash,
                 use_ratchet_tree_extension: enable_ratchet_tree_extension,

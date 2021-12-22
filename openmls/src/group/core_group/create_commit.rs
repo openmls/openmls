@@ -4,7 +4,7 @@ use crate::{
     ciphersuite::signable::Signable,
     config::Config,
     framing::*,
-    group::{mls_group::*, *},
+    group::{core_group::*, *},
     messages::*,
     treesync::{
         diff::TreeSyncDiff,
@@ -15,14 +15,8 @@ use crate::{
 
 use super::{
     create_commit_params::{CommitType, CreateCommitParams},
-    proposals::{CreationProposalQueue, ProposalStore},
+    proposals::CreationProposalQueue,
 };
-
-/// Wrapper for proposals by value and reference.
-pub struct Proposals<'a> {
-    pub proposals_by_reference: &'a ProposalStore,
-    pub proposals_by_value: &'a [&'a Proposal],
-}
 
 /// A helper struct which contains the values resulting from the preparation of
 /// a commit with path.
@@ -34,7 +28,7 @@ struct PathProcessingResult {
     key_package_bundle: Option<KeyPackageBundle>,
 }
 
-impl MlsGroup {
+impl CoreGroup {
     pub fn create_commit(
         &self,
         params: CreateCommitParams,
@@ -127,7 +121,7 @@ impl MlsGroup {
         };
 
         // Create provisional group state
-        let mut provisional_epoch = self.group_context.epoch;
+        let mut provisional_epoch = self.group_context.epoch();
         provisional_epoch.increment();
 
         // Build MlsPlaintext
@@ -148,7 +142,7 @@ impl MlsGroup {
             // It is ok to a library error here, because we know the MlsPlaintext contains a
             // Commit
             &MlsPlaintextCommitContent::try_from(&mls_plaintext)
-                .map_err(|_| MlsGroupError::LibraryError)?,
+                .map_err(|_| CoreGroupError::LibraryError)?,
             &self.interim_transcript_hash,
         )?;
 
@@ -157,7 +151,7 @@ impl MlsGroup {
 
         // Calculate group context
         let provisional_group_context = GroupContext::new(
-            self.group_context.group_id.clone(),
+            self.group_context.group_id().clone(),
             provisional_epoch,
             tree_hash.clone(),
             confirmed_transcript_hash.clone(),
@@ -167,9 +161,9 @@ impl MlsGroup {
         let joiner_secret = JoinerSecret::new(
             backend,
             path_processing_result.commit_secret,
-            self.epoch_secrets()
+            self.group_epoch_secrets()
                 .init_secret()
-                .ok_or(MlsGroupError::InitSecretNotFound)?,
+                .ok_or(CoreGroupError::InitSecretNotFound)?,
         )?;
 
         // Create group secrets for later use, so we can afterwards consume the
@@ -212,7 +206,7 @@ impl MlsGroup {
         mls_plaintext.set_membership_tag(
             backend,
             &serialized_group_context,
-            self.epoch_secrets().membership_key(),
+            self.message_secrets().membership_key(),
         )?;
 
         // Check if new members were added and, if so, create welcome messages
@@ -227,8 +221,8 @@ impl MlsGroup {
             };
             // Create GroupInfo object
             let group_info = GroupInfoPayload::new(
-                provisional_group_context.group_id.clone(),
-                provisional_group_context.epoch,
+                provisional_group_context.group_id().clone(),
+                provisional_group_context.epoch(),
                 tree_hash,
                 confirmed_transcript_hash,
                 self.group_context_extensions(),

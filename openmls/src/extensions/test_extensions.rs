@@ -9,7 +9,7 @@ use tls_codec::{Deserialize, Serialize};
 use super::*;
 
 use crate::{
-    group::create_commit_params::CreateCommitParams, messages::proposals::ProposalType, prelude::*,
+    credentials::*, framing::*, group::*, key_packages::*, messages::proposals::ProposalType,
 };
 
 #[test]
@@ -128,13 +128,13 @@ fn ratchet_tree_extension(ciphersuite: &'static Ciphersuite, backend: &impl Open
     .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
-    let config = MlsGroupConfig {
+    let config = CoreGroupConfig {
         add_ratchet_tree_extension: true,
-        ..MlsGroupConfig::default()
+        ..CoreGroupConfig::default()
     };
 
     // === Alice creates a group with the ratchet tree extension ===
-    let mut alice_group = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_config(config)
         .build(backend)
         .expect("Error creating group.");
@@ -171,7 +171,7 @@ fn ratchet_tree_extension(ciphersuite: &'static Ciphersuite, backend: &impl Open
         .merge_commit(staged_commit)
         .expect("error merging commit");
 
-    let bob_group = match MlsGroup::new_from_welcome(
+    let bob_group = match CoreGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         None,
         bob_key_package_bundle,
@@ -211,12 +211,12 @@ fn ratchet_tree_extension(ciphersuite: &'static Ciphersuite, backend: &impl Open
     .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
-    let config = MlsGroupConfig {
+    let config = CoreGroupConfig {
         add_ratchet_tree_extension: false,
-        ..MlsGroupConfig::default()
+        ..CoreGroupConfig::default()
     };
 
-    let mut alice_group = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_config(config)
         .build(backend)
         .expect("Error creating group.");
@@ -253,7 +253,7 @@ fn ratchet_tree_extension(ciphersuite: &'static Ciphersuite, backend: &impl Open
         .merge_commit(staged_commit)
         .expect("error merging commit");
 
-    let error = MlsGroup::new_from_welcome(
+    let error = CoreGroup::new_from_welcome(
         welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
         None,
         bob_key_package_bundle,
@@ -264,7 +264,7 @@ fn ratchet_tree_extension(ciphersuite: &'static Ciphersuite, backend: &impl Open
     // We expect an error because the ratchet tree is missing
     assert_eq!(
         error.expect("We expected an error"),
-        MlsGroupError::WelcomeError(WelcomeError::MissingRatchetTree)
+        CoreGroupError::WelcomeError(WelcomeError::MissingRatchetTree)
     );
 }
 

@@ -1,11 +1,10 @@
-use std::ops::DerefMut;
+use core_group::{proposals::StagedProposal, staged_commit::StagedCommit};
 
-use mls_group::{proposals::StagedProposal, staged_commit::StagedCommit};
-use tls_codec::Serialize;
+use crate::tree::secret_tree::SecretTreeError;
 
-use super::{proposals::ProposalStore, *};
+use super::{past_secrets::MessageSecretsStore, proposals::ProposalStore, *};
 
-impl MlsGroup {
+impl CoreGroup {
     /// This function is used to parse messages from the DS.
     /// It checks for syntactic errors and makes some semantic checks as well.
     /// If the input is a [MlsCiphertext] message, it will be decrypted.
@@ -19,11 +18,12 @@ impl MlsGroup {
     ///  - ValSem6
     ///  - ValSem7
     ///  - ValSem9
-    pub fn parse_message(
+    pub fn parse_message<'a>(
         &mut self,
         message: MlsMessageIn,
+        message_secrets_store: impl Into<Option<&'a mut MessageSecretsStore>>,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<UnverifiedMessage, MlsGroupError> {
+    ) -> Result<UnverifiedMessage, CoreGroupError> {
         // Checks the following semantic validation:
         //  - ValSem2
         //  - ValSem3
@@ -33,13 +33,37 @@ impl MlsGroup {
         //  - ValSem6
         let decrypted_message = match message.wire_format() {
             WireFormat::MlsPlaintext => DecryptedMessage::from_inbound_plaintext(message)?,
-            WireFormat::MlsCiphertext => DecryptedMessage::from_inbound_ciphertext(
-                message,
-                self.ciphersuite(),
-                backend,
-                self.epoch_secrets(),
-                self.secret_tree_mut().deref_mut(),
-            )?,
+            WireFormat::MlsCiphertext => {
+                // If the message is older than the current epoch, we need to fetch the correct secret tree first
+                let ciphersuite = self.ciphersuite().clone();
+                let message_secrets = if message.epoch() < self.context().epoch() {
+                    if let Some(store) = message_secrets_store.into() {
+                        if let Some(message_secrets) = store.secrets_for_epoch(message.epoch()) {
+                            message_secrets
+                        } else {
+                            return Err(CoreGroupError::MlsCiphertextError(
+                                MlsCiphertextError::SecretTreeError(
+                                    SecretTreeError::TooDistantInThePast,
+                                ),
+                            ));
+                        }
+                    } else {
+                        return Err(CoreGroupError::MlsCiphertextError(
+                            MlsCiphertextError::SecretTreeError(
+                                SecretTreeError::TooDistantInThePast,
+                            ),
+                        ));
+                    }
+                } else {
+                    self.message_secrets_mut()
+                };
+                DecryptedMessage::from_inbound_ciphertext(
+                    message,
+                    &ciphersuite,
+                    backend,
+                    message_secrets,
+                )?
+            }
         };
 
         let mut credential = None;
@@ -83,23 +107,41 @@ impl MlsGroup {
     ///  - ValSem107
     ///  - ValSem109
     ///  - ValSem110
-    pub fn process_unverified_message(
+    pub fn process_unverified_message<'a>(
         &mut self,
         unverified_message: UnverifiedMessage,
         signature_key: Option<&SignaturePublicKey>,
         proposal_store: &ProposalStore,
+        message_secrets_store: impl Into<Option<&'a mut MessageSecretsStore>>,
         own_kpbs: &[KeyPackageBundle],
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<ProcessedMessage, MlsGroupError> {
-        // Add the context to the message and verify the membership tag if necessary
-        let serialized_context = self.context().tls_serialize_detached()?;
+    ) -> Result<ProcessedMessage, CoreGroupError> {
+        // Add the context to the message and verify the membership tag if necessary.
+        // If the message is older than the current epoch, we need to fetch the correct secret tree first.
+        let message_secrets = if unverified_message.epoch() < self.context().epoch() {
+            let message_secrets = if let Some(store) = message_secrets_store.into() {
+                if let Some(message_secrets) = store.secrets_for_epoch(unverified_message.epoch()) {
+                    message_secrets
+                } else {
+                    return Err(CoreGroupError::MlsCiphertextError(
+                        MlsCiphertextError::SecretTreeError(SecretTreeError::TooDistantInThePast),
+                    ));
+                }
+            } else {
+                return Err(CoreGroupError::MlsCiphertextError(
+                    MlsCiphertextError::SecretTreeError(SecretTreeError::TooDistantInThePast),
+                ));
+            };
+            message_secrets
+        } else {
+            self.message_secrets()
+        };
 
         // Checks the following semantic validation:
         //  - ValSem8
-        let context_plaintext = UnverifiedContextMessage::from_unverified_message_with_context(
+        let context_plaintext = UnverifiedContextMessage::from_unverified_message(
             unverified_message,
-            serialized_context,
-            self.epoch_secrets().membership_key(),
+            message_secrets,
             backend,
         )?;
 
@@ -153,7 +195,7 @@ impl MlsGroup {
                     let _verified_external_message =
                         external_message.into_verified(backend, signature_public_key)?;
                 } else {
-                    return Err(MlsGroupError::NoSignatureKey);
+                    return Err(CoreGroupError::NoSignatureKey);
                 }
 
                 // We don't support external messages yet
@@ -168,9 +210,15 @@ impl MlsGroup {
         &mut self,
         staged_commit: StagedCommit,
         proposal_store: &mut ProposalStore,
-    ) -> Result<(), MlsGroupError> {
-        // Merge the staged commit into the group state
-        self.merge_commit(staged_commit)?;
+        message_secrets_store: &mut MessageSecretsStore,
+    ) -> Result<(), CoreGroupError> {
+        // Save the past epoch
+        let past_epoch = self.context().epoch();
+        // Merge the staged commit into the group state and store the secret tree from the
+        // previous epoch in the message secrets store.
+        if let Some(message_secrets) = self.merge_commit_take_message_secrets(staged_commit)? {
+            message_secrets_store.add(past_epoch, message_secrets);
+        }
         // Empty the proposal store
         proposal_store.empty();
         Ok(())

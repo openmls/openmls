@@ -4,6 +4,7 @@
 //! the `MlsPlaintext` and as described in the [`OpenMLS Wiki`].
 //!
 //! [`OpenMLS Wiki`]: https://github.com/openmls/openmls/wiki/Signable
+#[cfg(any(feature = "test-utils", test))]
 use openmls_traits::{types::CryptoError, OpenMlsCryptoProvider};
 use tls_codec::{Serialize, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
@@ -13,7 +14,7 @@ use crate::{
         CiphersuiteName, HpkePublicKey, Signature,
     },
     extensions::Extension,
-    group::{GroupEpoch, GroupId, MlsGroup},
+    group::*,
     treesync::LeafIndex,
 };
 
@@ -145,33 +146,34 @@ pub(crate) struct PublicGroupStateTbs {
 impl PublicGroupStateTbs {
     /// Creates a new `PublicGroupStateTbs` struct from the current internal state
     /// of the group.
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn new(
         backend: &impl OpenMlsCryptoProvider,
-        mls_group: &MlsGroup,
+        core_group: &CoreGroup,
     ) -> Result<Self, CryptoError> {
-        let ciphersuite = mls_group.ciphersuite();
-        let external_pub = mls_group
-            .epoch_secrets()
+        let ciphersuite = core_group.ciphersuite();
+        let external_pub = core_group
+            .group_epoch_secrets()
             .external_secret()
             .derive_external_keypair(backend.crypto(), ciphersuite)
             .public;
 
-        let group_id = mls_group.group_id().clone();
-        let epoch = mls_group.context().epoch();
-        let tree_hash = mls_group.treesync().tree_hash().into();
-        let interim_transcript_hash = mls_group.interim_transcript_hash().into();
-        let other_extensions = mls_group.other_extensions().into();
+        let group_id = core_group.group_id().clone();
+        let epoch = core_group.context().epoch();
+        let tree_hash = core_group.treesync().tree_hash().into();
+        let interim_transcript_hash = core_group.interim_transcript_hash().into();
+        let other_extensions = core_group.other_extensions().into();
 
         Ok(PublicGroupStateTbs {
             group_id,
             epoch,
             tree_hash,
             interim_transcript_hash,
-            group_context_extensions: mls_group.group_context_extensions().into(),
+            group_context_extensions: core_group.group_context_extensions().into(),
             other_extensions,
             external_pub: external_pub.into(),
             ciphersuite: ciphersuite.name(),
-            signer_index: mls_group.treesync().own_leaf_index(),
+            signer_index: core_group.treesync().own_leaf_index(),
         })
     }
 }

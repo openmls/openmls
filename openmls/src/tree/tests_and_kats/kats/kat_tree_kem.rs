@@ -18,7 +18,7 @@ use crate::test_utils::{read, write};
 use crate::{
     ciphersuite::signable::Signable,
     credentials::{CredentialBundle, CredentialType},
-    prelude::KeyPackageBundlePayload,
+    key_packages::KeyPackageBundlePayload,
     test_utils::hex_to_bytes,
     tree::node::Node,
 };
@@ -27,13 +27,13 @@ use crate::{
     config::Config,
     config::ProtocolVersion,
     framing::MlsMessageOut,
+    framing::MlsPlaintextContentType,
     key_packages::KeyPackage,
     messages::PathSecret,
-    prelude::MlsPlaintextContentType,
     test_utils::*,
     test_utils::{
         bytes_to_hex,
-        test_framework::{ActionType, ManagedTestSetup},
+        test_framework::{ActionType, MlsGroupTestSetup},
     },
     tree::{treemath::*, CiphersuiteName, HashSet, LeafIndex, NodeIndex, RatchetTree, UpdatePath},
 };
@@ -323,8 +323,7 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
     use openmls_traits::key_store::OpenMlsKeyStore;
 
     use crate::{
-        extensions::RatchetTreeExtension,
-        prelude::{KeyPackageBundle, ManagedGroupConfig},
+        extensions::RatchetTreeExtension, group::MlsGroupConfig, key_packages::KeyPackageBundle,
         test_utils::test_framework::CodecUse,
     };
 
@@ -335,10 +334,10 @@ pub fn generate_test_vector(n_leaves: u32, ciphersuite: &'static Ciphersuite) ->
         panic!("test vector can only be generated with two or more members")
     }
     // Set up a group with `n_leaves` members.
-    let managed_group_config = ManagedGroupConfig::test_default();
+    let mls_group_config = MlsGroupConfig::test_default();
 
-    let setup = ManagedTestSetup::new(
-        managed_group_config,
+    let setup = MlsGroupTestSetup::new(
+        mls_group_config,
         n_leaves as usize,
         CodecUse::SerializedMessages,
     );

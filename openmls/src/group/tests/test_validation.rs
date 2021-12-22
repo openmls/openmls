@@ -9,21 +9,8 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::{
-    ciphersuite::{Ciphersuite, CiphersuiteName, Mac, Secret},
-    config::Config,
-    credentials::{Credential, CredentialBundle, CredentialError, CredentialType},
-    extensions::Extension,
-    framing::{
-        ContentType, MembershipTag, MlsCiphertext, MlsCiphertextError, MlsMessageIn,
-        MlsPlaintextContentType, MlsPlaintextError, MlsPlaintextTbmPayload, Sender,
-        ValidationError, VerifiableMlsPlaintext, VerificationError,
-    },
-    group::{
-        FramingValidationError, GroupEpoch, GroupId, ManagedGroup, ManagedGroupConfig,
-        ManagedGroupError, MlsGroupError, WireFormat,
-    },
-    key_packages::{KeyPackage, KeyPackageBundle, KeyPackageError},
-    prelude::ProcessedMessage,
+    config::*, credentials::*, framing::*, group::errors::FramingValidationError, group::*,
+    key_packages::*,
 };
 
 // Helper function to generate a CredentialBundle
@@ -65,7 +52,7 @@ fn generate_key_package_bundle(
 // Test setup values
 #[cfg(test)]
 struct ValidationTestSetup {
-    alice_group: ManagedGroup,
+    alice_group: MlsGroup,
     _alice_credential: Credential,
     _bob_credential: Credential,
     _alice_key_package: KeyPackage,
@@ -106,16 +93,14 @@ fn validation_test_setup(
         generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, vec![], backend)
             .expect("An unexpected error occurred.");
 
-    // Define the managed group configuration
+    // Define the MlsGroup configuration
 
-    let managed_group_config = ManagedGroupConfig::builder()
-        .wire_format(wire_format)
-        .build();
+    let mls_group_config = MlsGroupConfig::builder().wire_format(wire_format).build();
 
     // === Alice creates a group ===
-    let alice_group = ManagedGroup::new(
+    let alice_group = MlsGroup::new(
         backend,
-        &managed_group_config,
+        &mls_group_config,
         group_id,
         &alice_key_package
             .hash(backend)
@@ -235,7 +220,7 @@ fn test_valsem2(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
     assert_eq!(
         err,
-        ManagedGroupError::Group(MlsGroupError::FramingValidationError(
+        MlsGroupError::Group(CoreGroupError::FramingValidationError(
             FramingValidationError::WrongGroupId
         ))
     );
@@ -301,7 +286,7 @@ fn test_valsem3(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
     assert_eq!(
         err,
-        ManagedGroupError::Group(MlsGroupError::FramingValidationError(
+        MlsGroupError::Group(CoreGroupError::FramingValidationError(
             FramingValidationError::WrongEpoch
         ))
     );
@@ -317,7 +302,7 @@ fn test_valsem3(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
     assert_eq!(
         err,
-        ManagedGroupError::Group(MlsGroupError::FramingValidationError(
+        MlsGroupError::Group(CoreGroupError::FramingValidationError(
             FramingValidationError::WrongEpoch
         ))
     );
@@ -353,7 +338,7 @@ fn test_valsem4(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
     let original_message = plaintext.clone();
 
     plaintext.set_sender(Sender {
-        sender_type: crate::prelude::SenderType::Member,
+        sender_type: SenderType::Member,
         sender: 100u32,
     });
 
@@ -365,7 +350,7 @@ fn test_valsem4(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
     assert_eq!(
         err,
-        ManagedGroupError::Group(MlsGroupError::FramingValidationError(
+        MlsGroupError::Group(CoreGroupError::FramingValidationError(
             FramingValidationError::UnknownMember
         ))
     );
@@ -411,7 +396,7 @@ fn test_valsem5(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
     assert_eq!(
         err,
-        ManagedGroupError::Group(MlsGroupError::ValidationError(
+        MlsGroupError::Group(CoreGroupError::ValidationError(
             ValidationError::UnencryptedApplicationMessage
         ))
     );
@@ -456,7 +441,7 @@ fn test_valsem6(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
     assert_eq!(
         err,
-        ManagedGroupError::Group(MlsGroupError::ValidationError(
+        MlsGroupError::Group(CoreGroupError::ValidationError(
             ValidationError::MlsCiphertextError(MlsCiphertextError::DecryptionError)
         ))
     );
@@ -501,7 +486,7 @@ fn test_valsem7(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
     assert_eq!(
         err,
-        ManagedGroupError::Group(MlsGroupError::ValidationError(
+        MlsGroupError::Group(CoreGroupError::ValidationError(
             ValidationError::MissingMembershipTag
         ))
     );
@@ -553,7 +538,7 @@ fn test_valsem8(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
     assert_eq!(
         err,
-        ManagedGroupError::Group(MlsGroupError::ValidationError(
+        MlsGroupError::Group(CoreGroupError::ValidationError(
             ValidationError::MlsPlaintextError(MlsPlaintextError::VerificationError(
                 VerificationError::InvalidMembershipTag
             ))
@@ -603,7 +588,7 @@ fn test_valsem9(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
     assert_eq!(
         err,
-        ManagedGroupError::Group(MlsGroupError::ValidationError(
+        MlsGroupError::Group(CoreGroupError::ValidationError(
             ValidationError::MissingConfirmationTag
         ))
     );
@@ -667,7 +652,7 @@ fn test_valsem10(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypto
         .expect("Could not create MlsPlaintextTbm.");
     let new_membership_tag = alice_group
         .group()
-        .epoch_secrets()
+        .message_secrets()
         .membership_key()
         .tag(backend, tbm_payload)
         .expect("Could not create membership tag.");
@@ -690,7 +675,7 @@ fn test_valsem10(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypto
 
     assert_eq!(
         err,
-        ManagedGroupError::Group(MlsGroupError::ValidationError(
+        MlsGroupError::Group(CoreGroupError::ValidationError(
             ValidationError::CredentialError(CredentialError::InvalidSignature)
         ))
     );

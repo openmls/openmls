@@ -24,7 +24,7 @@
 use crate::ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct};
 
 use super::*;
-use mls_group::create_commit_params::CommitType;
+use core_group::create_commit_params::CommitType;
 use openmls_traits::OpenMlsCryptoProvider;
 use std::convert::TryFrom;
 use tls_codec::{Serialize, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize};
@@ -327,7 +327,7 @@ impl MlsPlaintext {
 
     /// Remove the membership tag for testing.
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn remove_membership_tag(&mut self) {
+    pub fn remove_membership_tag(&mut self) {
         self.membership_tag = None;
     }
 
@@ -612,6 +612,7 @@ impl VerifiableMlsPlaintext {
     }
 
     /// Get the sender index as [`LeafIndex`].
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn sender_index(&self) -> LeafIndex {
         self.tbs.sender.sender
     }

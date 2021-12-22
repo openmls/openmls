@@ -1,4 +1,4 @@
-use crate::prelude::Config;
+use crate::config::Config;
 use crate::test_utils::*;
 
 use super::*;
@@ -29,9 +29,5 @@ fn test_credential_bundle_from_parts(
     let keypair = SignatureKeypair::new(signature_scheme, backend)
         .expect("Could not create signature keypair.");
 
-    // Test decomposing the SignatureKeypair
-    let (private_key, public_key) = keypair.into_tuple();
-    let keypair = SignatureKeypair::from_keys(private_key, public_key);
-
-    let _credential_bundle = CredentialBundle::from_parts(vec![1, 2, 3], signature_scheme, keypair);
+    let _credential_bundle = CredentialBundle::from_parts(vec![1, 2, 3], keypair);
 }

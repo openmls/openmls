@@ -148,6 +148,8 @@ pub(super) fn serialize_plaintext_tbs<'a, W: Write>(
     buffer: &mut W,
 ) -> Result<usize, tls_codec::Error> {
     let mut written = if let Some(serialized_context) = serialized_context.into() {
+        // Only a member should have a context.
+        debug_assert_eq!(sender.sender_type, SenderType::Member);
         buffer.write(serialized_context)?
     } else {
         0
@@ -213,7 +215,7 @@ impl tls_codec::Deserialize for MlsCiphertext {
             ));
         }
 
-        let mls_ciphertext = MlsCiphertext {
+        let mls_ciphertext = MlsCiphertext::new(
             wire_format,
             group_id,
             epoch,
@@ -221,7 +223,7 @@ impl tls_codec::Deserialize for MlsCiphertext {
             authenticated_data,
             encrypted_sender_data,
             ciphertext,
-        };
+        );
 
         Ok(mls_ciphertext)
     }

@@ -1,5 +1,5 @@
 //! This crate provides a framework to set up clients and groups using the
-//! OpenMLS managed_group API. To use the framework, start by creating a new
+//! OpenMLS mls_group API. To use the framework, start by creating a new
 //! `TestSetup` with a number of clients. After that, `create_clients` has to be
 //! called before the the `TestSetup` can be used.
 //!
@@ -21,19 +21,17 @@
 //! can be manipulated manually via the `Client` struct, which contains their
 //! group states.
 
-#![allow(dead_code)]
-use crate::framing::MlsMessageIn;
-/// We allow dead code here due to the following issue:
-/// https://github.com/rust-lang/rust/issues/46379, which would otherwise create
-/// a lot of unused code warnings.
-use crate::prelude::*;
-use crate::treesync::node::Node;
+use crate::{
+    ciphersuite::*, config::*, credentials::*, framing::*, group::*, key_packages::*, messages::*,
+    treesync::node::Node,
+};
 use ::rand::{rngs::OsRng, RngCore};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsCryptoProvider;
 use std::{cell::RefCell, collections::HashMap};
+use tls_codec::*;
 
 pub mod client;
 pub mod errors;
@@ -52,7 +50,7 @@ pub struct Group {
     pub group_id: GroupId,
     pub members: Vec<(usize, Vec<u8>)>,
     pub ciphersuite: Ciphersuite,
-    pub group_config: ManagedGroupConfig,
+    pub group_config: MlsGroupConfig,
     pub public_tree: Vec<Option<Node>>,
     pub exporter_secret: Vec<u8>,
 }
@@ -80,27 +78,27 @@ pub enum CodecUse {
     StructMessages,
 }
 
-/// `ManagedTestSetup` is the main struct of the framework. It contains the
+/// `MlsGroupTestSetup` is the main struct of the framework. It contains the
 /// state of all clients, as well as the global `KeyStore` containing the
 /// clients' `CredentialBundles`. The `waiting_for_welcome` field acts as a
 /// temporary store for `KeyPackage`s that are used to add new members to
-/// groups. Note, that the `ManagedTestSetup` can only be initialized with a
+/// groups. Note, that the `MlsGroupTestSetup` can only be initialized with a
 /// fixed number of clients and that `create_clients` has to be called before it
 /// can be otherwise used.
-pub struct ManagedTestSetup {
+pub struct MlsGroupTestSetup {
     // The clients identity is its position in the vector in be_bytes.
     pub clients: RefCell<HashMap<Vec<u8>, RefCell<Client>>>,
     pub groups: RefCell<HashMap<GroupId, Group>>,
     // This maps key package hashes to client ids.
     pub waiting_for_welcome: RefCell<HashMap<Vec<u8>, Vec<u8>>>,
-    pub default_mgc: ManagedGroupConfig,
+    pub default_mgc: MlsGroupConfig,
     /// Flag to indicate if messages should be serialized and de-serialized as
     /// part of message distribution
     pub use_codec: CodecUse,
 }
 
-// Some notes regarding the layout of the `ManagedTestSetup` implementation
-// below: The references to the credentials in the ManagedGroups (in the
+// Some notes regarding the layout of the `MlsGroupTestSetup` implementation
+// below: The references to the credentials in the MlsGroups (in the
 // clients) are essentially references to the keystore, which in turns means
 // they are references to the top-level object, i.e. the setup.
 //
@@ -114,21 +112,17 @@ pub struct ManagedTestSetup {
 //   object and won't live long enough.
 //
 // Finally, this means we have to initialize the KeyStore before we create the
-// ManagedTestSetup object and we can create the clients (which contain the
+// MlsGroupTestSetup object and we can create the clients (which contain the
 // references to the KeyStore) only after we do that. This has to happen in the
-// context that the `ManagedTestSetup` lives in, because otherwise the
+// context that the `MlsGroupTestSetup` lives in, because otherwise the
 // references don't live long enough.
 
-impl ManagedTestSetup {
-    /// Create a new `ManagedTestSetup` with the given default
-    /// `ManagedGroupConfig` and the given number of clients. For lifetime
+impl MlsGroupTestSetup {
+    /// Create a new `MlsGroupTestSetup` with the given default
+    /// `MlsGroupConfig` and the given number of clients. For lifetime
     /// reasons, `create_clients` has to be called in addition with the same
     /// number of clients.
-    pub fn new(
-        default_mgc: ManagedGroupConfig,
-        number_of_clients: usize,
-        use_codec: CodecUse,
-    ) -> Self {
+    pub fn new(default_mgc: MlsGroupConfig, number_of_clients: usize, use_codec: CodecUse) -> Self {
         let mut clients = HashMap::new();
         for i in 0..number_of_clients {
             let identity = i.to_be_bytes().to_vec();
@@ -160,7 +154,7 @@ impl ManagedTestSetup {
         }
         let groups = RefCell::new(HashMap::new());
         let waiting_for_welcome = RefCell::new(HashMap::new());
-        ManagedTestSetup {
+        MlsGroupTestSetup {
             clients: RefCell::new(clients),
             groups,
             waiting_for_welcome,

@@ -1,4 +1,3 @@
-use psk::*;
 use tls_codec::TlsByteVecU8;
 
 use super::*;

@@ -32,8 +32,16 @@ impl MlsMessageIn {
     /// Get the epoch
     pub fn epoch(&self) -> GroupEpoch {
         match self {
-            MlsMessageIn::Ciphertext(m) => m.epoch,
+            MlsMessageIn::Ciphertext(m) => m.epoch(),
             MlsMessageIn::Plaintext(m) => m.epoch(),
+        }
+    }
+
+    /// Get the content type
+    pub fn content_type(&self) -> ContentType {
+        match self {
+            MlsMessageIn::Ciphertext(m) => m.content_type(),
+            MlsMessageIn::Plaintext(m) => m.content_type(),
         }
     }
 }
@@ -74,7 +82,7 @@ impl MlsMessageOut {
     /// Get the epoch as plain u64.
     pub fn epoch(&self) -> u64 {
         match self {
-            MlsMessageOut::Ciphertext(m) => m.epoch.0,
+            MlsMessageOut::Ciphertext(m) => m.epoch().0,
             MlsMessageOut::Plaintext(m) => m.epoch().0,
         }
     }

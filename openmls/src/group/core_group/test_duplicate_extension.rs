@@ -1,8 +1,8 @@
 //! # Ratchet tree extensions unit test
 use super::*;
 
-use crate::{messages::GroupSecrets, prelude::*, schedule::KeySchedule, test_utils::*};
-use mls_group::create_commit_params::CreateCommitParams;
+use crate::{credentials::*, messages::GroupSecrets, schedule::KeySchedule, test_utils::*};
+use core_group::create_commit_params::CreateCommitParams;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::OpenMlsCryptoProvider;
@@ -51,14 +51,14 @@ fn duplicate_ratchet_tree_extension(
     .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
-    let config = MlsGroupConfig {
+    let config = CoreGroupConfig {
         add_ratchet_tree_extension: true,
-        ..MlsGroupConfig::default()
+        ..CoreGroupConfig::default()
     };
 
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
 
-    let mut alice_group = MlsGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_config(config)
         .build(backend)
         .expect("Error creating group.");
@@ -100,7 +100,7 @@ fn duplicate_ratchet_tree_extension(
     //  === Duplicate the ratchet tree extension ===
 
     // Find key_package in welcome secrets
-    let egs = MlsGroup::find_key_package_from_welcome_secrets(
+    let egs = CoreGroup::find_key_package_from_welcome_secrets(
         bob_key_package_bundle.key_package(),
         welcome.secrets(),
         backend,
@@ -169,11 +169,11 @@ fn duplicate_ratchet_tree_extension(
     welcome.set_encrypted_group_info(encrypted_group_info);
 
     // Try to join group
-    let error = MlsGroup::new_from_welcome(welcome, None, bob_key_package_bundle, backend).err();
+    let error = CoreGroup::new_from_welcome(welcome, None, bob_key_package_bundle, backend).err();
 
     // We expect an error because the ratchet tree is duplicated
     assert_eq!(
         error.expect("We expected an error"),
-        MlsGroupError::WelcomeError(WelcomeError::DuplicateRatchetTreeExtension)
+        CoreGroupError::WelcomeError(WelcomeError::DuplicateRatchetTreeExtension)
     );
 }

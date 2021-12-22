@@ -1,4 +1,4 @@
-//! # MLS Managed Group errors
+//! # MLS MlsGroup errors
 //!
 //! `WelcomeError`, `StageCommitError`, `DecryptionError`, and
 //! `CreateCommitError`.
@@ -7,14 +7,14 @@ use crate::config::ConfigError;
 use crate::credentials::CredentialError;
 use crate::error::ErrorString;
 use crate::framing::MlsCiphertextError;
-use crate::group::{CreateCommitError, ExporterError, MlsGroupError, StageCommitError};
-use crate::prelude::ValidationError;
+use crate::framing::ValidationError;
+use crate::group::{CoreGroupError, CreateCommitError, ExporterError, StageCommitError};
 use crate::treesync::TreeSyncError;
 use openmls_traits::types::CryptoError;
 use tls_codec::Error as TlsCodecError;
 
 implement_error! {
-    pub enum ManagedGroupError {
+    pub enum MlsGroupError {
         Simple {
             NoMatchingCredentialBundle = "Couldn't find a `CredentialBundle` in the `KeyStore` that matches the one in my leaf.",
             NoMatchingKeyPackageBundle = "Couldn't find a `KeyPackageBundle` in the `KeyStore` that matches the given `KeyPackage` hash.",
@@ -27,8 +27,8 @@ implement_error! {
                 "An internal library error occurred. Additional detail is provided.",
             Config(ConfigError) =
                 "See [`ConfigError`](`crate::config::ConfigError`) for details",
-            Group(MlsGroupError) =
-                "See [`MlsGroupError`](`crate::group::MlsGroupError`) for details",
+            Group(CoreGroupError) =
+                "See [`CoreGroupError`](`crate::group::CoreGroupError`) for details",
             CreateCommit(CreateCommitError) =
                 "See [`CreateCommitError`](`crate::group::CreateCommitError`) for details",
             UseAfterEviction(UseAfterEviction) =
@@ -94,8 +94,8 @@ implement_error! {
                 "An invalid ciphertext was provided. The error returns the associated data of the ciphertext.",
             CommitError(StageCommitError) =
                 "See [`StageCommitError`](`crate::group::StageCommitError`) for details",
-            GroupError(MlsGroupError) =
-                "See [`MlsGroupError`](`crate::group::MlsGroupError`) for details",
+            GroupError(CoreGroupError) =
+                "See [`CoreGroupError`](`crate::group::CoreGroupError`) for details",
         }
     }
 }
