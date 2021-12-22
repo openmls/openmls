@@ -164,11 +164,8 @@ fn ratchet_tree_extension(ciphersuite: &'static Ciphersuite, backend: &impl Open
         .create_commit(params, backend)
         .expect("Error creating commit");
 
-    let staged_commit = alice_group
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
-        .expect("error staging commit");
     alice_group
-        .merge_commit(staged_commit)
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging commit");
 
     let bob_group = match CoreGroup::new_from_welcome(
@@ -248,11 +245,8 @@ fn ratchet_tree_extension(ciphersuite: &'static Ciphersuite, backend: &impl Open
         .create_commit(params, backend)
         .expect("Error creating commit");
 
-    let staged_commit = alice_group
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
-        .expect("error staging commit");
     alice_group
-        .merge_commit(staged_commit)
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging commit");
 
     let error = CoreGroup::new_from_welcome(

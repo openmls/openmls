@@ -242,19 +242,41 @@ fn test_valsem3(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         bob_key_package,
     } = validation_test_setup(WireFormat::MlsPlaintext, ciphersuite, backend);
 
-    let (message, _welcome) = alice_group
+    // Alice can't process her own commits, so we'll have to add Bob.
+    let (_message, welcome) = alice_group
         .add_members(backend, &[bob_key_package])
         .expect("Could not add member.");
 
-    let unverified_message = alice_group
+    alice_group
+        .merge_pending_commit()
+        .expect("error merging pending commit");
+
+    let mls_group_config = MlsGroupConfig::builder()
+        .wire_format(WireFormat::MlsPlaintext)
+        .build();
+
+    let mut bob_group = MlsGroup::new_from_welcome(
+        backend,
+        &mls_group_config,
+        welcome,
+        Some(alice_group.export_ratchet_tree()),
+    )
+    .expect("error creating bob's group from welcome");
+
+    // Now that we added bob, Alice needs to create a new message that Bob can process.
+    let (message, _welcome) = alice_group
+        .self_update(backend, None)
+        .expect("Could not self update.");
+
+    let unverified_message = bob_group
         .parse_message(message.into(), backend)
         .expect("Could not parse message.");
-    let processed_message = alice_group
+    let processed_message = bob_group
         .process_unverified_message(unverified_message, None, backend)
         .expect("Could not process unverified message.");
 
     if let ProcessedMessage::StagedCommitMessage(staged_commit) = processed_message {
-        alice_group
+        bob_group
             .merge_staged_commit(*staged_commit)
             .expect("Could not merge Commit message.");
     } else {
@@ -262,7 +284,7 @@ fn test_valsem3(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
     }
 
     // Do a second Commit to increase the epoch number
-    let (message, _welcome) = alice_group
+    let (message, _welcome) = bob_group
         .self_update(backend, None)
         .expect("Could not add member.");
 
@@ -280,7 +302,7 @@ fn test_valsem3(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
     let message_in = MlsMessageIn::from(plaintext.clone());
 
-    let err = alice_group
+    let err = bob_group
         .parse_message(message_in, backend)
         .expect_err("Could parse message despite wrong epoch.");
 
@@ -296,7 +318,7 @@ fn test_valsem3(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
     let message_in = MlsMessageIn::from(plaintext);
 
-    let err = alice_group
+    let err = bob_group
         .parse_message(message_in, backend)
         .expect_err("Could parse message despite wrong epoch.");
 
@@ -308,7 +330,7 @@ fn test_valsem3(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
     );
 
     // Positive case
-    alice_group
+    bob_group
         .parse_message(MlsMessageIn::from(original_message), backend)
         .expect("Unexpected error.");
 }
@@ -508,9 +530,31 @@ fn test_valsem8(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         bob_key_package,
     } = validation_test_setup(WireFormat::MlsPlaintext, ciphersuite, backend);
 
-    let (message, _welcome) = alice_group
-        .add_members(backend, &[bob_key_package])
+    // Alice can't process her own commits, so we'll have to add Bob.
+    let (_message, welcome) = alice_group
+        .add_members(backend, &[bob_key_package.clone()])
         .expect("Could not add member.");
+
+    alice_group
+        .merge_pending_commit()
+        .expect("error merging pending commit");
+
+    let mls_group_config = MlsGroupConfig::builder()
+        .wire_format(WireFormat::MlsPlaintext)
+        .build();
+
+    let mut bob_group = MlsGroup::new_from_welcome(
+        backend,
+        &mls_group_config,
+        welcome,
+        Some(alice_group.export_ratchet_tree()),
+    )
+    .expect("error creating bob's group from welcome");
+
+    // Now that we added bob, Alice needs to create a new message that Bob can process.
+    let (message, _welcome) = alice_group
+        .self_update(backend, None)
+        .expect("Could not self update.");
 
     let serialized_message = message
         .tls_serialize_detached()
@@ -528,11 +572,11 @@ fn test_valsem8(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
     let message_in = MlsMessageIn::from(plaintext);
 
-    let unverified_message = alice_group
+    let unverified_message = bob_group
         .parse_message(message_in, backend)
         .expect("Could not parse message.");
 
-    let err = alice_group
+    let err = bob_group
         .process_unverified_message(unverified_message, None, backend)
         .expect_err("Could process unverified message despite wrong membership tag.");
 
@@ -546,10 +590,10 @@ fn test_valsem8(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
     );
 
     // Positive case
-    let unverified_message = alice_group
+    let unverified_message = bob_group
         .parse_message(MlsMessageIn::from(original_message), backend)
         .expect("Could not parse message.");
-    alice_group
+    bob_group
         .process_unverified_message(unverified_message, None, backend)
         .expect("Unexpected error.");
 }
@@ -610,9 +654,31 @@ fn test_valsem10(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypto
         bob_key_package,
     } = validation_test_setup(WireFormat::MlsPlaintext, ciphersuite, backend);
 
-    let (message, _welcome) = alice_group
+    // Alice can't process her own commits, so we'll have to add Bob.
+    let (_message, welcome) = alice_group
         .add_members(backend, &[bob_key_package])
         .expect("Could not add member.");
+
+    alice_group
+        .merge_pending_commit()
+        .expect("error merging pending commit");
+
+    let mls_group_config = MlsGroupConfig::builder()
+        .wire_format(WireFormat::MlsPlaintext)
+        .build();
+
+    let mut bob_group = MlsGroup::new_from_welcome(
+        backend,
+        &mls_group_config,
+        welcome,
+        Some(alice_group.export_ratchet_tree()),
+    )
+    .expect("error creating bob's group from welcome");
+
+    // Now that we added bob, Alice needs to create a new message that Bob can process.
+    let (message, _welcome) = alice_group
+        .self_update(backend, None)
+        .expect("Could not self update.");
 
     let serialized_message = message
         .tls_serialize_detached()
@@ -665,11 +731,11 @@ fn test_valsem10(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypto
 
     let message_in = MlsMessageIn::from(plaintext);
 
-    let unverified_message = alice_group
+    let unverified_message = bob_group
         .parse_message(message_in, backend)
         .expect("Could not parse message.");
 
-    let err = alice_group
+    let err = bob_group
         .process_unverified_message(unverified_message, None, backend)
         .expect_err("Could process unverified message despite wrong signature.");
 
@@ -681,10 +747,10 @@ fn test_valsem10(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypto
     );
 
     // Positive case
-    let unverified_message = alice_group
+    let unverified_message = bob_group
         .parse_message(MlsMessageIn::from(original_message), backend)
         .expect("Could not parse message.");
-    alice_group
+    bob_group
         .process_unverified_message(unverified_message, None, backend)
         .expect("Unexpected error.");
 }

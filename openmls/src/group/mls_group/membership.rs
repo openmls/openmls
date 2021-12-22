@@ -29,6 +29,10 @@ impl MlsGroup {
             return Err(MlsGroupError::EmptyInput(EmptyInputError::AddMembers));
         }
 
+        if self.pending_commit.is_some() {
+            return Err(MlsGroupError::PendingCommitError);
+        }
+
         // Create inline add proposals from key packages
         let inline_proposals = key_packages
             .iter()
@@ -74,6 +78,9 @@ impl MlsGroup {
         // the configuration
         let mls_messages = self.plaintext_to_mls_message(create_commit_result.commit, backend)?;
 
+        // Store the staged commit as the current `pending_commit`
+        self.pending_commit = Some(create_commit_result.staged_commit);
+
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
 
@@ -97,6 +104,10 @@ impl MlsGroup {
 
         if members.is_empty() {
             return Err(MlsGroupError::EmptyInput(EmptyInputError::RemoveMembers));
+        }
+
+        if self.pending_commit.is_some() {
+            return Err(MlsGroupError::PendingCommitError);
         }
 
         // Create inline remove proposals
@@ -137,6 +148,9 @@ impl MlsGroup {
         // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
         let mls_message = self.plaintext_to_mls_message(create_commit_result.commit, backend)?;
+
+        // Store the staged commit as the current `pending_commit`
+        self.pending_commit = Some(create_commit_result.staged_commit);
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();

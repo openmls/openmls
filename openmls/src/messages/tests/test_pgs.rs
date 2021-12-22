@@ -74,18 +74,8 @@ fn test_pgs(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvi
         Err(e) => panic!("Error creating commit: {:?}", e),
     };
 
-    let staged_commit = group_alice
-        .stage_commit(
-            &create_commit_result.commit,
-            &proposal_store,
-            &[create_commit_result
-                .key_package_bundle_option
-                .expect("No KeyPackageBundle")],
-            backend,
-        )
-        .expect("Could not stage Commit");
     group_alice
-        .merge_commit(staged_commit)
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging commit");
 
     let pgs = group_alice

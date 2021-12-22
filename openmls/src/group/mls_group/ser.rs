@@ -14,6 +14,7 @@ pub struct SerializedMlsGroup {
     aad: Vec<u8>,
     resumption_secret_store: ResumptionSecretStore,
     active: bool,
+    pending_commit: Option<StagedCommit>,
 }
 
 impl SerializedMlsGroup {
@@ -28,6 +29,7 @@ impl SerializedMlsGroup {
             resumption_secret_store: self.resumption_secret_store,
             active: self.active,
             state_changed: InnerState::Persisted,
+            pending_commit: self.pending_commit,
         }
     }
 }

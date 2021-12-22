@@ -60,13 +60,17 @@ impl MlsGroup {
     }
 
     /// Create a Commit message that covers the pending proposals that are
-    /// currently stored inthe group's [ProposalStore].
+    /// currently stored in the group's [ProposalStore].
     pub fn commit_to_pending_proposals(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<(MlsMessageOut, Option<Welcome>), MlsGroupError> {
         if !self.active {
             return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
+        }
+
+        if self.pending_commit.is_some() {
+            return Err(MlsGroupError::PendingCommitError);
         }
 
         let credential = self.credential()?;
@@ -93,13 +97,17 @@ impl MlsGroup {
         // the configuration
         let mls_message = self.plaintext_to_mls_message(create_commit_result.commit, backend)?;
 
+        // Store the staged commit as the current `pending_commit`
+        self.pending_commit = Some(create_commit_result.staged_commit);
+
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
 
         Ok((mls_message, create_commit_result.welcome_option))
     }
 
-    /// Merge a [StagedCommit] into the group after inspection
+    /// Merge a [StagedCommit] into the group after inspection. As this advances
+    /// the epoch of the group, it also clears any pending commits.
     pub fn merge_staged_commit(
         &mut self,
         staged_commit: StagedCommit,
@@ -129,6 +137,19 @@ impl MlsGroup {
         // Delete own KeyPackageBundles
         self.own_kpbs.clear();
 
+        // Delete a potential pending commit
+        self.clear_pending_commit();
+
         Ok(())
+    }
+
+    /// Merges the pending [`StagedCommit`] and, if the merge was successful,
+    /// clears the field by setting it to `None`.
+    pub fn merge_pending_commit(&mut self) -> Result<(), MlsGroupError> {
+        if let Some(staged_commit) = self.pending_commit.clone() {
+            self.merge_staged_commit(staged_commit);
+        } else {
+            Err(MlsGroupError::NoPendingCommit)
+        }
     }
 }

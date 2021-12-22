@@ -435,6 +435,8 @@ fn test_invalid_plaintext(ciphersuite: &'static Ciphersuite) {
         .distribute_to_members(client_id, group, &msg_invalid_sender)
         .expect_err("No error when distributing message with invalid signature.");
 
+    // TODO: Distribution now fails, because the sender itself has no pending
+    // commit that they are aware of.
     assert_eq!(
         ClientError::MlsGroupError(MlsGroupError::Group(
             CoreGroupError::FramingValidationError(FramingValidationError::UnknownMember)

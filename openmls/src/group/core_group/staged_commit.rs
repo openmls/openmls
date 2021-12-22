@@ -207,7 +207,7 @@ impl CoreGroup {
             provisional_group_context.tls_serialize_detached()?;
 
         key_schedule.add_context(backend, &serialized_provisional_group_context)?;
-        let provisional_epoch_secrets = key_schedule.epoch_secrets(backend, true)?;
+        let provisional_epoch_secrets = key_schedule.epoch_secrets(backend)?;
 
         let mls_plaintext_commit_auth_data = MlsPlaintextCommitAuthData::try_from(mls_plaintext)
             .map_err(|_| {
@@ -312,7 +312,7 @@ impl CoreGroup {
 }
 
 /// Contains the changes from a commit to the group state.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct StagedCommit {
     staged_proposal_queue: StagedProposalQueue,
     state: Option<StagedCommitState>,
@@ -387,7 +387,7 @@ impl StagedCommit {
 }
 
 /// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct StagedCommitState {
     group_context: GroupContext,
     group_epoch_secrets: GroupEpochSecrets,

@@ -191,7 +191,7 @@ impl CoreGroupBuilder {
         let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)?;
         key_schedule.add_context(backend, &serialized_group_context)?;
 
-        let epoch_secrets = key_schedule.epoch_secrets(backend, true)?;
+        let epoch_secrets = key_schedule.epoch_secrets(backend)?;
 
         let (group_epoch_secrets, message_secrets) =
             epoch_secrets.split_secrets(serialized_group_context, 1u32);

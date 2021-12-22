@@ -19,6 +19,10 @@ impl MlsGroup {
             return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
+        if self.pending_commit.is_some() {
+            return Err(MlsGroupError::PendingCommitError);
+        }
+
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
@@ -64,6 +68,9 @@ impl MlsGroup {
         // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
         let mls_message = self.plaintext_to_mls_message(create_commit_result.commit, backend)?;
+
+        // Store the staged commit as the current `pending_commit`
+        self.pending_commit = Some(create_commit_result.staged_commit);
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();

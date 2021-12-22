@@ -18,6 +18,7 @@
 //! return a [`Result`] since they may throw a
 //! [`LibraryError`](TreeSyncDiffError::LibraryError).
 use openmls_traits::{types::CryptoError, OpenMlsCryptoProvider};
+use serde::{Deserialize, Serialize};
 
 use std::{collections::HashSet, convert::TryFrom};
 
@@ -48,7 +49,7 @@ pub(crate) type UpdatePathResult = (KeyPackageBundle, Vec<PlainUpdatePathNode>, 
 
 /// The [`StagedTreeSyncDiff`] can be created from a [`TreeSyncDiff`], examined
 /// and later merged into a [`TreeSync`] instance.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct StagedTreeSyncDiff {
     diff: StagedMlsBinaryTreeDiff<TreeSyncNode>,
     new_tree_hash: Vec<u8>,

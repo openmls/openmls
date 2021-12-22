@@ -413,7 +413,6 @@ impl KeySchedule {
     pub(crate) fn epoch_secrets(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        with_init_secret: bool,
     ) -> Result<EpochSecrets, KeyScheduleError> {
         if self.state != State::Context || self.epoch_secret.is_none() {
             log::error!("Trying to derive the epoch secrets while not in the right state.");
@@ -427,7 +426,7 @@ impl KeySchedule {
             None => return Err(KeyScheduleError::LibraryError),
         };
 
-        Ok(EpochSecrets::new(backend, epoch_secret, with_init_secret)?)
+        Ok(EpochSecrets::new(backend, epoch_secret)?)
     }
 }
 
@@ -967,7 +966,7 @@ impl SenderDataSecret {
 /// | `membership_key`        | "membership"    |
 /// | `resumption_secret`     | "resumption"    |
 pub(crate) struct EpochSecrets {
-    init_secret: Option<InitSecret>,
+    init_secret: InitSecret,
     sender_data_secret: SenderDataSecret,
     encryption_secret: EncryptionSecret,
     exporter_secret: ExporterSecret,
@@ -1049,8 +1048,8 @@ impl EpochSecrets {
 
     /// Init secret
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn init_secret(&self) -> Option<&InitSecret> {
-        self.init_secret.as_ref()
+    pub(crate) fn init_secret(&self) -> &InitSecret {
+        &self.init_secret
     }
 
     /// Encryption secret
@@ -1065,7 +1064,6 @@ impl EpochSecrets {
     fn new(
         backend: &impl OpenMlsCryptoProvider,
         epoch_secret: EpochSecret,
-        with_init_secret: bool,
     ) -> Result<Self, CryptoError> {
         log::debug!(
             "Computing EpochSecrets from epoch secret with {}",
@@ -1085,12 +1083,8 @@ impl EpochSecrets {
         let membership_key = MembershipKey::new(backend, &epoch_secret)?;
         let resumption_secret = ResumptionSecret::new(backend, &epoch_secret)?;
 
-        let init_secret = if with_init_secret {
-            log::trace!("  Computing init secret.");
-            Some(InitSecret::new(backend, epoch_secret)?)
-        } else {
-            None
-        };
+        log::trace!("  Computing init secret.");
+        let init_secret = InitSecret::new(backend, epoch_secret)?;
 
         Ok(EpochSecrets {
             init_secret,
@@ -1117,7 +1111,7 @@ impl EpochSecrets {
         let secret_tree = self.encryption_secret.create_secret_tree(treesize);
         (
             GroupEpochSecrets {
-                init_secret: self.init_secret,
+                init_secret: Some(self.init_secret),
                 exporter_secret: self.exporter_secret,
                 authentication_secret: self.authentication_secret,
                 external_secret: self.external_secret,

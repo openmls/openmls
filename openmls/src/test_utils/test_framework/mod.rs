@@ -245,7 +245,7 @@ impl MlsGroupTestSetup {
                 .get(member_id)
                 .expect("An unexpected error occurred.")
                 .borrow();
-            member.receive_messages_for_group(&message)?;
+            member.receive_messages_for_group(&message, sender_id)?;
         }
         // Get the current tree and figure out who's still in the group.
         let sender = clients
