@@ -1,6 +1,6 @@
-use crate::treesync::diff::{StagedTreeSyncDiff, TreeSyncDiff};
+use crate::treesync::diff::StagedTreeSyncDiff;
 
-use super::proposals::{CreationProposalQueue, ProposalStore, StagedProposal, StagedProposalQueue};
+use super::proposals::{ProposalStore, StagedProposal, StagedProposalQueue};
 
 use super::super::errors::*;
 use super::proposals::{
@@ -331,42 +331,14 @@ pub struct StagedCommit {
 impl StagedCommit {
     /// Create a new [`StagedCommit`] from the provisional group state created
     /// during the commit process.
-    pub(crate) fn from_provisional_state(
-        backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
-        provisional_epoch_secrets: EpochSecrets,
-        provisional_group_context: GroupContext,
-        confirmed_transcript_hash: &[u8],
-        confirmation_tag: ConfirmationTag,
-        diff: TreeSyncDiff,
-        creation_proposal_queue: CreationProposalQueue,
-    ) -> Result<Self, CoreGroupError> {
-        let (provisional_group_epoch_secrets, provisional_message_secrets) =
-            provisional_epoch_secrets.split_secrets(
-                provisional_group_context.tls_serialize_detached()?,
-                diff.leaf_count(),
-            );
-
-        let provisional_interim_transcript_hash = update_interim_transcript_hash(
-            ciphersuite,
-            backend,
-            &(&confirmation_tag).into(),
-            &confirmed_transcript_hash,
-        )?;
-        let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
-
-        let staged_proposal_queue = creation_proposal_queue.into();
-        let staged_commit_state = StagedCommitState::new(
-            provisional_group_context,
-            provisional_group_epoch_secrets,
-            provisional_message_secrets,
-            provisional_interim_transcript_hash,
-            staged_diff,
-        );
-        Ok(StagedCommit {
+    pub(crate) fn new(
+        staged_proposal_queue: StagedProposalQueue,
+        state: Option<StagedCommitState>,
+    ) -> Self {
+        StagedCommit {
             staged_proposal_queue,
-            state: Some(staged_commit_state),
-        })
+            state,
+        }
     }
 
     /// Returns the Add proposals that are covered by the Commit message as in iterator over [StagedAddProposal].

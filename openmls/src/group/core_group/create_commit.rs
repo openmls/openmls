@@ -16,7 +16,7 @@ use crate::{
 use super::{
     create_commit_params::{CommitType, CreateCommitParams},
     proposals::CreationProposalQueue,
-    staged_commit::StagedCommit,
+    staged_commit::{StagedCommit, StagedCommitState},
 };
 
 /// A helper struct which contains the values resulting from the preparation of
@@ -211,7 +211,7 @@ impl CoreGroup {
         )?;
 
         // Check if new members were added and, if so, create welcome messages
-        let (mls_plaintext, welcome_option, key_package_bundle) = if !plaintext_secrets.is_empty() {
+        let welcome_option = if !plaintext_secrets.is_empty() {
             // Create the ratchet tree extension if necessary
             let other_extensions: Vec<Extension> = if self.use_ratchet_tree_extension {
                 vec![Extension::RatchetTree(RatchetTreeExtension::new(
@@ -253,33 +253,35 @@ impl CoreGroup {
                 secrets,
                 encrypted_group_info,
             );
-            (
-                mls_plaintext,
-                Some(welcome),
-                path_processing_result.key_package_bundle,
-            )
+            Some(welcome)
         } else {
-            (
-                mls_plaintext,
-                None,
-                path_processing_result.key_package_bundle,
-            )
+            None
         };
 
-        let staged_commit = StagedCommit::from_provisional_state(
-            backend,
+        let provisional_interim_transcript_hash = update_interim_transcript_hash(
             ciphersuite,
-            provisional_epoch_secrets,
-            provisional_group_context,
+            backend,
+            &(&confirmation_tag).into(),
             &confirmed_transcript_hash,
-            confirmation_tag,
-            diff,
-            proposal_queue,
         )?;
+
+        let (provisional_group_epoch_secrets, provisional_message_secrets) =
+            provisional_epoch_secrets
+                .split_secrets(serialized_provisional_group_context, diff.leaf_count());
+
+        let staged_commit_state = StagedCommitState::new(
+            provisional_group_context,
+            provisional_group_epoch_secrets,
+            provisional_message_secrets,
+            provisional_interim_transcript_hash,
+            diff.into_staged_diff(backend, ciphersuite)?,
+        );
+        let staged_commit = StagedCommit::new(proposal_queue.into(), Some(staged_commit_state));
+
         Ok(CreateCommitResult {
             commit: mls_plaintext,
             welcome_option,
-            key_package_bundle_option: key_package_bundle,
+            key_package_bundle_option: path_processing_result.key_package_bundle,
             staged_commit,
         })
     }
