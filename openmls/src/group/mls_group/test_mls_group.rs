@@ -171,25 +171,13 @@ fn remover(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvid
     .expect("An unexpected error occurred.");
 
     // === Alice adds Bob ===
-    let (queued_message, welcome) = alice_group
+    let (_queued_message, welcome) = alice_group
         .add_members(backend, &[bob_key_package])
         .expect("Could not add member to group.");
 
-    let unverified_message = alice_group
-        .parse_message(queued_message.into(), backend)
-        .expect("Could not parse message.");
-
-    let alice_processed_message = alice_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Could not process unverified message.");
-
-    if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
-        alice_group
-            .merge_staged_commit(*staged_commit)
-            .expect("Could not merge StagedCommit");
-    } else {
-        unreachable!("Expected a StagedCommit.");
-    }
+    alice_group
+        .merge_pending_commit()
+        .expect("error merging pending commit");
 
     let mut bob_group = MlsGroup::new_from_welcome(
         backend,
@@ -219,19 +207,9 @@ fn remover(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvid
         unreachable!("Expected a StagedCommit.");
     }
 
-    let unverified_message = bob_group
-        .parse_message(queued_messages.into(), backend)
-        .expect("Could not parse message.");
-    let bob_processed_message = bob_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Could not process unverified message.");
-    if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
-        bob_group
-            .merge_staged_commit(*staged_commit)
-            .expect("Could not merge StagedCommit");
-    } else {
-        unreachable!("Expected a StagedCommit.");
-    }
+    bob_group
+        .merge_pending_commit()
+        .expect("error merging pending commit");
 
     let mut charlie_group = MlsGroup::new_from_welcome(
         backend,
@@ -274,19 +252,12 @@ fn remover(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvid
     }
 
     // Charlie commits
-    let (queued_messages, _welcome) = charlie_group
+    let (_queued_messages, _welcome) = charlie_group
         .commit_to_pending_proposals(backend)
         .expect("Could not commit proposal");
 
-    let unverified_message = charlie_group
-        .parse_message(queued_messages.into(), backend)
-        .expect("Could not parse message.");
-    let charlie_processed_message = charlie_group
-        .process_unverified_message(unverified_message, None, backend)
-        .expect("Could not process unverified message.");
-
     // Check that we receive the correct proposal
-    if let ProcessedMessage::StagedCommitMessage(staged_commit) = charlie_processed_message {
+    if let Some(staged_commit) = charlie_group.pending_commit() {
         let remove = staged_commit
             .remove_proposals()
             .next()
@@ -299,7 +270,11 @@ fn remover(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvid
         assert_eq!(remove.sender().to_leaf_index(), 0u32);
     } else {
         unreachable!("Expected a StagedCommit.");
-    }
+    };
+
+    charlie_group
+        .merge_pending_commit()
+        .expect("error merging pending commit");
 
     // TODO #524: Check that Alice removed Bob
 }
@@ -409,7 +384,9 @@ fn test_invalid_plaintext(ciphersuite: &'static Ciphersuite) {
     };
 
     let error = setup
-        .distribute_to_members(client_id, group, &msg_invalid_signature)
+        // We're the "no_client" id to prevent the original sender from treating
+        // this message as his own and merging the pending commit.
+        .distribute_to_members("no_client".as_bytes(), group, &msg_invalid_signature)
         .expect_err("No error when distributing message with invalid signature.");
 
     assert_eq!(
@@ -432,11 +409,11 @@ fn test_invalid_plaintext(ciphersuite: &'static Ciphersuite) {
     };
 
     let error = setup
-        .distribute_to_members(client_id, group, &msg_invalid_sender)
+        // We're the "no_client" id to prevent the original sender from treating
+        // this message as his own and merging the pending commit.
+        .distribute_to_members("no_client".as_bytes(), group, &msg_invalid_sender)
         .expect_err("No error when distributing message with invalid signature.");
 
-    // TODO: Distribution now fails, because the sender itself has no pending
-    // commit that they are aware of.
     assert_eq!(
         ClientError::MlsGroupError(MlsGroupError::Group(
             CoreGroupError::FramingValidationError(FramingValidationError::UnknownMember)

@@ -1,3 +1,4 @@
+use core_group::past_secrets::MessageSecretsStore;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
@@ -237,7 +238,7 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
             backend,
         )
         .expect("Could not create proposal.");
-    let proposal_store = ProposalStore::from_staged_proposal(
+    let mut proposal_store = ProposalStore::from_staged_proposal(
         StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create StagedProposal."),
     );
@@ -264,12 +265,13 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         create_commit_result.commit.confirmation_tag()
     );
 
-    let staged_commit = alice_group
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
-        .expect("error staging commit");
     alice_group
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
+        .merge_staged_commit(
+            create_commit_result.staged_commit,
+            &mut proposal_store,
+            &mut MessageSecretsStore::new(0),
+        )
+        .expect("error merging pending commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
     let group_bob = CoreGroup::new_from_welcome(
@@ -484,12 +486,13 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
 
     log::info!(" >>> Staging & merging commit ...");
 
-    let staged_commit = alice_group
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
-        .expect("error staging commit");
     alice_group
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
+        .merge_staged_commit(
+            create_commit_result.staged_commit,
+            &mut proposal_store,
+            &mut MessageSecretsStore::new(0),
+        )
+        .expect("error merging pending commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
     let group_bob = CoreGroup::new_from_welcome(

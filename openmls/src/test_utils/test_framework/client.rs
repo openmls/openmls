@@ -141,6 +141,9 @@ impl Client {
         if sender_id == &self.identity {
             group_state.merge_pending_commit()?
         } else {
+            // Clear any potential pending commits.
+            group_state.clear_pending_commit();
+            // Process the message.
             let unverified_message = group_state.parse_message(message.clone(), &self.crypto)?;
             let processed_message =
                 group_state.process_unverified_message(unverified_message, None, &self.crypto)?;

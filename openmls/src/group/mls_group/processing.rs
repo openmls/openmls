@@ -146,8 +146,8 @@ impl MlsGroup {
     /// Merges the pending [`StagedCommit`] and, if the merge was successful,
     /// clears the field by setting it to `None`.
     pub fn merge_pending_commit(&mut self) -> Result<(), MlsGroupError> {
-        if let Some(staged_commit) = self.pending_commit.clone() {
-            self.merge_staged_commit(staged_commit);
+        if let Some(staged_commit) = self.pending_commit.take() {
+            self.merge_staged_commit(staged_commit)
         } else {
             Err(MlsGroupError::NoPendingCommit)
         }

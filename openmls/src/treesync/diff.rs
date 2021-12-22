@@ -219,9 +219,8 @@ impl<'a> TreeSyncDiff<'a> {
     /// apply it to this diff. The given [`CredentialBundle`] reference is used
     /// to sign the [`KeyPackageBundlePayload`] after updating its parent hash.
     ///
-    /// Returns the resulting [`KeyPackageBundle`] for later use with
-    /// [`Self::re_apply_own_update_path()`], as well as the [`CommitSecret`]
-    /// and the path resulting from the path derivation.
+    /// Returns the [`CommitSecret`] and the path resulting from the path
+    /// derivation.
     pub(crate) fn apply_own_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -240,7 +239,7 @@ impl<'a> TreeSyncDiff<'a> {
         key_package_bundle_payload.update_parent_hash(&parent_hash);
         let key_package_bundle = key_package_bundle_payload.sign(backend, credential_bundle)?;
 
-        let node = Node::LeafNode(key_package_bundle.key_package().clone().into());
+        let node = Node::LeafNode(key_package_bundle.clone().into());
 
         // Replace the leaf.
         self.diff.replace_leaf(self.own_leaf_index, node.into())?;
@@ -715,12 +714,16 @@ impl<'a> TreeSyncDiff<'a> {
         let mut own_node_ids = vec![self.diff.leaf(self.own_leaf_index)?];
 
         own_node_ids.append(&mut self.diff.direct_path(self.own_leaf_index)?);
+        println!("\nLooking for private keys.");
+        println!("I am at node {:?}", self.own_leaf_index());
         for node_id in own_node_ids {
+            println!("Looking at node {:?}", node_id);
             let node_tsn = self.diff.node(node_id)?;
             // If the node is blank, skip it.
             if let Some(node) = node_tsn.node() {
                 // If we don't have the private key, skip it.
                 if let Some(private_key) = node.private_key() {
+                    println!("Found one!");
                     // If we do have the private key, check if the key is in the
                     // resolution.
                     if let Some(resolution_position) = sender_copath_resolution
