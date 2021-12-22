@@ -109,10 +109,6 @@ pub struct MlsGroupTestSetup {
 // result, we need to populate the keystore _completely_ before distributing the
 // references, as we can't mutably reference the keystore.
 //
-//   * Note, that (to my knowledge) we can't have the keystore live in a
-//   refcell, because then the references are based on the local `read().expect("An unexpected error occurred.")`ed
-//   object and won't live long enough.
-//
 // Finally, this means we have to initialize the KeyStore before we create the
 // MlsGroupTestSetup object and we can create the clients (which contain the
 // references to the KeyStore) only after we do that. This has to happen in the
