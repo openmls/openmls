@@ -43,12 +43,24 @@ impl<T> SignedStruct<T> for Signature {
 }
 
 impl SignatureKeypair {
-    /// Construct new [SignatureKeypair] from a private and a public key
-    #[cfg(test)]
-    pub fn from_keys(private_key: SignaturePrivateKey, public_key: SignaturePublicKey) -> Self {
+    #[cfg(feature = "crypto-subtle")]
+    /// Construct a new [`SignatureKeypair`] from bytes of a private and a public key.
+    ///
+    /// **NO CHECKS ARE PERFORMED ON THE KEYS. USE AT YOUR OWN RISK.**
+    pub fn from_bytes(
+        signature_scheme: SignatureScheme,
+        private_key: Vec<u8>,
+        public_key: Vec<u8>,
+    ) -> Self {
         Self {
-            private_key,
-            public_key,
+            private_key: SignaturePrivateKey {
+                signature_scheme,
+                value: private_key,
+            },
+            public_key: SignaturePublicKey {
+                signature_scheme,
+                value: public_key,
+            },
         }
     }
 
@@ -83,7 +95,7 @@ impl SignatureKeypair {
 }
 
 impl SignatureKeypair {
-    pub(crate) fn new(
+    pub fn new(
         signature_scheme: SignatureScheme,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<SignatureKeypair, CryptoError> {
@@ -94,11 +106,11 @@ impl SignatureKeypair {
 
         Ok(SignatureKeypair {
             private_key: SignaturePrivateKey {
-                value: sk.to_vec(),
+                value: sk,
                 signature_scheme,
             },
             public_key: SignaturePublicKey {
-                value: pk.to_vec(),
+                value: pk,
                 signature_scheme,
             },
         })
@@ -137,6 +149,10 @@ impl SignaturePublicKey {
             .map_err(|_| CryptoError::InvalidSignature)
     }
 
+    /// Get the signature scheme of the public key
+    pub fn signature_scheme(&self) -> SignatureScheme {
+        self.signature_scheme
+    }
     /// Returns the bytes of the signature public key.
     pub fn as_slice(&self) -> &[u8] {
         &self.value
@@ -158,5 +174,10 @@ impl SignaturePrivateKey {
             Ok(s) => Ok(Signature { value: s.into() }),
             Err(_) => Err(CryptoError::CryptoLibraryError),
         }
+    }
+
+    /// Get the signature scheme of the private key
+    pub fn signature_scheme(&self) -> SignatureScheme {
+        self.signature_scheme
     }
 }

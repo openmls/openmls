@@ -34,14 +34,6 @@ pub trait OpenMlsKeyStore: Send + Sync {
     where
         Self: Sized;
 
-    /// Update a value stored for ID `k` with a new value `v` that implements the
-    /// [`KeyStoreValue`] trait for serialization.
-    ///
-    /// Returns an error if storing fails.
-    fn update<K: Hash, V: FromKeyStoreValue>(&self, k: &K, v: &V) -> Result<(), Self::Error>
-    where
-        Self: Sized;
-
     /// Delete a value stored for ID `k`.
     ///
     /// Returns an error if storing fails.
