@@ -53,11 +53,6 @@ impl OpenMlsKeyStore for MemoryKeyStore {
         }
     }
 
-    /// Not supported.
-    fn update<K: Hash, V: FromKeyStoreValue>(&self, _k: &K, _v: &V) -> Result<(), Self::Error> {
-        Err(Error::UnsupportedMethod)
-    }
-
     /// Delete a value stored for ID `k`.
     ///
     /// Returns an error if storing fails.
