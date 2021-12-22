@@ -10,8 +10,6 @@ pub struct MlsGroupConfig {
     /// are returned as MlsPlaintext messages `Ciphertext`: Handshake messages are
     /// returned as MlsCiphertext messages
     pub(crate) wire_format: WireFormat,
-    /// Defines the update policy
-    pub(crate) update_policy: UpdatePolicy,
     /// Size of padding in bytes
     pub(crate) padding_size: usize,
     /// Maximum number of past epochs for which application messages
@@ -46,11 +44,6 @@ impl MlsGroupConfig {
         self.max_past_epochs
     }
 
-    /// Get a reference to the [`MlsGroupConfig`] update policy.
-    pub fn update_policy(&self) -> &UpdatePolicy {
-        &self.update_policy
-    }
-
     /// Get the [`MlsGroupConfig`] number of resumption secrets.
     pub fn number_of_resumption_secrets(&self) -> usize {
         self.number_of_resumption_secrets
@@ -73,7 +66,6 @@ impl Default for MlsGroupConfig {
     fn default() -> Self {
         MlsGroupConfig {
             wire_format: WireFormat::MlsCiphertext,
-            update_policy: UpdatePolicy::default(),
             padding_size: 0,
             max_past_epochs: 0,
             number_of_resumption_secrets: 0,
@@ -97,12 +89,6 @@ impl MlsGroupConfigBuilder {
     /// Sets the `wire_format` property of the MlsGroupConfig.
     pub fn wire_format(mut self, wire_format: WireFormat) -> Self {
         self.config.wire_format = wire_format;
-        self
-    }
-
-    /// Sets the `update_policy` property of the MlsGroupConfig.
-    pub fn update_policy(mut self, update_policy: UpdatePolicy) -> Self {
-        self.config.update_policy = update_policy;
         self
     }
 
@@ -141,26 +127,5 @@ impl MlsGroupConfigBuilder {
 
     pub fn build(self) -> MlsGroupConfig {
         self.config
-    }
-}
-
-/// Specifies in which intervals the own leaf node should be updated
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct UpdatePolicy {
-    /// Maximum time before an update in seconds
-    pub(crate) maximum_time: u32,
-    /// Maximum messages that are sent before an update in seconds
-    pub(crate) maximum_sent_messages: u32,
-    /// Maximum messages that are received before an update in seconds
-    pub(crate) maximum_received_messages: u32,
-}
-
-impl Default for UpdatePolicy {
-    fn default() -> Self {
-        UpdatePolicy {
-            maximum_time: 2_592_000, // 30 days in seconds
-            maximum_sent_messages: 100,
-            maximum_received_messages: 1_000,
-        }
     }
 }
