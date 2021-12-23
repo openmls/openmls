@@ -68,7 +68,7 @@ impl PlainUpdatePathNode {
         group_context: &[u8],
     ) -> UpdatePathNode {
         let encrypted_path_secrets: Vec<HpkeCiphertext> = public_keys
-            .iter()
+            .par_iter()
             .map(|pk| {
                 self.path_secret
                     .encrypt(backend, ciphersuite, pk, group_context)
