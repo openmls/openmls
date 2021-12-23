@@ -27,6 +27,8 @@ mod test_create_commit_params;
 #[cfg(test)]
 mod test_duplicate_extension;
 #[cfg(test)]
+mod test_external_init;
+#[cfg(test)]
 mod test_past_secrets;
 #[cfg(test)]
 mod test_proposals;
