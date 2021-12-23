@@ -156,7 +156,7 @@ impl<'a> TreeSyncDiff<'a> {
                 u32::try_from(leaf_index).map_err(|_| TreeSyncDiffError::LibraryError)?;
             if self.diff.node(*leaf_id)?.node().is_none() {
                 leaf_index_option = Some(leaf_index);
-                continue;
+                break;
             }
         }
         // If we found a free leaf, replace it with the new one, otherwise
