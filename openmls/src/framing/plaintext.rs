@@ -124,16 +124,20 @@ impl MlsPlaintext {
         context: &GroupContext,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, MlsPlaintextError> {
-        let serialized_context = context.tls_serialize_detached()?;
-        let mls_plaintext = MlsPlaintextTbs::new(
+        let mut mls_plaintext = MlsPlaintextTbs::new(
             framing_parameters.wire_format(),
             context.group_id().clone(),
             context.epoch(),
             sender,
             framing_parameters.aad().into(),
             payload,
-        )
-        .with_context(serialized_context);
+        );
+
+        if sender.sender_type == SenderType::Member {
+            let serialized_context = context.tls_serialize_detached()?;
+            mls_plaintext = mls_plaintext.with_context(serialized_context);
+        }
+
         Ok(mls_plaintext.sign(backend, credential_bundle)?)
     }
 
@@ -220,9 +224,11 @@ impl MlsPlaintext {
         )
     }
 
-    /// This constructor builds an `MlsPlaintext` containing a Commit. The given
-    /// `CommitType` determines the `SenderType`: If it's a `Member` commit,
-    /// it's `SenderType::Member` and `SenderType::NewMember` otherwise.
+    /// This constructor builds an `MlsPlaintext` containing a Commit. If the
+    /// given `CommitType` is `Member`, the `SenderType` is `Member` as well. If
+    /// it's an `External` commit, the `SenderType` is `NewMember`. If it is an
+    /// `External` commit, the context is not signed along with the rest of the
+    /// commit.
     pub fn commit(
         framing_parameters: FramingParameters,
         sender_index: LeafIndex,

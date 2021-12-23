@@ -13,6 +13,7 @@ use crate::{
         signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
         CiphersuiteName, HpkePublicKey, Signature,
     },
+    config::ProtocolVersion,
     extensions::Extension,
     group::*,
     treesync::LeafIndex,
@@ -39,11 +40,13 @@ use crate::{
 /// `VerifiablePublicGroupState`.
 #[derive(PartialEq, Debug, TlsSerialize, TlsSize)]
 pub struct PublicGroupState {
+    pub(crate) version: ProtocolVersion,
     pub(crate) ciphersuite: CiphersuiteName,
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
     pub(crate) tree_hash: TlsByteVecU8,
     pub(crate) interim_transcript_hash: TlsByteVecU8,
+    pub(crate) confirmed_transcript_hash: TlsByteVecU8,
     pub(crate) group_context_extensions: TlsVecU32<Extension>,
     pub(crate) other_extensions: TlsVecU32<Extension>,
     pub(crate) external_pub: HpkePublicKey,
@@ -65,6 +68,37 @@ pub struct VerifiablePublicGroupState {
     signature: Signature,
 }
 
+impl VerifiablePublicGroupState {
+    /// Get the `ProtocolVersion` of the unverified
+    /// `PublicGroupState`.
+    pub(crate) fn version(&self) -> ProtocolVersion {
+        self.tbs.version
+    }
+
+    /// Get a reference to the `Ciphersuite` of the unverified
+    /// `PublicGroupState`.
+    pub(crate) fn ciphersuite(&self) -> CiphersuiteName {
+        self.tbs.ciphersuite
+    }
+
+    /// Get a reference to the `tree_hash` of the unverified
+    /// `PublicGroupState`.
+    pub(crate) fn tree_hash(&self) -> &[u8] {
+        self.tbs.tree_hash.as_slice()
+    }
+
+    /// Get the `LeafIndex` of the signer of the unverified `PublicGroupState`.
+    pub(crate) fn signer_index(&self) -> LeafIndex {
+        self.tbs.signer_index
+    }
+
+    /// Get a reference to the non [`GroupContext`] extensions of the unverified
+    /// `PublicGroupState`.
+    pub(crate) fn other_extensions(&self) -> &[Extension] {
+        self.tbs.other_extensions.as_slice()
+    }
+}
+
 mod private_mod {
     #[derive(Default)]
     pub struct Seal;
@@ -73,11 +107,13 @@ mod private_mod {
 impl VerifiedStruct<VerifiablePublicGroupState> for PublicGroupState {
     fn from_verifiable(v: VerifiablePublicGroupState, _seal: Self::SealingType) -> Self {
         Self {
+            version: v.tbs.version,
             ciphersuite: v.tbs.ciphersuite,
             group_id: v.tbs.group_id,
             epoch: v.tbs.epoch,
             tree_hash: v.tbs.tree_hash,
             interim_transcript_hash: v.tbs.interim_transcript_hash,
+            confirmed_transcript_hash: v.tbs.confirmed_transcript_hash,
             group_context_extensions: v.tbs.group_context_extensions,
             other_extensions: v.tbs.other_extensions,
             external_pub: v.tbs.external_pub,
@@ -92,11 +128,13 @@ impl VerifiedStruct<VerifiablePublicGroupState> for PublicGroupState {
 impl SignedStruct<PublicGroupStateTbs> for PublicGroupState {
     fn from_payload(tbs: PublicGroupStateTbs, signature: Signature) -> Self {
         Self {
+            version: tbs.version,
             ciphersuite: tbs.ciphersuite,
             group_id: tbs.group_id,
             epoch: tbs.epoch,
             tree_hash: tbs.tree_hash,
             interim_transcript_hash: tbs.interim_transcript_hash,
+            confirmed_transcript_hash: tbs.confirmed_transcript_hash,
             group_context_extensions: tbs.group_context_extensions,
             other_extensions: tbs.other_extensions,
             external_pub: tbs.external_pub,
@@ -131,11 +169,13 @@ impl<'a> Verifiable for VerifiablePublicGroupState {
 /// ```
 #[derive(TlsSize, TlsSerialize, TlsDeserialize, Debug, Clone)]
 pub(crate) struct PublicGroupStateTbs {
+    pub(crate) version: ProtocolVersion,
     pub(crate) ciphersuite: CiphersuiteName,
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
     pub(crate) tree_hash: TlsByteVecU8,
     pub(crate) interim_transcript_hash: TlsByteVecU8,
+    pub(crate) confirmed_transcript_hash: TlsByteVecU8,
     pub(crate) group_context_extensions: TlsVecU32<Extension>,
     pub(crate) other_extensions: TlsVecU32<Extension>,
     pub(crate) external_pub: HpkePublicKey,
@@ -162,13 +202,16 @@ impl PublicGroupStateTbs {
         let epoch = core_group.context().epoch();
         let tree_hash = core_group.treesync().tree_hash().into();
         let interim_transcript_hash = core_group.interim_transcript_hash().into();
+        let confirmed_transcript_hash = core_group.confirmed_transcript_hash().into();
         let other_extensions = core_group.other_extensions().into();
 
         Ok(PublicGroupStateTbs {
+            version: core_group.version(),
             group_id,
             epoch,
             tree_hash,
             interim_transcript_hash,
+            confirmed_transcript_hash,
             group_context_extensions: core_group.group_context_extensions().into(),
             other_extensions,
             external_pub: external_pub.into(),
