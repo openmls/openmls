@@ -1,22 +1,22 @@
-//use crate::test_utils::*;
-use openmls_traits::OpenMlsCryptoProvider;
-
-use rstest::*;
-use rstest_reuse::{self, *};
-
-use core_group::create_commit_params::CreateCommitParams;
-use core_group::proposals::ProposalStore;
-use core_group::proposals::StagedProposal;
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use tls_codec::{Deserialize, Serialize};
-
 use crate::{
     ciphersuite::signable::{Signable, Verifiable},
     config::*,
     framing::*,
+    group::core_group::{
+        create_commit_params::CreateCommitParams,
+        proposals::{ProposalStore, StagedProposal},
+    },
     key_packages::KeyPackageBundle,
+    tree::sender_ratchet::SenderRatchetConfiguration,
     utils::print_tree,
 };
+
+use rstest::*;
+use rstest_reuse::{self, *};
+
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::OpenMlsCryptoProvider;
+use tls_codec::{Deserialize, Serialize};
 
 /// This tests serializing/deserializing MlsPlaintext
 #[apply(ciphersuites_and_backends)]
@@ -155,6 +155,7 @@ fn codec_ciphertext(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 /// This tests the correctness of wire format checks
 #[apply(ciphersuites_and_backends)]
 fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let configuration = &SenderRatchetConfiguration::default();
     let credential_bundle = CredentialBundle::new(
         vec![7, 8, 9],
         CredentialType::Basic,
@@ -229,7 +230,7 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
     // Decrypt the ciphertext and expect the correct wire format
 
     let verifiable_plaintext = ciphertext
-        .to_plaintext(ciphersuite, backend, &mut message_secrets)
+        .to_plaintext(ciphersuite, backend, &mut message_secrets, configuration)
         .expect("Could not decrypt MlsCiphertext.");
 
     assert_eq!(
@@ -243,7 +244,7 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
 
     assert_eq!(
         ciphertext
-            .to_plaintext(ciphersuite, backend, &mut message_secrets)
+            .to_plaintext(ciphersuite, backend, &mut message_secrets, configuration)
             .expect_err("Could decrypt despite wrong wire format."),
         MlsCiphertextError::WrongWireFormat
     );
@@ -328,6 +329,7 @@ fn membership_tag(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let configuration = &SenderRatchetConfiguration::default();
 
     // Define credential bundles
     let alice_credential_bundle = CredentialBundle::new(
@@ -532,7 +534,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     .expect("Encryption error");
 
     let received_message = group_charlie
-        .decrypt(&enc_message, backend)
+        .decrypt(&enc_message, backend, configuration)
         .expect("error decrypting message");
     let received_message = group_charlie.verify(received_message, backend);
     assert_eq!(
@@ -570,7 +572,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     )
     .expect("Encryption error");
 
-    let received_message = group_charlie.decrypt(&enc_message, backend);
+    let received_message = group_charlie.decrypt(&enc_message, backend, configuration);
     assert_eq!(
         received_message.unwrap_err(),
         CoreGroupError::MlsCiphertextError(MlsCiphertextError::GenerationOutOfBound)

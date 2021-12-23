@@ -120,6 +120,7 @@ async fn test_list_clients() {
 #[actix_rt::test]
 async fn test_group() {
     let crypto = &OpenMlsRustCrypto::default();
+    let configuration = &SenderRatchetConfiguration::default();
     let data = web::Data::new(Mutex::new(DsData::default()));
     let mut app = test::init_service(
         App::new()
@@ -337,7 +338,7 @@ async fn test_group() {
 
     // Decrypt the message on Client1
     let mls_plaintext = group
-        .decrypt(&mls_ciphertext, crypto)
+        .decrypt(&mls_ciphertext, crypto, configuration)
         .expect("Error decrypting MlsCiphertext");
     let mls_plaintext = group
         .verify(mls_plaintext, crypto)
