@@ -11,8 +11,51 @@ use crate::tree::{index::LeafIndex, secret_tree::*};
 use super::index::NodeIndex;
 use super::*;
 
-const OUT_OF_ORDER_TOLERANCE: u32 = 5;
-const MAXIMUM_FORWARD_DISTANCE: u32 = 1000;
+// TODO #265: This should disappear
+pub(crate) const OUT_OF_ORDER_TOLERANCE: u32 = 5;
+
+/// Stores the configuration parameters for sender ratchets.
+///
+/// **Parameters**
+///
+///  - out_of_order_tolerance:
+/// This parameter defines a window for which decryption secrets are kept.
+/// This is useful in case the DS cannot guarantee that all application messages have total order within an epoch.
+/// Use this carefully, since keeping decryption secrets affects forward secrecy within an epoch.
+/// The default value is 0.
+///  - maximum_forward_distance:
+/// This parameter defines how many incoming messages can be skipped. This is useful if the DS
+/// drops application messages. The default value is 1000.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct SenderRatchetConfiguration {
+    out_of_order_tolerance: u32,
+    maximum_forward_distance: u32,
+}
+
+impl SenderRatchetConfiguration {
+    /// Create a new configuration
+    pub fn new(out_of_order_tolerance: u32, maximum_forward_distance: u32) -> Self {
+        Self {
+            out_of_order_tolerance,
+            maximum_forward_distance,
+        }
+    }
+    /// Get a reference to the sender ratchet configuration's out of order tolerance.
+    pub fn out_of_order_tolerance(&self) -> u32 {
+        self.out_of_order_tolerance
+    }
+
+    /// Get a reference to the sender ratchet configuration's maximum forward distance.
+    pub fn maximum_forward_distance(&self) -> u32 {
+        self.maximum_forward_distance
+    }
+}
+
+impl Default for SenderRatchetConfiguration {
+    fn default() -> Self {
+        Self::new(5, 1000)
+    }
+}
 
 pub type RatchetSecrets = (AeadKey, AeadNonce);
 
@@ -40,13 +83,15 @@ impl SenderRatchet {
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         generation: u32,
+        configuration: &SenderRatchetConfiguration,
     ) -> Result<RatchetSecrets, SecretTreeError> {
         // If generation is too distant in the future
-        if generation > (self.generation + MAXIMUM_FORWARD_DISTANCE) {
+        if generation > (self.generation + configuration.maximum_forward_distance()) {
             return Err(SecretTreeError::TooDistantInTheFuture);
         }
         // If generation id too distant in the past
-        if generation < self.generation && (self.generation - generation) >= OUT_OF_ORDER_TOLERANCE
+        if generation < self.generation
+            && (self.generation - generation) >= configuration.out_of_order_tolerance()
         {
             return Err(SecretTreeError::TooDistantInThePast);
         }
@@ -64,7 +109,7 @@ impl SenderRatchet {
         // If generation is in the future
         } else {
             for _ in 0..(generation - self.generation) {
-                if self.past_secrets.len() == OUT_OF_ORDER_TOLERANCE as usize {
+                if self.past_secrets.len() == configuration.out_of_order_tolerance() as usize {
                     self.past_secrets.remove(0);
                 }
                 // We can return a library error here, because there must be a mistake in the implementation

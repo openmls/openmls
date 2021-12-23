@@ -39,6 +39,7 @@ use crate::{
     messages::{proposals::*, *},
     schedule::psk::*,
     schedule::*,
+    tree::sender_ratchet::*,
     treesync::{node::Node, *},
 };
 
@@ -433,8 +434,14 @@ impl CoreGroup {
         &mut self,
         mls_ciphertext: &MlsCiphertext,
         backend: &impl OpenMlsCryptoProvider,
+        sender_ratchet_configuration: &SenderRatchetConfiguration,
     ) -> Result<VerifiableMlsPlaintext, CoreGroupError> {
-        Ok(mls_ciphertext.to_plaintext(self.ciphersuite(), backend, &mut self.message_secrets)?)
+        Ok(mls_ciphertext.to_plaintext(
+            self.ciphersuite(),
+            backend,
+            &mut self.message_secrets,
+            sender_ratchet_configuration,
+        )?)
     }
 
     /// Set the context of the [`VerifiableMlsPlaintext`] (if it has not been

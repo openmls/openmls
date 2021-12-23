@@ -598,6 +598,7 @@ impl MlsClient for MlsClientImpl {
         request: tonic::Request<UnprotectRequest>,
     ) -> Result<tonic::Response<UnprotectResponse>, tonic::Status> {
         let unprotect_request = request.get_ref();
+        let configuration = &SenderRatchetConfiguration::default();
 
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
@@ -608,7 +609,7 @@ impl MlsClient for MlsClientImpl {
             .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
         let upt = interop_group
             .group
-            .decrypt(&message, &self.crypto_provider)
+            .decrypt(&message, &self.crypto_provider, configuration)
             .map_err(into_status)?;
         let application_data = interop_group
             .group
@@ -778,6 +779,8 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<CommitResponse>, tonic::Status> {
         let commit_request = request.get_ref();
 
+        let configuration = &SenderRatchetConfiguration::default();
+
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(commit_request.state_id as usize)
@@ -791,7 +794,7 @@ impl MlsClient for MlsClientImpl {
                         .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
                     let upt = interop_group
                         .group
-                        .decrypt(&ct, &self.crypto_provider)
+                        .decrypt(&ct, &self.crypto_provider, configuration)
                         .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?;
                     interop_group
                         .group
@@ -821,7 +824,7 @@ impl MlsClient for MlsClientImpl {
                         .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
                     let upt = interop_group
                         .group
-                        .decrypt(&ct, &self.crypto_provider)
+                        .decrypt(&ct, &self.crypto_provider, configuration)
                         .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?;
                     interop_group
                         .group
@@ -907,6 +910,8 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<HandleCommitResponse>, tonic::Status> {
         let handle_commit_request = request.get_ref();
 
+        let configuration = &SenderRatchetConfiguration::default();
+
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(handle_commit_request.state_id as usize)
@@ -919,7 +924,7 @@ impl MlsClient for MlsClientImpl {
                         .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
                 let upt = interop_group
                     .group
-                    .decrypt(&ct, &self.crypto_provider)
+                    .decrypt(&ct, &self.crypto_provider, configuration)
                     .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?;
                 interop_group
                     .group
@@ -945,7 +950,7 @@ impl MlsClient for MlsClientImpl {
                         .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
                     let upt = interop_group
                         .group
-                        .decrypt(&ct, &self.crypto_provider)
+                        .decrypt(&ct, &self.crypto_provider, configuration)
                         .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?;
                     interop_group
                         .group

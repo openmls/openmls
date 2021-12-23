@@ -146,7 +146,11 @@ impl User {
                     };
                     let msg = match message {
                         DsMlsMessage::Ciphertext(ctxt) => {
-                            let verifiable_plaintext = match group.decrypt(&ctxt, &self.crypto) {
+                            let verifiable_plaintext = match group.decrypt(
+                                &ctxt,
+                                &self.crypto,
+                                &SenderRatchetConfiguration::default(),
+                            ) {
                                 Ok(msg) => msg,
                                 Err(e) => {
                                     log::error!(

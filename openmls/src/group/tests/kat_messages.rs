@@ -7,7 +7,7 @@
 use crate::{
     ciphersuite::signable::Signable, config::*, credentials::*, framing::*, group::*,
     key_packages::*, messages::proposals::*, messages::public_group_state::*, messages::*,
-    schedule::*, test_utils::*, treesync::node::Node,
+    schedule::*, test_utils::*, tree::sender_ratchet::*, treesync::node::Node,
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -191,7 +191,11 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         )
         .expect("An unexpected error occurred.");
     let verifiable_mls_plaintext_application = group
-        .decrypt(&mls_ciphertext_application, &crypto)
+        .decrypt(
+            &mls_ciphertext_application,
+            &crypto,
+            &SenderRatchetConfiguration::default(),
+        )
         .expect("An unexpected error occurred.");
     // Sets the context implicitly.
     let mls_plaintext_application = group

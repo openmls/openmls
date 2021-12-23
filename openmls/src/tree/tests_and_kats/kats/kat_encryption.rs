@@ -87,7 +87,10 @@ use crate::{
     messages::proposals::Proposal,
     schedule::{EncryptionSecret, MembershipKey, SenderDataSecret},
     test_utils::*,
-    tree::secret_tree::{SecretTree, SecretType},
+    tree::{
+        secret_tree::{SecretTree, SecretType},
+        sender_ratchet::SenderRatchetConfiguration,
+    },
     utils::random_u64,
 };
 
@@ -351,6 +354,7 @@ pub fn generate_test_vector(
                     leaf.into(),
                     SecretType::ApplicationSecret,
                     generation,
+                    &SenderRatchetConfiguration::default(),
                 )
                 .expect("Error getting decryption secret");
             let application_key_string = bytes_to_hex(application_secret_key.as_slice());
@@ -373,6 +377,7 @@ pub fn generate_test_vector(
                     leaf.into(),
                     SecretType::HandshakeSecret,
                     generation,
+                    &SenderRatchetConfiguration::default(),
                 )
                 .expect("Error getting decryption secret");
             let handshake_key_string = bytes_to_hex(handshake_secret_key.as_slice());
@@ -514,6 +519,7 @@ pub fn run_test_vector(
                     leaf_index.into(),
                     SecretType::ApplicationSecret,
                     generation,
+                    &SenderRatchetConfiguration::default(),
                 )
                 .expect("Error getting decryption secret");
             log::debug!(
@@ -563,7 +569,12 @@ pub fn run_test_vector(
 
             // Decrypt and check application message
             let mls_plaintext_application = mls_ciphertext_application
-                .to_plaintext(ciphersuite, backend, group.message_secrets_mut())
+                .to_plaintext(
+                    ciphersuite,
+                    backend,
+                    group.message_secrets_mut(),
+                    &SenderRatchetConfiguration::default(),
+                )
                 .expect("Error decrypting MlsCiphertext");
             if hex_to_bytes(&application.plaintext)
                 != mls_plaintext_application
@@ -589,6 +600,7 @@ pub fn run_test_vector(
                     leaf_index.into(),
                     SecretType::HandshakeSecret,
                     generation,
+                    &SenderRatchetConfiguration::default(),
                 )
                 .expect("Error getting decryption secret");
             if hex_to_bytes(&handshake.key) != handshake_secret_key.as_slice() {
@@ -620,7 +632,12 @@ pub fn run_test_vector(
 
             // Decrypt and check message
             let mls_plaintext_handshake = mls_ciphertext_handshake
-                .to_plaintext(ciphersuite, backend, group.message_secrets_mut())
+                .to_plaintext(
+                    ciphersuite,
+                    backend,
+                    group.message_secrets_mut(),
+                    &SenderRatchetConfiguration::default(),
+                )
                 .expect("Error decrypting MlsCiphertext");
             if hex_to_bytes(&handshake.plaintext)
                 != mls_plaintext_handshake
@@ -646,6 +663,7 @@ pub fn run_test_vector(
                     leaf_index.into(),
                     SecretType::HandshakeSecret,
                     generation,
+                    &SenderRatchetConfiguration::default(),
                 )
                 .expect("Error getting decryption secret");
             if hex_to_bytes(&handshake.key) != handshake_secret_key.as_slice() {
@@ -673,7 +691,12 @@ pub fn run_test_vector(
 
             // Decrypt and check message
             let mls_plaintext_handshake = mls_ciphertext_handshake
-                .to_plaintext(ciphersuite, backend, group.message_secrets_mut())
+                .to_plaintext(
+                    ciphersuite,
+                    backend,
+                    group.message_secrets_mut(),
+                    &SenderRatchetConfiguration::default(),
+                )
                 .expect("Error decrypting MLSCiphertext");
             if hex_to_bytes(&handshake.plaintext)
                 != mls_plaintext_handshake
