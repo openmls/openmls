@@ -25,8 +25,15 @@ impl MlsGroup {
         self.flag_state_change();
 
         // Parse the message
+        let sender_ratchet_configuration =
+            self.configuration().sender_ratchet_configuration().clone();
         self.group
-            .parse_message(message, &mut self.message_secrets_store, backend)
+            .parse_message(
+                message,
+                &mut self.message_secrets_store,
+                &sender_ratchet_configuration,
+                backend,
+            )
             .map_err(MlsGroupError::Group)
     }
 
