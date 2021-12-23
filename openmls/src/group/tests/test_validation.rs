@@ -9,8 +9,8 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::{
-    config::*, credentials::*, framing::*, group::errors::FramingValidationError, group::*,
-    key_packages::*,
+    ciphersuite::hash_ref::KeyPackageRef, config::*, credentials::*, framing::*,
+    group::errors::FramingValidationError, group::*, key_packages::*, treesync::TreeSyncError,
 };
 
 // Helper function to generate a CredentialBundle
@@ -359,22 +359,20 @@ fn test_valsem4(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
     let original_message = plaintext.clone();
 
-    plaintext.set_sender(Sender {
-        sender_type: SenderType::Member,
-        sender: 100u32,
-    });
+    let random_sender = Sender::build_member(&KeyPackageRef::from_slice(
+        &backend.rand().random_vec(16).unwrap(),
+    ));
+    plaintext.set_sender(random_sender);
 
     let message_in = MlsMessageIn::from(plaintext);
 
     let err = alice_group
         .parse_message(message_in, backend)
-        .expect_err("Could parse message despite wrong sender index.");
+        .expect_err("Could parse message despite wrong sender.");
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::FramingValidationError(
-            FramingValidationError::UnknownMember
-        ))
+        MlsGroupError::Group(CoreGroupError::TreeSyncError(TreeSyncError::LeafNotInTree))
     );
 
     // Positive case

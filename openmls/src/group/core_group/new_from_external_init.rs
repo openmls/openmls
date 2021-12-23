@@ -5,6 +5,7 @@ use crate::{
         proposals::{ExternalInitProposal, Proposal},
         public_group_state::{PublicGroupState, VerifiablePublicGroupState},
     },
+    treesync::node::Node,
 };
 
 use super::{
@@ -41,12 +42,14 @@ impl CoreGroup {
         // If we got a ratchet tree extension in the welcome, we enable it for
         // this group. Note that this is not strictly necessary. But there's
         // currently no other mechanism to enable the extension.
-        let extension_tree_option =
-            try_nodes_from_extensions(verifiable_public_group_state.other_extensions())?;
+        let extension_tree_option = try_nodes_from_extensions(
+            verifiable_public_group_state.other_extensions(),
+            backend.crypto(),
+        )?;
         let (nodes, enable_ratchet_tree_extension) = match extension_tree_option {
-            Some(ref nodes) => (nodes, true),
-            None => match tree_option.as_ref() {
-                Some(n) => (n, false),
+            Some(nodes) => (nodes, true),
+            None => match tree_option {
+                Some(n) => (n.into(), false),
                 None => return Err(ExternalCommitError::MissingRatchetTree.into()),
             },
         };
@@ -61,8 +64,7 @@ impl CoreGroup {
         }
 
         // FIXME #680: Validation of external commits
-
-        let pgs_signer_leaf = treesync.leaf(verifiable_public_group_state.signer_index())?;
+        let pgs_signer_leaf = treesync.leaf_from_id(verifiable_public_group_state.signer())?;
         let pgs_signer_credential = pgs_signer_leaf
             .ok_or(ExternalCommitError::UnknownSender)?
             .key_package()
@@ -113,7 +115,7 @@ impl CoreGroup {
                 == params.credential_bundle().credential().identity()
             {
                 let remove_proposal = Proposal::Remove(RemoveProposal {
-                    removed: leaf_index,
+                    removed: key_package.hash_ref(backend.crypto())?,
                 });
                 inline_proposals.push(remove_proposal);
                 break;

@@ -625,8 +625,7 @@ impl EncryptionSecret {
     }
 
     /// Create a random `EncryptionSecret`. For testing purposes only.
-    #[cfg(test)]
-    #[doc(hidden)]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn random(
         ciphersuite: &'static Ciphersuite,
         rng: &impl OpenMlsCryptoProvider,

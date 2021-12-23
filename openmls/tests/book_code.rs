@@ -169,7 +169,10 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         );
         // Check that Alice added Bob
         // TODO #575: Replace this with the adequate API call
-        assert_eq!(add.sender().to_leaf_index(), 0u32);
+        assert_eq!(
+            add.sender().as_key_package_ref().unwrap(),
+            alice_group.key_package_ref().unwrap()
+        );
     } else {
         unreachable!("Expected a StagedCommit.");
     }
@@ -294,9 +297,12 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
             update.update_proposal().key_package().credential(),
             &bob_credential
         );
-        // Check that Alice added Bob
+        // Check that Bob sent the update
         // TODO #575: Replace this with the adequate API call
-        assert_eq!(update.sender().to_leaf_index(), 1u32);
+        assert_eq!(
+            update.sender().as_key_package_ref().unwrap(),
+            bob_group.key_package_ref().unwrap()
+        );
         // Merge staged Commit
         alice_group
             .merge_staged_commit(*staged_commit)
@@ -355,9 +361,12 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
             unreachable!("Expected a Proposal.");
         }
 
-        // Check that Alice added bob
+        // Check that Alice sent the proposal
         // TODO #575: Replace this with the adequate API call
-        assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
+        assert_eq!(
+            staged_proposal.sender().as_key_package_ref().unwrap(),
+            alice_group.key_package_ref().unwrap()
+        );
         bob_group.store_pending_proposal(*staged_proposal);
     } else {
         unreachable!("Expected a QueuedProposal.");
@@ -390,9 +399,12 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
             update.update_proposal().key_package().credential(),
             &alice_credential
         );
-        // Check that Alice added Bob
+        // Check that Alice sent the update
         // TODO #575: Replace this with the adequate API call
-        assert_eq!(update.sender().to_leaf_index(), 0u32);
+        assert_eq!(
+            update.sender().as_key_package_ref().unwrap(),
+            alice_group.key_package_ref().unwrap()
+        );
 
         bob_group
             .merge_staged_commit(*staged_commit)
@@ -555,7 +567,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     // === Charlie removes Bob ===
     // ANCHOR: charlie_removes_bob
     let (mls_message_out, welcome_option) = charlie_group
-        .remove_members(backend, &[1])
+        .remove_members(backend, &[*bob_group.key_package_ref().unwrap()])
         .expect("Could not remove Bob from group.");
     // ANCHOR_END: charlie_removes_bob
 
@@ -588,10 +600,16 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
             .expect("Expected a proposal.");
         // Check that Bob was removed
         // TODO #575: Replace this with the adequate API call
-        assert_eq!(remove.remove_proposal().removed(), 1u32);
+        assert_eq!(
+            remove.remove_proposal().removed(),
+            bob_group.key_package_ref().unwrap()
+        );
         // Check that Charlie removed Bob
         // TODO #575: Replace this with the adequate API call
-        assert_eq!(remove.sender().to_leaf_index(), 2u32);
+        assert_eq!(
+            remove.sender().as_key_package_ref().unwrap(),
+            charlie_group.key_package_ref().unwrap()
+        );
         // Merge staged commit
         alice_group
             .merge_staged_commit(*staged_commit)
@@ -610,10 +628,16 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
             .expect("Expected a proposal.");
         // Check that Bob was removed
         // TODO #575: Replace this with the adequate API call
-        assert_eq!(remove.remove_proposal().removed(), 1u32);
+        assert_eq!(
+            remove.remove_proposal().removed(),
+            bob_group.key_package_ref().unwrap()
+        );
         // Check that Charlie removed Bob
         // TODO #575: Replace this with the adequate API call
-        assert_eq!(remove.sender().to_leaf_index(), 2u32);
+        assert_eq!(
+            remove.sender().as_key_package_ref().unwrap(),
+            charlie_group.key_package_ref().unwrap()
+        );
         // Merge staged Commit
         bob_group
             .merge_staged_commit(*staged_commit)
@@ -660,7 +684,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     // Create RemoveProposal and process it
     // ANCHOR: propose_remove
     let mls_message_out = alice_group
-        .propose_remove_member(backend, 2)
+        .propose_remove_member(backend, charlie_group.key_package_ref().unwrap())
         .expect("Could not create proposal to remove Charlie.");
     // ANCHOR_END: propose_remove
 
@@ -676,7 +700,10 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         if let Proposal::Remove(ref remove_proposal) = staged_proposal.proposal() {
             // Check that Charlie was removed
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(remove_proposal.removed(), 2u32);
+            assert_eq!(
+                remove_proposal.removed(),
+                charlie_group.key_package_ref().unwrap()
+            );
             // Store proposal
             charlie_group.store_pending_proposal(*staged_proposal.clone());
         } else {
@@ -685,7 +712,10 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 
         // Check that Alice removed Charlie
         // TODO #575: Replace this with the adequate API call
-        assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
+        assert_eq!(
+            staged_proposal.sender().as_key_package_ref().unwrap(),
+            alice_group.key_package_ref().unwrap()
+        );
     } else {
         unreachable!("Expected a QueuedProposal.");
     }
@@ -717,7 +747,10 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 
         // Check that Alice added Bob
         // TODO #575: Replace this with the adequate API call
-        assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
+        assert_eq!(
+            staged_proposal.sender().as_key_package_ref().unwrap(),
+            alice_group.key_package_ref().unwrap()
+        );
         // Store proposal
         charlie_group.store_pending_proposal(*staged_proposal);
     }
@@ -809,7 +842,10 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         assert_eq!(application_message.message(), message_alice);
         // Check that Alice sent the message
         // TODO #575: Replace this with the adequate API call
-        assert_eq!(application_message.sender().to_leaf_index(), 0u32);
+        assert_eq!(
+            application_message.sender().as_key_package_ref().unwrap(),
+            alice_group.key_package_ref().unwrap()
+        );
     } else {
         unreachable!("Expected an ApplicationMessage.");
     }
@@ -857,10 +893,16 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
             .next()
             .expect("Expected a proposal.");
         // Check that Bob was removed
-        assert_eq!(remove.remove_proposal().removed(), 1u32);
+        assert_eq!(
+            remove.remove_proposal().removed(),
+            bob_group.key_package_ref().unwrap()
+        );
         // Check that Bob removed himself
         // TODO #575: Replace this with the adequate API call
-        assert_eq!(remove.sender().to_leaf_index(), 1u32);
+        assert_eq!(
+            remove.sender().as_key_package_ref().unwrap(),
+            bob_group.key_package_ref().unwrap()
+        );
         // Merge staged Commit
     } else {
         unreachable!("Expected a StagedCommit.");
@@ -884,10 +926,16 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
             .next()
             .expect("Expected a proposal.");
         // Check that Bob was removed
-        assert_eq!(remove.remove_proposal().removed(), 1u32);
+        assert_eq!(
+            remove.remove_proposal().removed(),
+            bob_group.key_package_ref().unwrap()
+        );
         // Check that Bob removed himself
         // TODO #575: Replace this with the adequate API call
-        assert_eq!(remove.sender().to_leaf_index(), 1u32);
+        assert_eq!(
+            remove.sender().as_key_package_ref().unwrap(),
+            bob_group.key_package_ref().unwrap()
+        );
         assert!(staged_commit.self_removed());
         // Merge staged Commit
         bob_group

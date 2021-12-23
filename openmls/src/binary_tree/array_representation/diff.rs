@@ -23,6 +23,7 @@ use std::fmt::Debug;
 use serde::{Deserialize, Serialize};
 
 use crate::binary_tree::{array_representation::treemath::sibling, LeafIndex, TreeSize};
+use crate::ciphersuite::hash_ref::KeyPackageRef;
 
 use super::treemath::parent;
 use super::{

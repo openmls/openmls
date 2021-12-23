@@ -11,7 +11,8 @@ use crate::schedule::*;
 use crate::treesync::node::Node;
 
 impl CoreGroup {
-    pub(crate) fn new_from_welcome_internal(
+    // Join a group from a welcome message
+    pub fn new_from_welcome(
         welcome: Welcome,
         nodes_option: Option<Vec<Option<Node>>>,
         key_package_bundle: KeyPackageBundle,
@@ -94,10 +95,10 @@ impl CoreGroup {
         // this group. Note that this is not strictly necessary. But there's
         // currently no other mechanism to enable the extension.
         let (nodes, enable_ratchet_tree_extension) =
-            match try_nodes_from_extensions(group_info.other_extensions())? {
+            match try_nodes_from_extensions(group_info.other_extensions(), backend.crypto())? {
                 Some(nodes) => (nodes, true),
-                None => match nodes_option.as_ref() {
-                    Some(n) => (n.as_slice(), false),
+                None => match nodes_option {
+                    Some(n) => (n, false),
                     None => return Err(WelcomeError::MissingRatchetTree),
                 },
             };
@@ -107,16 +108,16 @@ impl CoreGroup {
         let (tree, _commit_secret_option) = TreeSync::from_nodes_with_secrets(
             backend,
             ciphersuite,
-            nodes,
-            group_info.signer_index(),
+            &nodes,
+            group_info.signer(),
             path_secret_option,
             key_package_bundle,
         )?;
 
-        let group_members = tree.full_leaves()?;
-        let signer_key_package = group_members
-            .get(&group_info.signer_index())
-            .ok_or(WelcomeError::UnknownSender)?;
+        let signer_key_package = tree
+            .leaf_from_id(group_info.signer())?
+            .ok_or(WelcomeError::UnknownSender)?
+            .key_package();
 
         // Verify GroupInfo signature
         group_info

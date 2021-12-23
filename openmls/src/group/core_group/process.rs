@@ -33,13 +33,10 @@ impl CoreGroup {
             WireFormat::MlsPlaintext => DecryptedMessage::from_inbound_plaintext(message)?,
             WireFormat::MlsCiphertext => {
                 // If the message is older than the current epoch, we need to fetch the correct secret tree first
-                let ciphersuite = self.ciphersuite();
-                let message_secrets = self.message_secrets_mut(message.epoch())?;
                 DecryptedMessage::from_inbound_ciphertext(
                     message,
-                    ciphersuite,
                     backend,
-                    message_secrets,
+                    self,
                     sender_ratchet_configuration,
                 )?
             }
@@ -114,7 +111,7 @@ impl CoreGroup {
                     MlsPlaintextContentType::Application(application_message) => {
                         ProcessedMessage::ApplicationMessage(ApplicationMessage::new(
                             application_message.as_slice().to_vec(),
-                            *verified_member_message.plaintext().sender(),
+                            verified_member_message.plaintext().sender(),
                         ))
                     }
                     MlsPlaintextContentType::Proposal(_proposal) => {

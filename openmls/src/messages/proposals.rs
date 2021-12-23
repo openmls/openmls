@@ -1,6 +1,10 @@
 use crate::{
-    ciphersuite::*, config::ProtocolVersion, extensions::Extension, group::GroupId,
-    key_packages::*, schedule::psk::*,
+    ciphersuite::{hash_ref::KeyPackageRef, *},
+    config::ProtocolVersion,
+    extensions::Extension,
+    group::GroupId,
+    key_packages::*,
+    schedule::psk::*,
 };
 
 use openmls_traits::OpenMlsCryptoProvider;
@@ -112,6 +116,13 @@ impl ProposalOrRef {
             ProposalOrRef::Reference(ref _r) => ProposalOrRefType::Reference,
         }
     }
+
+    pub(crate) fn as_proposal(&self) -> Option<&Proposal> {
+        match self {
+            ProposalOrRef::Proposal(p) => Some(p),
+            ProposalOrRef::Reference(_) => None,
+        }
+    }
 }
 
 /// Proposal
@@ -199,14 +210,13 @@ impl UpdateProposal {
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct RemoveProposal {
-    // TODO: #541 replace removed with [`KeyPackageRef`]
-    pub(crate) removed: u32,
+    pub(crate) removed: KeyPackageRef,
 }
 
 impl RemoveProposal {
-    /// Get the `u32` index in this proposal.
-    pub fn removed(&self) -> u32 {
-        self.removed
+    /// Get the [`KeyPackageRef`] index in this proposal.
+    pub fn removed(&self) -> &KeyPackageRef {
+        &self.removed
     }
 }
 

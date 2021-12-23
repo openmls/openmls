@@ -3,6 +3,8 @@ use std::collections::BTreeMap;
 
 use core_group::create_commit_params::CreateCommitParams;
 
+use crate::ciphersuite::hash_ref::KeyPackageRef;
+
 use super::*;
 
 impl MlsGroup {
@@ -92,7 +94,7 @@ impl MlsGroup {
     pub fn remove_members(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        members: &[usize],
+        members: &[KeyPackageRef],
     ) -> Result<(MlsMessageOut, Option<Welcome>), MlsGroupError> {
         self.is_operational()?;
 
@@ -105,7 +107,7 @@ impl MlsGroup {
             .iter()
             .map(|member| {
                 Proposal::Remove(RemoveProposal {
-                    removed: *member as u32,
+                    removed: member.clone(),
                 })
             })
             .collect::<Vec<Proposal>>();
@@ -186,7 +188,7 @@ impl MlsGroup {
     pub fn propose_remove_member(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        member: LeafIndex,
+        member: &KeyPackageRef,
     ) -> Result<MlsMessageOut, MlsGroupError> {
         self.is_operational()?;
 
@@ -232,10 +234,13 @@ impl MlsGroup {
             .read(credential.signature_key())
             .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
+        let removed = self.group.key_package_ref().ok_or_else(|| {
+            MlsGroupError::LibraryError("No key package reference for own key package.".into())
+        })?;
         let remove_proposal = self.group.create_remove_proposal(
             self.framing_parameters(),
             &credential_bundle,
-            self.group.treesync().own_leaf_index(),
+            removed,
             backend,
         )?;
 
@@ -261,7 +266,17 @@ impl MlsGroup {
 
     /// Gets the current list of members
     #[cfg(any(feature = "test-utils", test))]
-    pub fn indexed_members(&self) -> Result<BTreeMap<LeafIndex, &KeyPackage>, MlsGroupError> {
+    pub fn leaves(
+        &self,
+    ) -> Result<BTreeMap<Option<KeyPackageRef>, &KeyPackage>, crate::treesync::TreeSyncError> {
+        self.group.treesync().leaves()
+    }
+
+    /// Gets the current list of members, indexed with the leaf index.
+    /// This should go away in future when all tests are rewritten to use key
+    /// package references instead of leaf indices.
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn indexed_members(&self) -> Result<BTreeMap<u32, &KeyPackage>, MlsGroupError> {
         Ok(self.group.treesync().full_leaves()?)
     }
 }

@@ -11,7 +11,7 @@ use crate::{
         Proposal,
     },
     schedule::{InitSecret, PreSharedKeyId, PreSharedKeys},
-    treesync::{diff::TreeSyncDiff, node::leaf_node::LeafNode},
+    treesync::{diff::TreeSyncDiff, node::leaf_node::LeafNode, TreeSyncError},
 };
 
 use super::{proposals::ProposalQueue, CoreGroup};
@@ -89,10 +89,12 @@ impl CoreGroup {
         // Process updates first
         for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Update) {
             has_updates = true;
-            // We know this is an update proposal
             if let Proposal::Update(update_proposal) = queued_proposal.proposal() {
                 // Check if this is our own update.
-                let sender_index = queued_proposal.sender().to_leaf_index();
+                let sender = queued_proposal.sender();
+                let sender_index = self
+                    .sender_index(sender.as_key_package_ref()?)
+                    .map_err(|_| TreeSyncError::LeafNotInTree)?;
                 let leaf_node: LeafNode = if sender_index == self.tree.own_leaf_index() {
                     let own_kpb = match key_package_bundles
                         .iter()
@@ -102,11 +104,56 @@ impl CoreGroup {
                         // We lost the KeyPackageBundle apparently
                         None => return Err(CoreGroupError::MissingKeyPackageBundle),
                     };
-                    own_kpb.clone().into()
+                    LeafNode::new_from_bundle(own_kpb.clone(), backend.crypto())
                 } else {
-                    update_proposal.key_package().clone().into()
-                };
-                diff.update_leaf(leaf_node, queued_proposal.sender().to_leaf_index())?;
+                    LeafNode::new(update_proposal.key_package().clone(), backend.crypto())
+                }?;
+                diff.update_leaf(leaf_node, sender_index)?;
+            }
+        }
+
+        // Process removes
+        for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Remove) {
+            has_removes = true;
+            if let Proposal::Remove(remove_proposal) = queued_proposal.proposal() {
+                // Check if we got removed from the group
+                if let Some(own_kpr) = self.key_package_ref() {
+                    if remove_proposal.removed() == own_kpr {
+                        self_removed = true;
+                    }
+                }
+                // Blank the direct path of the removed member
+                if let Ok(removed_index) = self.sender_index(remove_proposal.removed()) {
+                    // The removed leaf might not actually exist.
+                    diff.blank_leaf(removed_index)?;
+                }
+            }
+        }
+
+        // Process updates first
+        for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Update) {
+            has_updates = true;
+            // We know this is an update proposal
+            if let Proposal::Update(update_proposal) = queued_proposal.proposal() {
+                // Check if this is our own update.
+                let sender = queued_proposal.sender();
+                let sender_index = self
+                    .sender_index(sender.as_key_package_ref()?)
+                    .map_err(|_| TreeSyncError::LeafNotInTree)?;
+                let leaf_node: LeafNode = if sender_index == self.tree.own_leaf_index() {
+                    let own_kpb = match key_package_bundles
+                        .iter()
+                        .find(|&kpb| kpb.key_package() == update_proposal.key_package())
+                    {
+                        Some(kpb) => kpb,
+                        // We lost the KeyPackageBundle apparently
+                        None => return Err(CoreGroupError::MissingKeyPackageBundle),
+                    };
+                    LeafNode::new_from_bundle(own_kpb.clone(), backend.crypto())
+                } else {
+                    LeafNode::new(update_proposal.key_package().clone(), backend.crypto())
+                }?;
+                diff.update_leaf(leaf_node, sender_index)?;
             }
         }
 
@@ -116,18 +163,21 @@ impl CoreGroup {
             // We know this is a remove proposal
             if let Proposal::Remove(remove_proposal) = queued_proposal.proposal() {
                 // Check if we got removed from the group
-                if remove_proposal.removed() == self.treesync().own_leaf_index()
-                    && external_init_secret_option.is_none()
-                {
-                    self_removed = true;
+                if let Some(own_kpr) = self.key_package_ref() {
+                    if remove_proposal.removed() == own_kpr && external_init_secret_option.is_none()
+                    {
+                        self_removed = true;
+                    }
                 }
-                // Blank the direct path of the removed member
-                diff.blank_leaf(remove_proposal.removed())?;
+                if let Ok(removed_index) = self.sender_index(remove_proposal.removed()) {
+                    // The removed leaf might not actually exist.
+                    diff.blank_leaf(removed_index)?;
+                }
             }
         }
 
         // Process adds
-        let add_proposals: Vec<&AddProposal> = proposal_queue
+        let add_proposals = proposal_queue
             .filtered_by_type(ProposalType::Add)
             .filter_map(|queued_proposal| {
                 if let Proposal::Add(add_proposal) = queued_proposal.proposal() {
@@ -135,13 +185,12 @@ impl CoreGroup {
                 } else {
                     None
                 }
-            })
-            .collect();
+            });
 
         // Extract KeyPackages from proposals
         let mut invitation_list = Vec::new();
         for add_proposal in add_proposals {
-            let leaf_index = diff.add_leaf(add_proposal.key_package().clone())?;
+            let leaf_index = diff.add_leaf(add_proposal.key_package().clone(), backend.crypto())?;
             invitation_list.push((leaf_index, add_proposal.clone()))
         }
 

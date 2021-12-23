@@ -1,5 +1,7 @@
 use tls_codec::{Deserialize, Serialize, Size, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8};
 
+use crate::ciphersuite::hash_ref::KeyPackageRef;
+
 use super::*;
 use std::io::{Read, Write};
 
@@ -305,5 +307,81 @@ impl tls_codec::Size for MlsMessage {
             }
             MlsMessage::Ciphertext(ciphertext) => MlsCiphertext::tls_serialized_len(ciphertext),
         }
+    }
+}
+
+impl tls_codec::Serialize for Sender {
+    #[inline]
+    fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
+        let written = self.sender_type.tls_serialize(writer)?;
+        match self.sender_type {
+            SenderType::Member => self
+                .as_key_package_ref()
+                .map_err(|_| {
+                    tls_codec::Error::EncodingError("The sender is not a member".to_string())
+                })?
+                .tls_serialize(writer)
+                .map(|w| written + w),
+            SenderType::Preconfigured => self
+                .as_pre_configured()
+                .map_err(|_| {
+                    tls_codec::Error::EncodingError(
+                        "The sender is not a pre configured client".to_string(),
+                    )
+                })?
+                .tls_serialize(writer)
+                .map(|w| written + w),
+            SenderType::NewMember => Ok(written),
+        }
+    }
+}
+
+impl tls_codec::Serialize for &Sender {
+    #[inline]
+    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, Error> {
+        (*self).tls_serialize(writer)
+    }
+}
+
+impl tls_codec::Size for Sender {
+    #[inline]
+    fn tls_serialized_len(&self) -> usize {
+        self.sender_type.tls_serialized_len()
+            + match self.sender_type {
+                SenderType::Member => self
+                    .as_key_package_ref()
+                    .map(|kpr| kpr.tls_serialized_len())
+                    .unwrap_or_default(),
+                SenderType::Preconfigured => self
+                    .as_pre_configured()
+                    .map(|v| v.tls_serialized_len())
+                    .unwrap_or_default(),
+                SenderType::NewMember => 0,
+            }
+    }
+}
+
+impl tls_codec::Size for &Sender {
+    #[inline]
+    fn tls_serialized_len(&self) -> usize {
+        (*self).tls_serialized_len()
+    }
+}
+
+impl tls_codec::Deserialize for Sender {
+    #[inline]
+    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
+        let sender_type = SenderType::tls_deserialize(bytes)?;
+        let sender = match sender_type {
+            SenderType::Member => SenderValue::Member(KeyPackageRef::tls_deserialize(bytes)?),
+            SenderType::Preconfigured => {
+                SenderValue::Preconfigured(TlsByteVecU8::tls_deserialize(bytes)?)
+            }
+            SenderType::NewMember => SenderValue::NewMember,
+        };
+        Ok(Self {
+            sender_type,
+            sender,
+        })
     }
 }

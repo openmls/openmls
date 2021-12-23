@@ -279,6 +279,8 @@ fn basic_group_setup(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCr
 ///  - Charlie removes Bob
 #[apply(ciphersuites_and_backends)]
 fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    use ciphersuite::hash_ref::KeyPackageRef;
+
     let group_aad = b"Alice's test group";
     // Framing parameters
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
@@ -327,6 +329,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     )
     .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
+    let bob_kpr = bob_key_package.hash_ref(backend.crypto()).unwrap();
 
     // === Alice creates a group ===
     let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
@@ -799,7 +802,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .create_remove_proposal(
             framing_parameters,
             &charlie_credential_bundle,
-            1u32,
+            group_bob.key_package_ref().unwrap(),
             backend,
         )
         .expect("Could not create proposal.");

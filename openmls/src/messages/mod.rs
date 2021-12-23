@@ -1,9 +1,9 @@
 use crate::{
-    binary_tree::LeafIndex,
     ciphersuite::{signable::*, *},
     config::ProtocolVersion,
     extensions::*,
     group::*,
+    ciphersuite::hash_ref::KeyPackageRef,
     schedule::{psk::PreSharedKeys, JoinerSecret},
     treesync::treekem::UpdatePath,
 };
@@ -158,8 +158,7 @@ pub(crate) struct GroupInfoPayload {
     group_context_extensions: TlsVecU32<Extension>,
     other_extensions: TlsVecU32<Extension>,
     confirmation_tag: ConfirmationTag,
-    // TODO: #541 replace sender_index with [`KeyPackageRef`]
-    signer_index: LeafIndex,
+    signer: KeyPackageRef,
 }
 
 impl GroupInfoPayload {
@@ -173,7 +172,7 @@ impl GroupInfoPayload {
         group_context_extensions: &[Extension],
         other_extensions: &[Extension],
         confirmation_tag: ConfirmationTag,
-        signer_index: LeafIndex,
+        signer: &KeyPackageRef,
     ) -> Self {
         Self {
             group_id,
@@ -183,7 +182,7 @@ impl GroupInfoPayload {
             group_context_extensions: group_context_extensions.into(),
             other_extensions: other_extensions.into(),
             confirmation_tag,
-            signer_index,
+            signer: signer.clone(),
         }
     }
 }
@@ -211,7 +210,7 @@ impl Signable for GroupInfoPayload {
 ///   opaque confirmed_transcript_hash<0..255>;
 ///   Extension extensions<0..2^32-1>;
 ///   MAC confirmation_tag;
-///   uint32 signer_index;
+///   KeyPackageRef signer;
 ///   opaque signature<0..2^16-1>;
 /// } GroupInfo;
 /// ```
@@ -221,9 +220,9 @@ pub(crate) struct GroupInfo {
 }
 
 impl GroupInfo {
-    /// Get the signer index.
-    pub(crate) fn signer_index(&self) -> LeafIndex {
-        self.payload.signer_index
+    /// Get the signer.
+    pub(crate) fn signer(&self) -> &KeyPackageRef {
+        &self.payload.signer
     }
 
     /// Get the group ID.

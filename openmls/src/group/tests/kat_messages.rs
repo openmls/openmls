@@ -7,7 +7,8 @@
 use crate::{
     ciphersuite::signable::Signable, config::*, credentials::*, framing::*, group::*,
     key_packages::*, messages::proposals::*, messages::public_group_state::*, messages::*,
-    schedule::*, test_utils::*, tree::sender_ratchet::*, treesync::node::Node,
+    prelude_test::hash_ref::KeyPackageRef, schedule::*, test_utils::*, tree::sender_ratchet::*,
+    treesync::node::Node,
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -92,7 +93,12 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
                 .expect("An unexpected error occurred.")
                 .into(),
         }),
-        random_u32(),
+        &KeyPackageRef::from_slice(
+            &crypto
+                .rand()
+                .random_vec(16)
+                .expect("Error getting randomnes"),
+        ),
     );
     let group_info = group_info
         .sign(&crypto, &credential_bundle)
@@ -116,7 +122,12 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         key_package: key_package.clone(),
     };
     let remove_proposal = RemoveProposal {
-        removed: random_u32(),
+        removed: KeyPackageRef::from_slice(
+            &crypto
+                .rand()
+                .random_vec(16)
+                .expect("Error getting randomnes"),
+        ),
     };
 
     let psk_id = PreSharedKeyId::new(

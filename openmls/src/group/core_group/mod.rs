@@ -34,19 +34,21 @@ mod test_past_secrets;
 mod test_proposals;
 
 use crate::{
+    ciphersuite::hash_ref::KeyPackageRef,
     config::*,
     credentials::*,
     framing::*,
     group::*,
     key_packages::*,
     messages::{proposals::*, *},
-    schedule::psk::*,
-    schedule::*,
-    tree::{secret_tree::SecretTreeError, sender_ratchet::*},
-    treesync::{node::Node, *},
+    schedule::{psk::*, *},
+    tree::{secret_tree::SecretTreeError, SenderRatchetConfiguration},
+    treesync::*,
 };
 
 use crate::{ciphersuite::signable::*, messages::public_group_state::*};
+#[cfg(any(feature = "test-utils", test))]
+use std::collections::BTreeMap;
 
 use log::{debug, trace};
 use serde::{
@@ -234,21 +236,6 @@ impl CoreGroup {
         CoreGroupBuilder::new(group_id, key_package_bundle)
     }
 
-    // Join a group from a welcome message
-    pub(crate) fn new_from_welcome(
-        welcome: Welcome,
-        nodes_option: Option<Vec<Option<Node>>>,
-        kpb: KeyPackageBundle,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, CoreGroupError> {
-        Ok(Self::new_from_welcome_internal(
-            welcome,
-            nodes_option,
-            kpb,
-            backend,
-        )?)
-    }
-
     // === Create handshake messages ===
     // TODO: share functionality between these.
 
@@ -270,7 +257,8 @@ impl CoreGroup {
         let proposal = Proposal::Add(add_proposal);
         MlsPlaintext::member_proposal(
             framing_parameters,
-            self.sender_index(),
+            self.key_package_ref()
+                .ok_or_else(|| CoreGroupError::LibraryError)?,
             proposal,
             credential_bundle,
             self.context(),
@@ -295,7 +283,8 @@ impl CoreGroup {
         let proposal = Proposal::Update(update_proposal);
         MlsPlaintext::member_proposal(
             framing_parameters,
-            self.sender_index(),
+            self.key_package_ref()
+                .ok_or_else(|| CoreGroupError::LibraryError)?,
             proposal,
             credential_bundle,
             self.context(),
@@ -307,22 +296,23 @@ impl CoreGroup {
 
     // 11.1.3. Remove
     // struct {
-    //     uint32 removed;
+    //     KeyPackageRef removed;
     // } Remove;
     pub(crate) fn create_remove_proposal(
         &self,
         framing_parameters: FramingParameters,
         credential_bundle: &CredentialBundle,
-        removed_index: LeafIndex,
+        removed: &KeyPackageRef,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsPlaintext, CoreGroupError> {
         let remove_proposal = RemoveProposal {
-            removed: removed_index,
+            removed: removed.clone(),
         };
         let proposal = Proposal::Remove(remove_proposal);
         MlsPlaintext::member_proposal(
             framing_parameters,
-            self.sender_index(),
+            self.key_package_ref()
+                .ok_or_else(|| CoreGroupError::LibraryError)?,
             proposal,
             credential_bundle,
             self.context(),
@@ -349,7 +339,8 @@ impl CoreGroup {
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
         MlsPlaintext::member_proposal(
             framing_parameters,
-            self.sender_index(),
+            self.key_package_ref()
+                .ok_or_else(|| CoreGroupError::LibraryError)?,
             proposal,
             credential_bundle,
             self.context(),
@@ -390,7 +381,8 @@ impl CoreGroup {
         let proposal = Proposal::GroupContextExtensions(proposal);
         MlsPlaintext::member_proposal(
             framing_parameters,
-            self.sender_index(),
+            self.key_package_ref()
+                .ok_or_else(|| CoreGroupError::LibraryError)?,
             proposal,
             credential_bundle,
             self.context(),
@@ -410,7 +402,8 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsCiphertext, CoreGroupError> {
         let mls_plaintext = MlsPlaintext::new_application(
-            self.sender_index(),
+            self.key_package_ref()
+                .ok_or_else(|| CoreGroupError::LibraryError)?,
             aad,
             msg,
             credential_bundle,
@@ -436,7 +429,7 @@ impl CoreGroup {
             MlsMessageHeader {
                 group_id: self.group_id().clone(),
                 epoch: self.context().epoch(),
-                sender: self.sender_index(),
+                sender: crate::tree::index::SecretTreeLeafIndex(self.own_leaf_index()),
             },
             self.message_secrets_mut(mls_plaintext.epoch())?,
             padding_size,
@@ -453,12 +446,23 @@ impl CoreGroup {
         sender_ratchet_configuration: &SenderRatchetConfiguration,
     ) -> Result<VerifiableMlsPlaintext, CoreGroupError> {
         let ciphersuite = self.ciphersuite();
-        let message_secrets = self.message_secrets_test_mut();
+        let message_secrets = self
+            .message_secrets_mut(mls_ciphertext.epoch())
+            .map_err(|_| MlsCiphertextError::DecryptionError)?;
         let sender_data = mls_ciphertext.sender_data(message_secrets, backend, ciphersuite)?;
+        drop(message_secrets);
+        let sender_index = self
+            .sender_index(&sender_data.sender)
+            .map_err(|_| MlsCiphertextError::SenderError(SenderError::UnknownSender))?;
+        let sender_index = crate::tree::index::SecretTreeLeafIndex(sender_index);
+        let message_secrets = self
+            .message_secrets_mut(mls_ciphertext.epoch())
+            .map_err(|_| MlsCiphertextError::DecryptionError)?;
         Ok(mls_ciphertext.to_plaintext(
             ciphersuite,
             backend,
             message_secrets,
+            sender_index,
             sender_ratchet_configuration,
             sender_data,
         )?)
@@ -474,9 +478,10 @@ impl CoreGroup {
     ) -> Result<MlsPlaintext, CoreGroupError> {
         // Verify the signature on the plaintext.
         let tree = self.treesync();
+        let sender_index = self.sender_index(verifiable.sender().as_key_package_ref()?)?;
 
         let leaf_node = tree
-            .leaf(verifiable.sender_index())
+            .leaf(sender_index)
             // It's an unknown sender either if the index is outside of the tree
             // ...
             .map_err(|_| MlsPlaintextError::UnknownSender)?
@@ -568,6 +573,17 @@ impl CoreGroup {
         self.group_context.group_id()
     }
 
+    /// Get the members of the group, indexed by their leaves.
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn members(&self) -> Result<BTreeMap<u32, &Credential>, CoreGroupError> {
+        Ok(self
+            .tree
+            .full_leaves()?
+            .into_iter()
+            .map(|(index, kp)| (index, kp.credential()))
+            .collect())
+    }
+
     /// Get the groups extensions.
     /// Right now this is limited to the ratchet tree extension which is built
     /// on the fly when calling this function.
@@ -607,8 +623,25 @@ impl CoreGroup {
 
 // Private and crate functions
 impl CoreGroup {
-    pub(crate) fn sender_index(&self) -> LeafIndex {
-        self.tree.own_leaf_index()
+    /// Get the leaf index in the tree for a given [`KeyPackageRef`].
+    pub(crate) fn sender_index(
+        &self,
+        key_package_ref: &KeyPackageRef,
+    ) -> Result<u32, CoreGroupError> {
+        Ok(self.treesync().leaf_index(key_package_ref)?)
+    }
+
+    /// Get the leaf index of this client.
+    pub(crate) fn own_leaf_index(&self) -> u32 {
+        self.treesync().own_leaf_index()
+    }
+
+    /// Get the [`KeyPackageRef`] of the client owning this group.
+    pub(crate) fn key_package_ref(&self) -> Option<&KeyPackageRef> {
+        self.treesync()
+            .own_leaf_node()
+            .ok()
+            .and_then(|node| node.key_package_ref())
     }
 
     /// Get a reference to the group epoch secrets from the group
@@ -629,7 +662,7 @@ impl CoreGroup {
     }
 
     /// Get the message secrets. Either from the secrets store or from the group.
-    pub(super) fn message_secrets_mut<'secret, 'group: 'secret>(
+    pub(crate) fn message_secrets_mut<'secret, 'group: 'secret>(
         &'group mut self,
         epoch: GroupEpoch,
     ) -> Result<&'secret mut MessageSecrets, CoreGroupError> {
