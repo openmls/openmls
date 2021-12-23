@@ -4,11 +4,9 @@ on:
   push:
     branches:
       - main
-      - konrad/treesync
   pull_request:
     branches:
       - main
-      - konrad/treesync
   workflow_dispatch:
 
 env:
@@ -47,7 +45,7 @@ jobs:
           profile: minimal
           override: true
           target: i686-pc-windows-msvc
-      - name: Tests 32bit windows release build
+      - name: Tests 32bit windows debug & release build
         if: matrix.os == 'windows-latest'
         run: |
           cargo test --verbose --target i686-pc-windows-msvc
@@ -61,7 +59,7 @@ jobs:
           profile: minimal
           override: true
           target: i686-unknown-linux-gnu
-      - name: Tests 32bit linux debug build
+      - name: Tests 32bit linux debug & release build
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt update && sudo apt install gcc-multilib

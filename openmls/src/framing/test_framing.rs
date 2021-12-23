@@ -650,6 +650,7 @@ fn confirmation_tag_presence(
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
+
     let create_commit_result = group_alice
         .create_commit(params, backend)
         .expect("Error creating Commit");
@@ -767,6 +768,7 @@ fn invalid_plaintext_signature(
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
+
     let create_commit_result = group_alice
         .create_commit(params, backend)
         .expect("Error creating Commit");
@@ -880,8 +882,6 @@ fn invalid_plaintext_signature(
     // Remove confirmation tag.
     let good_confirmation_tag = create_commit_result.commit.confirmation_tag().cloned();
     create_commit_result.commit.unset_confirmation_tag();
-
-    // TODO: Need to add another member that can process this commit, as Alice can't.
 
     let error = group_bob
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)

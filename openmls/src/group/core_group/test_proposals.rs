@@ -429,12 +429,11 @@ fn test_group_context_extensions(
 
     log::info!(" >>> Staging & merging commit ...");
 
-    let mut alice_mss = MessageSecretsStore::new(0);
     alice_group
         .merge_staged_commit(
             create_commit_result.staged_commit,
             &mut proposal_store,
-            &mut alice_mss,
+            &mut MessageSecretsStore::new(0),
         )
         .expect("error merging own staged commit");
     let ratchet_tree = alice_group.treesync().export_nodes();

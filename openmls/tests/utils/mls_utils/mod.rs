@@ -224,8 +224,6 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                 .welcome_option
                 .expect("An unexpected error occurred.");
 
-            // Apply the commit to the initial group member's group state using
-            // the key package bundle returned by the create_commit earlier.
             core_group
                 .merge_staged_commit(
                     create_commit_result.staged_commit,
