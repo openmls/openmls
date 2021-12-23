@@ -37,10 +37,14 @@ impl CoreGroup {
     ) -> Result<CreateCommitResult, CoreGroupError> {
         let ciphersuite = self.ciphersuite();
 
-        let sender_type = match params.commit_type() {
-            CommitType::External => SenderType::NewMember,
-            CommitType::Member => SenderType::Member,
+        // If this is an external commit, we don't have an `own_leaf_index` set
+        // yet. Instead, we use the index in which we will be put in course of
+        // this commit.
+        let (own_leaf_index, sender_type) = match params.commit_type() {
+            CommitType::External => (self.treesync().free_leaf_index()?, SenderType::NewMember),
+            CommitType::Member => (self.treesync().own_leaf_index(), SenderType::Member),
         };
+
         // Filter proposals
         let (proposal_queue, contains_own_updates) = CreationProposalQueue::filter_proposals(
             ciphersuite,
@@ -48,7 +52,9 @@ impl CoreGroup {
             sender_type,
             params.proposal_store(),
             params.inline_proposals(),
-            self.treesync().own_leaf_index(),
+            own_leaf_index,
+            // We can use the old leaf count here, because the proposals will
+            // only affect members of the old tree.
             self.treesync().leaf_count()?,
         )?;
 
@@ -61,9 +67,14 @@ impl CoreGroup {
 
         let proposal_reference_list = proposal_queue.commit_list();
 
-        let sender_index = self.sender_index();
         // Make a copy of the current tree to apply proposals safely
         let mut diff: TreeSyncDiff = self.treesync().empty_diff()?;
+
+        // If this is not an external commit we have to set our own leaf index
+        // and add our leaf. Also, we have to generate the
+        // [`KeyPackageBundlePayload`] slightly differently, because we can't
+        // just pull it from the tree if we're a `NewMember`.
+        let key_package_bundle_payload = self.prepare_kpb_payload(backend, &params, &mut diff)?;
 
         // Apply proposals to tree
         let apply_proposals_values =
@@ -79,12 +90,6 @@ impl CoreGroup {
                 || contains_own_updates
                 || params.force_self_update()
             {
-                // Create a new key package bundle payload from the existing key
-                // package.
-                let key_package_bundle_payload = KeyPackageBundlePayload::from_rekeyed_key_package(
-                    self.treesync().own_leaf_node()?.key_package(),
-                    backend,
-                )?;
 
                 // Derive and apply an update path based on the previously
                 // generated KeyPackageBundle.
@@ -128,7 +133,7 @@ impl CoreGroup {
         // Build MlsPlaintext
         let mut mls_plaintext = MlsPlaintext::commit(
             *params.framing_parameters(),
-            sender_index,
+            own_leaf_index,
             commit,
             params.commit_type(),
             params.credential_bundle(),
@@ -203,12 +208,14 @@ impl CoreGroup {
         // Set the confirmation tag
         mls_plaintext.set_confirmation_tag(confirmation_tag.clone());
 
-        // Add membership tag
-        mls_plaintext.set_membership_tag(
-            backend,
-            &serialized_group_context,
-            self.message_secrets().membership_key(),
-        )?;
+        // Add membership tag if it's a `Member` commit
+        if params.commit_type() == CommitType::Member {
+            mls_plaintext.set_membership_tag(
+                backend,
+                &serialized_group_context,
+                self.message_secrets().membership_key(),
+            )?;
+        }
 
         // Check if new members were added and, if so, create welcome messages
         let welcome_option = if !plaintext_secrets.is_empty() {
@@ -229,7 +236,7 @@ impl CoreGroup {
                 self.group_context_extensions(),
                 &other_extensions,
                 confirmation_tag.clone(),
-                sender_index,
+                own_leaf_index,
             );
             let group_info = group_info.sign(backend, params.credential_bundle())?;
 
@@ -284,5 +291,42 @@ impl CoreGroup {
             key_package_bundle_option: path_processing_result.key_package_bundle,
             staged_commit,
         })
+    }
+
+    /// Helper function that prepares the [`KeyPackageBundlePayload`] for use in
+    /// a commit depending on the [`CommitType`].
+    fn prepare_kpb_payload(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        params: &CreateCommitParams,
+        diff: &mut TreeSyncDiff,
+    ) -> Result<KeyPackageBundlePayload, CoreGroupError> {
+        let kpb_payload = if params.commit_type() == CommitType::External {
+            // Generate a KeyPackageBundle to generate a payload from for later
+            // path generation.
+            let key_package_bundle = KeyPackageBundle::new(
+                &[self.ciphersuite().name()],
+                params.credential_bundle(),
+                backend,
+                vec![],
+            )?;
+
+            let own_leaf_index = diff.add_leaf(key_package_bundle.key_package().clone())?;
+            // Set our own index in the diff.
+            diff.set_own_index(own_leaf_index);
+
+            KeyPackageBundlePayload::from_rekeyed_key_package(
+                key_package_bundle.key_package(),
+                backend,
+            )?
+        } else {
+            // Create a new key package bundle payload from the existing key
+            // package.
+            KeyPackageBundlePayload::from_rekeyed_key_package(
+                self.treesync().own_leaf_node()?.key_package(),
+                backend,
+            )?
+        };
+        Ok(kpb_payload)
     }
 }

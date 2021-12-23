@@ -4,10 +4,11 @@ use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
     binary_tree::LeafIndex,
+    group::CoreGroupError,
     key_packages::KeyPackageBundle,
     messages::proposals::{AddProposal, ProposalType},
-    schedule::{PreSharedKeyId, PreSharedKeys},
-    treesync::{diff::TreeSyncDiff, node::leaf_node::LeafNode, TreeSyncError},
+    schedule::{InitSecret, PreSharedKeyId, PreSharedKeys},
+    treesync::{diff::TreeSyncDiff, node::leaf_node::LeafNode},
 };
 
 use super::{
@@ -17,10 +18,11 @@ use super::{
 
 /// This struct contain the return values of the `apply_proposals()` function
 pub struct ApplyProposalsValues {
-    pub path_required: bool,
-    pub self_removed: bool,
-    pub invitation_list: Vec<(LeafIndex, AddProposal)>,
-    pub presharedkeys: PreSharedKeys,
+    pub(crate) path_required: bool,
+    pub(crate) self_removed: bool,
+    pub(crate) invitation_list: Vec<(LeafIndex, AddProposal)>,
+    pub(crate) presharedkeys: PreSharedKeys,
+    pub(crate) external_init_secret_option: Option<InitSecret>,
 }
 
 impl ApplyProposalsValues {
@@ -48,14 +50,15 @@ impl CoreGroup {
     pub(crate) fn apply_proposals(
         &self,
         diff: &mut TreeSyncDiff,
-        _backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsCryptoProvider,
         proposal_queue: &CreationProposalQueue,
         key_package_bundles: &[KeyPackageBundle],
-    ) -> Result<ApplyProposalsValues, TreeSyncError> {
+    ) -> Result<ApplyProposalsValues, CoreGroupError> {
         log::debug!("Applying proposal");
         let mut has_updates = false;
         let mut has_removes = false;
         let mut self_removed = false;
+        let mut external_init_secret_option = None;
 
         // Process updates first
         for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Update) {
@@ -71,7 +74,7 @@ impl CoreGroup {
                 {
                     Some(kpb) => kpb,
                     // We lost the KeyPackageBundle apparently
-                    None => return Err(TreeSyncError::MissingKeyPackage),
+                    None => return Err(CoreGroupError::MissingKeyPackageBundle),
                 };
                 own_kpb.clone().into()
             } else {
@@ -91,6 +94,36 @@ impl CoreGroup {
             }
             // Blank the direct path of the removed member
             diff.blank_leaf(remove_proposal.removed())?;
+        }
+
+        // Process external init proposals
+        for queued_proposal in proposal_queue.filtered_by_type(ProposalType::ExternalInit) {
+            // If we are the originator of the external init, we don't need to
+            // get the init secret from the proposal. This branching will not be
+            // necessary after #617.
+            if queued_proposal.sender().to_leaf_index() != self.treesync().own_leaf_index() {
+                // Unwrapping here is safe because we know the proposal type
+                let external_init_proposal = &queued_proposal
+                    .proposal()
+                    .as_external_init()
+                    .ok_or(CoreGroupError::LibraryError)?;
+                // Decrypt the context an derive the external init.
+                let external_priv = self
+                    .group_epoch_secrets()
+                    .external_secret()
+                    .derive_external_keypair(backend.crypto(), self.ciphersuite())
+                    .private
+                    .into();
+                external_init_secret_option = Some(InitSecret::from_kem_output(
+                    backend,
+                    self.ciphersuite(),
+                    self.mls_version,
+                    &external_priv,
+                    external_init_proposal.kem_output(),
+                )?);
+                // Ignore every external init beyond the first one.
+                break;
+            }
         }
 
         // Process adds
@@ -124,13 +157,14 @@ impl CoreGroup {
         let presharedkeys = PreSharedKeys { psks: psks.into() };
 
         // Determine if Commit needs a path field
-        let path_required = has_updates || has_removes;
+        let path_required = has_updates || has_removes || external_init_secret_option.is_some();
 
         Ok(ApplyProposalsValues {
             path_required,
             self_removed,
             invitation_list,
             presharedkeys,
+            external_init_secret_option,
         })
     }
 
@@ -142,14 +176,15 @@ impl CoreGroup {
     pub(crate) fn apply_staged_proposals(
         &self,
         diff: &mut TreeSyncDiff,
-        _backend: &impl OpenMlsCryptoProvider,
+        backend: &impl OpenMlsCryptoProvider,
         proposal_queue: &StagedProposalQueue,
         key_package_bundles: &[KeyPackageBundle],
-    ) -> Result<ApplyProposalsValues, TreeSyncError> {
+    ) -> Result<ApplyProposalsValues, CoreGroupError> {
         log::debug!("Applying proposal");
         let mut has_updates = false;
         let mut has_removes = false;
         let mut self_removed = false;
+        let mut external_init_secret_option = None;
 
         // Process updates first
         for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Update) {
@@ -165,7 +200,7 @@ impl CoreGroup {
                 {
                     Some(kpb) => kpb,
                     // We lost the KeyPackageBundle apparently
-                    None => return Err(TreeSyncError::MissingKeyPackage),
+                    None => return Err(CoreGroupError::MissingKeyPackageBundle),
                 };
                 own_kpb.clone().into()
             } else {
@@ -185,6 +220,36 @@ impl CoreGroup {
             }
             // Blank the direct path of the removed member
             diff.blank_leaf(remove_proposal.removed())?;
+        }
+
+        // Process external init proposals
+        for queued_proposal in proposal_queue.filtered_by_type(ProposalType::ExternalInit) {
+            // If we are the originator of the external init, we don't need to
+            // get the init secret from the proposal. This branching will not be
+            // necessary after #617.
+            if queued_proposal.sender().to_leaf_index() != self.treesync().own_leaf_index() {
+                // We know the proposal type, so this should not fail
+                let external_init_proposal = &queued_proposal
+                    .proposal()
+                    .as_external_init()
+                    .ok_or(CoreGroupError::LibraryError)?;
+                // Decrypt the context an derive the external init.
+                let external_priv = self
+                    .group_epoch_secrets()
+                    .external_secret()
+                    .derive_external_keypair(backend.crypto(), self.ciphersuite())
+                    .private
+                    .into();
+                external_init_secret_option = Some(InitSecret::from_kem_output(
+                    backend,
+                    self.ciphersuite(),
+                    self.mls_version,
+                    &external_priv,
+                    external_init_proposal.kem_output(),
+                )?);
+                // Ignore every external init beyond the first one.
+                break;
+            }
         }
 
         // Process adds
@@ -218,12 +283,13 @@ impl CoreGroup {
         let presharedkeys = PreSharedKeys { psks: psks.into() };
 
         // Determine if Commit needs a path field
-        let path_required = has_updates || has_removes;
+        let path_required = has_updates || has_removes || external_init_secret_option.is_some();
 
         Ok(ApplyProposalsValues {
             path_required,
             self_removed,
             invitation_list,
+            external_init_secret_option,
             presharedkeys,
         })
     }
