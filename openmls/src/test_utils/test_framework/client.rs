@@ -1,7 +1,7 @@
 //! This module provides the `Client` datastructure, which contains the state
 //! associated with a client in the context of MLS, along with functions to have
 //! that client perform certain MLS operations.
-use std::{cell::RefCell, collections::HashMap};
+use std::{collections::HashMap, sync::RwLock};
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
@@ -24,7 +24,7 @@ pub struct Client {
     /// Ciphersuites supported by the client.
     pub credentials: HashMap<CiphersuiteName, Credential>,
     pub crypto: OpenMlsRustCrypto,
-    pub groups: RefCell<HashMap<GroupId, MlsGroup>>,
+    pub groups: RwLock<HashMap<GroupId, MlsGroup>>,
 }
 
 impl Client {
@@ -103,7 +103,10 @@ impl Client {
             group_id.clone(),
             &key_package.hash(&self.crypto)?,
         )?;
-        self.groups.borrow_mut().insert(group_id, group_state);
+        self.groups
+            .write()
+            .expect("An unexpected error occurred.")
+            .insert(group_id, group_state);
         Ok(())
     }
 
@@ -120,7 +123,8 @@ impl Client {
         let new_group: MlsGroup =
             MlsGroup::new_from_welcome(&self.crypto, &mls_group_config, welcome, ratchet_tree)?;
         self.groups
-            .borrow_mut()
+            .write()
+            .expect("An unexpected error occurred.")
             .insert(new_group.group_id().to_owned(), new_group);
         Ok(())
     }
@@ -129,7 +133,7 @@ impl Client {
     /// occurs during message processing or if no group exists for one of the
     /// messages.
     pub fn receive_messages_for_group(&self, message: &MlsMessageIn) -> Result<(), ClientError> {
-        let mut group_states = self.groups.borrow_mut();
+        let mut group_states = self.groups.write().expect("An unexpected error occurred.");
         let group_id = message.group_id();
         let group_state = group_states
             .get_mut(group_id)
@@ -158,7 +162,7 @@ impl Client {
         &self,
         group_id: &GroupId,
     ) -> Result<Vec<(usize, Credential)>, ClientError> {
-        let groups = self.groups.borrow();
+        let groups = self.groups.read().expect("An unexpected error occurred.");
         let group = groups.get(group_id).ok_or(ClientError::NoMatchingGroup)?;
         let members = group.indexed_members().expect("error getting members");
         Ok(members
@@ -178,7 +182,7 @@ impl Client {
         group_id: &GroupId,
         key_package_bundle_option: Option<KeyPackageBundle>,
     ) -> Result<(MlsMessageOut, Option<Welcome>), ClientError> {
-        let mut groups = self.groups.borrow_mut();
+        let mut groups = self.groups.write().expect("An unexpected error occurred.");
         let group = groups
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
@@ -203,7 +207,7 @@ impl Client {
         group_id: &GroupId,
         key_packages: &[KeyPackage],
     ) -> Result<(Vec<MlsMessageOut>, Option<Welcome>), ClientError> {
-        let mut groups = self.groups.borrow_mut();
+        let mut groups = self.groups.write().expect("An unexpected error occurred.");
         let group = groups
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
@@ -235,7 +239,7 @@ impl Client {
         group_id: &GroupId,
         target_indices: &[usize],
     ) -> Result<(Vec<MlsMessageOut>, Option<Welcome>), ClientError> {
-        let mut groups = self.groups.borrow_mut();
+        let mut groups = self.groups.write().expect("An unexpected error occurred.");
         let group = groups
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;

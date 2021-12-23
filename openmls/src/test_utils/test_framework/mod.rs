@@ -30,7 +30,9 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsCryptoProvider;
-use std::{cell::RefCell, collections::HashMap};
+use rayon::prelude::*;
+use std::collections::HashMap;
+use std::sync::RwLock;
 use tls_codec::*;
 
 pub mod client;
@@ -87,10 +89,10 @@ pub enum CodecUse {
 /// can be otherwise used.
 pub struct MlsGroupTestSetup {
     // The clients identity is its position in the vector in be_bytes.
-    pub clients: RefCell<HashMap<Vec<u8>, RefCell<Client>>>,
-    pub groups: RefCell<HashMap<GroupId, Group>>,
+    pub clients: RwLock<HashMap<Vec<u8>, RwLock<Client>>>,
+    pub groups: RwLock<HashMap<GroupId, Group>>,
     // This maps key package hashes to client ids.
-    pub waiting_for_welcome: RefCell<HashMap<Vec<u8>, Vec<u8>>>,
+    pub waiting_for_welcome: RwLock<HashMap<Vec<u8>, Vec<u8>>>,
     pub default_mgc: MlsGroupConfig,
     /// Flag to indicate if messages should be serialized and de-serialized as
     /// part of message distribution
@@ -106,10 +108,6 @@ pub struct MlsGroupTestSetup {
 // living (immutable) references to the keystore floating around. As a follow-up
 // result, we need to populate the keystore _completely_ before distributing the
 // references, as we can't mutably reference the keystore.
-//
-//   * Note, that (to my knowledge) we can't have the keystore live in a
-//   refcell, because then the references are based on the local `borrow()`ed
-//   object and won't live long enough.
 //
 // Finally, this means we have to initialize the KeyStore before we create the
 // MlsGroupTestSetup object and we can create the clients (which contain the
@@ -148,14 +146,14 @@ impl MlsGroupTestSetup {
                 identity: identity.clone(),
                 credentials,
                 crypto,
-                groups: RefCell::new(HashMap::new()),
+                groups: RwLock::new(HashMap::new()),
             };
-            clients.insert(identity, RefCell::new(client));
+            clients.insert(identity, RwLock::new(client));
         }
-        let groups = RefCell::new(HashMap::new());
-        let waiting_for_welcome = RefCell::new(HashMap::new());
+        let groups = RwLock::new(HashMap::new());
+        let waiting_for_welcome = RwLock::new(HashMap::new());
         MlsGroupTestSetup {
-            clients: RefCell::new(clients),
+            clients: RwLock::new(clients),
             groups,
             waiting_for_welcome,
             default_mgc,
@@ -174,7 +172,8 @@ impl MlsGroupTestSetup {
     ) -> Result<KeyPackage, SetupError> {
         let key_package = client.get_fresh_key_package(&[ciphersuite.name()])?;
         self.waiting_for_welcome
-            .borrow_mut()
+            .write()
+            .expect("An unexpected error occurred.")
             .insert(key_package.hash(&client.crypto)?, client.identity.clone());
         Ok(key_package)
     }
@@ -198,17 +197,19 @@ impl MlsGroupTestSetup {
             CodecUse::StructMessages => welcome,
         };
         if self.use_codec == CodecUse::SerializedMessages {}
-        let clients = self.clients.borrow();
+        let clients = self.clients.read().expect("An unexpected error occurred.");
         for egs in welcome.secrets() {
             let client_id = self
                 .waiting_for_welcome
-                .borrow_mut()
+                .write()
+                .expect("An unexpected error occurred.")
                 .remove(egs.key_package_hash.as_slice())
                 .ok_or(SetupError::NoFreshKeyPackage)?;
             let client = clients
                 .get(&client_id)
                 .expect("An unexpected error occurred.")
-                .borrow();
+                .read()
+                .expect("An unexpected error occurred.");
             client.join_group(
                 group.group_config.clone(),
                 welcome.clone(),
@@ -238,21 +239,30 @@ impl MlsGroupTestSetup {
             }
             CodecUse::StructMessages => MlsMessageIn::from(message.clone()),
         };
-        let clients = self.clients.borrow();
+        let clients = self.clients.read().expect("An unexpected error occurred.");
         // Distribute message to all members.
-        for (_index, member_id) in &group.members {
-            let member = clients
-                .get(member_id)
-                .expect("An unexpected error occurred.")
-                .borrow();
-            member.receive_messages_for_group(&message)?;
-        }
+        let results: Result<Vec<_>, _> = group
+            .members
+            .par_iter()
+            .map(|(_index, member_id)| {
+                let member = clients
+                    .get(member_id)
+                    .expect("An unexpected error occurred.")
+                    .read()
+                    .expect("An unexpected error occurred.");
+                member.receive_messages_for_group(&message)
+            })
+            .collect();
+
+        // Check if we received an error
+        results?;
         // Get the current tree and figure out who's still in the group.
         let sender = clients
             .get(sender_id)
             .expect("An unexpected error occurred.")
-            .borrow();
-        let sender_groups = sender.groups.borrow();
+            .read()
+            .expect("An unexpected error occurred.");
+        let sender_groups = sender.groups.read().expect("An unexpected error occurred.");
         let sender_group = sender_groups
             .get(&group.group_id)
             .expect("An unexpected error occurred.");
@@ -272,29 +282,35 @@ impl MlsGroupTestSetup {
     /// these messages to all other members. This function panics if any of the
     /// above tests fail.
     pub fn check_group_states(&self, group: &mut Group) {
-        let clients = self.clients.borrow();
-        let mut messages = Vec::new();
-        for (_, m_id) in &group.members {
-            let m = clients
-                .get(m_id)
-                .expect("An unexpected error occurred.")
-                .borrow();
-            let mut group_states = m.groups.borrow_mut();
-            // Some group members may not have received their welcome messages yet.
-            if let Some(group_state) = group_states.get_mut(&group.group_id) {
-                assert_eq!(group_state.export_ratchet_tree(), group.public_tree);
-                assert_eq!(
-                    group_state
-                        .export_secret(&m.crypto, "test", &[], 32)
-                        .expect("An unexpected error occurred."),
-                    group.exporter_secret
-                );
-                let message = group_state
-                    .create_message(&m.crypto, "Hello World!".as_bytes())
-                    .expect("Error composing message while checking group states.");
-                messages.push((m_id.clone(), message));
-            };
-        }
+        let clients = self.clients.read().expect("An unexpected error occurred.");
+        let messages = group
+            .members
+            .par_iter()
+            .filter_map(|(_, m_id)| {
+                let m = clients
+                    .get(m_id)
+                    .expect("An unexpected error occurred.")
+                    .read()
+                    .expect("An unexpected error occurred.");
+                let mut group_states = m.groups.write().unwrap();
+                // Some group members may not have received their welcome messages yet.
+                if let Some(group_state) = group_states.get_mut(&group.group_id) {
+                    assert_eq!(group_state.export_ratchet_tree(), group.public_tree);
+                    assert_eq!(
+                        group_state
+                            .export_secret(&m.crypto, "test", &[], 32)
+                            .expect("An unexpected error occurred."),
+                        group.exporter_secret
+                    );
+                    let message = group_state
+                        .create_message(&m.crypto, "Hello World!".as_bytes())
+                        .expect("Error composing message while checking group states.");
+                    Some((m_id.to_vec(), message))
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<(Vec<u8>, MlsMessageOut)>>();
         drop(clients);
         for (sender_id, message) in messages {
             self.distribute_to_members(&sender_id, group, &message)
@@ -312,7 +328,7 @@ impl MlsGroupTestSetup {
         group: &Group,
         number_of_members: usize,
     ) -> Result<Vec<Vec<u8>>, SetupError> {
-        let clients = self.clients.borrow();
+        let clients = self.clients.read().expect("An unexpected error occurred.");
         if number_of_members + group.members.len() > clients.len() {
             return Err(SetupError::NotEnoughClients);
         }
@@ -349,19 +365,23 @@ impl MlsGroupTestSetup {
     /// of client ids supporting it.
     pub fn create_group(&self, ciphersuite: &Ciphersuite) -> Result<GroupId, SetupError> {
         // Pick a random group creator.
-        let clients = self.clients.borrow();
+        let clients = self.clients.read().expect("An unexpected error occurred.");
         let group_creator_id = ((OsRng.next_u32() as usize) % clients.len())
             .to_be_bytes()
             .to_vec();
         let group_creator = clients
             .get(&group_creator_id)
             .expect("An unexpected error occurred.")
-            .borrow();
-        let mut groups = self.groups.borrow_mut();
+            .read()
+            .expect("An unexpected error occurred.");
+        let mut groups = self.groups.write().expect("An unexpected error occurred.");
         let group_id = GroupId::from_slice(&groups.len().to_string().into_bytes());
 
         group_creator.create_group(group_id.clone(), self.default_mgc.clone(), ciphersuite)?;
-        let creator_groups = group_creator.groups.borrow();
+        let creator_groups = group_creator
+            .groups
+            .read()
+            .expect("An unexpected error occurred.");
         let group = creator_groups
             .get(&group_id)
             .expect("An unexpected error occurred.");
@@ -389,7 +409,7 @@ impl MlsGroupTestSetup {
         // Create the initial group.
         let group_id = self.create_group(ciphersuite)?;
 
-        let mut groups = self.groups.borrow_mut();
+        let mut groups = self.groups.write().expect("An unexpected error occurred.");
         let group = groups
             .get_mut(&group_id)
             .expect("An unexpected error occurred.");
@@ -419,11 +439,12 @@ impl MlsGroupTestSetup {
         client_id: &[u8],
         key_package_bundle_option: Option<KeyPackageBundle>,
     ) -> Result<(), SetupError> {
-        let clients = self.clients.borrow();
+        let clients = self.clients.read().expect("An unexpected error occurred.");
         let client = clients
             .get(client_id)
             .ok_or(SetupError::UnknownClientId)?
-            .borrow();
+            .read()
+            .expect("An unexpected error occurred.");
         let (messages, welcome_option) =
             client.self_update(action_type, &group.group_id, key_package_bundle_option)?;
         self.distribute_to_members(&client.identity, group, &messages)?;
@@ -446,11 +467,12 @@ impl MlsGroupTestSetup {
         adder_id: &[u8],
         addees: Vec<Vec<u8>>,
     ) -> Result<(), SetupError> {
-        let clients = self.clients.borrow();
+        let clients = self.clients.read().expect("An unexpected error occurred.");
         let adder = clients
             .get(adder_id)
             .ok_or(SetupError::UnknownClientId)?
-            .borrow();
+            .read()
+            .expect("An unexpected error occurred.");
         if group
             .members
             .iter()
@@ -463,7 +485,8 @@ impl MlsGroupTestSetup {
             let addee = clients
                 .get(addee_id)
                 .ok_or(SetupError::UnknownClientId)?
-                .borrow();
+                .read()
+                .expect("An unexpected error occurred.");
             let key_package = self.get_fresh_key_package(&addee, &group.ciphersuite)?;
             key_packages.push(key_package);
         }
@@ -489,11 +512,12 @@ impl MlsGroupTestSetup {
         remover_id: &[u8],
         target_indices: &[usize],
     ) -> Result<(), SetupError> {
-        let clients = self.clients.borrow();
+        let clients = self.clients.read().expect("An unexpected error occurred.");
         let remover = clients
             .get(remover_id)
             .ok_or(SetupError::UnknownClientId)?
-            .borrow();
+            .read()
+            .expect("An unexpected error occurred.");
         let client_in_group = group.members.iter().any(|(member_index, _)| {
             target_indices
                 .iter()
@@ -605,7 +629,12 @@ impl MlsGroupTestSetup {
             }
             2 => {
                 // First, figure out if there are clients left to add.
-                let clients_left = self.clients.borrow().len() - group.members.len();
+                let clients_left = self
+                    .clients
+                    .read()
+                    .expect("An unexpected error occurred.")
+                    .len()
+                    - group.members.len();
                 if clients_left > 0 {
                     let number_of_adds = (((OsRng.next_u32() as usize) % clients_left) % 5) + 1;
                     let new_member_ids = self
