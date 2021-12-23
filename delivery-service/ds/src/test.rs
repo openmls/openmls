@@ -231,12 +231,14 @@ async fn test_group() {
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (commit, welcome_msg, _kpb) = group
+    let create_commit_results = group
         .create_commit(params, crypto)
         .expect("Error creating commit");
-    let welcome_msg = welcome_msg.expect("Welcome message wasn't created by create_commit.");
+    let welcome_msg = create_commit_results
+        .welcome_option
+        .expect("Welcome message wasn't created by create_commit.");
     let staged_commit = group
-        .stage_commit(&commit, &proposal_store, &[], crypto)
+        .stage_commit(&create_commit_results.commit, &proposal_store, &[], crypto)
         .expect("error applying commit");
     group
         .merge_commit(staged_commit)

@@ -423,14 +423,14 @@ fn test_group_context_extensions(
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
+    let create_commit_result = alice_group
         .create_commit(params, backend)
         .expect("Error creating commit");
 
     log::info!(" >>> Staging & merging commit ...");
 
     let staged_commit = alice_group
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     alice_group
         .merge_commit(staged_commit)
@@ -440,7 +440,9 @@ fn test_group_context_extensions(
     // Make sure that Bob can join the group with the required extension in place
     // and Bob's key package supporting them.
     let _bob_group = CoreGroup::new_from_welcome(
-        welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
+        create_commit_result
+            .welcome_option
+            .expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,
         backend,
@@ -524,14 +526,14 @@ fn test_group_context_extension_proposal_fails(
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _kpb_option) = alice_group
+    let create_commit_result = alice_group
         .create_commit(params, backend)
         .expect("Error creating commit");
 
     log::info!(" >>> Staging & merging commit ...");
 
     let staged_commit = alice_group
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     alice_group
         .merge_commit(staged_commit)
@@ -539,7 +541,9 @@ fn test_group_context_extension_proposal_fails(
     let ratchet_tree = alice_group.treesync().export_nodes();
 
     let bob_group = CoreGroup::new_from_welcome(
-        welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
+        create_commit_result
+            .welcome_option
+            .expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,
         backend,
@@ -626,14 +630,14 @@ fn test_group_context_extension_proposal(
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (mls_plaintext_commit, welcome_bundle_alice_bob_option, _) = alice_group
+    let create_commit_results = alice_group
         .create_commit(params, backend)
         .expect("Error creating commit");
 
     log::info!(" >>> Staging & merging commit ...");
 
     let staged_commit = alice_group
-        .stage_commit(&mls_plaintext_commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_results.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     alice_group
         .merge_commit(staged_commit)
@@ -641,7 +645,9 @@ fn test_group_context_extension_proposal(
     let ratchet_tree = alice_group.treesync().export_nodes();
 
     let mut bob_group = CoreGroup::new_from_welcome(
-        welcome_bundle_alice_bob_option.expect("An unexpected error occurred."),
+        create_commit_results
+            .welcome_option
+            .expect("An unexpected error occurred."),
         Some(ratchet_tree),
         bob_key_package_bundle,
         backend,
@@ -673,21 +679,21 @@ fn test_group_context_extension_proposal(
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let (gce_mls_plaintext, _, _) = alice_group
+    let create_commit_result = alice_group
         .create_commit(params, backend)
         .expect("Error creating commit");
 
     log::info!(" >>> Staging & merging commit ...");
 
     let staged_commit = alice_group
-        .stage_commit(&gce_mls_plaintext, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     alice_group
         .merge_commit(staged_commit)
         .expect("error merging commit");
 
     let staged_commit = bob_group
-        .stage_commit(&gce_mls_plaintext, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     bob_group
         .merge_commit(staged_commit)

@@ -53,10 +53,10 @@ impl MlsGroup {
             .proposal_store(&self.proposal_store)
             .inline_proposals(inline_proposals)
             .build();
-        let (commit, welcome_option, kpb_option) = self.group.create_commit(params, backend)?;
-        log::error!("plaintext (foo): {:?}", commit);
+        let create_commit_result = self.group.create_commit(params, backend)?;
+        log::error!("plaintext (foo): {:?}", create_commit_result.commit);
 
-        let welcome = match welcome_option {
+        let welcome = match create_commit_result.welcome_option {
             Some(welcome) => welcome,
             None => {
                 return Err(MlsGroupError::LibraryError(
@@ -66,13 +66,13 @@ impl MlsGroup {
         };
 
         // If it was a full Commit, we have to save the KeyPackageBundle for later
-        if let Some(kpb) = kpb_option {
+        if let Some(kpb) = create_commit_result.key_package_bundle_option {
             self.own_kpbs.push(kpb);
         }
 
         // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_messages = self.plaintext_to_mls_message(commit, backend)?;
+        let mls_messages = self.plaintext_to_mls_message(create_commit_result.commit, backend)?;
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
@@ -123,10 +123,10 @@ impl MlsGroup {
             .proposal_store(&self.proposal_store)
             .inline_proposals(inline_proposals)
             .build();
-        let (commit, welcome_option, kpb_option) = self.group.create_commit(params, backend)?;
+        let create_commit_result = self.group.create_commit(params, backend)?;
 
         // It has to be a full Commit and we have to save the KeyPackageBundle for later
-        if let Some(kpb) = kpb_option {
+        if let Some(kpb) = create_commit_result.key_package_bundle_option {
             self.own_kpbs.push(kpb);
         } else {
             return Err(MlsGroupError::LibraryError(
@@ -136,12 +136,12 @@ impl MlsGroup {
 
         // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
-        let mls_message = self.plaintext_to_mls_message(commit, backend)?;
+        let mls_message = self.plaintext_to_mls_message(create_commit_result.commit, backend)?;
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
 
-        Ok((mls_message, welcome_option))
+        Ok((mls_message, create_commit_result.welcome_option))
     }
 
     /// Creates proposals to add members to the group

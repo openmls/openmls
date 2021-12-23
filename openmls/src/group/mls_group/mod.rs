@@ -8,8 +8,6 @@ pub mod processing;
 mod resumption;
 mod ser;
 #[cfg(test)]
-mod test_external_init;
-#[cfg(test)]
 mod test_mls_group;
 mod updates;
 

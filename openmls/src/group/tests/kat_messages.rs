@@ -169,15 +169,18 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         .credential_bundle(&credential_bundle)
         .proposal_store(&proposal_store)
         .build();
-    let (commit_pt, welcome_option, _option_kpb) = group
+    let create_commit_result = group
         .create_commit(params, &crypto)
         .expect("An unexpected error occurred.");
-    let commit = if let MlsPlaintextContentType::Commit(commit) = commit_pt.content() {
-        commit.clone()
-    } else {
-        panic!("Wrong content of MLS plaintext");
-    };
-    let welcome = welcome_option.expect("An unexpected error occurred.");
+    let commit =
+        if let MlsPlaintextContentType::Commit(commit) = create_commit_result.commit.content() {
+            commit.clone()
+        } else {
+            panic!("Wrong content of MLS plaintext");
+        };
+    let welcome = create_commit_result
+        .welcome_option
+        .expect("An unexpected error occurred.");
     let mls_ciphertext_application = group
         .create_application_message(
             b"aad",
@@ -200,7 +203,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         .expect("An unexpected error occurred.");
 
     let encryption_target = match random_u32() % 3 {
-        0 => commit_pt.clone(),
+        0 => create_commit_result.commit.clone(),
         1 => add_proposal_pt.clone(),
         2 => mls_plaintext_application.clone(),
         _ => panic!("Modulo 3 of u32 shouldn't give us anything larger than 2"),
@@ -303,7 +306,8 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
                 .expect("An unexpected error occurred."),
         ), /* serialized MLSPlaintext(Proposal(*)) */
         mls_plaintext_commit: bytes_to_hex(
-            &commit_pt
+            &create_commit_result
+                .commit
                 .tls_serialize_detached()
                 .expect("An unexpected error occurred."),
         ), /* serialized MLSPlaintext(Commit) */
