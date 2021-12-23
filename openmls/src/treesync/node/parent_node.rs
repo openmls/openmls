@@ -1,7 +1,12 @@
 //! This module contains the [`ParentNode`] struct, its implementation, as well
 //! as the [`PlainUpdatePathNode`], a helper struct for the creation of
 //! [`UpdatePathNode`] instances.
-use openmls_traits::{types::CryptoError, OpenMlsCryptoProvider};
+use itertools::process_results;
+use openmls_traits::{
+    types::{CryptoError, HpkeCiphertext},
+    OpenMlsCryptoProvider,
+};
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsByteVecU8, TlsVecU32};
 
@@ -62,13 +67,14 @@ impl PlainUpdatePathNode {
         public_keys: &[HpkePublicKey],
         group_context: &[u8],
     ) -> UpdatePathNode {
-        let mut encrypted_path_secrets = Vec::with_capacity(public_keys.len());
-        for pk in public_keys {
-            let encrypted_path_secret =
+        let encrypted_path_secrets: Vec<HpkeCiphertext> = public_keys
+            .iter()
+            .map(|pk| {
                 self.path_secret
-                    .encrypt(backend, ciphersuite, pk, group_context);
-            encrypted_path_secrets.push(encrypted_path_secret);
-        }
+                    .encrypt(backend, ciphersuite, pk, group_context)
+            })
+            .collect();
+
         UpdatePathNode {
             public_key: self.public_key.clone(),
             encrypted_path_secrets: encrypted_path_secrets.into(),
@@ -113,27 +119,45 @@ impl ParentNode {
         path_secret: PathSecret,
         path_length: usize,
     ) -> Result<PathDerivationResult, ParentNodeError> {
-        let mut path = Vec::with_capacity(path_length);
-        let mut update_path_nodes = Vec::with_capacity(path_length);
         let mut next_path_secret = path_secret;
+        let mut path_secrets = Vec::new();
+
         for _ in 0..path_length {
             let path_secret = next_path_secret;
             // Derive the next path secret.
             next_path_secret = path_secret.derive_path_secret(backend, ciphersuite)?;
-
-            // Derive a key pair from the path secret. This includes the
-            // intermediate derivation of a node secret.
-            let (public_key, private_key) = path_secret.derive_key_pair(backend, ciphersuite)?;
-            let parent_node = (public_key.clone(), private_key).into();
-            path.push(parent_node);
-            // Store the current path secret and the derived public key for
-            // later encryption.
-            let update_path_node = PlainUpdatePathNode {
-                public_key,
-                path_secret,
-            };
-            update_path_nodes.push(update_path_node);
+            path_secrets.push(path_secret);
         }
+
+        // We first collect a a vector over results of a (parent_node, update_path_node) tuple
+        let iter_source: Vec<Result<(_, _), _>> = path_secrets
+            .into_par_iter()
+            .map(|path_secret| {
+                // Derive a key pair from the path secret. This includes the
+                // intermediate derivation of a node secret.
+                let (public_key, private_key) =
+                    path_secret.derive_key_pair(backend, ciphersuite)?;
+                let parent_node = (public_key.clone(), private_key).into();
+                // Store the current path secret and the derived public key for
+                // later encryption.
+                let update_path_node = PlainUpdatePathNode {
+                    public_key,
+                    path_secret,
+                };
+                Ok((parent_node, update_path_node))
+            })
+            .collect();
+
+        // We unzip the vector over tuples into two vectors instead and check the results
+        let (path, update_path_nodes) = process_results(
+            iter_source,
+            |iter: itertools::ProcessResults<
+                '_,
+                std::vec::IntoIter<std::result::Result<(ParentNode, PlainUpdatePathNode), _>>,
+                ParentNodeError,
+            >| iter.unzip(),
+        )?;
+
         let commit_secret = next_path_secret.into();
         Ok((path, update_path_nodes, commit_secret))
     }
