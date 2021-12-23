@@ -34,7 +34,7 @@
 //! ProcessedMessage (Application, Proposal, ExternalProposal, Commit, External Commit)
 //! ```
 
-use crate::schedule::MessageSecrets;
+use crate::{schedule::MessageSecrets, tree::sender_ratchet::SenderRatchetConfiguration};
 use core_group::{proposals::StagedProposal, staged_commit::StagedCommit};
 use openmls_traits::OpenMlsCryptoProvider;
 
@@ -71,10 +71,16 @@ impl DecryptedMessage {
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         message_secrets: &mut MessageSecrets,
+        sender_ratchet_configuration: &SenderRatchetConfiguration,
     ) -> Result<Self, ValidationError> {
         // This will be refactored with #265.
         if let MlsMessageIn::Ciphertext(ciphertext) = inbound_message {
-            let plaintext = ciphertext.to_plaintext(ciphersuite, backend, message_secrets)?;
+            let plaintext = ciphertext.to_plaintext(
+                ciphersuite,
+                backend,
+                message_secrets,
+                sender_ratchet_configuration,
+            )?;
             Self::from_plaintext(plaintext)
         } else {
             Err(ValidationError::WrongWireFormat)

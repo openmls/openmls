@@ -210,6 +210,7 @@ impl SecretTree {
         index: LeafIndex,
         secret_type: SecretType,
         generation: u32,
+        configuration: &SenderRatchetConfiguration,
     ) -> Result<RatchetSecrets, SecretTreeError> {
         log::debug!(
             "Generating {:?} decryption secret for {:?} in generation {} with {}",
@@ -226,7 +227,7 @@ impl SecretTree {
             self.initialize_sender_ratchets(ciphersuite, backend, index)?;
         }
         let sender_ratchet = self.ratchet_mut(index, secret_type);
-        sender_ratchet.secret_for_decryption(ciphersuite, backend, generation)
+        sender_ratchet.secret_for_decryption(ciphersuite, backend, generation, configuration)
     }
 
     /// Return the next RatchetSecrets that should be used for encryption and

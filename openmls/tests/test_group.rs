@@ -295,6 +295,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     let group_aad = b"Alice's test group";
     // Framing parameters
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+    let sender_ratchet_configuration = SenderRatchetConfiguration::default();
 
     // Define credential bundles
     let alice_credential_bundle = CredentialBundle::new(
@@ -413,7 +414,11 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     let mls_ciphertext_alice = group_alice
         .create_application_message(&[], &message_alice, &alice_credential_bundle, 0, backend)
         .expect("An unexpected error occurred.");
-    let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_alice, backend) {
+    let mls_plaintext_bob = match group_bob.decrypt(
+        &mls_ciphertext_alice,
+        backend,
+        &sender_ratchet_configuration,
+    ) {
         Ok(mls_plaintext) => group_bob
             .verify(mls_plaintext, backend)
             .expect("Error verifying plaintext"),
@@ -713,13 +718,21 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
             backend,
         )
         .expect("An unexpected error occurred.");
-    let mls_plaintext_alice = match group_alice.decrypt(&mls_ciphertext_charlie.clone(), backend) {
+    let mls_plaintext_alice = match group_alice.decrypt(
+        &mls_ciphertext_charlie.clone(),
+        backend,
+        &sender_ratchet_configuration,
+    ) {
         Ok(mls_plaintext) => group_alice
             .verify(mls_plaintext, backend)
             .expect("Error verifying plaintext"),
         Err(e) => panic!("Error decrypting MlsCiphertext: {:?}", e),
     };
-    let mls_plaintext_bob = match group_bob.decrypt(&mls_ciphertext_charlie, backend) {
+    let mls_plaintext_bob = match group_bob.decrypt(
+        &mls_ciphertext_charlie,
+        backend,
+        &sender_ratchet_configuration,
+    ) {
         Ok(mls_plaintext) => group_bob
             .verify(mls_plaintext, backend)
             .expect("Error verifying plaintext"),

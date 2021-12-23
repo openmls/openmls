@@ -4,7 +4,7 @@ use tls_codec::{
     TlsDeserialize, TlsSerialize, TlsSize,
 };
 
-use crate::tree::secret_tree::SecretType;
+use crate::tree::{secret_tree::SecretType, sender_ratchet::SenderRatchetConfiguration};
 
 use super::*;
 
@@ -148,6 +148,7 @@ impl MlsCiphertext {
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         message_secrets: &mut MessageSecrets,
+        sender_ratchet_configuration: &SenderRatchetConfiguration,
     ) -> Result<VerifiableMlsPlaintext, MlsCiphertextError> {
         log::debug!("Decrypting MlsCiphertext");
         // Check the ciphertext has the correct wire format
@@ -193,6 +194,7 @@ impl MlsCiphertext {
                 sender_data.sender.into(),
                 secret_type,
                 sender_data.generation,
+                sender_ratchet_configuration,
             )
             .map_err(|_| {
                 log::error!("  Ciphertext generation out of bounds");

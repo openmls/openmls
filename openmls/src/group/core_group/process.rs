@@ -22,6 +22,7 @@ impl CoreGroup {
         &mut self,
         message: MlsMessageIn,
         message_secrets_store: impl Into<Option<&'a mut MessageSecretsStore>>,
+        sender_ratchet_configuration: &SenderRatchetConfiguration,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<UnverifiedMessage, CoreGroupError> {
         // Checks the following semantic validation:
@@ -62,6 +63,7 @@ impl CoreGroup {
                     &ciphersuite,
                     backend,
                     message_secrets,
+                    sender_ratchet_configuration,
                 )?
             }
         };
