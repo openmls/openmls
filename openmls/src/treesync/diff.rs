@@ -714,16 +714,12 @@ impl<'a> TreeSyncDiff<'a> {
         let mut own_node_ids = vec![self.diff.leaf(self.own_leaf_index)?];
 
         own_node_ids.append(&mut self.diff.direct_path(self.own_leaf_index)?);
-        println!("\nLooking for private keys.");
-        println!("I am at node {:?}", self.own_leaf_index());
         for node_id in own_node_ids {
-            println!("Looking at node {:?}", node_id);
             let node_tsn = self.diff.node(node_id)?;
             // If the node is blank, skip it.
             if let Some(node) = node_tsn.node() {
                 // If we don't have the private key, skip it.
                 if let Some(private_key) = node.private_key() {
-                    println!("Found one!");
                     // If we do have the private key, check if the key is in the
                     // resolution.
                     if let Some(resolution_position) = sender_copath_resolution

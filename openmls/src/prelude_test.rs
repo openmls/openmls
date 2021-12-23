@@ -4,7 +4,9 @@
 pub use crate::ciphersuite::{signable::Verifiable, *};
 pub use crate::framing::ciphertext::MlsCiphertext;
 pub use crate::framing::*;
-pub use crate::group::{core_group::*, create_commit_params::CreateCommitParams};
+pub use crate::group::{
+    core_group::*, create_commit_params::CreateCommitParams, past_secrets::MessageSecretsStore,
+};
 pub use crate::schedule::*;
 pub use crate::treesync::*;
 

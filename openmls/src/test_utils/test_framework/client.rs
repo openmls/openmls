@@ -138,11 +138,13 @@ impl Client {
         let group_state = group_states
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
-        if sender_id == &self.identity {
+        if sender_id == &self.identity && message.content_type() == ContentType::Commit {
             group_state.merge_pending_commit()?
         } else {
-            // Clear any potential pending commits.
-            group_state.clear_pending_commit();
+            if message.content_type() == ContentType::Commit {
+                // Clear any potential pending commits.
+                group_state.clear_pending_commit();
+            }
             // Process the message.
             let unverified_message = group_state.parse_message(message.clone(), &self.crypto)?;
             let processed_message =
