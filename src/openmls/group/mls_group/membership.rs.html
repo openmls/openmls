@@ -304,10 +304,10 @@
             .<span class="ident">proposal_store</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">proposal_store</span>)
             .<span class="ident">inline_proposals</span>(<span class="ident">inline_proposals</span>)
             .<span class="ident">build</span>();
-        <span class="kw">let</span> (<span class="ident">commit</span>, <span class="ident">welcome_option</span>, <span class="ident">kpb_option</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_commit</span>(<span class="ident">params</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
-        <span class="macro">log::error!</span>(<span class="string">&quot;plaintext (foo): {:?}&quot;</span>, <span class="ident">commit</span>);
+        <span class="kw">let</span> <span class="ident">create_commit_result</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_commit</span>(<span class="ident">params</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
+        <span class="macro">log::error!</span>(<span class="string">&quot;plaintext (foo): {:?}&quot;</span>, <span class="ident">create_commit_result</span>.<span class="ident">commit</span>);
 
-        <span class="kw">let</span> <span class="ident">welcome</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">welcome_option</span> {
+        <span class="kw">let</span> <span class="ident">welcome</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">create_commit_result</span>.<span class="ident">welcome_option</span> {
             <span class="prelude-val">Some</span>(<span class="ident">welcome</span>) =&gt; <span class="ident">welcome</span>,
             <span class="prelude-val">None</span> =&gt; {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::LibraryError</span>(
@@ -317,13 +317,13 @@
         };
 
         <span class="comment">// If it was a full Commit, we have to save the KeyPackageBundle for later</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">kpb</span>) <span class="op">=</span> <span class="ident">kpb_option</span> {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">kpb</span>) <span class="op">=</span> <span class="ident">create_commit_result</span>.<span class="ident">key_package_bundle_option</span> {
             <span class="self">self</span>.<span class="ident">own_kpbs</span>.<span class="ident">push</span>(<span class="ident">kpb</span>);
         }
 
         <span class="comment">// Convert MlsPlaintext messages to MLSMessage and encrypt them if required by</span>
         <span class="comment">// the configuration</span>
-        <span class="kw">let</span> <span class="ident">mls_messages</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">commit</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">mls_messages</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">create_commit_result</span>.<span class="ident">commit</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Since the state of the group might be changed, arm the state flag</span>
         <span class="self">self</span>.<span class="ident">flag_state_change</span>();
@@ -374,10 +374,10 @@
             .<span class="ident">proposal_store</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">proposal_store</span>)
             .<span class="ident">inline_proposals</span>(<span class="ident">inline_proposals</span>)
             .<span class="ident">build</span>();
-        <span class="kw">let</span> (<span class="ident">commit</span>, <span class="ident">welcome_option</span>, <span class="ident">kpb_option</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_commit</span>(<span class="ident">params</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">create_commit_result</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">create_commit</span>(<span class="ident">params</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// It has to be a full Commit and we have to save the KeyPackageBundle for later</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">kpb</span>) <span class="op">=</span> <span class="ident">kpb_option</span> {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">kpb</span>) <span class="op">=</span> <span class="ident">create_commit_result</span>.<span class="ident">key_package_bundle_option</span> {
             <span class="self">self</span>.<span class="ident">own_kpbs</span>.<span class="ident">push</span>(<span class="ident">kpb</span>);
         } <span class="kw">else</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::LibraryError</span>(
@@ -387,12 +387,12 @@
 
         <span class="comment">// Convert MlsPlaintext messages to MLSMessage and encrypt them if required by</span>
         <span class="comment">// the configuration</span>
-        <span class="kw">let</span> <span class="ident">mls_message</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">commit</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">mls_message</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">create_commit_result</span>.<span class="ident">commit</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Since the state of the group might be changed, arm the state flag</span>
         <span class="self">self</span>.<span class="ident">flag_state_change</span>();
 
-        <span class="prelude-val">Ok</span>((<span class="ident">mls_message</span>, <span class="ident">welcome_option</span>))
+        <span class="prelude-val">Ok</span>((<span class="ident">mls_message</span>, <span class="ident">create_commit_result</span>.<span class="ident">welcome_option</span>))
     }
 
     <span class="doccomment">/// Creates proposals to add members to the group</span>

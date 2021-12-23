@@ -137,23 +137,11 @@
 <span id="137">137</span>
 <span id="138">138</span>
 <span id="139">139</span>
-<span id="140">140</span>
-<span id="141">141</span>
-<span id="142">142</span>
-<span id="143">143</span>
-<span id="144">144</span>
-<span id="145">145</span>
-<span id="146">146</span>
-<span id="147">147</span>
-<span id="148">148</span>
-<span id="149">149</span>
-<span id="150">150</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite::signable::Verifiable</span>,
     <span class="ident">credentials::CredentialBundle</span>,
     <span class="ident">framing::plaintext::MlsPlaintext</span>,
     <span class="ident">group::errors::ExternalInitError</span>,
-    <span class="ident">key_packages::KeyPackageBundle</span>,
     <span class="ident">messages</span>::{
         <span class="ident">proposals</span>::{<span class="ident">ExternalInitProposal</span>, <span class="ident">Proposal</span>},
         <span class="ident">public_group_state</span>::{<span class="ident">PublicGroupState</span>, <span class="ident">VerifiablePublicGroupState</span>},
@@ -167,12 +155,7 @@
 };
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::core_group</span>::<span class="kw-2">*</span>;
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExternalInitResult</span> {
-    <span class="kw">pub</span> <span class="ident">core_group</span>: <span class="ident">CoreGroup</span>,
-    <span class="kw">pub</span> <span class="ident">commit</span>: <span class="ident">MlsPlaintext</span>,
-    <span class="kw">pub</span> <span class="ident">welcome_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Welcome</span><span class="op">&gt;</span>,
-    <span class="kw">pub</span> <span class="ident">key_package_bundle_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>,
-}
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">ExternalInitResult</span> <span class="op">=</span> (<span class="ident">CoreGroup</span>, <span class="ident">CreateCommitResult</span>);
 
 <span class="kw">impl</span> <span class="ident">CoreGroup</span> {
     <span class="doccomment">/// Join a group without the help of an internal member. This function</span>
@@ -286,16 +269,11 @@
             .<span class="ident">build</span>();
 
         <span class="comment">// Immediately create the commit to add ourselves to the group.</span>
-        <span class="kw">let</span> (<span class="ident">mls_plaintext</span>, <span class="ident">welcome_option</span>, <span class="ident">kpb_option</span>) <span class="op">=</span> <span class="ident">group</span>
+        <span class="kw">let</span> <span class="ident">create_commit_result</span> <span class="op">=</span> <span class="ident">group</span>
             .<span class="ident">create_commit</span>(<span class="ident">params</span>, <span class="ident">backend</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ExternalInitError::CommitError</span>)<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(<span class="ident">ExternalInitResult</span> {
-            <span class="ident">core_group</span>: <span class="ident">group</span>,
-            <span class="ident">commit</span>: <span class="ident">mls_plaintext</span>,
-            <span class="ident">welcome_option</span>,
-            <span class="ident">key_package_bundle_option</span>: <span class="ident">kpb_option</span>,
-        })
+        <span class="prelude-val">Ok</span>((<span class="ident">group</span>, <span class="ident">create_commit_result</span>))
     }
 }
 </code></pre></div>
