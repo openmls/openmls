@@ -24,7 +24,7 @@ rand = { version = "0.8", optional = true }
 # We enable the feature here because other dependencies need getrandom.
 getrandom = { version = "0.2", features = ["js"] }
 # Crypto backends required for KAT and testing - "test-utils" feature
-itertools = { version = "0.10" }
+itertools = { version = "0.10", optional = true }
 openmls_rust_crypto = { version = "0.1", path = "../openmls_rust_crypto", optional = true }
 evercrypt_backend = { version = "0.1", path = "../evercrypt_backend", optional = true }
 rstest = {version = "^0.12", optional = true}
@@ -34,7 +34,7 @@ rayon = "^1.5.0"
 [features]
 default = []
 crypto-subtle = [] # Enable subtle crypto APIs that have to be used with care.
-test-utils = ["openmls_rust_crypto", "rand", "rstest", "rstest_reuse"]
+test-utils = ["itertools", "openmls_rust_crypto", "rand", "rstest", "rstest_reuse"]
 evercrypt = ["evercrypt_backend"] # Evercrypt needs to be enabled individually
 crypto-debug = [] # ☣️ Enable logging of sensitive cryptographic information
 content-debug = [] # ☣️ Enable logging of sensitive message content
@@ -42,6 +42,7 @@ content-debug = [] # ☣️ Enable logging of sensitive message content
 [dev-dependencies]
 criterion = "^0.3"
 pretty_env_logger = "0.4"
+itertools = "0.10"
 openmls = { path = ".", features = ["test-utils"] }
 tempfile = "3"
 rstest = "^0.12"

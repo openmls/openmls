@@ -1,7 +1,6 @@
 //! This module contains the [`ParentNode`] struct, its implementation, as well
 //! as the [`PlainUpdatePathNode`], a helper struct for the creation of
 //! [`UpdatePathNode`] instances.
-use itertools::process_results;
 use openmls_traits::{
     types::{CryptoError, HpkeCiphertext},
     OpenMlsCryptoProvider,
@@ -129,15 +128,15 @@ impl ParentNode {
             path_secrets.push(path_secret);
         }
 
-        // We first collect a a vector over results of a (parent_node, update_path_node) tuple
-        let iter_source: Vec<Result<(_, _), _>> = path_secrets
+        // Iterate over the path secrets and derive a key pair
+        let (path, update_path_nodes) = path_secrets
             .into_par_iter()
             .map(|path_secret| {
                 // Derive a key pair from the path secret. This includes the
                 // intermediate derivation of a node secret.
                 let (public_key, private_key) =
                     path_secret.derive_key_pair(backend, ciphersuite)?;
-                let parent_node = (public_key.clone(), private_key).into();
+                let parent_node = ParentNode::from((public_key.clone(), private_key));
                 // Store the current path secret and the derived public key for
                 // later encryption.
                 let update_path_node = PlainUpdatePathNode {
@@ -146,17 +145,9 @@ impl ParentNode {
                 };
                 Ok((parent_node, update_path_node))
             })
-            .collect();
-
-        // We unzip the vector over tuples into two vectors instead and check the results
-        let (path, update_path_nodes) = process_results(
-            iter_source,
-            |iter: itertools::ProcessResults<
-                '_,
-                std::vec::IntoIter<std::result::Result<(ParentNode, PlainUpdatePathNode), _>>,
-                ParentNodeError,
-            >| iter.unzip(),
-        )?;
+            .collect::<Result<Vec<(ParentNode, PlainUpdatePathNode)>, ParentNodeError>>()?
+            .into_iter()
+            .unzip();
 
         let commit_secret = next_path_secret.into();
         Ok((path, update_path_nodes, commit_secret))
