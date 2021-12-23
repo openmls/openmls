@@ -30,7 +30,7 @@ fn decryption_key_index_computation(ciphersuite: &'static Ciphersuite) {
     let group_id = setup
         .create_random_group(10, ciphersuite)
         .expect("An unexpected error occurred.");
-    let mut groups = setup.groups.borrow_mut();
+    let mut groups = setup.groups.write().expect("An unexpected error occurred.");
     let group = groups
         .get_mut(&group_id)
         .expect("An unexpected error occurred.");
