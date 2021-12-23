@@ -636,7 +636,7 @@ fn test_staged_commit_creation(
     )
 }
 
-// Test several scenarios when PSKs are used in a group
+// Test processing of own commits
 #[apply(ciphersuites_and_backends)]
 fn test_own_commit_processing(
     ciphersuite: &'static Ciphersuite,
