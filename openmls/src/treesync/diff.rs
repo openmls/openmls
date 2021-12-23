@@ -50,13 +50,14 @@ pub(crate) type UpdatePathResult = (KeyPackageBundle, Vec<PlainUpdatePathNode>, 
 /// and later merged into a [`TreeSync`] instance.
 #[derive(Debug)]
 pub(crate) struct StagedTreeSyncDiff {
+    own_leaf_index: LeafIndex,
     diff: StagedMlsBinaryTreeDiff<TreeSyncNode>,
     new_tree_hash: Vec<u8>,
 }
 
 impl StagedTreeSyncDiff {
-    pub(super) fn into_parts(self) -> (StagedMlsBinaryTreeDiff<TreeSyncNode>, Vec<u8>) {
-        (self.diff, self.new_tree_hash)
+    pub(super) fn into_parts(self) -> (LeafIndex, StagedMlsBinaryTreeDiff<TreeSyncNode>, Vec<u8>) {
+        (self.own_leaf_index, self.diff, self.new_tree_hash)
     }
 }
 
@@ -135,18 +136,9 @@ impl<'a> TreeSyncDiff<'a> {
         Ok(())
     }
 
-    /// Adds a new leaf to the tree either by filling a blank leaf or by
-    /// extending the tree to the right to create a new leaf, inserting
-    /// intermediate blanks as necessary. This also adds the leaf_index of the
-    /// new leaf to the `unmerged_leaves` of the parent nodes in its direct
-    /// path.
-    ///
-    /// Returns the LeafIndex of the new leaf.
-    pub(crate) fn add_leaf(
-        &mut self,
-        leaf_node: KeyPackage,
-    ) -> Result<LeafIndex, TreeSyncDiffError> {
-        let node = Node::LeafNode(leaf_node.into());
+    /// Find and return the index of either the left-most blank leaf, or, if
+    /// there are no blank leaves, the leaf count.
+    pub(in crate::treesync) fn free_leaf_index(&self) -> Result<LeafIndex, TreeSyncDiffError> {
         // Find a free leaf and fill it with the new key package.
         let leaf_ids = self.diff.leaves()?;
         let mut leaf_index_option = None;
@@ -160,12 +152,30 @@ impl<'a> TreeSyncDiff<'a> {
         }
         // If we found a free leaf, replace it with the new one, otherwise
         // extend the tree.
-        let leaf_index = if let Some(leaf_index) = leaf_index_option {
+        Ok(leaf_index_option.unwrap_or_else(|| self.leaf_count()))
+    }
+
+    /// Adds a new leaf to the tree either by filling a blank leaf or by
+    /// extending the tree to the right to create a new leaf, inserting
+    /// intermediate blanks as necessary. This also adds the leaf_index of the
+    /// new leaf to the `unmerged_leaves` of the parent nodes in its direct
+    /// path.
+    ///
+    /// Returns the LeafIndex of the new leaf.
+    pub(crate) fn add_leaf(
+        &mut self,
+        leaf_node: KeyPackage,
+    ) -> Result<LeafIndex, TreeSyncDiffError> {
+        let node = Node::LeafNode(leaf_node.into());
+        // Find a free leaf and fill it with the new key package.
+        let leaf_index = self.free_leaf_index()?;
+        // If the free leaf index is within the tree, put the new leaf there,
+        // otherwise extend the tree.
+        if leaf_index < self.leaf_count() {
             self.diff.replace_leaf(leaf_index, node.into())?;
-            leaf_index
         } else {
-            self.diff.add_leaf(TreeSyncNode::blank(), node.into())?
-        };
+            self.diff.add_leaf(TreeSyncNode::blank(), node.into())?;
+        }
         // Add new unmerged leaves entry to all nodes in direct path. Also, wipe
         // the cached tree hash.
         for node_id in self.diff.direct_path(leaf_index)? {
@@ -177,6 +187,12 @@ impl<'a> TreeSyncDiff<'a> {
             tsn.erase_tree_hash();
         }
         Ok(leaf_index)
+    }
+
+    /// Set the `own_leaf_index` to `leaf_index`. This has to be used with
+    /// caution, as it can invalidate the [`TreeSync`] invariants.
+    pub(crate) fn set_own_index(&mut self, leaf_index: LeafIndex) {
+        self.own_leaf_index = leaf_index
     }
 
     /// Remove a group member by blanking the target leaf and its direct path.
@@ -656,6 +672,7 @@ impl<'a> TreeSyncDiff<'a> {
         let new_tree_hash = self.compute_tree_hashes(backend, ciphersuite)?;
         debug_assert!(self.verify_parent_hashes(backend, ciphersuite).is_ok());
         Ok(StagedTreeSyncDiff {
+            own_leaf_index: self.own_leaf_index,
             diff: self.diff.into(),
             new_tree_hash,
         })

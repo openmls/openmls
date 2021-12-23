@@ -42,6 +42,8 @@ pub use parent_hash_extension::ParentHashExtension;
 pub use ratchet_tree_extension::RatchetTreeExtension;
 pub use required_capabilities::RequiredCapabilitiesExtension;
 
+use crate::treesync::node::Node;
+
 #[cfg(test)]
 mod test_extensions;
 
@@ -313,4 +315,33 @@ impl Ord for Extension {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.extension_type().cmp(&other.extension_type())
     }
+}
+
+/// This function tries to extract a vector of nodes from the given slice of
+/// [`Extension`]s.
+///
+/// Returns the vector of nodes if it finds one and `None` otherwise. Returns an
+/// error if there is either no [`RatchetTreeExtension`] or more than one.
+pub(crate) fn try_nodes_from_extensions(
+    other_extensions: &[Extension],
+) -> Result<Option<&[Option<Node>]>, ExtensionError> {
+    let mut ratchet_tree_extensions = other_extensions
+        .iter()
+        .filter(|e| e.extension_type() == ExtensionType::RatchetTree);
+
+    let nodes_option = match ratchet_tree_extensions.next() {
+        Some(e) => Some(e.as_ratchet_tree_extension()?.as_slice()),
+        None => None,
+    };
+
+    if ratchet_tree_extensions.next().is_some() {
+        // Throw an error if there is more than one ratchet tree extension.
+        // This shouldn't be the case anyway, because extensions are checked
+        // for uniqueness when decoding them. We have to see if this makes
+        // problems later as it's not something required by the spec right
+        // now (Note issue #530 of the MLS spec.).
+        return Err(ExtensionError::DuplicateRatchetTreeExtension);
+    };
+
+    Ok(nodes_option)
 }

@@ -154,6 +154,7 @@ impl std::error::Error for CryptoError {}
 // === HPKE === //
 
 /// Convenience tuple struct for an HPKE configuration.
+#[derive(Debug)]
 pub struct HpkeConfig(pub HpkeKemType, pub HpkeKdfType, pub HpkeAeadType);
 
 /// KEM Types for HPKE

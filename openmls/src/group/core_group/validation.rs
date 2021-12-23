@@ -197,7 +197,7 @@ impl CoreGroup {
     pub fn validate_update_proposals(
         &self,
         staged_proposal_queue: &StagedProposalQueue,
-        path_key_package: Option<(LeafIndex, &KeyPackage)>,
+        path_key_package: Option<(Sender, &KeyPackage)>,
     ) -> Result<(), CoreGroupError> {
         let mut public_key_set = HashSet::new();
         for (_index, key_package) in self.treesync().full_leaves()? {
@@ -243,7 +243,7 @@ impl CoreGroup {
         // and add a new fake Update proposal to the queue after that
         if let Some((sender, key_package)) = path_key_package {
             let indexed_key_packages = tree.full_leaves()?;
-            if let Some(existing_key_package) = indexed_key_packages.get(&sender) {
+            if let Some(existing_key_package) = indexed_key_packages.get(&sender.sender) {
                 // ValSem109
                 if key_package.credential().identity()
                     != existing_key_package.credential().identity()
@@ -254,7 +254,10 @@ impl CoreGroup {
                 if public_key_set.contains(key_package.hpke_init_key().as_slice()) {
                     return Err(ProposalValidationError::ExistingPublicKeyUpdateProposal.into());
                 }
-            } else {
+                // TODO: Proper validation of external inits (#630). For now,
+                // this is changed such that it doesn't consider external
+                // senders as "Unknown".
+            } else if sender.sender_type == SenderType::Member {
                 return Err(ProposalValidationError::UnknownMember.into());
             }
         }
