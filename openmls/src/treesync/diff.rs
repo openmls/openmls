@@ -219,8 +219,11 @@ impl<'a> TreeSyncDiff<'a> {
     /// apply it to this diff. The given [`CredentialBundle`] reference is used
     /// to sign the [`KeyPackageBundlePayload`] after updating its parent hash.
     ///
-    /// Returns the [`CommitSecret`] and the path resulting from the path
-    /// derivation.
+    /// Returns the resulting [`KeyPackageBundle`] for later use with
+    /// [`Self::re_apply_own_update_path()`], as well as the [`CommitSecret`]
+    /// and the path resulting from the path derivation. FIXME: There is no need
+    /// to return a KPB here, as we're either going to merge the commit or drop
+    /// it entirely.
     pub(crate) fn apply_own_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
