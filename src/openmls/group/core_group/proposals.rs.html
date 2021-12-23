@@ -639,6 +639,14 @@
 <span id="639">639</span>
 <span id="640">640</span>
 <span id="641">641</span>
+<span id="642">642</span>
+<span id="643">643</span>
+<span id="644">644</span>
+<span id="645">645</span>
+<span id="646">646</span>
+<span id="647">647</span>
+<span id="648">648</span>
+<span id="649">649</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::errors</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::proposals</span>::{
@@ -1127,6 +1135,7 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">valid_proposals</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">ProposalReference</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashSet::new</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">proposal_pool</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">ProposalReference</span>, <span class="ident">QueuedProposal</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">HashMap::new</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">contains_own_updates</span> <span class="op">=</span> <span class="bool-val">false</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">contains_external_init</span> <span class="op">=</span> <span class="bool-val">false</span>;
 
         <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">Sender</span> {
             <span class="ident">sender_type</span>,
@@ -1187,7 +1196,14 @@
                     <span class="comment">// TODO #141: Only keep one ReInit</span>
                     <span class="ident">proposal_pool</span>.<span class="ident">insert</span>(<span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>(), <span class="ident">queued_proposal</span>);
                 }
-                <span class="ident">Proposal::ExternalInit</span>(<span class="kw">_</span>) =&gt; <span class="macro">unimplemented!</span>(<span class="string">&quot;See #556&quot;</span>),
+                <span class="ident">Proposal::ExternalInit</span>(<span class="kw">_</span>) =&gt; {
+                    <span class="comment">// Only use the first external init proposal we find.</span>
+                    <span class="kw">if</span> <span class="op">!</span><span class="ident">contains_external_init</span> {
+                        <span class="ident">valid_proposals</span>.<span class="ident">insert</span>(<span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>());
+                        <span class="ident">proposal_pool</span>.<span class="ident">insert</span>(<span class="ident">queued_proposal</span>.<span class="ident">proposal_reference</span>(), <span class="ident">queued_proposal</span>);
+                        <span class="ident">contains_external_init</span> <span class="op">=</span> <span class="bool-val">true</span>;
+                    }
+                }
                 <span class="ident">Proposal::AppAck</span>(<span class="kw">_</span>) =&gt; <span class="macro">unimplemented!</span>(<span class="string">&quot;See #291&quot;</span>),
                 <span class="ident">Proposal::GroupContextExtensions</span>(<span class="kw">_</span>) =&gt; {
                     <span class="comment">// TODO: Validate proposal?</span>

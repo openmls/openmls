@@ -269,6 +269,48 @@
 <span id="269">269</span>
 <span id="270">270</span>
 <span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS CoreGroup errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -293,6 +335,8 @@
         <span class="ident">Simple</span> {
             <span class="ident">InitSecretNotFound</span> <span class="op">=</span>
                 <span class="string">&quot;Missing init secret when creating commit.&quot;</span>,
+            <span class="ident">MissingKeyPackageBundle</span> <span class="op">=</span>
+                <span class="string">&quot;Couldn&#39;t find KeyPackageBundle corresponding to own update proposal.&quot;</span>,
             <span class="ident">NoSignatureKey</span> <span class="op">=</span> <span class="string">&quot;No signature key was found.&quot;</span>,
             <span class="ident">LibraryError</span> <span class="op">=</span> <span class="string">&quot;An unrecoverable error has occurred due to a bug in the implementation.&quot;</span>,
         }
@@ -368,8 +412,6 @@
                 <span class="string">&quot;The signature on the GroupInfo is not valid.&quot;</span>,
             <span class="ident">GroupInfoDecryptionFailure</span> <span class="op">=</span>
                 <span class="string">&quot;Unable to decrypt the GroupInfo.&quot;</span>,
-            <span class="ident">DuplicateRatchetTreeExtension</span> <span class="op">=</span>
-                <span class="string">&quot;Found a duplicate ratchet tree extension in the Welcome message.&quot;</span>,
             <span class="ident">UnsupportedMlsVersion</span> <span class="op">=</span>
                 <span class="string">&quot;The Welcome message uses an unsupported MLS version.&quot;</span>,
             <span class="ident">MissingKeyPackage</span> <span class="op">=</span>
@@ -403,6 +445,48 @@
                 <span class="string">&quot;See [`InterimTranscriptHashError`] for details.&quot;</span>,
             <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`CryptoError`](openmls_traits::types::CryptoError) for details.&quot;</span>,
+            <span class="ident">ProposalError</span>(<span class="ident">StagedProposalError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`StagedProposalError`] for details.&quot;</span>,
+        }
+    }
+}
+
+<span class="macro">implement_error!</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExternalInitError</span> {
+        <span class="ident">Simple</span> {
+            <span class="ident">MissingRatchetTree</span> <span class="op">=</span>
+                <span class="string">&quot;No ratchet tree available to build initial tree.&quot;</span>,
+            <span class="ident">TreeHashMismatch</span> <span class="op">=</span>
+                <span class="string">&quot;The computed tree hash does not match the one in the GroupInfo.&quot;</span>,
+            <span class="ident">UnsupportedMlsVersion</span> <span class="op">=</span>
+                <span class="string">&quot;We don&#39;t support the version of the group we are trying to join.&quot;</span>,
+            <span class="ident">UnknownSender</span> <span class="op">=</span>
+                <span class="string">&quot;Sender not found in tree.&quot;</span>,
+            <span class="ident">InvalidPublicGroupStateSignature</span> <span class="op">=</span>
+                <span class="string">&quot;The signature over the given public group state is invalid.&quot;</span>,
+            <span class="ident">CommitError</span> <span class="op">=</span>
+                <span class="string">&quot;Error creating external commit&quot;</span>,
+            <span class="ident">LibraryError</span> <span class="op">=</span> <span class="string">&quot;An unrecoverable error has occurred due to a bug in the implementation.&quot;</span>,
+            }
+        <span class="ident">Complex</span> {
+            <span class="ident">ConfigError</span>(<span class="ident">ConfigError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`ConfigError`](`crate::config::ConfigError`) for details.&quot;</span>,
+            <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span>
+                <span class="string">&quot;Tls (de)serialization error occurred.&quot;</span>,
+            <span class="ident">KeyScheduleError</span>(<span class="ident">KeyScheduleError</span>) <span class="op">=</span>
+                <span class="string">&quot;An error occurred in the key schedule.&quot;</span>,
+            <span class="ident">TreeSyncError</span>(<span class="ident">TreeSyncError</span>) <span class="op">=</span>
+                <span class="string">&quot;An error occurred while importing the new tree.&quot;</span>,
+            <span class="ident">TreeSyncDiffError</span>(<span class="ident">TreeSyncDiffError</span>) <span class="op">=</span>
+                <span class="string">&quot;An error occurred while adding our own leaf to the new tree.&quot;</span>,
+            <span class="ident">ExtensionError</span>(<span class="ident">ExtensionError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`ExtensionError`] for details.&quot;</span>,
+            <span class="ident">KeyPackageError</span>(<span class="ident">KeyPackageError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`KeyPackageError`] for details.&quot;</span>,
+            <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`CryptoError`](openmls_traits::types::CryptoError) for details.&quot;</span>,
+            <span class="ident">ProposalError</span>(<span class="ident">StagedProposalError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`StagedProposalError`] for details.&quot;</span>,
         }
     }
 }

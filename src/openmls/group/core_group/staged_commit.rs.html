@@ -365,6 +365,21 @@
 <span id="365">365</span>
 <span id="366">366</span>
 <span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::diff::StagedTreeSyncDiff</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::proposals</span>::{<span class="ident">ProposalStore</span>, <span class="ident">StagedProposal</span>, <span class="ident">StagedProposalQueue</span>};
@@ -453,7 +468,7 @@
 
         <span class="kw">let</span> <span class="ident">sender_key_package_tuple</span> <span class="op">=</span> <span class="ident">path_key_package</span>
             .<span class="ident">as_ref</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">key_package</span><span class="op">|</span> (<span class="ident">sender</span>.<span class="ident">to_leaf_index</span>(), <span class="ident">key_package</span>));
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">key_package</span><span class="op">|</span> (<span class="ident">sender</span>, <span class="ident">key_package</span>));
 
         <span class="comment">// Validate the staged proposals by doing the following checks:</span>
 
@@ -511,9 +526,19 @@
                     .<span class="ident">ok_or</span>(<span class="ident">StageCommitError::MissingOwnKeyPackage</span>)<span class="question-mark">?</span>;
                 <span class="ident">diff</span>.<span class="ident">re_apply_own_update_path</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>, <span class="ident">own_kpb</span>)<span class="question-mark">?</span>
             } <span class="kw">else</span> {
-                <span class="comment">// Decrypt the UpdatePath</span>
                 <span class="kw">let</span> (<span class="ident">key_package</span>, <span class="ident">update_path_nodes</span>) <span class="op">=</span> <span class="ident">path</span>.<span class="ident">into_parts</span>();
 
+                <span class="comment">// If the committer is a `NewMember`, we have to add the leaf to</span>
+                <span class="comment">// the tree before we can apply or even decrypt an update path.</span>
+                <span class="comment">// While `apply_received_update_path` will happily update a</span>
+                <span class="comment">// blank leaf, we still have to call `add_leaf` here in case</span>
+                <span class="comment">// there are no blanks and the new member extended the tree to</span>
+                <span class="comment">// fit in.</span>
+                <span class="kw">if</span> <span class="ident">apply_proposals_values</span>.<span class="ident">external_init_secret_option</span>.<span class="ident">is_some</span>() {
+                    <span class="ident">diff</span>.<span class="ident">add_leaf</span>(<span class="ident">key_package</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>;
+                }
+
+                <span class="comment">// Decrypt the UpdatePath</span>
                 <span class="kw">let</span> (<span class="ident">plain_path</span>, <span class="ident">commit_secret</span>) <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">decrypt_path</span>(
                     <span class="ident">backend</span>,
                     <span class="ident">ciphersuite</span>,
@@ -541,13 +566,18 @@
             <span class="ident">CommitSecret::zero_secret</span>(<span class="ident">ciphersuite</span>, <span class="self">self</span>.<span class="ident">mls_version</span>)
         };
 
-        <span class="kw">let</span> <span class="ident">joiner_secret</span> <span class="op">=</span> <span class="ident">JoinerSecret::new</span>(
-            <span class="ident">backend</span>,
-            <span class="ident">commit_secret</span>,
-            <span class="self">self</span>.<span class="ident">group_epoch_secrets</span>
-                .<span class="ident">init_secret</span>()
-                .<span class="ident">ok_or</span>(<span class="ident">StageCommitError::InitSecretNotFound</span>)<span class="question-mark">?</span>,
-        )<span class="question-mark">?</span>;
+        <span class="comment">// Check if we need to include the init secret from an external commit</span>
+        <span class="comment">// we applied earlier or if we use the one from the previous epoch.</span>
+        <span class="kw">let</span> <span class="ident">init_secret</span> <span class="op">=</span>
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">init_secret</span>) <span class="op">=</span> <span class="ident">apply_proposals_values</span>.<span class="ident">external_init_secret_option</span> {
+                <span class="ident">init_secret</span>
+            } <span class="kw">else</span> {
+                <span class="self">self</span>.<span class="ident">group_epoch_secrets</span>
+                    .<span class="ident">init_secret</span>()
+                    .<span class="ident">ok_or</span>(<span class="ident">StageCommitError::InitSecretNotFound</span>)<span class="question-mark">?</span>
+            };
+
+        <span class="kw">let</span> <span class="ident">joiner_secret</span> <span class="op">=</span> <span class="ident">JoinerSecret::new</span>(<span class="ident">backend</span>, <span class="ident">commit_secret</span>, <span class="ident">init_secret</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Create provisional group state</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">provisional_epoch</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">epoch</span>();

@@ -1194,6 +1194,78 @@
 <span id="1194">1194</span>
 <span id="1195">1195</span>
 <span id="1196">1196</span>
+<span id="1197">1197</span>
+<span id="1198">1198</span>
+<span id="1199">1199</span>
+<span id="1200">1200</span>
+<span id="1201">1201</span>
+<span id="1202">1202</span>
+<span id="1203">1203</span>
+<span id="1204">1204</span>
+<span id="1205">1205</span>
+<span id="1206">1206</span>
+<span id="1207">1207</span>
+<span id="1208">1208</span>
+<span id="1209">1209</span>
+<span id="1210">1210</span>
+<span id="1211">1211</span>
+<span id="1212">1212</span>
+<span id="1213">1213</span>
+<span id="1214">1214</span>
+<span id="1215">1215</span>
+<span id="1216">1216</span>
+<span id="1217">1217</span>
+<span id="1218">1218</span>
+<span id="1219">1219</span>
+<span id="1220">1220</span>
+<span id="1221">1221</span>
+<span id="1222">1222</span>
+<span id="1223">1223</span>
+<span id="1224">1224</span>
+<span id="1225">1225</span>
+<span id="1226">1226</span>
+<span id="1227">1227</span>
+<span id="1228">1228</span>
+<span id="1229">1229</span>
+<span id="1230">1230</span>
+<span id="1231">1231</span>
+<span id="1232">1232</span>
+<span id="1233">1233</span>
+<span id="1234">1234</span>
+<span id="1235">1235</span>
+<span id="1236">1236</span>
+<span id="1237">1237</span>
+<span id="1238">1238</span>
+<span id="1239">1239</span>
+<span id="1240">1240</span>
+<span id="1241">1241</span>
+<span id="1242">1242</span>
+<span id="1243">1243</span>
+<span id="1244">1244</span>
+<span id="1245">1245</span>
+<span id="1246">1246</span>
+<span id="1247">1247</span>
+<span id="1248">1248</span>
+<span id="1249">1249</span>
+<span id="1250">1250</span>
+<span id="1251">1251</span>
+<span id="1252">1252</span>
+<span id="1253">1253</span>
+<span id="1254">1254</span>
+<span id="1255">1255</span>
+<span id="1256">1256</span>
+<span id="1257">1257</span>
+<span id="1258">1258</span>
+<span id="1259">1259</span>
+<span id="1260">1260</span>
+<span id="1261">1261</span>
+<span id="1262">1262</span>
+<span id="1263">1263</span>
+<span id="1264">1264</span>
+<span id="1265">1265</span>
+<span id="1266">1266</span>
+<span id="1267">1267</span>
+<span id="1268">1268</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module represents the key schedule as introduced in Section 8 of the</span>
 <span class="doccomment">//! MLS specification. The key schedule evolves in epochs, where in each epoch</span>
 <span class="doccomment">//! new key material is injected.</span>
@@ -1318,17 +1390,16 @@
 <span class="doccomment">//! error, will still return a `Result` since they may throw a `LibraryError`.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">ciphersuite</span>::{<span class="ident">AeadKey</span>, <span class="ident">AeadNonce</span>, <span class="ident">Ciphersuite</span>, <span class="ident">Mac</span>, <span class="ident">Secret</span>},
-    <span class="ident">config::ProtocolVersion</span>,
+    <span class="ident">ciphersuite</span>::{<span class="ident">AeadKey</span>, <span class="ident">AeadNonce</span>, <span class="ident">Ciphersuite</span>, <span class="ident">HpkePrivateKey</span>, <span class="ident">Mac</span>, <span class="ident">Secret</span>},
+    <span class="ident">config</span>::{<span class="ident">Config</span>, <span class="ident">ProtocolVersion</span>},
     <span class="ident">framing</span>::{<span class="ident">MembershipTag</span>, <span class="ident">MlsPlaintextTbmPayload</span>},
-    <span class="ident">messages</span>::{<span class="ident">ConfirmationTag</span>, <span class="ident">PathSecret</span>},
+    <span class="ident">messages</span>::{<span class="ident">ConfirmationTag</span>, <span class="ident">PathSecret</span>, <span class="ident">PublicGroupState</span>},
     <span class="ident">tree::secret_tree::SecretTree</span>,
     <span class="ident">treesync::LeafIndex</span>,
 };
 
 <span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">types</span>::<span class="kw-2">*</span>, <span class="ident">OpenMlsCryptoProvider</span>};
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">use</span> <span class="ident">openmls_traits::crypto::OpenMlsCrypto</span>;
 
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -1409,6 +1480,17 @@
     }
 }
 
+<span class="doccomment">/// Creates a string from the given MLS `ProtocolVersion` for the computation of</span>
+<span class="doccomment">/// the `init_secret` when creating or processing a commit with an external init</span>
+<span class="doccomment">/// proposal. TODO: #628.</span>
+<span class="kw">fn</span> <span class="ident">hpke_info_from_version</span>(<span class="ident">version</span>: <span class="ident">ProtocolVersion</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
+    <span class="kw-2">&amp;</span><span class="kw">match</span> <span class="ident">version</span> {
+        <span class="ident">ProtocolVersion::Reserved</span> =&gt; <span class="string">&quot;Reserved external init&quot;</span>,
+        <span class="ident">ProtocolVersion::Mls10</span> =&gt; <span class="string">&quot;MLS 1.0 external init&quot;</span>,
+        <span class="ident">ProtocolVersion::Mls10Draft11</span> =&gt; <span class="string">&quot;MLS 1.0 Draft 11 external init&quot;</span>,
+    }
+}
+
 <span class="kw">impl</span> <span class="ident">InitSecret</span> {
     <span class="doccomment">/// Derive an `InitSecret` from an `EpochSecret`.</span>
     <span class="kw">fn</span> <span class="ident">new</span>(
@@ -1428,6 +1510,51 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">InitSecret</span> {
             <span class="ident">secret</span>: <span class="ident">Secret::random</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">version</span>)<span class="question-mark">?</span>,
+        })
+    }
+
+    <span class="doccomment">/// Create an `InitSecret` and the corresponding `kem_output` from a public</span>
+    <span class="doccomment">/// group state.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_public_group_state</span>(
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">public_group_state</span>: <span class="kw-2">&amp;</span><span class="ident">PublicGroupState</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>), <span class="ident">KeyScheduleError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">Config::ciphersuite</span>(<span class="ident">public_group_state</span>.<span class="ident">ciphersuite</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">KeyScheduleError::UnsupportedCiphersuite</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">version</span> <span class="op">=</span> <span class="ident">public_group_state</span>.<span class="ident">version</span>;
+        <span class="kw">let</span> (<span class="ident">kem_output</span>, <span class="ident">raw_init_secret</span>) <span class="op">=</span> <span class="ident">backend</span>.<span class="ident">crypto</span>().<span class="ident">hpke_setup_sender_and_export</span>(
+            <span class="ident">ciphersuite</span>.<span class="ident">hpke_config</span>(),
+            <span class="ident">public_group_state</span>.<span class="ident">external_pub</span>.<span class="ident">as_slice</span>(),
+            <span class="kw-2">&amp;</span>[],
+            <span class="ident">hpke_info_from_version</span>(<span class="ident">version</span>).<span class="ident">as_bytes</span>(),
+            <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>(),
+        )<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>((
+            <span class="ident">InitSecret</span> {
+                <span class="ident">secret</span>: <span class="ident">Secret::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">raw_init_secret</span>, <span class="ident">version</span>, <span class="ident">ciphersuite</span>),
+            },
+            <span class="ident">kem_output</span>,
+        ))
+    }
+
+    <span class="doccomment">/// Create an `InitSecret` from a `kem_output`.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_kem_output</span>(
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
+        <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>,
+        <span class="ident">external_priv</span>: <span class="kw-2">&amp;</span><span class="ident">HpkePrivateKey</span>,
+        <span class="ident">kem_output</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">KeyScheduleError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">raw_init_secret</span> <span class="op">=</span> <span class="ident">backend</span>.<span class="ident">crypto</span>().<span class="ident">hpke_setup_receiver_and_export</span>(
+            <span class="ident">ciphersuite</span>.<span class="ident">hpke_config</span>(),
+            <span class="ident">kem_output</span>,
+            <span class="ident">external_priv</span>.<span class="ident">as_slice</span>(),
+            <span class="kw-2">&amp;</span>[],
+            <span class="ident">hpke_info_from_version</span>(<span class="ident">version</span>).<span class="ident">as_bytes</span>(),
+            <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>(),
+        )<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="ident">InitSecret</span> {
+            <span class="ident">secret</span>: <span class="ident">Secret::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">raw_init_secret</span>, <span class="ident">version</span>, <span class="ident">ciphersuite</span>),
         })
     }
 
@@ -1890,7 +2017,6 @@
     }
 
     <span class="doccomment">/// Derive the external keypair for External Commits</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">derive_external_keypair</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">crypto</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCrypto</span>,
@@ -2301,6 +2427,25 @@
         })
     }
 
+    <span class="doccomment">/// This function initializes the `EpochSecrets` from an all-zero</span>
+    <span class="doccomment">/// epoch-secret with the exception of the `init_secret`, which is populated</span>
+    <span class="doccomment">/// with the given `InitSecret`. This is meant to be used in the case of an</span>
+    <span class="doccomment">/// external init.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">with_init_secret</span>(
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">init_secret</span>: <span class="ident">InitSecret</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">epoch_secret</span> <span class="op">=</span> <span class="ident">EpochSecret</span> {
+            <span class="ident">secret</span>: <span class="ident">Secret::zero</span>(
+                <span class="ident">init_secret</span>.<span class="ident">secret</span>.<span class="ident">ciphersuite</span>(),
+                <span class="ident">init_secret</span>.<span class="ident">secret</span>.<span class="ident">version</span>(),
+            ),
+        };
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">epoch_secrets</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">backend</span>, <span class="ident">epoch_secret</span>, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
+        <span class="ident">epoch_secrets</span>.<span class="ident">init_secret</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">init_secret</span>);
+        <span class="prelude-val">Ok</span>(<span class="ident">epoch_secrets</span>)
+    }
+
     <span class="doccomment">/// Splits `EpochSecrets` into two different categories:</span>
     <span class="doccomment">///  - [`GroupEpochSecrets`]: These secrets are only used within the same epoch</span>
     <span class="doccomment">///  - [`MessageSecrets`]: These secrets are potentially also used for past epochs</span>
@@ -2380,7 +2525,6 @@
     }
 
     <span class="doccomment">/// External secret</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">external_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">ExternalSecret</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">external_secret</span>
     }

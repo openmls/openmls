@@ -76,6 +76,13 @@
 <span id="76">76</span>
 <span id="77">77</span>
 <span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Extension errors.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! An `ExtensionError` is thrown when an extension is invalid (for example when</span>
@@ -95,24 +102,31 @@
 
 <span class="macro">implement_error!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExtensionError</span> {
-        <span class="ident">InvalidExtensionType</span>(<span class="ident">ErrorString</span>) <span class="op">=</span>
-            <span class="string">&quot;Invalid extension type error.&quot;</span>,
-        <span class="ident">Capabilities</span>(<span class="ident">CapabilitiesExtensionError</span>) <span class="op">=</span>
-            <span class="string">&quot;Capabilities extension error. See `CapabilitiesExtensionError` for details.&quot;</span>,
-        <span class="ident">Lifetime</span>(<span class="ident">LifetimeExtensionError</span>) <span class="op">=</span>
-            <span class="string">&quot;Lifetime extension error. See `LifetimeExtensionError` for details.&quot;</span>,
-        <span class="ident">KeyPackageId</span>(<span class="ident">KeyPackageIdError</span>) <span class="op">=</span>
-            <span class="string">&quot;Key package ID extension error. See `KeyPackageIdError` for details.&quot;</span>,
-        <span class="ident">ParentHash</span>(<span class="ident">ParentHashError</span>) <span class="op">=</span>
-            <span class="string">&quot;Parent hash extension error. See `ParentHashError` for details.&quot;</span>,
-        <span class="ident">RatchetTree</span>(<span class="ident">RatchetTreeError</span>) <span class="op">=</span>
-            <span class="string">&quot;Ratchet tree extension error. See `RatchetTreeError` for details.&quot;</span>,
-        <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span>
-            <span class="string">&quot;Error decoding or encoding an extension.&quot;</span>,
-        <span class="ident">ConfigError</span>(<span class="ident">ConfigError</span>) <span class="op">=</span>
-            <span class="string">&quot;Configuration error. See `ConfigError` for details.&quot;</span>,
-        <span class="ident">InvalidExtension</span>(<span class="ident">InvalidExtensionError</span>) <span class="op">=</span>
-            <span class="string">&quot;The extension is malformed. See [`InvalidExtensionError`](`InvalidExtensionError`) for details.&quot;</span>,
+        <span class="ident">Simple</span> {
+            <span class="ident">DuplicateRatchetTreeExtension</span> <span class="op">=</span>
+                <span class="string">&quot;Found a duplicate ratchet tree extension.&quot;</span>,
+            <span class="ident">LibraryError</span> <span class="op">=</span> <span class="string">&quot;An unrecoverable error has occurred due to a bug in the implementation.&quot;</span>,
+        }
+        <span class="ident">Complex</span> {
+            <span class="ident">InvalidExtensionType</span>(<span class="ident">ErrorString</span>) <span class="op">=</span>
+                <span class="string">&quot;Invalid extension type error.&quot;</span>,
+            <span class="ident">Capabilities</span>(<span class="ident">CapabilitiesExtensionError</span>) <span class="op">=</span>
+                <span class="string">&quot;Capabilities extension error. See `CapabilitiesExtensionError` for details.&quot;</span>,
+            <span class="ident">Lifetime</span>(<span class="ident">LifetimeExtensionError</span>) <span class="op">=</span>
+                <span class="string">&quot;Lifetime extension error. See `LifetimeExtensionError` for details.&quot;</span>,
+            <span class="ident">KeyPackageId</span>(<span class="ident">KeyPackageIdError</span>) <span class="op">=</span>
+                <span class="string">&quot;Key package ID extension error. See `KeyPackageIdError` for details.&quot;</span>,
+            <span class="ident">ParentHash</span>(<span class="ident">ParentHashError</span>) <span class="op">=</span>
+                <span class="string">&quot;Parent hash extension error. See `ParentHashError` for details.&quot;</span>,
+            <span class="ident">RatchetTree</span>(<span class="ident">RatchetTreeError</span>) <span class="op">=</span>
+                <span class="string">&quot;Ratchet tree extension error. See `RatchetTreeError` for details.&quot;</span>,
+            <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span>
+                <span class="string">&quot;Error decoding or encoding an extension.&quot;</span>,
+            <span class="ident">ConfigError</span>(<span class="ident">ConfigError</span>) <span class="op">=</span>
+                <span class="string">&quot;Configuration error. See `ConfigError` for details.&quot;</span>,
+            <span class="ident">InvalidExtension</span>(<span class="ident">InvalidExtensionError</span>) <span class="op">=</span>
+                <span class="string">&quot;The extension is malformed. See [`InvalidExtensionError`](`InvalidExtensionError`) for details.&quot;</span>,
+        }
     }
 }
 

@@ -314,6 +314,37 @@
 <span id="314">314</span>
 <span id="315">315</span>
 <span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Extensions</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ## Extension struct</span>
@@ -357,6 +388,8 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">parent_hash_extension::ParentHashExtension</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ratchet_tree_extension::RatchetTreeExtension</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">required_capabilities::RequiredCapabilitiesExtension</span>;
+
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::node::Node</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">test_extensions</span>;
@@ -629,6 +662,35 @@
     <span class="kw">fn</span> <span class="ident">cmp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="ident">std::cmp::Ordering</span> {
         <span class="self">self</span>.<span class="ident">extension_type</span>().<span class="ident">cmp</span>(<span class="kw-2">&amp;</span><span class="ident">other</span>.<span class="ident">extension_type</span>())
     }
+}
+
+<span class="doccomment">/// This function tries to extract a vector of nodes from the given slice of</span>
+<span class="doccomment">/// [`Extension`]s.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// Returns the vector of nodes if it finds one and `None` otherwise. Returns an</span>
+<span class="doccomment">/// error if there is either no [`RatchetTreeExtension`] or more than one.</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">try_nodes_from_extensions</span>(
+    <span class="ident">other_extensions</span>: <span class="kw-2">&amp;</span>[<span class="ident">Extension</span>],
+) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span>]<span class="op">&gt;</span>, <span class="ident">ExtensionError</span><span class="op">&gt;</span> {
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ratchet_tree_extensions</span> <span class="op">=</span> <span class="ident">other_extensions</span>
+        .<span class="ident">iter</span>()
+        .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">extension_type</span>() <span class="op">==</span> <span class="ident">ExtensionType::RatchetTree</span>);
+
+    <span class="kw">let</span> <span class="ident">nodes_option</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">ratchet_tree_extensions</span>.<span class="ident">next</span>() {
+        <span class="prelude-val">Some</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">e</span>.<span class="ident">as_ratchet_tree_extension</span>()<span class="question-mark">?</span>.<span class="ident">as_slice</span>()),
+        <span class="prelude-val">None</span> =&gt; <span class="prelude-val">None</span>,
+    };
+
+    <span class="kw">if</span> <span class="ident">ratchet_tree_extensions</span>.<span class="ident">next</span>().<span class="ident">is_some</span>() {
+        <span class="comment">// Throw an error if there is more than one ratchet tree extension.</span>
+        <span class="comment">// This shouldn&#39;t be the case anyway, because extensions are checked</span>
+        <span class="comment">// for uniqueness when decoding them. We have to see if this makes</span>
+        <span class="comment">// problems later as it&#39;s not something required by the spec right</span>
+        <span class="comment">// now (Note issue #530 of the MLS spec.).</span>
+        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ExtensionError::DuplicateRatchetTreeExtension</span>);
+    };
+
+    <span class="prelude-val">Ok</span>(<span class="ident">nodes_option</span>)
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div>

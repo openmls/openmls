@@ -819,6 +819,23 @@
 <span id="819">819</span>
 <span id="820">820</span>
 <span id="821">821</span>
+<span id="822">822</span>
+<span id="823">823</span>
+<span id="824">824</span>
+<span id="825">825</span>
+<span id="826">826</span>
+<span id="827">827</span>
+<span id="828">828</span>
+<span id="829">829</span>
+<span id="830">830</span>
+<span id="831">831</span>
+<span id="832">832</span>
+<span id="833">833</span>
+<span id="834">834</span>
+<span id="835">835</span>
+<span id="836">836</span>
+<span id="837">837</span>
+<span id="838">838</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -871,13 +888,14 @@
 <span class="doccomment">/// and later merged into a [`TreeSync`] instance.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">StagedTreeSyncDiff</span> {
+    <span class="ident">own_leaf_index</span>: <span class="ident">LeafIndex</span>,
     <span class="ident">diff</span>: <span class="ident">StagedMlsBinaryTreeDiff</span><span class="op">&lt;</span><span class="ident">TreeSyncNode</span><span class="op">&gt;</span>,
     <span class="ident">new_tree_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">StagedTreeSyncDiff</span> {
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">into_parts</span>(<span class="self">self</span>) -&gt; (<span class="ident">StagedMlsBinaryTreeDiff</span><span class="op">&lt;</span><span class="ident">TreeSyncNode</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) {
-        (<span class="self">self</span>.<span class="ident">diff</span>, <span class="self">self</span>.<span class="ident">new_tree_hash</span>)
+    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">into_parts</span>(<span class="self">self</span>) -&gt; (<span class="ident">LeafIndex</span>, <span class="ident">StagedMlsBinaryTreeDiff</span><span class="op">&lt;</span><span class="ident">TreeSyncNode</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) {
+        (<span class="self">self</span>.<span class="ident">own_leaf_index</span>, <span class="self">self</span>.<span class="ident">diff</span>, <span class="self">self</span>.<span class="ident">new_tree_hash</span>)
     }
 }
 
@@ -956,18 +974,9 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="doccomment">/// Adds a new leaf to the tree either by filling a blank leaf or by</span>
-    <span class="doccomment">/// extending the tree to the right to create a new leaf, inserting</span>
-    <span class="doccomment">/// intermediate blanks as necessary. This also adds the leaf_index of the</span>
-    <span class="doccomment">/// new leaf to the `unmerged_leaves` of the parent nodes in its direct</span>
-    <span class="doccomment">/// path.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns the LeafIndex of the new leaf.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">add_leaf</span>(
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="ident">leaf_node</span>: <span class="ident">KeyPackage</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LeafIndex</span>, <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Node::LeafNode</span>(<span class="ident">leaf_node</span>.<span class="ident">into</span>());
+    <span class="doccomment">/// Find and return the index of either the left-most blank leaf, or, if</span>
+    <span class="doccomment">/// there are no blank leaves, the leaf count.</span>
+    <span class="kw">pub</span>(<span class="kw">in</span> <span class="ident"><span class="kw">crate</span>::treesync</span>) <span class="kw">fn</span> <span class="ident">free_leaf_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LeafIndex</span>, <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
         <span class="comment">// Find a free leaf and fill it with the new key package.</span>
         <span class="kw">let</span> <span class="ident">leaf_ids</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">leaves</span>()<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">leaf_index_option</span> <span class="op">=</span> <span class="prelude-val">None</span>;
@@ -981,12 +990,30 @@
         }
         <span class="comment">// If we found a free leaf, replace it with the new one, otherwise</span>
         <span class="comment">// extend the tree.</span>
-        <span class="kw">let</span> <span class="ident">leaf_index</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">leaf_index</span>) <span class="op">=</span> <span class="ident">leaf_index_option</span> {
+        <span class="prelude-val">Ok</span>(<span class="ident">leaf_index_option</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">leaf_count</span>()))
+    }
+
+    <span class="doccomment">/// Adds a new leaf to the tree either by filling a blank leaf or by</span>
+    <span class="doccomment">/// extending the tree to the right to create a new leaf, inserting</span>
+    <span class="doccomment">/// intermediate blanks as necessary. This also adds the leaf_index of the</span>
+    <span class="doccomment">/// new leaf to the `unmerged_leaves` of the parent nodes in its direct</span>
+    <span class="doccomment">/// path.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Returns the LeafIndex of the new leaf.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">add_leaf</span>(
+        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">leaf_node</span>: <span class="ident">KeyPackage</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LeafIndex</span>, <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Node::LeafNode</span>(<span class="ident">leaf_node</span>.<span class="ident">into</span>());
+        <span class="comment">// Find a free leaf and fill it with the new key package.</span>
+        <span class="kw">let</span> <span class="ident">leaf_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">free_leaf_index</span>()<span class="question-mark">?</span>;
+        <span class="comment">// If the free leaf index is within the tree, put the new leaf there,</span>
+        <span class="comment">// otherwise extend the tree.</span>
+        <span class="kw">if</span> <span class="ident">leaf_index</span> <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">leaf_count</span>() {
             <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">replace_leaf</span>(<span class="ident">leaf_index</span>, <span class="ident">node</span>.<span class="ident">into</span>())<span class="question-mark">?</span>;
-            <span class="ident">leaf_index</span>
         } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">add_leaf</span>(<span class="ident">TreeSyncNode::blank</span>(), <span class="ident">node</span>.<span class="ident">into</span>())<span class="question-mark">?</span>
-        };
+            <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">add_leaf</span>(<span class="ident">TreeSyncNode::blank</span>(), <span class="ident">node</span>.<span class="ident">into</span>())<span class="question-mark">?</span>;
+        }
         <span class="comment">// Add new unmerged leaves entry to all nodes in direct path. Also, wipe</span>
         <span class="comment">// the cached tree hash.</span>
         <span class="kw">for</span> <span class="ident">node_id</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">direct_path</span>(<span class="ident">leaf_index</span>)<span class="question-mark">?</span> {
@@ -998,6 +1025,12 @@
             <span class="ident">tsn</span>.<span class="ident">erase_tree_hash</span>();
         }
         <span class="prelude-val">Ok</span>(<span class="ident">leaf_index</span>)
+    }
+
+    <span class="doccomment">/// Set the `own_leaf_index` to `leaf_index`. This has to be used with</span>
+    <span class="doccomment">/// caution, as it can invalidate the [`TreeSync`] invariants.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">set_own_index</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>) {
+        <span class="self">self</span>.<span class="ident">own_leaf_index</span> <span class="op">=</span> <span class="ident">leaf_index</span>
     }
 
     <span class="doccomment">/// Remove a group member by blanking the target leaf and its direct path.</span>
@@ -1477,6 +1510,7 @@
         <span class="kw">let</span> <span class="ident">new_tree_hash</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">compute_tree_hashes</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)<span class="question-mark">?</span>;
         <span class="macro">debug_assert!</span>(<span class="self">self</span>.<span class="ident">verify_parent_hashes</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>).<span class="ident">is_ok</span>());
         <span class="prelude-val">Ok</span>(<span class="ident">StagedTreeSyncDiff</span> {
+            <span class="ident">own_leaf_index</span>: <span class="self">self</span>.<span class="ident">own_leaf_index</span>,
             <span class="ident">diff</span>: <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">into</span>(),
             <span class="ident">new_tree_hash</span>,
         })

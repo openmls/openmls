@@ -78,6 +78,13 @@
 <span id="78">78</span>
 <span id="79">79</span>
 <span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
 <span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
 
@@ -92,7 +99,14 @@
 <span class="macro">implement_error!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KeyScheduleError</span> {
         <span class="ident">Simple</span> {
-            <span class="ident">LibraryError</span> <span class="op">=</span> <span class="string">&quot;An unrecoverable error has occurred due to a bug in the implementation.&quot;</span>,
+            <span class="ident">UnsupportedCiphersuite</span> <span class="op">=</span>
+                <span class="string">&quot;The ciphersuite of the given public group state is not supported.&quot;</span>,
+            <span class="ident">HpkeError</span> <span class="op">=</span>
+                <span class="string">&quot;Error while setting up HPKE keypair for external commit.&quot;</span>,
+            <span class="ident">EncodingError</span> <span class="op">=</span>
+                <span class="string">&quot;Error while encoding public group state.&quot;</span>,
+            <span class="ident">LibraryError</span> <span class="op">=</span>
+                <span class="string">&quot;An unrecoverable error has occurred due to a bug in the implementation.&quot;</span>,
         }
         <span class="ident">Complex</span> {
             <span class="ident">InvalidState</span>(<span class="ident">ErrorState</span>) <span class="op">=</span>

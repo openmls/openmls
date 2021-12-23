@@ -111,13 +111,12 @@
 <span id="111">111</span>
 <span id="112">112</span>
 <span id="113">113</span>
-<span id="114">114</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Builder for [CreateCommitParams] that is used in [CoreGroup::create_commit()]</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">proposals::ProposalStore</span>, <span class="kw-2">*</span>};
 
 <span class="doccomment">/// Can be used to denote the type of a commit.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CommitType</span> {
     <span class="ident">External</span>,
     <span class="ident">Member</span>,
@@ -193,7 +192,6 @@
         <span class="self">self</span>.<span class="ident">ccp</span>.<span class="ident">force_self_update</span> <span class="op">=</span> <span class="ident">force_self_update</span>;
         <span class="self">self</span>
     }
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">commit_type</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">commit_type</span>: <span class="ident">CommitType</span>) -&gt; <span class="self">Self</span> {
         <span class="self">self</span>.<span class="ident">ccp</span>.<span class="ident">commit_type</span> <span class="op">=</span> <span class="ident">commit_type</span>;
         <span class="self">self</span>
