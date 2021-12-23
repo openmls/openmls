@@ -635,3 +635,62 @@ fn test_staged_commit_creation(
         alice_group.treesync().export_nodes()
     )
 }
+
+// Test several scenarios when PSKs are used in a group
+#[apply(ciphersuites_and_backends)]
+fn test_own_commit_processing(
+    ciphersuite: &'static Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+) {
+    // Basic group setup.
+    let group_aad = b"Alice's test group";
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+
+    // Define credential bundles
+    let alice_credential_bundle = CredentialBundle::new(
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
+
+    // Generate KeyPackages
+    let alice_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &alice_credential_bundle,
+        backend,
+        Vec::new(),
+    )
+    .expect("An unexpected error occurred.");
+
+    // === Alice creates a group ===
+    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+        .build(backend)
+        .expect("Error creating group.");
+
+    let proposal_store = ProposalStore::default();
+    // Alice creates a commit
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .force_self_update(true)
+        .build();
+    let create_commit_result = alice_group
+        .create_commit(params, backend)
+        .expect("error creating commit");
+
+    // Alice attempts to process her own commit
+    let error = alice_group
+        .stage_commit(
+            &create_commit_result.commit,
+            &proposal_store,
+            &[create_commit_result
+                .key_package_bundle_option
+                .expect("no kpb in create commit result")],
+            backend,
+        )
+        .expect_err("no error while processing own commit");
+    assert_eq!(error, CoreGroupError::OwnCommitError);
+}
