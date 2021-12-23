@@ -84,15 +84,17 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
         .credential_bundle(&alice_credential_bundle)
         .proposal_store(&proposal_store)
         .build();
-    let (mls_plaintext_commit, welcome_bundle_alice_bob_option, kpb_option) = group_alice
+    let create_commit_result = group_alice
         .create_commit(params, backend)
         .expect("Error creating commit");
 
     let staged_commit = group_alice
         .stage_commit(
-            &mls_plaintext_commit,
+            &create_commit_result.commit,
             &proposal_store,
-            &[kpb_option.unwrap()],
+            &[create_commit_result
+                .key_package_bundle_option
+                .expect("no kpb returned after self-update")],
             backend,
         )
         .expect("error staging commit");
@@ -102,7 +104,9 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
     let ratchet_tree = group_alice.treesync().export_nodes();
 
     let mut group_bob = CoreGroup::new_from_welcome(
-        welcome_bundle_alice_bob_option.unwrap(),
+        create_commit_result
+            .welcome_option
+            .expect("no welcome after committing to add proposal"),
         Some(ratchet_tree),
         bob_key_package_bundle,
         backend,
@@ -131,7 +135,7 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
             .into();
     let nodes_option = group_alice.treesync().export_nodes();
 
-    let external_init_result = CoreGroup::new_from_external_init(
+    let (_group_charly, create_commit_result) = CoreGroup::new_from_external_init(
         backend,
         framing_parameters,
         Some(&nodes_option),
@@ -145,14 +149,14 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
     // Have alice and bob process the commit resulting from external init.
     let proposal_store = ProposalStore::default();
     let staged_commit = group_alice
-        .stage_commit(&external_init_result.commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     group_alice
         .merge_commit(staged_commit)
         .expect("error merging commit");
 
     let staged_commit = group_bob
-        .stage_commit(&external_init_result.commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     group_bob
         .merge_commit(staged_commit)
@@ -218,7 +222,7 @@ fn test_external_init_single_member_group(
             .into();
     let nodes_option = group_alice.treesync().export_nodes();
 
-    let external_init_result = CoreGroup::new_from_external_init(
+    let (_charly_group, create_commit_result) = CoreGroup::new_from_external_init(
         backend,
         framing_parameters,
         Some(&nodes_option),
@@ -232,7 +236,7 @@ fn test_external_init_single_member_group(
     // Have alice and bob process the commit resulting from external init.
     let proposal_store = ProposalStore::default();
     let staged_commit = group_alice
-        .stage_commit(&external_init_result.commit, &proposal_store, &[], backend)
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     group_alice
         .merge_commit(staged_commit)

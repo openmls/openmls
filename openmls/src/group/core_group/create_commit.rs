@@ -16,6 +16,7 @@ use crate::{
 use super::{
     create_commit_params::{CommitType, CreateCommitParams},
     proposals::CreationProposalQueue,
+    staged_commit::{StagedCommit, StagedCommitState},
 };
 
 /// A helper struct which contains the values resulting from the preparation of
@@ -33,7 +34,7 @@ impl CoreGroup {
         &self,
         params: CreateCommitParams,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> CreateCommitResult {
+    ) -> Result<CreateCommitResult, CoreGroupError> {
         let ciphersuite = self.ciphersuite();
 
         // If this is an external commit, we don't have an `own_leaf_index` set
@@ -77,7 +78,7 @@ impl CoreGroup {
 
         // Apply proposals to tree
         let apply_proposals_values =
-            self.apply_proposals(&mut diff, backend, proposal_queue, &[])?;
+            self.apply_proposals(&mut diff, backend, &proposal_queue, &[])?;
         if apply_proposals_values.self_removed {
             return Err(CreateCommitError::CannotRemoveSelf.into());
         }
@@ -217,7 +218,7 @@ impl CoreGroup {
         }
 
         // Check if new members were added and, if so, create welcome messages
-        if !plaintext_secrets.is_empty() {
+        let welcome_option = if !plaintext_secrets.is_empty() {
             // Create the ratchet tree extension if necessary
             let other_extensions: Vec<Extension> = if self.use_ratchet_tree_extension {
                 vec![Extension::RatchetTree(RatchetTreeExtension::new(
@@ -231,10 +232,10 @@ impl CoreGroup {
                 provisional_group_context.group_id().clone(),
                 provisional_group_context.epoch(),
                 tree_hash,
-                confirmed_transcript_hash,
+                confirmed_transcript_hash.clone(),
                 self.group_context_extensions(),
                 &other_extensions,
-                confirmation_tag,
+                confirmation_tag.clone(),
                 own_leaf_index,
             );
             let group_info = group_info.sign(backend, params.credential_bundle())?;
@@ -259,18 +260,37 @@ impl CoreGroup {
                 secrets,
                 encrypted_group_info,
             );
-            Ok((
-                mls_plaintext,
-                Some(welcome),
-                path_processing_result.key_package_bundle,
-            ))
+            Some(welcome)
         } else {
-            Ok((
-                mls_plaintext,
-                None,
-                path_processing_result.key_package_bundle,
-            ))
-        }
+            None
+        };
+
+        let provisional_interim_transcript_hash = update_interim_transcript_hash(
+            ciphersuite,
+            backend,
+            &MlsPlaintextCommitAuthData::from(&confirmation_tag),
+            &confirmed_transcript_hash,
+        )?;
+
+        let (provisional_group_epoch_secrets, provisional_message_secrets) =
+            provisional_epoch_secrets
+                .split_secrets(serialized_provisional_group_context, diff.leaf_count());
+
+        let staged_commit_state = StagedCommitState::new(
+            provisional_group_context,
+            provisional_group_epoch_secrets,
+            provisional_message_secrets,
+            provisional_interim_transcript_hash,
+            diff.into_staged_diff(backend, ciphersuite)?,
+        );
+        let staged_commit = StagedCommit::new(proposal_queue.into(), Some(staged_commit_state));
+
+        Ok(CreateCommitResult {
+            commit: mls_plaintext,
+            welcome_option,
+            key_package_bundle_option: path_processing_result.key_package_bundle,
+            staged_commit,
+        })
     }
 
     /// Helper function that prepares the [`KeyPackageBundlePayload`] for use in

@@ -349,17 +349,24 @@ impl User {
             .proposal_store(&proposal_store)
             .force_self_update(false)
             .build();
-        let (commit, welcome_msg, _kpb) = group
+        let create_commit_results = group
             .core_group
             .borrow()
             .create_commit(params, &self.crypto)
             .expect("Error creating commit");
-        let welcome_msg = welcome_msg.expect("Welcome message wasn't created by create_commit.");
+        let welcome_msg = create_commit_results
+            .welcome_option
+            .expect("Welcome message wasn't created by create_commit.");
 
         let staged_commit = group
             .core_group
             .borrow_mut()
-            .stage_commit(&commit, &proposal_store, &[], &self.crypto)
+            .stage_commit(
+                &create_commit_results.commit,
+                &proposal_store,
+                &[],
+                &self.crypto,
+            )
             .expect("error applying commit");
         group
             .core_group
@@ -387,7 +394,10 @@ impl User {
         // Send commit to the group.
         log::trace!("Sending commit");
         let msg = GroupMessage::new(
-            DsMlsMessage::Plaintext(VerifiableMlsPlaintext::from_plaintext(commit, None)),
+            DsMlsMessage::Plaintext(VerifiableMlsPlaintext::from_plaintext(
+                create_commit_results.commit,
+                None,
+            )),
             &group_recipients,
         );
         self.backend.send_msg(&msg)?;

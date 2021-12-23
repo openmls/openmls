@@ -871,28 +871,29 @@ impl MlsClient for MlsClientImpl {
             .force_self_update(false)
             .build();
 
-        let (commit, option_welcome, option_kpb) = interop_group
+        let create_commit_results = interop_group
             .group
             .create_commit(params, &self.crypto_provider)
             .map_err(into_status)?;
 
-        if let Some(kpb) = option_kpb {
+        if let Some(kpb) = create_commit_results.key_package_bundle_option {
             interop_group.own_kpbs.push(kpb)
         }
 
         let commit = match interop_group.wire_format {
             WireFormat::MlsCiphertext => interop_group
                 .group
-                .encrypt(commit, 10, &self.crypto_provider)
+                .encrypt(create_commit_results.commit, 10, &self.crypto_provider)
                 .map_err(|_| Status::aborted("failed to encrypt commit"))?
                 .tls_serialize_detached()
                 .map_err(|_| Status::aborted("failed to serialize commit"))?,
-            WireFormat::MlsPlaintext => commit
+            WireFormat::MlsPlaintext => create_commit_results
+                .commit
                 .tls_serialize_detached()
                 .map_err(|_| Status::aborted("failed to serialize commit"))?,
         };
 
-        let welcome = if let Some(welcome) = option_welcome {
+        let welcome = if let Some(welcome) = create_commit_results.welcome_option {
             welcome
                 .tls_serialize_detached()
                 .map_err(|_| Status::aborted("failed to serialize welcome"))?

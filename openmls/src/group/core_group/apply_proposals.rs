@@ -51,7 +51,7 @@ impl CoreGroup {
         &self,
         diff: &mut TreeSyncDiff,
         backend: &impl OpenMlsCryptoProvider,
-        proposal_queue: CreationProposalQueue,
+        proposal_queue: &CreationProposalQueue,
         key_package_bundles: &[KeyPackageBundle],
     ) -> Result<ApplyProposalsValues, CoreGroupError> {
         log::debug!("Applying proposal");

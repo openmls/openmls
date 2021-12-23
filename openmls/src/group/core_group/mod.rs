@@ -27,6 +27,8 @@ mod test_create_commit_params;
 #[cfg(test)]
 mod test_duplicate_extension;
 #[cfg(test)]
+mod test_external_init;
+#[cfg(test)]
 mod test_past_secrets;
 #[cfg(test)]
 mod test_proposals;
@@ -61,13 +63,19 @@ use std::io::{Error, Read, Write};
 
 use tls_codec::Serialize as TlsSerializeTrait;
 
+use self::staged_commit::StagedCommit;
+
 use super::{
     errors::{CoreGroupError, ExporterError, FramingValidationError, ProposalValidationError},
     group_context::*,
 };
 
-pub type CreateCommitResult =
-    Result<(MlsPlaintext, Option<Welcome>, Option<KeyPackageBundle>), CoreGroupError>;
+pub struct CreateCommitResult {
+    pub commit: MlsPlaintext,
+    pub welcome_option: Option<Welcome>,
+    pub key_package_bundle_option: Option<KeyPackageBundle>,
+    pub staged_commit: StagedCommit,
+}
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]

@@ -3,7 +3,6 @@ use crate::{
     credentials::CredentialBundle,
     framing::plaintext::MlsPlaintext,
     group::errors::ExternalInitError,
-    key_packages::KeyPackageBundle,
     messages::{
         proposals::{ExternalInitProposal, Proposal},
         public_group_state::{PublicGroupState, VerifiablePublicGroupState},
@@ -17,12 +16,7 @@ use super::{
 };
 use crate::group::core_group::*;
 
-pub struct ExternalInitResult {
-    pub core_group: CoreGroup,
-    pub commit: MlsPlaintext,
-    pub welcome_option: Option<Welcome>,
-    pub key_package_bundle_option: Option<KeyPackageBundle>,
-}
+pub type ExternalInitResult = (CoreGroup, CreateCommitResult);
 
 impl CoreGroup {
     /// Join a group without the help of an internal member. This function
@@ -136,15 +130,10 @@ impl CoreGroup {
             .build();
 
         // Immediately create the commit to add ourselves to the group.
-        let (mls_plaintext, welcome_option, kpb_option) = group
+        let create_commit_result = group
             .create_commit(params, backend)
             .map_err(|_| ExternalInitError::CommitError)?;
 
-        Ok(ExternalInitResult {
-            core_group: group,
-            commit: mls_plaintext,
-            welcome_option,
-            key_package_bundle_option: kpb_option,
-        })
+        Ok((group, create_commit_result))
     }
 }

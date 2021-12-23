@@ -344,6 +344,18 @@ pub struct StagedCommit {
 }
 
 impl StagedCommit {
+    /// Create a new [`StagedCommit`] from the provisional group state created
+    /// during the commit process.
+    pub(crate) fn new(
+        staged_proposal_queue: StagedProposalQueue,
+        state: Option<StagedCommitState>,
+    ) -> Self {
+        StagedCommit {
+            staged_proposal_queue,
+            state,
+        }
+    }
+
     /// Returns the Add proposals that are covered by the Commit message as in iterator over [StagedAddProposal].
     pub fn add_proposals(&self) -> impl Iterator<Item = StagedAddProposal> {
         self.staged_proposal_queue.add_proposals()
@@ -379,4 +391,22 @@ pub(crate) struct StagedCommitState {
     message_secrets: MessageSecrets,
     interim_transcript_hash: Vec<u8>,
     staged_diff: StagedTreeSyncDiff,
+}
+
+impl StagedCommitState {
+    pub(super) fn new(
+        group_context: GroupContext,
+        group_epoch_secrets: GroupEpochSecrets,
+        message_secrets: MessageSecrets,
+        interim_transcript_hash: Vec<u8>,
+        staged_diff: StagedTreeSyncDiff,
+    ) -> Self {
+        Self {
+            group_context,
+            group_epoch_secrets,
+            message_secrets,
+            interim_transcript_hash,
+            staged_diff,
+        }
+    }
 }
