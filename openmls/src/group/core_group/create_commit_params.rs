@@ -3,7 +3,7 @@
 use super::{proposals::ProposalStore, *};
 
 /// Can be used to denote the type of a commit.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum CommitType {
     External,
     Member,
@@ -79,7 +79,6 @@ impl<'a> CreateCommitParamsBuilder<'a> {
         self.ccp.force_self_update = force_self_update;
         self
     }
-    #[cfg(any(feature = "test-utils", test))]
     pub fn commit_type(mut self, commit_type: CommitType) -> Self {
         self.ccp.commit_type = commit_type;
         self

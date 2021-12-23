@@ -118,7 +118,8 @@ impl TreeSync {
         &mut self,
         tree_sync_diff: StagedTreeSyncDiff,
     ) -> Result<(), TreeSyncError> {
-        let (diff, new_tree_hash) = tree_sync_diff.into_parts();
+        let (own_leaf_index, diff, new_tree_hash) = tree_sync_diff.into_parts();
+        self.own_leaf_index = own_leaf_index;
         self.tree_hash = new_tree_hash;
         Ok(self.tree.merge_diff(diff)?)
     }
@@ -179,7 +180,7 @@ impl TreeSync {
     ) -> Result<Self, TreeSyncError> {
         // Before we can instantiate the TreeSync instance, we have to figure
         // out what our leaf index is.
-        let mut ts_nodes: Vec<TreeSyncNode> = Vec::new();
+        let mut ts_nodes: Vec<TreeSyncNode> = Vec::with_capacity(node_options.len());
         let mut own_index_option = None;
         let own_key_package = key_package_bundle.key_package;
         let mut private_key = Some(key_package_bundle.private_key);
@@ -223,6 +224,42 @@ impl TreeSync {
         } else {
             Err(TreeSyncError::MissingKeyPackage)
         }
+    }
+
+    /// Create a [`TreeSync`] instance from a vector of nodes without expecting
+    /// there to be a [`KeyPackage`] that belongs to this particular MLS client.
+    /// WARNING: Some of the [`TreeSync`] invariants will not hold for this
+    /// tree, as the `own_leaf_index` does not point to a leaf with private key
+    /// material in it.
+    pub(crate) fn from_nodes_without_leaf(
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+        node_options: &[Option<Node>],
+    ) -> Result<Self, TreeSyncError> {
+        let ts_nodes: Vec<TreeSyncNode> = node_options
+            .iter()
+            .map(|node| node.clone().into())
+            .collect();
+        let tree = MlsBinaryTree::new(ts_nodes)?;
+        let mut tree_sync = Self {
+            tree,
+            tree_hash: vec![],
+            own_leaf_index: 0,
+        };
+        // Verify all parent hashes.
+        tree_sync.verify_parent_hashes(backend, ciphersuite)?;
+        // Populate tree hash caches.
+        tree_sync.populate_parent_hashes(backend, ciphersuite)?;
+        Ok(tree_sync)
+    }
+
+    /// Find the `LeafIndex` which a new leaf would have if it were added to the
+    /// tree. This is either the left-most blank node or, if there are no blank
+    /// leaves, the leaf count, since adding a member would extend the tree by
+    /// one leaf.
+    pub(crate) fn free_leaf_index(&self) -> Result<LeafIndex, TreeSyncError> {
+        let diff = self.empty_diff()?;
+        Ok(diff.free_leaf_index()?)
     }
 
     /// Populate the parent hash caches of all nodes in the tree.

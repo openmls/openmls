@@ -13,6 +13,7 @@ mod validation;
 // Crate
 pub(crate) mod create_commit;
 pub(crate) mod create_commit_params;
+pub(crate) mod new_from_external_init;
 pub(crate) mod past_secrets;
 pub(crate) mod process;
 pub(crate) mod proposals;
@@ -25,6 +26,8 @@ mod test_core_group;
 mod test_create_commit_params;
 #[cfg(test)]
 mod test_duplicate_extension;
+#[cfg(test)]
+mod test_external_init;
 #[cfg(test)]
 mod test_past_secrets;
 #[cfg(test)]
@@ -533,6 +536,11 @@ impl CoreGroup {
         self.ciphersuite
     }
 
+    /// Get the MLS version used in this group.
+    pub fn version(&self) -> ProtocolVersion {
+        self.mls_version
+    }
+
     /// Get the group context
     pub fn context(&self) -> &GroupContext {
         &self.group_context
@@ -618,6 +626,12 @@ impl CoreGroup {
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn interim_transcript_hash(&self) -> &[u8] {
         &self.interim_transcript_hash
+    }
+
+    /// Current confirmed transcript hash of the group
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn confirmed_transcript_hash(&self) -> &[u8] {
+        self.group_context.confirmed_transcript_hash()
     }
 
     #[cfg(any(feature = "test-utils", test))]

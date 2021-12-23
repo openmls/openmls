@@ -22,6 +22,8 @@ implement_error! {
         Simple {
             InitSecretNotFound =
                 "Missing init secret when creating commit.",
+            MissingKeyPackageBundle =
+                "Couldn't find KeyPackageBundle corresponding to own update proposal.",
             NoSignatureKey = "No signature key was found.",
             OwnCommitError = "Can't process a commit created by the owner of the group. Please merge the [`StagedCommit`] returned by `create_commit` instead.",
             LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
@@ -98,8 +100,6 @@ implement_error! {
                 "The signature on the GroupInfo is not valid.",
             GroupInfoDecryptionFailure =
                 "Unable to decrypt the GroupInfo.",
-            DuplicateRatchetTreeExtension =
-                "Found a duplicate ratchet tree extension in the Welcome message.",
             UnsupportedMlsVersion =
                 "The Welcome message uses an unsupported MLS version.",
             MissingKeyPackage =
@@ -133,6 +133,48 @@ implement_error! {
                 "See [`InterimTranscriptHashError`] for details.",
             CryptoError(CryptoError) =
                 "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
+            ProposalError(StagedProposalError) =
+                "See [`StagedProposalError`] for details.",
+        }
+    }
+}
+
+implement_error! {
+    pub enum ExternalInitError {
+        Simple {
+            MissingRatchetTree =
+                "No ratchet tree available to build initial tree.",
+            TreeHashMismatch =
+                "The computed tree hash does not match the one in the GroupInfo.",
+            UnsupportedMlsVersion =
+                "We don't support the version of the group we are trying to join.",
+            UnknownSender =
+                "Sender not found in tree.",
+            InvalidPublicGroupStateSignature =
+                "The signature over the given public group state is invalid.",
+            CommitError =
+                "Error creating external commit",
+            LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
+            }
+        Complex {
+            ConfigError(ConfigError) =
+                "See [`ConfigError`](`crate::config::ConfigError`) for details.",
+            CodecError(TlsCodecError) =
+                "Tls (de)serialization error occurred.",
+            KeyScheduleError(KeyScheduleError) =
+                "An error occurred in the key schedule.",
+            TreeSyncError(TreeSyncError) =
+                "An error occurred while importing the new tree.",
+            TreeSyncDiffError(TreeSyncDiffError) =
+                "An error occurred while adding our own leaf to the new tree.",
+            ExtensionError(ExtensionError) =
+                "See [`ExtensionError`] for details.",
+            KeyPackageError(KeyPackageError) =
+                "See [`KeyPackageError`] for details.",
+            CryptoError(CryptoError) =
+                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
+            ProposalError(StagedProposalError) =
+                "See [`StagedProposalError`] for details.",
         }
     }
 }

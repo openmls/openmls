@@ -122,17 +122,16 @@
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
 use crate::{
-    ciphersuite::{AeadKey, AeadNonce, Ciphersuite, Mac, Secret},
-    config::ProtocolVersion,
+    ciphersuite::{AeadKey, AeadNonce, Ciphersuite, HpkePrivateKey, Mac, Secret},
+    config::{Config, ProtocolVersion},
     framing::{MembershipTag, MlsPlaintextTbmPayload},
-    messages::{ConfirmationTag, PathSecret},
+    messages::{ConfirmationTag, PathSecret, PublicGroupState},
     tree::secret_tree::SecretTree,
     treesync::LeafIndex,
 };
 
 use openmls_traits::{types::*, OpenMlsCryptoProvider};
 
-#[cfg(any(feature = "test-utils", test))]
 use openmls_traits::crypto::OpenMlsCrypto;
 
 use serde::{Deserialize, Serialize};
@@ -213,6 +212,17 @@ impl From<Secret> for InitSecret {
     }
 }
 
+/// Creates a string from the given MLS `ProtocolVersion` for the computation of
+/// the `init_secret` when creating or processing a commit with an external init
+/// proposal. TODO: #628.
+fn hpke_info_from_version(version: ProtocolVersion) -> &'static str {
+    &match version {
+        ProtocolVersion::Reserved => "Reserved external init",
+        ProtocolVersion::Mls10 => "MLS 1.0 external init",
+        ProtocolVersion::Mls10Draft11 => "MLS 1.0 Draft 11 external init",
+    }
+}
+
 impl InitSecret {
     /// Derive an `InitSecret` from an `EpochSecret`.
     fn new(
@@ -232,6 +242,51 @@ impl InitSecret {
     ) -> Result<Self, CryptoError> {
         Ok(InitSecret {
             secret: Secret::random(ciphersuite, backend, version)?,
+        })
+    }
+
+    /// Create an `InitSecret` and the corresponding `kem_output` from a public
+    /// group state.
+    pub(crate) fn from_public_group_state(
+        backend: &impl OpenMlsCryptoProvider,
+        public_group_state: &PublicGroupState,
+    ) -> Result<(Self, Vec<u8>), KeyScheduleError> {
+        let ciphersuite = Config::ciphersuite(public_group_state.ciphersuite)
+            .map_err(|_| KeyScheduleError::UnsupportedCiphersuite)?;
+        let version = public_group_state.version;
+        let (kem_output, raw_init_secret) = backend.crypto().hpke_setup_sender_and_export(
+            ciphersuite.hpke_config(),
+            public_group_state.external_pub.as_slice(),
+            &[],
+            hpke_info_from_version(version).as_bytes(),
+            ciphersuite.hash_length(),
+        )?;
+        Ok((
+            InitSecret {
+                secret: Secret::from_slice(&raw_init_secret, version, ciphersuite),
+            },
+            kem_output,
+        ))
+    }
+
+    /// Create an `InitSecret` from a `kem_output`.
+    pub(crate) fn from_kem_output(
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &'static Ciphersuite,
+        version: ProtocolVersion,
+        external_priv: &HpkePrivateKey,
+        kem_output: &[u8],
+    ) -> Result<Self, KeyScheduleError> {
+        let raw_init_secret = backend.crypto().hpke_setup_receiver_and_export(
+            ciphersuite.hpke_config(),
+            kem_output,
+            external_priv.as_slice(),
+            &[],
+            hpke_info_from_version(version).as_bytes(),
+            ciphersuite.hash_length(),
+        )?;
+        Ok(InitSecret {
+            secret: Secret::from_slice(&raw_init_secret, version, ciphersuite),
         })
     }
 
@@ -693,7 +748,6 @@ impl ExternalSecret {
     }
 
     /// Derive the external keypair for External Commits
-    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn derive_external_keypair(
         &self,
         crypto: &impl OpenMlsCrypto,
@@ -1099,6 +1153,25 @@ impl EpochSecrets {
         })
     }
 
+    /// This function initializes the `EpochSecrets` from an all-zero
+    /// epoch-secret with the exception of the `init_secret`, which is populated
+    /// with the given `InitSecret`. This is meant to be used in the case of an
+    /// external init.
+    pub(crate) fn with_init_secret(
+        backend: &impl OpenMlsCryptoProvider,
+        init_secret: InitSecret,
+    ) -> Result<Self, CryptoError> {
+        let epoch_secret = EpochSecret {
+            secret: Secret::zero(
+                init_secret.secret.ciphersuite(),
+                init_secret.secret.version(),
+            ),
+        };
+        let mut epoch_secrets = Self::new(backend, epoch_secret)?;
+        epoch_secrets.init_secret = init_secret;
+        Ok(epoch_secrets)
+    }
+
     /// Splits `EpochSecrets` into two different categories:
     ///  - [`GroupEpochSecrets`]: These secrets are only used within the same epoch
     ///  - [`MessageSecrets`]: These secrets are potentially also used for past epochs
@@ -1178,7 +1251,6 @@ impl GroupEpochSecrets {
     }
 
     /// External secret
-    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn external_secret(&self) -> &ExternalSecret {
         &self.external_secret
     }
