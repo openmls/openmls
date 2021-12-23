@@ -224,6 +224,8 @@
 <span id="224">224</span>
 <span id="225">225</span>
 <span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">core_group</span>::{<span class="ident">proposals::StagedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree::secret_tree::SecretTreeError</span>;
@@ -248,6 +250,7 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">message</span>: <span class="ident">MlsMessageIn</span>,
         <span class="ident">message_secrets_store</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="kw-2">mut</span> <span class="ident">MessageSecretsStore</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+        <span class="ident">sender_ratchet_configuration</span>: <span class="kw-2">&amp;</span><span class="ident">SenderRatchetConfiguration</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnverifiedMessage</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="comment">// Checks the following semantic validation:</span>
@@ -288,6 +291,7 @@
                     <span class="kw-2">&amp;</span><span class="ident">ciphersuite</span>,
                     <span class="ident">backend</span>,
                     <span class="ident">message_secrets</span>,
+                    <span class="ident">sender_ratchet_configuration</span>,
                 )<span class="question-mark">?</span>
             }
         };
