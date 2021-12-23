@@ -5,7 +5,7 @@
 pub use crate::group::{
     proposals::{ProposalStore, StagedProposal},
     EmptyInputError, GroupEpoch, GroupId, InnerState, InvalidMessageError, MlsGroup,
-    MlsGroupConfig, MlsGroupError, UpdatePolicy,
+    MlsGroupConfig, MlsGroupError,
 };
 
 // Group errors
