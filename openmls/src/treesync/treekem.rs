@@ -4,8 +4,8 @@
 //!
 //! This module contains structs and functions to encrypt and decrypt path
 //! updates for a [`TreeSyncDiff`] instance.
+use rayon::prelude::*;
 use std::collections::HashSet;
-
 use tls_codec::{Error as TlsCodecError, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext, OpenMlsCryptoProvider};
@@ -52,12 +52,12 @@ impl<'a> TreeSyncDiff<'a> {
             return Err(TreeKemError::PathLengthError);
         }
 
-        let mut update_path_nodes = Vec::with_capacity(path.len());
         // Encrypt the secrets
-        for (node, resolution) in path.iter().zip(copath_resolutions.iter()) {
-            let update_path_node = node.encrypt(backend, ciphersuite, resolution, group_context);
-            update_path_nodes.push(update_path_node);
-        }
+        let update_path_nodes = path
+            .par_iter()
+            .zip(copath_resolutions.par_iter())
+            .map(|(node, resolution)| node.encrypt(backend, ciphersuite, resolution, group_context))
+            .collect::<Vec<UpdatePathNode>>();
 
         Ok(UpdatePath {
             leaf_key_package: key_package.clone(),
