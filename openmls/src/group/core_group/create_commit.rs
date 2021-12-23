@@ -42,10 +42,6 @@ impl CoreGroup {
             CommitType::Member => SenderType::Member,
         };
         // Filter proposals
-        println!(
-            "Creation proposal queue before-before: {:?}",
-            params.proposal_store()
-        );
         let (proposal_queue, contains_own_updates) = CreationProposalQueue::filter_proposals(
             ciphersuite,
             backend,
@@ -55,7 +51,6 @@ impl CoreGroup {
             self.treesync().own_leaf_index(),
             self.treesync().leaf_count()?,
         )?;
-        println!("Creation proposal queue before: {:?}", proposal_queue);
 
         // TODO: #581 Filter proposals by support
         // 11.2:
@@ -281,7 +276,6 @@ impl CoreGroup {
             provisional_interim_transcript_hash,
             diff.into_staged_diff(backend, ciphersuite)?,
         );
-        println!("Creation proposal queue after: {:?}", proposal_queue);
         let staged_commit = StagedCommit::new(proposal_queue.into(), Some(staged_commit_state));
 
         Ok(CreateCommitResult {
