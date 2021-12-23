@@ -41,7 +41,16 @@ implement_error! {
             SecretTreeError(SecretTreeError) = "SecretTree error",
             CodecError(TlsCodecError) = "TLS codec error",
             CryptoError(CryptoError) = "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
+            SenderError(SenderError) = "See [`SenderError`] for details.",
         }
+    }
+}
+
+implement_error! {
+    pub enum SenderError {
+        NotAMember = "The requested client is not a member of the group.",
+        NotAPreConfigured = "The requested sender is not a preconfigured one.",
+        UnknownSender = "Unknown sender",
     }
 }
 
@@ -83,5 +92,8 @@ implement_error! {
     pub enum MlsMessageError {
         DecodingError = "The message could not be decoded.",
         EncodingError = "The message could not be encoded.",
+        NotAMember = "The requested client is not a member of the group.",
+        NotAPreConfigured = "The requested sender is not a preconfigured one.",
+        UnknownSender = "Unknown sender",
     }
 }

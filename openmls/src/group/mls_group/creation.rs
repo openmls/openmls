@@ -69,7 +69,7 @@ impl MlsGroup {
             .find_map(|egs| {
                 backend
                     .key_store()
-                    .read(&egs.key_package_hash.as_slice().to_vec())
+                    .read(&egs.new_member.as_slice().to_vec())
             })
             .ok_or(MlsGroupError::NoMatchingKeyPackageBundle)?;
         // TODO #141

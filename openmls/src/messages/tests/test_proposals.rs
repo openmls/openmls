@@ -1,9 +1,13 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::random::OpenMlsRand;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
-    ciphersuite::{Ciphersuite, CiphersuiteName},
-    messages::proposals::{Proposal, ProposalOrRef, ProposalReference, RemoveProposal},
+    ciphersuite::{
+        hash_ref::{KeyPackageRef, ProposalRef},
+        Ciphersuite, CiphersuiteName,
+    },
+    messages::proposals::{Proposal, ProposalOrRef, RemoveProposal},
     test_utils::*,
 };
 
@@ -13,7 +17,9 @@ use crate::{
 fn proposals_codec(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Proposal
 
-    let remove_proposal = RemoveProposal { removed: 123 };
+    let remove_proposal = RemoveProposal {
+        removed: KeyPackageRef::from_slice(&backend.rand().random_vec(16).unwrap()),
+    };
     let proposal = Proposal::Remove(remove_proposal);
     let proposal_or_ref = ProposalOrRef::Proposal(proposal.clone());
     let encoded = proposal_or_ref
@@ -26,7 +32,7 @@ fn proposals_codec(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 
     // Reference
 
-    let reference = ProposalReference::from_proposal(ciphersuite, backend, &proposal)
+    let reference = ProposalRef::from_proposal(ciphersuite, backend, &proposal)
         .expect("An unexpected error occurred.");
     let proposal_or_ref = ProposalOrRef::Reference(reference);
     let encoded = proposal_or_ref

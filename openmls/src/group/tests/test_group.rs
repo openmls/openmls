@@ -799,7 +799,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .create_remove_proposal(
             framing_parameters,
             &charlie_credential_bundle,
-            1u32,
+            group_bob.key_package_ref().unwrap(),
             backend,
         )
         .expect("Could not create proposal.");

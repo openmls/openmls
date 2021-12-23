@@ -34,11 +34,11 @@
 //! ProcessedMessage (Application, Proposal, ExternalProposal, Commit, External Commit)
 //! ```
 
-use crate::{schedule::MessageSecrets, tree::sender_ratchet::SenderRatchetConfiguration};
+use crate::{schedule::MessageSecrets, tree::index::SecretTreeLeafIndex, treesync::TreeSync};
 use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 use openmls_traits::OpenMlsCryptoProvider;
 
-use crate::ciphersuite::signable::Verifiable;
+use crate::{ciphersuite::signable::Verifiable, tree::sender_ratchet::SenderRatchetConfiguration};
 
 use super::*;
 
@@ -66,20 +66,32 @@ impl DecryptedMessage {
 
     /// Constructs a [DecryptedMessage] from a [MlsCiphertext] by attempting to decrypt it
     /// to a [VerifiableMlsPlaintext] first.
-    pub(crate) fn from_inbound_ciphertext(
+    pub(crate) fn from_inbound_ciphertext<'a>(
         inbound_message: MlsMessageIn,
-        ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        message_secrets: &mut MessageSecrets,
+        group: &mut CoreGroup,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
     ) -> Result<Self, ValidationError> {
         // This will be refactored with #265.
         if let MlsMessage::Ciphertext(ciphertext) = inbound_message.mls_message {
+            let ciphersuite = group.ciphersuite();
+            let message_secrets = group
+                .message_secrets_mut(ciphertext.epoch())
+                .map_err(|_| MlsCiphertextError::DecryptionError)?;
             let sender_data = ciphertext.sender_data(message_secrets, backend, ciphersuite)?;
+            drop(message_secrets);
+            let sender_index = group
+                .sender_index(&sender_data.sender)
+                .map_err(|_| MlsCiphertextError::SenderError(SenderError::UnknownSender))?;
+            let sender_index = SecretTreeLeafIndex(sender_index);
+            let message_secrets = group
+                .message_secrets_mut(ciphertext.epoch())
+                .map_err(|_| MlsCiphertextError::DecryptionError)?;
             let plaintext = ciphertext.to_plaintext(
                 ciphersuite,
                 backend,
                 message_secrets,
+                sender_index,
                 sender_ratchet_configuration,
                 sender_data,
             )?;
@@ -127,9 +139,11 @@ impl DecryptedMessage {
         let sender = self.sender();
         match sender.sender_type {
             SenderType::Member => {
-                let sender_index = sender.to_leaf_index();
+                let sender = sender
+                    .as_key_package_ref()
+                    .map_err(|_| ValidationError::UnknownSender)?;
                 if let Some(sender_leaf) = treesync
-                    .leaf(sender_index)
+                    .leaf_from_id(sender)
                     .map_err(|_| ValidationError::UnknownSender)?
                 {
                     Ok(sender_leaf.key_package().credential().clone())
@@ -378,8 +392,11 @@ pub struct ApplicationMessage {
 
 impl ApplicationMessage {
     /// Create a new [ApplicationMessage].
-    pub(crate) fn new(message: Vec<u8>, sender: Sender) -> Self {
-        Self { message, sender }
+    pub(crate) fn new(message: Vec<u8>, sender: &Sender) -> Self {
+        Self {
+            message,
+            sender: sender.clone(),
+        }
     }
 
     /// Get a reference to the message.

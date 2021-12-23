@@ -9,8 +9,8 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::{
-    config::*, credentials::*, framing::*, group::errors::FramingValidationError, group::*,
-    key_packages::*,
+    ciphersuite::hash_ref::KeyPackageRef, config::*, credentials::*, framing::*,
+    group::errors::FramingValidationError, group::*, key_packages::*, treesync::TreeSyncError,
 };
 
 use super::utils::{generate_credential_bundle, generate_key_package_bundle};
@@ -69,8 +69,9 @@ fn validation_test_setup(
         &mls_group_config,
         group_id,
         &alice_key_package
-            .hash(backend)
-            .expect("Could not hash KeyPackage."),
+            .hash_ref(backend.crypto())
+            .expect("Could not hash KeyPackage.")
+            .as_slice(),
     )
     .expect("An unexpected error occurred.");
 
@@ -325,22 +326,20 @@ fn test_valsem004(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     let original_message = plaintext.clone();
 
-    plaintext.set_sender(Sender {
-        sender_type: SenderType::Member,
-        sender: 100u32,
-    });
+    let random_sender = Sender::build_member(&KeyPackageRef::from_slice(
+        &backend.rand().random_vec(16).unwrap(),
+    ));
+    plaintext.set_sender(random_sender);
 
     let message_in = MlsMessageIn::from(plaintext);
 
     let err = alice_group
         .parse_message(message_in, backend)
-        .expect_err("Could parse message despite wrong sender index.");
+        .expect_err("Could parse message despite wrong sender.");
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::FramingValidationError(
-            FramingValidationError::UnknownMember
-        ))
+        MlsGroupError::Group(CoreGroupError::TreeSyncError(TreeSyncError::LeafNotInTree))
     );
 
     // Positive case

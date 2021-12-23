@@ -42,9 +42,10 @@ fn generate_credential_bundle_and_key_package_bundle(
     let key_package_bundle = backend
         .key_store()
         .read(
-            &key_package
-                .hash(backend)
-                .expect("Could not hash KeyPackage"),
+            key_package
+                .hash_ref(backend.crypto())
+                .expect("Could not hash KeyPackage")
+                .value(),
         )
         .expect("An unexpected error occurred.");
 

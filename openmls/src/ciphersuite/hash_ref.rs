@@ -22,6 +22,7 @@
 use std::convert::TryInto;
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::CryptoError};
+use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::Ciphersuite;
@@ -31,7 +32,20 @@ const VALUE_LEN: usize = 16;
 type Value = [u8; VALUE_LEN];
 
 /// A reference to an MLS object computed as an HKDF of the value.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(
+    Clone,
+    Copy,
+    Hash,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
+    PartialOrd,
+    Ord,
+)]
 pub struct HashReference {
     value: Value,
 }
@@ -64,5 +78,33 @@ impl HashReference {
     /// Get a reference to the hash reference's value.
     pub fn value(&self) -> &[u8; 16] {
         &self.value
+    }
+
+    /// Get a reference to the hash reference's value as slice.
+    pub fn as_slice(&self) -> &[u8] {
+        &self.value
+    }
+
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn from_slice(slice: &[u8]) -> Self {
+        let mut value = [0u8; VALUE_LEN];
+        value.clone_from_slice(slice);
+        Self { value }
+    }
+}
+
+impl core::fmt::Display for HashReference {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "HashReference: ")?;
+        for b in self.value {
+            write!(f, "{:02X}", b)?;
+        }
+        Ok(())
+    }
+}
+
+impl core::fmt::Debug for HashReference {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self)
     }
 }

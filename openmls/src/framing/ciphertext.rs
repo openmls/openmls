@@ -4,7 +4,13 @@ use tls_codec::{
     TlsDeserialize, TlsSerialize, TlsSize,
 };
 
-use crate::tree::{secret_tree::SecretType, sender_ratchet::SenderRatchetConfiguration};
+use crate::{
+    ciphersuite::hash_ref::KeyPackageRef,
+    tree::{
+        index::SecretTreeLeafIndex, secret_tree::SecretType,
+        sender_ratchet::SenderRatchetConfiguration,
+    },
+};
 
 use super::*;
 
@@ -25,7 +31,7 @@ pub(crate) struct MlsCiphertext {
 pub(crate) struct MlsMessageHeader {
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
-    pub(crate) sender: LeafIndex,
+    pub(crate) sender: SecretTreeLeafIndex,
 }
 
 impl MlsCiphertext {
@@ -117,7 +123,8 @@ impl MlsCiphertext {
         );
         // Serialize the sender data AAD
         let mls_sender_data_aad_bytes = mls_sender_data_aad.tls_serialize_detached()?;
-        let sender_data = MlsSenderData::new(mls_plaintext.sender_index(), generation, reuse_guard);
+        let sender_data =
+            MlsSenderData::from_sender(mls_plaintext.sender(), generation, reuse_guard)?;
         // Encrypt the sender data
         let encrypted_sender_data = sender_data_key
             .aead_seal(
@@ -189,31 +196,10 @@ impl MlsCiphertext {
     #[inline]
     fn decrypt(
         &self,
-        ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        message_secrets: &mut MessageSecrets,
-        sender_ratchet_configuration: &SenderRatchetConfiguration,
-        sender_data: &MlsSenderData,
+        ratchet_key: AeadKey,
+        ratchet_nonce: &AeadNonce,
     ) -> Result<MlsCiphertextContent, MlsCiphertextError> {
-        let secret_type = SecretType::try_from(&self.content_type)
-            .map_err(|_| MlsCiphertextError::InvalidContentType)?;
-        // Extract generation and key material for encryption
-        let (ratchet_key, mut ratchet_nonce) = message_secrets
-            .secret_tree_mut()
-            .secret_for_decryption(
-                ciphersuite,
-                backend,
-                sender_data.sender.into(),
-                secret_type,
-                sender_data.generation,
-                sender_ratchet_configuration,
-            )
-            .map_err(|_| {
-                log::error!("  Ciphertext generation out of bounds");
-                MlsCiphertextError::GenerationOutOfBound
-            })?;
-        // Prepare the nonce by xoring with the reuse guard.
-        ratchet_nonce.xor_with_reuse_guard(&sender_data.reuse_guard);
         // Serialize content AAD
         let mls_ciphertext_content_aad_bytes = MlsCiphertextContentAad {
             group_id: self.group_id.clone(),
@@ -228,7 +214,7 @@ impl MlsCiphertext {
                 backend,
                 self.ciphertext.as_slice(),
                 &mls_ciphertext_content_aad_bytes,
-                &ratchet_nonce,
+                ratchet_nonce,
             )
             .map_err(|_| {
                 log::error!("  Ciphertext decryption error");
@@ -252,22 +238,33 @@ impl MlsCiphertext {
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         message_secrets: &mut MessageSecrets,
+        sender_index: SecretTreeLeafIndex,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
         sender_data: MlsSenderData,
     ) -> Result<VerifiableMlsPlaintext, MlsCiphertextError> {
-        let mls_ciphertext_content = self.decrypt(
-            ciphersuite,
-            backend,
-            message_secrets,
-            sender_ratchet_configuration,
-            &sender_data,
-        )?;
+        let secret_type = SecretType::try_from(&self.content_type)
+            .map_err(|_| MlsCiphertextError::InvalidContentType)?;
+        // Extract generation and key material for encryption
+        let (ratchet_key, mut ratchet_nonce) = message_secrets
+            .secret_tree_mut()
+            .secret_for_decryption(
+                ciphersuite,
+                backend,
+                sender_index,
+                secret_type,
+                sender_data.generation,
+                sender_ratchet_configuration,
+            )
+            .map_err(|_| {
+                log::error!("  Ciphertext generation out of bounds");
+                MlsCiphertextError::GenerationOutOfBound
+            })?;
+        // Prepare the nonce by xoring with the reuse guard.
+        ratchet_nonce.xor_with_reuse_guard(&sender_data.reuse_guard);
+        let mls_ciphertext_content = self.decrypt(backend, ratchet_key, &ratchet_nonce)?;
 
         // Extract sender. The sender type is always of type Member for MlsCiphertext.
-        let sender = Sender {
-            sender_type: SenderType::Member,
-            sender: sender_data.sender,
-        };
+        let sender = Sender::from_sender_data(sender_data);
         log_content!(
             trace,
             "  Successfully decoded MlsPlaintext with: {:x?}",
@@ -385,19 +382,23 @@ impl MlsCiphertext {
 #[derive(Clone, TlsDeserialize, TlsSerialize, TlsSize)]
 #[cfg_attr(test, derive(Debug))]
 pub(crate) struct MlsSenderData {
-    // TODO: #541 replace sender with [`KeyPackageRef`]
-    pub(crate) sender: LeafIndex,
+    pub(crate) sender: KeyPackageRef,
     pub(crate) generation: u32,
     pub(crate) reuse_guard: ReuseGuard,
 }
 
 impl MlsSenderData {
-    pub(crate) fn new(sender: LeafIndex, generation: u32, reuse_guard: ReuseGuard) -> Self {
-        MlsSenderData {
-            sender,
+    /// Build new [`MlsSenderData`] for a [`Sender`].
+    pub(crate) fn from_sender(
+        sender: &Sender,
+        generation: u32,
+        reuse_guard: ReuseGuard,
+    ) -> Result<Self, MlsCiphertextError> {
+        Ok(MlsSenderData {
+            sender: sender.as_key_package_ref()?.clone(),
             generation,
             reuse_guard,
-        }
+        })
     }
 }
 
