@@ -34,6 +34,7 @@ pub use crate::extensions::*;
 // Framing
 // TODO #265: This should mostly disappear
 pub use crate::framing::{errors::*, sender::Sender, *};
+pub use crate::framing::{MlsMessageIn, MlsMessageOut};
 
 // Key packages
 pub use crate::key_packages::*;

@@ -28,6 +28,7 @@ pub(crate) use sender::*;
 
 // Public
 pub use ciphertext::*;
+pub use message::*;
 pub use plaintext::*;
 pub use validation::*;
 
