@@ -349,10 +349,8 @@ impl ProposalQueue {
 
         // Aggregate both proposal types to a common iterator
         // We checked earlier that only proposals can end up here
-        let mut queued_proposal_list: Vec<QueuedProposal> = proposal_store
-            .proposals()
-            .map(|queued_proposal| queued_proposal.clone())
-            .collect();
+        let mut queued_proposal_list: Vec<QueuedProposal> =
+            proposal_store.proposals().cloned().collect();
 
         queued_proposal_list.extend(
             inline_proposals
