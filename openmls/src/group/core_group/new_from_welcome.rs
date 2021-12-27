@@ -94,7 +94,7 @@ impl CoreGroup {
         // this group. Note that this is not strictly necessary. But there's
         // currently no other mechanism to enable the extension.
         let (nodes, enable_ratchet_tree_extension) =
-            match try_nodes_from_extensions(&group_info.other_extensions())? {
+            match try_nodes_from_extensions(group_info.other_extensions())? {
                 Some(nodes) => (nodes, true),
                 None => match nodes_option.as_ref() {
                     Some(n) => (n.as_slice(), false),

@@ -216,7 +216,7 @@ impl From<Secret> for InitSecret {
 /// the `init_secret` when creating or processing a commit with an external init
 /// proposal. TODO: #628.
 fn hpke_info_from_version(version: ProtocolVersion) -> &'static str {
-    &match version {
+    match version {
         ProtocolVersion::Reserved => "Reserved external init",
         ProtocolVersion::Mls10 => "MLS 1.0 external init",
         ProtocolVersion::Mls10Draft11 => "MLS 1.0 Draft 11 external init",
