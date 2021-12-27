@@ -386,7 +386,7 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
             )
             .expect("Could not create proposal.");
 
-        let mut proposal_store = ProposalStore::from_staged_proposal(
+        let proposal_store = ProposalStore::from_staged_proposal(
             StagedProposal::from_mls_plaintext(group_state.ciphersuite(), backend, add)
                 .expect("Could not create StagedProposal."),
         );
@@ -401,11 +401,7 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
             .expect("An unexpected error occurred.");
         // Alice applies the commit
         group_state
-            .merge_staged_commit(
-                create_commit_result.staged_commit,
-                &mut proposal_store,
-                &mut MessageSecretsStore::new(0),
-            )
+            .merge_commit(create_commit_result.staged_commit)
             .expect("error merging own commits");
 
         // Welcome messages

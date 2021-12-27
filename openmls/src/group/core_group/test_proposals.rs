@@ -1,4 +1,4 @@
-use crate::{group::past_secrets::MessageSecretsStore, test_utils::*};
+use crate::test_utils::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::OpenMlsCryptoProvider;
 
@@ -412,7 +412,7 @@ fn test_group_context_extensions(
         )
         .expect("Could not create proposal");
 
-    let mut proposal_store = ProposalStore::from_staged_proposal(
+    let proposal_store = ProposalStore::from_staged_proposal(
         StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create StagedProposal."),
     );
@@ -430,11 +430,7 @@ fn test_group_context_extensions(
     log::info!(" >>> Staging & merging commit ...");
 
     alice_group
-        .merge_staged_commit(
-            create_commit_result.staged_commit,
-            &mut proposal_store,
-            &mut MessageSecretsStore::new(0),
-        )
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging own staged commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
@@ -516,7 +512,7 @@ fn test_group_context_extension_proposal_fails(
         )
         .expect("Could not create proposal");
 
-    let mut proposal_store = ProposalStore::from_staged_proposal(
+    let proposal_store = ProposalStore::from_staged_proposal(
         StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create StagedProposal."),
     );
@@ -534,11 +530,7 @@ fn test_group_context_extension_proposal_fails(
     log::info!(" >>> Staging & merging commit ...");
 
     alice_group
-        .merge_staged_commit(
-            create_commit_result.staged_commit,
-            &mut proposal_store,
-            &mut MessageSecretsStore::new(0),
-        )
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging pending commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
@@ -621,7 +613,7 @@ fn test_group_context_extension_proposal(
         )
         .expect("Could not create proposal");
 
-    let mut proposal_store = ProposalStore::from_staged_proposal(
+    let proposal_store = ProposalStore::from_staged_proposal(
         StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create StagedProposal."),
     );
@@ -639,11 +631,7 @@ fn test_group_context_extension_proposal(
     log::info!(" >>> Staging & merging commit ...");
 
     alice_group
-        .merge_staged_commit(
-            create_commit_results.staged_commit,
-            &mut proposal_store,
-            &mut MessageSecretsStore::new(0),
-        )
+        .merge_commit(create_commit_results.staged_commit)
         .expect("error merging pending commit");
 
     let ratchet_tree = alice_group.treesync().export_nodes();
@@ -672,7 +660,7 @@ fn test_group_context_extension_proposal(
         )
         .expect("Error creating gce proposal.");
 
-    let mut proposal_store = ProposalStore::from_staged_proposal(
+    let proposal_store = ProposalStore::from_staged_proposal(
         StagedProposal::from_mls_plaintext(ciphersuite, backend, gce_proposal)
             .expect("Could not create StagedProposal."),
     );
@@ -697,11 +685,7 @@ fn test_group_context_extension_proposal(
         .expect("error merging commit");
 
     alice_group
-        .merge_staged_commit(
-            create_commit_result.staged_commit,
-            &mut proposal_store,
-            &mut MessageSecretsStore::new(0),
-        )
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     assert_eq!(

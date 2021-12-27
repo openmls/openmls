@@ -3,7 +3,6 @@ use super::*;
 
 use crate::{credentials::*, messages::GroupSecrets, schedule::KeySchedule, test_utils::*};
 use core_group::create_commit_params::CreateCommitParams;
-use core_group::past_secrets::MessageSecretsStore;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::OpenMlsCryptoProvider;
@@ -74,7 +73,7 @@ fn duplicate_ratchet_tree_extension(
         )
         .expect("Could not create proposal.");
 
-    let mut proposal_store = ProposalStore::from_staged_proposal(
+    let proposal_store = ProposalStore::from_staged_proposal(
         StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create StagingProposal"),
     );
@@ -90,11 +89,7 @@ fn duplicate_ratchet_tree_extension(
         .expect("Error creating commit");
 
     alice_group
-        .merge_staged_commit(
-            create_commit_result.staged_commit,
-            &mut proposal_store,
-            &mut MessageSecretsStore::new(0),
-        )
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     let mut welcome = create_commit_result

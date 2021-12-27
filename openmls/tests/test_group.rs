@@ -138,11 +138,7 @@ fn create_commit_optional_path(
 
     // Alice applies the Commit without the forced self-update
     group_alice
-        .merge_staged_commit(
-            create_commit_result.staged_commit,
-            &mut proposal_store,
-            &mut MessageSecretsStore::new(0),
-        )
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging pending commit");
     let ratchet_tree = group_alice.treesync().export_nodes();
 
@@ -199,11 +195,7 @@ fn create_commit_optional_path(
 
     // Apply UpdateProposal
     group_alice
-        .merge_staged_commit(
-            create_commit_result.staged_commit,
-            &mut proposal_store,
-            &mut MessageSecretsStore::new(0),
-        )
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging pending commit");
 }
 
@@ -379,11 +371,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     assert!(create_commit_result.welcome_option.is_some());
 
     group_alice
-        .merge_staged_commit(
-            create_commit_result.staged_commit,
-            &mut proposal_store,
-            &mut MessageSecretsStore::new(0),
-        )
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging own commits");
     let ratchet_tree = group_alice.treesync().export_nodes();
 
@@ -479,11 +467,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .expect("error merging commit");
 
     group_bob
-        .merge_staged_commit(
-            create_commit_result.staged_commit,
-            &mut proposal_store,
-            &mut MessageSecretsStore::new(0),
-        )
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging own commits");
 
     // Make sure that both groups have the same public tree
@@ -532,11 +516,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     assert!(create_commit_result.key_package_bundle_option.is_some());
 
     group_alice
-        .merge_staged_commit(
-            create_commit_result.staged_commit,
-            &mut proposal_store,
-            &mut MessageSecretsStore::new(0),
-        )
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging own commits");
     let staged_commit = group_bob
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
@@ -590,11 +570,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     assert!(create_commit_result.key_package_bundle_option.is_some());
 
     group_alice
-        .merge_staged_commit(
-            create_commit_result.staged_commit,
-            &mut proposal_store,
-            &mut MessageSecretsStore::new(0),
-        )
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging own commits");
 
     proposal_store.add(
@@ -677,11 +653,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .merge_commit(staged_commit)
         .expect("error merging commit");
     group_bob
-        .merge_staged_commit(
-            create_commit_result.staged_commit,
-            &mut proposal_store,
-            &mut MessageSecretsStore::new(0),
-        )
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging own commits");
 
     let ratchet_tree = group_alice.treesync().export_nodes();
@@ -802,11 +774,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .merge_commit(staged_commit)
         .expect("error merging commit");
     group_charlie
-        .merge_staged_commit(
-            create_commit_result.staged_commit,
-            &mut proposal_store,
-            &mut MessageSecretsStore::new(0),
-        )
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging own commits");
 
     // Make sure that all groups have the same public tree
@@ -861,11 +829,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .expect("Could not stage commit.")
         .self_removed());
     group_charlie
-        .merge_staged_commit(
-            create_commit_result.staged_commit,
-            &mut proposal_store,
-            &mut MessageSecretsStore::new(0),
-        )
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging own commits");
 
     // Make sure that all groups have the same public tree

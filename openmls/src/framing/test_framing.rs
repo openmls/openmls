@@ -12,7 +12,6 @@ use crate::{
     framing::*,
     group::core_group::{
         create_commit_params::CreateCommitParams,
-        past_secrets::MessageSecretsStore,
         proposals::{ProposalStore, StagedProposal},
     },
     key_packages::KeyPackageBundle,
@@ -414,11 +413,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .expect("Error creating Commit");
 
     group_alice
-        .merge_staged_commit(
-            create_commit_result.staged_commit,
-            &mut proposal_store,
-            &mut MessageSecretsStore::new(0),
-        )
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     // Alice adds Charlie
@@ -449,11 +444,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .expect("Error creating Commit");
 
     group_alice
-        .merge_staged_commit(
-            create_commit_result.staged_commit,
-            &mut proposal_store,
-            &mut MessageSecretsStore::new(0),
-        )
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     let mut group_charlie = CoreGroup::new_from_welcome(
@@ -495,11 +486,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .expect("error merging commit");
 
     group_alice
-        .merge_staged_commit(
-            create_commit_result.staged_commit,
-            &mut proposal_store,
-            &mut MessageSecretsStore::new(0),
-        )
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     print_tree(group_alice.treesync(), "Alice tree");
@@ -639,7 +626,7 @@ fn confirmation_tag_presence(
         )
         .expect("Could not create proposal.");
 
-    let mut proposal_store = ProposalStore::from_staged_proposal(
+    let proposal_store = ProposalStore::from_staged_proposal(
         StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create StagedProposal."),
     );
@@ -656,11 +643,7 @@ fn confirmation_tag_presence(
         .expect("Error creating Commit");
 
     group_alice
-        .merge_staged_commit(
-            create_commit_result.staged_commit,
-            &mut proposal_store,
-            &mut MessageSecretsStore::new(0),
-        )
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     // We have to create Bob's group so he can process the commit with the
@@ -757,7 +740,7 @@ fn invalid_plaintext_signature(
         )
         .expect("Could not create proposal.");
 
-    let mut proposal_store = ProposalStore::from_staged_proposal(
+    let proposal_store = ProposalStore::from_staged_proposal(
         StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal.clone())
             .expect("Could not create StagedProposal."),
     );
@@ -774,11 +757,7 @@ fn invalid_plaintext_signature(
         .expect("Error creating Commit");
 
     group_alice
-        .merge_staged_commit(
-            create_commit_result.staged_commit,
-            &mut proposal_store,
-            &mut MessageSecretsStore::new(0),
-        )
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
     let mut group_bob = CoreGroup::new_from_welcome(
@@ -790,6 +769,9 @@ fn invalid_plaintext_signature(
         backend,
     )
     .expect("error creating group from welcome");
+
+    // Let's use a fresh proposal store.
+    let mut proposal_store = ProposalStore::default();
 
     // Now alice creates an update
     let params = CreateCommitParams::builder()

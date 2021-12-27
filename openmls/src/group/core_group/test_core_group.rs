@@ -1,4 +1,3 @@
-use core_group::past_secrets::MessageSecretsStore;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
@@ -238,7 +237,7 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
             backend,
         )
         .expect("Could not create proposal.");
-    let mut proposal_store = ProposalStore::from_staged_proposal(
+    let proposal_store = ProposalStore::from_staged_proposal(
         StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create StagedProposal."),
     );
@@ -266,11 +265,7 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     );
 
     alice_group
-        .merge_staged_commit(
-            create_commit_result.staged_commit,
-            &mut proposal_store,
-            &mut MessageSecretsStore::new(0),
-        )
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging pending commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
@@ -487,11 +482,7 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
     log::info!(" >>> Staging & merging commit ...");
 
     alice_group
-        .merge_staged_commit(
-            create_commit_result.staged_commit,
-            &mut proposal_store,
-            &mut MessageSecretsStore::new(0),
-        )
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging pending commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
