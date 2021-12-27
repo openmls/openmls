@@ -18,6 +18,8 @@ jobs:
           profile: minimal
           toolchain: stable
           components: rustfmt, clippy
-      - uses: qernal/github-actions-rust-clippy@v1.4.0
+      - name: Clippy warnings
+        uses: actions-rs/clippy-check@v1
         with:
-          clippy_args: --manifest-path openmls/Cargo.toml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --manifest-path openmls/Cargo.toml
