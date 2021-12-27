@@ -20,6 +20,7 @@ const HELP: &str = "
 >>>     - group {group name}                    group operations
 >>>         - send {message}                    send message to group
 >>>         - invite {client name}              invite a user to the group
+>>>         - read                              read messages sent to the group (max 100)
 >>>         - update                            update the client state
 
 ";
@@ -109,6 +110,28 @@ fn main() {
                                     .as_bytes(),
                             )
                             .unwrap();
+                        continue;
+                    }
+
+                    // Read messages sent to the group.
+                    if op2 == "read" {
+                        let messages = client.read_msgs(group_name.to_string()).unwrap();
+                        if let Some(messages) = messages {
+                            stdout
+                                .write_all(
+                                    format!(
+                                        "{} has received {} messages\n\n",
+                                        group_name,
+                                        messages.len()
+                                    )
+                                    .as_bytes(),
+                                )
+                                .unwrap();
+                        } else {
+                            stdout
+                                .write_all(format!("{} has no messages\n\n", group_name).as_bytes())
+                                .unwrap();
+                        }
                         continue;
                     }
 
@@ -207,6 +230,12 @@ fn basic_test() {
     // Client 1 retrieves messages.
     client_1.update(None).unwrap();
 
+    // Check that Client 1 received the message
+    assert_eq!(
+        client_1.read_msgs("MLS Discussions".to_string()).unwrap(),
+        Some(vec!["Thanks for adding me Client1.".into()])
+    );
+
     // Client 2 adds Client 3 to the group.
     client_2
         .invite("Client3".to_string(), "MLS Discussions".to_string())
@@ -226,4 +255,43 @@ fn basic_test() {
     client_1.update(None).unwrap();
     client_2.update(None).unwrap();
     client_3.update(None).unwrap();
+
+    // Check that Client 2 and Client 3 received the message
+    assert_eq!(
+        client_2.read_msgs("MLS Discussions".to_string()).unwrap(),
+        Some(vec!["Welcome Client3.".into()])
+    );
+    assert_eq!(
+        client_3.read_msgs("MLS Discussions".to_string()).unwrap(),
+        Some(vec!["Welcome Client3.".into()])
+    );
+
+    // Client 3 sends a message.
+    client_3
+        .send_msg(
+            "Thanks so much for the warm welcome! 😊",
+            "MLS Discussions".to_string(),
+        )
+        .unwrap();
+
+    // Everyone updates.
+    client_1.update(None).unwrap();
+    client_2.update(None).unwrap();
+    client_3.update(None).unwrap();
+
+    // Check that Client 1 and Client 2 received the message
+    assert_eq!(
+        client_1.read_msgs("MLS Discussions".to_string()).unwrap(),
+        Some(vec![
+            "Thanks for adding me Client1.".into(),
+            "Thanks so much for the warm welcome! 😊".into()
+        ])
+    );
+    assert_eq!(
+        client_2.read_msgs("MLS Discussions".to_string()).unwrap(),
+        Some(vec![
+            "Welcome Client3.".into(),
+            "Thanks so much for the warm welcome! 😊".into()
+        ])
+    );
 }

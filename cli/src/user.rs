@@ -1,14 +1,13 @@
 use std::{cell::RefCell, collections::HashMap};
 
 use ds_lib::{ClientKeyPackages, DsMlsMessage, GroupMessage, Message};
-use openmls::{prelude::*, prelude_test::*};
+use openmls::prelude::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use super::{backend::Backend, conversation::Conversation, identity::Identity};
 
 const CIPHERSUITE: CiphersuiteName =
     CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-const PADDING_SIZE: usize = 0;
 
 pub struct Contact {
     username: String,
@@ -19,14 +18,9 @@ pub struct Contact {
 }
 
 pub struct Group {
-    #[allow(dead_code)]
-    group_id: Vec<u8>,
     group_name: String,
-    group_aad: Vec<u8>,
-    members: Vec<Vec<u8>>,
     conversation: Conversation,
-    core_group: RefCell<CoreGroup>,
-    pending_proposals: Vec<MlsPlaintext>,
+    mls_group: RefCell<MlsGroup>,
 }
 
 pub struct User {
@@ -75,9 +69,14 @@ impl User {
     /// Get a list of clients in the group to send messages to.
     fn recipients(&self, group: &Group) -> Vec<Vec<u8>> {
         let mut recipients = Vec::new();
-        for member in group.members.iter() {
-            if self.identity.borrow().credential.credential().identity() != member {
-                let contact = match self.contacts.get(member) {
+
+        let mls_group = group.mls_group.borrow();
+        for member in mls_group
+            .members()
+            .expect("Failed to retrieve membership in group!")
+        {
+            if self.identity.borrow().credential.credential().identity() != member.identity() {
+                let contact = match self.contacts.get(member.identity()) {
                     Some(c) => c.id.clone(),
                     None => panic!("There's a member in the group we don't know."),
                 };
@@ -85,6 +84,19 @@ impl User {
             }
         }
         recipients
+    }
+
+    /// Return the last 100 messages sent to the group.
+    pub fn read_msgs(&self, group: String) -> Result<Option<Vec<String>>, String> {
+        let groups = self.groups.borrow();
+        let group = match groups.get(group.as_bytes()) {
+            Some(g) => g,
+            None => return Err("Unknown group".to_string()),
+        };
+        if let Some(messages) = group.conversation.get(100) {
+            return Ok(Some(messages.to_vec()));
+        };
+        Ok(None)
     }
 
     /// Send an application message to the group.
@@ -95,24 +107,31 @@ impl User {
             None => return Err("Unknown group".to_string()),
         };
 
-        let mls_ciphertext = match group.core_group.borrow_mut().create_application_message(
-            &group.group_aad,
-            msg.as_bytes(),
-            &self.identity.borrow().credential,
-            PADDING_SIZE,
-            &self.crypto,
-        ) {
+        let message_out = match group
+            .mls_group
+            .borrow_mut()
+            .create_message(&self.crypto, msg.as_bytes())
+        {
             Ok(m) => m,
             Err(e) => return Err(format!("{}", e)),
         };
 
-        // Send mls_ciphertext to the group
+        let mls_ciphertext = match message_out {
+            MlsMessageOut::Ciphertext(mls_ctxt_ptr) => *mls_ctxt_ptr,
+            _ => return Err("Expected MlsCiphertext, found MlsPlaintext!".into()),
+        };
+
+        // TODO #642: Update the delivery service to accept `MlsMessageOut`.
         let msg = GroupMessage::new(
             DsMlsMessage::Ciphertext(mls_ciphertext),
             &self.recipients(group),
         );
         log::debug!(" >>> send: {:?}", msg);
         let _response = self.backend.send_msg(&msg)?;
+
+        // XXX: Need to update the client's local view of the conversation to include
+        // the message they sent.
+
         Ok(())
     }
 
@@ -134,8 +153,14 @@ impl User {
                 }
                 Message::MlsMessage(message) => {
                     let mut groups = self.groups.borrow_mut();
-                    let mut group = match groups.get(message.group_id()) {
-                        Some(g) => g.core_group.borrow_mut(),
+
+                    // XXX: This is probably not the cleanest way to get group_id without eating the
+                    // `message`.
+                    let message_copy = message.clone();
+                    let group_id = message_copy.group_id();
+
+                    let mut group = match groups.get(group_id) {
+                        Some(g) => g.mls_group.borrow_mut(),
                         None => {
                             log::error!(
                                 "Error getting group {:?} for a message. Dropping message.",
@@ -146,21 +171,24 @@ impl User {
                     };
                     let msg = match message {
                         DsMlsMessage::Ciphertext(ctxt) => {
-                            let verifiable_plaintext = match group.decrypt(
-                                &ctxt,
-                                &self.crypto,
-                                &SenderRatchetConfiguration::default(),
-                            ) {
-                                Ok(msg) => msg,
-                                Err(e) => {
-                                    log::error!(
+                            let unverified_message =
+                                match group.parse_message(ctxt.into(), &self.crypto) {
+                                    Ok(msg) => msg,
+                                    Err(e) => {
+                                        log::error!(
                                         "Error decrypting MlsCiphertext: {:?} -  Dropping message.",
                                         e
                                     );
-                                    continue;
-                                }
-                            };
-                            match group.verify(verifiable_plaintext, &self.crypto) {
+                                        continue;
+                                    }
+                                };
+
+                            // XXX: Should we supply a signature_key here?
+                            let processed_message = match group.process_unverified_message(
+                                unverified_message,
+                                None,
+                                &self.crypto,
+                            ) {
                                 Ok(msg) => msg,
                                 Err(e) => {
                                     log::error!(
@@ -169,34 +197,29 @@ impl User {
                                     );
                                     continue;
                                 }
-                            }
+                            };
+                            processed_message
                         }
-                        DsMlsMessage::Plaintext(msg) => match group.verify(msg, &self.crypto) {
-                            Ok(msg) => msg,
-                            Err(e) => {
-                                log::error!(
-                                    "Error verifying MlsPlaintext: {:?} -  Dropping message.",
-                                    e
-                                );
-                                continue;
-                            }
-                        },
-                    };
-                    drop(group);
-                    let group = match groups.get_mut(&msg.group_id().to_vec()) {
-                        Some(g) => g,
-                        None => {
+                        // XXX: Should we support MlsPlaintext messages?
+                        DsMlsMessage::Plaintext(msg) => {
                             log::error!(
-                                "Error getting group {:?} for a message. Dropping message.",
-                                msg.group_id().as_slice()
+                                "Received Plaintext message: {:?} -  Dropping message.",
+                                msg
                             );
                             continue;
                         }
                     };
-                    match msg.content() {
-                        MlsPlaintextContentType::Application(application_message) => {
+
+                    // Redefine group to be the wrapper rather the MlsGroup.
+                    drop(group);
+                    let group = groups
+                        .get_mut(group_id)
+                        .expect("Failed to get group for message (after getting it earlier)!");
+
+                    match msg {
+                        ProcessedMessage::ApplicationMessage(application_message) => {
                             let application_message =
-                                String::from_utf8(application_message.as_slice().to_vec()).unwrap();
+                                String::from_utf8(application_message.message().into()).unwrap();
                             if group_name.is_none()
                                 || group_name.clone().unwrap() == group.group_name
                             {
@@ -204,43 +227,15 @@ impl User {
                             }
                             group.conversation.add(application_message);
                         }
-                        MlsPlaintextContentType::Proposal(_proposal) => {
-                            // Store the proposal to use later when we got a
-                            // corresponding commit.
-                            group.pending_proposals.push(msg);
+                        ProcessedMessage::ProposalMessage(_proposal_ptr) => {
+                            // XXX: Do we need to do anything here?
                         }
-                        MlsPlaintextContentType::Commit(_commit) => {
-                            let mut proposal_store = ProposalStore::new();
-                            for proposal in &group.pending_proposals {
-                                proposal_store.add(
-                                    QueuedProposal::from_mls_plaintext(
-                                        Config::ciphersuite(CIPHERSUITE)
-                                            .map_err(|e| format!("{}", e))?,
-                                        &self.crypto,
-                                        proposal.clone(),
-                                    )
-                                    .map_err(|e| format!("{}", e))?,
-                                )
-                            }
-                            let mut core_group = group.core_group.borrow_mut();
-                            match core_group.stage_commit(
-                                &msg,
-                                &proposal_store,
-                                &[], // TODO: store key packages.
-                                &self.crypto,
-                            ) {
-                                Ok(staged_commit) => {
-                                    core_group
-                                        .merge_commit(staged_commit)
-                                        .map_err(|e| format!("{}", e))?;
-                                }
-                                Err(e) => {
-                                    let s = format!("Error applying commit: {:?}", e);
-                                    log::error!("{}", s);
-                                    return Err(s);
-                                }
-                            }
-                            group.pending_proposals.clear();
+                        ProcessedMessage::StagedCommitMessage(commit_ptr) => {
+                            group
+                                .mls_group
+                                .borrow_mut()
+                                .merge_staged_commit(*commit_ptr)
+                                .expect("Failed to merge staged commit!");
                         }
                     }
                 }
@@ -277,22 +272,28 @@ impl User {
         let mut group_aad = group_id.to_vec();
         group_aad.extend(b" AAD");
         let kpb = self.identity.borrow_mut().update(&self.crypto);
-        let config = CoreGroupConfig {
-            add_ratchet_tree_extension: true,
-            ..Default::default()
-        };
-        let core_group = CoreGroup::builder(GroupId::from_slice(group_id), kpb)
-            .with_config(config)
-            .build(&self.crypto)
-            .unwrap();
+
+        // NOTE: Since the DS currently doesn't distribute copies of the group's ratchet
+        // tree, we need to include the ratchet_tree_extension.
+        let group_config = MlsGroupConfig::builder()
+            .use_ratchet_tree_extension(true)
+            .build();
+
+        let mut mls_group = MlsGroup::new(
+            &self.crypto,
+            &group_config,
+            GroupId::from_slice(group_id),
+            &kpb.key_package()
+                .hash(&self.crypto)
+                .expect("Failed to hash KeyPackage."),
+        )
+        .expect("Failed to create MlsGroup");
+        mls_group.set_aad(group_aad.as_slice());
+
         let group = Group {
-            group_id: group_id.to_vec(),
             group_name: name.clone(),
-            members: Vec::new(),
             conversation: Conversation::default(),
-            core_group: RefCell::new(core_group),
-            group_aad,
-            pending_proposals: Vec::new(),
+            mls_group: RefCell::new(mls_group),
         };
         if self
             .groups
@@ -312,7 +313,7 @@ impl User {
             Some(v) => v,
             None => return Err(format!("No contact with name {} known.", name)),
         };
-        let (_hash, key_package) = self
+        let (_hash, joiner_key_package) = self
             .backend
             .get_client(&contact.id)
             .unwrap()
@@ -327,83 +328,57 @@ impl User {
             Some(g) => g,
             None => return Err(format!("No group with name {} known.", group)),
         };
-        let credentials = &self.identity.borrow().credential;
-        // Framing parameters
-        let framing_parameters = FramingParameters::new(&group.group_aad, WireFormat::MlsPlaintext);
-        let add_proposal = group
-            .core_group
-            .borrow()
-            .create_add_proposal(framing_parameters, credentials, key_package, &self.crypto)
-            .expect("Could not create proposal.");
-        let proposal_store = ProposalStore::from_queued_proposal(
-            QueuedProposal::from_mls_plaintext(
-                Config::ciphersuite(CIPHERSUITE).map_err(|e| format!("{}", e))?,
-                &self.crypto,
-                add_proposal.clone(),
-            )
-            .map_err(|e| format!("{}", e))?,
-        );
-        let params = CreateCommitParams::builder()
-            .framing_parameters(framing_parameters)
-            .credential_bundle(credentials)
-            .proposal_store(&proposal_store)
-            .force_self_update(false)
-            .build();
-        let create_commit_results = group
-            .core_group
-            .borrow()
-            .create_commit(params, &self.crypto)
-            .expect("Error creating commit");
-        let welcome_msg = create_commit_results
-            .welcome_option
-            .expect("Welcome message wasn't created by create_commit.");
 
-        let staged_commit = group
-            .core_group
+        let (out_messages, welcome) = match group
+            .mls_group
             .borrow_mut()
-            .stage_commit(
-                &create_commit_results.commit,
-                &proposal_store,
-                &[],
-                &self.crypto,
-            )
-            .expect("error applying commit");
-        group
-            .core_group
-            .borrow_mut()
-            .merge_commit(staged_commit)
-            .map_err(|e| format!("{}", e))?;
+            .add_members(&self.crypto, &[joiner_key_package])
+        {
+            Ok((out_msgs, welcome)) => (out_msgs, welcome),
+            Err(e) => return Err(format!("Failed to add member to group - {}", e)),
+        };
 
-        // Send Welcome to the client.
+        // First, process the invitation on our end.
+        let unverified_message = group
+            .mls_group
+            .borrow_mut()
+            .parse_message(out_messages.clone().into(), &self.crypto)
+            .expect("Could not parse message.");
+
+        let processed_message = group
+            .mls_group
+            .borrow_mut()
+            .process_unverified_message(unverified_message, None, &self.crypto)
+            .expect("Could not process unverified message.");
+
+        if let ProcessedMessage::StagedCommitMessage(staged_commit) = processed_message {
+            group
+                .mls_group
+                .borrow_mut()
+                .merge_staged_commit(*staged_commit)
+                .expect("Could not merge StagedCommit");
+        } else {
+            unreachable!("Expected a StagedCommit.");
+        }
+
+        // Second, send Welcome to the joiner.
         log::trace!("Sending welcome");
         self.backend
-            .send_welcome(&welcome_msg)
-            .expect("Error sending unwrap message");
+            .send_welcome(&welcome)
+            .expect("Error sending Welcome message");
 
-        // Send proposal to the group.
+        // Finally, send the MlsMessages to the group.
         log::trace!("Sending proposal");
         let group = groups.get_mut(group_id).unwrap(); // XXX: not cool.
         let group_recipients = self.recipients(group);
-        // TODO: the outgoing messages should use `MlsMessage` instead.
-        let msg = GroupMessage::new(
-            DsMlsMessage::Plaintext(VerifiableMlsPlaintext::from_plaintext(add_proposal, None)),
-            &group_recipients,
-        );
+        // XXX: Should we support MlsPlaintext messages?
+        let out_ds_messages = match out_messages {
+            MlsMessageOut::Ciphertext(msg) => DsMlsMessage::Ciphertext(*msg),
+            MlsMessageOut::Plaintext(_msg) => todo!(),
+        };
+        // TODO #642: Update the delivery service to accept `MlsMessageOut`.
+        let msg = GroupMessage::new(out_ds_messages, &group_recipients);
         self.backend.send_msg(&msg)?;
-
-        // Send commit to the group.
-        log::trace!("Sending commit");
-        let msg = GroupMessage::new(
-            DsMlsMessage::Plaintext(VerifiableMlsPlaintext::from_plaintext(
-                create_commit_results.commit,
-                None,
-            )),
-            &group_recipients,
-        );
-        self.backend.send_msg(&msg)?;
-
-        // Update the group state
-        group.members.push(contact.id.clone());
 
         Ok(())
     }
@@ -412,43 +387,25 @@ impl User {
     fn join_group(&self, welcome: Welcome) -> Result<(), String> {
         log::debug!("{} joining group ...", self.username);
 
-        let kpb = self.identity.borrow_mut().update(&self.crypto);
-        let core_group = match CoreGroup::new_from_welcome(
-            welcome,
-            None, /* no public tree here, has to be in the extension */
-            kpb,
-            &self.crypto,
-        ) {
-            Ok(g) => g,
-            Err(e) => {
-                let s = format!("Error creating group from Welcome: {:?}", e);
-                log::info!("{}", s);
-                return Err(s);
-            }
-        };
+        // NOTE: Since the DS currently doesn't distribute copies of the group's ratchet
+        // tree, we need to include the ratchet_tree_extension.
+        let group_config = MlsGroupConfig::builder()
+            .use_ratchet_tree_extension(true)
+            .build();
+        let mut mls_group = MlsGroup::new_from_welcome(&self.crypto, &group_config, welcome, None)
+            .expect("Failed to create MlsGroup");
 
-        let group_id = core_group.group_id();
-        // XXX: Add application layer protocol for name etc.
-        let group_name = String::from_utf8(group_id.to_vec()).unwrap();
+        let group_id = mls_group.group_id().to_vec();
+        // XXX: Use Welcome's encrypted_group_info field to store group_name.
+        let group_name = String::from_utf8(group_id.clone()).unwrap();
         let group_aad = group_name.clone() + " AAD";
-        let group_id = group_id.to_vec();
 
-        // FIXME
-        let members: Vec<Vec<u8>> = core_group
-            .members()
-            .map_err(|e| format!("{}", e))?
-            .into_iter()
-            .map(|(_index, cred)| cred.identity().to_vec())
-            .collect();
+        mls_group.set_aad(group_aad.as_bytes());
 
         let group = Group {
-            group_id: group_id.clone(),
             group_name: group_name.clone(),
-            members,
             conversation: Conversation::default(),
-            core_group: RefCell::new(core_group),
-            group_aad: group_aad.as_bytes().to_vec(),
-            pending_proposals: Vec::new(),
+            mls_group: RefCell::new(mls_group),
         };
 
         log::trace!("   {}", group_name);
