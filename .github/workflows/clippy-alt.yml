@@ -1,8 +1,8 @@
 on: [push, pull_request]
 
-#defaults:
-#  run:
-#    working-directory: openmls
+defaults:
+  run:
+    working-directory: openmls
 
 jobs:
   lint:
