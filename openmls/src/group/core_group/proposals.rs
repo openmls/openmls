@@ -478,7 +478,7 @@ impl ProposalQueue {
     }
 }
 
-/// A staged Add proposal
+/// A queued Add proposal
 pub struct QueuedAddProposal<'a> {
     add_proposal: &'a AddProposal,
     sender: &'a Sender,
@@ -496,7 +496,7 @@ impl<'a> QueuedAddProposal<'a> {
     }
 }
 
-/// A staged Remove proposal
+/// A queued Remove proposal
 pub struct QueuedRemoveProposal<'a> {
     remove_proposal: &'a RemoveProposal,
     sender: &'a Sender,
@@ -514,7 +514,7 @@ impl<'a> QueuedRemoveProposal<'a> {
     }
 }
 
-/// A staged Update proposal
+/// A queued Update proposal
 pub struct QueuedUpdateProposal<'a> {
     update_proposal: &'a UpdateProposal,
     sender: &'a Sender,
@@ -532,7 +532,7 @@ impl<'a> QueuedUpdateProposal<'a> {
     }
 }
 
-/// A staged PresharedKey proposal
+/// A queued PresharedKey proposal
 pub struct QueuedPskProposal<'a> {
     psk_proposal: &'a PreSharedKeyProposal,
     sender: &'a Sender,
