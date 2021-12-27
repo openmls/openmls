@@ -262,6 +262,19 @@ impl MlsGroup {
     fn framing_parameters(&self) -> FramingParameters {
         FramingParameters::new(&self.aad, self.mls_group_config.wire_format)
     }
+
+    /// Check if the group is inactive or if there is a pending commit.
+    fn pending_commit_or_inactive(&self) -> Result<(), MlsGroupError> {
+        if !self.active {
+            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
+        }
+
+        if self.pending_commit.is_some() {
+            return Err(MlsGroupError::PendingCommitError);
+        }
+
+        Ok(())
+    }
 }
 
 /// `Enum` that indicates whether the inner group state has been modified since the last time it was persisted.

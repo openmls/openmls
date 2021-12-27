@@ -23,16 +23,10 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
         key_packages: &[KeyPackage],
     ) -> Result<(MlsMessageOut, Welcome), MlsGroupError> {
-        if !self.active {
-            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
-        }
+        self.pending_commit_or_inactive()?;
 
         if key_packages.is_empty() {
             return Err(MlsGroupError::EmptyInput(EmptyInputError::AddMembers));
-        }
-
-        if self.pending_commit.is_some() {
-            return Err(MlsGroupError::PendingCommitError);
         }
 
         // Create inline add proposals from key packages
@@ -102,16 +96,10 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
         members: &[usize],
     ) -> Result<(MlsMessageOut, Option<Welcome>), MlsGroupError> {
-        if !self.active {
-            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
-        }
+        self.pending_commit_or_inactive()?;
 
         if members.is_empty() {
             return Err(MlsGroupError::EmptyInput(EmptyInputError::RemoveMembers));
-        }
-
-        if self.pending_commit.is_some() {
-            return Err(MlsGroupError::PendingCommitError);
         }
 
         // Create inline remove proposals
@@ -163,15 +151,15 @@ impl MlsGroup {
     }
 
     /// Creates proposals to add members to the group
+    ///
+    /// Returns an error if there is a pending commit.
     pub fn propose_add_member(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
 
         key_package: &KeyPackage,
     ) -> Result<MlsMessageOut, MlsGroupError> {
-        if !self.active {
-            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
-        }
+        self.pending_commit_or_inactive()?;
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
@@ -195,6 +183,8 @@ impl MlsGroup {
     }
 
     /// Creates proposals to remove members from the group
+    ///
+    /// Returns an error if there is a pending commit.
     pub fn propose_remove_member(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -202,6 +192,10 @@ impl MlsGroup {
     ) -> Result<MlsMessageOut, MlsGroupError> {
         if !self.active {
             return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
+        }
+
+        if self.pending_commit.is_some() {
+            return Err(MlsGroupError::PendingCommitError);
         }
 
         let credential = self.credential()?;
@@ -226,13 +220,13 @@ impl MlsGroup {
     }
 
     /// Leave the group
+    ///
+    /// Returns an error if there is a pending commit.
     pub fn leave_group(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsMessageOut, MlsGroupError> {
-        if !self.active {
-            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
-        }
+        self.pending_commit_or_inactive()?;
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend

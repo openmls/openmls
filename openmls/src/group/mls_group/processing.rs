@@ -74,13 +74,7 @@ impl MlsGroup {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<(MlsMessageOut, Option<Welcome>), MlsGroupError> {
-        if !self.active {
-            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
-        }
-
-        if self.pending_commit.is_some() {
-            return Err(MlsGroupError::PendingCommitError);
-        }
+        self.pending_commit_or_inactive()?;
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
