@@ -496,7 +496,7 @@ fn test_pending_commit_logic(
         unreachable!("Expected a StagedCommit.");
     }
 
-    // There should be no pending commit after issueing and processing a proposal.
+    // There should be no pending commit after issuing and processing a proposal.
     assert!(alice_group.pending_commit().is_none());
 
     // Trying to merge a pending commit while there is no pending commit should
