@@ -10,6 +10,14 @@ jobs:
     name: Lint package
     steps:
       - uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Stable with rustfmt and clippy
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components: rustfmt, clippy
       - uses: qernal/github-actions-rust-clippy@v1.4.0
         with:
           clippy_args: --manifest-path openmls/Cargo.toml
