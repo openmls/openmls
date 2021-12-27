@@ -180,9 +180,7 @@ impl CoreGroup {
             if let Some(ref init_secret) = apply_proposals_values.external_init_secret_option {
                 init_secret
             } else {
-                self.group_epoch_secrets
-                    .init_secret()
-                    .ok_or(StageCommitError::InitSecretNotFound)?
+                self.group_epoch_secrets.init_secret()
             };
 
         let joiner_secret = JoinerSecret::new(backend, commit_secret, init_secret)?;

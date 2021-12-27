@@ -167,9 +167,7 @@ impl CoreGroup {
         let joiner_secret = JoinerSecret::new(
             backend,
             path_processing_result.commit_secret,
-            self.group_epoch_secrets()
-                .init_secret()
-                .ok_or(CoreGroupError::InitSecretNotFound)?,
+            self.group_epoch_secrets().init_secret(),
         )?;
 
         // Create group secrets for later use, so we can afterwards consume the

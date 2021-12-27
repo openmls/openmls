@@ -20,8 +20,6 @@ use tls_codec::Error as TlsCodecError;
 implement_error! {
     pub enum CoreGroupError {
         Simple {
-            InitSecretNotFound =
-                "Missing init secret when creating commit.",
             MissingKeyPackageBundle =
                 "Couldn't find KeyPackageBundle corresponding to own update proposal.",
             NoSignatureKey = "No signature key was found.",
@@ -206,8 +204,6 @@ implement_error! {
                 "The proposal queue is missing a proposal for the commit.",
             OwnKeyNotFound =
                 "Missing own key to apply proposal.",
-            InitSecretNotFound =
-                "Missing init secret to apply proposal.",
         }
         Complex {
             PlaintextSignatureFailure(VerificationError) =

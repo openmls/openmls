@@ -1184,7 +1184,7 @@ impl EpochSecrets {
         let secret_tree = self.encryption_secret.create_secret_tree(treesize);
         (
             GroupEpochSecrets {
-                init_secret: Some(self.init_secret),
+                init_secret: self.init_secret,
                 exporter_secret: self.exporter_secret,
                 authentication_secret: self.authentication_secret,
                 external_secret: self.external_secret,
@@ -1203,7 +1203,7 @@ impl EpochSecrets {
 
 #[derive(Serialize, Deserialize)]
 pub(crate) struct GroupEpochSecrets {
-    init_secret: Option<InitSecret>,
+    init_secret: InitSecret,
     exporter_secret: ExporterSecret,
     authentication_secret: AuthenticationSecret,
     external_secret: ExternalSecret,
@@ -1236,8 +1236,8 @@ impl PartialEq for GroupEpochSecrets {
 
 impl GroupEpochSecrets {
     /// Init secret
-    pub(crate) fn init_secret(&self) -> Option<&InitSecret> {
-        self.init_secret.as_ref()
+    pub(crate) fn init_secret(&self) -> &InitSecret {
+        &self.init_secret
     }
 
     /// Authentication secret
