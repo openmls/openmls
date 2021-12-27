@@ -396,7 +396,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         )
         .expect("Could not create proposal.");
 
-    let mut proposal_store = ProposalStore::from_staged_proposal(
+    let mut proposal_store = ProposalStore::from_queued_proposal(
         QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
@@ -640,7 +640,7 @@ fn confirmation_tag_presence(
         )
         .expect("Could not create proposal.");
 
-    let proposal_store = ProposalStore::from_staged_proposal(
+    let proposal_store = ProposalStore::from_queued_proposal(
         QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
@@ -724,7 +724,7 @@ fn invalid_plaintext_signature(
         )
         .expect("Could not create proposal.");
 
-    let mut proposal_store = ProposalStore::from_staged_proposal(
+    let mut proposal_store = ProposalStore::from_queued_proposal(
         QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal.clone())
             .expect("Could not create QueuedProposal."),
     );

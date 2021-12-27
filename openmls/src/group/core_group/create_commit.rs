@@ -283,7 +283,7 @@ impl CoreGroup {
             provisional_interim_transcript_hash,
             diff.into_staged_diff(backend, ciphersuite)?,
         );
-        let staged_commit = StagedCommit::new(proposal_queue.into(), Some(staged_commit_state));
+        let staged_commit = StagedCommit::new(proposal_queue, Some(staged_commit_state));
 
         Ok(CreateCommitResult {
             commit: mls_plaintext,

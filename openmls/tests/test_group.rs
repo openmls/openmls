@@ -79,7 +79,7 @@ fn create_commit_optional_path(
         )
         .expect("Could not create proposal.");
 
-    let mut proposal_store = ProposalStore::from_staged_proposal(
+    let mut proposal_store = ProposalStore::from_queued_proposal(
         QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
@@ -268,7 +268,7 @@ fn basic_group_setup(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCr
         )
         .expect("Could not create proposal.");
 
-    let proposal_store = ProposalStore::from_staged_proposal(
+    let proposal_store = ProposalStore::from_queued_proposal(
         QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
@@ -362,7 +362,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         )
         .expect("Could not create proposal.");
 
-    let mut proposal_store = ProposalStore::from_staged_proposal(
+    let mut proposal_store = ProposalStore::from_queued_proposal(
         QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );

@@ -217,7 +217,7 @@ async fn test_group() {
         )
         .unwrap();
 
-    let proposal_store = ProposalStore::from_staged_proposal(
+    let proposal_store = ProposalStore::from_queued_proposal(
         QueuedProposal::from_mls_plaintext(
             Config::ciphersuite(group_ciphersuite).expect("Unsupported ciphersuite."),
             crypto,

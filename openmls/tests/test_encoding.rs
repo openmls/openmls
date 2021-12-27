@@ -313,7 +313,7 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .create_remove_proposal(framing_parameters, alice_credential_bundle, 2u32, backend)
             .expect("Could not create proposal.");
 
-        let mut proposal_store = ProposalStore::from_staged_proposal(
+        let mut proposal_store = ProposalStore::from_queued_proposal(
             QueuedProposal::from_mls_plaintext(group_state.ciphersuite(), backend, add)
                 .expect("Could not create QueuedProposal."),
         );
@@ -386,7 +386,7 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
             )
             .expect("Could not create proposal.");
 
-        let proposal_store = ProposalStore::from_staged_proposal(
+        let proposal_store = ProposalStore::from_queued_proposal(
             QueuedProposal::from_mls_plaintext(group_state.ciphersuite(), backend, add)
                 .expect("Could not create QueuedProposal."),
         );

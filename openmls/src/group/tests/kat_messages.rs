@@ -160,7 +160,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         )
         .expect("An unexpected error occurred.");
 
-    let proposal_store = ProposalStore::from_staged_proposal(
+    let proposal_store = ProposalStore::from_queued_proposal(
         QueuedProposal::from_mls_plaintext(ciphersuite, &crypto, add_proposal_pt.clone())
             .expect("An unexpected error occurred."),
     );

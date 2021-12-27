@@ -99,9 +99,9 @@ impl CoreGroup {
     ///  - TODO: ValSem106
     pub fn validate_add_proposals(
         &self,
-        staged_proposal_queue: &ProposalQueue,
+        proposal_queue: &ProposalQueue,
     ) -> Result<(), CoreGroupError> {
-        let add_proposals = staged_proposal_queue.add_proposals();
+        let add_proposals = proposal_queue.add_proposals();
 
         let mut identity_set = HashSet::new();
         let mut signature_key_set = HashSet::new();
@@ -166,9 +166,9 @@ impl CoreGroup {
     ///  - ValSem108
     pub fn validate_remove_proposals(
         &self,
-        staged_proposal_queue: &ProposalQueue,
+        proposal_queue: &ProposalQueue,
     ) -> Result<(), CoreGroupError> {
-        let remove_proposals = staged_proposal_queue.remove_proposals();
+        let remove_proposals = proposal_queue.remove_proposals();
 
         let mut removes_set = HashSet::new();
         let tree = &self.treesync();
@@ -196,7 +196,7 @@ impl CoreGroup {
     ///  - ValSem110
     pub fn validate_update_proposals(
         &self,
-        staged_proposal_queue: &ProposalQueue,
+        proposal_queue: &ProposalQueue,
         path_key_package: Option<(Sender, &KeyPackage)>,
     ) -> Result<(), CoreGroupError> {
         let mut public_key_set = HashSet::new();
@@ -206,7 +206,7 @@ impl CoreGroup {
         }
 
         // Check the update proposals from the proposal queue first
-        let update_proposals = staged_proposal_queue.update_proposals();
+        let update_proposals = proposal_queue.update_proposals();
         let tree = &self.treesync();
 
         for update_proposal in update_proposals {

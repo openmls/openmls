@@ -16,31 +16,31 @@ use std::collections::{hash_map::Entry, HashMap};
 /// in between two commit messages.
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct ProposalStore {
-    staged_proposals: Vec<QueuedProposal>,
+    queued_proposals: Vec<QueuedProposal>,
 }
 
 impl ProposalStore {
     pub fn new() -> Self {
         Self {
-            staged_proposals: Vec::new(),
+            queued_proposals: Vec::new(),
         }
     }
-    pub fn from_staged_proposal(staged_proposal: QueuedProposal) -> Self {
+    pub fn from_queued_proposal(queued_proposal: QueuedProposal) -> Self {
         Self {
-            staged_proposals: vec![staged_proposal],
+            queued_proposals: vec![queued_proposal],
         }
     }
-    pub fn add(&mut self, staged_proposal: QueuedProposal) {
-        self.staged_proposals.push(staged_proposal);
+    pub fn add(&mut self, queued_proposal: QueuedProposal) {
+        self.queued_proposals.push(queued_proposal);
     }
     pub fn proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
-        self.staged_proposals.iter()
+        self.queued_proposals.iter()
     }
     pub fn is_empty(&self) -> bool {
-        self.staged_proposals.is_empty()
+        self.queued_proposals.is_empty()
     }
     pub fn empty(&mut self) {
-        self.staged_proposals = Vec::new();
+        self.queued_proposals = Vec::new();
     }
 }
 
@@ -102,7 +102,7 @@ impl QueuedProposal {
     }
 }
 
-/// Proposal queue that helps filtering and sorting the staged Proposals from one
+/// Proposal queue that helps filtering and sorting Proposals received during one
 /// epoch. The Proposals are stored in a `HashMap` which maps Proposal
 /// references to Proposals, such that, given a reference, a proposal can be
 /// accessed efficiently. To enable iteration over the queue in order, the
@@ -133,10 +133,10 @@ impl ProposalQueue {
         // extract then by reference later
         let mut proposals_by_reference_queue: HashMap<ProposalReference, QueuedProposal> =
             HashMap::new();
-        for staged_proposal in proposal_store.proposals() {
+        for queued_proposal in proposal_store.proposals() {
             proposals_by_reference_queue.insert(
-                staged_proposal.proposal_reference(),
-                staged_proposal.clone(),
+                queued_proposal.proposal_reference(),
+                queued_proposal.clone(),
             );
         }
 
@@ -163,16 +163,16 @@ impl ProposalQueue {
                 }
                 ProposalOrRef::Reference(ref proposal_reference) => {
                     match proposals_by_reference_queue.get(proposal_reference) {
-                        Some(staged_proposal) => {
+                        Some(queued_proposal) => {
                             // ValSem200
-                            if let Proposal::Remove(ref remove_proposal) = staged_proposal.proposal
+                            if let Proposal::Remove(ref remove_proposal) = queued_proposal.proposal
                             {
                                 if remove_proposal.removed() == sender.sender {
                                     return Err(ProposalQueueError::SelfRemoval);
                                 }
                             }
 
-                            staged_proposal.clone()
+                            queued_proposal.clone()
                         }
                         None => return Err(ProposalQueueError::ProposalNotFound),
                     }
@@ -190,14 +190,14 @@ impl ProposalQueue {
     }
 
     /// Add a new [QueuedProposal] to the queue
-    pub(crate) fn add(&mut self, staged_proposal: QueuedProposal) {
-        let proposal_reference = staged_proposal.proposal_reference();
+    pub(crate) fn add(&mut self, queued_proposal: QueuedProposal) {
+        let proposal_reference = queued_proposal.proposal_reference();
         // Only add the proposal if it's not already there
         if let Entry::Vacant(entry) = self.queued_proposals.entry(proposal_reference.clone()) {
             // Add the proposal reference to ensure the correct order
             self.proposal_references.push(proposal_reference);
             // Add the proposal to the queue
-            entry.insert(staged_proposal);
+            entry.insert(queued_proposal);
         }
     }
 
@@ -219,7 +219,7 @@ impl ProposalQueue {
 
     /// Returns an iterator over all `QueuedProposal` in the queue
     /// in the order of the the Commit message
-    pub(crate) fn staged_proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
+    pub(crate) fn queued_proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
         // Iterate over the reference to extract the proposals in the right order
         self.proposal_references
             .iter()
@@ -229,9 +229,9 @@ impl ProposalQueue {
     /// Returns an iterator over all Add proposals in the queue
     /// in the order of the the Commit message
     pub fn add_proposals(&self) -> impl Iterator<Item = QueuedAddProposal> {
-        self.staged_proposals().filter_map(|staged_proposal| {
-            if let Proposal::Add(add_proposal) = staged_proposal.proposal() {
-                let sender = staged_proposal.sender();
+        self.queued_proposals().filter_map(|queued_proposal| {
+            if let Proposal::Add(add_proposal) = queued_proposal.proposal() {
+                let sender = queued_proposal.sender();
                 Some(QueuedAddProposal {
                     add_proposal,
                     sender,
@@ -245,9 +245,9 @@ impl ProposalQueue {
     /// Returns an iterator over all Remove proposals in the queue
     /// in the order of the the Commit message
     pub fn remove_proposals(&self) -> impl Iterator<Item = QueuedRemoveProposal> {
-        self.staged_proposals().filter_map(|staged_proposal| {
-            if let Proposal::Remove(remove_proposal) = staged_proposal.proposal() {
-                let sender = staged_proposal.sender();
+        self.queued_proposals().filter_map(|queued_proposal| {
+            if let Proposal::Remove(remove_proposal) = queued_proposal.proposal() {
+                let sender = queued_proposal.sender();
                 Some(QueuedRemoveProposal {
                     remove_proposal,
                     sender,
@@ -261,9 +261,9 @@ impl ProposalQueue {
     /// Returns an iterator over all Update in the queue
     /// in the order of the the Commit message
     pub fn update_proposals(&self) -> impl Iterator<Item = QueuedUpdateProposal> {
-        self.staged_proposals().filter_map(|staged_proposal| {
-            if let Proposal::Update(update_proposal) = staged_proposal.proposal() {
-                let sender = staged_proposal.sender();
+        self.queued_proposals().filter_map(|queued_proposal| {
+            if let Proposal::Update(update_proposal) = queued_proposal.proposal() {
+                let sender = queued_proposal.sender();
                 Some(QueuedUpdateProposal {
                     update_proposal,
                     sender,
@@ -277,9 +277,9 @@ impl ProposalQueue {
     /// Returns an iterator over all PresharedKey proposals in the queue
     /// in the order of the the Commit message
     pub fn psk_proposals(&self) -> impl Iterator<Item = QueuedPskProposal> {
-        self.staged_proposals().filter_map(|staged_proposal| {
-            if let Proposal::PreSharedKey(psk_proposal) = staged_proposal.proposal() {
-                let sender = staged_proposal.sender();
+        self.queued_proposals().filter_map(|queued_proposal| {
+            if let Proposal::PreSharedKey(psk_proposal) = queued_proposal.proposal() {
+                let sender = queued_proposal.sender();
                 Some(QueuedPskProposal {
                     psk_proposal,
                     sender,
@@ -351,7 +351,7 @@ impl ProposalQueue {
         // We checked earlier that only proposals can end up here
         let mut queued_proposal_list: Vec<QueuedProposal> = proposal_store
             .proposals()
-            .map(|staged_proposal| staged_proposal.clone())
+            .map(|queued_proposal| queued_proposal.clone())
             .collect();
 
         queued_proposal_list.extend(
