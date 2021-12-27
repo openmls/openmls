@@ -68,6 +68,8 @@ impl MlsGroup {
 
     /// Create a Commit message that covers the pending proposals that are
     /// currently stored in the group's [ProposalStore].
+    ///
+    /// Returns an error if there is a pending commit.
     pub fn commit_to_pending_proposals(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,

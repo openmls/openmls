@@ -10,6 +10,8 @@ impl MlsGroup {
     ///
     /// If successful, it returns a tuple of [`MlsMessageOut`] and an optional [`Welcome`].
     /// The [Welcome] is [Some] when the queue of pending proposals contained add proposals.
+    ///
+    /// Returns an error if there is a pending commit.
     pub fn self_update(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,

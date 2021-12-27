@@ -16,6 +16,8 @@ impl MlsGroup {
     /// update of the committer's leaf [KeyPackage].
     ///
     /// If successful, it returns a tuple of [MlsMessageOut] and [Welcome].
+    ///
+    /// Returns an error if there is a pending commit.
     pub fn add_members(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -93,6 +95,8 @@ impl MlsGroup {
     ///
     /// If successful, it returns a tuple of [`MlsMessageOut`] and an optional [`Welcome`].
     /// The [Welcome] is [Some] when the queue of pending proposals contained add proposals
+    ///
+    /// Returns an error if there is a pending commit.
     pub fn remove_members(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
