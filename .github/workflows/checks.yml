@@ -30,5 +30,6 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --manifest-path openmls/Cargo.toml
       - name: Cargo fmt
-        working-directory: openmls
-        run: cargo fmt -- --check
+        run: |
+          cd openmls
+          cargo fmt -- --check
