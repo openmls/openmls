@@ -172,8 +172,10 @@ impl MlsGroup {
 
     /// Sets the `pending_commit` to `None`.
     ///
-    /// This function should only be used if it is clear that the pending commit
-    /// will not be used in the group.
+    /// Use with caution! This function should only be used if it is clear that
+    /// the pending commit will not be used in the group. In particular, if a
+    /// pending commit is later accepted by the group, this client will lack the
+    /// key material to encrypt or decrypt group messages.
     pub fn clear_pending_commit(&mut self) {
         self.pending_commit = None
     }
