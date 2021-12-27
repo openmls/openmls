@@ -10,10 +10,6 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
-defaults:
-  run:
-    working-directory: openmls
-
 name: Clippy & format check
 jobs:
   checks:
@@ -34,4 +30,5 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --manifest-path openmls/Cargo.toml
       - name: Cargo fmt
+        working-directory: openmls
         run: cargo fmt -- --check
