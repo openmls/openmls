@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 
-use super::{proposals::StagedProposalQueue, *};
+use super::{proposals::ProposalQueue, *};
 
 impl CoreGroup {
     // === Messages ===
@@ -99,7 +99,7 @@ impl CoreGroup {
     ///  - TODO: ValSem106
     pub fn validate_add_proposals(
         &self,
-        staged_proposal_queue: &StagedProposalQueue,
+        staged_proposal_queue: &ProposalQueue,
     ) -> Result<(), CoreGroupError> {
         let add_proposals = staged_proposal_queue.add_proposals();
 
@@ -166,7 +166,7 @@ impl CoreGroup {
     ///  - ValSem108
     pub fn validate_remove_proposals(
         &self,
-        staged_proposal_queue: &StagedProposalQueue,
+        staged_proposal_queue: &ProposalQueue,
     ) -> Result<(), CoreGroupError> {
         let remove_proposals = staged_proposal_queue.remove_proposals();
 
@@ -196,7 +196,7 @@ impl CoreGroup {
     ///  - ValSem110
     pub fn validate_update_proposals(
         &self,
-        staged_proposal_queue: &StagedProposalQueue,
+        staged_proposal_queue: &ProposalQueue,
         path_key_package: Option<(Sender, &KeyPackage)>,
     ) -> Result<(), CoreGroupError> {
         let mut public_key_set = HashSet::new();

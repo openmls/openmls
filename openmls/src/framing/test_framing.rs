@@ -4,7 +4,7 @@ use crate::{
     framing::*,
     group::core_group::{
         create_commit_params::CreateCommitParams,
-        proposals::{ProposalStore, StagedProposal},
+        proposals::{ProposalStore, QueuedProposal},
     },
     key_packages::KeyPackageBundle,
     tree::sender_ratchet::SenderRatchetConfiguration,
@@ -397,8 +397,8 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .expect("Could not create proposal.");
 
     let mut proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -431,7 +431,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, charlie_add_proposal)
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, charlie_add_proposal)
             .expect("Could not create staged proposal."),
     );
 
@@ -469,7 +469,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_remove_proposal)
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_remove_proposal)
             .expect("Could not create staged proposal."),
     );
 
@@ -641,8 +641,8 @@ fn confirmation_tag_presence(
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -725,8 +725,8 @@ fn invalid_plaintext_signature(
         .expect("Could not create proposal.");
 
     let mut proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal.clone())
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal.clone())
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -841,7 +841,7 @@ fn invalid_plaintext_signature(
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal.clone())
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal.clone())
             .expect("Could not create staged proposal."),
     );
 
@@ -878,7 +878,7 @@ fn invalid_plaintext_signature(
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create staged proposal."),
     );
 

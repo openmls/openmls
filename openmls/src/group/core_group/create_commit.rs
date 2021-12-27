@@ -15,7 +15,7 @@ use crate::{
 
 use super::{
     create_commit_params::{CommitType, CreateCommitParams},
-    proposals::CreationProposalQueue,
+    proposals::ProposalQueue,
     staged_commit::{StagedCommit, StagedCommitState},
 };
 
@@ -46,7 +46,7 @@ impl CoreGroup {
         };
 
         // Filter proposals
-        let (proposal_queue, contains_own_updates) = CreationProposalQueue::filter_proposals(
+        let (proposal_queue, contains_own_updates) = ProposalQueue::filter_proposals(
             ciphersuite,
             backend,
             sender_type,

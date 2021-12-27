@@ -1,10 +1,10 @@
 use crate::treesync::diff::StagedTreeSyncDiff;
 
-use super::proposals::{ProposalStore, StagedProposal, StagedProposalQueue};
+use super::proposals::{ProposalQueue, ProposalStore, QueuedProposal};
 
 use super::super::errors::*;
 use super::proposals::{
-    StagedAddProposal, StagedPskProposal, StagedRemoveProposal, StagedUpdateProposal,
+    QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal, QueuedUpdateProposal,
 };
 use super::*;
 use core::fmt::Debug;
@@ -68,7 +68,7 @@ impl CoreGroup {
 
         // Build a queue with all proposals from the Commit and check that we have all
         // of the proposals by reference locally
-        let mut proposal_queue = StagedProposalQueue::from_committed_proposals(
+        let mut proposal_queue = ProposalQueue::from_committed_proposals(
             ciphersuite,
             backend,
             commit.proposals.as_slice().to_vec(),
@@ -109,7 +109,7 @@ impl CoreGroup {
         let mut diff = self.treesync().empty_diff()?;
 
         let apply_proposals_values = self
-            .apply_staged_proposals(&mut diff, backend, &proposal_queue, own_key_packages)
+            .apply_proposals(&mut diff, backend, &proposal_queue, own_key_packages)
             .map_err(|_| StageCommitError::OwnKeyNotFound)?;
 
         // Check if we were removed from the group
@@ -264,7 +264,7 @@ impl CoreGroup {
         // and add a new fake Update proposal to the queue after that
         if let Some(key_package) = path_key_package {
             let proposal = Proposal::Update(UpdateProposal { key_package });
-            let staged_proposal = StagedProposal::from_proposal_and_sender(
+            let staged_proposal = QueuedProposal::from_proposal_and_sender(
                 ciphersuite,
                 backend,
                 proposal,
@@ -339,7 +339,7 @@ impl CoreGroup {
 /// Contains the changes from a commit to the group state.
 #[derive(Debug)]
 pub struct StagedCommit {
-    staged_proposal_queue: StagedProposalQueue,
+    staged_proposal_queue: ProposalQueue,
     state: Option<StagedCommitState>,
 }
 
@@ -347,7 +347,7 @@ impl StagedCommit {
     /// Create a new [`StagedCommit`] from the provisional group state created
     /// during the commit process.
     pub(crate) fn new(
-        staged_proposal_queue: StagedProposalQueue,
+        staged_proposal_queue: ProposalQueue,
         state: Option<StagedCommitState>,
     ) -> Self {
         StagedCommit {
@@ -357,22 +357,22 @@ impl StagedCommit {
     }
 
     /// Returns the Add proposals that are covered by the Commit message as in iterator over [StagedAddProposal].
-    pub fn add_proposals(&self) -> impl Iterator<Item = StagedAddProposal> {
+    pub fn add_proposals(&self) -> impl Iterator<Item = QueuedAddProposal> {
         self.staged_proposal_queue.add_proposals()
     }
 
     /// Returns the Remove proposals that are covered by the Commit message as in iterator over [StagedRemoveProposal].
-    pub fn remove_proposals(&self) -> impl Iterator<Item = StagedRemoveProposal> {
+    pub fn remove_proposals(&self) -> impl Iterator<Item = QueuedRemoveProposal> {
         self.staged_proposal_queue.remove_proposals()
     }
 
     /// Returns the Update proposals that are covered by the Commit message as in iterator over [StagedUpdateProposal].
-    pub fn update_proposals(&self) -> impl Iterator<Item = StagedUpdateProposal> {
+    pub fn update_proposals(&self) -> impl Iterator<Item = QueuedUpdateProposal> {
         self.staged_proposal_queue.update_proposals()
     }
 
-    /// Returns the PresharedKey proposals that are covered by the Commit message as in iterator over [StagedPskProposal].
-    pub fn psk_proposals(&self) -> impl Iterator<Item = StagedPskProposal> {
+    /// Returns the PresharedKey proposals that are covered by the Commit message as in iterator over [QueuedPskProposal].
+    pub fn psk_proposals(&self) -> impl Iterator<Item = QueuedPskProposal> {
         self.staged_proposal_queue.psk_proposals()
     }
 

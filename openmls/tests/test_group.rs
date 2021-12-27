@@ -80,8 +80,8 @@ fn create_commit_optional_path(
         .expect("Could not create proposal.");
 
     let mut proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -116,8 +116,8 @@ fn create_commit_optional_path(
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -176,8 +176,8 @@ fn create_commit_optional_path(
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, alice_update_proposal)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, alice_update_proposal)
+            .expect("Could not create QueuedProposal."),
     );
 
     // Only UpdateProposal
@@ -269,8 +269,8 @@ fn basic_group_setup(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCr
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -363,8 +363,8 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .expect("Could not create proposal.");
 
     let mut proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -456,8 +456,8 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_bob)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_bob)
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -522,8 +522,8 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_alice)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_alice)
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -587,8 +587,8 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_bob)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_bob)
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -665,8 +665,8 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, add_charlie_proposal_bob)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, add_charlie_proposal_bob)
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -786,8 +786,8 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_charlie)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_charlie)
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -852,8 +852,8 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, remove_bob_proposal_charlie)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, remove_bob_proposal_charlie)
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()

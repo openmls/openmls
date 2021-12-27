@@ -16,7 +16,7 @@ use std::collections::{hash_map::Entry, HashMap};
 /// in between two commit messages.
 #[derive(Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct ProposalStore {
-    staged_proposals: Vec<StagedProposal>,
+    staged_proposals: Vec<QueuedProposal>,
 }
 
 impl ProposalStore {
@@ -25,15 +25,15 @@ impl ProposalStore {
             staged_proposals: Vec::new(),
         }
     }
-    pub fn from_staged_proposal(staged_proposal: StagedProposal) -> Self {
+    pub fn from_staged_proposal(staged_proposal: QueuedProposal) -> Self {
         Self {
             staged_proposals: vec![staged_proposal],
         }
     }
-    pub fn add(&mut self, staged_proposal: StagedProposal) {
+    pub fn add(&mut self, staged_proposal: QueuedProposal) {
         self.staged_proposals.push(staged_proposal);
     }
-    pub fn proposals(&self) -> impl Iterator<Item = &StagedProposal> {
+    pub fn proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
         self.staged_proposals.iter()
     }
     pub fn is_empty(&self) -> bool {
@@ -47,23 +47,23 @@ impl ProposalStore {
 /// Alternative representation of a Proposal, where the sender is extracted from
 /// the encapsulating MlsPlaintext and the ProposalReference is attached.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct StagedProposal {
+pub struct QueuedProposal {
     proposal: Proposal,
     proposal_reference: ProposalReference,
     sender: Sender,
     proposal_or_ref_type: ProposalOrRefType,
 }
 
-impl StagedProposal {
-    /// Creates a new [StagedProposal] from an [MlsPlaintext]
+impl QueuedProposal {
+    /// Creates a new [QueuedProposal] from an [MlsPlaintext]
     pub fn from_mls_plaintext(
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         mls_plaintext: MlsPlaintext,
-    ) -> Result<Self, StagedProposalError> {
+    ) -> Result<Self, QueuedProposalError> {
         let proposal = match mls_plaintext.content() {
             MlsPlaintextContentType::Proposal(p) => p,
-            _ => return Err(StagedProposalError::WrongContentType),
+            _ => return Err(QueuedProposalError::WrongContentType),
         };
         let proposal_reference = ProposalReference::from_proposal(ciphersuite, backend, proposal)?;
         Ok(Self {
@@ -73,13 +73,13 @@ impl StagedProposal {
             proposal_or_ref_type: ProposalOrRefType::Reference,
         })
     }
-    /// Creates a new [StagedProposal] from a [Proposal] and [Sender]
+    /// Creates a new [QueuedProposal] from a [Proposal] and [Sender]
     pub(crate) fn from_proposal_and_sender(
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         proposal: Proposal,
         sender: Sender,
-    ) -> Result<Self, StagedProposalError> {
+    ) -> Result<Self, QueuedProposalError> {
         let proposal_reference = ProposalReference::from_proposal(ciphersuite, backend, &proposal)?;
         Ok(Self {
             proposal,
@@ -108,36 +108,17 @@ impl StagedProposal {
 /// accessed efficiently. To enable iteration over the queue in order, the
 /// `ProposalQueue` also contains a vector of `ProposalReference`s.
 #[derive(Default, Debug)]
-pub struct StagedProposalQueue {
+pub struct ProposalQueue {
     /// `proposal_references` holds references to the proposals in the queue and
     /// determines the order of the queue.
     proposal_references: Vec<ProposalReference>,
     /// `queued_proposals` contains the actual proposals in the queue. They are
     /// stored in a `HashMap` to allow for efficient access to the proposals.
-    queued_proposals: HashMap<ProposalReference, StagedProposal>,
+    queued_proposals: HashMap<ProposalReference, QueuedProposal>,
 }
 
-impl<'a> From<CreationProposalQueue<'a>> for StagedProposalQueue {
-    fn from(cpq: CreationProposalQueue) -> Self {
-        let mut queued_proposals = HashMap::new();
-        for (proposal_ref, queued_proposal) in cpq.queued_proposals {
-            let staged_proposal = StagedProposal {
-                proposal: queued_proposal.proposal.clone(),
-                proposal_reference: queued_proposal.proposal_reference,
-                sender: queued_proposal.sender,
-                proposal_or_ref_type: queued_proposal.proposal_or_ref_type,
-            };
-            queued_proposals.insert(proposal_ref, staged_proposal);
-        }
-        Self {
-            proposal_references: cpq.proposal_references,
-            queued_proposals,
-        }
-    }
-}
-
-impl StagedProposalQueue {
-    /// Returns a new `StagedProposalQueue` from proposals that were committed and
+impl ProposalQueue {
+    /// Returns a new `QueuedProposalQueue` from proposals that were committed and
     /// don't need filtering.
     /// This functions does the following checks:
     ///  - ValSem200
@@ -147,10 +128,10 @@ impl StagedProposalQueue {
         committed_proposals: Vec<ProposalOrRef>,
         proposal_store: &ProposalStore,
         sender: Sender,
-    ) -> Result<Self, StagedProposalQueueError> {
+    ) -> Result<Self, ProposalQueueError> {
         // Feed the `proposals_by_reference` in a `HashMap` so that we can easily
         // extract then by reference later
-        let mut proposals_by_reference_queue: HashMap<ProposalReference, StagedProposal> =
+        let mut proposals_by_reference_queue: HashMap<ProposalReference, QueuedProposal> =
             HashMap::new();
         for staged_proposal in proposal_store.proposals() {
             proposals_by_reference_queue.insert(
@@ -160,7 +141,7 @@ impl StagedProposalQueue {
         }
 
         // Build the actual queue
-        let mut proposal_queue = StagedProposalQueue::default();
+        let mut proposal_queue = ProposalQueue::default();
 
         // Iterate over the committed proposals and insert the proposals in the queue
         for proposal_or_ref in committed_proposals.into_iter() {
@@ -169,11 +150,11 @@ impl StagedProposalQueue {
                     // ValSem200
                     if let Proposal::Remove(ref remove_proposal) = proposal {
                         if remove_proposal.removed() == sender.sender {
-                            return Err(StagedProposalQueueError::SelfRemoval);
+                            return Err(ProposalQueueError::SelfRemoval);
                         }
                     }
 
-                    StagedProposal::from_proposal_and_sender(
+                    QueuedProposal::from_proposal_and_sender(
                         ciphersuite,
                         backend,
                         proposal,
@@ -187,13 +168,13 @@ impl StagedProposalQueue {
                             if let Proposal::Remove(ref remove_proposal) = staged_proposal.proposal
                             {
                                 if remove_proposal.removed() == sender.sender {
-                                    return Err(StagedProposalQueueError::SelfRemoval);
+                                    return Err(ProposalQueueError::SelfRemoval);
                                 }
                             }
 
                             staged_proposal.clone()
                         }
-                        None => return Err(StagedProposalQueueError::ProposalNotFound),
+                        None => return Err(ProposalQueueError::ProposalNotFound),
                     }
                 }
             };
@@ -204,12 +185,12 @@ impl StagedProposalQueue {
     }
 
     /// Returns proposal for a given proposal ID
-    pub(crate) fn get(&self, proposal_reference: &ProposalReference) -> Option<&StagedProposal> {
+    pub(crate) fn get(&self, proposal_reference: &ProposalReference) -> Option<&QueuedProposal> {
         self.queued_proposals.get(proposal_reference)
     }
 
-    /// Add a new [StagedProposal] to the queue
-    pub(crate) fn add(&mut self, staged_proposal: StagedProposal) {
+    /// Add a new [QueuedProposal] to the queue
+    pub(crate) fn add(&mut self, staged_proposal: QueuedProposal) {
         let proposal_reference = staged_proposal.proposal_reference();
         // Only add the proposal if it's not already there
         if let Entry::Vacant(entry) = self.queued_proposals.entry(proposal_reference.clone()) {
@@ -220,12 +201,12 @@ impl StagedProposalQueue {
         }
     }
 
-    /// Returns an iterator over a list of `StagedProposal` filtered by proposal
+    /// Returns an iterator over a list of `QueuedProposal` filtered by proposal
     /// type
     pub(crate) fn filtered_by_type(
         &self,
         proposal_type: ProposalType,
-    ) -> impl Iterator<Item = &StagedProposal> {
+    ) -> impl Iterator<Item = &QueuedProposal> {
         // Iterate over the reference to extract the proposals in the right order
         self.proposal_references
             .iter()
@@ -236,9 +217,9 @@ impl StagedProposalQueue {
             .filter_map(move |reference| self.get(reference))
     }
 
-    /// Returns an iterator over all `StagedProposal` in the queue
+    /// Returns an iterator over all `QueuedProposal` in the queue
     /// in the order of the the Commit message
-    pub(crate) fn staged_proposals(&self) -> impl Iterator<Item = &StagedProposal> {
+    pub(crate) fn staged_proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
         // Iterate over the reference to extract the proposals in the right order
         self.proposal_references
             .iter()
@@ -247,11 +228,11 @@ impl StagedProposalQueue {
 
     /// Returns an iterator over all Add proposals in the queue
     /// in the order of the the Commit message
-    pub fn add_proposals(&self) -> impl Iterator<Item = StagedAddProposal> {
+    pub fn add_proposals(&self) -> impl Iterator<Item = QueuedAddProposal> {
         self.staged_proposals().filter_map(|staged_proposal| {
             if let Proposal::Add(add_proposal) = staged_proposal.proposal() {
                 let sender = staged_proposal.sender();
-                Some(StagedAddProposal {
+                Some(QueuedAddProposal {
                     add_proposal,
                     sender,
                 })
@@ -263,11 +244,11 @@ impl StagedProposalQueue {
 
     /// Returns an iterator over all Remove proposals in the queue
     /// in the order of the the Commit message
-    pub fn remove_proposals(&self) -> impl Iterator<Item = StagedRemoveProposal> {
+    pub fn remove_proposals(&self) -> impl Iterator<Item = QueuedRemoveProposal> {
         self.staged_proposals().filter_map(|staged_proposal| {
             if let Proposal::Remove(remove_proposal) = staged_proposal.proposal() {
                 let sender = staged_proposal.sender();
-                Some(StagedRemoveProposal {
+                Some(QueuedRemoveProposal {
                     remove_proposal,
                     sender,
                 })
@@ -279,11 +260,11 @@ impl StagedProposalQueue {
 
     /// Returns an iterator over all Update in the queue
     /// in the order of the the Commit message
-    pub fn update_proposals(&self) -> impl Iterator<Item = StagedUpdateProposal> {
+    pub fn update_proposals(&self) -> impl Iterator<Item = QueuedUpdateProposal> {
         self.staged_proposals().filter_map(|staged_proposal| {
             if let Proposal::Update(update_proposal) = staged_proposal.proposal() {
                 let sender = staged_proposal.sender();
-                Some(StagedUpdateProposal {
+                Some(QueuedUpdateProposal {
                     update_proposal,
                     sender,
                 })
@@ -295,11 +276,11 @@ impl StagedProposalQueue {
 
     /// Returns an iterator over all PresharedKey proposals in the queue
     /// in the order of the the Commit message
-    pub fn psk_proposals(&self) -> impl Iterator<Item = StagedPskProposal> {
+    pub fn psk_proposals(&self) -> impl Iterator<Item = QueuedPskProposal> {
         self.staged_proposals().filter_map(|staged_proposal| {
             if let Proposal::PreSharedKey(psk_proposal) = staged_proposal.proposal() {
                 let sender = staged_proposal.sender();
-                Some(StagedPskProposal {
+                Some(QueuedPskProposal {
                     psk_proposal,
                     sender,
                 })
@@ -308,153 +289,7 @@ impl StagedProposalQueue {
             }
         })
     }
-}
 
-/// A staged Add proposal
-pub struct StagedAddProposal<'a> {
-    add_proposal: &'a AddProposal,
-    sender: &'a Sender,
-}
-
-impl<'a> StagedAddProposal<'a> {
-    /// Returns a reference to the proposal
-    pub fn add_proposal(&self) -> &AddProposal {
-        self.add_proposal
-    }
-
-    /// Returns a reference to the sender
-    pub fn sender(&self) -> &Sender {
-        self.sender
-    }
-}
-
-/// A staged Remove proposal
-pub struct StagedRemoveProposal<'a> {
-    remove_proposal: &'a RemoveProposal,
-    sender: &'a Sender,
-}
-
-impl<'a> StagedRemoveProposal<'a> {
-    /// Returns a reference to the proposal
-    pub fn remove_proposal(&self) -> &RemoveProposal {
-        self.remove_proposal
-    }
-
-    /// Returns a reference to the sender
-    pub fn sender(&self) -> &Sender {
-        self.sender
-    }
-}
-
-/// A staged Update proposal
-pub struct StagedUpdateProposal<'a> {
-    update_proposal: &'a UpdateProposal,
-    sender: &'a Sender,
-}
-
-impl<'a> StagedUpdateProposal<'a> {
-    /// Returns a reference to the proposal
-    pub fn update_proposal(&self) -> &UpdateProposal {
-        self.update_proposal
-    }
-
-    /// Returns a reference to the sender
-    pub fn sender(&self) -> &Sender {
-        self.sender
-    }
-}
-
-/// A staged PresharedKey proposal
-pub struct StagedPskProposal<'a> {
-    psk_proposal: &'a PreSharedKeyProposal,
-    sender: &'a Sender,
-}
-
-impl<'a> StagedPskProposal<'a> {
-    /// Returns a reference to the proposal
-    pub fn psk_proposal(&self) -> &PreSharedKeyProposal {
-        self.psk_proposal
-    }
-
-    /// Returns a reference to the sender
-    pub fn sender(&self) -> &Sender {
-        self.sender
-    }
-}
-
-/// Alternative representation of a Proposal, where the sender is extracted from
-/// the encapsulating MlsPlaintext and the ProposalReference is attached.
-#[derive(Debug, Clone)]
-pub(crate) struct QueuedProposal<'a> {
-    proposal: &'a Proposal,
-    proposal_reference: ProposalReference,
-    sender: Sender,
-    proposal_or_ref_type: ProposalOrRefType,
-}
-
-impl<'a> QueuedProposal<'a> {
-    /// Creates a new [QueuedProposal] from a [Proposal] and [Sender].
-    /// Note that the proposal type will always be `Proposal`.
-    pub(crate) fn from_proposal_and_sender(
-        ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
-        proposal: &'a Proposal,
-        sender: Sender,
-    ) -> Result<Self, StagedProposalError> {
-        let proposal_reference = ProposalReference::from_proposal(ciphersuite, backend, proposal)?;
-        Ok(Self {
-            proposal,
-            proposal_reference,
-            sender,
-            proposal_or_ref_type: ProposalOrRefType::Proposal,
-        })
-    }
-    /// Creates a new [QueuedProposal] from a [StagedProposal].
-    /// /// Note that the proposal type will always be `Reference`.
-    pub(crate) fn from_staged_proposal(
-        ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
-        staged_proposal: &'a StagedProposal,
-    ) -> Result<Self, StagedProposalError> {
-        let proposal_reference =
-            ProposalReference::from_proposal(ciphersuite, backend, staged_proposal.proposal())?;
-        Ok(Self {
-            proposal: staged_proposal.proposal(),
-            proposal_reference,
-            sender: *staged_proposal.sender(),
-            proposal_or_ref_type: ProposalOrRefType::Reference,
-        })
-    }
-    /// Returns the `Proposal` as a reference
-    pub(crate) fn proposal(&self) -> &Proposal {
-        self.proposal
-    }
-    /// Returns the `ProposalReference` as a reference
-    pub(crate) fn proposal_reference(&self) -> ProposalReference {
-        self.proposal_reference.clone()
-    }
-    /// Returns the `Sender` as a reference
-    pub(crate) fn sender(&self) -> &Sender {
-        &self.sender
-    }
-}
-
-/// Proposal queue that helps filtering and sorting the Proposals from one
-/// epoch. The Proposals are stored in a `HashMap` which maps Proposal
-/// references to Proposals, such that, given a reference, a proposal can be
-/// accessed efficiently. To enable iteration over the queue in order, the
-/// `ProposalQueue` also contains a vector of `ProposalReference`s.
-#[derive(Default, Debug)]
-pub struct CreationProposalQueue<'a> {
-    /// `proposal_references` holds references to the proposals in the queue and
-    /// determines the order of the queue.
-    proposal_references: Vec<ProposalReference>,
-    /// `queued_proposals` contains the actual proposals in the queue. They are
-    /// stored in a `HashMap` to allow for efficient access to the proposals.
-    queued_proposals: HashMap<ProposalReference, QueuedProposal<'a>>,
-}
-
-impl<'a> CreationProposalQueue<'a> {
     /// Filters received proposals
     ///
     /// 11.2 Commit
@@ -474,25 +309,25 @@ impl<'a> CreationProposalQueue<'a> {
     /// - Check for presence of Removes and delete Updates
     /// - Only keep the last Update
     ///
-    /// Return a [CreationProposalQueue] and a bool that indicates whether Updates for the
+    /// Return a [`ProposalQueue`] and a bool that indicates whether Updates for the
     /// own node were included
     pub(crate) fn filter_proposals(
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         sender_type: SenderType,
-        proposal_store: &'a ProposalStore,
-        inline_proposals: &'a [Proposal],
+        proposal_store: &ProposalStore,
+        inline_proposals: &[Proposal],
         own_index: LeafIndex,
         leaf_count: LeafIndex,
-    ) -> Result<(Self, bool), CreationProposalQueueError> {
-        fn to_usize(leaf_index: LeafIndex) -> Result<usize, CreationProposalQueueError> {
-            usize::try_from(leaf_index).map_err(|_| CreationProposalQueueError::ArchitectureError)
+    ) -> Result<(Self, bool), ProposalQueueError> {
+        fn to_usize(leaf_index: LeafIndex) -> Result<usize, ProposalQueueError> {
+            usize::try_from(leaf_index).map_err(|_| ProposalQueueError::ArchitectureError)
         }
 
         #[derive(Clone)]
-        struct Member<'a> {
-            updates: Vec<QueuedProposal<'a>>,
-            removes: Vec<QueuedProposal<'a>>,
+        struct Member {
+            updates: Vec<QueuedProposal>,
+            removes: Vec<QueuedProposal>,
         }
         let mut members: Vec<Member> = vec![
             Member {
@@ -514,18 +349,23 @@ impl<'a> CreationProposalQueue<'a> {
 
         // Aggregate both proposal types to a common iterator
         // We checked earlier that only proposals can end up here
-        let mut queued_proposal_list = proposal_store
+        let mut queued_proposal_list: Vec<QueuedProposal> = proposal_store
             .proposals()
-            .map(|staged_proposal| {
-                QueuedProposal::from_staged_proposal(ciphersuite, backend, staged_proposal)
-            })
-            .collect::<Result<Vec<QueuedProposal<'a>>, _>>()?;
+            .map(|staged_proposal| staged_proposal.clone())
+            .collect();
 
         queued_proposal_list.extend(
             inline_proposals
                 .iter()
-                .map(|p| QueuedProposal::from_proposal_and_sender(ciphersuite, backend, p, sender))
-                .collect::<Result<Vec<QueuedProposal<'a>>, _>>()?
+                .map(|p| {
+                    QueuedProposal::from_proposal_and_sender(
+                        ciphersuite,
+                        backend,
+                        p.clone(),
+                        sender,
+                    )
+                })
+                .collect::<Result<Vec<QueuedProposal>, _>>()?
                 .into_iter(),
         );
 
@@ -548,7 +388,7 @@ impl<'a> CreationProposalQueue<'a> {
                     let proposal_reference = queued_proposal.proposal_reference();
                     proposal_pool.insert(proposal_reference, queued_proposal);
                 }
-                Proposal::Remove(remove_proposal) => {
+                Proposal::Remove(ref remove_proposal) => {
                     let removed_index = remove_proposal.removed;
                     if removed_index < leaf_count {
                         members[to_usize(removed_index)?]
@@ -596,11 +436,11 @@ impl<'a> CreationProposalQueue<'a> {
             }
         }
         // Only retain `adds` and `valid_proposals`
-        let mut proposal_queue = CreationProposalQueue::default();
+        let mut proposal_queue = ProposalQueue::default();
         for proposal_reference in adds.iter().chain(valid_proposals.iter()) {
             proposal_queue.add(match proposal_pool.get(proposal_reference) {
                 Some(queued_proposal) => queued_proposal.clone(),
-                None => return Err(CreationProposalQueueError::ProposalNotFound),
+                None => return Err(ProposalQueueError::ProposalNotFound),
             });
         }
         Ok((proposal_queue, contains_own_updates))
@@ -616,21 +456,7 @@ impl<'a> CreationProposalQueue<'a> {
         }
         true
     }
-    /// Returns proposal for a given proposal ID
-    pub(crate) fn get(&self, proposal_reference: &ProposalReference) -> Option<&QueuedProposal> {
-        self.queued_proposals.get(proposal_reference)
-    }
-    /// Add a new `QueuedProposal` to the queue
-    pub(crate) fn add(&mut self, queued_proposal: QueuedProposal<'a>) {
-        let proposal_reference = queued_proposal.proposal_reference();
-        // Only add the proposal if it's not already there
-        if let Entry::Vacant(entry) = self.queued_proposals.entry(proposal_reference.clone()) {
-            // Add the proposal reference to ensure the correct order
-            self.proposal_references.push(proposal_reference);
-            // Add the proposal to the queue
-            entry.insert(queued_proposal);
-        }
-    }
+
     /// Returns the list of all proposals that are covered by a Commit
     pub(crate) fn commit_list(&self) -> Vec<ProposalOrRef> {
         // Iterate over the reference to extract the proposals in the right order
@@ -650,19 +476,76 @@ impl<'a> CreationProposalQueue<'a> {
             })
             .collect::<Vec<ProposalOrRef>>()
     }
-    /// Returns an iterator over a list of `QueuedProposal` filtered by proposal
-    /// type
-    pub(crate) fn filtered_by_type(
-        &self,
-        proposal_type: ProposalType,
-    ) -> impl Iterator<Item = &QueuedProposal> {
-        // Iterate over the reference to extract the proposals in the right order
-        self.proposal_references
-            .iter()
-            .filter(move |&pr| match self.queued_proposals.get(pr) {
-                Some(p) => p.proposal.is_type(proposal_type),
-                None => false,
-            })
-            .filter_map(move |reference| self.get(reference))
+}
+
+/// A staged Add proposal
+pub struct QueuedAddProposal<'a> {
+    add_proposal: &'a AddProposal,
+    sender: &'a Sender,
+}
+
+impl<'a> QueuedAddProposal<'a> {
+    /// Returns a reference to the proposal
+    pub fn add_proposal(&self) -> &AddProposal {
+        self.add_proposal
+    }
+
+    /// Returns a reference to the sender
+    pub fn sender(&self) -> &Sender {
+        self.sender
+    }
+}
+
+/// A staged Remove proposal
+pub struct QueuedRemoveProposal<'a> {
+    remove_proposal: &'a RemoveProposal,
+    sender: &'a Sender,
+}
+
+impl<'a> QueuedRemoveProposal<'a> {
+    /// Returns a reference to the proposal
+    pub fn remove_proposal(&self) -> &RemoveProposal {
+        self.remove_proposal
+    }
+
+    /// Returns a reference to the sender
+    pub fn sender(&self) -> &Sender {
+        self.sender
+    }
+}
+
+/// A staged Update proposal
+pub struct QueuedUpdateProposal<'a> {
+    update_proposal: &'a UpdateProposal,
+    sender: &'a Sender,
+}
+
+impl<'a> QueuedUpdateProposal<'a> {
+    /// Returns a reference to the proposal
+    pub fn update_proposal(&self) -> &UpdateProposal {
+        self.update_proposal
+    }
+
+    /// Returns a reference to the sender
+    pub fn sender(&self) -> &Sender {
+        self.sender
+    }
+}
+
+/// A staged PresharedKey proposal
+pub struct QueuedPskProposal<'a> {
+    psk_proposal: &'a PreSharedKeyProposal,
+    sender: &'a Sender,
+}
+
+impl<'a> QueuedPskProposal<'a> {
+    /// Returns a reference to the proposal
+    pub fn psk_proposal(&self) -> &PreSharedKeyProposal {
+        self.psk_proposal
+    }
+
+    /// Returns a reference to the sender
+    pub fn sender(&self) -> &Sender {
+        self.sender
     }
 }

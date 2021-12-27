@@ -74,7 +74,7 @@ fn duplicate_ratchet_tree_extension(
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create StagingProposal"),
     );
 
