@@ -515,14 +515,23 @@ fn test_pending_commit_logic(
     // There should be a pending commit after issueing a proposal.
     assert!(alice_group.pending_commit().is_some());
 
-    // If there is a pending commit, other commit-creating actions should fail.
+    // If there is a pending commit, other commit- or proposal-creating actions
+    // should fail.
     let error = alice_group
-        .add_members(backend, &[bob_key_package])
+        .add_members(backend, &[bob_key_package.clone()])
         .expect_err("no error committing while a commit is pending");
+    assert_eq!(error, MlsGroupError::PendingCommitError);
+    let error = alice_group
+        .propose_add_member(backend, &bob_key_package)
+        .expect_err("no error creating a proposal while a commit is pending");
     assert_eq!(error, MlsGroupError::PendingCommitError);
     let error = alice_group
         .remove_members(backend, &[0])
         .expect_err("no error committing while a commit is pending");
+    assert_eq!(error, MlsGroupError::PendingCommitError);
+    let error = alice_group
+        .propose_remove_member(backend, 0)
+        .expect_err("no error creating a proposal while a commit is pending");
     assert_eq!(error, MlsGroupError::PendingCommitError);
     let error = alice_group
         .commit_to_pending_proposals(backend)
@@ -531,6 +540,10 @@ fn test_pending_commit_logic(
     let error = alice_group
         .self_update(backend, None)
         .expect_err("no error committing while a commit is pending");
+    assert_eq!(error, MlsGroupError::PendingCommitError);
+    let error = alice_group
+        .propose_self_update(backend, None)
+        .expect_err("no error creating a proposal while a commit is pending");
     assert_eq!(error, MlsGroupError::PendingCommitError);
 
     // Clearing the pending commit should actually clear it.
