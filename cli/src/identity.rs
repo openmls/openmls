@@ -13,7 +13,7 @@ pub struct Identity {
 /// the keypackage as the key.
 fn store_key_package_bundle_in_keystore(
     crypto_backend: &OpenMlsRustCrypto,
-    key_package_bundle: KeyPackageBundle,
+    key_package_bundle: &KeyPackageBundle,
 ) {
     crypto_backend
         .key_store()
@@ -22,7 +22,7 @@ fn store_key_package_bundle_in_keystore(
                 .key_package()
                 .hash(crypto_backend)
                 .expect("Failed to hash KeyPackage."),
-            &key_package_bundle,
+            key_package_bundle,
         )
         .expect("Failed to store KeyPackage in keystore.");
 }
@@ -31,13 +31,13 @@ fn store_key_package_bundle_in_keystore(
 /// signature_key of the Credential as the key.
 fn store_credential_bundle_in_keystore(
     crypto_backend: &OpenMlsRustCrypto,
-    credential_bundle: CredentialBundle,
+    credential_bundle: &CredentialBundle,
 ) {
     crypto_backend
         .key_store()
         .store(
             &credential_bundle.credential().signature_key(),
-            &credential_bundle,
+            credential_bundle,
         )
         .expect("Failed to store CredentialBundle in keystore.");
 }
@@ -54,8 +54,8 @@ impl Identity {
         let key_package_bundle =
             KeyPackageBundle::new(&[ciphersuite], &credential_bundle, crypto, vec![]).unwrap();
 
-        store_key_package_bundle_in_keystore(crypto, key_package_bundle.clone());
-        store_credential_bundle_in_keystore(crypto, credential_bundle.clone());
+        store_key_package_bundle_in_keystore(crypto, &key_package_bundle);
+        store_credential_bundle_in_keystore(crypto, &credential_bundle);
         Self {
             kpb: key_package_bundle,
             credential: credential_bundle,
@@ -69,7 +69,7 @@ impl Identity {
         let key_package_bundle =
             KeyPackageBundle::new(&[ciphersuite], &self.credential, crypto, vec![]).unwrap();
 
-        store_key_package_bundle_in_keystore(crypto, key_package_bundle.clone());
+        store_key_package_bundle_in_keystore(crypto, &key_package_bundle);
 
         replace(&mut self.kpb, key_package_bundle)
     }

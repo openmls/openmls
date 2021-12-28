@@ -87,16 +87,12 @@ impl User {
     }
 
     /// Return the last 100 messages sent to the group.
-    pub fn read_msgs(&self, group: String) -> Result<Option<Vec<String>>, String> {
+    pub fn read_msgs(&self, group_name: String) -> Result<Option<Vec<String>>, String> {
         let groups = self.groups.borrow();
-        let group = match groups.get(group.as_bytes()) {
-            Some(g) => g,
-            None => return Err("Unknown group".to_string()),
-        };
-        if let Some(messages) = group.conversation.get(100) {
-            return Ok(Some(messages.to_vec()));
-        };
-        Ok(None)
+        groups.get(group_name.as_bytes()).map_or_else(
+            || Err("Unknown group".to_string()),
+            |g| Ok(g.conversation.get(100).map(|messages| messages.to_vec())),
+        )
     }
 
     /// Send an application message to the group.
@@ -107,14 +103,11 @@ impl User {
             None => return Err("Unknown group".to_string()),
         };
 
-        let message_out = match group
+        let message_out = group
             .mls_group
             .borrow_mut()
             .create_message(&self.crypto, msg.as_bytes())
-        {
-            Ok(m) => m,
-            Err(e) => return Err(format!("{}", e)),
-        };
+            .map_err(|e| format!("{}", e))?;
 
         let mls_ciphertext = match message_out {
             MlsMessageOut::Ciphertext(mls_ctxt_ptr) => *mls_ctxt_ptr,
@@ -154,13 +147,8 @@ impl User {
                 Message::MlsMessage(message) => {
                     let mut groups = self.groups.borrow_mut();
 
-                    // XXX: This is probably not the cleanest way to get group_id without eating the
-                    // `message`.
-                    let message_copy = message.clone();
-                    let group_id = message_copy.group_id();
-
-                    let mut group = match groups.get(group_id) {
-                        Some(g) => g.mls_group.borrow_mut(),
+                    let group = match groups.get_mut(message.group_id()) {
+                        Some(g) => g,
                         None => {
                             log::error!(
                                 "Error getting group {:?} for a message. Dropping message.",
@@ -169,10 +157,12 @@ impl User {
                             continue;
                         }
                     };
+                    let mut mls_group = group.mls_group.borrow_mut();
+
                     let msg = match message {
                         DsMlsMessage::Ciphertext(ctxt) => {
                             let unverified_message =
-                                match group.parse_message(ctxt.into(), &self.crypto) {
+                                match mls_group.parse_message(ctxt.into(), &self.crypto) {
                                     Ok(msg) => msg,
                                     Err(e) => {
                                         log::error!(
@@ -183,8 +173,7 @@ impl User {
                                     }
                                 };
 
-                            // XXX: Should we supply a signature_key here?
-                            let processed_message = match group.process_unverified_message(
+                            let processed_message = match mls_group.process_unverified_message(
                                 unverified_message,
                                 None,
                                 &self.crypto,
@@ -200,7 +189,6 @@ impl User {
                             };
                             processed_message
                         }
-                        // XXX: Should we support MlsPlaintext messages?
                         DsMlsMessage::Plaintext(msg) => {
                             log::error!(
                                 "Received Plaintext message: {:?} -  Dropping message.",
@@ -209,12 +197,6 @@ impl User {
                             continue;
                         }
                     };
-
-                    // Redefine group to be the wrapper rather the MlsGroup.
-                    drop(group);
-                    let group = groups
-                        .get_mut(group_id)
-                        .expect("Failed to get group for message (after getting it earlier)!");
 
                     match msg {
                         ProcessedMessage::ApplicationMessage(application_message) => {
@@ -228,12 +210,10 @@ impl User {
                             group.conversation.add(application_message);
                         }
                         ProcessedMessage::ProposalMessage(_proposal_ptr) => {
-                            // XXX: Do we need to do anything here?
+                            // intentionally left blank.
                         }
                         ProcessedMessage::StagedCommitMessage(commit_ptr) => {
-                            group
-                                .mls_group
-                                .borrow_mut()
+                            mls_group
                                 .merge_staged_commit(*commit_ptr)
                                 .expect("Failed to merge staged commit!");
                         }
@@ -329,14 +309,11 @@ impl User {
             None => return Err(format!("No group with name {} known.", group)),
         };
 
-        let (out_messages, welcome) = match group
+        let (out_messages, welcome) = group
             .mls_group
             .borrow_mut()
             .add_members(&self.crypto, &[joiner_key_package])
-        {
-            Ok((out_msgs, welcome)) => (out_msgs, welcome),
-            Err(e) => return Err(format!("Failed to add member to group - {}", e)),
-        };
+            .map_err(|e| format!("Failed to add member to group - {}", e))?;
 
         // First, process the invitation on our end.
         let unverified_message = group
@@ -371,10 +348,11 @@ impl User {
         log::trace!("Sending proposal");
         let group = groups.get_mut(group_id).unwrap(); // XXX: not cool.
         let group_recipients = self.recipients(group);
-        // XXX: Should we support MlsPlaintext messages?
         let out_ds_messages = match out_messages {
             MlsMessageOut::Ciphertext(msg) => DsMlsMessage::Ciphertext(*msg),
-            MlsMessageOut::Plaintext(_msg) => todo!(),
+            MlsMessageOut::Plaintext(_msg) => {
+                unimplemented!("Does not support Plaintext messages.")
+            }
         };
         // TODO #642: Update the delivery service to accept `MlsMessageOut`.
         let msg = GroupMessage::new(out_ds_messages, &group_recipients);

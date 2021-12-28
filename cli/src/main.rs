@@ -194,6 +194,10 @@ fn basic_test() {
     // Reset the server before doing anything for testing.
     backend::Backend::default().reset_server();
 
+    const MESSAGE_1: &str = "Thanks for adding me Client1.";
+    const MESSAGE_2: &str = "Welcome Client3.";
+    const MESSAGE_3: &str = "Thanks so much for the warm welcome! 😊";
+
     // Create one client
     let mut client_1 = user::User::new("Client1".to_string());
 
@@ -221,10 +225,7 @@ fn basic_test() {
 
     // Client 2 sends a message.
     client_2
-        .send_msg(
-            "Thanks for adding me Client1.",
-            "MLS Discussions".to_string(),
-        )
+        .send_msg(MESSAGE_1, "MLS Discussions".to_string())
         .unwrap();
 
     // Client 1 retrieves messages.
@@ -233,7 +234,7 @@ fn basic_test() {
     // Check that Client 1 received the message
     assert_eq!(
         client_1.read_msgs("MLS Discussions".to_string()).unwrap(),
-        Some(vec!["Thanks for adding me Client1.".into()])
+        Some(vec![MESSAGE_1.into()])
     );
 
     // Client 2 adds Client 3 to the group.
@@ -248,7 +249,7 @@ fn basic_test() {
 
     // Client 1 sends a message.
     client_1
-        .send_msg("Welcome Client3.", "MLS Discussions".to_string())
+        .send_msg(MESSAGE_2, "MLS Discussions".to_string())
         .unwrap();
 
     // Everyone updates.
@@ -259,19 +260,16 @@ fn basic_test() {
     // Check that Client 2 and Client 3 received the message
     assert_eq!(
         client_2.read_msgs("MLS Discussions".to_string()).unwrap(),
-        Some(vec!["Welcome Client3.".into()])
+        Some(vec![MESSAGE_2.into()])
     );
     assert_eq!(
         client_3.read_msgs("MLS Discussions".to_string()).unwrap(),
-        Some(vec!["Welcome Client3.".into()])
+        Some(vec![MESSAGE_2.into()])
     );
 
     // Client 3 sends a message.
     client_3
-        .send_msg(
-            "Thanks so much for the warm welcome! 😊",
-            "MLS Discussions".to_string(),
-        )
+        .send_msg(MESSAGE_3, "MLS Discussions".to_string())
         .unwrap();
 
     // Everyone updates.
@@ -282,16 +280,10 @@ fn basic_test() {
     // Check that Client 1 and Client 2 received the message
     assert_eq!(
         client_1.read_msgs("MLS Discussions".to_string()).unwrap(),
-        Some(vec![
-            "Thanks for adding me Client1.".into(),
-            "Thanks so much for the warm welcome! 😊".into()
-        ])
+        Some(vec![MESSAGE_1.into(), MESSAGE_3.into()])
     );
     assert_eq!(
         client_2.read_msgs("MLS Discussions".to_string()).unwrap(),
-        Some(vec![
-            "Welcome Client3.".into(),
-            "Thanks so much for the warm welcome! 😊".into()
-        ])
+        Some(vec![MESSAGE_2.into(), MESSAGE_3.into()])
     );
 }
