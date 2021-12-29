@@ -1,6 +1,6 @@
 on: [push, pull_request]
 
-name: Clippy & format check
+name: Clippy
 
 jobs:
   lint:
@@ -16,25 +16,8 @@ jobs:
           profile: minimal
           toolchain: stable
           components: clippy
-      - name: Clippy warnings
+      - name: Clippy errors & warnings
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --manifest-path openmls/Cargo.toml
-  checks:
-    runs-on: ubuntu-latest
-    name: cargo fmt
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-      - name: Stable with rustfmt
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          components: rustfmt
-      - name: Cargo fmt
-        run: |
-          cd openmls
-          cargo fmt -- --check
