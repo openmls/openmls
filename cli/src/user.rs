@@ -111,7 +111,9 @@ impl User {
 
         let mls_ciphertext = match message_out {
             MlsMessageOut::Ciphertext(mls_ctxt_ptr) => *mls_ctxt_ptr,
-            _ => return Err("Expected MlsCiphertext, found MlsPlaintext!".into()),
+            MlsMessageOut::Plaintext(_) => {
+                return Err("Expected MlsCiphertext, found MlsPlaintext!".into())
+            }
         };
 
         // TODO #642: Update the delivery service to accept `MlsMessageOut`.
