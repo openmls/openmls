@@ -213,7 +213,7 @@ impl User {
                             let mut proposal_store = ProposalStore::new();
                             for proposal in &group.pending_proposals {
                                 proposal_store.add(
-                                    StagedProposal::from_mls_plaintext(
+                                    QueuedProposal::from_mls_plaintext(
                                         Config::ciphersuite(CIPHERSUITE)
                                             .map_err(|e| format!("{}", e))?,
                                         &self.crypto,
@@ -335,8 +335,8 @@ impl User {
             .borrow()
             .create_add_proposal(framing_parameters, credentials, key_package, &self.crypto)
             .expect("Could not create proposal.");
-        let proposal_store = ProposalStore::from_staged_proposal(
-            StagedProposal::from_mls_plaintext(
+        let proposal_store = ProposalStore::from_queued_proposal(
+            QueuedProposal::from_mls_plaintext(
                 Config::ciphersuite(CIPHERSUITE).map_err(|e| format!("{}", e))?,
                 &self.crypto,
                 add_proposal.clone(),

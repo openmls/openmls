@@ -35,7 +35,7 @@
 //! ```
 
 use crate::{schedule::MessageSecrets, tree::sender_ratchet::SenderRatchetConfiguration};
-use core_group::{proposals::StagedProposal, staged_commit::StagedCommit};
+use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::ciphersuite::signable::Verifiable;
@@ -327,11 +327,11 @@ impl VerifiedExternalMessage {
 }
 
 /// Message that contains messages that are syntactically and semantically correct.
-/// [StagedCommit] and [StagedProposal] can be inspected for authorization purposes.
+/// [StagedCommit] and [QueuedProposal] can be inspected for authorization purposes.
 #[derive(Debug)]
 pub enum ProcessedMessage {
     ApplicationMessage(ApplicationMessage),
-    ProposalMessage(Box<StagedProposal>),
+    ProposalMessage(Box<QueuedProposal>),
     StagedCommitMessage(Box<StagedCommit>),
 }
 

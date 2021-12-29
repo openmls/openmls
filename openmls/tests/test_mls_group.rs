@@ -321,14 +321,14 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             // TODO #575: Replace this with the adequate API call
             assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
         } else {
-            unreachable!("Expected a StagedProposal.");
+            unreachable!("Expected a QueuedProposal.");
         }
 
         // Merge Commit
         if let ProcessedMessage::ProposalMessage(staged_proposal) = bob_processed_message {
             bob_group.store_pending_proposal(*staged_proposal);
         } else {
-            unreachable!("Expected a StagedProposal.");
+            unreachable!("Expected a QueuedProposal.");
         }
 
         let (queued_message, _welcome_option) =
@@ -694,7 +694,7 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             // TODO #575: Replace this with the adequate API call
             assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
         } else {
-            unreachable!("Expected a StagedProposal.");
+            unreachable!("Expected a QueuedProposal.");
         }
 
         let unverified_message = charlie_group
@@ -720,7 +720,7 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             // TODO #575: Replace this with the adequate API call
             assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
         } else {
-            unreachable!("Expected a StagedProposal.");
+            unreachable!("Expected a QueuedProposal.");
         }
 
         // Create AddProposal and process it
@@ -749,7 +749,7 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             // Store proposal
             alice_group.store_pending_proposal(*staged_proposal);
         } else {
-            unreachable!("Expected a StagedProposal.");
+            unreachable!("Expected a QueuedProposal.");
         }
 
         let unverified_message = charlie_group
@@ -774,7 +774,7 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             // Store proposal
             charlie_group.store_pending_proposal(*staged_proposal);
         } else {
-            unreachable!("Expected a StagedProposal.");
+            unreachable!("Expected a QueuedProposal.");
         }
 
         // Commit to the proposals and process it
@@ -899,7 +899,7 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             // Store proposal
             alice_group.store_pending_proposal(*staged_proposal);
         } else {
-            unreachable!("Expected a StagedProposal.");
+            unreachable!("Expected a QueuedProposal.");
         }
 
         // Store proposal
@@ -907,7 +907,7 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             // Store proposal
             bob_group.store_pending_proposal(*staged_proposal);
         } else {
-            unreachable!("Expected a StagedProposal.");
+            unreachable!("Expected a QueuedProposal.");
         }
 
         // Should fail because you cannot remove yourself from a group
