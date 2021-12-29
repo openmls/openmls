@@ -250,7 +250,7 @@ impl MlsGroupTestSetup {
                     .expect("An unexpected error occurred.")
                     .read()
                     .expect("An unexpected error occurred.");
-                member.receive_messages_for_group(&message)
+                member.receive_messages_for_group(&message, sender_id)
             })
             .collect();
 

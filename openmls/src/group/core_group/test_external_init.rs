@@ -88,18 +88,8 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
         .create_commit(params, backend)
         .expect("Error creating commit");
 
-    let staged_commit = group_alice
-        .stage_commit(
-            &create_commit_result.commit,
-            &proposal_store,
-            &[create_commit_result
-                .key_package_bundle_option
-                .expect("no kpb returned after self-update")],
-            backend,
-        )
-        .expect("error staging commit");
     group_alice
-        .merge_commit(staged_commit)
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging commit");
     let ratchet_tree = group_alice.treesync().export_nodes();
 

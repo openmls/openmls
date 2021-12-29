@@ -10,14 +10,14 @@ impl MlsGroup {
     ///
     /// If successful, it returns a tuple of [`MlsMessageOut`] and an optional [`Welcome`].
     /// The [Welcome] is [Some] when the queue of pending proposals contained add proposals.
+    ///
+    /// Returns an error if there is a pending commit.
     pub fn self_update(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         key_package_bundle_option: Option<KeyPackageBundle>,
     ) -> Result<(MlsMessageOut, Option<Welcome>), MlsGroupError> {
-        if !self.active {
-            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
-        }
+        self.pending_commit_or_inactive()?;
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
@@ -65,6 +65,9 @@ impl MlsGroup {
         // the configuration
         let mls_message = self.plaintext_to_mls_message(create_commit_result.commit, backend)?;
 
+        // Store the staged commit as the current `pending_commit`
+        self.pending_commit = Some(create_commit_result.staged_commit);
+
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
 
@@ -77,9 +80,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
         key_package_bundle_option: Option<KeyPackageBundle>,
     ) -> Result<MlsMessageOut, MlsGroupError> {
-        if !self.active {
-            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
-        }
+        self.pending_commit_or_inactive()?;
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend

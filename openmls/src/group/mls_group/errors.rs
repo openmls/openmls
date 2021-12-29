@@ -20,6 +20,8 @@ implement_error! {
             NoMatchingKeyPackageBundle = "Couldn't find a `KeyPackageBundle` in the `KeyStore` that matches the given `KeyPackage` hash.",
             PoisonedCredentialBundle = "Tried to access a poisoned `CredentialBundle`. See [`PoisonError`](`std::sync::PoisonError`) for details.",
             NoSignatureKey = "No signature key was available to verify the message signature.",
+            PendingCommitError = "Can't create a new commit while another commit is still pending. Please clear or merge the pending commit before creating a new one.",
+            NoPendingCommit = "There is no pending commit that can be merged.",
             KeyStoreError = "Error performing key store operation.",
         }
         Complex {

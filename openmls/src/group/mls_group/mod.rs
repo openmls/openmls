@@ -38,6 +38,7 @@ use ser::*;
 
 use super::past_secrets::MessageSecretsStore;
 use super::proposals::{ProposalStore, QueuedProposal};
+use super::staged_commit::StagedCommit;
 
 /// A `MlsGroup` represents an [CoreGroup] with
 /// an easier, high-level API designed to be used in production. The API exposes
@@ -96,6 +97,8 @@ pub struct MlsGroup {
     // is set to `InnerState::Changed` whenever an the internal group state is change and is set to
     // `InnerState::Persisted` once the state has been persisted.
     state_changed: InnerState,
+    // This field is populated when a commit is created. It can be inspected or merged. If a commit is merged that does not correspond to the `StagedCommit` in this field, it is cleared.
+    pending_commit: Option<StagedCommit>,
 }
 
 impl MlsGroup {
@@ -158,6 +161,23 @@ impl MlsGroup {
     /// Returns an `Iterator` over staged proposals.
     pub fn pending_proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
         self.proposal_store.proposals()
+    }
+
+    /// Returns a reference to the [`StagedCommit`] of the most recently created
+    /// commit. If there was no commit created in this epoch, either because
+    /// this commit or another commit was merged, it returns `None`.
+    pub fn pending_commit(&self) -> Option<&StagedCommit> {
+        self.pending_commit.as_ref()
+    }
+
+    /// Sets the `pending_commit` to `None`.
+    ///
+    /// Use with caution! This function should only be used if it is clear that
+    /// the pending commit will not be used in the group. In particular, if a
+    /// pending commit is later accepted by the group, this client will lack the
+    /// key material to encrypt or decrypt group messages.
+    pub fn clear_pending_commit(&mut self) {
+        self.pending_commit = None
     }
 
     // === Load & save ===
@@ -241,6 +261,19 @@ impl MlsGroup {
     /// Group framing parameters
     fn framing_parameters(&self) -> FramingParameters {
         FramingParameters::new(&self.aad, self.mls_group_config.wire_format)
+    }
+
+    /// Check if the group is inactive or if there is a pending commit.
+    fn pending_commit_or_inactive(&self) -> Result<(), MlsGroupError> {
+        if !self.active {
+            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
+        }
+
+        if self.pending_commit.is_some() {
+            return Err(MlsGroupError::PendingCommitError);
+        }
+
+        Ok(())
     }
 }
 

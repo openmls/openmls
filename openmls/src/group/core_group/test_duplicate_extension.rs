@@ -88,12 +88,9 @@ fn duplicate_ratchet_tree_extension(
         .create_commit(params, backend)
         .expect("Error creating commit");
 
-    let staged_commit = alice_group
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
-        .expect("error staging commit");
     alice_group
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging pending commit");
 
     let mut welcome = create_commit_result
         .welcome_option
