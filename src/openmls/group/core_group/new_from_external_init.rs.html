@@ -187,7 +187,7 @@
         <span class="comment">// this group. Note that this is not strictly necessary. But there&#39;s</span>
         <span class="comment">// currently no other mechanism to enable the extension.</span>
         <span class="kw">let</span> <span class="ident">extension_tree_option</span> <span class="op">=</span>
-            <span class="ident">try_nodes_from_extensions</span>(<span class="kw-2">&amp;</span><span class="ident">verifiable_public_group_state</span>.<span class="ident">other_extensions</span>())<span class="question-mark">?</span>;
+            <span class="ident">try_nodes_from_extensions</span>(<span class="ident">verifiable_public_group_state</span>.<span class="ident">other_extensions</span>())<span class="question-mark">?</span>;
         <span class="kw">let</span> (<span class="ident">nodes</span>, <span class="ident">enable_ratchet_tree_extension</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">extension_tree_option</span> {
             <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">nodes</span>) =&gt; (<span class="ident">nodes</span>, <span class="bool-val">true</span>),
             <span class="prelude-val">None</span> =&gt; <span class="kw">match</span> <span class="ident">tree_option</span>.<span class="ident">as_ref</span>() {
