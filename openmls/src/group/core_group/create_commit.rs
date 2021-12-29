@@ -167,9 +167,7 @@ impl CoreGroup {
         let joiner_secret = JoinerSecret::new(
             backend,
             path_processing_result.commit_secret,
-            self.group_epoch_secrets()
-                .init_secret()
-                .ok_or(CoreGroupError::InitSecretNotFound)?,
+            self.group_epoch_secrets().init_secret(),
         )?;
 
         // Create group secrets for later use, so we can afterwards consume the
@@ -198,7 +196,7 @@ impl CoreGroup {
 
         let welcome_secret = key_schedule.welcome(backend)?;
         key_schedule.add_context(backend, &serialized_provisional_group_context)?;
-        let provisional_epoch_secrets = key_schedule.epoch_secrets(backend, false)?;
+        let provisional_epoch_secrets = key_schedule.epoch_secrets(backend)?;
 
         // Calculate the confirmation tag
         let confirmation_tag = provisional_epoch_secrets

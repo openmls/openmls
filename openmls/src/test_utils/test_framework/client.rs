@@ -132,23 +132,36 @@ impl Client {
     /// Have the client process the given messages. Returns an error if an error
     /// occurs during message processing or if no group exists for one of the
     /// messages.
-    pub fn receive_messages_for_group(&self, message: &MlsMessageIn) -> Result<(), ClientError> {
+    pub fn receive_messages_for_group(
+        &self,
+        message: &MlsMessageIn,
+        sender_id: &[u8],
+    ) -> Result<(), ClientError> {
         let mut group_states = self.groups.write().expect("An unexpected error occurred.");
         let group_id = message.group_id();
         let group_state = group_states
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
-        let unverified_message = group_state.parse_message(message.clone(), &self.crypto)?;
-        let processed_message =
-            group_state.process_unverified_message(unverified_message, None, &self.crypto)?;
-
-        match processed_message {
-            ProcessedMessage::ApplicationMessage(_) => {}
-            ProcessedMessage::ProposalMessage(staged_proposal) => {
-                group_state.store_pending_proposal(*staged_proposal);
+        if sender_id == &self.identity && message.content_type() == ContentType::Commit {
+            group_state.merge_pending_commit()?
+        } else {
+            if message.content_type() == ContentType::Commit {
+                // Clear any potential pending commits.
+                group_state.clear_pending_commit();
             }
-            ProcessedMessage::StagedCommitMessage(staged_commit) => {
-                group_state.merge_staged_commit(*staged_commit)?;
+            // Process the message.
+            let unverified_message = group_state.parse_message(message.clone(), &self.crypto)?;
+            let processed_message =
+                group_state.process_unverified_message(unverified_message, None, &self.crypto)?;
+
+            match processed_message {
+                ProcessedMessage::ApplicationMessage(_) => {}
+                ProcessedMessage::ProposalMessage(staged_proposal) => {
+                    group_state.store_pending_proposal(*staged_proposal);
+                }
+                ProcessedMessage::StagedCommitMessage(staged_commit) => {
+                    group_state.merge_staged_commit(*staged_commit)?;
+                }
             }
         }
 

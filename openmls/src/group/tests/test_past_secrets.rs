@@ -110,25 +110,13 @@ fn test_past_secrets_in_group(
         .expect("An unexpected error occurred.");
 
         // Alice adds Bob
-        let (message, welcome) = alice_group
+        let (_message, welcome) = alice_group
             .add_members(backend, &[bob_key_package])
             .expect("An unexpected error occurred.");
 
-        let unverified_message = alice_group
-            .parse_message(message.into(), backend)
-            .expect("An unexpected error occurred.");
-
-        let alice_processed_message = alice_group
-            .process_unverified_message(unverified_message, None, backend)
-            .expect("An unexpected error occurred.");
-
-        if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
-            alice_group
-                .merge_staged_commit(*staged_commit)
-                .expect("Could not merge StagedCommit");
-        } else {
-            unreachable!("Expected a StagedCommit.");
-        }
+        alice_group
+            .merge_pending_commit()
+            .expect("error merging pending commit");
 
         let mut bob_group = MlsGroup::new_from_welcome(
             backend,
@@ -156,21 +144,9 @@ fn test_past_secrets_in_group(
 
             update_commits.push(message.clone());
 
-            let unverified_message = alice_group
-                .parse_message(message.into(), backend)
-                .expect("An unexpected error occurred.");
-
-            let alice_processed_message = alice_group
-                .process_unverified_message(unverified_message, None, backend)
-                .expect("An unexpected error occurred.");
-
-            if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
-                alice_group
-                    .merge_staged_commit(*staged_commit)
-                    .expect("Could not merge StagedCommit");
-            } else {
-                unreachable!("Expected a StagedCommit.");
-            }
+            alice_group
+                .merge_pending_commit()
+                .expect("error merging pending commit");
         }
 
         // Bob processes all update commits

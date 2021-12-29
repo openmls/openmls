@@ -16,14 +16,14 @@ impl MlsGroup {
     /// update of the committer's leaf [KeyPackage].
     ///
     /// If successful, it returns a tuple of [MlsMessageOut] and [Welcome].
+    ///
+    /// Returns an error if there is a pending commit.
     pub fn add_members(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         key_packages: &[KeyPackage],
     ) -> Result<(MlsMessageOut, Welcome), MlsGroupError> {
-        if !self.active {
-            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
-        }
+        self.pending_commit_or_inactive()?;
 
         if key_packages.is_empty() {
             return Err(MlsGroupError::EmptyInput(EmptyInputError::AddMembers));
@@ -74,6 +74,9 @@ impl MlsGroup {
         // the configuration
         let mls_messages = self.plaintext_to_mls_message(create_commit_result.commit, backend)?;
 
+        // Store the staged commit as the current `pending_commit`
+        self.pending_commit = Some(create_commit_result.staged_commit);
+
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
 
@@ -86,14 +89,14 @@ impl MlsGroup {
     ///
     /// If successful, it returns a tuple of [`MlsMessageOut`] and an optional [`Welcome`].
     /// The [Welcome] is [Some] when the queue of pending proposals contained add proposals
+    ///
+    /// Returns an error if there is a pending commit.
     pub fn remove_members(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         members: &[usize],
     ) -> Result<(MlsMessageOut, Option<Welcome>), MlsGroupError> {
-        if !self.active {
-            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
-        }
+        self.pending_commit_or_inactive()?;
 
         if members.is_empty() {
             return Err(MlsGroupError::EmptyInput(EmptyInputError::RemoveMembers));
@@ -138,6 +141,9 @@ impl MlsGroup {
         // the configuration
         let mls_message = self.plaintext_to_mls_message(create_commit_result.commit, backend)?;
 
+        // Store the staged commit as the current `pending_commit`
+        self.pending_commit = Some(create_commit_result.staged_commit);
+
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
 
@@ -145,15 +151,15 @@ impl MlsGroup {
     }
 
     /// Creates proposals to add members to the group
+    ///
+    /// Returns an error if there is a pending commit.
     pub fn propose_add_member(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
 
         key_package: &KeyPackage,
     ) -> Result<MlsMessageOut, MlsGroupError> {
-        if !self.active {
-            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
-        }
+        self.pending_commit_or_inactive()?;
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
@@ -177,6 +183,8 @@ impl MlsGroup {
     }
 
     /// Creates proposals to remove members from the group
+    ///
+    /// Returns an error if there is a pending commit.
     pub fn propose_remove_member(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -184,6 +192,10 @@ impl MlsGroup {
     ) -> Result<MlsMessageOut, MlsGroupError> {
         if !self.active {
             return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
+        }
+
+        if self.pending_commit.is_some() {
+            return Err(MlsGroupError::PendingCommitError);
         }
 
         let credential = self.credential()?;
@@ -208,13 +220,13 @@ impl MlsGroup {
     }
 
     /// Leave the group
+    ///
+    /// Returns an error if there is a pending commit.
     pub fn leave_group(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsMessageOut, MlsGroupError> {
-        if !self.active {
-            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
-        }
+        self.pending_commit_or_inactive()?;
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend

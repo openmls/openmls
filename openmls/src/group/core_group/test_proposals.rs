@@ -429,12 +429,9 @@ fn test_group_context_extensions(
 
     log::info!(" >>> Staging & merging commit ...");
 
-    let staged_commit = alice_group
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
-        .expect("error staging commit");
     alice_group
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging own staged commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
     // Make sure that Bob can join the group with the required extension in place
@@ -532,12 +529,9 @@ fn test_group_context_extension_proposal_fails(
 
     log::info!(" >>> Staging & merging commit ...");
 
-    let staged_commit = alice_group
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
-        .expect("error staging commit");
     alice_group
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging pending commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
     let bob_group = CoreGroup::new_from_welcome(
@@ -636,12 +630,10 @@ fn test_group_context_extension_proposal(
 
     log::info!(" >>> Staging & merging commit ...");
 
-    let staged_commit = alice_group
-        .stage_commit(&create_commit_results.commit, &proposal_store, &[], backend)
-        .expect("error staging commit");
     alice_group
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
+        .merge_commit(create_commit_results.staged_commit)
+        .expect("error merging pending commit");
+
     let ratchet_tree = alice_group.treesync().export_nodes();
 
     let mut bob_group = CoreGroup::new_from_welcome(
@@ -685,19 +677,16 @@ fn test_group_context_extension_proposal(
 
     log::info!(" >>> Staging & merging commit ...");
 
-    let staged_commit = alice_group
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
-        .expect("error staging commit");
-    alice_group
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
-
     let staged_commit = bob_group
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     bob_group
         .merge_commit(staged_commit)
         .expect("error merging commit");
+
+    alice_group
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging pending commit");
 
     assert_eq!(
         alice_group

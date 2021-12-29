@@ -18,6 +18,7 @@
 //! return a [`Result`] since they may throw a
 //! [`LibraryError`](TreeSyncDiffError::LibraryError).
 use openmls_traits::{types::CryptoError, OpenMlsCryptoProvider};
+use serde::{Deserialize, Serialize};
 
 use std::{collections::HashSet, convert::TryFrom};
 
@@ -48,7 +49,7 @@ pub(crate) type UpdatePathResult = (KeyPackageBundle, Vec<PlainUpdatePathNode>, 
 
 /// The [`StagedTreeSyncDiff`] can be created from a [`TreeSyncDiff`], examined
 /// and later merged into a [`TreeSync`] instance.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct StagedTreeSyncDiff {
     own_leaf_index: LeafIndex,
     diff: StagedMlsBinaryTreeDiff<TreeSyncNode>,
@@ -230,61 +231,15 @@ impl<'a> TreeSyncDiff<'a> {
         )?)
     }
 
-    /// Given a [`KeyPackageBundle`], use it to create a path and apply it to
-    /// the diff. This function is meant to be used with a [`KeyPackageBundle`]
-    /// that has been returned by a call to [`Self::apply_own_update_path()`].
-    ///
-    /// Returns an error if the `parent_hash` of the given [`KeyPackageBundle`]
-    /// does not match the one computed from the generated path.
-    pub(crate) fn re_apply_own_update_path(
-        &mut self,
-        backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
-        key_package_bundle: &KeyPackageBundle,
-    ) -> Result<CommitSecret, TreeSyncDiffError> {
-        let leaf_secret = key_package_bundle.leaf_secret().clone();
-
-        // The `update_path_nodes` are not needed here, because we're applying
-        // our own commit rather then creating one, for which we would have to
-        // encrypt the update path nodes returned here.
-        let (path, _update_path_nodes, commit_secret) =
-            self.derive_path_from_leaf_secret(backend, ciphersuite, leaf_secret)?;
-
-        let parent_hash =
-            self.process_update_path(backend, ciphersuite, self.own_leaf_index, path)?;
-
-        let parent_hash_ext = key_package_bundle
-            .key_package()
-            .extension_with_type(ExtensionType::ParentHash)
-            .ok_or(TreeSyncDiffError::MissingParentHash)?;
-
-        // We just filtered by extensiontype, so this should be a parrent hash extension.
-        let kpb_parent_hash = parent_hash_ext
-            .as_parent_hash_extension()
-            .map_err(|_| TreeSyncDiffError::LibraryError)?
-            .parent_hash();
-
-        // Double-check that the computed parent hash and that of the given KPB
-        // match.
-        if kpb_parent_hash != parent_hash {
-            return Err(TreeSyncDiffError::ParentHashMismatch);
-        }
-
-        // Prepare our own leaf:
-        let node = Node::LeafNode(key_package_bundle.clone().into());
-
-        // Replace the leaf.
-        self.diff.replace_leaf(self.own_leaf_index, node.into())?;
-        Ok(commit_secret)
-    }
-
     /// Given a [`KeyPackageBundlePayload`], use it to create a new path and
     /// apply it to this diff. The given [`CredentialBundle`] reference is used
     /// to sign the [`KeyPackageBundlePayload`] after updating its parent hash.
     ///
     /// Returns the resulting [`KeyPackageBundle`] for later use with
     /// [`Self::re_apply_own_update_path()`], as well as the [`CommitSecret`]
-    /// and the path resulting from the path derivation.
+    /// and the path resulting from the path derivation. FIXME: There is no need
+    /// to return a KPB here, as we're either going to merge the commit or drop
+    /// it entirely.
     pub(crate) fn apply_own_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -303,7 +258,7 @@ impl<'a> TreeSyncDiff<'a> {
         key_package_bundle_payload.update_parent_hash(&parent_hash);
         let key_package_bundle = key_package_bundle_payload.sign(backend, credential_bundle)?;
 
-        let node = Node::LeafNode(key_package_bundle.key_package().clone().into());
+        let node = Node::LeafNode(key_package_bundle.clone().into());
 
         // Replace the leaf.
         self.diff.replace_leaf(self.own_leaf_index, node.into())?;

@@ -20,11 +20,10 @@ use tls_codec::Error as TlsCodecError;
 implement_error! {
     pub enum CoreGroupError {
         Simple {
-            InitSecretNotFound =
-                "Missing init secret when creating commit.",
             MissingKeyPackageBundle =
                 "Couldn't find KeyPackageBundle corresponding to own update proposal.",
             NoSignatureKey = "No signature key was found.",
+            OwnCommitError = "Can't process a commit created by the owner of the group. Please merge the [`StagedCommit`] returned by `create_commit` instead.",
             LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
         }
         Complex {
@@ -203,8 +202,6 @@ implement_error! {
                 "The proposal queue is missing a proposal for the commit.",
             OwnKeyNotFound =
                 "Missing own key to apply proposal.",
-            InitSecretNotFound =
-                "Missing init secret to apply proposal.",
         }
         Complex {
             PlaintextSignatureFailure(VerificationError) =
