@@ -11,7 +11,7 @@ use crate::{
 
 use super::{
     create_commit_params::{CommitType, CreateCommitParams},
-    proposals::{ProposalStore, StagedProposal},
+    proposals::{ProposalStore, QueuedProposal},
     CoreGroup,
 };
 use crate::group::core_group::*;
@@ -114,7 +114,7 @@ impl CoreGroup {
         let mut proposal_store = ProposalStore::default();
         for proposal in proposals_by_reference {
             let staged_proposal =
-                StagedProposal::from_mls_plaintext(ciphersuite, backend, proposal.clone())?;
+                QueuedProposal::from_mls_plaintext(ciphersuite, backend, proposal.clone())?;
             proposal_store.add(staged_proposal)
         }
 
