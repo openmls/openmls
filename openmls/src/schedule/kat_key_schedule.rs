@@ -151,7 +151,7 @@ fn generate(
         .add_context(&crypto, &serialized_group_context)
         .expect("An unexpected error occurred.");
     let epoch_secrets = key_schedule
-        .epoch_secrets(&crypto, true)
+        .epoch_secrets(&crypto)
         .expect("An unexpected error occurred.");
 
     // Calculate external HPKE key pair
@@ -231,12 +231,7 @@ pub fn generate_test_vector(
             ),
             joiner_secret: bytes_to_hex(joiner_secret.as_slice()),
             welcome_secret: bytes_to_hex(welcome_secret.as_slice()),
-            init_secret: bytes_to_hex(
-                epoch_secrets
-                    .init_secret()
-                    .expect("An unexpected error occurred.")
-                    .as_slice(),
-            ),
+            init_secret: bytes_to_hex(epoch_secrets.init_secret().as_slice()),
             sender_data_secret: bytes_to_hex(epoch_secrets.sender_data_secret().as_slice()),
             encryption_secret: bytes_to_hex(epoch_secrets.encryption_secret().as_slice()),
             exporter_secret: bytes_to_hex(epoch_secrets.exporter_secret().as_slice()),
@@ -252,10 +247,7 @@ pub fn generate_test_vector(
             ),
         };
         epochs.push(epoch_info);
-        init_secret = epoch_secrets
-            .init_secret()
-            .expect("An unexpected error occurred.")
-            .clone();
+        init_secret = epoch_secrets.init_secret().clone();
     }
 
     KeyScheduleTestVector {
@@ -423,13 +415,10 @@ pub fn run_test_vector(
             .expect("An unexpected error occurred.");
 
         let epoch_secrets = key_schedule
-            .epoch_secrets(backend, true)
+            .epoch_secrets(backend)
             .expect("An unexpected error occurred.");
 
-        init_secret = epoch_secrets
-            .init_secret()
-            .expect("An unexpected error occurred.")
-            .clone();
+        init_secret = epoch_secrets.init_secret().clone();
         if hex_to_bytes(&epoch.init_secret) != init_secret.as_slice() {
             log_crypto!(
                 debug,

@@ -12,7 +12,7 @@ use crate::{
     group::{
         create_commit_params::CreateCommitParams,
         errors::CoreGroupError,
-        proposals::{CreationProposalQueue, ProposalStore, StagedProposal, StagedProposalQueue},
+        proposals::{ProposalQueue, ProposalStore, QueuedProposal},
         GroupContext, GroupEpoch, GroupId,
     },
     key_packages::{KeyPackageBundle, KeyPackageError},
@@ -44,7 +44,7 @@ fn setup_client(
     (credential_bundle, key_package_bundle)
 }
 
-/// This test makes sure CreationProposalQueue works as intented. This functionality is
+/// This test makes sure ProposalQueue works as intented. This functionality is
 /// used in `create_commit` to filter the epoch proposals. Expected result:
 /// `filtered_queued_proposals` returns only proposals of a certain type
 #[apply(ciphersuites_and_backends)]
@@ -142,16 +142,16 @@ fn proposal_queue_functions(
     )
     .expect("Could not create proposal.");
 
-    let mut proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, mls_plaintext_add_alice1)
-            .expect("Could not create StagedProposal."),
+    let mut proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, mls_plaintext_add_alice1)
+            .expect("Could not create QueuedProposal."),
     );
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, mls_plaintext_add_alice2)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, mls_plaintext_add_alice2)
+            .expect("Could not create QueuedProposal."),
     );
 
-    let (proposal_queue, own_update) = CreationProposalQueue::filter_proposals(
+    let (proposal_queue, own_update) = ProposalQueue::filter_proposals(
         ciphersuite,
         backend,
         SenderType::Member,
@@ -185,7 +185,7 @@ fn proposal_queue_functions(
     }
 }
 
-/// Test, that we StagedProposalQueue is iterated in the right order.
+/// Test, that we QueuedProposalQueue is iterated in the right order.
 #[apply(ciphersuites_and_backends)]
 fn proposal_queue_order(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Framing parameters
@@ -254,13 +254,13 @@ fn proposal_queue_order(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
     .expect("Could not create proposal.");
 
     // This should set the order of the proposals.
-    let mut proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, mls_plaintext_add_alice1)
-            .expect("Could not create StagedProposal."),
+    let mut proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, mls_plaintext_add_alice1)
+            .expect("Could not create QueuedProposal."),
     );
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, mls_plaintext_add_bob1)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, mls_plaintext_add_bob1)
+            .expect("Could not create QueuedProposal."),
     );
 
     let proposal_or_refs = vec![
@@ -276,7 +276,7 @@ fn proposal_queue_order(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
     // And the same should go for proposal queues built from committed
     // proposals. The order here should be dictated by the proposals passed
     // as ProposalOrRefs.
-    let proposal_queue = StagedProposalQueue::from_committed_proposals(
+    let proposal_queue = ProposalQueue::from_committed_proposals(
         ciphersuite,
         backend,
         proposal_or_refs,
@@ -285,7 +285,7 @@ fn proposal_queue_order(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
     )
     .expect("An unexpected error occurred.");
 
-    let proposal_collection: Vec<&StagedProposal> =
+    let proposal_collection: Vec<&QueuedProposal> =
         proposal_queue.filtered_by_type(ProposalType::Add).collect();
 
     assert_eq!(proposal_collection[0].proposal(), &proposal_add_bob1);
@@ -412,9 +412,9 @@ fn test_group_context_extensions(
         )
         .expect("Could not create proposal");
 
-    let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create StagedProposal."),
+    let proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
     let params = CreateCommitParams::builder()
@@ -429,12 +429,9 @@ fn test_group_context_extensions(
 
     log::info!(" >>> Staging & merging commit ...");
 
-    let staged_commit = alice_group
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
-        .expect("error staging commit");
     alice_group
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging own staged commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
     // Make sure that Bob can join the group with the required extension in place
@@ -515,9 +512,9 @@ fn test_group_context_extension_proposal_fails(
         )
         .expect("Could not create proposal");
 
-    let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create StagedProposal."),
+    let proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
     let params = CreateCommitParams::builder()
@@ -532,12 +529,9 @@ fn test_group_context_extension_proposal_fails(
 
     log::info!(" >>> Staging & merging commit ...");
 
-    let staged_commit = alice_group
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
-        .expect("error staging commit");
     alice_group
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging pending commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
     let bob_group = CoreGroup::new_from_welcome(
@@ -619,9 +613,9 @@ fn test_group_context_extension_proposal(
         )
         .expect("Could not create proposal");
 
-    let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create StagedProposal."),
+    let proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
     let params = CreateCommitParams::builder()
@@ -636,12 +630,10 @@ fn test_group_context_extension_proposal(
 
     log::info!(" >>> Staging & merging commit ...");
 
-    let staged_commit = alice_group
-        .stage_commit(&create_commit_results.commit, &proposal_store, &[], backend)
-        .expect("error staging commit");
     alice_group
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
+        .merge_commit(create_commit_results.staged_commit)
+        .expect("error merging pending commit");
+
     let ratchet_tree = alice_group.treesync().export_nodes();
 
     let mut bob_group = CoreGroup::new_from_welcome(
@@ -668,9 +660,9 @@ fn test_group_context_extension_proposal(
         )
         .expect("Error creating gce proposal.");
 
-    let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, gce_proposal)
-            .expect("Could not create StagedProposal."),
+    let proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, gce_proposal)
+            .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
     let params = CreateCommitParams::builder()
@@ -685,19 +677,16 @@ fn test_group_context_extension_proposal(
 
     log::info!(" >>> Staging & merging commit ...");
 
-    let staged_commit = alice_group
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
-        .expect("error staging commit");
-    alice_group
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
-
     let staged_commit = bob_group
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
     bob_group
         .merge_commit(staged_commit)
         .expect("error merging commit");
+
+    alice_group
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging pending commit");
 
     assert_eq!(
         alice_group

@@ -853,7 +853,7 @@ impl MlsClient for MlsClientImpl {
 
         let mut proposal_store = ProposalStore::new();
         for proposal in proposal_plaintexts {
-            if let Ok(staging_proposal) = StagedProposal::from_mls_plaintext(
+            if let Ok(staging_proposal) = QueuedProposal::from_mls_plaintext(
                 interop_group.group.ciphersuite(),
                 &self.crypto_provider,
                 proposal,
@@ -970,7 +970,7 @@ impl MlsClient for MlsClientImpl {
         let mut proposal_store = ProposalStore::new();
         for proposal in &proposal_plaintexts {
             proposal_store.add(
-                StagedProposal::from_mls_plaintext(
+                QueuedProposal::from_mls_plaintext(
                     interop_group.group.ciphersuite(),
                     &self.crypto_provider,
                     proposal.clone(),

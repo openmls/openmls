@@ -237,9 +237,9 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
             backend,
         )
         .expect("Could not create proposal.");
-    let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create StagedProposal."),
+    let proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
@@ -264,12 +264,9 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         create_commit_result.commit.confirmation_tag()
     );
 
-    let staged_commit = alice_group
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
-        .expect("error staging commit");
     alice_group
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging pending commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
     let group_bob = CoreGroup::new_from_welcome(
@@ -299,9 +296,9 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
             backend,
         )
         .expect("Could not create proposal.");
-    let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_bob)
-            .expect("Could not create StagedProposal."),
+    let proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_bob)
+            .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
@@ -463,13 +460,13 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
         )
         .expect("Could not create proposal");
 
-    let mut proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create StagedProposal."),
+    let mut proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
     );
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, psk_proposal)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, psk_proposal)
+            .expect("Could not create QueuedProposal."),
     );
     log::info!(" >>> Creating commit ...");
     let params = CreateCommitParams::builder()
@@ -484,12 +481,9 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
 
     log::info!(" >>> Staging & merging commit ...");
 
-    let staged_commit = alice_group
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
-        .expect("error staging commit");
     alice_group
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging pending commit");
     let ratchet_tree = alice_group.treesync().export_nodes();
 
     let group_bob = CoreGroup::new_from_welcome(
@@ -519,9 +513,9 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
             backend,
         )
         .expect("Could not create proposal.");
-    let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_bob)
-            .expect("Could not create StagedProposal."),
+    let proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_bob)
+            .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
@@ -592,9 +586,9 @@ fn test_staged_commit_creation(
             backend,
         )
         .expect("Could not create proposal.");
-    let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create StagedProposal."),
+    let proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
@@ -631,4 +625,63 @@ fn test_staged_commit_creation(
         group_bob.treesync().export_nodes(),
         alice_group.treesync().export_nodes()
     )
+}
+
+// Test processing of own commits
+#[apply(ciphersuites_and_backends)]
+fn test_own_commit_processing(
+    ciphersuite: &'static Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+) {
+    // Basic group setup.
+    let group_aad = b"Alice's test group";
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+
+    // Define credential bundles
+    let alice_credential_bundle = CredentialBundle::new(
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
+
+    // Generate KeyPackages
+    let alice_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &alice_credential_bundle,
+        backend,
+        Vec::new(),
+    )
+    .expect("An unexpected error occurred.");
+
+    // === Alice creates a group ===
+    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+        .build(backend)
+        .expect("Error creating group.");
+
+    let proposal_store = ProposalStore::default();
+    // Alice creates a commit
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .force_self_update(true)
+        .build();
+    let create_commit_result = alice_group
+        .create_commit(params, backend)
+        .expect("error creating commit");
+
+    // Alice attempts to process her own commit
+    let error = alice_group
+        .stage_commit(
+            &create_commit_result.commit,
+            &proposal_store,
+            &[create_commit_result
+                .key_package_bundle_option
+                .expect("no kpb in create commit result")],
+            backend,
+        )
+        .expect_err("no error while processing own commit");
+    assert_eq!(error, CoreGroupError::OwnCommitError);
 }

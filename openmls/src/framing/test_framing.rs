@@ -1,22 +1,23 @@
+use openmls_traits::OpenMlsCryptoProvider;
+
+use rstest::*;
+use rstest_reuse::{self, *};
+
+use openmls_rust_crypto::OpenMlsRustCrypto;
+use tls_codec::{Deserialize, Serialize};
+
 use crate::{
     ciphersuite::signable::{Signable, Verifiable},
     config::*,
     framing::*,
     group::core_group::{
         create_commit_params::CreateCommitParams,
-        proposals::{ProposalStore, StagedProposal},
+        proposals::{ProposalStore, QueuedProposal},
     },
     key_packages::KeyPackageBundle,
     tree::sender_ratchet::SenderRatchetConfiguration,
     utils::print_tree,
 };
-
-use rstest::*;
-use rstest_reuse::{self, *};
-
-use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::OpenMlsCryptoProvider;
-use tls_codec::{Deserialize, Serialize};
 
 /// This tests serializing/deserializing MlsPlaintext
 #[apply(ciphersuites_and_backends)]
@@ -396,9 +397,9 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         )
         .expect("Could not create proposal.");
 
-    let mut proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create StagedProposal."),
+    let mut proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -411,12 +412,9 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .create_commit(params, backend)
         .expect("Error creating Commit");
 
-    let staged_commit = group_alice
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
-        .expect("Could not stage Commit");
     group_alice
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging pending commit");
 
     // Alice adds Charlie
 
@@ -431,7 +429,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, charlie_add_proposal)
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, charlie_add_proposal)
             .expect("Could not create staged proposal."),
     );
 
@@ -445,12 +443,9 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .create_commit(params, backend)
         .expect("Error creating Commit");
 
-    let staged_commit = group_alice
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
-        .expect("Could not stage Commit");
     group_alice
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging pending commit");
 
     let mut group_charlie = CoreGroup::new_from_welcome(
         create_commit_result
@@ -469,7 +464,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_remove_proposal)
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_remove_proposal)
             .expect("Could not create staged proposal."),
     );
 
@@ -489,19 +484,10 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     group_charlie
         .merge_commit(staged_commit)
         .expect("error merging commit");
-    let staged_commit = group_alice
-        .stage_commit(
-            &create_commit_result.commit,
-            &proposal_store,
-            &[create_commit_result
-                .key_package_bundle_option
-                .expect("An unexpected error occurred.")],
-            backend,
-        )
-        .expect("Alice: Could not stage Commit");
+
     group_alice
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging pending commit");
 
     print_tree(group_alice.treesync(), "Alice tree");
     print_tree(group_charlie.treesync(), "Charlie tree");
@@ -640,9 +626,9 @@ fn confirmation_tag_presence(
         )
         .expect("Could not create proposal.");
 
-    let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create StagedProposal."),
+    let proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -651,13 +637,43 @@ fn confirmation_tag_presence(
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
+
+    let create_commit_result = group_alice
+        .create_commit(params, backend)
+        .expect("Error creating Commit");
+
+    group_alice
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging pending commit");
+
+    // We have to create Bob's group so he can process the commit with the
+    // broken confirmation tag, because Alice can't process her own commit.
+    let mut group_bob = CoreGroup::new_from_welcome(
+        create_commit_result
+            .welcome_option
+            .expect("commit didn't return a welcome as expected"),
+        Some(group_alice.treesync().export_nodes()),
+        bob_key_package_bundle,
+        backend,
+    )
+    .expect("error creating group from welcome");
+
+    // Alice does an update
+    let proposal_store = ProposalStore::default();
+
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .force_self_update(true)
+        .build();
     let mut create_commit_result = group_alice
         .create_commit(params, backend)
         .expect("Error creating Commit");
 
     create_commit_result.commit.unset_confirmation_tag();
 
-    let err = group_alice
+    let err = group_bob
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect_err("No error despite missing confirmation tag.");
 
@@ -714,7 +730,7 @@ fn invalid_plaintext_signature(
         .build(backend)
         .expect("Error creating group.");
 
-    // Alice adds Bob
+    // Alice adds Bob so that there is someone to process the broken commits.
     let bob_add_proposal = group_alice
         .create_add_proposal(
             framing_parameters,
@@ -724,9 +740,9 @@ fn invalid_plaintext_signature(
         )
         .expect("Could not create proposal.");
 
-    let mut proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal.clone())
-            .expect("Could not create StagedProposal."),
+    let proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal.clone())
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -734,6 +750,35 @@ fn invalid_plaintext_signature(
         .credential_bundle(&alice_credential_bundle)
         .proposal_store(&proposal_store)
         .force_self_update(false)
+        .build();
+
+    let create_commit_result = group_alice
+        .create_commit(params, backend)
+        .expect("Error creating Commit");
+
+    group_alice
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging pending commit");
+
+    let mut group_bob = CoreGroup::new_from_welcome(
+        create_commit_result
+            .welcome_option
+            .expect("commit creation didn't result in a welcome"),
+        Some(group_alice.treesync().export_nodes()),
+        bob_key_package_bundle,
+        backend,
+    )
+    .expect("error creating group from welcome");
+
+    // Let's use a fresh proposal store.
+    let mut proposal_store = ProposalStore::default();
+
+    // Now alice creates an update
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .force_self_update(true)
         .build();
     let mut create_commit_result = group_alice
         .create_commit(params, backend)
@@ -751,7 +796,7 @@ fn invalid_plaintext_signature(
     // Remove membership tag.
     let good_membership_tag = input_commit.membership_tag().clone();
     input_commit.unset_membership_tag();
-    let membership_error = group_alice
+    let membership_error = group_bob
         .verify_membership_tag(backend, &mut input_commit)
         .err()
         .expect("Membership verification should have returned an error");
@@ -769,7 +814,7 @@ fn invalid_plaintext_signature(
         .expect("There should have been a membership tag.");
     modified_membership_tag.0.mac_value[0] ^= 0xFF;
     input_commit.set_membership_tag(modified_membership_tag);
-    let membership_error = group_alice
+    let membership_error = group_bob
         .verify_membership_tag(backend, &mut input_commit)
         .err()
         .expect("Membership verification should have returned an error");
@@ -781,7 +826,7 @@ fn invalid_plaintext_signature(
         ))
     );
 
-    let decoded_commit = group_alice
+    let decoded_commit = group_bob
         .verify(original_input_commit, backend)
         .expect("Error verifying valid commit message");
     assert_eq!(
@@ -800,7 +845,7 @@ fn invalid_plaintext_signature(
         .expect("An unexpected error occurred.");
     let input_commit = VerifiableMlsPlaintext::tls_deserialize(&mut encoded_commit.as_slice())
         .expect("An unexpected error occurred.");
-    let decoded_commit = group_alice.verify(input_commit, backend);
+    let decoded_commit = group_bob.verify(input_commit, backend);
     assert_eq!(
         decoded_commit
             .err()
@@ -820,7 +865,7 @@ fn invalid_plaintext_signature(
     let good_confirmation_tag = create_commit_result.commit.confirmation_tag().cloned();
     create_commit_result.commit.unset_confirmation_tag();
 
-    let error = group_alice
+    let error = group_bob
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect_err("Staging commit should have yielded an error.");
     assert_eq!(
@@ -837,15 +882,15 @@ fn invalid_plaintext_signature(
         .commit
         .set_confirmation_tag(modified_confirmation_tag);
     let serialized_group_before =
-        serde_json::to_string(&group_alice).expect("An unexpected error occurred.");
+        serde_json::to_string(&group_bob).expect("An unexpected error occurred.");
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal.clone())
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal.clone())
             .expect("Could not create staged proposal."),
     );
 
-    let error = group_alice
+    let error = group_bob
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect_err("Staging commit should have yielded an error.");
     assert_eq!(
@@ -853,7 +898,7 @@ fn invalid_plaintext_signature(
         CoreGroupError::StageCommitError(StageCommitError::ConfirmationTagMismatch)
     );
     let serialized_group_after =
-        serde_json::to_string(&group_alice).expect("An unexpected error occurred.");
+        serde_json::to_string(&group_bob).expect("An unexpected error occurred.");
     assert_eq!(serialized_group_before, serialized_group_after);
 
     // Fix commit again and stage it.
@@ -866,7 +911,7 @@ fn invalid_plaintext_signature(
         .expect("An unexpected error occurred.");
     let input_commit = VerifiableMlsPlaintext::tls_deserialize(&mut encoded_commit.as_slice())
         .expect("An unexpected error occurred.");
-    let decoded_commit = group_alice
+    let decoded_commit = group_bob
         .verify(input_commit, backend)
         .expect("Error verifying commit");
     assert_eq!(
@@ -878,11 +923,11 @@ fn invalid_plaintext_signature(
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create staged proposal."),
     );
 
-    group_alice
+    group_bob
         .stage_commit(&decoded_commit, &proposal_store, &[], backend)
         .expect("Alice: Error staging commit.");
 }

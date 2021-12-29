@@ -313,17 +313,17 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .create_remove_proposal(framing_parameters, alice_credential_bundle, 2u32, backend)
             .expect("Could not create proposal.");
 
-        let mut proposal_store = ProposalStore::from_staged_proposal(
-            StagedProposal::from_mls_plaintext(group_state.ciphersuite(), backend, add)
-                .expect("Could not create StagedProposal."),
+        let mut proposal_store = ProposalStore::from_queued_proposal(
+            QueuedProposal::from_mls_plaintext(group_state.ciphersuite(), backend, add)
+                .expect("Could not create QueuedProposal."),
         );
         proposal_store.add(
-            StagedProposal::from_mls_plaintext(group_state.ciphersuite(), backend, remove)
-                .expect("Could not create StagedProposal."),
+            QueuedProposal::from_mls_plaintext(group_state.ciphersuite(), backend, remove)
+                .expect("Could not create QueuedProposal."),
         );
         proposal_store.add(
-            StagedProposal::from_mls_plaintext(group_state.ciphersuite(), backend, update)
-                .expect("Could not create StagedProposal."),
+            QueuedProposal::from_mls_plaintext(group_state.ciphersuite(), backend, update)
+                .expect("Could not create QueuedProposal."),
         );
 
         let params = CreateCommitParams::builder()
@@ -386,9 +386,9 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
             )
             .expect("Could not create proposal.");
 
-        let proposal_store = ProposalStore::from_staged_proposal(
-            StagedProposal::from_mls_plaintext(group_state.ciphersuite(), backend, add)
-                .expect("Could not create StagedProposal."),
+        let proposal_store = ProposalStore::from_queued_proposal(
+            QueuedProposal::from_mls_plaintext(group_state.ciphersuite(), backend, add)
+                .expect("Could not create QueuedProposal."),
         );
 
         let params = CreateCommitParams::builder()
@@ -400,19 +400,9 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
             .create_commit(params, backend)
             .expect("An unexpected error occurred.");
         // Alice applies the commit
-        let staged_commit = group_state
-            .stage_commit(
-                &create_commit_result.commit,
-                &proposal_store,
-                &[create_commit_result
-                    .key_package_bundle_option
-                    .expect("An unexpected error occurred.")],
-                backend,
-            )
-            .expect("Could not stage the commit");
         group_state
-            .merge_commit(staged_commit)
-            .expect("error merging commit");
+            .merge_commit(create_commit_result.staged_commit)
+            .expect("error merging own commits");
 
         // Welcome messages
 

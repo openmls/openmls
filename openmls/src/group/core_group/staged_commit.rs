@@ -1,17 +1,17 @@
 use crate::treesync::diff::StagedTreeSyncDiff;
 
-use super::proposals::{ProposalStore, StagedProposal, StagedProposalQueue};
+use super::proposals::{ProposalQueue, ProposalStore, QueuedProposal};
 
 use super::super::errors::*;
 use super::proposals::{
-    StagedAddProposal, StagedPskProposal, StagedRemoveProposal, StagedUpdateProposal,
+    QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal, QueuedUpdateProposal,
 };
 use super::*;
 use core::fmt::Debug;
 use std::mem;
 
 impl CoreGroup {
-    /// Stages a commit message.
+    /// Stages a commit message that was sent by another group member.
     /// This function does the following:
     ///  - Applies the proposals covered by the commit to the tree
     ///  - Applies the (optional) update path to the tree
@@ -34,6 +34,8 @@ impl CoreGroup {
     ///  - ValSem110
     ///  - ValSem201
     ///  - ValSem205
+    /// Returns an error if the given commit was sent by the owner of this
+    /// group.
     pub fn stage_commit(
         &mut self,
         mls_plaintext: &MlsPlaintext,
@@ -41,10 +43,15 @@ impl CoreGroup {
         own_key_packages: &[KeyPackageBundle],
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<StagedCommit, CoreGroupError> {
-        let ciphersuite = self.ciphersuite();
-
         // Extract the sender of the Commit message
         let sender = *mls_plaintext.sender();
+
+        // Own commits have to be merged directly instead of staging them.
+        if sender.sender == self.treesync().own_leaf_index() {
+            return Err(CoreGroupError::OwnCommitError);
+        };
+
+        let ciphersuite = self.ciphersuite();
 
         // Verify epoch
         if mls_plaintext.epoch() != self.group_context.epoch() {
@@ -68,7 +75,7 @@ impl CoreGroup {
 
         // Build a queue with all proposals from the Commit and check that we have all
         // of the proposals by reference locally
-        let mut proposal_queue = StagedProposalQueue::from_committed_proposals(
+        let mut proposal_queue = ProposalQueue::from_committed_proposals(
             ciphersuite,
             backend,
             commit.proposals.as_slice().to_vec(),
@@ -109,7 +116,7 @@ impl CoreGroup {
         let mut diff = self.treesync().empty_diff()?;
 
         let apply_proposals_values = self
-            .apply_staged_proposals(&mut diff, backend, &proposal_queue, own_key_packages)
+            .apply_proposals(&mut diff, backend, &proposal_queue, own_key_packages)
             .map_err(|_| StageCommitError::OwnKeyNotFound)?;
 
         // Check if we were removed from the group
@@ -122,7 +129,6 @@ impl CoreGroup {
 
         // Determine if Commit is own Commit
         let sender = mls_plaintext.sender_index();
-        let is_own_commit = sender == self.treesync().own_leaf_index();
 
         // Determine if Commit has a path
         let commit_secret = if let Some(path) = commit.path.clone() {
@@ -135,47 +141,31 @@ impl CoreGroup {
             }
             let serialized_context = self.group_context.tls_serialize_detached()?;
 
-            if is_own_commit {
-                // Find the right KeyPackageBundle among the pending bundles and
-                // clone out the one that we need.
-                let own_kpb = own_key_packages
-                    .iter()
-                    .find(|kpb| kpb.key_package() == kp)
-                    .ok_or(StageCommitError::MissingOwnKeyPackage)?;
-                diff.re_apply_own_update_path(backend, ciphersuite, own_kpb)?
-            } else {
-                let (key_package, update_path_nodes) = path.into_parts();
+            let (key_package, update_path_nodes) = path.into_parts();
 
-                // If the committer is a `NewMember`, we have to add the leaf to
-                // the tree before we can apply or even decrypt an update path.
-                // While `apply_received_update_path` will happily update a
-                // blank leaf, we still have to call `add_leaf` here in case
-                // there are no blanks and the new member extended the tree to
-                // fit in.
-                if apply_proposals_values.external_init_secret_option.is_some() {
-                    diff.add_leaf(key_package.clone())?;
-                }
-
-                // Decrypt the UpdatePath
-                let (plain_path, commit_secret) = diff.decrypt_path(
-                    backend,
-                    ciphersuite,
-                    self.mls_version,
-                    update_path_nodes,
-                    sender,
-                    &apply_proposals_values.exclusion_list(),
-                    &serialized_context,
-                )?;
-
-                diff.apply_received_update_path(
-                    backend,
-                    ciphersuite,
-                    sender,
-                    key_package,
-                    plain_path,
-                )?;
-                commit_secret
+            // If the committer is a `NewMember`, we have to add the leaf to
+            // the tree before we can apply or even decrypt an update path.
+            // While `apply_received_update_path` will happily update a
+            // blank leaf, we still have to call `add_leaf` here in case
+            // there are no blanks and the new member extended the tree to
+            // fit in.
+            if apply_proposals_values.external_init_secret_option.is_some() {
+                diff.add_leaf(key_package.clone())?;
             }
+
+            // Decrypt the UpdatePath
+            let (plain_path, commit_secret) = diff.decrypt_path(
+                backend,
+                ciphersuite,
+                self.mls_version,
+                update_path_nodes,
+                sender,
+                &apply_proposals_values.exclusion_list(),
+                &serialized_context,
+            )?;
+
+            diff.apply_received_update_path(backend, ciphersuite, sender, key_package, plain_path)?;
+            commit_secret
         } else {
             if apply_proposals_values.path_required {
                 // ValSem201
@@ -190,9 +180,7 @@ impl CoreGroup {
             if let Some(ref init_secret) = apply_proposals_values.external_init_secret_option {
                 init_secret
             } else {
-                self.group_epoch_secrets
-                    .init_secret()
-                    .ok_or(StageCommitError::InitSecretNotFound)?
+                self.group_epoch_secrets.init_secret()
             };
 
         let joiner_secret = JoinerSecret::new(backend, commit_secret, init_secret)?;
@@ -232,7 +220,7 @@ impl CoreGroup {
             provisional_group_context.tls_serialize_detached()?;
 
         key_schedule.add_context(backend, &serialized_provisional_group_context)?;
-        let provisional_epoch_secrets = key_schedule.epoch_secrets(backend, true)?;
+        let provisional_epoch_secrets = key_schedule.epoch_secrets(backend)?;
 
         let mls_plaintext_commit_auth_data = MlsPlaintextCommitAuthData::try_from(mls_plaintext)
             .map_err(|_| {
@@ -264,7 +252,7 @@ impl CoreGroup {
         // and add a new fake Update proposal to the queue after that
         if let Some(key_package) = path_key_package {
             let proposal = Proposal::Update(UpdateProposal { key_package });
-            let staged_proposal = StagedProposal::from_proposal_and_sender(
+            let staged_proposal = QueuedProposal::from_proposal_and_sender(
                 ciphersuite,
                 backend,
                 proposal,
@@ -337,9 +325,9 @@ impl CoreGroup {
 }
 
 /// Contains the changes from a commit to the group state.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct StagedCommit {
-    staged_proposal_queue: StagedProposalQueue,
+    staged_proposal_queue: ProposalQueue,
     state: Option<StagedCommitState>,
 }
 
@@ -347,7 +335,7 @@ impl StagedCommit {
     /// Create a new [`StagedCommit`] from the provisional group state created
     /// during the commit process.
     pub(crate) fn new(
-        staged_proposal_queue: StagedProposalQueue,
+        staged_proposal_queue: ProposalQueue,
         state: Option<StagedCommitState>,
     ) -> Self {
         StagedCommit {
@@ -357,22 +345,22 @@ impl StagedCommit {
     }
 
     /// Returns the Add proposals that are covered by the Commit message as in iterator over [StagedAddProposal].
-    pub fn add_proposals(&self) -> impl Iterator<Item = StagedAddProposal> {
+    pub fn add_proposals(&self) -> impl Iterator<Item = QueuedAddProposal> {
         self.staged_proposal_queue.add_proposals()
     }
 
     /// Returns the Remove proposals that are covered by the Commit message as in iterator over [StagedRemoveProposal].
-    pub fn remove_proposals(&self) -> impl Iterator<Item = StagedRemoveProposal> {
+    pub fn remove_proposals(&self) -> impl Iterator<Item = QueuedRemoveProposal> {
         self.staged_proposal_queue.remove_proposals()
     }
 
     /// Returns the Update proposals that are covered by the Commit message as in iterator over [StagedUpdateProposal].
-    pub fn update_proposals(&self) -> impl Iterator<Item = StagedUpdateProposal> {
+    pub fn update_proposals(&self) -> impl Iterator<Item = QueuedUpdateProposal> {
         self.staged_proposal_queue.update_proposals()
     }
 
-    /// Returns the PresharedKey proposals that are covered by the Commit message as in iterator over [StagedPskProposal].
-    pub fn psk_proposals(&self) -> impl Iterator<Item = StagedPskProposal> {
+    /// Returns the PresharedKey proposals that are covered by the Commit message as in iterator over [QueuedPskProposal].
+    pub fn psk_proposals(&self) -> impl Iterator<Item = QueuedPskProposal> {
         self.staged_proposal_queue.psk_proposals()
     }
 
@@ -384,7 +372,7 @@ impl StagedCommit {
 }
 
 /// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct StagedCommitState {
     group_context: GroupContext,
     group_epoch_secrets: GroupEpochSecrets,

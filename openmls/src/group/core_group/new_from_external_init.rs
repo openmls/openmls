@@ -11,7 +11,7 @@ use crate::{
 
 use super::{
     create_commit_params::{CommitType, CreateCommitParams},
-    proposals::{ProposalStore, StagedProposal},
+    proposals::{ProposalStore, QueuedProposal},
     CoreGroup,
 };
 use crate::group::core_group::*;
@@ -48,7 +48,7 @@ impl CoreGroup {
         // this group. Note that this is not strictly necessary. But there's
         // currently no other mechanism to enable the extension.
         let extension_tree_option =
-            try_nodes_from_extensions(&verifiable_public_group_state.other_extensions())?;
+            try_nodes_from_extensions(verifiable_public_group_state.other_extensions())?;
         let (nodes, enable_ratchet_tree_extension) = match extension_tree_option {
             Some(ref nodes) => (nodes, true),
             None => match tree_option.as_ref() {
@@ -114,7 +114,7 @@ impl CoreGroup {
         let mut proposal_store = ProposalStore::default();
         for proposal in proposals_by_reference {
             let staged_proposal =
-                StagedProposal::from_mls_plaintext(ciphersuite, backend, proposal.clone())?;
+                QueuedProposal::from_mls_plaintext(ciphersuite, backend, proposal.clone())?;
             proposal_store.add(staged_proposal)
         }
 

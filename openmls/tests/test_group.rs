@@ -79,9 +79,9 @@ fn create_commit_optional_path(
         )
         .expect("Could not create proposal.");
 
-    let mut proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create StagedProposal."),
+    let mut proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -116,8 +116,8 @@ fn create_commit_optional_path(
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -137,13 +137,9 @@ fn create_commit_optional_path(
     assert!(!commit.has_path() && create_commit_result.key_package_bundle_option.is_none());
 
     // Alice applies the Commit without the forced self-update
-
-    let staged_commit = group_alice
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
-        .expect("Error staging commit");
     group_alice
-        .merge_commit(staged_commit)
-        .expect("An unexpected error occurred.");
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging pending commit");
     let ratchet_tree = group_alice.treesync().export_nodes();
 
     // Bob creates group from Welcome
@@ -176,8 +172,8 @@ fn create_commit_optional_path(
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, alice_update_proposal)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, alice_update_proposal)
+            .expect("Could not create QueuedProposal."),
     );
 
     // Only UpdateProposal
@@ -198,19 +194,9 @@ fn create_commit_optional_path(
     assert!(commit.has_path() && create_commit_result.key_package_bundle_option.is_some());
 
     // Apply UpdateProposal
-    let staged_commit = group_alice
-        .stage_commit(
-            &create_commit_result.commit,
-            &proposal_store,
-            &[create_commit_result
-                .key_package_bundle_option
-                .expect("An unexpected error occurred.")],
-            backend,
-        )
-        .expect("Error staging commit");
     group_alice
-        .merge_commit(staged_commit)
-        .expect("An unexpected error occurred.");
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging pending commit");
 }
 
 #[apply(ciphersuites_and_backends)]
@@ -268,9 +254,9 @@ fn basic_group_setup(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCr
         )
         .expect("Could not create proposal.");
 
-    let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create StagedProposal."),
+    let proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -362,9 +348,9 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         )
         .expect("Could not create proposal.");
 
-    let mut proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create StagedProposal."),
+    let mut proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -384,12 +370,9 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     // Check that the function returned a Welcome message
     assert!(create_commit_result.welcome_option.is_some());
 
-    let staged_commit = group_alice
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
-        .expect("Error staging commit");
     group_alice
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging own commits");
     let ratchet_tree = group_alice.treesync().export_nodes();
 
     let mut group_bob = match CoreGroup::new_from_welcome(
@@ -456,8 +439,8 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_bob)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_bob)
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -482,19 +465,10 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     group_alice
         .merge_commit(staged_commit)
         .expect("error merging commit");
-    let staged_commit = group_bob
-        .stage_commit(
-            &create_commit_result.commit,
-            &proposal_store,
-            &[create_commit_result
-                .key_package_bundle_option
-                .expect("An unexpected error occurred.")],
-            backend,
-        )
-        .expect("Error applying commit (Bob)");
+
     group_bob
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging own commits");
 
     // Make sure that both groups have the same public tree
     if group_alice.treesync().export_nodes() != group_bob.treesync().export_nodes() {
@@ -522,8 +496,8 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_alice)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_alice)
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -541,19 +515,9 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     // Check that there is a new KeyPackageBundle
     assert!(create_commit_result.key_package_bundle_option.is_some());
 
-    let staged_commit = group_alice
-        .stage_commit(
-            &create_commit_result.commit,
-            &proposal_store,
-            &[create_commit_result
-                .key_package_bundle_option
-                .expect("An unexpected error occurred.")],
-            backend,
-        )
-        .expect("Error applying commit (Alice)");
     group_alice
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging own commits");
     let staged_commit = group_bob
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("Error applying commit (Bob)");
@@ -587,8 +551,8 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_bob)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_bob.clone())
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -605,19 +569,15 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     // Check that there is a new KeyPackageBundle
     assert!(create_commit_result.key_package_bundle_option.is_some());
 
-    let staged_commit = group_alice
-        .stage_commit(
-            &create_commit_result.commit,
-            &proposal_store,
-            &[create_commit_result
-                .key_package_bundle_option
-                .expect("An unexpected error occurred.")],
-            backend,
-        )
-        .expect("Error applying commit (Alice)");
     group_alice
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging own commits");
+
+    proposal_store.add(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_bob)
+            .expect("Could not create StagedProposal."),
+    );
+
     let staged_commit = group_bob
         .stage_commit(
             &create_commit_result.commit,
@@ -665,8 +625,8 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, add_charlie_proposal_bob)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, add_charlie_proposal_bob)
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -692,12 +652,9 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     group_alice
         .merge_commit(staged_commit)
         .expect("error merging commit");
-    let staged_commit = group_bob
-        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
-        .expect("Error applying commit (Bob)");
     group_bob
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging own commits");
 
     let ratchet_tree = group_alice.treesync().export_nodes();
     let mut group_charlie = match CoreGroup::new_from_welcome(
@@ -786,8 +743,8 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_charlie)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, update_proposal_charlie)
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -816,19 +773,9 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     group_bob
         .merge_commit(staged_commit)
         .expect("error merging commit");
-    let staged_commit = group_charlie
-        .stage_commit(
-            &create_commit_result.commit,
-            &proposal_store,
-            &[create_commit_result
-                .key_package_bundle_option
-                .expect("An unexpected error occurred.")],
-            backend,
-        )
-        .expect("Error applying commit (Charlie)");
     group_charlie
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging own commits");
 
     // Make sure that all groups have the same public tree
     if group_alice.treesync().export_nodes() != group_bob.treesync().export_nodes() {
@@ -852,8 +799,8 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     proposal_store.empty();
     proposal_store.add(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, remove_bob_proposal_charlie)
-            .expect("Could not create StagedProposal."),
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, remove_bob_proposal_charlie)
+            .expect("Could not create QueuedProposal."),
     );
 
     let params = CreateCommitParams::builder()
@@ -881,19 +828,9 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend,)
         .expect("Could not stage commit.")
         .self_removed());
-    let staged_commit = group_charlie
-        .stage_commit(
-            &create_commit_result.commit,
-            &proposal_store,
-            &[create_commit_result
-                .key_package_bundle_option
-                .expect("An unexpected error occurred.")],
-            backend,
-        )
-        .expect("Error applying commit (Charlie)");
     group_charlie
-        .merge_commit(staged_commit)
-        .expect("error merging commit");
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging own commits");
 
     // Make sure that all groups have the same public tree
     if group_alice.treesync().export_nodes() == group_bob.treesync().export_nodes() {

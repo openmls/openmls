@@ -60,9 +60,9 @@ fn test_pgs(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvi
         )
         .expect("Could not create proposal.");
 
-    let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create StagedProposal."),
+    let proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
@@ -74,18 +74,8 @@ fn test_pgs(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvi
         Err(e) => panic!("Error creating commit: {:?}", e),
     };
 
-    let staged_commit = group_alice
-        .stage_commit(
-            &create_commit_result.commit,
-            &proposal_store,
-            &[create_commit_result
-                .key_package_bundle_option
-                .expect("No KeyPackageBundle")],
-            backend,
-        )
-        .expect("Could not stage Commit");
     group_alice
-        .merge_commit(staged_commit)
+        .merge_commit(create_commit_result.staged_commit)
         .expect("error merging commit");
 
     let pgs = group_alice

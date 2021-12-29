@@ -217,13 +217,13 @@ async fn test_group() {
         )
         .unwrap();
 
-    let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(
+    let proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(
             Config::ciphersuite(group_ciphersuite).expect("Unsupported ciphersuite."),
             crypto,
             client2_add_proposal,
         )
-        .expect("Could not create StagedProposal."),
+        .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)
@@ -237,11 +237,8 @@ async fn test_group() {
     let welcome_msg = create_commit_results
         .welcome_option
         .expect("Welcome message wasn't created by create_commit.");
-    let staged_commit = group
-        .stage_commit(&create_commit_results.commit, &proposal_store, &[], crypto)
-        .expect("error applying commit");
     group
-        .merge_commit(staged_commit)
+        .merge_commit(create_commit_results.staged_commit)
         .expect("error merging commit");
 
     // Send welcome message for Client2

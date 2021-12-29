@@ -45,6 +45,7 @@ impl MlsGroup {
             resumption_secret_store,
             active: true,
             state_changed: InnerState::Changed,
+            pending_commit: None,
         };
 
         Ok(mls_group)
@@ -82,6 +83,7 @@ impl MlsGroup {
             resumption_secret_store,
             active: true,
             state_changed: InnerState::Changed,
+            pending_commit: None,
         };
 
         Ok(mls_group)

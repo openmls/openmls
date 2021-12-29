@@ -203,7 +203,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
             let mut proposal_store = ProposalStore::new();
             for proposal in proposal_list {
                 proposal_store.add(
-                    StagedProposal::from_mls_plaintext(
+                    QueuedProposal::from_mls_plaintext(
                         &Ciphersuite::new(group_config.ciphersuite)
                             .expect("Could not create ciphersuite."),
                         backend,
@@ -223,23 +223,14 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
             let welcome = create_commit_result
                 .welcome_option
                 .expect("An unexpected error occurred.");
-            let key_package_bundle = create_commit_result
-                .key_package_bundle_option
-                .expect("An unexpected error occurred.");
 
-            // Apply the commit to the initial group member's group state using
-            // the key package bundle returned by the create_commit earlier.
-            let staged_commit = core_group
-                .stage_commit(
-                    &create_commit_result.commit,
-                    &proposal_store,
-                    &[key_package_bundle],
-                    backend,
-                )
-                .expect("Error applying Commit");
             core_group
-                .merge_commit(staged_commit)
-                .expect("error merging commit");
+                .merge_staged_commit(
+                    create_commit_result.staged_commit,
+                    &mut proposal_store,
+                    &mut MessageSecretsStore::new(0),
+                )
+                .expect("error merging own commits");
 
             // Distribute the Welcome message to the other members.
             for client_id in 1..group_config.members.len() {

@@ -3,7 +3,7 @@
 
 // MlsGroup
 pub use crate::group::{
-    proposals::{ProposalStore, StagedProposal},
+    proposals::{ProposalStore, QueuedProposal},
     EmptyInputError, GroupEpoch, GroupId, InnerState, InvalidMessageError, MlsGroup,
     MlsGroupConfig, MlsGroupError,
 };

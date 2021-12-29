@@ -216,7 +216,7 @@ impl From<Secret> for InitSecret {
 /// the `init_secret` when creating or processing a commit with an external init
 /// proposal. TODO: #628.
 fn hpke_info_from_version(version: ProtocolVersion) -> &'static str {
-    &match version {
+    match version {
         ProtocolVersion::Reserved => "Reserved external init",
         ProtocolVersion::Mls10 => "MLS 1.0 external init",
         ProtocolVersion::Mls10Draft11 => "MLS 1.0 Draft 11 external init",
@@ -468,7 +468,6 @@ impl KeySchedule {
     pub(crate) fn epoch_secrets(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        with_init_secret: bool,
     ) -> Result<EpochSecrets, KeyScheduleError> {
         if self.state != State::Context || self.epoch_secret.is_none() {
             log::error!("Trying to derive the epoch secrets while not in the right state.");
@@ -482,7 +481,7 @@ impl KeySchedule {
             None => return Err(KeyScheduleError::LibraryError),
         };
 
-        Ok(EpochSecrets::new(backend, epoch_secret, with_init_secret)?)
+        Ok(EpochSecrets::new(backend, epoch_secret)?)
     }
 }
 
@@ -1021,7 +1020,7 @@ impl SenderDataSecret {
 /// | `membership_key`        | "membership"    |
 /// | `resumption_secret`     | "resumption"    |
 pub(crate) struct EpochSecrets {
-    init_secret: Option<InitSecret>,
+    init_secret: InitSecret,
     sender_data_secret: SenderDataSecret,
     encryption_secret: EncryptionSecret,
     exporter_secret: ExporterSecret,
@@ -1103,8 +1102,8 @@ impl EpochSecrets {
 
     /// Init secret
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn init_secret(&self) -> Option<&InitSecret> {
-        self.init_secret.as_ref()
+    pub(crate) fn init_secret(&self) -> &InitSecret {
+        &self.init_secret
     }
 
     /// Encryption secret
@@ -1119,7 +1118,6 @@ impl EpochSecrets {
     fn new(
         backend: &impl OpenMlsCryptoProvider,
         epoch_secret: EpochSecret,
-        with_init_secret: bool,
     ) -> Result<Self, CryptoError> {
         log::debug!(
             "Computing EpochSecrets from epoch secret with {}",
@@ -1139,12 +1137,8 @@ impl EpochSecrets {
         let membership_key = MembershipKey::new(backend, &epoch_secret)?;
         let resumption_secret = ResumptionSecret::new(backend, &epoch_secret)?;
 
-        let init_secret = if with_init_secret {
-            log::trace!("  Computing init secret.");
-            Some(InitSecret::new(backend, epoch_secret)?)
-        } else {
-            None
-        };
+        log::trace!("  Computing init secret.");
+        let init_secret = InitSecret::new(backend, epoch_secret)?;
 
         Ok(EpochSecrets {
             init_secret,
@@ -1173,8 +1167,8 @@ impl EpochSecrets {
                 init_secret.secret.version(),
             ),
         };
-        let mut epoch_secrets = Self::new(backend, epoch_secret, false)?;
-        epoch_secrets.init_secret = Some(init_secret);
+        let mut epoch_secrets = Self::new(backend, epoch_secret)?;
+        epoch_secrets.init_secret = init_secret;
         Ok(epoch_secrets)
     }
 
@@ -1209,7 +1203,7 @@ impl EpochSecrets {
 
 #[derive(Serialize, Deserialize)]
 pub(crate) struct GroupEpochSecrets {
-    init_secret: Option<InitSecret>,
+    init_secret: InitSecret,
     exporter_secret: ExporterSecret,
     authentication_secret: AuthenticationSecret,
     external_secret: ExternalSecret,
@@ -1242,8 +1236,8 @@ impl PartialEq for GroupEpochSecrets {
 
 impl GroupEpochSecrets {
     /// Init secret
-    pub(crate) fn init_secret(&self) -> Option<&InitSecret> {
-        self.init_secret.as_ref()
+    pub(crate) fn init_secret(&self) -> &InitSecret {
+        &self.init_secret
     }
 
     /// Authentication secret
