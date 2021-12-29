@@ -15,7 +15,7 @@ use tls_codec::{Deserialize, Serialize};
 
 use super::{
     create_commit_params::CreateCommitParams,
-    proposals::{ProposalStore, StagedProposal},
+    proposals::{ProposalStore, QueuedProposal},
     CoreGroup,
 };
 
@@ -75,9 +75,9 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
             backend,
         )
         .expect("Could not create proposal.");
-    let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create StagedProposal."),
+    let proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)

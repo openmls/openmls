@@ -203,7 +203,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
             let mut proposal_store = ProposalStore::new();
             for proposal in proposal_list {
                 proposal_store.add(
-                    StagedProposal::from_mls_plaintext(
+                    QueuedProposal::from_mls_plaintext(
                         &Ciphersuite::new(group_config.ciphersuite)
                             .expect("Could not create ciphersuite."),
                         backend,
