@@ -99,6 +99,8 @@
 <span id="99"> 99</span>
 <span id="100">100</span>
 <span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS MlsGroup errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -121,6 +123,8 @@
             <span class="ident">NoMatchingKeyPackageBundle</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t find a `KeyPackageBundle` in the `KeyStore` that matches the given `KeyPackage` hash.&quot;</span>,
             <span class="ident">PoisonedCredentialBundle</span> <span class="op">=</span> <span class="string">&quot;Tried to access a poisoned `CredentialBundle`. See [`PoisonError`](`std::sync::PoisonError`) for details.&quot;</span>,
             <span class="ident">NoSignatureKey</span> <span class="op">=</span> <span class="string">&quot;No signature key was available to verify the message signature.&quot;</span>,
+            <span class="ident">PendingCommitError</span> <span class="op">=</span> <span class="string">&quot;Can&#39;t create a new commit while another commit is still pending. Please clear or merge the pending commit before creating a new one.&quot;</span>,
+            <span class="ident">NoPendingCommit</span> <span class="op">=</span> <span class="string">&quot;There is no pending commit that can be merged.&quot;</span>,
             <span class="ident">KeyStoreError</span> <span class="op">=</span> <span class="string">&quot;Error performing key store operation.&quot;</span>,
         }
         <span class="ident">Complex</span> {

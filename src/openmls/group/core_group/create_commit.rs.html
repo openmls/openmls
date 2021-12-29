@@ -328,8 +328,6 @@
 <span id="328">328</span>
 <span id="329">329</span>
 <span id="330">330</span>
-<span id="331">331</span>
-<span id="332">332</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -499,9 +497,7 @@
         <span class="kw">let</span> <span class="ident">joiner_secret</span> <span class="op">=</span> <span class="ident">JoinerSecret::new</span>(
             <span class="ident">backend</span>,
             <span class="ident">path_processing_result</span>.<span class="ident">commit_secret</span>,
-            <span class="self">self</span>.<span class="ident">group_epoch_secrets</span>()
-                .<span class="ident">init_secret</span>()
-                .<span class="ident">ok_or</span>(<span class="ident">CoreGroupError::InitSecretNotFound</span>)<span class="question-mark">?</span>,
+            <span class="self">self</span>.<span class="ident">group_epoch_secrets</span>().<span class="ident">init_secret</span>(),
         )<span class="question-mark">?</span>;
 
         <span class="comment">// Create group secrets for later use, so we can afterwards consume the</span>
@@ -530,7 +526,7 @@
 
         <span class="kw">let</span> <span class="ident">welcome_secret</span> <span class="op">=</span> <span class="ident">key_schedule</span>.<span class="ident">welcome</span>(<span class="ident">backend</span>)<span class="question-mark">?</span>;
         <span class="ident">key_schedule</span>.<span class="ident">add_context</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">serialized_provisional_group_context</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">provisional_epoch_secrets</span> <span class="op">=</span> <span class="ident">key_schedule</span>.<span class="ident">epoch_secrets</span>(<span class="ident">backend</span>, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">provisional_epoch_secrets</span> <span class="op">=</span> <span class="ident">key_schedule</span>.<span class="ident">epoch_secrets</span>(<span class="ident">backend</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Calculate the confirmation tag</span>
         <span class="kw">let</span> <span class="ident">confirmation_tag</span> <span class="op">=</span> <span class="ident">provisional_epoch_secrets</span>

@@ -626,6 +626,8 @@
 <span id="626">626</span>
 <span id="627">627</span>
 <span id="628">628</span>
+<span id="629">629</span>
+<span id="630">630</span>
 </pre><pre class="rust"><code><span class="doccomment">//! An implementation of a diff functionality for the [`ABinaryTree`] struct.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -648,6 +650,8 @@
 
 <span class="kw">use</span> <span class="ident">std::fmt::Debug</span>;
 
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::binary_tree</span>::{<span class="ident">array_representation::treemath::sibling</span>, <span class="ident">LeafIndex</span>, <span class="ident">TreeSize</span>};
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::treemath::parent</span>;
@@ -664,7 +668,7 @@
 <span class="doccomment">/// original content, it can&#39;t provide the same information as the [`AbDiff`] it</span>
 <span class="doccomment">/// was created from. However, the lack of the internal reference means that its</span>
 <span class="doccomment">/// lifetime is not tied to that of the original tree.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">StagedAbDiff</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">Debug</span><span class="op">&gt;</span> {
     <span class="ident">diff</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">NodeIndex</span>, <span class="ident">T</span><span class="op">&gt;</span>,
     <span class="ident">size</span>: <span class="ident">TreeSize</span>,

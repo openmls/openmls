@@ -656,7 +656,7 @@
 <span class="doccomment">/// references to Proposals, such that, given a reference, a proposal can be</span>
 <span class="doccomment">/// accessed efficiently. To enable iteration over the queue in order, the</span>
 <span class="doccomment">/// `ProposalQueue` also contains a vector of `ProposalReference`s.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProposalQueue</span> {
     <span class="doccomment">/// `proposal_references` holds references to the proposals in the queue and</span>
     <span class="doccomment">/// determines the order of the queue.</span>

@@ -252,6 +252,39 @@
 <span id="252">252</span>
 <span id="253">253</span>
 <span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">application</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
 <span class="kw">mod</span> <span class="ident">creation</span>;
@@ -292,6 +325,7 @@
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::past_secrets::MessageSecretsStore</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::proposals</span>::{<span class="ident">ProposalStore</span>, <span class="ident">QueuedProposal</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::staged_commit::StagedCommit</span>;
 
 <span class="doccomment">/// A `MlsGroup` represents an [CoreGroup] with</span>
 <span class="doccomment">/// an easier, high-level API designed to be used in production. The API exposes</span>
@@ -350,6 +384,8 @@
     <span class="comment">// is set to `InnerState::Changed` whenever an the internal group state is change and is set to</span>
     <span class="comment">// `InnerState::Persisted` once the state has been persisted.</span>
     <span class="ident">state_changed</span>: <span class="ident">InnerState</span>,
+    <span class="comment">// This field is populated when a commit is created. It can be inspected or merged. If a commit is merged that does not correspond to the `StagedCommit` in this field, it is cleared.</span>
+    <span class="ident">pending_commit</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">StagedCommit</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">MlsGroup</span> {
@@ -412,6 +448,23 @@
     <span class="doccomment">/// Returns an `Iterator` over staged proposals.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pending_proposals</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">QueuedProposal</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">proposal_store</span>.<span class="ident">proposals</span>()
+    }
+
+    <span class="doccomment">/// Returns a reference to the [`StagedCommit`] of the most recently created</span>
+    <span class="doccomment">/// commit. If there was no commit created in this epoch, either because</span>
+    <span class="doccomment">/// this commit or another commit was merged, it returns `None`.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pending_commit</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">StagedCommit</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">pending_commit</span>.<span class="ident">as_ref</span>()
+    }
+
+    <span class="doccomment">/// Sets the `pending_commit` to `None`.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Use with caution! This function should only be used if it is clear that</span>
+    <span class="doccomment">/// the pending commit will not be used in the group. In particular, if a</span>
+    <span class="doccomment">/// pending commit is later accepted by the group, this client will lack the</span>
+    <span class="doccomment">/// key material to encrypt or decrypt group messages.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clear_pending_commit</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
+        <span class="self">self</span>.<span class="ident">pending_commit</span> <span class="op">=</span> <span class="prelude-val">None</span>
     }
 
     <span class="comment">// === Load &amp; save ===</span>
@@ -495,6 +548,19 @@
     <span class="doccomment">/// Group framing parameters</span>
     <span class="kw">fn</span> <span class="ident">framing_parameters</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">FramingParameters</span> {
         <span class="ident">FramingParameters::new</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>, <span class="self">self</span>.<span class="ident">mls_group_config</span>.<span class="ident">wire_format</span>)
+    }
+
+    <span class="doccomment">/// Check if the group is inactive or if there is a pending commit.</span>
+    <span class="kw">fn</span> <span class="ident">pending_commit_or_inactive</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::UseAfterEviction</span>(<span class="ident">UseAfterEviction::Error</span>));
+        }
+
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">pending_commit</span>.<span class="ident">is_some</span>() {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::PendingCommitError</span>);
+        }
+
+        <span class="prelude-val">Ok</span>(())
     }
 }
 

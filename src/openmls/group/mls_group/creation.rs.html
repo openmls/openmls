@@ -87,6 +87,8 @@
 <span id="87">87</span>
 <span id="88">88</span>
 <span id="89">89</span>
+<span id="90">90</span>
+<span id="91">91</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
 <span class="kw">impl</span> <span class="ident">MlsGroup</span> {
@@ -134,6 +136,7 @@
             <span class="ident">resumption_secret_store</span>,
             <span class="ident">active</span>: <span class="bool-val">true</span>,
             <span class="ident">state_changed</span>: <span class="ident">InnerState::Changed</span>,
+            <span class="ident">pending_commit</span>: <span class="prelude-val">None</span>,
         };
 
         <span class="prelude-val">Ok</span>(<span class="ident">mls_group</span>)
@@ -171,6 +174,7 @@
             <span class="ident">resumption_secret_store</span>,
             <span class="ident">active</span>: <span class="bool-val">true</span>,
             <span class="ident">state_changed</span>: <span class="ident">InnerState::Changed</span>,
+            <span class="ident">pending_commit</span>: <span class="prelude-val">None</span>,
         };
 
         <span class="prelude-val">Ok</span>(<span class="ident">mls_group</span>)

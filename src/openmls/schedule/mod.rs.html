@@ -1260,12 +1260,6 @@
 <span id="1260">1260</span>
 <span id="1261">1261</span>
 <span id="1262">1262</span>
-<span id="1263">1263</span>
-<span id="1264">1264</span>
-<span id="1265">1265</span>
-<span id="1266">1266</span>
-<span id="1267">1267</span>
-<span id="1268">1268</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module represents the key schedule as introduced in Section 8 of the</span>
 <span class="doccomment">//! MLS specification. The key schedule evolves in epochs, where in each epoch</span>
 <span class="doccomment">//! new key material is injected.</span>
@@ -1736,7 +1730,6 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">epoch_secrets</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">with_init_secret</span>: <span class="ident">bool</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">EpochSecrets</span>, <span class="ident">KeyScheduleError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">state</span> <span class="op">!</span><span class="op">=</span> <span class="ident">State::Context</span> <span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">epoch_secret</span>.<span class="ident">is_none</span>() {
             <span class="macro">log::error!</span>(<span class="string">&quot;Trying to derive the epoch secrets while not in the right state.&quot;</span>);
@@ -1750,7 +1743,7 @@
             <span class="prelude-val">None</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyScheduleError::LibraryError</span>),
         };
 
-        <span class="prelude-val">Ok</span>(<span class="ident">EpochSecrets::new</span>(<span class="ident">backend</span>, <span class="ident">epoch_secret</span>, <span class="ident">with_init_secret</span>)<span class="question-mark">?</span>)
+        <span class="prelude-val">Ok</span>(<span class="ident">EpochSecrets::new</span>(<span class="ident">backend</span>, <span class="ident">epoch_secret</span>)<span class="question-mark">?</span>)
     }
 }
 
@@ -2289,7 +2282,7 @@
 <span class="doccomment">/// | `membership_key`        | &quot;membership&quot;    |</span>
 <span class="doccomment">/// | `resumption_secret`     | &quot;resumption&quot;    |</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">EpochSecrets</span> {
-    <span class="ident">init_secret</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">InitSecret</span><span class="op">&gt;</span>,
+    <span class="ident">init_secret</span>: <span class="ident">InitSecret</span>,
     <span class="ident">sender_data_secret</span>: <span class="ident">SenderDataSecret</span>,
     <span class="ident">encryption_secret</span>: <span class="ident">EncryptionSecret</span>,
     <span class="ident">exporter_secret</span>: <span class="ident">ExporterSecret</span>,
@@ -2371,8 +2364,8 @@
 
     <span class="doccomment">/// Init secret</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">init_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">InitSecret</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">init_secret</span>.<span class="ident">as_ref</span>()
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">init_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">InitSecret</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">init_secret</span>
     }
 
     <span class="doccomment">/// Encryption secret</span>
@@ -2387,7 +2380,6 @@
     <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">epoch_secret</span>: <span class="ident">EpochSecret</span>,
-        <span class="ident">with_init_secret</span>: <span class="ident">bool</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="macro">log::debug!</span>(
             <span class="string">&quot;Computing EpochSecrets from epoch secret with {}&quot;</span>,
@@ -2407,12 +2399,8 @@
         <span class="kw">let</span> <span class="ident">membership_key</span> <span class="op">=</span> <span class="ident">MembershipKey::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">resumption_secret</span> <span class="op">=</span> <span class="ident">ResumptionSecret::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">init_secret</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">with_init_secret</span> {
-            <span class="macro">log::trace!</span>(<span class="string">&quot;  Computing init secret.&quot;</span>);
-            <span class="prelude-val">Some</span>(<span class="ident">InitSecret::new</span>(<span class="ident">backend</span>, <span class="ident">epoch_secret</span>)<span class="question-mark">?</span>)
-        } <span class="kw">else</span> {
-            <span class="prelude-val">None</span>
-        };
+        <span class="macro">log::trace!</span>(<span class="string">&quot;  Computing init secret.&quot;</span>);
+        <span class="kw">let</span> <span class="ident">init_secret</span> <span class="op">=</span> <span class="ident">InitSecret::new</span>(<span class="ident">backend</span>, <span class="ident">epoch_secret</span>)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="ident">EpochSecrets</span> {
             <span class="ident">init_secret</span>,
@@ -2441,8 +2429,8 @@
                 <span class="ident">init_secret</span>.<span class="ident">secret</span>.<span class="ident">version</span>(),
             ),
         };
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">epoch_secrets</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">backend</span>, <span class="ident">epoch_secret</span>, <span class="bool-val">false</span>)<span class="question-mark">?</span>;
-        <span class="ident">epoch_secrets</span>.<span class="ident">init_secret</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">init_secret</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">epoch_secrets</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::new</span>(<span class="ident">backend</span>, <span class="ident">epoch_secret</span>)<span class="question-mark">?</span>;
+        <span class="ident">epoch_secrets</span>.<span class="ident">init_secret</span> <span class="op">=</span> <span class="ident">init_secret</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">epoch_secrets</span>)
     }
 
@@ -2477,7 +2465,7 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">GroupEpochSecrets</span> {
-    <span class="ident">init_secret</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">InitSecret</span><span class="op">&gt;</span>,
+    <span class="ident">init_secret</span>: <span class="ident">InitSecret</span>,
     <span class="ident">exporter_secret</span>: <span class="ident">ExporterSecret</span>,
     <span class="ident">authentication_secret</span>: <span class="ident">AuthenticationSecret</span>,
     <span class="ident">external_secret</span>: <span class="ident">ExternalSecret</span>,
@@ -2510,8 +2498,8 @@
 
 <span class="kw">impl</span> <span class="ident">GroupEpochSecrets</span> {
     <span class="doccomment">/// Init secret</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">init_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">InitSecret</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">init_secret</span>.<span class="ident">as_ref</span>()
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">init_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">InitSecret</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">init_secret</span>
     }
 
     <span class="doccomment">/// Authentication secret</span>

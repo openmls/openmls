@@ -791,51 +791,6 @@
 <span id="791">791</span>
 <span id="792">792</span>
 <span id="793">793</span>
-<span id="794">794</span>
-<span id="795">795</span>
-<span id="796">796</span>
-<span id="797">797</span>
-<span id="798">798</span>
-<span id="799">799</span>
-<span id="800">800</span>
-<span id="801">801</span>
-<span id="802">802</span>
-<span id="803">803</span>
-<span id="804">804</span>
-<span id="805">805</span>
-<span id="806">806</span>
-<span id="807">807</span>
-<span id="808">808</span>
-<span id="809">809</span>
-<span id="810">810</span>
-<span id="811">811</span>
-<span id="812">812</span>
-<span id="813">813</span>
-<span id="814">814</span>
-<span id="815">815</span>
-<span id="816">816</span>
-<span id="817">817</span>
-<span id="818">818</span>
-<span id="819">819</span>
-<span id="820">820</span>
-<span id="821">821</span>
-<span id="822">822</span>
-<span id="823">823</span>
-<span id="824">824</span>
-<span id="825">825</span>
-<span id="826">826</span>
-<span id="827">827</span>
-<span id="828">828</span>
-<span id="829">829</span>
-<span id="830">830</span>
-<span id="831">831</span>
-<span id="832">832</span>
-<span id="833">833</span>
-<span id="834">834</span>
-<span id="835">835</span>
-<span id="836">836</span>
-<span id="837">837</span>
-<span id="838">838</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -856,6 +811,7 @@
 <span class="doccomment">//! return a [`Result`] since they may throw a</span>
 <span class="doccomment">//! [`LibraryError`](TreeSyncDiffError::LibraryError).</span>
 <span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">types::CryptoError</span>, <span class="ident">OpenMlsCryptoProvider</span>};
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::HashSet</span>, <span class="ident">convert::TryFrom</span>};
 
@@ -886,7 +842,7 @@
 
 <span class="doccomment">/// The [`StagedTreeSyncDiff`] can be created from a [`TreeSyncDiff`], examined</span>
 <span class="doccomment">/// and later merged into a [`TreeSync`] instance.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">StagedTreeSyncDiff</span> {
     <span class="ident">own_leaf_index</span>: <span class="ident">LeafIndex</span>,
     <span class="ident">diff</span>: <span class="ident">StagedMlsBinaryTreeDiff</span><span class="op">&lt;</span><span class="ident">TreeSyncNode</span><span class="op">&gt;</span>,
@@ -1068,61 +1024,15 @@
         )<span class="question-mark">?</span>)
     }
 
-    <span class="doccomment">/// Given a [`KeyPackageBundle`], use it to create a path and apply it to</span>
-    <span class="doccomment">/// the diff. This function is meant to be used with a [`KeyPackageBundle`]</span>
-    <span class="doccomment">/// that has been returned by a call to [`Self::apply_own_update_path()`].</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if the `parent_hash` of the given [`KeyPackageBundle`]</span>
-    <span class="doccomment">/// does not match the one computed from the generated path.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">re_apply_own_update_path</span>(
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
-        <span class="ident">key_package_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPackageBundle</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CommitSecret</span>, <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">leaf_secret</span> <span class="op">=</span> <span class="ident">key_package_bundle</span>.<span class="ident">leaf_secret</span>().<span class="ident">clone</span>();
-
-        <span class="comment">// The `update_path_nodes` are not needed here, because we&#39;re applying</span>
-        <span class="comment">// our own commit rather then creating one, for which we would have to</span>
-        <span class="comment">// encrypt the update path nodes returned here.</span>
-        <span class="kw">let</span> (<span class="ident">path</span>, <span class="ident">_update_path_nodes</span>, <span class="ident">commit_secret</span>) <span class="op">=</span>
-            <span class="self">self</span>.<span class="ident">derive_path_from_leaf_secret</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>, <span class="ident">leaf_secret</span>)<span class="question-mark">?</span>;
-
-        <span class="kw">let</span> <span class="ident">parent_hash</span> <span class="op">=</span>
-            <span class="self">self</span>.<span class="ident">process_update_path</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>, <span class="self">self</span>.<span class="ident">own_leaf_index</span>, <span class="ident">path</span>)<span class="question-mark">?</span>;
-
-        <span class="kw">let</span> <span class="ident">parent_hash_ext</span> <span class="op">=</span> <span class="ident">key_package_bundle</span>
-            .<span class="ident">key_package</span>()
-            .<span class="ident">extension_with_type</span>(<span class="ident">ExtensionType::ParentHash</span>)
-            .<span class="ident">ok_or</span>(<span class="ident">TreeSyncDiffError::MissingParentHash</span>)<span class="question-mark">?</span>;
-
-        <span class="comment">// We just filtered by extensiontype, so this should be a parrent hash extension.</span>
-        <span class="kw">let</span> <span class="ident">kpb_parent_hash</span> <span class="op">=</span> <span class="ident">parent_hash_ext</span>
-            .<span class="ident">as_parent_hash_extension</span>()
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">TreeSyncDiffError::LibraryError</span>)<span class="question-mark">?</span>
-            .<span class="ident">parent_hash</span>();
-
-        <span class="comment">// Double-check that the computed parent hash and that of the given KPB</span>
-        <span class="comment">// match.</span>
-        <span class="kw">if</span> <span class="ident">kpb_parent_hash</span> <span class="op">!</span><span class="op">=</span> <span class="ident">parent_hash</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TreeSyncDiffError::ParentHashMismatch</span>);
-        }
-
-        <span class="comment">// Prepare our own leaf:</span>
-        <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Node::LeafNode</span>(<span class="ident">key_package_bundle</span>.<span class="ident">clone</span>().<span class="ident">into</span>());
-
-        <span class="comment">// Replace the leaf.</span>
-        <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">replace_leaf</span>(<span class="self">self</span>.<span class="ident">own_leaf_index</span>, <span class="ident">node</span>.<span class="ident">into</span>())<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">commit_secret</span>)
-    }
-
     <span class="doccomment">/// Given a [`KeyPackageBundlePayload`], use it to create a new path and</span>
     <span class="doccomment">/// apply it to this diff. The given [`CredentialBundle`] reference is used</span>
     <span class="doccomment">/// to sign the [`KeyPackageBundlePayload`] after updating its parent hash.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Returns the resulting [`KeyPackageBundle`] for later use with</span>
     <span class="doccomment">/// [`Self::re_apply_own_update_path()`], as well as the [`CommitSecret`]</span>
-    <span class="doccomment">/// and the path resulting from the path derivation.</span>
+    <span class="doccomment">/// and the path resulting from the path derivation. FIXME: There is no need</span>
+    <span class="doccomment">/// to return a KPB here, as we&#39;re either going to merge the commit or drop</span>
+    <span class="doccomment">/// it entirely.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">apply_own_update_path</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
@@ -1141,7 +1051,7 @@
         <span class="ident">key_package_bundle_payload</span>.<span class="ident">update_parent_hash</span>(<span class="kw-2">&amp;</span><span class="ident">parent_hash</span>);
         <span class="kw">let</span> <span class="ident">key_package_bundle</span> <span class="op">=</span> <span class="ident">key_package_bundle_payload</span>.<span class="ident">sign</span>(<span class="ident">backend</span>, <span class="ident">credential_bundle</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Node::LeafNode</span>(<span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>().<span class="ident">clone</span>().<span class="ident">into</span>());
+        <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Node::LeafNode</span>(<span class="ident">key_package_bundle</span>.<span class="ident">clone</span>().<span class="ident">into</span>());
 
         <span class="comment">// Replace the leaf.</span>
         <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">replace_leaf</span>(<span class="self">self</span>.<span class="ident">own_leaf_index</span>, <span class="ident">node</span>.<span class="ident">into</span>())<span class="question-mark">?</span>;

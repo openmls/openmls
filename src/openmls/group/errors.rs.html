@@ -295,9 +295,6 @@
 <span id="295">295</span>
 <span id="296">296</span>
 <span id="297">297</span>
-<span id="298">298</span>
-<span id="299">299</span>
-<span id="300">300</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS CoreGroup errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -320,11 +317,10 @@
 <span class="macro">implement_error!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CoreGroupError</span> {
         <span class="ident">Simple</span> {
-            <span class="ident">InitSecretNotFound</span> <span class="op">=</span>
-                <span class="string">&quot;Missing init secret when creating commit.&quot;</span>,
             <span class="ident">MissingKeyPackageBundle</span> <span class="op">=</span>
                 <span class="string">&quot;Couldn&#39;t find KeyPackageBundle corresponding to own update proposal.&quot;</span>,
             <span class="ident">NoSignatureKey</span> <span class="op">=</span> <span class="string">&quot;No signature key was found.&quot;</span>,
+            <span class="ident">OwnCommitError</span> <span class="op">=</span> <span class="string">&quot;Can&#39;t process a commit created by the owner of the group. Please merge the [`StagedCommit`] returned by `create_commit` instead.&quot;</span>,
             <span class="ident">LibraryError</span> <span class="op">=</span> <span class="string">&quot;An unrecoverable error has occurred due to a bug in the implementation.&quot;</span>,
         }
         <span class="ident">Complex</span> {
@@ -503,8 +499,6 @@
                 <span class="string">&quot;The proposal queue is missing a proposal for the commit.&quot;</span>,
             <span class="ident">OwnKeyNotFound</span> <span class="op">=</span>
                 <span class="string">&quot;Missing own key to apply proposal.&quot;</span>,
-            <span class="ident">InitSecretNotFound</span> <span class="op">=</span>
-                <span class="string">&quot;Missing init secret to apply proposal.&quot;</span>,
         }
         <span class="ident">Complex</span> {
             <span class="ident">PlaintextSignatureFailure</span>(<span class="ident">VerificationError</span>) <span class="op">=</span>

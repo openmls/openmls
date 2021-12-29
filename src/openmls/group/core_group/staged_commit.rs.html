@@ -398,18 +398,6 @@
 <span id="398">398</span>
 <span id="399">399</span>
 <span id="400">400</span>
-<span id="401">401</span>
-<span id="402">402</span>
-<span id="403">403</span>
-<span id="404">404</span>
-<span id="405">405</span>
-<span id="406">406</span>
-<span id="407">407</span>
-<span id="408">408</span>
-<span id="409">409</span>
-<span id="410">410</span>
-<span id="411">411</span>
-<span id="412">412</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::diff::StagedTreeSyncDiff</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::proposals</span>::{<span class="ident">ProposalQueue</span>, <span class="ident">ProposalStore</span>, <span class="ident">QueuedProposal</span>};
@@ -423,7 +411,7 @@
 <span class="kw">use</span> <span class="ident">std::mem</span>;
 
 <span class="kw">impl</span> <span class="ident">CoreGroup</span> {
-    <span class="doccomment">/// Stages a commit message.</span>
+    <span class="doccomment">/// Stages a commit message that was sent by another group member.</span>
     <span class="doccomment">/// This function does the following:</span>
     <span class="doccomment">///  - Applies the proposals covered by the commit to the tree</span>
     <span class="doccomment">///  - Applies the (optional) update path to the tree</span>
@@ -446,6 +434,8 @@
     <span class="doccomment">///  - ValSem110</span>
     <span class="doccomment">///  - ValSem201</span>
     <span class="doccomment">///  - ValSem205</span>
+    <span class="doccomment">/// Returns an error if the given commit was sent by the owner of this</span>
+    <span class="doccomment">/// group.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">stage_commit</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">mls_plaintext</span>: <span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span>,
@@ -453,10 +443,15 @@
         <span class="ident">own_key_packages</span>: <span class="kw-2">&amp;</span>[<span class="ident">KeyPackageBundle</span>],
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">StagedCommit</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ciphersuite</span>();
-
         <span class="comment">// Extract the sender of the Commit message</span>
         <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">mls_plaintext</span>.<span class="ident">sender</span>();
+
+        <span class="comment">// Own commits have to be merged directly instead of staging them.</span>
+        <span class="kw">if</span> <span class="ident">sender</span>.<span class="ident">sender</span> <span class="op">==</span> <span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">own_leaf_index</span>() {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CoreGroupError::OwnCommitError</span>);
+        };
+
+        <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ciphersuite</span>();
 
         <span class="comment">// Verify epoch</span>
         <span class="kw">if</span> <span class="ident">mls_plaintext</span>.<span class="ident">epoch</span>() <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">epoch</span>() {
@@ -534,7 +529,6 @@
 
         <span class="comment">// Determine if Commit is own Commit</span>
         <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">mls_plaintext</span>.<span class="ident">sender_index</span>();
-        <span class="kw">let</span> <span class="ident">is_own_commit</span> <span class="op">=</span> <span class="ident">sender</span> <span class="op">==</span> <span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">own_leaf_index</span>();
 
         <span class="comment">// Determine if Commit has a path</span>
         <span class="kw">let</span> <span class="ident">commit_secret</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">path</span>) <span class="op">=</span> <span class="ident">commit</span>.<span class="ident">path</span>.<span class="ident">clone</span>() {
@@ -547,47 +541,31 @@
             }
             <span class="kw">let</span> <span class="ident">serialized_context</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
 
-            <span class="kw">if</span> <span class="ident">is_own_commit</span> {
-                <span class="comment">// Find the right KeyPackageBundle among the pending bundles and</span>
-                <span class="comment">// clone out the one that we need.</span>
-                <span class="kw">let</span> <span class="ident">own_kpb</span> <span class="op">=</span> <span class="ident">own_key_packages</span>
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">find</span>(<span class="op">|</span><span class="ident">kpb</span><span class="op">|</span> <span class="ident">kpb</span>.<span class="ident">key_package</span>() <span class="op">==</span> <span class="ident">kp</span>)
-                    .<span class="ident">ok_or</span>(<span class="ident">StageCommitError::MissingOwnKeyPackage</span>)<span class="question-mark">?</span>;
-                <span class="ident">diff</span>.<span class="ident">re_apply_own_update_path</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>, <span class="ident">own_kpb</span>)<span class="question-mark">?</span>
-            } <span class="kw">else</span> {
-                <span class="kw">let</span> (<span class="ident">key_package</span>, <span class="ident">update_path_nodes</span>) <span class="op">=</span> <span class="ident">path</span>.<span class="ident">into_parts</span>();
+            <span class="kw">let</span> (<span class="ident">key_package</span>, <span class="ident">update_path_nodes</span>) <span class="op">=</span> <span class="ident">path</span>.<span class="ident">into_parts</span>();
 
-                <span class="comment">// If the committer is a `NewMember`, we have to add the leaf to</span>
-                <span class="comment">// the tree before we can apply or even decrypt an update path.</span>
-                <span class="comment">// While `apply_received_update_path` will happily update a</span>
-                <span class="comment">// blank leaf, we still have to call `add_leaf` here in case</span>
-                <span class="comment">// there are no blanks and the new member extended the tree to</span>
-                <span class="comment">// fit in.</span>
-                <span class="kw">if</span> <span class="ident">apply_proposals_values</span>.<span class="ident">external_init_secret_option</span>.<span class="ident">is_some</span>() {
-                    <span class="ident">diff</span>.<span class="ident">add_leaf</span>(<span class="ident">key_package</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>;
-                }
-
-                <span class="comment">// Decrypt the UpdatePath</span>
-                <span class="kw">let</span> (<span class="ident">plain_path</span>, <span class="ident">commit_secret</span>) <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">decrypt_path</span>(
-                    <span class="ident">backend</span>,
-                    <span class="ident">ciphersuite</span>,
-                    <span class="self">self</span>.<span class="ident">mls_version</span>,
-                    <span class="ident">update_path_nodes</span>,
-                    <span class="ident">sender</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">apply_proposals_values</span>.<span class="ident">exclusion_list</span>(),
-                    <span class="kw-2">&amp;</span><span class="ident">serialized_context</span>,
-                )<span class="question-mark">?</span>;
-
-                <span class="ident">diff</span>.<span class="ident">apply_received_update_path</span>(
-                    <span class="ident">backend</span>,
-                    <span class="ident">ciphersuite</span>,
-                    <span class="ident">sender</span>,
-                    <span class="ident">key_package</span>,
-                    <span class="ident">plain_path</span>,
-                )<span class="question-mark">?</span>;
-                <span class="ident">commit_secret</span>
+            <span class="comment">// If the committer is a `NewMember`, we have to add the leaf to</span>
+            <span class="comment">// the tree before we can apply or even decrypt an update path.</span>
+            <span class="comment">// While `apply_received_update_path` will happily update a</span>
+            <span class="comment">// blank leaf, we still have to call `add_leaf` here in case</span>
+            <span class="comment">// there are no blanks and the new member extended the tree to</span>
+            <span class="comment">// fit in.</span>
+            <span class="kw">if</span> <span class="ident">apply_proposals_values</span>.<span class="ident">external_init_secret_option</span>.<span class="ident">is_some</span>() {
+                <span class="ident">diff</span>.<span class="ident">add_leaf</span>(<span class="ident">key_package</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>;
             }
+
+            <span class="comment">// Decrypt the UpdatePath</span>
+            <span class="kw">let</span> (<span class="ident">plain_path</span>, <span class="ident">commit_secret</span>) <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">decrypt_path</span>(
+                <span class="ident">backend</span>,
+                <span class="ident">ciphersuite</span>,
+                <span class="self">self</span>.<span class="ident">mls_version</span>,
+                <span class="ident">update_path_nodes</span>,
+                <span class="ident">sender</span>,
+                <span class="kw-2">&amp;</span><span class="ident">apply_proposals_values</span>.<span class="ident">exclusion_list</span>(),
+                <span class="kw-2">&amp;</span><span class="ident">serialized_context</span>,
+            )<span class="question-mark">?</span>;
+
+            <span class="ident">diff</span>.<span class="ident">apply_received_update_path</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>, <span class="ident">sender</span>, <span class="ident">key_package</span>, <span class="ident">plain_path</span>)<span class="question-mark">?</span>;
+            <span class="ident">commit_secret</span>
         } <span class="kw">else</span> {
             <span class="kw">if</span> <span class="ident">apply_proposals_values</span>.<span class="ident">path_required</span> {
                 <span class="comment">// ValSem201</span>
@@ -602,9 +580,7 @@
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">init_secret</span>) <span class="op">=</span> <span class="ident">apply_proposals_values</span>.<span class="ident">external_init_secret_option</span> {
                 <span class="ident">init_secret</span>
             } <span class="kw">else</span> {
-                <span class="self">self</span>.<span class="ident">group_epoch_secrets</span>
-                    .<span class="ident">init_secret</span>()
-                    .<span class="ident">ok_or</span>(<span class="ident">StageCommitError::InitSecretNotFound</span>)<span class="question-mark">?</span>
+                <span class="self">self</span>.<span class="ident">group_epoch_secrets</span>.<span class="ident">init_secret</span>()
             };
 
         <span class="kw">let</span> <span class="ident">joiner_secret</span> <span class="op">=</span> <span class="ident">JoinerSecret::new</span>(<span class="ident">backend</span>, <span class="ident">commit_secret</span>, <span class="ident">init_secret</span>)<span class="question-mark">?</span>;
@@ -644,7 +620,7 @@
             <span class="ident">provisional_group_context</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
 
         <span class="ident">key_schedule</span>.<span class="ident">add_context</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">serialized_provisional_group_context</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">provisional_epoch_secrets</span> <span class="op">=</span> <span class="ident">key_schedule</span>.<span class="ident">epoch_secrets</span>(<span class="ident">backend</span>, <span class="bool-val">true</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">provisional_epoch_secrets</span> <span class="op">=</span> <span class="ident">key_schedule</span>.<span class="ident">epoch_secrets</span>(<span class="ident">backend</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">mls_plaintext_commit_auth_data</span> <span class="op">=</span> <span class="ident">MlsPlaintextCommitAuthData::try_from</span>(<span class="ident">mls_plaintext</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
@@ -749,7 +725,7 @@
 }
 
 <span class="doccomment">/// Contains the changes from a commit to the group state.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">StagedCommit</span> {
     <span class="ident">staged_proposal_queue</span>: <span class="ident">ProposalQueue</span>,
     <span class="ident">state</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">StagedCommitState</span><span class="op">&gt;</span>,
@@ -796,7 +772,7 @@
 }
 
 <span class="doccomment">/// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">StagedCommitState</span> {
     <span class="ident">group_context</span>: <span class="ident">GroupContext</span>,
     <span class="ident">group_epoch_secrets</span>: <span class="ident">GroupEpochSecrets</span>,
