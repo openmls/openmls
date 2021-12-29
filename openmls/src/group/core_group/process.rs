@@ -1,4 +1,4 @@
-use core_group::{proposals::StagedProposal, staged_commit::StagedCommit};
+use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 
 use crate::tree::secret_tree::SecretTreeError;
 
@@ -163,7 +163,7 @@ impl CoreGroup {
                     }
                     MlsPlaintextContentType::Proposal(_proposal) => {
                         ProcessedMessage::ProposalMessage(Box::new(
-                            StagedProposal::from_mls_plaintext(
+                            QueuedProposal::from_mls_plaintext(
                                 self.ciphersuite(),
                                 backend,
                                 verified_member_message.take_plaintext(),
