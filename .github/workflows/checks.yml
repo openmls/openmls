@@ -14,7 +14,7 @@ defaults:
   run:
     working-directory: openmls
 
-name: Clippy & format check
+name: Cargo format check
 jobs:
   checks:
     runs-on: ubuntu-latest
@@ -22,16 +22,11 @@ jobs:
       - uses: actions/checkout@v2
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-      - name: Stable with rustfmt and clippy
+      - name: Stable with rustfmt
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
-          components: rustfmt, clippy
-      - name: Clippy warnings
-        uses: actions-rs/clippy-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --manifest-path openmls/Cargo.toml
+          components: rustfmt
       - name: Cargo fmt
         run: cargo fmt -- --check
