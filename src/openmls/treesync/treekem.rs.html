@@ -323,8 +323,8 @@
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module contains structs and functions to encrypt and decrypt path</span>
 <span class="doccomment">//! updates for a [`TreeSyncDiff`] instance.</span>
+<span class="kw">use</span> <span class="ident">rayon::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std::collections::HashSet</span>;
-
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsVecU32</span>};
 
 <span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">crypto::OpenMlsCrypto</span>, <span class="ident">types::HpkeCiphertext</span>, <span class="ident">OpenMlsCryptoProvider</span>};
@@ -371,12 +371,12 @@
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TreeKemError::PathLengthError</span>);
         }
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">update_path_nodes</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">path</span>.<span class="ident">len</span>());
         <span class="comment">// Encrypt the secrets</span>
-        <span class="kw">for</span> (<span class="ident">node</span>, <span class="ident">resolution</span>) <span class="kw">in</span> <span class="ident">path</span>.<span class="ident">iter</span>().<span class="ident">zip</span>(<span class="ident">copath_resolutions</span>.<span class="ident">iter</span>()) {
-            <span class="kw">let</span> <span class="ident">update_path_node</span> <span class="op">=</span> <span class="ident">node</span>.<span class="ident">encrypt</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>, <span class="ident">resolution</span>, <span class="ident">group_context</span>);
-            <span class="ident">update_path_nodes</span>.<span class="ident">push</span>(<span class="ident">update_path_node</span>);
-        }
+        <span class="kw">let</span> <span class="ident">update_path_nodes</span> <span class="op">=</span> <span class="ident">path</span>
+            .<span class="ident">par_iter</span>()
+            .<span class="ident">zip</span>(<span class="ident">copath_resolutions</span>.<span class="ident">par_iter</span>())
+            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">node</span>, <span class="ident">resolution</span>)<span class="op">|</span> <span class="ident">node</span>.<span class="ident">encrypt</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>, <span class="ident">resolution</span>, <span class="ident">group_context</span>))
+            .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">UpdatePathNode</span><span class="op">&gt;</span><span class="op">&gt;</span>();
 
         <span class="prelude-val">Ok</span>(<span class="ident">UpdatePath</span> {
             <span class="ident">leaf_key_package</span>: <span class="ident">key_package</span>.<span class="ident">clone</span>(),
