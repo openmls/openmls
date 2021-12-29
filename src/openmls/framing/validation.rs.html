@@ -400,7 +400,7 @@
 <span class="doccomment">//! ```</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">schedule::MessageSecrets</span>, <span class="ident">tree::sender_ratchet::SenderRatchetConfiguration</span>};
-<span class="kw">use</span> <span class="ident">core_group</span>::{<span class="ident">proposals::StagedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
+<span class="kw">use</span> <span class="ident">core_group</span>::{<span class="ident">proposals::QueuedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
 <span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite::signable::Verifiable</span>;
@@ -692,11 +692,11 @@
 }
 
 <span class="doccomment">/// Message that contains messages that are syntactically and semantically correct.</span>
-<span class="doccomment">/// [StagedCommit] and [StagedProposal] can be inspected for authorization purposes.</span>
+<span class="doccomment">/// [StagedCommit] and [QueuedProposal] can be inspected for authorization purposes.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProcessedMessage</span> {
     <span class="ident">ApplicationMessage</span>(<span class="ident">ApplicationMessage</span>),
-    <span class="ident">ProposalMessage</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">StagedProposal</span><span class="op">&gt;</span>),
+    <span class="ident">ProposalMessage</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">QueuedProposal</span><span class="op">&gt;</span>),
     <span class="ident">StagedCommitMessage</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">StagedCommit</span><span class="op">&gt;</span>),
 }
 

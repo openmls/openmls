@@ -226,7 +226,7 @@
 <span id="226">226</span>
 <span id="227">227</span>
 <span id="228">228</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">core_group</span>::{<span class="ident">proposals::StagedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">core_group</span>::{<span class="ident">proposals::QueuedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree::secret_tree::SecretTreeError</span>;
 
@@ -391,7 +391,7 @@
                     }
                     <span class="ident">MlsPlaintextContentType::Proposal</span>(<span class="ident">_proposal</span>) =&gt; {
                         <span class="ident">ProcessedMessage::ProposalMessage</span>(<span class="ident">Box::new</span>(
-                            <span class="ident">StagedProposal::from_mls_plaintext</span>(
+                            <span class="ident">QueuedProposal::from_mls_plaintext</span>(
                                 <span class="self">self</span>.<span class="ident">ciphersuite</span>(),
                                 <span class="ident">backend</span>,
                                 <span class="ident">verified_member_message</span>.<span class="ident">take_plaintext</span>(),

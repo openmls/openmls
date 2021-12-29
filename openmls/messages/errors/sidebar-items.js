@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["ProposalError",""],["ProposalOrRefTypeError",""],["ProposalQueueError",""],["QueuedProposalError",""]]});
+initSidebarItems({"enum":[["ProposalError",""],["ProposalOrRefTypeError",""]]});

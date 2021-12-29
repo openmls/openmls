@@ -150,7 +150,7 @@
 
 <span class="kw">use</span> <span class="kw">super</span>::{
     <span class="ident">create_commit_params</span>::{<span class="ident">CommitType</span>, <span class="ident">CreateCommitParams</span>},
-    <span class="ident">proposals</span>::{<span class="ident">ProposalStore</span>, <span class="ident">StagedProposal</span>},
+    <span class="ident">proposals</span>::{<span class="ident">ProposalStore</span>, <span class="ident">QueuedProposal</span>},
     <span class="ident">CoreGroup</span>,
 };
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::core_group</span>::<span class="kw-2">*</span>;
@@ -253,7 +253,7 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">proposal_store</span> <span class="op">=</span> <span class="ident">ProposalStore::default</span>();
         <span class="kw">for</span> <span class="ident">proposal</span> <span class="kw">in</span> <span class="ident">proposals_by_reference</span> {
             <span class="kw">let</span> <span class="ident">staged_proposal</span> <span class="op">=</span>
-                <span class="ident">StagedProposal::from_mls_plaintext</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">proposal</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>;
+                <span class="ident">QueuedProposal::from_mls_plaintext</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">proposal</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>;
             <span class="ident">proposal_store</span>.<span class="ident">add</span>(<span class="ident">staged_proposal</span>)
         }
 

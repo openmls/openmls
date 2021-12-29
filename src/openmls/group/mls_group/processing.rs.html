@@ -140,7 +140,7 @@
 <span id="140">140</span>
 <span id="141">141</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">core_group</span>::{
-    <span class="ident">create_commit_params::CreateCommitParams</span>, <span class="ident">proposals::StagedProposal</span>,
+    <span class="ident">create_commit_params::CreateCommitParams</span>, <span class="ident">proposals::QueuedProposal</span>,
     <span class="ident">staged_commit::StagedCommit</span>,
 };
 
@@ -199,7 +199,7 @@
     }
 
     <span class="doccomment">/// Stores a standalone proposal in the internal [ProposalStore]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">store_pending_proposal</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">proposal</span>: <span class="ident">StagedProposal</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">store_pending_proposal</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">proposal</span>: <span class="ident">QueuedProposal</span>) {
         <span class="comment">// Store the proposal in in the internal ProposalStore</span>
         <span class="self">self</span>.<span class="ident">proposal_store</span>.<span class="ident">add</span>(<span class="ident">proposal</span>);
 

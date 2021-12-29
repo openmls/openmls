@@ -298,19 +298,6 @@
 <span id="298">298</span>
 <span id="299">299</span>
 <span id="300">300</span>
-<span id="301">301</span>
-<span id="302">302</span>
-<span id="303">303</span>
-<span id="304">304</span>
-<span id="305">305</span>
-<span id="306">306</span>
-<span id="307">307</span>
-<span id="308">308</span>
-<span id="309">309</span>
-<span id="310">310</span>
-<span id="311">311</span>
-<span id="312">312</span>
-<span id="313">313</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS CoreGroup errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -323,7 +310,7 @@
     <span class="ident">MlsCiphertextError</span>, <span class="ident">MlsPlaintextError</span>, <span class="ident">ValidationError</span>, <span class="ident">VerificationError</span>,
 };
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::key_packages::KeyPackageError</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::errors</span>::{<span class="ident">ProposalError</span>, <span class="ident">ProposalQueueError</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::errors::ProposalError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schedule::errors</span>::{<span class="ident">KeyScheduleError</span>, <span class="ident">PskSecretError</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree</span>::{<span class="ident">ParentHashError</span>, <span class="ident">TreeError</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync</span>::{<span class="ident">diff::TreeSyncDiffError</span>, <span class="ident">treekem::TreeKemError</span>, <span class="ident">TreeSyncError</span>};
@@ -357,8 +344,6 @@
                 <span class="string">&quot;See [`ExporterError`](`ExporterError`) for details.&quot;</span>,
             <span class="ident">ProposalQueueError</span>(<span class="ident">ProposalQueueError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`ProposalQueueError`](`crate::messages::errors::ProposalQueueError`) for details.&quot;</span>,
-            <span class="ident">CreationProposalQueueError</span>(<span class="ident">CreationProposalQueueError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`CreationProposalQueueError`](`crate::group::errors::CreationProposalQueueError`) for details.&quot;</span>,
             <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span>
                 <span class="string">&quot;TLS (de)serialization error occurred.&quot;</span>,
             <span class="ident">KeyScheduleError</span>(<span class="ident">KeyScheduleError</span>) <span class="op">=</span>
@@ -389,8 +374,8 @@
                 <span class="string">&quot;See [`CryptoError`](openmls_traits::types::CryptoError) for details.&quot;</span>,
             <span class="ident">InterimTranscriptHashError</span>(<span class="ident">InterimTranscriptHashError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`InterimTranscriptHashError`](crate::group::InterimTranscriptHashError) for details.&quot;</span>,
-            <span class="ident">StagedProposalError</span>(<span class="ident">StagedProposalError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`StagedProposalError`](crate::group::StagedProposalError) for details.&quot;</span>,
+            <span class="ident">QueuedProposalError</span>(<span class="ident">QueuedProposalError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`QueuedProposalError`](crate::group::QueuedProposalError) for details.&quot;</span>,
         }
     }
 }
@@ -445,8 +430,8 @@
                 <span class="string">&quot;See [`InterimTranscriptHashError`] for details.&quot;</span>,
             <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`CryptoError`](openmls_traits::types::CryptoError) for details.&quot;</span>,
-            <span class="ident">ProposalError</span>(<span class="ident">StagedProposalError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`StagedProposalError`] for details.&quot;</span>,
+            <span class="ident">ProposalError</span>(<span class="ident">QueuedProposalError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`QueuedProposalError`] for details.&quot;</span>,
         }
     }
 }
@@ -485,8 +470,8 @@
                 <span class="string">&quot;See [`KeyPackageError`] for details.&quot;</span>,
             <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`CryptoError`](openmls_traits::types::CryptoError) for details.&quot;</span>,
-            <span class="ident">ProposalError</span>(<span class="ident">StagedProposalError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`StagedProposalError`] for details.&quot;</span>,
+            <span class="ident">ProposalError</span>(<span class="ident">QueuedProposalError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`QueuedProposalError`] for details.&quot;</span>,
         }
     }
 }
@@ -549,7 +534,7 @@
 }
 
 <span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">StagedProposalError</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">QueuedProposalError</span> {
         <span class="ident">Simple</span> {
             <span class="ident">WrongContentType</span> <span class="op">=</span> <span class="string">&quot;API misuse. Only proposals can end up in the proposal queue&quot;</span>,
         }
@@ -561,25 +546,14 @@
 }
 
 <span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">StagedProposalQueueError</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProposalQueueError</span> {
         <span class="ident">Simple</span> {
             <span class="ident">ProposalNotFound</span> <span class="op">=</span> <span class="string">&quot;Not all proposals in the Commit were found locally.&quot;</span>,
             <span class="ident">SelfRemoval</span> <span class="op">=</span> <span class="string">&quot;The sender of a Commit tried to remove themselves.&quot;</span>,
-        }
-        <span class="ident">Complex</span> {
-            <span class="ident">NotAProposal</span>(<span class="ident">StagedProposalError</span>) <span class="op">=</span> <span class="string">&quot;The given MLS Plaintext was not a Proposal.&quot;</span>,
-        }
-    }
-}
-
-<span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CreationProposalQueueError</span> {
-        <span class="ident">Simple</span> {
-            <span class="ident">ProposalNotFound</span> <span class="op">=</span> <span class="string">&quot;Not all proposals in the Commit were found locally.&quot;</span>,
             <span class="ident">ArchitectureError</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t fit a `u32` into a `usize`.&quot;</span>,
         }
         <span class="ident">Complex</span> {
-            <span class="ident">NotAProposal</span>(<span class="ident">StagedProposalError</span>) <span class="op">=</span> <span class="string">&quot;The given MLS Plaintext was not a Proposal.&quot;</span>,
+            <span class="ident">NotAProposal</span>(<span class="ident">QueuedProposalError</span>) <span class="op">=</span> <span class="string">&quot;The given MLS Plaintext was not a Proposal.&quot;</span>,
         }
     }
 }
