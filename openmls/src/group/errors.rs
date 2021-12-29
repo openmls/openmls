@@ -10,7 +10,7 @@ use crate::framing::errors::{
     MlsCiphertextError, MlsPlaintextError, ValidationError, VerificationError,
 };
 use crate::key_packages::KeyPackageError;
-use crate::messages::errors::{ProposalError, ProposalQueueError};
+use crate::messages::errors::ProposalError;
 use crate::schedule::errors::{KeyScheduleError, PskSecretError};
 use crate::tree::{ParentHashError, TreeError};
 use crate::treesync::{diff::TreeSyncDiffError, treekem::TreeKemError, TreeSyncError};
@@ -43,8 +43,6 @@ implement_error! {
                 "See [`ExporterError`](`ExporterError`) for details.",
             ProposalQueueError(ProposalQueueError) =
                 "See [`ProposalQueueError`](`crate::messages::errors::ProposalQueueError`) for details.",
-            CreationProposalQueueError(CreationProposalQueueError) =
-                "See [`CreationProposalQueueError`](`crate::group::errors::CreationProposalQueueError`) for details.",
             CodecError(TlsCodecError) =
                 "TLS (de)serialization error occurred.",
             KeyScheduleError(KeyScheduleError) =
@@ -75,8 +73,8 @@ implement_error! {
                 "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
             InterimTranscriptHashError(InterimTranscriptHashError) =
                 "See [`InterimTranscriptHashError`](crate::group::InterimTranscriptHashError) for details.",
-            StagedProposalError(StagedProposalError) =
-                "See [`StagedProposalError`](crate::group::StagedProposalError) for details.",
+            QueuedProposalError(QueuedProposalError) =
+                "See [`QueuedProposalError`](crate::group::QueuedProposalError) for details.",
         }
     }
 }
@@ -131,8 +129,8 @@ implement_error! {
                 "See [`InterimTranscriptHashError`] for details.",
             CryptoError(CryptoError) =
                 "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
-            ProposalError(StagedProposalError) =
-                "See [`StagedProposalError`] for details.",
+            ProposalError(QueuedProposalError) =
+                "See [`QueuedProposalError`] for details.",
         }
     }
 }
@@ -171,8 +169,8 @@ implement_error! {
                 "See [`KeyPackageError`] for details.",
             CryptoError(CryptoError) =
                 "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
-            ProposalError(StagedProposalError) =
-                "See [`StagedProposalError`] for details.",
+            ProposalError(QueuedProposalError) =
+                "See [`QueuedProposalError`] for details.",
         }
     }
 }
@@ -233,7 +231,7 @@ implement_error! {
 }
 
 implement_error! {
-    pub enum StagedProposalError {
+    pub enum QueuedProposalError {
         Simple {
             WrongContentType = "API misuse. Only proposals can end up in the proposal queue",
         }
@@ -245,25 +243,14 @@ implement_error! {
 }
 
 implement_error! {
-    pub enum StagedProposalQueueError {
+    pub enum ProposalQueueError {
         Simple {
             ProposalNotFound = "Not all proposals in the Commit were found locally.",
             SelfRemoval = "The sender of a Commit tried to remove themselves.",
-        }
-        Complex {
-            NotAProposal(StagedProposalError) = "The given MLS Plaintext was not a Proposal.",
-        }
-    }
-}
-
-implement_error! {
-    pub enum CreationProposalQueueError {
-        Simple {
-            ProposalNotFound = "Not all proposals in the Commit were found locally.",
             ArchitectureError = "Couldn't fit a `u32` into a `usize`.",
         }
         Complex {
-            NotAProposal(StagedProposalError) = "The given MLS Plaintext was not a Proposal.",
+            NotAProposal(QueuedProposalError) = "The given MLS Plaintext was not a Proposal.",
         }
     }
 }

@@ -60,9 +60,9 @@ fn test_pgs(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvi
         )
         .expect("Could not create proposal.");
 
-    let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
-            .expect("Could not create StagedProposal."),
+    let proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)

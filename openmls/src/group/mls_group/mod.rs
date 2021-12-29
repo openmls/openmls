@@ -37,7 +37,7 @@ pub(crate) use resumption::ResumptionSecretStore;
 use ser::*;
 
 use super::past_secrets::MessageSecretsStore;
-use super::proposals::{ProposalStore, StagedProposal};
+use super::proposals::{ProposalStore, QueuedProposal};
 use super::staged_commit::StagedCommit;
 
 /// A `MlsGroup` represents an [CoreGroup] with
@@ -159,7 +159,7 @@ impl MlsGroup {
     }
 
     /// Returns an `Iterator` over staged proposals.
-    pub fn pending_proposals(&self) -> impl Iterator<Item = &StagedProposal> {
+    pub fn pending_proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
         self.proposal_store.proposals()
     }
 

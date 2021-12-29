@@ -15,7 +15,7 @@ use crate::{
 
 use super::{
     create_commit_params::{CommitType, CreateCommitParams},
-    proposals::CreationProposalQueue,
+    proposals::ProposalQueue,
     staged_commit::{StagedCommit, StagedCommitState},
 };
 
@@ -46,7 +46,7 @@ impl CoreGroup {
         };
 
         // Filter proposals
-        let (proposal_queue, contains_own_updates) = CreationProposalQueue::filter_proposals(
+        let (proposal_queue, contains_own_updates) = ProposalQueue::filter_proposals(
             ciphersuite,
             backend,
             sender_type,
@@ -281,7 +281,7 @@ impl CoreGroup {
             provisional_interim_transcript_hash,
             diff.into_staged_diff(backend, ciphersuite)?,
         );
-        let staged_commit = StagedCommit::new(proposal_queue.into(), Some(staged_commit_state));
+        let staged_commit = StagedCommit::new(proposal_queue, Some(staged_commit_state));
 
         Ok(CreateCommitResult {
             commit: mls_plaintext,

@@ -217,13 +217,13 @@ async fn test_group() {
         )
         .unwrap();
 
-    let proposal_store = ProposalStore::from_staged_proposal(
-        StagedProposal::from_mls_plaintext(
+    let proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(
             Config::ciphersuite(group_ciphersuite).expect("Unsupported ciphersuite."),
             crypto,
             client2_add_proposal,
         )
-        .expect("Could not create StagedProposal."),
+        .expect("Could not create QueuedProposal."),
     );
     let params = CreateCommitParams::builder()
         .framing_parameters(framing_parameters)

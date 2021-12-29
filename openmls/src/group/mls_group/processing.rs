@@ -1,5 +1,5 @@
 use core_group::{
-    create_commit_params::CreateCommitParams, proposals::StagedProposal,
+    create_commit_params::CreateCommitParams, proposals::QueuedProposal,
     staged_commit::StagedCommit,
 };
 
@@ -58,7 +58,7 @@ impl MlsGroup {
     }
 
     /// Stores a standalone proposal in the internal [ProposalStore]
-    pub fn store_pending_proposal(&mut self, proposal: StagedProposal) {
+    pub fn store_pending_proposal(&mut self, proposal: QueuedProposal) {
         // Store the proposal in in the internal ProposalStore
         self.proposal_store.add(proposal);
 
