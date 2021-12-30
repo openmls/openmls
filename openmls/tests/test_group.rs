@@ -89,14 +89,15 @@ fn create_commit_optional_path(
         .credential_bundle(&alice_credential_bundle)
         .proposal_store(&proposal_store)
         .build();
-    let create_commit_result = group_alice
-        .create_commit(params, backend)
-        .expect("error creating commit");
+    let create_commit_result =
+        match group_alice.create_commit(params /* No PSK fetcher */, backend) {
+            Ok(c) => c,
+            Err(e) => panic!("Error creating commit: {:?}", e),
+        };
     let commit = match create_commit_result.commit.content() {
-        MlsPlaintextContentType::Commit(commit) => Some(commit),
-        _ => None,
-    }
-    .expect("error getting commit content from create_commit_result");
+        MlsPlaintextContentType::Commit(commit) => commit,
+        _ => panic!(),
+    };
     assert!(commit.has_path());
 
     // Alice adds Bob without forced self-update
@@ -124,14 +125,14 @@ fn create_commit_optional_path(
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let create_commit_result = group_alice
-        .create_commit(params, backend)
-        .expect("error creating commit");
+    let create_commit_result = match group_alice.create_commit(params, backend) {
+        Ok(c) => c,
+        Err(e) => panic!("Error creating commit: {:?}", e),
+    };
     let commit = match create_commit_result.commit.content() {
-        MlsPlaintextContentType::Commit(commit) => Some(commit),
-        _ => None,
-    }
-    .expect("error getting commit content from create_commit_result");
+        MlsPlaintextContentType::Commit(commit) => commit,
+        _ => panic!(),
+    };
     assert!(!commit.has_path());
 
     // Alice applies the Commit without the forced self-update
@@ -181,14 +182,14 @@ fn create_commit_optional_path(
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let create_commit_result = group_alice
-        .create_commit(params, backend)
-        .expect("error creating commit");
+    let create_commit_result = match group_alice.create_commit(params, backend) {
+        Ok(c) => c,
+        Err(e) => panic!("Error creating commit: {:?}", e),
+    };
     let commit = match create_commit_result.commit.content() {
-        MlsPlaintextContentType::Commit(commit) => Some(commit),
-        _ => None,
-    }
-    .expect("error getting commit content from create_commit_result");
+        MlsPlaintextContentType::Commit(commit) => commit,
+        _ => panic!(),
+    };
     assert!(commit.has_path());
 
     // Apply UpdateProposal
@@ -262,9 +263,10 @@ fn basic_group_setup(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCr
         .credential_bundle(&alice_credential_bundle)
         .proposal_store(&proposal_store)
         .build();
-    let _create_commit_result = group_alice
-        .create_commit(params, backend)
-        .expect("error creating commit");
+    let _commit = match group_alice.create_commit(params /* PSK fetcher */, backend) {
+        Ok(c) => c,
+        Err(e) => panic!("Error creating commit: {:?}", e),
+    };
 }
 
 /// This test simulates various group operations like Add, Update, Remove in a
@@ -360,10 +362,9 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .create_commit(params, backend)
         .expect("Error creating commit");
     let commit = match create_commit_result.commit.content() {
-        MlsPlaintextContentType::Commit(commit) => Some(commit),
-        _ => None,
-    }
-    .expect("error getting commit content from create_commit_result");
+        MlsPlaintextContentType::Commit(commit) => commit,
+        _ => panic!("Wrong content type"),
+    };
     assert!(!commit.has_path());
     // Check that the function returned a Welcome message
     assert!(create_commit_result.welcome_option.is_some());
@@ -447,16 +448,16 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let create_commit_result = group_bob
-        .create_commit(params, backend)
-        .expect("error creating commit");
+    let create_commit_result = match group_bob.create_commit(params, backend) {
+        Ok(c) => c,
+        Err(e) => panic!("Error creating commit: {:?}", e),
+    };
 
     // Check that there is a path
     let commit = match create_commit_result.commit.content() {
-        MlsPlaintextContentType::Commit(commit) => Some(commit),
-        _ => None,
-    }
-    .expect("error getting commit content from create_commit_result");
+        MlsPlaintextContentType::Commit(commit) => commit,
+        _ => panic!("Wrong content type"),
+    };
     assert!(commit.has_path());
     // Check there is no Welcome message
     assert!(create_commit_result.welcome_option.is_none());
@@ -508,9 +509,11 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let create_commit_result = group_alice
-        .create_commit(params, backend)
-        .expect("error creating commit");
+    let create_commit_result =
+        match group_alice.create_commit(params /* PSK fetcher */, backend) {
+            Ok(c) => c,
+            Err(e) => panic!("Error creating commit: {:?}", e),
+        };
 
     // Check that there is a path
     assert!(commit.has_path());
@@ -561,9 +564,10 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let create_commit_result = group_alice
-        .create_commit(params, backend)
-        .expect("error creating commit");
+    let create_commit_result = match group_alice.create_commit(params, backend) {
+        Ok(c) => c,
+        Err(e) => panic!("Error creating commit: {:?}", e),
+    };
 
     // Check that there is a path
     assert!(commit.has_path());
@@ -634,17 +638,17 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let create_commit_result = group_bob
-        .create_commit(params, backend)
-        .expect("error creating commit");
+    let create_commit_result = match group_bob.create_commit(params, backend) {
+        Ok(c) => c,
+        Err(e) => panic!("Error creating commit: {:?}", e),
+    };
 
     // Check there is no path since there are only Add Proposals and no forced
     // self-update
     let commit = match create_commit_result.commit.content() {
-        MlsPlaintextContentType::Commit(commit) => Some(commit),
-        _ => None,
-    }
-    .expect("error getting commit content from create_commit_result");
+        MlsPlaintextContentType::Commit(commit) => commit,
+        _ => panic!("Wrong content type"),
+    };
     assert!(!commit.has_path());
     // Make sure the is a Welcome message for Charlie
     assert!(create_commit_result.welcome_option.is_some());
@@ -756,16 +760,16 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let create_commit_result = group_charlie
-        .create_commit(params, backend)
-        .expect("error creating commit");
+    let create_commit_result = match group_charlie.create_commit(params, backend) {
+        Ok(c) => c,
+        Err(e) => panic!("Error creating commit: {:?}", e),
+    };
 
     // Check that there is a new KeyPackageBundle
     let commit = match create_commit_result.commit.content() {
-        MlsPlaintextContentType::Commit(commit) => Some(commit),
-        _ => None,
-    }
-    .expect("error getting commit content from create_commit_result");
+        MlsPlaintextContentType::Commit(commit) => commit,
+        _ => panic!("Wrong content type"),
+    };
     assert!(commit.has_path());
 
     let staged_commit = group_alice
@@ -816,9 +820,11 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .proposal_store(&proposal_store)
         .force_self_update(false)
         .build();
-    let create_commit_result = group_charlie
-        .create_commit(params, backend)
-        .expect("error creating commit");
+    let create_commit_result =
+        match group_charlie.create_commit(params /* PSK fetcher */, backend) {
+            Ok(c) => c,
+            Err(e) => panic!("Error creating commit: {:?}", e),
+        };
 
     // Check that there is a new KeyPackageBundle
     assert!(commit.has_path());
