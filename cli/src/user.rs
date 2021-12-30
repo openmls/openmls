@@ -318,27 +318,11 @@ impl User {
             .map_err(|e| format!("Failed to add member to group - {}", e))?;
 
         // First, process the invitation on our end.
-        let unverified_message = group
+        group
             .mls_group
             .borrow_mut()
-            .parse_message(out_messages.clone().into(), &self.crypto)
-            .expect("Could not parse message.");
-
-        let processed_message = group
-            .mls_group
-            .borrow_mut()
-            .process_unverified_message(unverified_message, None, &self.crypto)
-            .expect("Could not process unverified message.");
-
-        if let ProcessedMessage::StagedCommitMessage(staged_commit) = processed_message {
-            group
-                .mls_group
-                .borrow_mut()
-                .merge_staged_commit(*staged_commit)
-                .expect("Could not merge StagedCommit");
-        } else {
-            unreachable!("Expected a StagedCommit.");
-        }
+            .merge_pending_commit()
+            .expect("error merging pending commit");
 
         // Second, send Welcome to the joiner.
         log::trace!("Sending welcome");
