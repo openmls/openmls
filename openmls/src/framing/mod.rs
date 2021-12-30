@@ -23,11 +23,11 @@ pub(crate) mod validation;
 
 // Crate
 pub(crate) use errors::*;
-pub(crate) use message::*;
 pub(crate) use sender::*;
 
 // Public
 pub use ciphertext::*;
+pub use message::*;
 pub use plaintext::*;
 pub use validation::*;
 
