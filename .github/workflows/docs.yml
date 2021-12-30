@@ -14,7 +14,7 @@ defaults:
   run:
     working-directory: openmls
 
-name: Cargo docs check
+name: Cargo doc check
 jobs:
   checks:
     runs-on: ubuntu-latest
@@ -27,5 +27,5 @@ jobs:
         with:
           profile: minimal
           toolchain: stable
-      - name: cargo docs
-        run: cargo docs --message-format json
+      - name: cargo doc
+        run: cargo doc --message-format json
