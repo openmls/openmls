@@ -106,6 +106,11 @@ impl MlsGroup {
         )?;
 
         self.own_kpbs.push(key_package_bundle);
+        self.proposal_store.add(QueuedProposal::from_mls_plaintext(
+            self.ciphersuite(),
+            backend,
+            update_proposal.clone(),
+        )?);
 
         let mls_message = self.plaintext_to_mls_message(update_proposal, backend)?;
 

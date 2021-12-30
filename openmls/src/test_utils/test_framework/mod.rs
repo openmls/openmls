@@ -240,11 +240,18 @@ impl MlsGroupTestSetup {
             CodecUse::StructMessages => MlsMessageIn::from(message.clone()),
         };
         let clients = self.clients.read().expect("An unexpected error occurred.");
-        // Distribute message to all members.
+        // Distribute message to all members, except to the sender in the case of application messages
         let results: Result<Vec<_>, _> = group
             .members
             .par_iter()
-            .map(|(_index, member_id)| {
+            .filter_map(|(_index, member_id)| {
+                if message.content_type() == ContentType::Application && member_id == sender_id {
+                    None
+                } else {
+                    Some(member_id)
+                }
+            })
+            .map(|member_id| {
                 let member = clients
                     .get(member_id)
                     .expect("An unexpected error occurred.")

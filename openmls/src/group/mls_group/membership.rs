@@ -174,6 +174,12 @@ impl MlsGroup {
             backend,
         )?;
 
+        self.proposal_store.add(QueuedProposal::from_mls_plaintext(
+            self.ciphersuite(),
+            backend,
+            add_proposal.clone(),
+        )?);
+
         let mls_message = self.plaintext_to_mls_message(add_proposal, backend)?;
 
         // Since the state of the group might be changed, arm the state flag
@@ -211,6 +217,12 @@ impl MlsGroup {
             backend,
         )?;
 
+        self.proposal_store.add(QueuedProposal::from_mls_plaintext(
+            self.ciphersuite(),
+            backend,
+            remove_proposal.clone(),
+        )?);
+
         let mls_message = self.plaintext_to_mls_message(remove_proposal, backend)?;
 
         // Since the state of the group might be changed, arm the state flag
@@ -240,6 +252,12 @@ impl MlsGroup {
             self.group.treesync().own_leaf_index(),
             backend,
         )?;
+
+        self.proposal_store.add(QueuedProposal::from_mls_plaintext(
+            self.ciphersuite(),
+            backend,
+            remove_proposal.clone(),
+        )?);
 
         self.plaintext_to_mls_message(remove_proposal, backend)
     }
