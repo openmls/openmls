@@ -255,7 +255,7 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         MlsPlaintextContentType::Commit(commit) => commit,
         _ => panic!("Wrong content type"),
     };
-    assert!(!commit.has_path() && create_commit_result.key_package_bundle_option.is_none());
+    assert!(!commit.has_path());
     // Check that the function returned a Welcome message
     assert!(create_commit_result.welcome_option.is_some());
 
@@ -674,14 +674,7 @@ fn test_own_commit_processing(
 
     // Alice attempts to process her own commit
     let error = alice_group
-        .stage_commit(
-            &create_commit_result.commit,
-            &proposal_store,
-            &[create_commit_result
-                .key_package_bundle_option
-                .expect("no kpb in create commit result")],
-            backend,
-        )
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect_err("no error while processing own commit");
     assert_eq!(error, CoreGroupError::OwnCommitError);
 }

@@ -26,7 +26,6 @@ struct PathProcessingResult {
     commit_secret: Option<CommitSecret>,
     encrypted_path: Option<UpdatePath>,
     plain_path: Option<Vec<PlainUpdatePathNode>>,
-    key_package_bundle: Option<KeyPackageBundle>,
 }
 
 impl CoreGroup {
@@ -93,7 +92,7 @@ impl CoreGroup {
 
                 // Derive and apply an update path based on the previously
                 // generated KeyPackageBundle.
-                let (key_package_bundle, plain_path, commit_secret) = diff.apply_own_update_path(
+                let (key_package, plain_path, commit_secret) = diff.apply_own_update_path(
                     backend,
                     ciphersuite,
                     key_package_bundle_payload,
@@ -107,13 +106,12 @@ impl CoreGroup {
                     &plain_path,
                     &serialized_group_context,
                     &apply_proposals_values.exclusion_list(),
-                    key_package_bundle.key_package(),
+                    &key_package,
                 )?;
                 PathProcessingResult {
                     commit_secret: Some(commit_secret),
                     encrypted_path: Some(encrypted_path),
                     plain_path: Some(plain_path),
-                    key_package_bundle: Some(key_package_bundle),
                 }
             } else {
                 // If path is not needed, return empty path processing results
@@ -286,7 +284,6 @@ impl CoreGroup {
         Ok(CreateCommitResult {
             commit: mls_plaintext,
             welcome_option,
-            key_package_bundle_option: path_processing_result.key_package_bundle,
             staged_commit,
         })
     }
