@@ -33,6 +33,8 @@ implement_error! {
                 "See [`MlsPlaintextError`](`crate::framing::errors::MlsPlaintextError`) for details.",
             WelcomeError(WelcomeError) =
                 "See [`WelcomeError`](`WelcomeError`) for details.",
+            ExternalInitError(ExternalInitError) =
+                "See [`Externaallow(lint)`](`ExternalInitError`) for details.",
             StageCommitError(StageCommitError) =
                 "See [`StageCommitError`](`StageCommitError`) for details.",
             CreateCommitError(CreateCommitError) =

@@ -1,3 +1,5 @@
+use crate::messages::VerifiablePublicGroupState;
+
 use super::*;
 
 impl MlsGroup {
@@ -43,9 +45,8 @@ impl MlsGroup {
             own_kpbs: vec![],
             aad: vec![],
             resumption_secret_store,
-            active: true,
+            group_state: MlsGroupState::Operational,
             state_changed: InnerState::Changed,
-            pending_commit: None,
         };
 
         Ok(mls_group)
@@ -81,11 +82,64 @@ impl MlsGroup {
             own_kpbs: vec![],
             aad: vec![],
             resumption_secret_store,
-            active: true,
+            group_state: MlsGroupState::Operational,
             state_changed: InnerState::Changed,
-            pending_commit: None,
         };
 
         Ok(mls_group)
+    }
+
+    /// Creates a new group by joining an existing group through an External
+    /// Init. The resulting [`MlsGroup`] instance starts off with a pending
+    /// commit (the external commit, which adds this client to the group).
+    /// Merging this commit is necessary for this [`MlsGroup`] instance to
+    /// function properly, as, for example, this client is not yet part of the
+    /// tree. As a result, it is not possible to clear the pending commit. If
+    /// the external commit was rejected due to an epoch change, the
+    /// [`MlsGroup`] instance has to be discarded and a new one has to be
+    /// created using this function based on the latest `ratchet_tree` and
+    /// public group state. For more information on the external init process,
+    /// please see Section 11.2.1 in the MLS specification.
+    pub fn new_from_external_init(
+        backend: &impl OpenMlsCryptoProvider,
+        mls_group_config: &MlsGroupConfig,
+        ratchet_tree: Option<Vec<Option<Node>>>,
+        credential_bundle: &CredentialBundle,
+        proposals_by_reference: &[MlsPlaintext],
+        proposals_by_value: &[Proposal],
+        verifiable_public_group_state: VerifiablePublicGroupState,
+        aad: &[u8],
+    ) -> Result<(Self, MlsMessageOut), MlsGroupError> {
+        let resumption_secret_store =
+            ResumptionSecretStore::new(mls_group_config.number_of_resumption_secrets);
+        let framing_parameters = FramingParameters::new(aad, mls_group_config.wire_format());
+        let ratchet_tree: Option<&[Option<Node>]> = ratchet_tree.as_deref();
+        let (group, create_commit_result) = CoreGroup::new_from_external_init(
+            backend,
+            framing_parameters,
+            ratchet_tree,
+            credential_bundle,
+            proposals_by_reference,
+            proposals_by_value,
+            verifiable_public_group_state,
+        )
+        //FIXME: change new_from_external_init such that it returns a CoreGroupError
+        .map_err(|_| MlsGroupError::LibraryError("".into()))?;
+
+        let mls_group = MlsGroup {
+            mls_group_config: mls_group_config.clone(),
+            group,
+            proposal_store: ProposalStore::new(),
+            message_secrets_store: MessageSecretsStore::new(mls_group_config.max_past_epochs()),
+            own_kpbs: vec![],
+            aad: vec![],
+            resumption_secret_store,
+            group_state: MlsGroupState::PendingCommit(PendingCommitState::External(
+                create_commit_result.staged_commit,
+            )),
+            state_changed: InnerState::Changed,
+        };
+
+        Ok((mls_group, create_commit_result.commit.into()))
     }
 }

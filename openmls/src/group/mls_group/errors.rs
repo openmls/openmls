@@ -22,6 +22,7 @@ implement_error! {
             NoSignatureKey = "No signature key was available to verify the message signature.",
             PendingCommitError = "Can't create a new commit while another commit is still pending. Please clear or merge the pending commit before creating a new one.",
             NoPendingCommit = "There is no pending commit that can be merged.",
+            ExternalCommitError = "Can't clear an external commit, as the group can't merge `Member` commits yet. If an external commit is rejected by the DS, a new external init must be performed. See the MLS spec for more information.",
             KeyStoreError = "Error performing key store operation.",
         }
         Complex {

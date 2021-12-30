@@ -35,10 +35,10 @@ impl CoreGroup {
         proposals_by_reference: &[MlsPlaintext],
         proposals_by_value: &[Proposal],
         verifiable_public_group_state: VerifiablePublicGroupState,
-    ) -> Result<ExternalInitResult, ExternalInitError> {
+    ) -> Result<ExternalInitResult, CoreGroupError> {
         let ciphersuite = Config::ciphersuite(verifiable_public_group_state.ciphersuite())?;
         if !Config::supported_versions().contains(&verifiable_public_group_state.version()) {
-            return Err(ExternalInitError::UnsupportedMlsVersion);
+            Err(ExternalInitError::UnsupportedMlsVersion)?;
         }
 
         // Build the ratchet tree
@@ -53,7 +53,7 @@ impl CoreGroup {
             Some(ref nodes) => (nodes, true),
             None => match tree_option.as_ref() {
                 Some(n) => (n, false),
-                None => return Err(ExternalInitError::MissingRatchetTree),
+                None => Err(ExternalInitError::MissingRatchetTree)?,
             },
         };
 
@@ -63,7 +63,7 @@ impl CoreGroup {
         let treesync = TreeSync::from_nodes_without_leaf(backend, ciphersuite, nodes)?;
 
         if treesync.tree_hash() != verifiable_public_group_state.tree_hash() {
-            return Err(ExternalInitError::TreeHashMismatch);
+            Err(ExternalInitError::TreeHashMismatch)?;
         }
 
         let pgs_signer_leaf = treesync.leaf(verifiable_public_group_state.signer_index())?;

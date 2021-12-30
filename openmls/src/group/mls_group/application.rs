@@ -14,7 +14,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
         message: &[u8],
     ) -> Result<MlsMessageOut, MlsGroupError> {
-        if !self.active {
+        if !self.is_active() {
             return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
         if !self.proposal_store.is_empty() {

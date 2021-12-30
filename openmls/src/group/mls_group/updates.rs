@@ -65,8 +65,11 @@ impl MlsGroup {
         // the configuration
         let mls_message = self.plaintext_to_mls_message(create_commit_result.commit, backend)?;
 
-        // Store the staged commit as the current `pending_commit`
-        self.pending_commit = Some(create_commit_result.staged_commit);
+        // Set the current group state to [`MlsGroupState::PendingCommit`],
+        // storing the current [`StagedCommit`] from the commit results
+        self.group_state = MlsGroupState::PendingCommit(PendingCommitState::Member(
+            create_commit_result.staged_commit,
+        ));
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();

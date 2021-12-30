@@ -13,8 +13,7 @@ pub struct SerializedMlsGroup {
     own_kpbs: Vec<KeyPackageBundle>,
     aad: Vec<u8>,
     resumption_secret_store: ResumptionSecretStore,
-    active: bool,
-    pending_commit: Option<StagedCommit>,
+    group_state: MlsGroupState,
 }
 
 impl SerializedMlsGroup {
@@ -27,9 +26,8 @@ impl SerializedMlsGroup {
             own_kpbs: self.own_kpbs,
             aad: self.aad,
             resumption_secret_store: self.resumption_secret_store,
-            active: self.active,
+            group_state: self.group_state,
             state_changed: InnerState::Persisted,
-            pending_commit: self.pending_commit,
         }
     }
 }
@@ -47,7 +45,7 @@ impl Serialize for MlsGroup {
         state.serialize_field("own_kpbs", &self.own_kpbs)?;
         state.serialize_field("aad", &self.aad)?;
         state.serialize_field("resumption_secret_store", &self.resumption_secret_store)?;
-        state.serialize_field("active", &self.active)?;
+        state.serialize_field("group_state", &self.group_state)?;
         state.end()
     }
 }
