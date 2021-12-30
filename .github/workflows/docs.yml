@@ -14,7 +14,7 @@ defaults:
   run:
     working-directory: openmls
 
-name: Cargo format check
+name: Cargo docs check
 jobs:
   checks:
     runs-on: ubuntu-latest
@@ -22,11 +22,10 @@ jobs:
       - uses: actions/checkout@v2
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-      - name: Stable with rustfmt
+      - name: Stable
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
           toolchain: stable
-          components: rustfmt
-      - name: Cargo fmt
-        run: cargo fmt --message-format json -- --check
+      - name: cargo docs
+        run: cargo docs --message-format json
