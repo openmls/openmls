@@ -28,4 +28,6 @@ jobs:
           profile: minimal
           toolchain: stable
       - name: cargo doc
-        run: cargo doc --message-format json
+        uses: actions-rs/cargo@v1
+        with:
+          command: doc

@@ -17,7 +17,7 @@ jobs:
           toolchain: stable
           components: clippy
       - name: Clippy errors & warnings
-        uses: actions-rs/clippy-check@v1
+        uses: actions-rs/cargo@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          command: clippy
           args: --manifest-path openmls/Cargo.toml
