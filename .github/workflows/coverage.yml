@@ -32,6 +32,4 @@ jobs:
           args: "--manifest-path openmls/Cargo.toml"
 
       - name: Upload to codecov.io
-        uses: codecov/codecov-action@v1.0.2
-        with:
-          token: ${{secrets.CODECOV_TOKEN}}
+        uses: codecov/codecov-action@v2
