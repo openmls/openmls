@@ -181,6 +181,8 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     let welcome = create_commit_result
         .welcome_option
         .expect("An unexpected error occurred.");
+    // Clone the secret tree to bypass FS restrictions
+    let secret_tree = group.message_secrets_mut().secret_tree_mut().clone();
     let mls_ciphertext_application = group
         .create_application_message(
             b"aad",
@@ -190,6 +192,8 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
             &crypto,
         )
         .expect("An unexpected error occurred.");
+    // Replace the secret tree
+    group.message_secrets_mut().replace_secret_tree(secret_tree);
     let verifiable_mls_plaintext_application = group
         .decrypt(
             &mls_ciphertext_application,
