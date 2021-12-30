@@ -106,7 +106,7 @@ impl CoreGroup {
                     &plain_path,
                     &serialized_group_context,
                     &apply_proposals_values.exclusion_list(),
-                    &key_package,
+                    key_package,
                 )?;
                 PathProcessingResult {
                     commit_secret: Some(commit_secret),
