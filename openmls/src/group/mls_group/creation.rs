@@ -100,7 +100,7 @@ impl MlsGroup {
     /// created using this function based on the latest `ratchet_tree` and
     /// public group state. For more information on the external init process,
     /// please see Section 11.2.1 in the MLS specification.
-    pub fn new_from_external_init(
+    pub fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
         mls_group_config: &MlsGroupConfig,
         ratchet_tree: Option<Vec<Option<Node>>>,
@@ -114,7 +114,7 @@ impl MlsGroup {
             ResumptionSecretStore::new(mls_group_config.number_of_resumption_secrets);
         let framing_parameters = FramingParameters::new(aad, mls_group_config.wire_format());
         let ratchet_tree: Option<&[Option<Node>]> = ratchet_tree.as_deref();
-        let (group, create_commit_result) = CoreGroup::new_from_external_init(
+        let (group, create_commit_result) = CoreGroup::join_by_external_commit(
             backend,
             framing_parameters,
             ratchet_tree,
@@ -122,9 +122,7 @@ impl MlsGroup {
             proposals_by_reference,
             proposals_by_value,
             verifiable_public_group_state,
-        )
-        //FIXME: change new_from_external_init such that it returns a CoreGroupError
-        .map_err(|_| MlsGroupError::LibraryError("".into()))?;
+        )?;
 
         let mls_group = MlsGroup {
             mls_group_config: mls_group_config.clone(),

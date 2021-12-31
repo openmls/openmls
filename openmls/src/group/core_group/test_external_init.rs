@@ -125,7 +125,7 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
             .into();
     let nodes_option = group_alice.treesync().export_nodes();
 
-    let (mut group_charly, create_commit_result) = CoreGroup::new_from_external_init(
+    let (mut group_charly, create_commit_result) = CoreGroup::join_by_external_commit(
         backend,
         framing_parameters,
         Some(&nodes_option),
@@ -226,7 +226,7 @@ fn test_external_init_single_member_group(
             .into();
     let nodes_option = group_alice.treesync().export_nodes();
 
-    let (_charly_group, create_commit_result) = CoreGroup::new_from_external_init(
+    let (_charly_group, create_commit_result) = CoreGroup::join_by_external_commit(
         backend,
         framing_parameters,
         Some(&nodes_option),

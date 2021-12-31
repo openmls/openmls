@@ -73,7 +73,7 @@ impl From<PendingCommitState> for StagedCommit {
 /// allows access to all of its functionality, (except merging pending commits,
 /// see the [`MlsGroupState::PendingCommit`] for more information) and it's the
 /// state the group starts in (except when created via
-/// [`MlsGroup::new_from_external_init()`], see the functions documentation for
+/// [`MlsGroup::join_by_external_commit()`], see the functions documentation for
 /// more information). From this `Operational`, the group state can either
 /// transition to [`MlsGroupState::Inactive`], when it processes a commit that
 /// removes this client from the group, or to [`MlsGroupState::PendingCommit`],
@@ -83,7 +83,7 @@ impl From<PendingCommitState> for StagedCommit {
 /// state when it processes a commit that removes this client from the group.
 /// This is a terminal state that the group can not exit from. If the clients
 /// wants to re-join the group, it can either be added by a group member or it
-/// can join via external init.
+/// can join via external commit.
 ///
 /// * [`MlsGroupState:PendingCommit`]: This state is split into two possible
 /// sub-states, one for each
@@ -104,12 +104,12 @@ impl From<PendingCommitState> for StagedCommit {
 ///
 ///   * A group can enter the [`PendingCommitState::External`] sub-state only as
 ///   the initial state when the group is created via
-///   [`MlsGroup::new_from_external_init()`]. In contrast to the
+///   [`MlsGroup::join_by_external_commit()`]. In contrast to the
 ///   [`PendingCommitState::Member`] `PendingCommit` state, the only possible
 ///   functionality that can be used is the [`MlsGroup::merge_pending_commit()`]
 ///   function, which merges the pending external commit and transitions the
 ///   state to [`MlsGroupState::PendingCommit`]. For more information on the
-///   external init process, see [`MlsGroup::new_from_external_init()`] or
+///   external commit process, see [`MlsGroup::join_by_external_commit()`] or
 ///   Section 11.2.1 of the MLS specification.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum MlsGroupState {
@@ -261,9 +261,9 @@ impl MlsGroup {
     /// Sets the `group_state` to [`MlsGroupState::Operational`], thus clearing
     /// any potentially pending commits.
     ///
-    /// Returns an error if the group was created through an external init and
+    /// Returns an error if the group was created through an external commit and
     /// the resulting external commit has not been merged yet. For more
-    /// information, see [`MlsGroup::new_from_external_init()`].
+    /// information, see [`MlsGroup::join_by_external_commit()`].
     ///
     /// Use with caution! This function should only be used if it is clear that
     /// the pending commit will not be used in the group. In particular, if a

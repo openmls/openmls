@@ -2,7 +2,7 @@ use crate::{
     ciphersuite::signable::Verifiable,
     credentials::CredentialBundle,
     framing::plaintext::MlsPlaintext,
-    group::errors::ExternalInitError,
+    group::errors::ExternalCommitError,
     messages::{
         proposals::{ExternalInitProposal, Proposal},
         public_group_state::{PublicGroupState, VerifiablePublicGroupState},
@@ -16,7 +16,7 @@ use super::{
 };
 use crate::group::core_group::*;
 
-pub type ExternalInitResult = (CoreGroup, CreateCommitResult);
+pub type ExternalCommitResult = (CoreGroup, CreateCommitResult);
 
 impl CoreGroup {
     /// Join a group without the help of an internal member. This function
@@ -27,7 +27,7 @@ impl CoreGroup {
     ///
     /// Returns the new `CoreGroup` object, as well as the `MlsPlaintext`
     /// containing the commit.
-    pub fn new_from_external_init(
+    pub fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
         framing_parameters: FramingParameters,
         tree_option: Option<&[Option<Node>]>,
@@ -35,10 +35,10 @@ impl CoreGroup {
         proposals_by_reference: &[MlsPlaintext],
         proposals_by_value: &[Proposal],
         verifiable_public_group_state: VerifiablePublicGroupState,
-    ) -> Result<ExternalInitResult, CoreGroupError> {
+    ) -> Result<ExternalCommitResult, CoreGroupError> {
         let ciphersuite = Config::ciphersuite(verifiable_public_group_state.ciphersuite())?;
         if !Config::supported_versions().contains(&verifiable_public_group_state.version()) {
-            Err(ExternalInitError::UnsupportedMlsVersion)?;
+            Err(ExternalCommitError::UnsupportedMlsVersion)?;
         }
 
         // Build the ratchet tree
@@ -53,7 +53,7 @@ impl CoreGroup {
             Some(ref nodes) => (nodes, true),
             None => match tree_option.as_ref() {
                 Some(n) => (n, false),
-                None => Err(ExternalInitError::MissingRatchetTree)?,
+                None => Err(ExternalCommitError::MissingRatchetTree)?,
             },
         };
 
@@ -63,17 +63,19 @@ impl CoreGroup {
         let treesync = TreeSync::from_nodes_without_leaf(backend, ciphersuite, nodes)?;
 
         if treesync.tree_hash() != verifiable_public_group_state.tree_hash() {
-            Err(ExternalInitError::TreeHashMismatch)?;
+            Err(ExternalCommitError::TreeHashMismatch)?;
         }
+
+        // FIXME #680: Validation of external commits
 
         let pgs_signer_leaf = treesync.leaf(verifiable_public_group_state.signer_index())?;
         let pgs_signer_credential = pgs_signer_leaf
-            .ok_or(ExternalInitError::UnknownSender)?
+            .ok_or(ExternalCommitError::UnknownSender)?
             .key_package()
             .credential();
         let pgs: PublicGroupState = verifiable_public_group_state
             .verify(backend, pgs_signer_credential)
-            .map_err(|_| ExternalInitError::InvalidPublicGroupStateSignature)?;
+            .map_err(|_| ExternalCommitError::InvalidPublicGroupStateSignature)?;
 
         let (init_secret, kem_output) = InitSecret::from_public_group_state(backend, &pgs)?;
 
@@ -132,7 +134,7 @@ impl CoreGroup {
         // Immediately create the commit to add ourselves to the group.
         let create_commit_result = group
             .create_commit(params, backend)
-            .map_err(|_| ExternalInitError::CommitError)?;
+            .map_err(|_| ExternalCommitError::CommitError)?;
 
         Ok((group, create_commit_result))
     }
