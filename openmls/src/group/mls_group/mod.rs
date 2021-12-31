@@ -40,6 +40,84 @@ use super::past_secrets::MessageSecretsStore;
 use super::proposals::{ProposalStore, QueuedProposal};
 use super::staged_commit::StagedCommit;
 
+#[derive(Debug, Serialize, Deserialize)]
+pub enum PendingCommitState {
+    Member(StagedCommit),
+    External(StagedCommit),
+}
+
+impl PendingCommitState {
+    /// Return a reference to the [`StagedCommit`] contained in the
+    /// [`PendingCommitState`] enum.
+    pub(crate) fn staged_commit(&self) -> &StagedCommit {
+        match self {
+            PendingCommitState::Member(pc) => pc,
+            PendingCommitState::External(pc) => pc,
+        }
+    }
+}
+
+impl From<PendingCommitState> for StagedCommit {
+    fn from(pcs: PendingCommitState) -> Self {
+        match pcs {
+            PendingCommitState::Member(pc) => pc,
+            PendingCommitState::External(pc) => pc,
+        }
+    }
+}
+
+/// [`MlsGroupState`] determines the state of an [`MlsGroup`]. The different
+/// states and their transitions are as follows:
+///
+/// * [`MlsGroupState::Operational`]: This is the main state of the group, which
+/// allows access to all of its functionality, (except merging pending commits,
+/// see the [`MlsGroupState::PendingCommit`] for more information) and it's the
+/// state the group starts in (except when created via
+/// [`MlsGroup::join_by_external_commit()`], see the functions documentation for
+/// more information). From this `Operational`, the group state can either
+/// transition to [`MlsGroupState::Inactive`], when it processes a commit that
+/// removes this client from the group, or to [`MlsGroupState::PendingCommit`],
+/// when this client creates a commit.
+///
+/// * [`MlsGroupState::Inactive`]: A group can enter this state from any other
+/// state when it processes a commit that removes this client from the group.
+/// This is a terminal state that the group can not exit from. If the clients
+/// wants to re-join the group, it can either be added by a group member or it
+/// can join via external commit.
+///
+/// * [`MlsGroupState:PendingCommit`]: This state is split into two possible
+/// sub-states, one for each
+/// [`CommitType`](crate::group::core_group::create_commit_params::CommitType):
+/// [`PendingCommitState::Member`] and [`PendingCommitState::Member`]:
+///
+///   * If the client creates a commit for this group, the `PendingCommit` state
+///   is entered with [`PendingCommitState::Member`] and with the [`StagedCommit`] as
+///   additional state variable. In this state, it can perform the same
+///   operations as in the [`MlsGroupState::Operational`], except that it cannot
+///   create proposals or commits. However, it can merge or clear the stored
+///   [`StagedCommit`], where both actions result in a transition to the
+///   [`MlsGroupState::Operational`]. Additionally, if a commit from another
+///   group member is processed, the own pending commit is also cleared and
+///   either the `Inactive` state is entered (if this client was removed from
+///   the group as part of the processed commit), or the `Operational` state is
+///   entered.
+///
+///   * A group can enter the [`PendingCommitState::External`] sub-state only as
+///   the initial state when the group is created via
+///   [`MlsGroup::join_by_external_commit()`]. In contrast to the
+///   [`PendingCommitState::Member`] `PendingCommit` state, the only possible
+///   functionality that can be used is the [`MlsGroup::merge_pending_commit()`]
+///   function, which merges the pending external commit and transitions the
+///   state to [`MlsGroupState::PendingCommit`]. For more information on the
+///   external commit process, see [`MlsGroup::join_by_external_commit()`] or
+///   Section 11.2.1 of the MLS specification.
+#[derive(Debug, Serialize, Deserialize)]
+pub enum MlsGroupState {
+    PendingCommit(Box<PendingCommitState>),
+    Operational,
+    Inactive,
+}
+
 /// A `MlsGroup` represents an [CoreGroup] with
 /// an easier, high-level API designed to be used in production. The API exposes
 /// high level functions to manage a group by adding/removing members, get the
@@ -68,6 +146,10 @@ use super::staged_commit::StagedCommit;
 ///
 /// Changes to the group state are dispatched as events through callback
 /// functions (see [`MlsGroupCallbacks`]).
+///
+/// An `MlsGroup` has an internal state variable determining if it is active or
+/// inactive, as well as if it has a pending commit. See [`MlsGroupState`] for
+/// more information.
 #[derive(Debug)]
 pub struct MlsGroup {
     // The group configuration. See `MlsGroupCongig` for more information.
@@ -90,16 +172,13 @@ pub struct MlsGroup {
     aad: Vec<u8>,
     // Resumption secret store. This is where the resumption secrets are kept in a rollover list.
     resumption_secret_store: ResumptionSecretStore,
-    // A flag that indicates if the current client is still a member of a group. The value is set
-    // to `true` upon group creation and is set to `false` when the client gets evicted from the
-    // group`.
-    active: bool,
+    // A variable that indicates the state of the group. See [`MlsGroupState`]
+    // for more information.
+    group_state: MlsGroupState,
     // A flag that indicates if the group state has changed and needs to be persisted again. The value
     // is set to `InnerState::Changed` whenever an the internal group state is change and is set to
     // `InnerState::Persisted` once the state has been persisted.
     state_changed: InnerState,
-    // This field is populated when a commit is created. It can be inspected or merged. If a commit is merged that does not correspond to the `StagedCommit` in this field, it is cleared.
-    pending_commit: Option<StagedCommit>,
 }
 
 impl MlsGroup {
@@ -141,7 +220,7 @@ impl MlsGroup {
     /// Returns whether the own client is still a member of the group or if it
     /// was already evicted
     pub fn is_active(&self) -> bool {
-        self.active
+        !matches!(self.group_state, MlsGroupState::Inactive)
     }
 
     /// Returns own credential. If the group is inactive, it returns a
@@ -168,17 +247,39 @@ impl MlsGroup {
     /// commit. If there was no commit created in this epoch, either because
     /// this commit or another commit was merged, it returns `None`.
     pub fn pending_commit(&self) -> Option<&StagedCommit> {
-        self.pending_commit.as_ref()
+        match self.group_state {
+            MlsGroupState::PendingCommit(ref pending_commit_state) => {
+                Some(pending_commit_state.staged_commit())
+            }
+            MlsGroupState::Operational => None,
+            MlsGroupState::Inactive => None,
+        }
     }
 
-    /// Sets the `pending_commit` to `None`.
+    /// Sets the `group_state` to [`MlsGroupState::Operational`], thus clearing
+    /// any potentially pending commits.
+    ///
+    /// Returns an error if the group was created through an external commit and
+    /// the resulting external commit has not been merged yet. For more
+    /// information, see [`MlsGroup::join_by_external_commit()`].
     ///
     /// Use with caution! This function should only be used if it is clear that
     /// the pending commit will not be used in the group. In particular, if a
     /// pending commit is later accepted by the group, this client will lack the
     /// key material to encrypt or decrypt group messages.
-    pub fn clear_pending_commit(&mut self) {
-        self.pending_commit = None
+    pub fn clear_pending_commit(&mut self) -> Result<(), MlsGroupError> {
+        match self.group_state {
+            MlsGroupState::PendingCommit(ref pending_commit_state) => {
+                match **pending_commit_state {
+                    PendingCommitState::Member(_) => self.group_state = MlsGroupState::Operational,
+                    PendingCommitState::External(_) => {
+                        return Err(MlsGroupError::ExternalCommitError)
+                    }
+                }
+            }
+            MlsGroupState::Operational | MlsGroupState::Inactive => (),
+        }
+        Ok(())
     }
 
     // === Load & save ===
@@ -264,17 +365,16 @@ impl MlsGroup {
         FramingParameters::new(&self.aad, self.mls_group_config.wire_format)
     }
 
-    /// Check if the group is inactive or if there is a pending commit.
-    fn pending_commit_or_inactive(&self) -> Result<(), MlsGroupError> {
-        if !self.active {
-            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
+    /// Check if the group is operational. Throws an error if the group is
+    /// inactive or if there is a pending commit.
+    fn is_operational(&self) -> Result<(), MlsGroupError> {
+        match self.group_state {
+            MlsGroupState::PendingCommit(_) => Err(MlsGroupError::PendingCommitError),
+            MlsGroupState::Inactive => {
+                Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error))
+            }
+            MlsGroupState::Operational => Ok(()),
         }
-
-        if self.pending_commit.is_some() {
-            return Err(MlsGroupError::PendingCommitError);
-        }
-
-        Ok(())
     }
 }
 

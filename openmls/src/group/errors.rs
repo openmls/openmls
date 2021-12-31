@@ -33,6 +33,8 @@ implement_error! {
                 "See [`MlsPlaintextError`](`crate::framing::errors::MlsPlaintextError`) for details.",
             WelcomeError(WelcomeError) =
                 "See [`WelcomeError`](`WelcomeError`) for details.",
+            ExternalCommitError(ExternalCommitError) =
+                "See [`Externaallow(lint)`](`ExternalInitError`) for details.",
             StageCommitError(StageCommitError) =
                 "See [`StageCommitError`](`StageCommitError`) for details.",
             CreateCommitError(CreateCommitError) =
@@ -136,7 +138,7 @@ implement_error! {
 }
 
 implement_error! {
-    pub enum ExternalInitError {
+    pub enum ExternalCommitError {
         Simple {
             MissingRatchetTree =
                 "No ratchet tree available to build initial tree.",
@@ -148,11 +150,13 @@ implement_error! {
                 "Sender not found in tree.",
             InvalidPublicGroupStateSignature =
                 "The signature over the given public group state is invalid.",
-            CommitError =
-                "Error creating external commit",
             LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
+            CommitError =
+                "Error creating external commit.",
             }
         Complex {
+            VerificationError(CredentialError) =
+                "Error verifying `PublicGroupState`.",
             ConfigError(ConfigError) =
                 "See [`ConfigError`](`crate::config::ConfigError`) for details.",
             CodecError(TlsCodecError) =
