@@ -40,12 +40,12 @@ use crate::{
     ciphersuite::{signable::Signable, Ciphersuite, HpkePrivateKey, HpkePublicKey, Secret},
     credentials::{CredentialBundle, CredentialError},
     extensions::ExtensionType,
-    key_packages::{KeyPackage, KeyPackageBundle, KeyPackageBundlePayload},
+    key_packages::{KeyPackage, KeyPackageBundlePayload},
     messages::{PathSecret, PathSecretError},
     schedule::CommitSecret,
 };
 
-pub(crate) type UpdatePathResult = (KeyPackageBundle, Vec<PlainUpdatePathNode>, CommitSecret);
+pub(crate) type UpdatePathResult = (KeyPackage, Vec<PlainUpdatePathNode>, CommitSecret);
 
 /// The [`StagedTreeSyncDiff`] can be created from a [`TreeSyncDiff`], examined
 /// and later merged into a [`TreeSync`] instance.
@@ -235,11 +235,8 @@ impl<'a> TreeSyncDiff<'a> {
     /// apply it to this diff. The given [`CredentialBundle`] reference is used
     /// to sign the [`KeyPackageBundlePayload`] after updating its parent hash.
     ///
-    /// Returns the resulting [`KeyPackageBundle`] for later use with
-    /// [`Self::re_apply_own_update_path()`], as well as the [`CommitSecret`]
-    /// and the path resulting from the path derivation. FIXME: There is no need
-    /// to return a KPB here, as we're either going to merge the commit or drop
-    /// it entirely.
+    /// Returns the [`CommitSecret`] and the path resulting from the path
+    /// derivation, as well as the [`KeyPackage`].
     pub(crate) fn apply_own_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -258,11 +255,12 @@ impl<'a> TreeSyncDiff<'a> {
         key_package_bundle_payload.update_parent_hash(&parent_hash);
         let key_package_bundle = key_package_bundle_payload.sign(backend, credential_bundle)?;
 
-        let node = Node::LeafNode(key_package_bundle.clone().into());
+        let key_package = key_package_bundle.key_package().clone();
+        let node = Node::LeafNode(key_package_bundle.into());
 
         // Replace the leaf.
         self.diff.replace_leaf(self.own_leaf_index, node.into())?;
-        Ok((key_package_bundle, update_path_nodes, commit_secret))
+        Ok((key_package, update_path_nodes, commit_secret))
     }
 
     /// Set the given path as the direct path of the `sender_leaf_index` and

@@ -50,17 +50,6 @@ impl MlsGroup {
             }
         };
 
-        // Take the new KeyPackageBundle and save it for later
-        let kpb = create_commit_result
-            .key_package_bundle_option
-            .ok_or_else(|| {
-                MlsGroupError::LibraryError(
-                    "We didn't get a key package for a full commit on self update.".into(),
-                )
-            })?;
-
-        self.own_kpbs.push(kpb);
-
         // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
         let mls_message = self.plaintext_to_mls_message(create_commit_result.commit, backend)?;
