@@ -444,7 +444,9 @@ fn test_valsem6(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         .add_members(backend, &[bob_key_package])
         .expect("Could not add member.");
 
-    alice_group.merge_pending_commit();
+    alice_group
+        .merge_pending_commit()
+        .expect("An unexpected error occurred.");
 
     let message = alice_group
         .create_message(backend, &[1, 2, 3])

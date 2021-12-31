@@ -94,6 +94,7 @@ impl SenderRatchet {
         }
         // If generation is potentially within the window
         if generation <= self.generation {
+            // If the requested generation is within the window of past secrets, we should get a positive index
             let window_index =
                 self.past_secrets.len() as i32 - ((self.generation - generation) as i32) - 1;
             // We might not have the key material (e.g. we might have discarded it when generating an encryption secret)
