@@ -89,8 +89,8 @@ impl MlsGroup {
         Ok(mls_group)
     }
 
-    /// Creates a new group by joining an existing group through an External
-    /// Init. The resulting [`MlsGroup`] instance starts off with a pending
+    /// Join an existing group through an External Commit.
+    /// The resulting [`MlsGroup`] instance starts off with a pending
     /// commit (the external commit, which adds this client to the group).
     /// Merging this commit is necessary for this [`MlsGroup`] instance to
     /// function properly, as, for example, this client is not yet part of the
