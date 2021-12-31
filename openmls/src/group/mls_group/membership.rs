@@ -65,11 +65,6 @@ impl MlsGroup {
             }
         };
 
-        // If it was a full Commit, we have to save the KeyPackageBundle for later
-        if let Some(kpb) = create_commit_result.key_package_bundle_option {
-            self.own_kpbs.push(kpb);
-        }
-
         // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
         let mls_messages = self.plaintext_to_mls_message(create_commit_result.commit, backend)?;
@@ -130,15 +125,6 @@ impl MlsGroup {
             .inline_proposals(inline_proposals)
             .build();
         let create_commit_result = self.group.create_commit(params, backend)?;
-
-        // It has to be a full Commit and we have to save the KeyPackageBundle for later
-        if let Some(kpb) = create_commit_result.key_package_bundle_option {
-            self.own_kpbs.push(kpb);
-        } else {
-            return Err(MlsGroupError::LibraryError(
-                "We didn't get a key package for a full commit.".into(),
-            ));
-        }
 
         // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
