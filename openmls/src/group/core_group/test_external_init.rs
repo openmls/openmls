@@ -165,9 +165,6 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
         group_charly.treesync().export_nodes(),
         group_bob.treesync().export_nodes()
     );
-
-    // TODO: Charly cannot process their own commit yet. Before we can do that,
-    // we'll have to refactor how own commits are processed.
 }
 
 #[apply(ciphersuites_and_backends)]
@@ -226,7 +223,7 @@ fn test_external_init_single_member_group(
             .into();
     let nodes_option = group_alice.treesync().export_nodes();
 
-    let (_charly_group, create_commit_result) = CoreGroup::join_by_external_commit(
+    let (mut group_charly, create_commit_result) = CoreGroup::join_by_external_commit(
         backend,
         framing_parameters,
         Some(&nodes_option),
@@ -245,6 +242,18 @@ fn test_external_init_single_member_group(
     group_alice
         .merge_commit(staged_commit)
         .expect("error merging commit");
-    // TODO: Charly cannot process their own commit yet. Before we can do that,
-    // we'll have to refactor how own commits are processed.
+
+    group_charly
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging own external commit");
+
+    assert_eq!(
+        group_charly.export_secret(backend, "", &[], ciphersuite.hash_length()),
+        group_alice.export_secret(backend, "", &[], ciphersuite.hash_length())
+    );
+
+    assert_eq!(
+        group_charly.treesync().export_nodes(),
+        group_alice.treesync().export_nodes()
+    );
 }
