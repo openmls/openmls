@@ -1,18 +1,4 @@
-on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-  workflow_dispatch:
-
-env:
-  CARGO_TERM_COLOR: always
-
-defaults:
-  run:
-    working-directory: openmls
+on: push
 
 name: Cargo doc check
 jobs:
@@ -20,13 +6,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-      - name: Stable
-        uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
       - name: cargo doc
         uses: actions-rs/cargo@v1
         with:
