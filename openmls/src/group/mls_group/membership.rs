@@ -76,9 +76,9 @@ impl MlsGroup {
 
         // Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
-        self.group_state = MlsGroupState::PendingCommit(PendingCommitState::Member(
+        self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
             create_commit_result.staged_commit,
-        ));
+        )));
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
@@ -146,9 +146,9 @@ impl MlsGroup {
 
         // Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
-        self.group_state = MlsGroupState::PendingCommit(PendingCommitState::Member(
+        self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
             create_commit_result.staged_commit,
-        ));
+        )));
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();

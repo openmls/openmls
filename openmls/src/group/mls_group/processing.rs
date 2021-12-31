@@ -104,9 +104,9 @@ impl MlsGroup {
 
         // Set the current group state to [`MlsGroupState::PendingCommit`],
         // storing the current [`StagedCommit`] from the commit results
-        self.group_state = MlsGroupState::PendingCommit(PendingCommitState::Member(
+        self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
             create_commit_result.staged_commit,
-        ));
+        )));
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
@@ -158,7 +158,7 @@ impl MlsGroup {
             MlsGroupState::PendingCommit(_) => {
                 let old_state = mem::replace(&mut self.group_state, MlsGroupState::Operational);
                 if let MlsGroupState::PendingCommit(pending_commit_state) = old_state {
-                    self.merge_staged_commit(pending_commit_state.into())
+                    self.merge_staged_commit((*pending_commit_state).into())
                 } else {
                     // We should never reach this state, as we previously
                     // checked that there actually is a pending commit.

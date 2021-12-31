@@ -1,7 +1,5 @@
 use crate::{
     ciphersuite::signable::Verifiable,
-    credentials::CredentialBundle,
-    framing::plaintext::MlsPlaintext,
     group::errors::ExternalCommitError,
     messages::{
         proposals::{ExternalInitProposal, Proposal},
@@ -11,7 +9,6 @@ use crate::{
 
 use super::{
     create_commit_params::{CommitType, CreateCommitParams},
-    proposals::{ProposalStore, QueuedProposal},
     CoreGroup,
 };
 use crate::group::core_group::*;
@@ -29,16 +26,13 @@ impl CoreGroup {
     /// containing the commit.
     pub fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
-        framing_parameters: FramingParameters,
+        params: CreateCommitParams,
         tree_option: Option<&[Option<Node>]>,
-        credential_bundle: &CredentialBundle,
-        proposals_by_reference: &[MlsPlaintext],
-        proposals_by_value: &[Proposal],
         verifiable_public_group_state: VerifiablePublicGroupState,
     ) -> Result<ExternalCommitResult, CoreGroupError> {
         let ciphersuite = Config::ciphersuite(verifiable_public_group_state.ciphersuite())?;
         if !Config::supported_versions().contains(&verifiable_public_group_state.version()) {
-            Err(ExternalCommitError::UnsupportedMlsVersion)?;
+            return Err(ExternalCommitError::UnsupportedMlsVersion.into());
         }
 
         // Build the ratchet tree
@@ -53,7 +47,7 @@ impl CoreGroup {
             Some(ref nodes) => (nodes, true),
             None => match tree_option.as_ref() {
                 Some(n) => (n, false),
-                None => Err(ExternalCommitError::MissingRatchetTree)?,
+                None => return Err(ExternalCommitError::MissingRatchetTree.into()),
             },
         };
 
@@ -63,7 +57,7 @@ impl CoreGroup {
         let treesync = TreeSync::from_nodes_without_leaf(backend, ciphersuite, nodes)?;
 
         if treesync.tree_hash() != verifiable_public_group_state.tree_hash() {
-            Err(ExternalCommitError::TreeHashMismatch)?;
+            return Err(ExternalCommitError::TreeHashMismatch.into());
         }
 
         // FIXME #680: Validation of external commits
@@ -73,9 +67,8 @@ impl CoreGroup {
             .ok_or(ExternalCommitError::UnknownSender)?
             .key_package()
             .credential();
-        let pgs: PublicGroupState = verifiable_public_group_state
-            .verify(backend, pgs_signer_credential)
-            .map_err(|_| ExternalCommitError::InvalidPublicGroupStateSignature)?;
+        let pgs: PublicGroupState =
+            verifiable_public_group_state.verify(backend, pgs_signer_credential)?;
 
         let (init_secret, kem_output) = InitSecret::from_public_group_state(backend, &pgs)?;
 
@@ -113,20 +106,14 @@ impl CoreGroup {
 
         let external_init_proposal = Proposal::ExternalInit(ExternalInitProposal::from(kem_output));
 
-        let mut proposal_store = ProposalStore::default();
-        for proposal in proposals_by_reference {
-            let staged_proposal =
-                QueuedProposal::from_mls_plaintext(ciphersuite, backend, proposal.clone())?;
-            proposal_store.add(staged_proposal)
-        }
-
-        let mut inline_proposals = proposals_by_value.to_vec();
-        inline_proposals.push(external_init_proposal);
+        // FIXME #682: Check if old self is in the group. If that is the case,
+        // add a remove proposal.
+        let inline_proposals = vec![external_init_proposal];
 
         let params = CreateCommitParams::builder()
-            .framing_parameters(framing_parameters)
-            .credential_bundle(credential_bundle)
-            .proposal_store(&proposal_store)
+            .framing_parameters(*params.framing_parameters())
+            .credential_bundle(params.credential_bundle())
+            .proposal_store(params.proposal_store())
             .inline_proposals(inline_proposals)
             .commit_type(CommitType::External)
             .build();

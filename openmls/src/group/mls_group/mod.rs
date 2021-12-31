@@ -113,7 +113,7 @@ impl From<PendingCommitState> for StagedCommit {
 ///   Section 11.2.1 of the MLS specification.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum MlsGroupState {
-    PendingCommit(PendingCommitState),
+    PendingCommit(Box<PendingCommitState>),
     Operational,
     Inactive,
 }
@@ -219,10 +219,7 @@ impl MlsGroup {
     /// Returns whether the own client is still a member of the group or if it
     /// was already evicted
     pub fn is_active(&self) -> bool {
-        match self.group_state {
-            MlsGroupState::Inactive => false,
-            _ => true,
-        }
+        !matches!(self.group_state, MlsGroupState::Inactive)
     }
 
     /// Returns own credential. If the group is inactive, it returns a
@@ -271,10 +268,14 @@ impl MlsGroup {
     /// key material to encrypt or decrypt group messages.
     pub fn clear_pending_commit(&mut self) -> Result<(), MlsGroupError> {
         match self.group_state {
-            MlsGroupState::PendingCommit(ref pending_commit_state) => match pending_commit_state {
-                PendingCommitState::Member(_) => self.group_state = MlsGroupState::Operational,
-                PendingCommitState::External(_) => return Err(MlsGroupError::ExternalCommitError),
-            },
+            MlsGroupState::PendingCommit(ref pending_commit_state) => {
+                match **pending_commit_state {
+                    PendingCommitState::Member(_) => self.group_state = MlsGroupState::Operational,
+                    PendingCommitState::External(_) => {
+                        return Err(MlsGroupError::ExternalCommitError)
+                    }
+                }
+            }
             MlsGroupState::Operational | MlsGroupState::Inactive => (),
         }
         Ok(())
