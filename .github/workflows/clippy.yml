@@ -2,6 +2,10 @@ on: push
 
 name: Clippy
 
+defaults:
+  run:
+    working-directory: openmls
+
 jobs:
   clippy_check:
     runs-on: ubuntu-latest
