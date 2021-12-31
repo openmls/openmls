@@ -81,8 +81,9 @@ pub struct MlsGroup {
     // A [MessageSecretsStore] that stores message secrets from past epochs in order to be able to decrypt
     // application messages from previous epochs.
     message_secrets_store: MessageSecretsStore,
-    // Own `KeyPackageBundle`s that were created for update proposals or commits. The vector is
-    // emptied after every epoch change.
+    // Own `KeyPackageBundle`s that were created for update proposals and that
+    // are needed in case an update proposal is commited by another group
+    // member. The vector is emptied after every epoch change.
     own_kpbs: Vec<KeyPackageBundle>,
     // The AAD that is used for all outgoing handshake messages. The AAD can be set through
     // `set_aad()`.

@@ -99,7 +99,6 @@ fn create_commit_optional_path(
         _ => panic!(),
     };
     assert!(commit.has_path());
-    assert!(commit.has_path() && create_commit_result.key_package_bundle_option.is_some());
 
     // Alice adds Bob without forced self-update
     // Since there are only Add Proposals, this does not generate a path field on
@@ -134,7 +133,7 @@ fn create_commit_optional_path(
         MlsPlaintextContentType::Commit(commit) => commit,
         _ => panic!(),
     };
-    assert!(!commit.has_path() && create_commit_result.key_package_bundle_option.is_none());
+    assert!(!commit.has_path());
 
     // Alice applies the Commit without the forced self-update
     group_alice
@@ -191,7 +190,7 @@ fn create_commit_optional_path(
         MlsPlaintextContentType::Commit(commit) => commit,
         _ => panic!(),
     };
-    assert!(commit.has_path() && create_commit_result.key_package_bundle_option.is_some());
+    assert!(commit.has_path());
 
     // Apply UpdateProposal
     group_alice
@@ -366,7 +365,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         MlsPlaintextContentType::Commit(commit) => commit,
         _ => panic!("Wrong content type"),
     };
-    assert!(!commit.has_path() && create_commit_result.key_package_bundle_option.is_none());
+    assert!(!commit.has_path());
     // Check that the function returned a Welcome message
     assert!(create_commit_result.welcome_option.is_some());
 
@@ -454,8 +453,12 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         Err(e) => panic!("Error creating commit: {:?}", e),
     };
 
-    // Check that there is a new KeyPackageBundle
-    assert!(create_commit_result.key_package_bundle_option.is_some());
+    // Check that there is a path
+    let commit = match create_commit_result.commit.content() {
+        MlsPlaintextContentType::Commit(commit) => commit,
+        _ => panic!("Wrong content type"),
+    };
+    assert!(commit.has_path());
     // Check there is no Welcome message
     assert!(create_commit_result.welcome_option.is_none());
 
@@ -512,8 +515,8 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
 
-    // Check that there is a new KeyPackageBundle
-    assert!(create_commit_result.key_package_bundle_option.is_some());
+    // Check that there is a path
+    assert!(commit.has_path());
 
     group_alice
         .merge_commit(create_commit_result.staged_commit)
@@ -566,8 +569,8 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         Err(e) => panic!("Error creating commit: {:?}", e),
     };
 
-    // Check that there is a new KeyPackageBundle
-    assert!(create_commit_result.key_package_bundle_option.is_some());
+    // Check that there is a path
+    assert!(commit.has_path());
 
     group_alice
         .merge_commit(create_commit_result.staged_commit)
@@ -640,9 +643,13 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         Err(e) => panic!("Error creating commit: {:?}", e),
     };
 
-    // Check there is no KeyPackageBundle since there are only Add Proposals and no
-    // forced self-update
-    assert!(create_commit_result.key_package_bundle_option.is_none());
+    // Check there is no path since there are only Add Proposals and no forced
+    // self-update
+    let commit = match create_commit_result.commit.content() {
+        MlsPlaintextContentType::Commit(commit) => commit,
+        _ => panic!("Wrong content type"),
+    };
+    assert!(!commit.has_path());
     // Make sure the is a Welcome message for Charlie
     assert!(create_commit_result.welcome_option.is_some());
 
@@ -759,7 +766,11 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     };
 
     // Check that there is a new KeyPackageBundle
-    assert!(create_commit_result.key_package_bundle_option.is_some());
+    let commit = match create_commit_result.commit.content() {
+        MlsPlaintextContentType::Commit(commit) => commit,
+        _ => panic!("Wrong content type"),
+    };
+    assert!(commit.has_path());
 
     let staged_commit = group_alice
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
@@ -816,7 +827,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         };
 
     // Check that there is a new KeyPackageBundle
-    assert!(create_commit_result.key_package_bundle_option.is_some());
+    assert!(commit.has_path());
 
     let staged_commit = group_alice
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
