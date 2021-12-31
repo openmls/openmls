@@ -15,7 +15,6 @@ jobs:
           toolchain: stable
           components: clippy
       - name: Clippy errors & warnings
-        uses: actions-rs/cargo@v1
+        uses: qernal/github-actions-rust-clippy@v1.4.0
         with:
-          command: clippy
-          args: --manifest-path openmls/Cargo.toml --message-format json
+          clippy_args: --manifest-path openmls/Cargo.toml
