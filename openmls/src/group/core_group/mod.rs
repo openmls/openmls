@@ -73,7 +73,6 @@ use super::{
 pub struct CreateCommitResult {
     pub commit: MlsPlaintext,
     pub welcome_option: Option<Welcome>,
-    pub key_package_bundle_option: Option<KeyPackageBundle>,
     pub staged_commit: StagedCommit,
 }
 
