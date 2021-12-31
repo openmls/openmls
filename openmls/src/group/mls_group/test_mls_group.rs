@@ -547,7 +547,9 @@ fn test_pending_commit_logic(
     assert_eq!(error, MlsGroupError::PendingCommitError);
 
     // Clearing the pending commit should actually clear it.
-    alice_group.clear_pending_commit();
+    alice_group
+        .clear_pending_commit()
+        .expect("error clearing pending commit");
     assert!(alice_group.pending_commit().is_none());
 
     // Creating a new commit should commit the same proposals.
