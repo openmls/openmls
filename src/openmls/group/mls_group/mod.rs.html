@@ -286,6 +286,106 @@
 <span id="286">286</span>
 <span id="287">287</span>
 <span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">application</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
 <span class="kw">mod</span> <span class="ident">creation</span>;
@@ -328,6 +428,84 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::proposals</span>::{<span class="ident">ProposalStore</span>, <span class="ident">QueuedProposal</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::staged_commit::StagedCommit</span>;
 
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PendingCommitState</span> {
+    <span class="ident">Member</span>(<span class="ident">StagedCommit</span>),
+    <span class="ident">External</span>(<span class="ident">StagedCommit</span>),
+}
+
+<span class="kw">impl</span> <span class="ident">PendingCommitState</span> {
+    <span class="doccomment">/// Return a reference to the [`StagedCommit`] contained in the</span>
+    <span class="doccomment">/// [`PendingCommitState`] enum.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">staged_commit</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">StagedCommit</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">PendingCommitState::Member</span>(<span class="ident">pc</span>) =&gt; <span class="ident">pc</span>,
+            <span class="ident">PendingCommitState::External</span>(<span class="ident">pc</span>) =&gt; <span class="ident">pc</span>,
+        }
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">PendingCommitState</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">StagedCommit</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">pcs</span>: <span class="ident">PendingCommitState</span>) -&gt; <span class="self">Self</span> {
+        <span class="kw">match</span> <span class="ident">pcs</span> {
+            <span class="ident">PendingCommitState::Member</span>(<span class="ident">pc</span>) =&gt; <span class="ident">pc</span>,
+            <span class="ident">PendingCommitState::External</span>(<span class="ident">pc</span>) =&gt; <span class="ident">pc</span>,
+        }
+    }
+}
+
+<span class="doccomment">/// [`MlsGroupState`] determines the state of an [`MlsGroup`]. The different</span>
+<span class="doccomment">/// states and their transitions are as follows:</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// * [`MlsGroupState::Operational`]: This is the main state of the group, which</span>
+<span class="doccomment">/// allows access to all of its functionality, (except merging pending commits,</span>
+<span class="doccomment">/// see the [`MlsGroupState::PendingCommit`] for more information) and it&#39;s the</span>
+<span class="doccomment">/// state the group starts in (except when created via</span>
+<span class="doccomment">/// [`MlsGroup::join_by_external_commit()`], see the functions documentation for</span>
+<span class="doccomment">/// more information). From this `Operational`, the group state can either</span>
+<span class="doccomment">/// transition to [`MlsGroupState::Inactive`], when it processes a commit that</span>
+<span class="doccomment">/// removes this client from the group, or to [`MlsGroupState::PendingCommit`],</span>
+<span class="doccomment">/// when this client creates a commit.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// * [`MlsGroupState::Inactive`]: A group can enter this state from any other</span>
+<span class="doccomment">/// state when it processes a commit that removes this client from the group.</span>
+<span class="doccomment">/// This is a terminal state that the group can not exit from. If the clients</span>
+<span class="doccomment">/// wants to re-join the group, it can either be added by a group member or it</span>
+<span class="doccomment">/// can join via external commit.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// * [`MlsGroupState:PendingCommit`]: This state is split into two possible</span>
+<span class="doccomment">/// sub-states, one for each</span>
+<span class="doccomment">/// [`CommitType`](crate::group::core_group::create_commit_params::CommitType):</span>
+<span class="doccomment">/// [`PendingCommitState::Member`] and [`PendingCommitState::Member`]:</span>
+<span class="doccomment">///</span>
+<span class="doccomment">///   * If the client creates a commit for this group, the `PendingCommit` state</span>
+<span class="doccomment">///   is entered with [`PendingCommitState::Member`] and with the [`StagedCommit`] as</span>
+<span class="doccomment">///   additional state variable. In this state, it can perform the same</span>
+<span class="doccomment">///   operations as in the [`MlsGroupState::Operational`], except that it cannot</span>
+<span class="doccomment">///   create proposals or commits. However, it can merge or clear the stored</span>
+<span class="doccomment">///   [`StagedCommit`], where both actions result in a transition to the</span>
+<span class="doccomment">///   [`MlsGroupState::Operational`]. Additionally, if a commit from another</span>
+<span class="doccomment">///   group member is processed, the own pending commit is also cleared and</span>
+<span class="doccomment">///   either the `Inactive` state is entered (if this client was removed from</span>
+<span class="doccomment">///   the group as part of the processed commit), or the `Operational` state is</span>
+<span class="doccomment">///   entered.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">///   * A group can enter the [`PendingCommitState::External`] sub-state only as</span>
+<span class="doccomment">///   the initial state when the group is created via</span>
+<span class="doccomment">///   [`MlsGroup::join_by_external_commit()`]. In contrast to the</span>
+<span class="doccomment">///   [`PendingCommitState::Member`] `PendingCommit` state, the only possible</span>
+<span class="doccomment">///   functionality that can be used is the [`MlsGroup::merge_pending_commit()`]</span>
+<span class="doccomment">///   function, which merges the pending external commit and transitions the</span>
+<span class="doccomment">///   state to [`MlsGroupState::PendingCommit`]. For more information on the</span>
+<span class="doccomment">///   external commit process, see [`MlsGroup::join_by_external_commit()`] or</span>
+<span class="doccomment">///   Section 11.2.1 of the MLS specification.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsGroupState</span> {
+    <span class="ident">PendingCommit</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">PendingCommitState</span><span class="op">&gt;</span>),
+    <span class="ident">Operational</span>,
+    <span class="ident">Inactive</span>,
+}
+
 <span class="doccomment">/// A `MlsGroup` represents an [CoreGroup] with</span>
 <span class="doccomment">/// an easier, high-level API designed to be used in production. The API exposes</span>
 <span class="doccomment">/// high level functions to manage a group by adding/removing members, get the</span>
@@ -356,6 +534,10 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// Changes to the group state are dispatched as events through callback</span>
 <span class="doccomment">/// functions (see [`MlsGroupCallbacks`]).</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// An `MlsGroup` has an internal state variable determining if it is active or</span>
+<span class="doccomment">/// inactive, as well as if it has a pending commit. See [`MlsGroupState`] for</span>
+<span class="doccomment">/// more information.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MlsGroup</span> {
     <span class="comment">// The group configuration. See `MlsGroupCongig` for more information.</span>
@@ -378,16 +560,13 @@
     <span class="ident">aad</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
     <span class="comment">// Resumption secret store. This is where the resumption secrets are kept in a rollover list.</span>
     <span class="ident">resumption_secret_store</span>: <span class="ident">ResumptionSecretStore</span>,
-    <span class="comment">// A flag that indicates if the current client is still a member of a group. The value is set</span>
-    <span class="comment">// to `true` upon group creation and is set to `false` when the client gets evicted from the</span>
-    <span class="comment">// group`.</span>
-    <span class="ident">active</span>: <span class="ident">bool</span>,
+    <span class="comment">// A variable that indicates the state of the group. See [`MlsGroupState`]</span>
+    <span class="comment">// for more information.</span>
+    <span class="ident">group_state</span>: <span class="ident">MlsGroupState</span>,
     <span class="comment">// A flag that indicates if the group state has changed and needs to be persisted again. The value</span>
     <span class="comment">// is set to `InnerState::Changed` whenever an the internal group state is change and is set to</span>
     <span class="comment">// `InnerState::Persisted` once the state has been persisted.</span>
     <span class="ident">state_changed</span>: <span class="ident">InnerState</span>,
-    <span class="comment">// This field is populated when a commit is created. It can be inspected or merged. If a commit is merged that does not correspond to the `StagedCommit` in this field, it is cleared.</span>
-    <span class="ident">pending_commit</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">StagedCommit</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">MlsGroup</span> {
@@ -429,7 +608,7 @@
     <span class="doccomment">/// Returns whether the own client is still a member of the group or if it</span>
     <span class="doccomment">/// was already evicted</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_active</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">active</span>
+        <span class="op">!</span><span class="macro">matches!</span>(<span class="self">self</span>.<span class="ident">group_state</span>, <span class="ident">MlsGroupState::Inactive</span>)
     }
 
     <span class="doccomment">/// Returns own credential. If the group is inactive, it returns a</span>
@@ -456,17 +635,39 @@
     <span class="doccomment">/// commit. If there was no commit created in this epoch, either because</span>
     <span class="doccomment">/// this commit or another commit was merged, it returns `None`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pending_commit</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">StagedCommit</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">pending_commit</span>.<span class="ident">as_ref</span>()
+        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">group_state</span> {
+            <span class="ident">MlsGroupState::PendingCommit</span>(<span class="kw-2">ref</span> <span class="ident">pending_commit_state</span>) =&gt; {
+                <span class="prelude-val">Some</span>(<span class="ident">pending_commit_state</span>.<span class="ident">staged_commit</span>())
+            }
+            <span class="ident">MlsGroupState::Operational</span> =&gt; <span class="prelude-val">None</span>,
+            <span class="ident">MlsGroupState::Inactive</span> =&gt; <span class="prelude-val">None</span>,
+        }
     }
 
-    <span class="doccomment">/// Sets the `pending_commit` to `None`.</span>
+    <span class="doccomment">/// Sets the `group_state` to [`MlsGroupState::Operational`], thus clearing</span>
+    <span class="doccomment">/// any potentially pending commits.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Returns an error if the group was created through an external commit and</span>
+    <span class="doccomment">/// the resulting external commit has not been merged yet. For more</span>
+    <span class="doccomment">/// information, see [`MlsGroup::join_by_external_commit()`].</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Use with caution! This function should only be used if it is clear that</span>
     <span class="doccomment">/// the pending commit will not be used in the group. In particular, if a</span>
     <span class="doccomment">/// pending commit is later accepted by the group, this client will lack the</span>
     <span class="doccomment">/// key material to encrypt or decrypt group messages.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clear_pending_commit</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
-        <span class="self">self</span>.<span class="ident">pending_commit</span> <span class="op">=</span> <span class="prelude-val">None</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clear_pending_commit</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">group_state</span> {
+            <span class="ident">MlsGroupState::PendingCommit</span>(<span class="kw-2">ref</span> <span class="ident">pending_commit_state</span>) =&gt; {
+                <span class="kw">match</span> <span class="kw-2">*</span><span class="kw-2">*</span><span class="ident">pending_commit_state</span> {
+                    <span class="ident">PendingCommitState::Member</span>(<span class="kw">_</span>) =&gt; <span class="self">self</span>.<span class="ident">group_state</span> <span class="op">=</span> <span class="ident">MlsGroupState::Operational</span>,
+                    <span class="ident">PendingCommitState::External</span>(<span class="kw">_</span>) =&gt; {
+                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::ExternalCommitError</span>)
+                    }
+                }
+            }
+            <span class="ident">MlsGroupState::Operational</span> <span class="op">|</span> <span class="ident">MlsGroupState::Inactive</span> =&gt; (),
+        }
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="comment">// === Load &amp; save ===</span>
@@ -552,17 +753,16 @@
         <span class="ident">FramingParameters::new</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>, <span class="self">self</span>.<span class="ident">mls_group_config</span>.<span class="ident">wire_format</span>)
     }
 
-    <span class="doccomment">/// Check if the group is inactive or if there is a pending commit.</span>
-    <span class="kw">fn</span> <span class="ident">pending_commit_or_inactive</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">active</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::UseAfterEviction</span>(<span class="ident">UseAfterEviction::Error</span>));
+    <span class="doccomment">/// Check if the group is operational. Throws an error if the group is</span>
+    <span class="doccomment">/// inactive or if there is a pending commit.</span>
+    <span class="kw">fn</span> <span class="ident">is_operational</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">group_state</span> {
+            <span class="ident">MlsGroupState::PendingCommit</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::PendingCommitError</span>),
+            <span class="ident">MlsGroupState::Inactive</span> =&gt; {
+                <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::UseAfterEviction</span>(<span class="ident">UseAfterEviction::Error</span>))
+            }
+            <span class="ident">MlsGroupState::Operational</span> =&gt; <span class="prelude-val">Ok</span>(()),
         }
-
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">pending_commit</span>.<span class="ident">is_some</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::PendingCommitError</span>);
-        }
-
-        <span class="prelude-val">Ok</span>(())
     }
 }
 

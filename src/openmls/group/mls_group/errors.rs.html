@@ -101,6 +101,7 @@
 <span id="101">101</span>
 <span id="102">102</span>
 <span id="103">103</span>
+<span id="104">104</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS MlsGroup errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -125,6 +126,7 @@
             <span class="ident">NoSignatureKey</span> <span class="op">=</span> <span class="string">&quot;No signature key was available to verify the message signature.&quot;</span>,
             <span class="ident">PendingCommitError</span> <span class="op">=</span> <span class="string">&quot;Can&#39;t create a new commit while another commit is still pending. Please clear or merge the pending commit before creating a new one.&quot;</span>,
             <span class="ident">NoPendingCommit</span> <span class="op">=</span> <span class="string">&quot;There is no pending commit that can be merged.&quot;</span>,
+            <span class="ident">ExternalCommitError</span> <span class="op">=</span> <span class="string">&quot;Can&#39;t clear an external commit, as the group can&#39;t merge `Member` commits yet. If an external commit is rejected by the DS, a new external init must be performed. See the MLS spec for more information.&quot;</span>,
             <span class="ident">KeyStoreError</span> <span class="op">=</span> <span class="string">&quot;Error performing key store operation.&quot;</span>,
         }
         <span class="ident">Complex</span> {

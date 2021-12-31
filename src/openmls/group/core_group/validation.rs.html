@@ -521,7 +521,7 @@
                 <span class="kw">if</span> <span class="ident">public_key_set</span>.<span class="ident">contains</span>(<span class="ident">key_package</span>.<span class="ident">hpke_init_key</span>().<span class="ident">as_slice</span>()) {
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::ExistingPublicKeyUpdateProposal</span>.<span class="ident">into</span>());
                 }
-                <span class="comment">// TODO: Proper validation of external inits (#630). For now,</span>
+                <span class="comment">// TODO: Proper validation of external inits (#680). For now,</span>
                 <span class="comment">// this is changed such that it doesn&#39;t consider external</span>
                 <span class="comment">// senders as &quot;Unknown&quot;.</span>
             } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">sender</span>.<span class="ident">sender_type</span> <span class="op">==</span> <span class="ident">SenderType::Member</span> {

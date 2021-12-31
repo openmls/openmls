@@ -44,7 +44,7 @@
         <span class="ident">context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">key_length</span>: <span class="ident">usize</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">active</span> {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">is_active</span>() {
             <span class="prelude-val">Ok</span>(<span class="self">self</span>
                 .<span class="ident">group</span>
                 .<span class="ident">export_secret</span>(<span class="ident">backend</span>, <span class="ident">label</span>, <span class="ident">context</span>, <span class="ident">key_length</span>)<span class="question-mark">?</span>)

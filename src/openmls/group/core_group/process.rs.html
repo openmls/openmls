@@ -226,6 +226,8 @@
 <span id="226">226</span>
 <span id="227">227</span>
 <span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">core_group</span>::{<span class="ident">proposals::QueuedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree::secret_tree::SecretTreeError</span>;
@@ -374,6 +376,8 @@
             <span class="ident">message_secrets</span>,
             <span class="ident">backend</span>,
         )<span class="question-mark">?</span>;
+
+        <span class="comment">// FIXME #680: Validation of external commits</span>
 
         <span class="kw">match</span> <span class="ident">context_plaintext</span> {
             <span class="ident">UnverifiedContextMessage::Member</span>(<span class="ident">member_message</span>) =&gt; {

@@ -49,8 +49,6 @@
 <span id="49">49</span>
 <span id="50">50</span>
 <span id="51">51</span>
-<span id="52">52</span>
-<span id="53">53</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use</span> <span class="ident">serde</span>::{
@@ -66,8 +64,7 @@
     <span class="ident">own_kpbs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>,
     <span class="ident">aad</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
     <span class="ident">resumption_secret_store</span>: <span class="ident">ResumptionSecretStore</span>,
-    <span class="ident">active</span>: <span class="ident">bool</span>,
-    <span class="ident">pending_commit</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">StagedCommit</span><span class="op">&gt;</span>,
+    <span class="ident">group_state</span>: <span class="ident">MlsGroupState</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">SerializedMlsGroup</span> {
@@ -80,9 +77,8 @@
             <span class="ident">own_kpbs</span>: <span class="self">self</span>.<span class="ident">own_kpbs</span>,
             <span class="ident">aad</span>: <span class="self">self</span>.<span class="ident">aad</span>,
             <span class="ident">resumption_secret_store</span>: <span class="self">self</span>.<span class="ident">resumption_secret_store</span>,
-            <span class="ident">active</span>: <span class="self">self</span>.<span class="ident">active</span>,
+            <span class="ident">group_state</span>: <span class="self">self</span>.<span class="ident">group_state</span>,
             <span class="ident">state_changed</span>: <span class="ident">InnerState::Persisted</span>,
-            <span class="ident">pending_commit</span>: <span class="self">self</span>.<span class="ident">pending_commit</span>,
         }
     }
 }
@@ -100,7 +96,7 @@
         <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;own_kpbs&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">own_kpbs</span>)<span class="question-mark">?</span>;
         <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;aad&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>)<span class="question-mark">?</span>;
         <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;resumption_secret_store&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">resumption_secret_store</span>)<span class="question-mark">?</span>;
-        <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;active&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">active</span>)<span class="question-mark">?</span>;
+        <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;group_state&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_state</span>)<span class="question-mark">?</span>;
         <span class="ident">state</span>.<span class="ident">end</span>()
     }
 }

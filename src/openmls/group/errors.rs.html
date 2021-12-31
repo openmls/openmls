@@ -295,6 +295,10 @@
 <span id="295">295</span>
 <span id="296">296</span>
 <span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS CoreGroup errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -330,6 +334,8 @@
                 <span class="string">&quot;See [`MlsPlaintextError`](`crate::framing::errors::MlsPlaintextError`) for details.&quot;</span>,
             <span class="ident">WelcomeError</span>(<span class="ident">WelcomeError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`WelcomeError`](`WelcomeError`) for details.&quot;</span>,
+            <span class="ident">ExternalCommitError</span>(<span class="ident">ExternalCommitError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`Externaallow(lint)`](`ExternalInitError`) for details.&quot;</span>,
             <span class="ident">StageCommitError</span>(<span class="ident">StageCommitError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`StageCommitError`](`StageCommitError`) for details.&quot;</span>,
             <span class="ident">CreateCommitError</span>(<span class="ident">CreateCommitError</span>) <span class="op">=</span>
@@ -433,7 +439,7 @@
 }
 
 <span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExternalInitError</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExternalCommitError</span> {
         <span class="ident">Simple</span> {
             <span class="ident">MissingRatchetTree</span> <span class="op">=</span>
                 <span class="string">&quot;No ratchet tree available to build initial tree.&quot;</span>,
@@ -445,11 +451,13 @@
                 <span class="string">&quot;Sender not found in tree.&quot;</span>,
             <span class="ident">InvalidPublicGroupStateSignature</span> <span class="op">=</span>
                 <span class="string">&quot;The signature over the given public group state is invalid.&quot;</span>,
-            <span class="ident">CommitError</span> <span class="op">=</span>
-                <span class="string">&quot;Error creating external commit&quot;</span>,
             <span class="ident">LibraryError</span> <span class="op">=</span> <span class="string">&quot;An unrecoverable error has occurred due to a bug in the implementation.&quot;</span>,
+            <span class="ident">CommitError</span> <span class="op">=</span>
+                <span class="string">&quot;Error creating external commit.&quot;</span>,
             }
         <span class="ident">Complex</span> {
+            <span class="ident">VerificationError</span>(<span class="ident">CredentialError</span>) <span class="op">=</span>
+                <span class="string">&quot;Error verifying `PublicGroupState`.&quot;</span>,
             <span class="ident">ConfigError</span>(<span class="ident">ConfigError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`ConfigError`](`crate::config::ConfigError`) for details.&quot;</span>,
             <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span>

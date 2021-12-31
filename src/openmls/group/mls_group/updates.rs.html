@@ -104,6 +104,9 @@
 <span id="104">104</span>
 <span id="105">105</span>
 <span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">core_group::create_commit_params::CreateCommitParams</span>;
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
@@ -123,7 +126,7 @@
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">key_package_bundle_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">MlsMessageOut</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Welcome</span><span class="op">&gt;</span>), <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">pending_commit_or_inactive</span>()<span class="question-mark">?</span>;
+        <span class="self">self</span>.<span class="ident">is_operational</span>()<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">credential</span>()<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">credential_bundle</span>: <span class="ident">CredentialBundle</span> <span class="op">=</span> <span class="ident">backend</span>
@@ -160,8 +163,11 @@
         <span class="comment">// the configuration</span>
         <span class="kw">let</span> <span class="ident">mls_message</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext_to_mls_message</span>(<span class="ident">create_commit_result</span>.<span class="ident">commit</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;
 
-        <span class="comment">// Store the staged commit as the current `pending_commit`</span>
-        <span class="self">self</span>.<span class="ident">pending_commit</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">create_commit_result</span>.<span class="ident">staged_commit</span>);
+        <span class="comment">// Set the current group state to [`MlsGroupState::PendingCommit`],</span>
+        <span class="comment">// storing the current [`StagedCommit`] from the commit results</span>
+        <span class="self">self</span>.<span class="ident">group_state</span> <span class="op">=</span> <span class="ident">MlsGroupState::PendingCommit</span>(<span class="ident">Box::new</span>(<span class="ident">PendingCommitState::Member</span>(
+            <span class="ident">create_commit_result</span>.<span class="ident">staged_commit</span>,
+        )));
 
         <span class="comment">// Since the state of the group might be changed, arm the state flag</span>
         <span class="self">self</span>.<span class="ident">flag_state_change</span>();
@@ -175,7 +181,7 @@
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">key_package_bundle_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsMessageOut</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">pending_commit_or_inactive</span>()<span class="question-mark">?</span>;
+        <span class="self">self</span>.<span class="ident">is_operational</span>()<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">credential</span>()<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">credential_bundle</span>: <span class="ident">CredentialBundle</span> <span class="op">=</span> <span class="ident">backend</span>
