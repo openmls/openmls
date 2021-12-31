@@ -8,8 +8,6 @@ jobs:
     name: clippy
     steps:
       - uses: actions/checkout@v2
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
       - name: Stable with clippy
         uses: actions-rs/toolchain@v1
         with:
