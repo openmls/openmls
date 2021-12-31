@@ -789,8 +789,6 @@
 <span id="789">789</span>
 <span id="790">790</span>
 <span id="791">791</span>
-<span id="792">792</span>
-<span id="793">793</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -833,12 +831,12 @@
     <span class="ident">ciphersuite</span>::{<span class="ident">signable::Signable</span>, <span class="ident">Ciphersuite</span>, <span class="ident">HpkePrivateKey</span>, <span class="ident">HpkePublicKey</span>, <span class="ident">Secret</span>},
     <span class="ident">credentials</span>::{<span class="ident">CredentialBundle</span>, <span class="ident">CredentialError</span>},
     <span class="ident">extensions::ExtensionType</span>,
-    <span class="ident">key_packages</span>::{<span class="ident">KeyPackage</span>, <span class="ident">KeyPackageBundle</span>, <span class="ident">KeyPackageBundlePayload</span>},
+    <span class="ident">key_packages</span>::{<span class="ident">KeyPackage</span>, <span class="ident">KeyPackageBundlePayload</span>},
     <span class="ident">messages</span>::{<span class="ident">PathSecret</span>, <span class="ident">PathSecretError</span>},
     <span class="ident">schedule::CommitSecret</span>,
 };
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type</span> <span class="ident">UpdatePathResult</span> <span class="op">=</span> (<span class="ident">KeyPackageBundle</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PlainUpdatePathNode</span><span class="op">&gt;</span>, <span class="ident">CommitSecret</span>);
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type</span> <span class="ident">UpdatePathResult</span> <span class="op">=</span> (<span class="ident">KeyPackage</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PlainUpdatePathNode</span><span class="op">&gt;</span>, <span class="ident">CommitSecret</span>);
 
 <span class="doccomment">/// The [`StagedTreeSyncDiff`] can be created from a [`TreeSyncDiff`], examined</span>
 <span class="doccomment">/// and later merged into a [`TreeSync`] instance.</span>
@@ -1028,11 +1026,8 @@
     <span class="doccomment">/// apply it to this diff. The given [`CredentialBundle`] reference is used</span>
     <span class="doccomment">/// to sign the [`KeyPackageBundlePayload`] after updating its parent hash.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns the resulting [`KeyPackageBundle`] for later use with</span>
-    <span class="doccomment">/// [`Self::re_apply_own_update_path()`], as well as the [`CommitSecret`]</span>
-    <span class="doccomment">/// and the path resulting from the path derivation. FIXME: There is no need</span>
-    <span class="doccomment">/// to return a KPB here, as we&#39;re either going to merge the commit or drop</span>
-    <span class="doccomment">/// it entirely.</span>
+    <span class="doccomment">/// Returns the [`CommitSecret`] and the path resulting from the path</span>
+    <span class="doccomment">/// derivation, as well as the [`KeyPackage`].</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">apply_own_update_path</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
@@ -1051,11 +1046,12 @@
         <span class="ident">key_package_bundle_payload</span>.<span class="ident">update_parent_hash</span>(<span class="kw-2">&amp;</span><span class="ident">parent_hash</span>);
         <span class="kw">let</span> <span class="ident">key_package_bundle</span> <span class="op">=</span> <span class="ident">key_package_bundle_payload</span>.<span class="ident">sign</span>(<span class="ident">backend</span>, <span class="ident">credential_bundle</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Node::LeafNode</span>(<span class="ident">key_package_bundle</span>.<span class="ident">clone</span>().<span class="ident">into</span>());
+        <span class="kw">let</span> <span class="ident">key_package</span> <span class="op">=</span> <span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>().<span class="ident">clone</span>();
+        <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Node::LeafNode</span>(<span class="ident">key_package_bundle</span>.<span class="ident">into</span>());
 
         <span class="comment">// Replace the leaf.</span>
         <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">replace_leaf</span>(<span class="self">self</span>.<span class="ident">own_leaf_index</span>, <span class="ident">node</span>.<span class="ident">into</span>())<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>((<span class="ident">key_package_bundle</span>, <span class="ident">update_path_nodes</span>, <span class="ident">commit_secret</span>))
+        <span class="prelude-val">Ok</span>((<span class="ident">key_package</span>, <span class="ident">update_path_nodes</span>, <span class="ident">commit_secret</span>))
     }
 
     <span class="doccomment">/// Set the given path as the direct path of the `sender_leaf_index` and</span>

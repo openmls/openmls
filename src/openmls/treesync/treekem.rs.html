@@ -362,7 +362,7 @@
         <span class="ident">path</span>: <span class="kw-2">&amp;</span>[<span class="ident">PlainUpdatePathNode</span>],
         <span class="ident">group_context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">exclusion_list</span>: <span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LeafIndex</span><span class="op">&gt;</span>,
-        <span class="ident">key_package</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span>,
+        <span class="ident">key_package</span>: <span class="ident">KeyPackage</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UpdatePath</span>, <span class="ident">TreeKemError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">copath_resolutions</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">copath_resolutions</span>(<span class="self">self</span>.<span class="ident">own_leaf_index</span>(), <span class="ident">exclusion_list</span>)<span class="question-mark">?</span>;
 
@@ -379,7 +379,7 @@
             .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">UpdatePathNode</span><span class="op">&gt;</span><span class="op">&gt;</span>();
 
         <span class="prelude-val">Ok</span>(<span class="ident">UpdatePath</span> {
-            <span class="ident">leaf_key_package</span>: <span class="ident">key_package</span>.<span class="ident">clone</span>(),
+            <span class="ident">leaf_key_package</span>: <span class="ident">key_package</span>,
             <span class="ident">nodes</span>: <span class="ident">update_path_nodes</span>.<span class="ident">into</span>(),
         })
     }
