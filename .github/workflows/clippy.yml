@@ -1,20 +1,14 @@
-on: [push, pull_request]
+on: push
 
 name: Clippy
 
 jobs:
-  lint:
+  clippy_check:
     runs-on: ubuntu-latest
-    name: clippy
     steps:
       - uses: actions/checkout@v2
-      - name: Stable with clippy
-        uses: actions-rs/toolchain@v1
+      - run: rustup component add clippy
+      - uses: actions-rs/clippy-check@v1
         with:
-          profile: minimal
-          toolchain: stable
-          components: clippy
-      - name: Clippy errors & warnings
-        uses: qernal/github-actions-rust-clippy@v1.4.0
-        with:
-          clippy_args: --manifest-path openmls/Cargo.toml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --manifest-path openmls/Cargo.toml
