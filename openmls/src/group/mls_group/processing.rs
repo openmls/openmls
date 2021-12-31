@@ -76,7 +76,7 @@ impl MlsGroup {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<(MlsMessageOut, Option<Welcome>), MlsGroupError> {
-        self.pending_commit_or_inactive()?;
+        self.is_operational()?;
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend

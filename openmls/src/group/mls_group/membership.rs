@@ -23,7 +23,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
         key_packages: &[KeyPackage],
     ) -> Result<(MlsMessageOut, Welcome), MlsGroupError> {
-        self.pending_commit_or_inactive()?;
+        self.is_operational()?;
 
         if key_packages.is_empty() {
             return Err(MlsGroupError::EmptyInput(EmptyInputError::AddMembers));
@@ -99,7 +99,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
         members: &[usize],
     ) -> Result<(MlsMessageOut, Option<Welcome>), MlsGroupError> {
-        self.pending_commit_or_inactive()?;
+        self.is_operational()?;
 
         if members.is_empty() {
             return Err(MlsGroupError::EmptyInput(EmptyInputError::RemoveMembers));
@@ -165,7 +165,7 @@ impl MlsGroup {
 
         key_package: &KeyPackage,
     ) -> Result<MlsMessageOut, MlsGroupError> {
-        self.pending_commit_or_inactive()?;
+        self.is_operational()?;
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
@@ -196,7 +196,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
         member: LeafIndex,
     ) -> Result<MlsMessageOut, MlsGroupError> {
-        self.pending_commit_or_inactive()?;
+        self.is_operational()?;
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
@@ -226,7 +226,7 @@ impl MlsGroup {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsMessageOut, MlsGroupError> {
-        self.pending_commit_or_inactive()?;
+        self.is_operational()?;
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend

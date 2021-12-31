@@ -17,7 +17,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
         key_package_bundle_option: Option<KeyPackageBundle>,
     ) -> Result<(MlsMessageOut, Option<Welcome>), MlsGroupError> {
-        self.pending_commit_or_inactive()?;
+        self.is_operational()?;
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
@@ -83,7 +83,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
         key_package_bundle_option: Option<KeyPackageBundle>,
     ) -> Result<MlsMessageOut, MlsGroupError> {
-        self.pending_commit_or_inactive()?;
+        self.is_operational()?;
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend

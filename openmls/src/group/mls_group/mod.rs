@@ -363,8 +363,9 @@ impl MlsGroup {
         FramingParameters::new(&self.aad, self.mls_group_config.wire_format)
     }
 
-    /// Check if the group is inactive or if there is a pending commit.
-    fn pending_commit_or_inactive(&self) -> Result<(), MlsGroupError> {
+    /// Check if the group is operational. Throws an error if the group is
+    /// inactive or if there is a pending commit.
+    fn is_operational(&self) -> Result<(), MlsGroupError> {
         match self.group_state {
             MlsGroupState::PendingCommit(_) => Err(MlsGroupError::PendingCommitError),
             MlsGroupState::Inactive => {
