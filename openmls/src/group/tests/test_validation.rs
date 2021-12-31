@@ -440,9 +440,17 @@ fn test_valsem6(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         bob_key_package,
     } = validation_test_setup(WireFormat::MlsCiphertext, ciphersuite, backend);
 
-    let (message, _welcome) = alice_group
+    let (_message, welcome) = alice_group
         .add_members(backend, &[bob_key_package])
         .expect("Could not add member.");
+
+    alice_group
+        .merge_pending_commit()
+        .expect("An unexpected error occurred.");
+
+    let message = alice_group
+        .create_message(backend, &[1, 2, 3])
+        .expect("An unexpected error occurred.");
 
     let serialized_message = message
         .tls_serialize_detached()
@@ -457,7 +465,17 @@ fn test_valsem6(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
     let message_in = MlsMessageIn::from(ciphertext);
 
-    let err = alice_group
+    let ratchet_tree = alice_group.export_ratchet_tree();
+
+    let mls_group_config = MlsGroupConfig::builder()
+        .wire_format(WireFormat::MlsCiphertext)
+        .build();
+
+    let mut bob_group =
+        MlsGroup::new_from_welcome(backend, &mls_group_config, welcome, Some(ratchet_tree))
+            .expect("An unexpected error occurred.");
+
+    let err = bob_group
         .parse_message(message_in, backend)
         .expect_err("Could parse message despite garbled ciphertext.");
 
@@ -469,7 +487,7 @@ fn test_valsem6(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
     );
 
     // Positive case
-    alice_group
+    bob_group
         .parse_message(MlsMessageIn::from(original_message), backend)
         .expect("Unexpected error.");
 }
@@ -532,7 +550,7 @@ fn test_valsem8(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
     // Alice can't process her own commits, so we'll have to add Bob.
     let (_message, welcome) = alice_group
-        .add_members(backend, &[bob_key_package.clone()])
+        .add_members(backend, &[bob_key_package])
         .expect("Could not add member.");
 
     alice_group

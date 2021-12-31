@@ -71,13 +71,13 @@ pub struct TreeContext {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsSize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(any(feature = "test-utils", test), derive(PartialEq))]
 pub(crate) struct SecretTreeNode {
     pub(crate) secret: Secret,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
 pub struct SecretTree {
     nodes: Vec<Option<SecretTreeNode>>,
     handshake_sender_ratchets: Vec<Option<SenderRatchet>>,

@@ -147,6 +147,8 @@ impl CoreGroup {
             backend,
         )?;
 
+        // FIXME #680: Validation of external commits
+
         match context_plaintext {
             UnverifiedContextMessage::Member(member_message) => {
                 // Checks the following semantic validation:

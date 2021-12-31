@@ -8,6 +8,7 @@ use crate::credentials::CredentialError;
 use crate::error::ErrorString;
 use crate::framing::MlsCiphertextError;
 use crate::framing::ValidationError;
+use crate::group::errors::QueuedProposalError;
 use crate::group::{CoreGroupError, CreateCommitError, ExporterError, StageCommitError};
 use crate::treesync::TreeSyncError;
 use openmls_traits::types::CryptoError;
@@ -22,6 +23,7 @@ implement_error! {
             NoSignatureKey = "No signature key was available to verify the message signature.",
             PendingCommitError = "Can't create a new commit while another commit is still pending. Please clear or merge the pending commit before creating a new one.",
             NoPendingCommit = "There is no pending commit that can be merged.",
+            ExternalCommitError = "Can't clear an external commit, as the group can't merge `Member` commits yet. If an external commit is rejected by the DS, a new external init must be performed. See the MLS spec for more information.",
             KeyStoreError = "Error performing key store operation.",
         }
         Complex {
@@ -48,6 +50,8 @@ implement_error! {
             TlsCodecError(TlsCodecError) = "An error occured during TLS encoding/decoding.",
             CryptoError(CryptoError) =
                 "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
+            QueuedProposalError(QueuedProposalError) =
+                "See [`QueuedProposalError`](crate::group::QueuedProposalError) for details.",
         }
     }
 }
