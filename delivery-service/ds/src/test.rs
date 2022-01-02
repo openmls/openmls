@@ -247,7 +247,8 @@ async fn test_group() {
     let (_client2_key_package_hash, client2_key_package) =
         client2_key_packages.remove(client2_key_package);
 
-    // With the key package we can build a proposal.
+    // With the key package we can invite Client2 (create proposal and merge it
+    // locally.)
     let (_out_messages, welcome_msg) = group
         .add_members(crypto, &[client2_key_package])
         .expect("Could not add member to group.");

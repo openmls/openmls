@@ -154,7 +154,7 @@ impl User {
                         Ok(msg) => msg,
                         Err(e) => {
                             log::error!(
-                                "Error decrypting MlsCiphertext: {:?} -  Dropping message.",
+                                "Error parsing message: {:?} -  Dropping message.",
                                 e
                             );
                             continue;
@@ -169,7 +169,7 @@ impl User {
                         Ok(msg) => msg,
                         Err(e) => {
                             log::error!(
-                                "Error verifying MlsPlaintext: {:?} -  Dropping message.",
+                                "Error processing unverified message: {:?} -  Dropping message.",
                                 e
                             );
                             continue;
