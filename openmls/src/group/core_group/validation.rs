@@ -254,7 +254,7 @@ impl CoreGroup {
                 if public_key_set.contains(key_package.hpke_init_key().as_slice()) {
                     return Err(ProposalValidationError::ExistingPublicKeyUpdateProposal.into());
                 }
-                // TODO: Proper validation of external inits (#630). For now,
+                // TODO: Proper validation of external inits (#680). For now,
                 // this is changed such that it doesn't consider external
                 // senders as "Unknown".
             } else if sender.sender_type == SenderType::Member {

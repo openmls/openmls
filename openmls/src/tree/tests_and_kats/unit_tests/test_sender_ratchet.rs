@@ -79,11 +79,11 @@ fn test_out_of_order_generations(
             .expect("Expected decryption secret.");
     }
 }
-/*
-TODO: This currently blocked by #265
+
 // Test forward secrecy
 #[apply(ciphersuites_and_backends)]
 fn test_forward_secrecy(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let configuration = &SenderRatchetConfiguration::default();
     let leaf = 0u32.into();
     let secret = Secret::random(ciphersuite, backend, Config::supported_versions()[0])
         .expect("Not enough randomness.");
@@ -92,8 +92,10 @@ fn test_forward_secrecy(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
     // Generate an encryption secret
     let (generation, _encryption_secret) = ratchet1.secret_for_encryption(ciphersuite, backend);
 
+    // We expect this to fail, because we should no longer have the key material for this generation
     let err = ratchet1
-        .secret_for_decryption(ciphersuite, backend, generation)
+        .secret_for_decryption(ciphersuite, backend, generation, configuration)
         .expect_err("Expected error.");
+
+    assert_eq!(err, SecretTreeError::TooDistantInThePast);
 }
-*/

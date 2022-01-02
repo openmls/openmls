@@ -876,10 +876,6 @@ impl MlsClient for MlsClientImpl {
             .create_commit(params, &self.crypto_provider)
             .map_err(into_status)?;
 
-        if let Some(kpb) = create_commit_results.key_package_bundle_option {
-            interop_group.own_kpbs.push(kpb)
-        }
-
         let commit = match interop_group.wire_format {
             WireFormat::MlsCiphertext => interop_group
                 .group

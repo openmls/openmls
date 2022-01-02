@@ -11,9 +11,6 @@ use crate::tree::{index::LeafIndex, secret_tree::*};
 use super::index::NodeIndex;
 use super::*;
 
-// TODO #265: This should disappear
-pub(crate) const OUT_OF_ORDER_TOLERANCE: u32 = 5;
-
 /// Stores the configuration parameters for sender ratchets.
 ///
 /// **Parameters**
@@ -60,7 +57,7 @@ impl Default for SenderRatchetConfiguration {
 pub type RatchetSecrets = (AeadKey, AeadNonce);
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(any(feature = "test-utils", test), derive(PartialEq))]
 pub struct SenderRatchet {
     index: LeafIndex,
     generation: u32,
@@ -95,14 +92,21 @@ impl SenderRatchet {
         {
             return Err(SecretTreeError::TooDistantInThePast);
         }
-        // If generation is within the window
+        // If generation is potentially within the window
         if generation <= self.generation {
+            // If the requested generation is within the window of past secrets, we should get a positive index
             let window_index =
-                (self.past_secrets.len() as u32 - (self.generation - generation) - 1) as usize;
+                self.past_secrets.len() as i32 - ((self.generation - generation) as i32) - 1;
+            // We might not have the key material (e.g. we might have discarded it when generating an encryption secret)
+            let index = if window_index >= 0 {
+                window_index as usize
+            } else {
+                return Err(SecretTreeError::TooDistantInThePast);
+            };
             // We can return a library error here, because there must be a mistake in the implementation
             let secret = self
                 .past_secrets
-                .get(window_index)
+                .get(index)
                 .ok_or(SecretTreeError::LibraryError)?;
             let ratchet_secrets = self.derive_key_nonce(ciphersuite, backend, secret, generation);
             Ok(ratchet_secrets)
@@ -144,13 +148,8 @@ impl SenderRatchet {
         };
         let next_path_secret = self.ratchet_secret(ciphersuite, backend, &current_path_secret);
         let generation = self.generation;
-        // Check if we have too many secrets in `past_secrets`
-        if self.past_secrets.len() >= OUT_OF_ORDER_TOLERANCE as usize {
-            //Drain older secrets
-            let surplus = self.past_secrets.len() - OUT_OF_ORDER_TOLERANCE as usize + 1;
-            self.past_secrets.drain(0..surplus);
-        }
-        self.past_secrets.push(next_path_secret);
+        // We remove all past_secrets when encrypting so that we get immediate FS
+        self.past_secrets = vec![next_path_secret];
         self.generation += 1;
         (
             generation,

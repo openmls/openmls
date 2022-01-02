@@ -1,3 +1,5 @@
+use std::mem;
+
 use core_group::{
     create_commit_params::CreateCommitParams, proposals::QueuedProposal,
     staged_commit::StagedCommit,
@@ -17,7 +19,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<UnverifiedMessage, MlsGroupError> {
         // Make sure we are still a member of the group
-        if !self.active {
+        if !self.is_active() {
             return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
@@ -74,7 +76,7 @@ impl MlsGroup {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<(MlsMessageOut, Option<Welcome>), MlsGroupError> {
-        self.pending_commit_or_inactive()?;
+        self.is_operational()?;
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
@@ -91,17 +93,15 @@ impl MlsGroup {
             .build();
         let create_commit_result = self.group.create_commit(params, backend)?;
 
-        // If it was a full Commit, we have to save the KeyPackageBundle for later
-        if let Some(kpb) = create_commit_result.key_package_bundle_option {
-            self.own_kpbs.push(kpb);
-        }
-
         // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
         let mls_message = self.plaintext_to_mls_message(create_commit_result.commit, backend)?;
 
-        // Store the staged commit as the current `pending_commit`
-        self.pending_commit = Some(create_commit_result.staged_commit);
+        // Set the current group state to [`MlsGroupState::PendingCommit`],
+        // storing the current [`StagedCommit`] from the commit results
+        self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
+            create_commit_result.staged_commit,
+        )));
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
@@ -117,7 +117,7 @@ impl MlsGroup {
     ) -> Result<(), MlsGroupError> {
         // Check if we were removed from the group
         if staged_commit.self_removed() {
-            self.active = false;
+            self.group_state = MlsGroupState::Inactive;
         }
 
         // Since the state of the group might be changed, arm the state flag
@@ -141,7 +141,7 @@ impl MlsGroup {
         self.own_kpbs.clear();
 
         // Delete a potential pending commit
-        self.clear_pending_commit();
+        self.clear_pending_commit()?;
 
         Ok(())
     }
@@ -149,10 +149,18 @@ impl MlsGroup {
     /// Merges the pending [`StagedCommit`] and, if the merge was successful,
     /// clears the field by setting it to `None`.
     pub fn merge_pending_commit(&mut self) -> Result<(), MlsGroupError> {
-        if let Some(staged_commit) = self.pending_commit.take() {
-            self.merge_staged_commit(staged_commit)
-        } else {
-            Err(MlsGroupError::NoPendingCommit)
+        match &self.group_state {
+            MlsGroupState::PendingCommit(_) => {
+                let old_state = mem::replace(&mut self.group_state, MlsGroupState::Operational);
+                if let MlsGroupState::PendingCommit(pending_commit_state) = old_state {
+                    self.merge_staged_commit((*pending_commit_state).into())?
+                }
+                Ok(())
+            }
+            MlsGroupState::Operational => Err(MlsGroupError::NoPendingCommit),
+            MlsGroupState::Inactive => {
+                Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error))
+            }
         }
     }
 }

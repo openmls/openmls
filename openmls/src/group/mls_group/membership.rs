@@ -23,7 +23,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
         key_packages: &[KeyPackage],
     ) -> Result<(MlsMessageOut, Welcome), MlsGroupError> {
-        self.pending_commit_or_inactive()?;
+        self.is_operational()?;
 
         if key_packages.is_empty() {
             return Err(MlsGroupError::EmptyInput(EmptyInputError::AddMembers));
@@ -65,17 +65,15 @@ impl MlsGroup {
             }
         };
 
-        // If it was a full Commit, we have to save the KeyPackageBundle for later
-        if let Some(kpb) = create_commit_result.key_package_bundle_option {
-            self.own_kpbs.push(kpb);
-        }
-
         // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
         let mls_messages = self.plaintext_to_mls_message(create_commit_result.commit, backend)?;
 
-        // Store the staged commit as the current `pending_commit`
-        self.pending_commit = Some(create_commit_result.staged_commit);
+        // Set the current group state to [`MlsGroupState::PendingCommit`],
+        // storing the current [`StagedCommit`] from the commit results
+        self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
+            create_commit_result.staged_commit,
+        )));
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
@@ -96,7 +94,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
         members: &[usize],
     ) -> Result<(MlsMessageOut, Option<Welcome>), MlsGroupError> {
-        self.pending_commit_or_inactive()?;
+        self.is_operational()?;
 
         if members.is_empty() {
             return Err(MlsGroupError::EmptyInput(EmptyInputError::RemoveMembers));
@@ -128,21 +126,15 @@ impl MlsGroup {
             .build();
         let create_commit_result = self.group.create_commit(params, backend)?;
 
-        // It has to be a full Commit and we have to save the KeyPackageBundle for later
-        if let Some(kpb) = create_commit_result.key_package_bundle_option {
-            self.own_kpbs.push(kpb);
-        } else {
-            return Err(MlsGroupError::LibraryError(
-                "We didn't get a key package for a full commit.".into(),
-            ));
-        }
-
         // Convert MlsPlaintext messages to MLSMessage and encrypt them if required by
         // the configuration
         let mls_message = self.plaintext_to_mls_message(create_commit_result.commit, backend)?;
 
-        // Store the staged commit as the current `pending_commit`
-        self.pending_commit = Some(create_commit_result.staged_commit);
+        // Set the current group state to [`MlsGroupState::PendingCommit`],
+        // storing the current [`StagedCommit`] from the commit results
+        self.group_state = MlsGroupState::PendingCommit(Box::new(PendingCommitState::Member(
+            create_commit_result.staged_commit,
+        )));
 
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
@@ -159,7 +151,7 @@ impl MlsGroup {
 
         key_package: &KeyPackage,
     ) -> Result<MlsMessageOut, MlsGroupError> {
-        self.pending_commit_or_inactive()?;
+        self.is_operational()?;
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
@@ -173,6 +165,12 @@ impl MlsGroup {
             key_package.clone(),
             backend,
         )?;
+
+        self.proposal_store.add(QueuedProposal::from_mls_plaintext(
+            self.ciphersuite(),
+            backend,
+            add_proposal.clone(),
+        )?);
 
         let mls_message = self.plaintext_to_mls_message(add_proposal, backend)?;
 
@@ -190,13 +188,7 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
         member: LeafIndex,
     ) -> Result<MlsMessageOut, MlsGroupError> {
-        if !self.active {
-            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
-        }
-
-        if self.pending_commit.is_some() {
-            return Err(MlsGroupError::PendingCommitError);
-        }
+        self.is_operational()?;
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
@@ -210,6 +202,12 @@ impl MlsGroup {
             member,
             backend,
         )?;
+
+        self.proposal_store.add(QueuedProposal::from_mls_plaintext(
+            self.ciphersuite(),
+            backend,
+            remove_proposal.clone(),
+        )?);
 
         let mls_message = self.plaintext_to_mls_message(remove_proposal, backend)?;
 
@@ -226,7 +224,7 @@ impl MlsGroup {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsMessageOut, MlsGroupError> {
-        self.pending_commit_or_inactive()?;
+        self.is_operational()?;
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
@@ -240,6 +238,12 @@ impl MlsGroup {
             self.group.treesync().own_leaf_index(),
             backend,
         )?;
+
+        self.proposal_store.add(QueuedProposal::from_mls_plaintext(
+            self.ciphersuite(),
+            backend,
+            remove_proposal.clone(),
+        )?);
 
         self.plaintext_to_mls_message(remove_proposal, backend)
     }

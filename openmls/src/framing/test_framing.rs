@@ -214,6 +214,8 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
 
     let mut message_secrets = MessageSecrets::random(ciphersuite, backend);
 
+    let orig_secret_tree = message_secrets.secret_tree_mut().clone();
+
     let mut ciphertext = MlsCiphertext::try_from_plaintext(
         &plaintext,
         ciphersuite,
@@ -229,6 +231,8 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
     .expect("Could not encrypt MlsPlaintext.");
 
     // Decrypt the ciphertext and expect the correct wire format
+
+    message_secrets.replace_secret_tree(orig_secret_tree);
 
     let verifiable_plaintext = ciphertext
         .to_plaintext(ciphersuite, backend, &mut message_secrets, configuration)

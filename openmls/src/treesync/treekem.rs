@@ -43,7 +43,7 @@ impl<'a> TreeSyncDiff<'a> {
         path: &[PlainUpdatePathNode],
         group_context: &[u8],
         exclusion_list: &HashSet<&LeafIndex>,
-        key_package: &KeyPackage,
+        key_package: KeyPackage,
     ) -> Result<UpdatePath, TreeKemError> {
         let copath_resolutions = self.copath_resolutions(self.own_leaf_index(), exclusion_list)?;
 
@@ -60,7 +60,7 @@ impl<'a> TreeSyncDiff<'a> {
             .collect::<Vec<UpdatePathNode>>();
 
         Ok(UpdatePath {
-            leaf_key_package: key_package.clone(),
+            leaf_key_package: key_package,
             nodes: update_path_nodes.into(),
         })
     }

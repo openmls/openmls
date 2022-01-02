@@ -11,7 +11,7 @@ impl MlsGroup {
         context: &[u8],
         key_length: usize,
     ) -> Result<Vec<u8>, MlsGroupError> {
-        if self.active {
+        if self.is_active() {
             Ok(self
                 .group
                 .export_secret(backend, label, context, key_length)?)
