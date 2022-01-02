@@ -1,6 +1,6 @@
 use std::{cell::RefCell, collections::HashMap};
 
-use ds_lib::{ClientKeyPackages, DsMlsMessage, GroupMessage, Message};
+use ds_lib::{ClientKeyPackages, GroupMessage, Message};
 use openmls::prelude::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
@@ -109,18 +109,7 @@ impl User {
             .create_message(&self.crypto, msg.as_bytes())
             .map_err(|e| format!("{}", e))?;
 
-        let mls_ciphertext = match message_out {
-            MlsMessageOut::Ciphertext(mls_ctxt_ptr) => *mls_ctxt_ptr,
-            MlsMessageOut::Plaintext(_) => {
-                return Err("Expected MlsCiphertext, found MlsPlaintext!".into())
-            }
-        };
-
-        // TODO #642: Update the delivery service to accept `MlsMessageOut`.
-        let msg = GroupMessage::new(
-            DsMlsMessage::Ciphertext(mls_ciphertext),
-            &self.recipients(group),
-        );
+        let msg = GroupMessage::new(message_out.into(), &self.recipients(group));
         log::debug!(" >>> send: {:?}", msg);
         let _response = self.backend.send_msg(&msg)?;
 
@@ -149,7 +138,7 @@ impl User {
                 Message::MlsMessage(message) => {
                     let mut groups = self.groups.borrow_mut();
 
-                    let group = match groups.get_mut(message.group_id()) {
+                    let group = match groups.get_mut(message.group_id().as_slice()) {
                         Some(g) => g,
                         None => {
                             log::error!(
@@ -161,46 +150,33 @@ impl User {
                     };
                     let mut mls_group = group.mls_group.borrow_mut();
 
-                    let msg = match message {
-                        DsMlsMessage::Ciphertext(ctxt) => {
-                            let unverified_message =
-                                match mls_group.parse_message(ctxt.into(), &self.crypto) {
-                                    Ok(msg) => msg,
-                                    Err(e) => {
-                                        log::error!(
-                                        "Error decrypting MlsCiphertext: {:?} -  Dropping message.",
-                                        e
-                                    );
-                                        continue;
-                                    }
-                                };
-
-                            let processed_message = match mls_group.process_unverified_message(
-                                unverified_message,
-                                None,
-                                &self.crypto,
-                            ) {
-                                Ok(msg) => msg,
-                                Err(e) => {
-                                    log::error!(
-                                        "Error verifying MlsPlaintext: {:?} -  Dropping message.",
-                                        e
-                                    );
-                                    continue;
-                                }
-                            };
-                            processed_message
-                        }
-                        DsMlsMessage::Plaintext(msg) => {
+                    let unverified_message = match mls_group.parse_message(message, &self.crypto) {
+                        Ok(msg) => msg,
+                        Err(e) => {
                             log::error!(
-                                "Received Plaintext message: {:?} -  Dropping message.",
-                                msg
+                                "Error decrypting MlsCiphertext: {:?} -  Dropping message.",
+                                e
                             );
                             continue;
                         }
                     };
 
-                    match msg {
+                    let processed_message = match mls_group.process_unverified_message(
+                        unverified_message,
+                        None,
+                        &self.crypto,
+                    ) {
+                        Ok(msg) => msg,
+                        Err(e) => {
+                            log::error!(
+                                "Error verifying MlsPlaintext: {:?} -  Dropping message.",
+                                e
+                            );
+                            continue;
+                        }
+                    };
+
+                    match processed_message {
                         ProcessedMessage::ApplicationMessage(application_message) => {
                             let application_message =
                                 String::from_utf8(application_message.message().into()).unwrap();
@@ -334,14 +310,8 @@ impl User {
         log::trace!("Sending proposal");
         let group = groups.get_mut(group_id).unwrap(); // XXX: not cool.
         let group_recipients = self.recipients(group);
-        let out_ds_messages = match out_messages {
-            MlsMessageOut::Ciphertext(msg) => DsMlsMessage::Ciphertext(*msg),
-            MlsMessageOut::Plaintext(_msg) => {
-                unimplemented!("Does not support Plaintext messages.")
-            }
-        };
-        // TODO #642: Update the delivery service to accept `MlsMessageOut`.
-        let msg = GroupMessage::new(out_ds_messages, &group_recipients);
+
+        let msg = GroupMessage::new(out_messages.into(), &group_recipients);
         self.backend.send_msg(&msg)?;
 
         Ok(())

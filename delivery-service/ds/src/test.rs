@@ -1,8 +1,47 @@
 use super::*;
 use actix_web::{dev::Body, http::StatusCode, test, web, web::Bytes, App};
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::types::SignatureScheme;
+use openmls_traits::OpenMlsCryptoProvider;
 use tls_codec::{TlsByteVecU8, TlsVecU16};
+
+fn generate_credential(
+    identity: Vec<u8>,
+    credential_type: CredentialType,
+    signature_scheme: SignatureScheme,
+    crypto_backend: &impl OpenMlsCryptoProvider,
+) -> Result<Credential, CredentialError> {
+    let cb = CredentialBundle::new(identity, credential_type, signature_scheme, crypto_backend)?;
+    let credential = cb.credential().clone();
+    crypto_backend
+        .key_store()
+        .store(credential.signature_key(), &cb)
+        .expect("An unexpected error occurred.");
+    Ok(credential)
+}
+
+fn generate_key_package(
+    ciphersuites: &[CiphersuiteName],
+    credential: &Credential,
+    extensions: Vec<Extension>,
+    crypto_backend: &impl OpenMlsCryptoProvider,
+) -> Result<KeyPackage, KeyPackageError> {
+    let credential_bundle = crypto_backend
+        .key_store()
+        .read(credential.signature_key())
+        .expect("An unexpected error occurred.");
+    let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, crypto_backend, extensions)?;
+    let kp = kpb.key_package().clone();
+    crypto_backend
+        .key_store()
+        .store(
+            &kp.hash(crypto_backend).expect("Could not hash KeyPackage."),
+            &kpb,
+        )
+        .expect("An unexpected error occurred.");
+    Ok(kp)
+}
 
 #[actix_rt::test]
 async fn test_list_clients() {
@@ -41,22 +80,19 @@ async fn test_list_clients() {
     let client_name = "Client1";
     let ciphersuite = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let crypto = &OpenMlsRustCrypto::default();
-    let credential_bundle = CredentialBundle::new(
-        client_name.as_bytes().to_vec(),
+    let credential_bundle = generate_credential(
+        client_name.into(),
         CredentialType::Basic,
         SignatureScheme::from(ciphersuite),
         crypto,
     )
     .unwrap();
-    let client_id = credential_bundle.credential().identity().to_vec();
-    let client_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, crypto, vec![]).unwrap();
+    let client_id = credential_bundle.identity().to_vec();
+    let client_key_package =
+        generate_key_package(&[ciphersuite], &credential_bundle, vec![], crypto).unwrap();
     let client_key_package = vec![(
-        client_key_package_bundle
-            .key_package()
-            .hash(crypto)
-            .unwrap(),
-        client_key_package_bundle.key_package().clone(),
+        client_key_package.hash(crypto).unwrap(),
+        client_key_package.clone(),
     )];
     let client_data = ClientInfo::new(client_name.to_string(), client_key_package.clone());
     let req = test::TestRequest::post()
@@ -120,7 +156,7 @@ async fn test_list_clients() {
 #[actix_rt::test]
 async fn test_group() {
     let crypto = &OpenMlsRustCrypto::default();
-    let configuration = &SenderRatchetConfiguration::default();
+    let mls_group_config = MlsGroupConfig::default();
     let data = web::Data::new(Mutex::new(DsData::default()));
     let mut app = test::init_service(
         App::new()
@@ -141,7 +177,7 @@ async fn test_group() {
     let mut client_ids = Vec::new();
     for client_name in clients.iter() {
         let ciphersuite = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
-        let credential_bundle = CredentialBundle::new(
+        let credential_bundle = generate_credential(
             client_name.as_bytes().to_vec(),
             CredentialType::Basic,
             SignatureScheme::from(ciphersuite),
@@ -149,16 +185,16 @@ async fn test_group() {
         )
         .unwrap();
         let client_key_package =
-            KeyPackageBundle::new(&[ciphersuite], &credential_bundle, crypto, vec![]).unwrap();
+            generate_key_package(&[ciphersuite], &credential_bundle, vec![], crypto).unwrap();
         let client_data = ClientInfo::new(
             client_name.to_string(),
             vec![(
-                client_key_package.key_package().hash(crypto).unwrap(),
-                client_key_package.key_package().clone(),
+                client_key_package.hash(crypto).unwrap(),
+                client_key_package.clone(),
             )],
         );
         key_package_bundles.push(client_key_package);
-        client_ids.push(credential_bundle.credential().identity().to_vec());
+        client_ids.push(credential_bundle.identity().to_vec());
         credentials.push(credential_bundle);
         let req = test::TestRequest::post()
             .uri("/clients/register")
@@ -171,14 +207,18 @@ async fn test_group() {
     }
 
     // Client1 creates MyFirstGroup
-    let group_id = b"MyFirstGroup";
-    let group_aad = b"MyFirstGroup AAD";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
-    let group_ciphersuite = key_package_bundles[0].key_package().ciphersuite_name();
-    let mut group =
-        CoreGroup::builder(GroupId::from_slice(group_id), key_package_bundles.remove(0))
-            .build(crypto)
-            .unwrap();
+    let group_id = GroupId::from_slice(b"MyFirstGroup");
+    let group_ciphersuite = key_package_bundles[0].ciphersuite_name();
+    let mut group = MlsGroup::new(
+        crypto,
+        &mls_group_config,
+        group_id,
+        &key_package_bundles
+            .remove(0)
+            .hash(crypto)
+            .expect("Could not hash KeyPackage."),
+    )
+    .expect("An unexpected error occurred.");
 
     // === Client1 invites Client2 ===
     // First we need to get the key package for Client2 from the DS.
@@ -208,38 +248,12 @@ async fn test_group() {
         client2_key_packages.remove(client2_key_package);
 
     // With the key package we can build a proposal.
-    let client2_add_proposal = group
-        .create_add_proposal(
-            framing_parameters,
-            &credentials[0],
-            client2_key_package,
-            crypto,
-        )
-        .unwrap();
-
-    let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_mls_plaintext(
-            Config::ciphersuite(group_ciphersuite).expect("Unsupported ciphersuite."),
-            crypto,
-            client2_add_proposal,
-        )
-        .expect("Could not create QueuedProposal."),
-    );
-    let params = CreateCommitParams::builder()
-        .framing_parameters(framing_parameters)
-        .credential_bundle(&credentials[0])
-        .proposal_store(&proposal_store)
-        .force_self_update(false)
-        .build();
-    let create_commit_results = group
-        .create_commit(params, crypto)
-        .expect("Error creating commit");
-    let welcome_msg = create_commit_results
-        .welcome_option
-        .expect("Welcome message wasn't created by create_commit.");
+    let (_out_messages, welcome_msg) = group
+        .add_members(crypto, &[client2_key_package])
+        .expect("Could not add member to group.");
     group
-        .merge_commit(create_commit_results.staged_commit)
-        .expect("error merging commit");
+        .merge_pending_commit()
+        .expect("error merging pending commit");
 
     // Send welcome message for Client2
     let req = test::TestRequest::post()
@@ -277,27 +291,27 @@ async fn test_group() {
     assert_eq!(welcome_msg, welcome_message);
     assert!(messages.is_empty());
 
-    let mut group_on_client2 = CoreGroup::new_from_welcome(
-        welcome_message,
-        Some(group.treesync().export_nodes()), // delivered out of band
-        key_package_bundles.remove(0),
+    let mut group_on_client2 = MlsGroup::new_from_welcome(
         crypto,
+        &mls_group_config,
+        welcome_msg,
+        Some(group.export_ratchet_tree()), // delivered out of band
     )
     .expect("Error creating group from Welcome");
 
     assert_eq!(
-        group.treesync().export_nodes(),
-        group_on_client2.treesync().export_nodes()
+        group.export_ratchet_tree(),
+        group_on_client2.export_ratchet_tree(),
     );
 
     // === Client2 sends a message to the group ===
     let client2_message = b"Thanks for adding me Client1.";
-    let mls_ciphertext = group_on_client2
-        .create_application_message(&[], &client2_message[..], &credentials[1], 0, crypto)
+    let out_messages = group_on_client2
+        .create_message(crypto, client2_message)
         .unwrap();
 
     // Send mls_ciphertext to the group
-    let msg = GroupMessage::new(DsMlsMessage::Ciphertext(mls_ciphertext), &client_ids);
+    let msg = GroupMessage::new(out_messages.into(), &client_ids);
     let req = test::TestRequest::post()
         .uri("/send/message")
         .set_payload(Bytes::copy_from_slice(
@@ -322,28 +336,26 @@ async fn test_group() {
         _ => panic!("Unexpected server response."),
     };
 
-    let mls_ciphertext = messages
+    let mls_message = messages
         .iter()
         .position(|m| matches!(m, Message::MlsMessage(_)))
         .expect("Didn't get an MLS application message from the server.");
-    let mls_ciphertext = match messages.remove(mls_ciphertext) {
-        Message::MlsMessage(m) => match m {
-            DsMlsMessage::Ciphertext(m) => m,
-            _ => panic!("This is not an MlsCiphertext but an MlsPlaintext (or something else)."),
-        },
+    let mls_message = match messages.remove(mls_message) {
+        Message::MlsMessage(m) => m,
         _ => panic!("This is not an MLS message."),
     };
     assert!(messages.is_empty());
 
     // Decrypt the message on Client1
-    let mls_plaintext = group
-        .decrypt(&mls_ciphertext, crypto, configuration)
-        .expect("Error decrypting MlsCiphertext");
-    let mls_plaintext = group
-        .verify(mls_plaintext, crypto)
-        .expect("Error verifying plaintext");
-    assert_eq!(
-        client2_message,
-        mls_plaintext.as_application_message().unwrap()
-    );
+    let unverified_message = group
+        .parse_message(mls_message, crypto)
+        .expect("Could not parse message.");
+    let processed_message = group
+        .process_unverified_message(unverified_message, None, crypto)
+        .expect("Could not process unverified message.");
+    if let ProcessedMessage::ApplicationMessage(application_message) = processed_message {
+        assert_eq!(client2_message, application_message.message());
+    } else {
+        panic!("Expected application message");
+    }
 }

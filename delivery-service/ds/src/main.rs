@@ -44,9 +44,6 @@ use ds_lib::*;
 use openmls::prelude::*;
 
 #[cfg(test)]
-use openmls::prelude_test::*;
-
-#[cfg(test)]
 mod test;
 
 /// The DS state.
@@ -215,8 +212,8 @@ async fn msg_send(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl Res
     //      painful to test in the current setting. This should get tested through
     //      the client and maybe later with the MlsGroup API.
     if group_msg.msg.is_handshake_message() {
-        let epoch = group_msg.epoch();
-        let group_id = group_msg.group_id();
+        let epoch = group_msg.epoch().as_u64();
+        let group_id = group_msg.group_id().as_slice();
         if let Some(&group_epoch) = data.groups.get(group_id) {
             if group_epoch > epoch {
                 return actix_web::HttpResponse::Conflict().finish();

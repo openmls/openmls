@@ -88,6 +88,10 @@ impl GroupEpoch {
     pub fn increment(&mut self) {
         self.0 += 1;
     }
+
+    pub fn as_u64(&self) -> u64 {
+        self.0
+    }
 }
 
 impl PartialOrd for GroupEpoch {

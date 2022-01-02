@@ -19,7 +19,7 @@ pub struct ClientInfo {
     pub client_name: String,
     pub key_packages: ClientKeyPackages,
     pub id: Vec<u8>,
-    pub msgs: Vec<DsMlsMessage>,
+    pub msgs: Vec<MlsMessageIn>,
     pub welcome_queue: Vec<Welcome>,
 }
 
@@ -56,50 +56,13 @@ impl ClientInfo {
     }
 }
 
-/// Unified message type similar to the one in the MlsGroup.
-/// But this version only operates on [`VerifiableMlsPlaintext`].
-#[derive(Debug, Clone)]
-pub enum DsMlsMessage {
-    /// An OpenMLS `MlsPlaintext`.
-    Plaintext(VerifiableMlsPlaintext),
-
-    /// An OpenMLS `MlsCiphertext`.
-    Ciphertext(MlsCiphertext),
-}
-
-impl DsMlsMessage {
-    /// Get the group id.
-    pub fn group_id(&self) -> &[u8] {
-        match self {
-            DsMlsMessage::Plaintext(p) => p.payload().group_id(),
-            DsMlsMessage::Ciphertext(c) => c.group_id().as_slice(),
-        }
-    }
-
-    /// Get the epoch as plain u64.
-    pub fn epoch(&self) -> u64 {
-        match self {
-            DsMlsMessage::Ciphertext(m) => m.epoch().0,
-            DsMlsMessage::Plaintext(m) => m.payload().epoch().0,
-        }
-    }
-
-    /// Returns `true` if this is a handshake message and `false` otherwise.
-    pub fn is_handshake_message(&self) -> bool {
-        match self {
-            DsMlsMessage::Ciphertext(m) => m.is_handshake_message(),
-            DsMlsMessage::Plaintext(m) => m.payload().is_handshake_message(),
-        }
-    }
-}
-
 /// The DS returns a list of messages on `/recv/{name}`, which is a
 /// `Vec<Message>`. A `Message` is either an `MLSMessage` or a `Welcome` message
 /// (see OpenMLS) for details.
 #[derive(Debug)]
 pub enum Message {
     /// An `MLSMessage` is either an OpenMLS `MlsCiphertext` or `MlsPlaintext`.
-    MlsMessage(DsMlsMessage),
+    MlsMessage(MlsMessageIn),
 
     /// An OpenMLS `Welcome` message.
     Welcome(Welcome),
@@ -109,11 +72,8 @@ pub enum Message {
 #[derive(Debug, Clone, Copy, TlsSerialize, TlsDeserialize, TlsSize)]
 #[repr(u8)]
 pub enum MessageType {
-    /// An MlsCiphertext message.
-    MlsCiphertext = 0,
-
-    /// An MlsPlaintext message.
-    MlsPlaintext = 1,
+    /// An MlsMessage message.
+    MlsMessage = 0,
 
     /// A Welcome message.
     Welcome = 2,
@@ -124,14 +84,14 @@ pub enum MessageType {
 /// names.
 #[derive(Debug)]
 pub struct GroupMessage {
-    pub msg: DsMlsMessage,
+    pub msg: MlsMessageIn,
     pub recipients: TlsVecU32<TlsByteVecU32>,
 }
 
 impl GroupMessage {
-    /// Create a new `GroupMessage` taking an `DsMlsMessage` and slice of
+    /// Create a new `GroupMessage` taking an `MlsMessageIn` and slice of
     /// recipient names.
-    pub fn new(msg: DsMlsMessage, recipients: &[Vec<u8>]) -> Self {
+    pub fn new(msg: MlsMessageIn, recipients: &[Vec<u8>]) -> Self {
         Self {
             msg,
             recipients: recipients
@@ -142,13 +102,11 @@ impl GroupMessage {
         }
     }
 
-    /// Get the group ID as plain byte slice.
-    pub fn group_id(&self) -> &[u8] {
+    pub fn group_id(&self) -> &GroupId {
         self.msg.group_id()
     }
 
-    /// Get the epoch as plain u64.
-    pub fn epoch(&self) -> u64 {
+    pub fn epoch(&self) -> GroupEpoch {
         self.msg.epoch()
     }
 
@@ -188,12 +146,9 @@ impl tls_codec::Deserialize for ClientInfo {
 
 impl tls_codec::Size for Message {
     fn tls_serialized_len(&self) -> usize {
-        MessageType::MlsCiphertext.tls_serialized_len()
+        MessageType::Welcome.tls_serialized_len()
             + match self {
-                Message::MlsMessage(mm) => match mm {
-                    DsMlsMessage::Plaintext(p) => p.tls_serialized_len(),
-                    DsMlsMessage::Ciphertext(c) => c.tls_serialized_len(),
-                },
+                Message::MlsMessage(mm) => mm.tls_serialized_len(),
                 Message::Welcome(w) => w.tls_serialized_len(),
             }
     }
@@ -203,16 +158,10 @@ impl tls_codec::Serialize for Message {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         let written;
         match self {
-            Message::MlsMessage(m) => match m {
-                DsMlsMessage::Ciphertext(m) => {
-                    written = MessageType::MlsCiphertext.tls_serialize(writer)?;
-                    m.tls_serialize(writer)
-                }
-                DsMlsMessage::Plaintext(m) => {
-                    written = MessageType::MlsPlaintext.tls_serialize(writer)?;
-                    m.tls_serialize(writer)
-                }
-            },
+            Message::MlsMessage(m) => {
+                written = MessageType::MlsMessage.tls_serialize(writer)?;
+                m.tls_serialize(writer)
+            }
             Message::Welcome(m) => {
                 written = MessageType::Welcome.tls_serialize(writer)?;
                 m.tls_serialize(writer)
@@ -226,12 +175,7 @@ impl tls_codec::Deserialize for Message {
     fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
         let msg_type = MessageType::tls_deserialize(bytes)?;
         Ok(match msg_type {
-            MessageType::MlsCiphertext => Message::MlsMessage(DsMlsMessage::Ciphertext(
-                MlsCiphertext::tls_deserialize(bytes)?,
-            )),
-            MessageType::MlsPlaintext => Message::MlsMessage(DsMlsMessage::Plaintext(
-                VerifiableMlsPlaintext::tls_deserialize(bytes)?,
-            )),
+            MessageType::MlsMessage => Message::MlsMessage(MlsMessageIn::tls_deserialize(bytes)?),
             MessageType::Welcome => Message::Welcome(Welcome::tls_deserialize(bytes)?),
         })
     }
@@ -239,48 +183,20 @@ impl tls_codec::Deserialize for Message {
 
 impl tls_codec::Size for GroupMessage {
     fn tls_serialized_len(&self) -> usize {
-        MessageType::MlsCiphertext.tls_serialized_len()
-            + match &self.msg {
-                DsMlsMessage::Plaintext(p) => p.tls_serialized_len(),
-                DsMlsMessage::Ciphertext(c) => c.tls_serialized_len(),
-            }
-            + self.recipients.tls_serialized_len()
+        self.msg.tls_serialized_len() + self.recipients.tls_serialized_len()
     }
 }
 
 impl tls_codec::Serialize for GroupMessage {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        let mut written = 0;
-        written += match &self.msg {
-            DsMlsMessage::Ciphertext(m) => {
-                MessageType::MlsCiphertext.tls_serialize(writer)? + m.tls_serialize(writer)?
-            }
-            DsMlsMessage::Plaintext(m) => {
-                MessageType::MlsPlaintext.tls_serialize(writer)? + m.tls_serialize(writer)?
-            }
-        };
+        let written = self.msg.tls_serialize(writer)?;
         self.recipients.tls_serialize(writer).map(|l| l + written)
     }
 }
 
 impl tls_codec::Deserialize for GroupMessage {
     fn tls_deserialize<R: std::io::Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
-        let msg_type = MessageType::tls_deserialize(bytes)?;
-        let msg = match msg_type {
-            MessageType::MlsCiphertext => {
-                DsMlsMessage::Ciphertext(MlsCiphertext::tls_deserialize(bytes)?)
-            }
-            MessageType::MlsPlaintext => {
-                DsMlsMessage::Plaintext(VerifiableMlsPlaintext::tls_deserialize(bytes)?)
-            }
-            _ => {
-                return Err(tls_codec::Error::DecodingError(format!(
-                    "Invalid message type {:?}",
-                    msg_type
-                )))
-            }
-        };
-
+        let msg = MlsMessageIn::tls_deserialize(bytes)?;
         let recipients = TlsVecU32::<TlsByteVecU32>::tls_deserialize(bytes)?;
         Ok(Self { msg, recipients })
     }
