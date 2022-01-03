@@ -142,7 +142,7 @@ impl Client {
         let group_state = group_states
             .get_mut(group_id)
             .ok_or(ClientError::NoMatchingGroup)?;
-        if sender_id == &self.identity && message.content_type() == ContentType::Commit {
+        if sender_id == self.identity && message.content_type() == ContentType::Commit {
             group_state.merge_pending_commit()?
         } else {
             if message.content_type() == ContentType::Commit {
