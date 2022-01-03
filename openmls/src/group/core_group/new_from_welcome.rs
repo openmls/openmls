@@ -157,15 +157,17 @@ impl CoreGroup {
             log_crypto!(trace, "  Expected: {:x?}", group_info.confirmation_tag());
             Err(WelcomeError::ConfirmationTagMismatch)
         } else {
+            let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);
+
             Ok(CoreGroup {
                 ciphersuite,
                 group_context,
                 group_epoch_secrets,
-                message_secrets,
                 tree,
                 interim_transcript_hash,
                 use_ratchet_tree_extension: enable_ratchet_tree_extension,
                 mls_version,
+                message_secrets_store,
             })
         }
     }

@@ -290,7 +290,8 @@ impl CoreGroup {
         if let Some(state) = staged_commit.state {
             self.group_context = state.group_context;
             self.group_epoch_secrets = state.group_epoch_secrets;
-            self.message_secrets = state.message_secrets;
+            self.message_secrets_store =
+                MessageSecretsStore::new_with_secret(0, state.message_secrets);
             self.interim_transcript_hash = state.interim_transcript_hash;
             self.tree.merge_diff(state.staged_diff)?;
         };
@@ -312,7 +313,10 @@ impl CoreGroup {
 
             // Replace the previous message secrets with the new ones and return the previous message secrets
             let mut message_secrets = state.message_secrets;
-            mem::swap(&mut message_secrets, &mut self.message_secrets);
+            mem::swap(
+                &mut message_secrets,
+                self.message_secrets_store.message_secrets_mut(),
+            );
 
             self.interim_transcript_hash = state.interim_transcript_hash;
 

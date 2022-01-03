@@ -91,6 +91,7 @@ impl CoreGroup {
             group_context.tls_serialize_detached()?,
             treesync.leaf_count()?,
         );
+        let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);
 
         // Prepare interim transcript hash
         let group = CoreGroup {
@@ -101,7 +102,7 @@ impl CoreGroup {
             use_ratchet_tree_extension: enable_ratchet_tree_extension,
             mls_version: pgs.version,
             group_epoch_secrets,
-            message_secrets,
+            message_secrets_store,
         };
 
         let external_init_proposal = Proposal::ExternalInit(ExternalInitProposal::from(kem_output));

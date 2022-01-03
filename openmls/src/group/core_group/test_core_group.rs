@@ -365,7 +365,7 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .set_membership_tag(
             backend,
             serialized_context,
-            group_bob.message_secrets.membership_key(),
+            group_bob.message_secrets().membership_key(),
         )
         .expect("Could not add membership key");
 

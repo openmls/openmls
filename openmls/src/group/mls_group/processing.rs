@@ -30,12 +30,7 @@ impl MlsGroup {
         let sender_ratchet_configuration =
             self.configuration().sender_ratchet_configuration().clone();
         self.group
-            .parse_message(
-                message,
-                &mut self.message_secrets_store,
-                &sender_ratchet_configuration,
-                backend,
-            )
+            .parse_message(message, &sender_ratchet_configuration, backend)
             .map_err(MlsGroupError::Group)
     }
 
@@ -52,7 +47,6 @@ impl MlsGroup {
                 unverified_message,
                 signature_key,
                 &self.proposal_store,
-                &mut self.message_secrets_store,
                 &self.own_kpbs,
                 backend,
             )
@@ -125,11 +119,7 @@ impl MlsGroup {
 
         // Merge staged commit
         self.group
-            .merge_staged_commit(
-                staged_commit,
-                &mut self.proposal_store,
-                &mut self.message_secrets_store,
-            )
+            .merge_staged_commit(staged_commit, &mut self.proposal_store)
             .map_err(MlsGroupError::Group)?;
 
         // Extract and store the resumption secret for the current epoch
