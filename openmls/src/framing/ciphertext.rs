@@ -68,7 +68,7 @@ impl MlsCiphertext {
             group_id: header.group_id.clone(),
             epoch: header.epoch,
             content_type: mls_plaintext.content_type(),
-            authenticated_data: mls_plaintext.authenticated_data().into(),
+            authenticated_data: TlsByteSliceU32(mls_plaintext.authenticated_data()),
         };
         let mls_ciphertext_content_aad_bytes =
             mls_ciphertext_content_aad.tls_serialize_detached()?;
@@ -141,15 +141,13 @@ impl MlsCiphertext {
         })
     }
 
-    /// This function decrypts an [`MlsCiphertext`] into an [`VerifiableMlsPlaintext`].
-    /// In order to get an [`MlsPlaintext`] the result must be verified.
-    pub(crate) fn to_plaintext(
+    /// Decrypt the sender data from this [`MlsCiphertext`].
+    pub(crate) fn sender_data(
         &self,
-        ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
         message_secrets: &mut MessageSecrets,
-        sender_ratchet_configuration: &SenderRatchetConfiguration,
-    ) -> Result<VerifiableMlsPlaintext, MlsCiphertextError> {
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+    ) -> Result<MlsSenderData, MlsCiphertextError> {
         log::debug!("Decrypting MlsCiphertext");
         // Check the ciphertext has the correct wire format
         if self.wire_format != WireFormat::MlsCiphertext {
@@ -182,7 +180,21 @@ impl MlsCiphertext {
                 MlsCiphertextError::DecryptionError
             })?;
         log::trace!("  Successfully decrypted sender data.");
-        let sender_data = MlsSenderData::tls_deserialize(&mut sender_data_bytes.as_slice())?;
+        Ok(MlsSenderData::tls_deserialize(
+            &mut sender_data_bytes.as_slice(),
+        )?)
+    }
+
+    /// Decrypt this [`MlsCiphertext`] and return the [`MlsCiphertextContent`].
+    #[inline]
+    fn decrypt(
+        &self,
+        ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
+        message_secrets: &mut MessageSecrets,
+        sender_ratchet_configuration: &SenderRatchetConfiguration,
+        sender_data: &MlsSenderData,
+    ) -> Result<MlsCiphertextContent, MlsCiphertextError> {
         let secret_type = SecretType::try_from(&self.content_type)
             .map_err(|_| MlsCiphertextError::InvalidContentType)?;
         // Extract generation and key material for encryption
@@ -203,14 +215,13 @@ impl MlsCiphertext {
         // Prepare the nonce by xoring with the reuse guard.
         ratchet_nonce.xor_with_reuse_guard(&sender_data.reuse_guard);
         // Serialize content AAD
-        let mls_ciphertext_content_aad = MlsCiphertextContentAad {
+        let mls_ciphertext_content_aad_bytes = MlsCiphertextContentAad {
             group_id: self.group_id.clone(),
             epoch: self.epoch,
             content_type: self.content_type,
-            authenticated_data: self.authenticated_data.clone(),
-        };
-        let mls_ciphertext_content_aad_bytes =
-            mls_ciphertext_content_aad.tls_serialize_detached()?;
+            authenticated_data: TlsByteSliceU32(self.authenticated_data.as_slice()),
+        }
+        .tls_serialize_detached()?;
         // Decrypt payload
         let mls_ciphertext_content_bytes = ratchet_key
             .aead_open(
@@ -228,10 +239,30 @@ impl MlsCiphertext {
             "  Successfully decrypted MlsPlaintext bytes: {:x?}",
             mls_ciphertext_content_bytes
         );
-        let mls_ciphertext_content = MlsCiphertextContent::deserialize(
+        Ok(MlsCiphertextContent::deserialize(
             self.content_type,
             &mut mls_ciphertext_content_bytes.as_slice(),
+        )?)
+    }
+
+    /// This function decrypts an [`MlsCiphertext`] into an [`VerifiableMlsPlaintext`].
+    /// In order to get an [`MlsPlaintext`] the result must be verified.
+    pub(crate) fn to_plaintext(
+        &self,
+        ciphersuite: &Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
+        message_secrets: &mut MessageSecrets,
+        sender_ratchet_configuration: &SenderRatchetConfiguration,
+        sender_data: MlsSenderData,
+    ) -> Result<VerifiableMlsPlaintext, MlsCiphertextError> {
+        let mls_ciphertext_content = self.decrypt(
+            ciphersuite,
+            backend,
+            message_secrets,
+            sender_ratchet_configuration,
+            &sender_data,
         )?;
+
         // Extract sender. The sender type is always of type Member for MlsCiphertext.
         let sender = Sender {
             sender_type: SenderType::Member,
@@ -350,6 +381,7 @@ impl MlsCiphertext {
 // === Helper structs ===
 
 #[derive(Clone, TlsDeserialize, TlsSerialize, TlsSize)]
+#[cfg_attr(test, derive(Debug))]
 pub(crate) struct MlsSenderData {
     // TODO: #541 replace sender with [`KeyPackageRef`]
     pub(crate) sender: LeafIndex,
@@ -392,10 +424,10 @@ pub(crate) struct MlsCiphertextContent {
     pub(crate) padding: TlsByteVecU16,
 }
 
-#[derive(Clone, TlsSerialize, TlsDeserialize, TlsSize)]
-pub(crate) struct MlsCiphertextContentAad {
+#[derive(TlsSerialize, TlsSize)]
+pub(crate) struct MlsCiphertextContentAad<'a> {
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
     pub(crate) content_type: ContentType,
-    pub(crate) authenticated_data: TlsByteVecU32,
+    pub(crate) authenticated_data: TlsByteSliceU32<'a>,
 }

@@ -234,8 +234,17 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
 
     message_secrets.replace_secret_tree(orig_secret_tree);
 
+    let sender_data = ciphertext
+        .sender_data(&mut message_secrets, backend, ciphersuite)
+        .expect("Could not decrypt sender data.");
     let verifiable_plaintext = ciphertext
-        .to_plaintext(ciphersuite, backend, &mut message_secrets, configuration)
+        .to_plaintext(
+            ciphersuite,
+            backend,
+            &mut message_secrets,
+            configuration,
+            sender_data,
+        )
         .expect("Could not decrypt MlsCiphertext.");
 
     assert_eq!(
@@ -249,7 +258,7 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
 
     assert_eq!(
         ciphertext
-            .to_plaintext(ciphersuite, backend, &mut message_secrets, configuration)
+            .sender_data(&mut message_secrets, backend, ciphersuite)
             .expect_err("Could decrypt despite wrong wire format."),
         MlsCiphertextError::WrongWireFormat
     );
@@ -522,7 +531,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
             epoch: group_alice.context().epoch(),
             sender: 1u32,
         },
-        group_alice.message_secrets_mut(),
+        group_alice.message_secrets_test_mut(),
         0,
     )
     .expect("Encryption error");
@@ -561,7 +570,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
             epoch: group_alice.context().epoch(),
             sender: 1u32,
         },
-        group_alice.message_secrets_mut(),
+        group_alice.message_secrets_test_mut(),
         0,
     )
     .expect("Encryption error");
