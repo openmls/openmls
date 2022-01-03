@@ -194,7 +194,7 @@ fn remover(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvid
     };
 
     let unverified_message = alice_group
-        .parse_message(queued_messages.clone().into(), backend)
+        .parse_message(queued_messages.into(), backend)
         .expect("Could not parse message.");
     let alice_processed_message = alice_group
         .process_unverified_message(unverified_message, None, backend)
