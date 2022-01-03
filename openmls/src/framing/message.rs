@@ -44,6 +44,11 @@ impl MlsMessageIn {
             MlsMessageIn::Plaintext(m) => m.content_type(),
         }
     }
+
+    /// Returns `true` if this is a handshake message and `false` otherwise.
+    pub fn is_handshake_message(&self) -> bool {
+        self.content_type().is_handshake_message()
+    }
 }
 
 /// Unified message type for outgoing MLS messages.
@@ -96,7 +101,6 @@ impl MlsMessageOut {
     }
 }
 
-#[cfg(any(feature = "test-utils", test))]
 impl From<MlsMessageOut> for MlsMessageIn {
     fn from(message: MlsMessageOut) -> Self {
         match message {
