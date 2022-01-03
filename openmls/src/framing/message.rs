@@ -1,10 +1,12 @@
 use super::*;
 
-/// Unified message type for incoming MLS messages.
+/// Unified message type for MLS messages.
 /// Since the memory footprint can differ considerably between [`VerifiableMlsPlaintext`]
 /// and [`MlsCiphertext`], we use `Box<T>` for more efficient memory allocation.
-#[derive(Debug, Clone)]
-pub enum MlsMessageIn {
+/// This is only used internally, externally we use either [`MlsMessageIn`] or
+/// [`MlsMessageOut`], depending on the context.
+#[derive(PartialEq, Debug, Clone)]
+pub(crate) enum MlsMessage {
     /// An OpenMLS `VerifiableMlsPlaintext`.
     Plaintext(Box<VerifiableMlsPlaintext>),
 
@@ -12,36 +14,36 @@ pub enum MlsMessageIn {
     Ciphertext(Box<MlsCiphertext>),
 }
 
-impl MlsMessageIn {
+impl MlsMessage {
     /// Get the wire format
     pub fn wire_format(&self) -> WireFormat {
         match self {
-            MlsMessageIn::Ciphertext(_) => WireFormat::MlsCiphertext,
-            MlsMessageIn::Plaintext(_) => WireFormat::MlsPlaintext,
+            MlsMessage::Ciphertext(_) => WireFormat::MlsCiphertext,
+            MlsMessage::Plaintext(_) => WireFormat::MlsPlaintext,
         }
     }
 
     /// Get the group ID
     pub fn group_id(&self) -> &GroupId {
         match self {
-            MlsMessageIn::Ciphertext(m) => m.group_id(),
-            MlsMessageIn::Plaintext(m) => m.group_id(),
+            MlsMessage::Ciphertext(m) => m.group_id(),
+            MlsMessage::Plaintext(m) => m.group_id(),
         }
     }
 
     /// Get the epoch
     pub fn epoch(&self) -> GroupEpoch {
         match self {
-            MlsMessageIn::Ciphertext(m) => m.epoch(),
-            MlsMessageIn::Plaintext(m) => m.epoch(),
+            MlsMessage::Ciphertext(m) => m.epoch(),
+            MlsMessage::Plaintext(m) => m.epoch(),
         }
     }
 
     /// Get the content type
     pub fn content_type(&self) -> ContentType {
         match self {
-            MlsMessageIn::Ciphertext(m) => m.content_type(),
-            MlsMessageIn::Plaintext(m) => m.content_type(),
+            MlsMessage::Ciphertext(m) => m.content_type(),
+            MlsMessage::Plaintext(m) => m.content_type(),
         }
     }
 
@@ -51,63 +53,102 @@ impl MlsMessageIn {
     }
 }
 
-/// Unified message type for outgoing MLS messages.
-/// Since the memory footprint can differ considerably between [`MlsPlaintext`]
-/// and [`MlsCiphertext`], we use `Box<T>` for more efficient memory allocation.
-#[derive(PartialEq, Debug, Clone)]
-pub enum MlsMessageOut {
-    /// An OpenMLS `MlsPlaintext`.
-    Plaintext(Box<MlsPlaintext>),
-
-    /// An OpenMLS `MlsCiphertext`.
-    Ciphertext(Box<MlsCiphertext>),
+/// Unified message type for incoming MLS messages.
+#[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
+pub struct MlsMessageIn {
+    pub(crate) mls_message: MlsMessage,
 }
 
-impl From<MlsPlaintext> for MlsMessageOut {
-    fn from(mls_plaintext: MlsPlaintext) -> Self {
-        MlsMessageOut::Plaintext(Box::new(mls_plaintext))
-    }
-}
-
-impl From<MlsCiphertext> for MlsMessageOut {
-    fn from(mls_ciphertext: MlsCiphertext) -> Self {
-        MlsMessageOut::Ciphertext(Box::new(mls_ciphertext))
-    }
-}
-
-impl MlsMessageOut {
-    /// Get the group ID as plain byte vector.
-    pub fn group_id(&self) -> &[u8] {
-        match self {
-            MlsMessageOut::Ciphertext(m) => m.group_id().as_slice(),
-            MlsMessageOut::Plaintext(m) => m.group_id().as_slice(),
-        }
+impl MlsMessageIn {
+    /// Get the wire format
+    pub fn wire_format(&self) -> WireFormat {
+        self.mls_message.wire_format()
     }
 
-    /// Get the epoch as plain u64.
-    pub fn epoch(&self) -> u64 {
-        match self {
-            MlsMessageOut::Ciphertext(m) => m.epoch().0,
-            MlsMessageOut::Plaintext(m) => m.epoch().0,
-        }
+    /// Get the group ID
+    pub fn group_id(&self) -> &GroupId {
+        self.mls_message.group_id()
+    }
+
+    /// Get the epoch
+    pub fn epoch(&self) -> GroupEpoch {
+        self.mls_message.epoch()
+    }
+
+    /// Get the content type
+    pub fn content_type(&self) -> ContentType {
+        self.mls_message.content_type()
     }
 
     /// Returns `true` if this is a handshake message and `false` otherwise.
     pub fn is_handshake_message(&self) -> bool {
-        match self {
-            MlsMessageOut::Ciphertext(m) => m.is_handshake_message(),
-            MlsMessageOut::Plaintext(m) => m.is_handshake_message(),
+        self.mls_message.is_handshake_message()
+    }
+}
+
+/// Unified message type for outgoing MLS messages.
+#[derive(PartialEq, Debug, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
+pub struct MlsMessageOut {
+    pub(crate) mls_message: MlsMessage,
+}
+
+impl From<VerifiableMlsPlaintext> for MlsMessageOut {
+    fn from(plaintext: VerifiableMlsPlaintext) -> Self {
+        Self {
+            mls_message: MlsMessage::Plaintext(Box::new(plaintext)),
         }
+    }
+}
+
+impl From<MlsPlaintext> for MlsMessageOut {
+    fn from(plaintext: MlsPlaintext) -> Self {
+        Self {
+            mls_message: MlsMessage::Plaintext(Box::new(VerifiableMlsPlaintext::from_plaintext(
+                plaintext, None,
+            ))),
+        }
+    }
+}
+
+impl From<MlsCiphertext> for MlsMessageOut {
+    fn from(ciphertext: MlsCiphertext) -> Self {
+        Self {
+            mls_message: MlsMessage::Ciphertext(Box::new(ciphertext)),
+        }
+    }
+}
+
+impl MlsMessageOut {
+    /// Get the wire format
+    pub fn wire_format(&self) -> WireFormat {
+        self.mls_message.wire_format()
+    }
+
+    /// Get the group ID
+    pub fn group_id(&self) -> &GroupId {
+        self.mls_message.group_id()
+    }
+
+    /// Get the epoch
+    pub fn epoch(&self) -> GroupEpoch {
+        self.mls_message.epoch()
+    }
+
+    /// Get the content type
+    pub fn content_type(&self) -> ContentType {
+        self.mls_message.content_type()
+    }
+
+    /// Returns `true` if this is a handshake message and `false` otherwise.
+    pub fn is_handshake_message(&self) -> bool {
+        self.mls_message.is_handshake_message()
     }
 }
 
 impl From<MlsMessageOut> for MlsMessageIn {
     fn from(message: MlsMessageOut) -> Self {
-        match message {
-            MlsMessageOut::Plaintext(pt) => {
-                MlsMessageIn::Plaintext(Box::new(VerifiableMlsPlaintext::from_plaintext(*pt, None)))
-            }
-            MlsMessageOut::Ciphertext(ct) => MlsMessageIn::Ciphertext(Box::new(*ct)),
+        MlsMessageIn {
+            mls_message: message.mls_message,
         }
     }
 }
@@ -115,13 +156,17 @@ impl From<MlsMessageOut> for MlsMessageIn {
 #[cfg(any(feature = "test-utils", test))]
 impl From<VerifiableMlsPlaintext> for MlsMessageIn {
     fn from(plaintext: VerifiableMlsPlaintext) -> Self {
-        MlsMessageIn::Plaintext(Box::new(plaintext))
+        Self {
+            mls_message: MlsMessage::Plaintext(Box::new(plaintext)),
+        }
     }
 }
 
 #[cfg(any(feature = "test-utils", test))]
 impl From<MlsCiphertext> for MlsMessageIn {
     fn from(ciphertext: MlsCiphertext) -> Self {
-        MlsMessageIn::Ciphertext(Box::new(ciphertext))
+        Self {
+            mls_message: MlsMessage::Ciphertext(Box::new(ciphertext)),
+        }
     }
 }

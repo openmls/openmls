@@ -382,11 +382,6 @@ impl MlsPlaintext {
         modified_signature[0] ^= 0xFF;
         self.signature.modify(&modified_signature);
     }
-
-    #[cfg(test)]
-    pub(crate) fn set_sender(&mut self, sender: Sender) {
-        self.sender = sender
-    }
 }
 
 // === Helper structs ===
@@ -494,7 +489,7 @@ impl<'a> MlsPlaintextTbmPayload<'a> {
 )]
 pub struct MembershipTag(pub(crate) Mac);
 
-#[derive(Debug, Clone)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct MlsPlaintextTbs {
     pub(super) serialized_context: Option<Vec<u8>>,
     pub(super) wire_format: WireFormat,
@@ -525,7 +520,7 @@ fn encode_tbs<'a>(
     Ok(out)
 }
 
-#[derive(Debug, Clone)]
+#[derive(PartialEq, Debug, Clone)]
 pub struct VerifiableMlsPlaintext {
     pub(super) tbs: MlsPlaintextTbs,
     pub(super) signature: Signature,
@@ -730,6 +725,13 @@ impl VerifiableMlsPlaintext {
     #[cfg(test)]
     pub(crate) fn set_signature(&mut self, signature: Signature) {
         self.signature = signature;
+    }
+
+    #[cfg(test)]
+    pub(crate) fn invalidate_signature(&mut self) {
+        let mut modified_signature = self.signature().as_slice().to_vec();
+        modified_signature[0] ^= 0xFF;
+        self.signature.modify(&modified_signature);
     }
 }
 

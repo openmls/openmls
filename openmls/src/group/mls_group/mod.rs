@@ -335,7 +335,7 @@ impl MlsGroup {
 
 // Private methods of MlsGroup
 impl MlsGroup {
-    /// Converts MlsPlaintext to MLSMessage. Depending on whether handshake
+    /// Converts MlsPlaintext to MlsMessageOut. Depending on whether handshake
     /// message should be encrypted, MlsPlaintext messages are encrypted to
     /// MlsCiphertext first.
     fn plaintext_to_mls_message(
@@ -344,12 +344,12 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsMessageOut, MlsGroupError> {
         let msg = match self.configuration().wire_format() {
-            WireFormat::MlsPlaintext => MlsMessageOut::Plaintext(Box::new(plaintext)),
+            WireFormat::MlsPlaintext => MlsMessageOut::from(plaintext),
             WireFormat::MlsCiphertext => {
                 let ciphertext =
                     self.group
                         .encrypt(plaintext, self.configuration().padding_size(), backend)?;
-                MlsMessageOut::Ciphertext(Box::new(ciphertext))
+                MlsMessageOut::from(ciphertext)
             }
         };
         Ok(msg)

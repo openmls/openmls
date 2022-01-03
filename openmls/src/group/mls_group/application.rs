@@ -40,6 +40,6 @@ impl MlsGroup {
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
 
-        Ok(MlsMessageOut::Ciphertext(Box::new(ciphertext)))
+        Ok(MlsMessageOut::from(ciphertext))
     }
 }
