@@ -2,9 +2,6 @@
 
 use openmls::{prelude::*, test_utils::*, *};
 
-#[macro_use]
-mod utils;
-
 #[apply(ciphersuites_and_backends)]
 fn key_package_generation(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     println!("Testing ciphersuite {:?}", ciphersuite.name());
