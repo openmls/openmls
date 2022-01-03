@@ -121,8 +121,7 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
         .expect("Error serializing PGS");
     let verifiable_public_group_state =
         VerifiablePublicGroupState::tls_deserialize(&mut pgs_encoded.as_slice())
-            .expect("Error deserializing PGS")
-            .into();
+            .expect("Error deserializing PGS");
     let nodes_option = group_alice.treesync().export_nodes();
 
     let proposal_store = ProposalStore::new();
@@ -222,8 +221,7 @@ fn test_external_init_single_member_group(
         .expect("Error serializing PGS");
     let verifiable_public_group_state =
         VerifiablePublicGroupState::tls_deserialize(&mut pgs_encoded.as_slice())
-            .expect("Error deserializing PGS")
-            .into();
+            .expect("Error deserializing PGS");
     let nodes_option = group_alice.treesync().export_nodes();
 
     let proposal_store = ProposalStore::new();
