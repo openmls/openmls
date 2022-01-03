@@ -1,3 +1,7 @@
+use std::io::BufReader;
+
+use tls_codec::{Deserialize, Serialize};
+
 use super::*;
 
 /// Unified message type for MLS messages.
@@ -7,16 +11,16 @@ use super::*;
 /// [`MlsMessageOut`], depending on the context.
 #[derive(PartialEq, Debug, Clone)]
 pub(crate) enum MlsMessage {
-    /// An OpenMLS `VerifiableMlsPlaintext`.
+    /// Plaintext message
     Plaintext(Box<VerifiableMlsPlaintext>),
 
-    /// An OpenMLS `MlsCiphertext`.
+    /// Ciphertext message
     Ciphertext(Box<MlsCiphertext>),
 }
 
 impl MlsMessage {
     /// Get the wire format
-    pub fn wire_format(&self) -> WireFormat {
+    fn wire_format(&self) -> WireFormat {
         match self {
             MlsMessage::Ciphertext(_) => WireFormat::MlsCiphertext,
             MlsMessage::Plaintext(_) => WireFormat::MlsPlaintext,
@@ -24,7 +28,7 @@ impl MlsMessage {
     }
 
     /// Get the group ID
-    pub fn group_id(&self) -> &GroupId {
+    fn group_id(&self) -> &GroupId {
         match self {
             MlsMessage::Ciphertext(m) => m.group_id(),
             MlsMessage::Plaintext(m) => m.group_id(),
@@ -32,7 +36,7 @@ impl MlsMessage {
     }
 
     /// Get the epoch
-    pub fn epoch(&self) -> GroupEpoch {
+    fn epoch(&self) -> GroupEpoch {
         match self {
             MlsMessage::Ciphertext(m) => m.epoch(),
             MlsMessage::Plaintext(m) => m.epoch(),
@@ -40,7 +44,7 @@ impl MlsMessage {
     }
 
     /// Get the content type
-    pub fn content_type(&self) -> ContentType {
+    fn content_type(&self) -> ContentType {
         match self {
             MlsMessage::Ciphertext(m) => m.content_type(),
             MlsMessage::Plaintext(m) => m.content_type(),
@@ -48,8 +52,20 @@ impl MlsMessage {
     }
 
     /// Returns `true` if this is a handshake message and `false` otherwise.
-    pub fn is_handshake_message(&self) -> bool {
+    fn is_handshake_message(&self) -> bool {
         self.content_type().is_handshake_message()
+    }
+
+    /// Tries to deserialize from a byte slice. Returns [`MlsMessageError::DecodingError`] on failure.
+    fn try_from_bytes(bytes: &[u8]) -> Result<Self, MlsMessageError> {
+        let mut reader = BufReader::new(bytes);
+        MlsMessage::tls_deserialize(&mut reader).map_err(|_| MlsMessageError::DecodingError)
+    }
+
+    /// Serializes the message to a byte vector. Returns [`MlsMessageError::EncodingError`] on failure.
+    fn to_bytes(&self) -> Result<Vec<u8>, MlsMessageError> {
+        self.tls_serialize_detached()
+            .map_err(|_| MlsMessageError::EncodingError)
     }
 }
 
@@ -83,6 +99,18 @@ impl MlsMessageIn {
     /// Returns `true` if this is a handshake message and `false` otherwise.
     pub fn is_handshake_message(&self) -> bool {
         self.mls_message.is_handshake_message()
+    }
+
+    /// Tries to deserialize from a byte slice. Returns [`MlsMessageError::DecodingError`] on failure.
+    pub fn try_from_bytes(bytes: &[u8]) -> Result<Self, MlsMessageError> {
+        Ok(Self {
+            mls_message: MlsMessage::try_from_bytes(bytes)?,
+        })
+    }
+
+    /// Serializes the message to a byte vector. Returns [`MlsMessageError::EncodingError`] on failure.
+    pub fn to_bytes(&self) -> Result<Vec<u8>, MlsMessageError> {
+        self.mls_message.to_bytes()
     }
 }
 
@@ -142,6 +170,18 @@ impl MlsMessageOut {
     /// Returns `true` if this is a handshake message and `false` otherwise.
     pub fn is_handshake_message(&self) -> bool {
         self.mls_message.is_handshake_message()
+    }
+
+    /// Tries to deserialize from a byte slice. Returns [`MlsMessageError::DecodingError`] on failure.
+    pub fn try_from_bytes(bytes: &[u8]) -> Result<Self, MlsMessageError> {
+        Ok(Self {
+            mls_message: MlsMessage::try_from_bytes(bytes)?,
+        })
+    }
+
+    /// Serializes the message to a byte vector. Returns [`MlsMessageError::EncodingError`] on failure.
+    pub fn to_bytes(&self) -> Result<Vec<u8>, MlsMessageError> {
+        self.mls_message.to_bytes()
     }
 }
 

@@ -76,3 +76,10 @@ implement_error! {
         }
     }
 }
+
+implement_error! {
+    pub enum MlsMessageError {
+        DecodingError = "The message could not be decoded.",
+        EncodingError = "The message could not be encoded.",
+    }
+}
