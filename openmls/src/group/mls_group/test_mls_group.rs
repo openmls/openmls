@@ -380,7 +380,7 @@ fn test_invalid_plaintext(ciphersuite: &'static Ciphersuite) {
     // Right now the membership tag is verified first, wihich yields `VerificationError::InvalidMembershipTag`
     // error instead of a `CredentialError:InvalidSignature`.
     let mut msg_invalid_signature = mls_message.clone();
-    if let MlsMessageOut::Plaintext(ref mut pt) = msg_invalid_signature {
+    if let MlsMessage::Plaintext(ref mut pt) = msg_invalid_signature.mls_message {
         pt.invalidate_signature()
     };
 
@@ -401,12 +401,12 @@ fn test_invalid_plaintext(ciphersuite: &'static Ciphersuite) {
 
     // Tamper with the message such that sender lookup fails
     let mut msg_invalid_sender = mls_message;
-    match &mut msg_invalid_sender {
-        MlsMessageOut::Plaintext(pt) => pt.set_sender(Sender {
+    match &mut msg_invalid_sender.mls_message {
+        MlsMessage::Plaintext(pt) => pt.set_sender(Sender {
             sender_type: pt.sender().sender_type,
             sender: (group.members.len() as u32 + 1u32),
         }),
-        MlsMessageOut::Ciphertext(_) => panic!("This should be a plaintext!"),
+        MlsMessage::Ciphertext(_) => panic!("This should be a plaintext!"),
     };
 
     let error = setup
