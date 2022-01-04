@@ -1,8 +1,9 @@
-use openmls::{prelude::*, prelude_test::*, test_utils::*, *};
-pub mod utils;
+use super::utils::*;
+use crate::{
+    ciphersuite::signable::*, framing::*, group::*, key_packages::*, messages::*, test_utils::*, *,
+};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
-use utils::mls_utils::*;
 
 /// Creates a simple test setup for various encoding tests.
 fn create_encoding_test_setup(backend: &impl OpenMlsCryptoProvider) -> TestSetup {
