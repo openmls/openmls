@@ -76,6 +76,13 @@
 <span id="76">76</span>
 <span id="77">77</span>
 <span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Framing errors.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `MlsPlaintextError` and `MlsCiphertextError` are thrown on errors</span>
@@ -152,6 +159,13 @@
             <span class="ident">MlsPlaintextError</span>(<span class="ident">MlsPlaintextError</span>) <span class="op">=</span> <span class="string">&quot;See [`MlsPlaintextError`](`MlsPlaintextError`) for details.&quot;</span>,
             <span class="ident">MlsCiphertextError</span>(<span class="ident">MlsCiphertextError</span>) <span class="op">=</span> <span class="string">&quot;See [`MlsCiphertextError`](`MlsCiphertextError`) for details.&quot;</span>,
         }
+    }
+}
+
+<span class="macro">implement_error!</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsMessageError</span> {
+        <span class="ident">DecodingError</span> <span class="op">=</span> <span class="string">&quot;The message could not be decoded.&quot;</span>,
+        <span class="ident">EncodingError</span> <span class="op">=</span> <span class="string">&quot;The message could not be encoded.&quot;</span>,
     }
 }
 </code></pre></div>
