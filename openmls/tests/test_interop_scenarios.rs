@@ -5,9 +5,6 @@ use openmls::{
     *,
 };
 
-#[macro_use]
-mod utils;
-
 // The following tests correspond to the interop test scenarios detailed here:
 // https://github.com/mlswg/mls-implementations/blob/master/test-scenarios.md
 // The tests are conducted for every available ciphersuite, but currently only

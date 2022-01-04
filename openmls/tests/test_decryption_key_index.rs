@@ -8,9 +8,6 @@ use openmls::{
     *,
 };
 
-#[macro_use]
-mod utils;
-
 #[apply(ciphersuites)]
 fn decryption_key_index_computation(ciphersuite: &'static Ciphersuite) {
     println!("Testing ciphersuite {:?}", ciphersuite.name());

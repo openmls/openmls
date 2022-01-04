@@ -1,3 +1,4 @@
+//! A framework to create integration tests of the "raw" core_group API.
 //! # Test utils
 //!
 //! Most tests require to set up groups, clients, credentials, and identities.
@@ -6,11 +7,12 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
+use crate::{
+    credentials::*, framing::*, group::core_group::past_secrets::*, group::*, key_packages::*,
+    test_utils::*, *,
+};
 use ::rand::rngs::OsRng;
 use ::rand::RngCore;
-use openmls::prelude::*;
-use openmls::prelude_test::*;
-use openmls::{test_utils::*, *};
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsCryptoProvider;
 

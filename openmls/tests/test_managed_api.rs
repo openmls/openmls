@@ -5,8 +5,6 @@ use openmls::{
     *,
 };
 
-mod utils;
-
 #[apply(ciphersuites)]
 fn test_mls_group_api(ciphersuite: &'static Ciphersuite) {
     // Some basic setup functions for the MlsGroup.
