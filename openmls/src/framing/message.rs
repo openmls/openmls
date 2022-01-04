@@ -1,14 +1,25 @@
-use std::io::BufReader;
+//! MLS Message types
+//!
+//! This module defines two opaque message types that are used by the [`MlsGroup`] API.
+//! [`MlsMessageIn`] is used for messages between the DS and the client. It can be instantiated
+//! from a byte slice.
+//! [`MlsMessageOut`] is returned by various functions of the [`MlsGroup`] API. It is to be used between
+//! the client and the DS. It can be serialized to a byte vector.
+//!
+//! Both messages have the same API. The framing part of the message can be inspected through it. In particular,
+//! it is important to look at [`MlsMessageIn::group_id()`] to determine in which [`MlsGroup`] it should be processed.
+
+use std::io::Cursor;
 
 use tls_codec::{Deserialize, Serialize};
 
 use super::*;
 
 /// Unified message type for MLS messages.
+/// /// This is only used internally, externally we use either [`MlsMessageIn`] or
+/// [`MlsMessageOut`], depending on the context.
 /// Since the memory footprint can differ considerably between [`VerifiableMlsPlaintext`]
 /// and [`MlsCiphertext`], we use `Box<T>` for more efficient memory allocation.
-/// This is only used internally, externally we use either [`MlsMessageIn`] or
-/// [`MlsMessageOut`], depending on the context.
 #[derive(PartialEq, Debug, Clone)]
 pub(crate) enum MlsMessage {
     /// Plaintext message
@@ -58,7 +69,7 @@ impl MlsMessage {
 
     /// Tries to deserialize from a byte slice. Returns [`MlsMessageError::DecodingError`] on failure.
     fn try_from_bytes(bytes: &[u8]) -> Result<Self, MlsMessageError> {
-        let mut reader = BufReader::new(bytes);
+        let mut reader = Cursor::new(bytes);
         MlsMessage::tls_deserialize(&mut reader).map_err(|_| MlsMessageError::DecodingError)
     }
 
