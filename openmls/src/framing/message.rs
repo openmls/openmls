@@ -9,8 +9,6 @@
 //! Both messages have the same API. The framing part of the message can be inspected through it. In particular,
 //! it is important to look at [`MlsMessageIn::group_id()`] to determine in which [`MlsGroup`] it should be processed.
 
-use std::io::Cursor;
-
 use tls_codec::{Deserialize, Serialize};
 
 use super::*;
@@ -68,9 +66,8 @@ impl MlsMessage {
     }
 
     /// Tries to deserialize from a byte slice. Returns [`MlsMessageError::DecodingError`] on failure.
-    fn try_from_bytes(bytes: &[u8]) -> Result<Self, MlsMessageError> {
-        let mut reader = Cursor::new(bytes);
-        MlsMessage::tls_deserialize(&mut reader).map_err(|_| MlsMessageError::DecodingError)
+    fn try_from_bytes(mut bytes: &[u8]) -> Result<Self, MlsMessageError> {
+        MlsMessage::tls_deserialize(&mut bytes).map_err(|_| MlsMessageError::DecodingError)
     }
 
     /// Serializes the message to a byte vector. Returns [`MlsMessageError::EncodingError`] on failure.
