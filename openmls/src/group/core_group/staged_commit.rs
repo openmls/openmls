@@ -21,19 +21,19 @@ impl CoreGroup {
     /// Returns a [StagedCommit] that can be inspected and later merged
     /// into the group state with [CoreGroup::merge_commit()]
     /// This function does the following checks:
-    ///  - ValSem100
-    ///  - ValSem101
-    ///  - ValSem102
-    ///  - ValSem103
-    ///  - ValSem104
-    ///  - ValSem105
-    ///  - ValSem106
-    ///  - ValSem107
-    ///  - ValSem108
-    ///  - ValSem109
-    ///  - ValSem110
-    ///  - ValSem201
-    ///  - ValSem205
+    ///  - `ValSem100`
+    ///  - `ValSem101`
+    ///  - `ValSem102`
+    ///  - `ValSem103`
+    ///  - `ValSem104`
+    ///  - `ValSem105`
+    ///  - `ValSem106`
+    ///  - `ValSem107`
+    ///  - `ValSem108`
+    ///  - `ValSem109`
+    ///  - `ValSem110`
+    ///  - `ValSem201`
+    ///  - `ValSem205`
     /// Returns an error if the given commit was sent by the owner of this
     /// group.
     pub fn stage_commit(
@@ -97,19 +97,19 @@ impl CoreGroup {
 
         // Validate the staged proposals by doing the following checks:
 
-        // ValSem100
-        // ValSem101
-        // ValSem102
-        // ValSem103
-        // ValSem104
-        // ValSem105
-        // ValSem106
+        // `ValSem100`
+        // `ValSem101`
+        // `ValSem102`
+        // `ValSem103`
+        // `ValSem104`
+        // `ValSem105`
+        // `ValSem106`
         self.validate_add_proposals(&proposal_queue)?;
-        // ValSem107
-        // ValSem108
+        // `ValSem107`
+        // `ValSem108`
         self.validate_remove_proposals(&proposal_queue)?;
-        // ValSem109
-        // ValSem110
+        // `ValSem109`
+        // `ValSem110`
         self.validate_update_proposals(&proposal_queue, sender_key_package_tuple)?;
 
         // Create provisional tree and apply proposals
@@ -168,7 +168,7 @@ impl CoreGroup {
             commit_secret
         } else {
             if apply_proposals_values.path_required {
-                // ValSem201
+                // `ValSem201`
                 return Err(StageCommitError::RequiredPathNotFound.into());
             }
             CommitSecret::zero_secret(ciphersuite, self.mls_version)
@@ -236,7 +236,7 @@ impl CoreGroup {
         )?;
 
         // Verify confirmation tag
-        // ValSem205
+        // `ValSem205`
         let own_confirmation_tag = provisional_epoch_secrets
             .confirmation_key()
             .tag(backend, &confirmed_transcript_hash)?;

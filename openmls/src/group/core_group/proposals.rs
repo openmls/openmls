@@ -121,7 +121,7 @@ impl ProposalQueue {
     /// Returns a new `QueuedProposalQueue` from proposals that were committed and
     /// don't need filtering.
     /// This functions does the following checks:
-    ///  - ValSem200
+    ///  - `ValSem200`
     pub(crate) fn from_committed_proposals(
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
@@ -147,7 +147,7 @@ impl ProposalQueue {
         for proposal_or_ref in committed_proposals.into_iter() {
             let queued_proposal = match proposal_or_ref {
                 ProposalOrRef::Proposal(proposal) => {
-                    // ValSem200
+                    // `ValSem200`
                     if let Proposal::Remove(ref remove_proposal) = proposal {
                         if remove_proposal.removed() == sender.sender {
                             return Err(ProposalQueueError::SelfRemoval);
@@ -164,7 +164,7 @@ impl ProposalQueue {
                 ProposalOrRef::Reference(ref proposal_reference) => {
                     match proposals_by_reference_queue.get(proposal_reference) {
                         Some(queued_proposal) => {
-                            // ValSem200
+                            // `ValSem200`
                             if let Proposal::Remove(ref remove_proposal) = queued_proposal.proposal
                             {
                                 if remove_proposal.removed() == sender.sender {

@@ -11,13 +11,13 @@ impl CoreGroup {
     /// Returns an [UnverifiedMessage] that can be inspected and later processed in
     /// [Self::process_unverified_message()].
     /// Checks the following semantic validation:
-    ///  - ValSem2
-    ///  - ValSem3
-    ///  - ValSem4
-    ///  - ValSem5
-    ///  - ValSem6
-    ///  - ValSem7
-    ///  - ValSem9
+    ///  - `ValSem2`
+    ///  - `ValSem3`
+    ///  - `ValSem4`
+    ///  - `ValSem5`
+    ///  - `ValSem6`
+    ///  - `ValSem7`
+    ///  - `ValSem9`
     pub fn parse_message<'a>(
         &mut self,
         message: MlsMessageIn,
@@ -26,12 +26,12 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<UnverifiedMessage, CoreGroupError> {
         // Checks the following semantic validation:
-        //  - ValSem2
-        //  - ValSem3
+        //  - `ValSem2`
+        //  - `ValSem3`
         self.validate_framing(&message)?;
 
         // Checks the following semantic validation:
-        //  - ValSem6
+        //  - `ValSem6`
         let decrypted_message = match message.wire_format() {
             WireFormat::MlsPlaintext => DecryptedMessage::from_inbound_plaintext(message)?,
             WireFormat::MlsCiphertext => {
@@ -71,10 +71,10 @@ impl CoreGroup {
         let mut credential = None;
 
         // Checks the following semantic validation:
-        //  - ValSem4
-        //  - ValSem5
-        //  - ValSem7
-        //  - ValSem9
+        //  - `ValSem4`
+        //  - `ValSem5`
+        //  - `ValSem7`
+        //  - `ValSem9`
         self.validate_plaintext(decrypted_message.plaintext())?;
 
         // Extract the credential if the sender is a member
@@ -97,18 +97,19 @@ impl CoreGroup {
     /// This processing function does most of the semantic verifications.
     /// It returns a [ProcessedMessage] enum.
     /// Checks the following semantic validation:
-    ///  - ValSem8
-    ///  - ValSem10
-    ///  - ValSem100
-    ///  - ValSem101
-    ///  - ValSem102
-    ///  - ValSem103
-    ///  - ValSem104
-    ///  - ValSem105
-    ///  - ValSem106
-    ///  - ValSem107
-    ///  - ValSem109
-    ///  - ValSem110
+    ///  - `ValSem8`
+    ///  - `ValSem10`
+    ///  - `ValSem100`
+    ///  - `ValSem101`
+    ///  - `ValSem102`
+    ///  - `ValSem103`
+    ///  - `ValSem104`
+    ///  - `ValSem105`
+    ///  - `ValSem106`
+    ///  - `ValSem107`
+    ///  - `ValSem108`
+    ///  - `ValSem109`
+    ///  - `ValSem110`
     pub fn process_unverified_message<'a>(
         &mut self,
         unverified_message: UnverifiedMessage,
@@ -140,7 +141,7 @@ impl CoreGroup {
         };
 
         // Checks the following semantic validation:
-        //  - ValSem8
+        //  - `ValSem8`
         let context_plaintext = UnverifiedContextMessage::from_unverified_message(
             unverified_message,
             message_secrets,
@@ -152,7 +153,7 @@ impl CoreGroup {
         match context_plaintext {
             UnverifiedContextMessage::Member(member_message) => {
                 // Checks the following semantic validation:
-                //  - ValSem10
+                //  - `ValSem10`
                 let verified_member_message =
                     member_message.into_verified(backend, signature_key)?;
 
@@ -173,16 +174,17 @@ impl CoreGroup {
                         ))
                     }
                     MlsPlaintextContentType::Commit(_commit) => {
-                        //  - ValSem100
-                        //  - ValSem101
-                        //  - ValSem102
-                        //  - ValSem103
-                        //  - ValSem104
-                        //  - ValSem105
-                        //  - ValSem106
-                        //  - ValSem107
-                        //  - ValSem109
-                        //  - ValSem110
+                        //  - `ValSem100`
+                        //  - `ValSem101`
+                        //  - `ValSem102`
+                        //  - `ValSem103`
+                        //  - `ValSem104`
+                        //  - `ValSem105`
+                        //  - `ValSem106`
+                        //  - `ValSem107`
+                        //  - `ValSem108`
+                        //  - `ValSem109`
+                        //  - `ValSem110`
                         let staged_commit = self.stage_commit(
                             verified_member_message.plaintext(),
                             proposal_store,
