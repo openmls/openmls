@@ -7,6 +7,8 @@ use clap::Parser;
 use clap_derive::*;
 use openmls::{prelude::*, prelude_test::*};
 
+use openmls_traits::key_store::OpenMlsKeyStore;
+use openmls_traits::OpenMlsCryptoProvider;
 use serde::{self, Serialize};
 use std::{collections::HashMap, convert::TryFrom, fs::File, io::Write, sync::Mutex};
 use tonic::{transport::Server, Request, Response, Status};
@@ -43,7 +45,7 @@ impl TryFrom<i32> for TestVectorType {
 /// doesn't consider scenarios where a credential is re-used across groups, so
 /// this simple structure is sufficient.
 pub struct InteropGroup {
-    group: CoreGroup,
+    group: MlsGroup,
     wire_format: WireFormat,
     credential_bundle: CredentialBundle,
     own_kpbs: Vec<KeyPackageBundle>,
@@ -75,7 +77,7 @@ impl MlsClientImpl {
     }
 }
 
-fn into_status(e: CoreGroupError) -> Status {
+fn into_status(e: MlsGroupError) -> Status {
     let message = "mls group error ".to_string() + &e.to_string();
     tonic::Status::new(tonic::Code::Aborted, message)
 }
@@ -400,19 +402,26 @@ impl MlsClient for MlsClientImpl {
             vec![],
         )
         .unwrap();
-        let config = CoreGroupConfig {
-            add_ratchet_tree_extension: true,
-            ..Default::default()
-        };
-        let group = CoreGroup::builder(
-            GroupId::from_slice(&create_group_request.group_id),
-            key_package_bundle,
-        )
-        .with_config(config)
-        .build(&self.crypto_provider)
-        .map_err(into_status)?;
-
+        let kp_hash = key_package_bundle
+            .key_package()
+            .hash(&self.crypto_provider)
+            .unwrap();
+        self.crypto_provider
+            .key_store()
+            .store(&kp_hash, &key_package_bundle)
+            .unwrap();
         let wire_format = wire_format(create_group_request.encrypt_handshake);
+        let mls_group_config = MlsGroupConfig::builder()
+            .wire_format(wire_format)
+            .use_ratchet_tree_extension(true)
+            .build();
+        let group = MlsGroup::new(
+            &self.crypto_provider,
+            &mls_group_config,
+            GroupId::from_slice(&create_group_request.group_id),
+            &kp_hash,
+        )
+        .map_err(into_status)?;
 
         let interop_group = InteropGroup {
             credential_bundle,
@@ -479,9 +488,15 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<JoinGroupResponse>, tonic::Status> {
         let join_group_request = request.get_ref();
 
+        let wire_format = wire_format(join_group_request.encrypt_handshake);
+        let mls_group_config = MlsGroupConfig::builder()
+            .wire_format(wire_format)
+            .use_ratchet_tree_extension(true)
+            .build();
+
         let welcome = Welcome::tls_deserialize(&mut join_group_request.welcome.as_slice()).unwrap();
         let mut pending_key_packages = self.pending_key_packages.lock().unwrap();
-        let (kpb, credential_bundle) = welcome
+        let (_kpb, credential_bundle) = welcome
             .secrets()
             .iter()
             .find_map(|egs| pending_key_packages.remove(egs.key_package_hash.as_slice()))
@@ -491,12 +506,13 @@ impl MlsClient for MlsClientImpl {
                     "No key package could be found for the given Welcome message.",
                 )
             })?;
-        let group = CoreGroup::new_from_welcome(welcome, None, kpb, &self.crypto_provider)
-            .map_err(into_status)?;
+        let group =
+            MlsGroup::new_from_welcome(&self.crypto_provider, &mls_group_config, welcome, None)
+                .map_err(into_status)?;
 
         let interop_group = InteropGroup {
             credential_bundle,
-            wire_format: wire_format(join_group_request.encrypt_handshake),
+            wire_format,
             group,
             own_kpbs: Vec::new(),
         };
@@ -580,13 +596,7 @@ impl MlsClient for MlsClientImpl {
 
         let ciphertext = interop_group
             .group
-            .create_application_message(
-                &[],
-                &protect_request.application_data,
-                &interop_group.credential_bundle,
-                10,
-                &self.crypto_provider,
-            )
+            .create_message(&self.crypto_provider, &protect_request.application_data)
             .map_err(into_status)?
             .tls_serialize_detached()
             .map_err(|_| Status::aborted("failed to serialize ciphertext"))?;
@@ -598,26 +608,29 @@ impl MlsClient for MlsClientImpl {
         request: tonic::Request<UnprotectRequest>,
     ) -> Result<tonic::Response<UnprotectResponse>, tonic::Status> {
         let unprotect_request = request.get_ref();
-        let configuration = &SenderRatchetConfiguration::default();
 
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(unprotect_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
 
-        let message = MlsCiphertext::tls_deserialize(&mut unprotect_request.ciphertext.as_slice())
+        let message = MlsMessageIn::tls_deserialize(&mut unprotect_request.ciphertext.as_slice())
             .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-        let upt = interop_group
+        let unverified_message = interop_group
             .group
-            .decrypt(&message, &self.crypto_provider, configuration)
+            .parse_message(message, &self.crypto_provider)
             .map_err(into_status)?;
-        let application_data = interop_group
+        let processed_message = interop_group
             .group
-            .verify(upt, &self.crypto_provider)
-            .map_err(into_status)?
-            .as_application_message()
-            .map_err(|e| into_status(e.into()))?
-            .to_vec();
+            .process_unverified_message(unverified_message, None, &self.crypto_provider)
+            .map_err(into_status)?;
+        let application_data = match processed_message {
+            ProcessedMessage::ApplicationMessage(application_message) => {
+                application_message.message().to_vec()
+            }
+            ProcessedMessage::ProposalMessage(_) => unreachable!(),
+            ProcessedMessage::StagedCommitMessage(_) => unreachable!(),
+        };
 
         Ok(Response::new(UnprotectResponse { application_data }))
     }
@@ -643,28 +656,17 @@ impl MlsClient for MlsClientImpl {
         let key_package =
             KeyPackage::tls_deserialize(&mut add_proposal_request.key_package.as_slice())
                 .map_err(|_| Status::aborted("failed to deserialize key package"))?;
-        let framing_parameters = FramingParameters::new(&[], interop_group.wire_format);
+        let mls_group_config = MlsGroupConfig::builder()
+            .use_ratchet_tree_extension(true)
+            .wire_format(interop_group.wire_format)
+            .build();
+        interop_group.group.set_configuration(&mls_group_config);
         let proposal = interop_group
             .group
-            .create_add_proposal(
-                framing_parameters,
-                &interop_group.credential_bundle,
-                key_package,
-                &self.crypto_provider,
-            )
-            .map_err(into_status)?;
-
-        let proposal = match interop_group.wire_format {
-            WireFormat::MlsPlaintext => proposal
-                .tls_serialize_detached()
-                .map_err(|_| Status::aborted("failed to serialize proposal"))?,
-            WireFormat::MlsCiphertext => interop_group
-                .group
-                .encrypt(proposal, 10, &self.crypto_provider)
-                .map_err(|_| Status::aborted("failed to encrypt proposal"))?
-                .tls_serialize_detached()
-                .map_err(|_| Status::aborted("failed to serialize proposal"))?,
-        };
+            .propose_add_member(&self.crypto_provider, &key_package)
+            .map_err(into_status)?
+            .to_bytes()
+            .unwrap();
 
         Ok(Response::new(ProposalResponse { proposal }))
     }
@@ -686,30 +688,19 @@ impl MlsClient for MlsClientImpl {
             vec![],
         )
         .unwrap();
-        let framing_parameters = FramingParameters::new(&[], interop_group.wire_format);
+        let mls_group_config = MlsGroupConfig::builder()
+            .use_ratchet_tree_extension(true)
+            .wire_format(interop_group.wire_format)
+            .build();
+        interop_group.group.set_configuration(&mls_group_config);
         let proposal = interop_group
             .group
-            .create_update_proposal(
-                framing_parameters,
-                &interop_group.credential_bundle,
-                key_package_bundle.key_package().clone(),
-                &self.crypto_provider,
-            )
-            .map_err(into_status)?;
+            .propose_self_update(&self.crypto_provider, Some(key_package_bundle.clone()))
+            .map_err(into_status)?
+            .to_bytes()
+            .unwrap();
 
         interop_group.own_kpbs.push(key_package_bundle);
-
-        let proposal = match interop_group.wire_format {
-            WireFormat::MlsCiphertext => interop_group
-                .group
-                .encrypt(proposal, 10, &self.crypto_provider)
-                .map_err(|_| Status::aborted("failed to encrypt proposal"))?
-                .tls_serialize_detached()
-                .map_err(|_| Status::aborted("failed to serialize proposal"))?,
-            WireFormat::MlsPlaintext => proposal
-                .tls_serialize_detached()
-                .map_err(|_| Status::aborted("failed to serialize proposal"))?,
-        };
 
         Ok(Response::new(ProposalResponse { proposal }))
     }
@@ -725,29 +716,18 @@ impl MlsClient for MlsClientImpl {
             .get_mut(remove_proposal_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
 
-        let framing_parameters = FramingParameters::new(&[], interop_group.wire_format);
+        let mls_group_config = MlsGroupConfig::builder()
+            .use_ratchet_tree_extension(true)
+            .wire_format(interop_group.wire_format)
+            .build();
+        interop_group.group.set_configuration(&mls_group_config);
 
         let proposal = interop_group
             .group
-            .create_remove_proposal(
-                framing_parameters,
-                &interop_group.credential_bundle,
-                remove_proposal_request.removed,
-                &self.crypto_provider,
-            )
-            .map_err(into_status)?;
-
-        let proposal = match interop_group.wire_format {
-            WireFormat::MlsCiphertext => interop_group
-                .group
-                .encrypt(proposal, 10, &self.crypto_provider)
-                .map_err(|_| Status::aborted("failed to encrypt proposal"))?
-                .tls_serialize_detached()
-                .map_err(|_| Status::aborted("failed to serialize proposal"))?,
-            WireFormat::MlsPlaintext => proposal
-                .tls_serialize_detached()
-                .map_err(|_| Status::aborted("failed to serialize proposal"))?,
-        };
+            .propose_remove_member(&self.crypto_provider, remove_proposal_request.removed)
+            .map_err(into_status)?
+            .to_bytes()
+            .unwrap();
 
         Ok(Response::new(ProposalResponse { proposal }))
     }
@@ -779,117 +759,45 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<CommitResponse>, tonic::Status> {
         let commit_request = request.get_ref();
 
-        let configuration = &SenderRatchetConfiguration::default();
-
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(commit_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
 
-        let mut proposal_plaintexts = Vec::new();
-        for bytes in &commit_request.by_reference {
-            let pt = match interop_group.wire_format {
-                WireFormat::MlsCiphertext => {
-                    let ct = MlsCiphertext::tls_deserialize(&mut bytes.as_slice())
-                        .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-                    let upt = interop_group
-                        .group
-                        .decrypt(&ct, &self.crypto_provider, configuration)
-                        .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?;
-                    interop_group
-                        .group
-                        .verify(upt, &self.crypto_provider)
-                        .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
-                }
-                WireFormat::MlsPlaintext => {
-                    let credential = interop_group.credential_bundle.credential();
-                    VerifiableMlsPlaintext::tls_deserialize(&mut bytes.as_slice())
-                        .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
-                        .verify(&self.crypto_provider, credential)
-                        .map_err(|_| Status::aborted("couldn't verify given plaintext"))?
-                }
-            };
-            proposal_plaintexts.push(pt);
-        }
-        let mut proposals_by_reference = Vec::new();
-        for proposal in &proposal_plaintexts {
-            proposals_by_reference.push(proposal);
-        }
+        // Proposals by reference. These proposals are standalone proposals. They should be appended to the proposal store.
 
-        let mut plaintexts = Vec::new();
-        for bytes in &commit_request.by_reference {
-            let pt = match interop_group.wire_format {
-                WireFormat::MlsCiphertext => {
-                    let ct = MlsCiphertext::tls_deserialize(&mut bytes.as_slice())
-                        .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-                    let upt = interop_group
-                        .group
-                        .decrypt(&ct, &self.crypto_provider, configuration)
-                        .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?;
-                    interop_group
-                        .group
-                        .verify(upt, &self.crypto_provider)
-                        .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
+        for proposal in &commit_request.by_reference {
+            let message = MlsMessageIn::tls_deserialize(&mut proposal.as_slice())
+                .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
+            let unverified_message = interop_group
+                .group
+                .parse_message(message, &self.crypto_provider)
+                .map_err(into_status)?;
+            let processed_message = interop_group
+                .group
+                .process_unverified_message(unverified_message, None, &self.crypto_provider)
+                .map_err(into_status)?;
+            match processed_message {
+                ProcessedMessage::ApplicationMessage(_) => unreachable!(),
+                ProcessedMessage::ProposalMessage(proposal) => {
+                    interop_group.group.store_pending_proposal(*proposal);
                 }
-                WireFormat::MlsPlaintext => {
-                    let credential = interop_group.credential_bundle.credential();
-                    VerifiableMlsPlaintext::tls_deserialize(&mut bytes.as_slice())
-                        .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
-                        .verify(&self.crypto_provider, credential)
-                        .map_err(|_| Status::aborted("couldn't verify given plaintext"))?
-                }
-            };
-            plaintexts.push(pt);
-        }
-        let mut proposals_by_value = Vec::new();
-        for pt in &plaintexts {
-            match pt.content() {
-                MlsPlaintextContentType::Proposal(proposal) => proposals_by_value.push(proposal),
-                _ => return Err(Status::aborted("plaintext did not contain a proposal")),
-            };
-        }
-
-        let framing_parameters = FramingParameters::new(&[], interop_group.wire_format);
-
-        let mut proposal_store = ProposalStore::new();
-        for proposal in proposal_plaintexts {
-            if let Ok(staging_proposal) = QueuedProposal::from_mls_plaintext(
-                interop_group.group.ciphersuite(),
-                &self.crypto_provider,
-                proposal,
-            ) {
-                proposal_store.add(staging_proposal);
-            } else {
-                return Err(Status::aborted("could not create staged proposal"));
+                ProcessedMessage::StagedCommitMessage(_) => unreachable!(),
             }
         }
 
-        let params = CreateCommitParams::builder()
-            .framing_parameters(framing_parameters)
-            .credential_bundle(&interop_group.credential_bundle)
-            .proposal_store(&proposal_store)
-            .force_self_update(false)
-            .build();
+        // Proposals by value. These proposals are inline proposals. They should be converted into group operations.
 
-        let create_commit_results = interop_group
+        // TODO: The interop client cannot process these proposals yet.
+
+        let (commit, welcome_option) = interop_group
             .group
-            .create_commit(params, &self.crypto_provider)
+            .self_update(&self.crypto_provider, None)
             .map_err(into_status)?;
 
-        let commit = match interop_group.wire_format {
-            WireFormat::MlsCiphertext => interop_group
-                .group
-                .encrypt(create_commit_results.commit, 10, &self.crypto_provider)
-                .map_err(|_| Status::aborted("failed to encrypt commit"))?
-                .tls_serialize_detached()
-                .map_err(|_| Status::aborted("failed to serialize commit"))?,
-            WireFormat::MlsPlaintext => create_commit_results
-                .commit
-                .tls_serialize_detached()
-                .map_err(|_| Status::aborted("failed to serialize commit"))?,
-        };
+        let commit = commit.to_bytes().unwrap();
 
-        let welcome = if let Some(welcome) = create_commit_results.welcome_option {
+        let welcome = if let Some(welcome) = welcome_option {
             welcome
                 .tls_serialize_detached()
                 .map_err(|_| Status::aborted("failed to serialize welcome"))?
@@ -906,88 +814,51 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<HandleCommitResponse>, tonic::Status> {
         let handle_commit_request = request.get_ref();
 
-        let configuration = &SenderRatchetConfiguration::default();
-
         let mut groups = self.groups.lock().unwrap();
         let interop_group = groups
             .get_mut(handle_commit_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
 
-        let commit = match interop_group.wire_format {
-            WireFormat::MlsCiphertext => {
-                let ct =
-                    MlsCiphertext::tls_deserialize(&mut handle_commit_request.commit.as_slice())
-                        .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-                let upt = interop_group
-                    .group
-                    .decrypt(&ct, &self.crypto_provider, configuration)
-                    .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?;
+        for proposal in &handle_commit_request.proposal {
+            let message = MlsMessageIn::tls_deserialize(&mut proposal.as_slice())
+                .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
+            let unverified_message = interop_group
+                .group
+                .parse_message(message, &self.crypto_provider)
+                .map_err(into_status)?;
+            let processed_message = interop_group
+                .group
+                .process_unverified_message(unverified_message, None, &self.crypto_provider)
+                .map_err(into_status)?;
+            match processed_message {
+                ProcessedMessage::ApplicationMessage(_) => unreachable!(),
+                ProcessedMessage::ProposalMessage(proposal) => {
+                    interop_group.group.store_pending_proposal(*proposal);
+                }
+                ProcessedMessage::StagedCommitMessage(_) => unreachable!(),
+            }
+        }
+
+        let message = MlsMessageIn::tls_deserialize(&mut handle_commit_request.commit.as_slice())
+            .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
+        let unverified_message = interop_group
+            .group
+            .parse_message(message, &self.crypto_provider)
+            .map_err(into_status)?;
+        let processed_message = interop_group
+            .group
+            .process_unverified_message(unverified_message, None, &self.crypto_provider)
+            .map_err(into_status)?;
+        match processed_message {
+            ProcessedMessage::ApplicationMessage(_) => unreachable!(),
+            ProcessedMessage::ProposalMessage(_) => unreachable!(),
+            ProcessedMessage::StagedCommitMessage(_) => {
                 interop_group
                     .group
-                    .verify(upt, &self.crypto_provider)
-                    .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
+                    .merge_pending_commit()
+                    .map_err(into_status)?;
             }
-            WireFormat::MlsPlaintext => {
-                let credential = interop_group.credential_bundle.credential();
-                VerifiableMlsPlaintext::tls_deserialize(
-                    &mut handle_commit_request.commit.as_slice(),
-                )
-                .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
-                .verify(&self.crypto_provider, credential)
-                .map_err(|_| Status::aborted("couldn't verify given plaintext"))?
-            }
-        };
-
-        let mut proposal_plaintexts = Vec::new();
-        for bytes in &handle_commit_request.proposal {
-            let pt = match interop_group.wire_format {
-                WireFormat::MlsCiphertext => {
-                    let ct = MlsCiphertext::tls_deserialize(&mut bytes.as_slice())
-                        .map_err(|_| Status::aborted("failed to deserialize ciphertext"))?;
-                    let upt = interop_group
-                        .group
-                        .decrypt(&ct, &self.crypto_provider, configuration)
-                        .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?;
-                    interop_group
-                        .group
-                        .verify(upt, &self.crypto_provider)
-                        .map_err(|_| Status::aborted("failed to decrypt ciphertext"))?
-                }
-                WireFormat::MlsPlaintext => {
-                    let credential = interop_group.credential_bundle.credential();
-                    VerifiableMlsPlaintext::tls_deserialize(&mut bytes.as_slice())
-                        .map_err(|_| Status::aborted("failed to deserialize plaintext"))?
-                        .verify(&self.crypto_provider, credential)
-                        .map_err(|_| Status::aborted("couldn't verify given plaintext"))?
-                }
-            };
-            proposal_plaintexts.push(pt);
         }
-        let mut proposal_store = ProposalStore::new();
-        for proposal in &proposal_plaintexts {
-            proposal_store.add(
-                QueuedProposal::from_mls_plaintext(
-                    interop_group.group.ciphersuite(),
-                    &self.crypto_provider,
-                    proposal.clone(),
-                )
-                .map_err(|_| Status::aborted("couldn't process proposal"))?,
-            )
-        }
-
-        let staged_commit = interop_group
-            .group
-            .stage_commit(
-                &commit,
-                &proposal_store,
-                &interop_group.own_kpbs,
-                &self.crypto_provider,
-            )
-            .map_err(into_status)?;
-        interop_group
-            .group
-            .merge_commit(staged_commit)
-            .map_err(into_status)?;
 
         Ok(Response::new(HandleCommitResponse {
             state_id: handle_commit_request.state_id,
