@@ -18,8 +18,7 @@ use tls_codec::*;
 
 // Crate
 pub(crate) mod core_group;
-pub mod errors;
-pub use core_group::*;
+pub(crate) use core_group::*;
 pub(crate) use errors::{
     CoreGroupError, CreateCommitError, ExporterError, InterimTranscriptHashError, StageCommitError,
     WelcomeError,
@@ -28,12 +27,12 @@ pub(crate) use group_context::*;
 
 // Public
 pub use mls_group::*;
+pub mod errors;
 
 // Tests
 #[cfg(any(feature = "test-utils", test))]
+pub(crate) use create_commit_params::*;
 pub(crate) mod tests;
-#[cfg(any(feature = "test-utils", test))]
-pub use create_commit_params::*;
 #[cfg(any(feature = "test-utils", test))]
 use openmls_traits::random::OpenMlsRand;
 #[cfg(any(feature = "test-utils", test))]

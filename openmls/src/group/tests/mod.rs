@@ -1,5 +1,6 @@
 //! Unit tests for the core group
 
+#[cfg(any(feature = "test-utils", test))]
 pub mod kat_messages;
 
 #[cfg(any(feature = "test-utils", test))]

@@ -18,7 +18,7 @@ impl CoreGroup {
     ///  - ValSem6
     ///  - ValSem7
     ///  - ValSem9
-    pub fn parse_message<'a>(
+    pub(crate) fn parse_message<'a>(
         &mut self,
         message: MlsMessageIn,
         message_secrets_store: impl Into<Option<&'a mut MessageSecretsStore>>,
@@ -109,7 +109,7 @@ impl CoreGroup {
     ///  - ValSem107
     ///  - ValSem109
     ///  - ValSem110
-    pub fn process_unverified_message<'a>(
+    pub(crate) fn process_unverified_message<'a>(
         &mut self,
         unverified_message: UnverifiedMessage,
         signature_key: Option<&SignaturePublicKey>,
@@ -210,7 +210,7 @@ impl CoreGroup {
     }
 
     /// Merge a [StagedCommit] into the group after inspection
-    pub fn merge_staged_commit(
+    pub(crate) fn merge_staged_commit(
         &mut self,
         staged_commit: StagedCommit,
         proposal_store: &mut ProposalStore,
@@ -220,7 +220,7 @@ impl CoreGroup {
         let past_epoch = self.context().epoch();
         // Merge the staged commit into the group state and store the secret tree from the
         // previous epoch in the message secrets store.
-        if let Some(message_secrets) = self.merge_commit_take_message_secrets(staged_commit)? {
+        if let Some(message_secrets) = self.merge_commit(staged_commit)? {
             message_secrets_store.add(past_epoch, message_secrets);
         }
         // Empty the proposal store

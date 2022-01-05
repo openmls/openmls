@@ -13,7 +13,7 @@ use super::{
 };
 use crate::group::core_group::*;
 
-pub type ExternalCommitResult = (CoreGroup, CreateCommitResult);
+pub(crate) type ExternalCommitResult = (CoreGroup, CreateCommitResult);
 
 impl CoreGroup {
     /// Join a group without the help of an internal member. This function
@@ -24,7 +24,7 @@ impl CoreGroup {
     ///
     /// Returns the new `CoreGroup` object, as well as the `MlsPlaintext`
     /// containing the commit.
-    pub fn join_by_external_commit(
+    pub(crate) fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
         params: CreateCommitParams,
         tree_option: Option<&[Option<Node>]>,

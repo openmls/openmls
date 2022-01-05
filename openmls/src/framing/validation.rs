@@ -286,7 +286,7 @@ impl UnverifiedExternalMessage {
     ) -> Result<VerifiedExternalMessage, ValidationError> {
         // ValSem10
         match self.plaintext.verify_with_key(backend, signature_key) {
-            Ok(plaintext) => Ok(VerifiedExternalMessage { plaintext }),
+            Ok(_plaintext) => Ok(VerifiedExternalMessage { _plaintext }),
             Err(e) => Err(e.into()),
         }
     }
@@ -299,30 +299,31 @@ pub struct VerifiedMemberMessage {
 
 impl VerifiedMemberMessage {
     /// Returns a reference to the inner [MlsPlaintext].
-    pub fn plaintext(&self) -> &MlsPlaintext {
+    pub(crate) fn plaintext(&self) -> &MlsPlaintext {
         &self.plaintext
     }
 
     /// Consumes the message and returns the inner [MlsPlaintext].
-    pub fn take_plaintext(self) -> MlsPlaintext {
+    pub(crate) fn take_plaintext(self) -> MlsPlaintext {
         self.plaintext
     }
 }
 
 /// External message, where all semantic checks on the framing have been successfully performed.
+/// Note: External messages are not fully supported yet #106
 pub struct VerifiedExternalMessage {
-    plaintext: MlsPlaintext,
+    _plaintext: MlsPlaintext,
 }
 
 impl VerifiedExternalMessage {
     /// Returns a reference to the inner [MlsPlaintext].
-    pub fn plaintext(&self) -> &MlsPlaintext {
-        &self.plaintext
+    pub(crate) fn _plaintext(&self) -> &MlsPlaintext {
+        &self._plaintext
     }
 
     /// Consumes the message and returns the inner [MlsPlaintext].
-    pub fn take_plaintext(self) -> MlsPlaintext {
-        self.plaintext
+    pub(crate) fn _take_plaintext(self) -> MlsPlaintext {
+        self._plaintext
     }
 }
 

@@ -20,26 +20,27 @@ pub struct ProposalStore {
 }
 
 impl ProposalStore {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             queued_proposals: Vec::new(),
         }
     }
-    pub fn from_queued_proposal(queued_proposal: QueuedProposal) -> Self {
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn from_queued_proposal(queued_proposal: QueuedProposal) -> Self {
         Self {
             queued_proposals: vec![queued_proposal],
         }
     }
-    pub fn add(&mut self, queued_proposal: QueuedProposal) {
+    pub(crate) fn add(&mut self, queued_proposal: QueuedProposal) {
         self.queued_proposals.push(queued_proposal);
     }
-    pub fn proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
+    pub(crate) fn proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
         self.queued_proposals.iter()
     }
-    pub fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.queued_proposals.is_empty()
     }
-    pub fn empty(&mut self) {
+    pub(crate) fn empty(&mut self) {
         self.queued_proposals = Vec::new();
     }
 }
@@ -56,7 +57,7 @@ pub struct QueuedProposal {
 
 impl QueuedProposal {
     /// Creates a new [QueuedProposal] from an [MlsPlaintext]
-    pub fn from_mls_plaintext(
+    pub(crate) fn from_mls_plaintext(
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         mls_plaintext: MlsPlaintext,
@@ -228,7 +229,7 @@ impl ProposalQueue {
 
     /// Returns an iterator over all Add proposals in the queue
     /// in the order of the the Commit message
-    pub fn add_proposals(&self) -> impl Iterator<Item = QueuedAddProposal> {
+    pub(crate) fn add_proposals(&self) -> impl Iterator<Item = QueuedAddProposal> {
         self.queued_proposals().filter_map(|queued_proposal| {
             if let Proposal::Add(add_proposal) = queued_proposal.proposal() {
                 let sender = queued_proposal.sender();
@@ -244,7 +245,7 @@ impl ProposalQueue {
 
     /// Returns an iterator over all Remove proposals in the queue
     /// in the order of the the Commit message
-    pub fn remove_proposals(&self) -> impl Iterator<Item = QueuedRemoveProposal> {
+    pub(crate) fn remove_proposals(&self) -> impl Iterator<Item = QueuedRemoveProposal> {
         self.queued_proposals().filter_map(|queued_proposal| {
             if let Proposal::Remove(remove_proposal) = queued_proposal.proposal() {
                 let sender = queued_proposal.sender();
@@ -260,7 +261,7 @@ impl ProposalQueue {
 
     /// Returns an iterator over all Update in the queue
     /// in the order of the the Commit message
-    pub fn update_proposals(&self) -> impl Iterator<Item = QueuedUpdateProposal> {
+    pub(crate) fn update_proposals(&self) -> impl Iterator<Item = QueuedUpdateProposal> {
         self.queued_proposals().filter_map(|queued_proposal| {
             if let Proposal::Update(update_proposal) = queued_proposal.proposal() {
                 let sender = queued_proposal.sender();
@@ -276,7 +277,7 @@ impl ProposalQueue {
 
     /// Returns an iterator over all PresharedKey proposals in the queue
     /// in the order of the the Commit message
-    pub fn psk_proposals(&self) -> impl Iterator<Item = QueuedPskProposal> {
+    pub(crate) fn psk_proposals(&self) -> impl Iterator<Item = QueuedPskProposal> {
         self.queued_proposals().filter_map(|queued_proposal| {
             if let Proposal::PreSharedKey(psk_proposal) = queued_proposal.proposal() {
                 let sender = queued_proposal.sender();

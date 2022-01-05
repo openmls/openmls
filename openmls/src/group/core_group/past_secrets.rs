@@ -14,7 +14,7 @@ struct EpochTree {
 /// Can store message secrets for up to `max_epochs`. The trees are added with [`self::add()`] and can be queried
 /// with [`Self::get_epoch()`].
 #[derive(Debug, Serialize, Deserialize)]
-pub struct MessageSecretsStore {
+pub(crate) struct MessageSecretsStore {
     max_epochs: usize,
     epoch_trees: VecDeque<EpochTree>,
 }
@@ -22,7 +22,7 @@ pub struct MessageSecretsStore {
 impl MessageSecretsStore {
     /// Create a new store that can hold up to `max_epochs` message secrets.
     /// If `max_epochs` is 0, no secret trees will be stored.
-    pub fn new(max_epochs: usize) -> Self {
+    pub(crate) fn new(max_epochs: usize) -> Self {
         Self {
             max_epochs,
             epoch_trees: VecDeque::new(),
@@ -30,7 +30,7 @@ impl MessageSecretsStore {
     }
 
     /// Add a secret tree for a given epoch `group_epoch`.
-    pub fn add(&mut self, group_epoch: GroupEpoch, message_secrets: MessageSecrets) {
+    pub(crate) fn add(&mut self, group_epoch: GroupEpoch, message_secrets: MessageSecrets) {
         // Don't store the tree if it's not intended
         if self.max_epochs == 0 {
             return;
@@ -48,7 +48,10 @@ impl MessageSecretsStore {
 
     /// Get a mutable reference to a secret tree for a given epoch `group_epoch`.
     /// If no message secrets are found for that epoch, `None` is returned.
-    pub fn secrets_for_epoch(&mut self, group_epoch: GroupEpoch) -> Option<&mut MessageSecrets> {
+    pub(crate) fn secrets_for_epoch(
+        &mut self,
+        group_epoch: GroupEpoch,
+    ) -> Option<&mut MessageSecrets> {
         let GroupEpoch(epoch) = group_epoch;
         for epoch_tree in self.epoch_trees.iter_mut() {
             if epoch_tree.epoch == epoch {
