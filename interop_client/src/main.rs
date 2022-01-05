@@ -788,7 +788,7 @@ impl MlsClient for MlsClientImpl {
 
         // Proposals by value. These proposals are inline proposals. They should be converted into group operations.
 
-        // TODO: The interop client cannot process these proposals yet.
+        // TODO #692: The interop client cannot process these proposals yet.
 
         let (commit, welcome_option) = interop_group
             .group
