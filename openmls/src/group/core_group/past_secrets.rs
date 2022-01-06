@@ -38,9 +38,12 @@ impl MessageSecretsStore {
 
     /// Resize the store.
     pub(crate) fn resize(&mut self, max_past_epochs: usize) {
+        let old_size = self.max_epochs;
         self.max_epochs = max_past_epochs;
-        while self.past_epoch_trees.len() > self.max_epochs {
-            self.past_epoch_trees.pop_front();
+        if old_size > max_past_epochs {
+            let num_epochs_out = old_size - max_past_epochs;
+            self.past_epoch_trees.rotate_left(num_epochs_out);
+            self.past_epoch_trees.truncate(max_past_epochs);
         }
     }
 
@@ -52,8 +55,9 @@ impl MessageSecretsStore {
         if self.max_epochs == 0 {
             return;
         }
-        while self.past_epoch_trees.len() >= self.max_epochs {
-            self.past_epoch_trees.pop_front();
+        if self.past_epoch_trees.len() >= self.max_epochs {
+            self.past_epoch_trees.rotate_left(1);
+            self.past_epoch_trees.truncate(self.max_epochs - 1);
         }
         self.past_epoch_trees.push_back(EpochTree {
             epoch: group_epoch.0,
