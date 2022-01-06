@@ -6,9 +6,9 @@
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
 use crate::ciphersuite::{AeadNonce, *};
-use crate::tree::{index::LeafIndex, secret_tree::*};
+use crate::tree::{index::SecretTreeLeafIndex, secret_tree::*};
 
-use super::index::NodeIndex;
+use super::index::SecretTreeNodeIndex;
 use super::*;
 
 /// Stores the configuration parameters for sender ratchets.
@@ -59,14 +59,14 @@ pub type RatchetSecrets = (AeadKey, AeadNonce);
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(any(feature = "test-utils", test), derive(PartialEq))]
 pub struct SenderRatchet {
-    index: LeafIndex,
+    index: SecretTreeLeafIndex,
     generation: u32,
     past_secrets: Vec<Secret>,
 }
 
 impl SenderRatchet {
     /// Creates e new SenderRatchet
-    pub fn new(index: LeafIndex, secret: &Secret) -> Self {
+    pub fn new(index: SecretTreeLeafIndex, secret: &Secret) -> Self {
         Self {
             index,
             generation: 0,
@@ -166,7 +166,7 @@ impl SenderRatchet {
         derive_tree_secret(
             secret,
             "secret",
-            NodeIndex::from(self.index).as_u32(),
+            SecretTreeNodeIndex::from(self.index).as_u32(),
             self.generation,
             ciphersuite.hash_length(),
             backend,
@@ -180,7 +180,7 @@ impl SenderRatchet {
         secret: &Secret,
         generation: u32,
     ) -> RatchetSecrets {
-        let tree_index = NodeIndex::from(self.index).as_u32();
+        let tree_index = SecretTreeNodeIndex::from(self.index).as_u32();
         let nonce = derive_tree_secret(
             secret,
             "nonce",

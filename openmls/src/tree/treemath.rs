@@ -20,7 +20,7 @@ pub(crate) fn log2(x: usize) -> usize {
     k - 1
 }
 
-pub(crate) fn level(index: NodeIndex) -> usize {
+pub(crate) fn level(index: SecretTreeNodeIndex) -> usize {
     let x = index.as_usize();
     if (x & 0x01) == 0 {
         return 0;
@@ -40,39 +40,42 @@ pub(crate) fn node_width(n: usize) -> usize {
     }
 }
 
-pub(crate) fn root(size: LeafIndex) -> NodeIndex {
+pub(crate) fn root(size: SecretTreeLeafIndex) -> SecretTreeNodeIndex {
     let n = size.as_usize();
     let w = node_width(n);
-    NodeIndex::from((1usize << log2(w)) - 1)
+    SecretTreeNodeIndex::from((1usize << log2(w)) - 1)
 }
 
-pub(crate) fn left(index: NodeIndex) -> Result<NodeIndex, TreeMathError> {
+pub(crate) fn left(index: SecretTreeNodeIndex) -> Result<SecretTreeNodeIndex, TreeMathError> {
     let x = index.as_usize();
-    let k = level(NodeIndex::from(x));
+    let k = level(SecretTreeNodeIndex::from(x));
     if k == 0 {
         return Err(TreeMathError::LeafHasNoChildren);
     }
-    Ok(NodeIndex::from(x ^ (0x01 << (k - 1))))
+    Ok(SecretTreeNodeIndex::from(x ^ (0x01 << (k - 1))))
 }
 
-pub(crate) fn right(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, TreeMathError> {
+pub(crate) fn right(
+    index: SecretTreeNodeIndex,
+    size: SecretTreeLeafIndex,
+) -> Result<SecretTreeNodeIndex, TreeMathError> {
     let x = index.as_usize();
     let n = size.as_usize();
-    let k = level(NodeIndex::from(x));
+    let k = level(SecretTreeNodeIndex::from(x));
     if k == 0 {
         return Err(TreeMathError::LeafHasNoChildren);
     }
     let mut r = x ^ (0x03 << (k - 1));
     while r >= node_width(n) {
-        r = left(NodeIndex::from(r))?.as_usize();
+        r = left(SecretTreeNodeIndex::from(r))?.as_usize();
     }
-    Ok(NodeIndex::from(r))
+    Ok(SecretTreeNodeIndex::from(r))
 }
 
 // The parent here might be beyond the right edge of the tree.
 pub(crate) fn parent_step(x: usize) -> usize {
     // We need to use u64 for some of the operations where usize is too small on 32bit platforms
-    let k = level(NodeIndex::from(x));
+    let k = level(SecretTreeNodeIndex::from(x));
     let b = (x as u64 >> (k + 1)) & 0x01;
     let res = (x as u64 | (1 << k)) ^ (b << (k + 1));
     res as usize
@@ -80,7 +83,10 @@ pub(crate) fn parent_step(x: usize) -> usize {
 
 // This function is only safe to use if index <= size.
 // If this is not checked before calling the function, `parent` should be used.
-fn unsafe_parent(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, TreeMathError> {
+fn unsafe_parent(
+    index: SecretTreeNodeIndex,
+    size: SecretTreeLeafIndex,
+) -> Result<SecretTreeNodeIndex, TreeMathError> {
     let x = index.as_usize();
     let n = size.as_usize();
     if index == root(size) {
@@ -94,11 +100,14 @@ fn unsafe_parent(index: NodeIndex, size: LeafIndex) -> Result<NodeIndex, TreeMat
         }
         p = new_p;
     }
-    Ok(NodeIndex::from(p))
+    Ok(SecretTreeNodeIndex::from(p))
 }
 
 #[inline(always)]
-fn leaf_in_tree(leaf_index: LeafIndex, size: LeafIndex) -> Result<(), TreeMathError> {
+fn leaf_in_tree(
+    leaf_index: SecretTreeLeafIndex,
+    size: SecretTreeLeafIndex,
+) -> Result<(), TreeMathError> {
     if leaf_index >= size {
         Err(TreeMathError::LeafNotInTree)
     } else {
@@ -109,11 +118,11 @@ fn leaf_in_tree(leaf_index: LeafIndex, size: LeafIndex) -> Result<(), TreeMathEr
 /// Direct path from a leaf node to the root.
 /// Does not include the leaf node but includes the root.
 pub(crate) fn leaf_direct_path(
-    leaf_index: LeafIndex,
-    size: LeafIndex,
-) -> Result<Vec<NodeIndex>, TreeMathError> {
+    leaf_index: SecretTreeLeafIndex,
+    size: SecretTreeLeafIndex,
+) -> Result<Vec<SecretTreeNodeIndex>, TreeMathError> {
     leaf_in_tree(leaf_index, size)?;
-    let node_index = NodeIndex::from(leaf_index);
+    let node_index = SecretTreeNodeIndex::from(leaf_index);
     let r = root(size);
     if node_index == r {
         return Ok(vec![r]);
