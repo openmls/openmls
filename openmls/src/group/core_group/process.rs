@@ -9,13 +9,13 @@ impl CoreGroup {
     /// Returns an [UnverifiedMessage] that can be inspected and later processed in
     /// [Self::process_unverified_message()].
     /// Checks the following semantic validation:
-    ///  - ValSem2
-    ///  - ValSem3
-    ///  - ValSem4
-    ///  - ValSem5
-    ///  - ValSem6
-    ///  - ValSem7
-    ///  - ValSem9
+    ///  - ValSem002
+    ///  - ValSem003
+    ///  - ValSem004
+    ///  - ValSem005
+    ///  - ValSem006
+    ///  - ValSem007
+    ///  - ValSem009
     pub(crate) fn parse_message(
         &mut self,
         message: MlsMessageIn,
@@ -23,12 +23,12 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<UnverifiedMessage, CoreGroupError> {
         // Checks the following semantic validation:
-        //  - ValSem2
-        //  - ValSem3
+        //  - ValSem002
+        //  - ValSem003
         self.validate_framing(&message)?;
 
         // Checks the following semantic validation:
-        //  - ValSem6
+        //  - ValSem006
         let decrypted_message = match message.wire_format() {
             WireFormat::MlsPlaintext => DecryptedMessage::from_inbound_plaintext(message)?,
             WireFormat::MlsCiphertext => {
@@ -48,10 +48,10 @@ impl CoreGroup {
         let mut credential = None;
 
         // Checks the following semantic validation:
-        //  - ValSem4
-        //  - ValSem5
-        //  - ValSem7
-        //  - ValSem9
+        //  - ValSem004
+        //  - ValSem005
+        //  - ValSem007
+        //  - ValSem009
         self.validate_plaintext(decrypted_message.plaintext())?;
 
         // Extract the credential if the sender is a member
@@ -74,8 +74,8 @@ impl CoreGroup {
     /// This processing function does most of the semantic verifications.
     /// It returns a [ProcessedMessage] enum.
     /// Checks the following semantic validation:
-    ///  - ValSem8
-    ///  - ValSem10
+    ///  - ValSem008
+    ///  - ValSem010
     ///  - ValSem100
     ///  - ValSem101
     ///  - ValSem102
@@ -84,6 +84,7 @@ impl CoreGroup {
     ///  - ValSem105
     ///  - ValSem106
     ///  - ValSem107
+    ///  - ValSem108
     ///  - ValSem109
     ///  - ValSem110
     pub(crate) fn process_unverified_message(
@@ -99,7 +100,7 @@ impl CoreGroup {
         let message_secrets = self.message_secrets_mut(unverified_message.epoch())?;
 
         // Checks the following semantic validation:
-        //  - ValSem8
+        //  - ValSem008
         let context_plaintext = UnverifiedContextMessage::from_unverified_message(
             unverified_message,
             message_secrets,
@@ -111,7 +112,7 @@ impl CoreGroup {
         match context_plaintext {
             UnverifiedContextMessage::Member(member_message) => {
                 // Checks the following semantic validation:
-                //  - ValSem10
+                //  - ValSem010
                 let verified_member_message =
                     member_message.into_verified(backend, signature_key)?;
 
@@ -140,6 +141,7 @@ impl CoreGroup {
                         //  - ValSem105
                         //  - ValSem106
                         //  - ValSem107
+                        //  - ValSem108
                         //  - ValSem109
                         //  - ValSem110
                         let staged_commit = self.stage_commit(

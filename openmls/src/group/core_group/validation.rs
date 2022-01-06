@@ -9,15 +9,15 @@ impl CoreGroup {
     // === Messages ===
 
     /// Checks the following semantic validation:
-    ///  - ValSem2
-    ///  - ValSem3
+    ///  - ValSem002
+    ///  - ValSem003
     pub(crate) fn validate_framing(&self, message: &MlsMessageIn) -> Result<(), CoreGroupError> {
-        // ValSem2
+        // ValSem002
         if message.group_id() != self.group_id() {
             return Err(FramingValidationError::WrongGroupId.into());
         }
 
-        // ValSem3: Check boundaries for the epoch
+        // ValSem003: Check boundaries for the epoch
         // We differentiate depending on the content type
         match message.content_type() {
             // For application messages we allow messages for older epochs as well
@@ -38,15 +38,15 @@ impl CoreGroup {
     }
 
     /// Checks the following semantic validation:
-    ///  - ValSem4
-    ///  - ValSem5
-    ///  - ValSem7
-    ///  - ValSem9
+    ///  - ValSem004
+    ///  - ValSem005
+    ///  - ValSem007
+    ///  - ValSem009
     pub(crate) fn validate_plaintext(
         &self,
         plaintext: &VerifiableMlsPlaintext,
     ) -> Result<(), CoreGroupError> {
-        // ValSem4
+        // ValSem004
         let sender = plaintext.sender();
         if sender.is_member() {
             let members = self.treesync().full_leaves()?;
@@ -57,7 +57,7 @@ impl CoreGroup {
             }
         }
 
-        // ValSem5
+        // ValSem005
         // Application messages must always be encrypted
         if plaintext.content_type() == ContentType::Application {
             if plaintext.wire_format() != WireFormat::MlsCiphertext {
@@ -67,10 +67,10 @@ impl CoreGroup {
             }
         }
 
-        // ValSem7
+        // ValSem007
         // If the sender is of type member and the message was not an MlsCiphertext,
         // the member has to prove its ownership by adding a membership tag.
-        // The membership tag is checkecked in ValSem8.
+        // The membership tag is checkecked in ValSem008.
         if plaintext.sender().is_member()
             && plaintext.wire_format() != WireFormat::MlsCiphertext
             && plaintext.membership_tag().is_none()
@@ -78,7 +78,7 @@ impl CoreGroup {
             return Err(FramingValidationError::MissingMembershipTag.into());
         }
 
-        // ValSem9
+        // ValSem009
         if plaintext.content_type() == ContentType::Commit && plaintext.confirmation_tag().is_none()
         {
             return Err(FramingValidationError::MissingConfirmationTag.into());

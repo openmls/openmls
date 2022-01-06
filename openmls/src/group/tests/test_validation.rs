@@ -116,7 +116,7 @@ fn validation_test_setup(
     }
 }
 
-// ValSem1 Wire format
+// ValSem001 Wire format
 #[apply(ciphersuites_and_backends)]
 fn test_valsem1(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test with MlsPlaintext
@@ -185,7 +185,7 @@ fn test_valsem1(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
     MlsCiphertext::tls_deserialize(&mut original_message.as_slice()).expect("Unexpected error.");
 }
 
-// ValSem2 Group id
+// ValSem002 Group id
 #[apply(ciphersuites_and_backends)]
 fn test_valsem2(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
@@ -230,7 +230,7 @@ fn test_valsem2(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         .expect("Unexpected error.");
 }
 
-// ValSem3 Epoch
+// ValSem003 Epoch
 #[apply(ciphersuites_and_backends)]
 fn test_valsem3(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
@@ -334,7 +334,7 @@ fn test_valsem3(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         .expect("Unexpected error.");
 }
 
-// ValSem4 Sender: Member: check the member exists
+// ValSem004 Sender: Member: check the member exists
 #[apply(ciphersuites_and_backends)]
 fn test_valsem4(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
@@ -382,7 +382,7 @@ fn test_valsem4(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         .expect("Unexpected error.");
 }
 
-// ValSem5 Application messages must use ciphertext
+// ValSem005 Application messages must use ciphertext
 #[apply(ciphersuites_and_backends)]
 fn test_valsem5(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
@@ -428,7 +428,7 @@ fn test_valsem5(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         .expect("Unexpected error.");
 }
 
-// ValSem6 Ciphertext: decryption needs to work
+// ValSem006 Ciphertext: decryption needs to work
 #[apply(ciphersuites_and_backends)]
 fn test_valsem6(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
@@ -491,7 +491,7 @@ fn test_valsem6(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         .expect("Unexpected error.");
 }
 
-// ValSem7 Membership tag presence
+// ValSem007 Membership tag presence
 #[apply(ciphersuites_and_backends)]
 fn test_valsem7(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
@@ -536,7 +536,7 @@ fn test_valsem7(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         .expect("Unexpected error.");
 }
 
-// ValSem8 Membership tag verification
+// ValSem008 Membership tag verification
 #[apply(ciphersuites_and_backends)]
 fn test_valsem8(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
@@ -615,7 +615,7 @@ fn test_valsem8(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         .expect("Unexpected error.");
 }
 
-// ValSem9 Confirmation tag presence
+// ValSem009 Confirmation tag presence
 #[apply(ciphersuites_and_backends)]
 fn test_valsem9(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
@@ -660,7 +660,7 @@ fn test_valsem9(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         .expect("Unexpected error.");
 }
 
-// ValSem10 Signature verification
+// ValSem010 Signature verification
 #[apply(ciphersuites_and_backends)]
 fn test_valsem10(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {

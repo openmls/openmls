@@ -16,7 +16,7 @@ impl tls_codec::Deserialize for VerifiableMlsPlaintext {
         let confirmation_tag = Option::<ConfirmationTag>::tls_deserialize(bytes)?;
         let membership_tag = Option::<MembershipTag>::tls_deserialize(bytes)?;
 
-        // ValSem1: Check the wire format
+        // ValSem001: Check the wire format
         if wire_format != WireFormat::MlsPlaintext {
             return Err(tls_codec::Error::DecodingError(
                 "Wrong wire format.".to_string(),
@@ -208,7 +208,7 @@ impl tls_codec::Deserialize for MlsCiphertext {
         let encrypted_sender_data = TlsByteVecU8::tls_deserialize(bytes)?;
         let ciphertext = TlsByteVecU32::tls_deserialize(bytes)?;
 
-        // ValSem1: Check the wire format
+        // ValSem001: Check the wire format
         if wire_format != WireFormat::MlsCiphertext {
             return Err(tls_codec::Error::DecodingError(
                 "Wrong wire format.".to_string(),
