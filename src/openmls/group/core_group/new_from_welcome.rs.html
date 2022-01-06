@@ -185,6 +185,8 @@
 <span id="185">185</span>
 <span id="186">186</span>
 <span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">log::debug</span>;
 <span class="kw">use</span> <span class="ident">openmls_traits::crypto::OpenMlsCrypto</span>;
 <span class="kw">use</span> <span class="ident">tls_codec::Deserialize</span>;
@@ -344,15 +346,17 @@
             <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;  Expected: {:x?}&quot;</span>, <span class="ident">group_info</span>.<span class="ident">confirmation_tag</span>());
             <span class="prelude-val">Err</span>(<span class="ident">WelcomeError::ConfirmationTagMismatch</span>)
         } <span class="kw">else</span> {
+            <span class="kw">let</span> <span class="ident">message_secrets_store</span> <span class="op">=</span> <span class="ident">MessageSecretsStore::new_with_secret</span>(<span class="number">0</span>, <span class="ident">message_secrets</span>);
+
             <span class="prelude-val">Ok</span>(<span class="ident">CoreGroup</span> {
                 <span class="ident">ciphersuite</span>,
                 <span class="ident">group_context</span>,
                 <span class="ident">group_epoch_secrets</span>,
-                <span class="ident">message_secrets</span>,
                 <span class="ident">tree</span>,
                 <span class="ident">interim_transcript_hash</span>,
                 <span class="ident">use_ratchet_tree_extension</span>: <span class="ident">enable_ratchet_tree_extension</span>,
                 <span class="ident">mls_version</span>,
+                <span class="ident">message_secrets_store</span>,
             })
         }
     }

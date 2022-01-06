@@ -46,9 +46,6 @@
 <span id="46">46</span>
 <span id="47">47</span>
 <span id="48">48</span>
-<span id="49">49</span>
-<span id="50">50</span>
-<span id="51">51</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use</span> <span class="ident">serde</span>::{
@@ -60,7 +57,6 @@
     <span class="ident">mls_group_config</span>: <span class="ident">MlsGroupConfig</span>,
     <span class="ident">group</span>: <span class="ident">CoreGroup</span>,
     <span class="ident">proposal_store</span>: <span class="ident">ProposalStore</span>,
-    <span class="ident">message_secrets_store</span>: <span class="ident">MessageSecretsStore</span>,
     <span class="ident">own_kpbs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>,
     <span class="ident">aad</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
     <span class="ident">resumption_secret_store</span>: <span class="ident">ResumptionSecretStore</span>,
@@ -73,7 +69,6 @@
             <span class="ident">mls_group_config</span>: <span class="self">self</span>.<span class="ident">mls_group_config</span>,
             <span class="ident">group</span>: <span class="self">self</span>.<span class="ident">group</span>,
             <span class="ident">proposal_store</span>: <span class="self">self</span>.<span class="ident">proposal_store</span>,
-            <span class="ident">message_secrets_store</span>: <span class="self">self</span>.<span class="ident">message_secrets_store</span>,
             <span class="ident">own_kpbs</span>: <span class="self">self</span>.<span class="ident">own_kpbs</span>,
             <span class="ident">aad</span>: <span class="self">self</span>.<span class="ident">aad</span>,
             <span class="ident">resumption_secret_store</span>: <span class="self">self</span>.<span class="ident">resumption_secret_store</span>,
@@ -92,7 +87,6 @@
         <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;mls_group_config&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">mls_group_config</span>)<span class="question-mark">?</span>;
         <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;group&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group</span>)<span class="question-mark">?</span>;
         <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;proposal_store&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">proposal_store</span>)<span class="question-mark">?</span>;
-        <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;message_secrets_store&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">message_secrets_store</span>)<span class="question-mark">?</span>;
         <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;own_kpbs&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">own_kpbs</span>)<span class="question-mark">?</span>;
         <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;aad&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>)<span class="question-mark">?</span>;
         <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;resumption_secret_store&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">resumption_secret_store</span>)<span class="question-mark">?</span>;

@@ -363,6 +363,8 @@
 <span id="363">363</span>
 <span id="364">364</span>
 <span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ```text</span>
@@ -440,11 +442,13 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ValidationError</span><span class="op">&gt;</span> {
         <span class="comment">// This will be refactored with #265.</span>
         <span class="kw">if</span> <span class="kw">let</span> <span class="ident">MlsMessage::Ciphertext</span>(<span class="ident">ciphertext</span>) <span class="op">=</span> <span class="ident">inbound_message</span>.<span class="ident">mls_message</span> {
+            <span class="kw">let</span> <span class="ident">sender_data</span> <span class="op">=</span> <span class="ident">ciphertext</span>.<span class="ident">sender_data</span>(<span class="ident">message_secrets</span>, <span class="ident">backend</span>, <span class="ident">ciphersuite</span>)<span class="question-mark">?</span>;
             <span class="kw">let</span> <span class="ident">plaintext</span> <span class="op">=</span> <span class="ident">ciphertext</span>.<span class="ident">to_plaintext</span>(
                 <span class="ident">ciphersuite</span>,
                 <span class="ident">backend</span>,
                 <span class="ident">message_secrets</span>,
                 <span class="ident">sender_ratchet_configuration</span>,
+                <span class="ident">sender_data</span>,
             )<span class="question-mark">?</span>;
             <span class="ident"><span class="self">Self</span>::from_plaintext</span>(<span class="ident">plaintext</span>)
         } <span class="kw">else</span> {

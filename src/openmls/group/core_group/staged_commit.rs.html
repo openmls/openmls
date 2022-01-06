@@ -398,6 +398,10 @@
 <span id="398">398</span>
 <span id="399">399</span>
 <span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::diff::StagedTreeSyncDiff</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::proposals</span>::{<span class="ident">ProposalQueue</span>, <span class="ident">ProposalStore</span>, <span class="ident">QueuedProposal</span>};
@@ -690,7 +694,8 @@
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">state</span>) <span class="op">=</span> <span class="ident">staged_commit</span>.<span class="ident">state</span> {
             <span class="self">self</span>.<span class="ident">group_context</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">group_context</span>;
             <span class="self">self</span>.<span class="ident">group_epoch_secrets</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">group_epoch_secrets</span>;
-            <span class="self">self</span>.<span class="ident">message_secrets</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">message_secrets</span>;
+            <span class="self">self</span>.<span class="ident">message_secrets_store</span> <span class="op">=</span>
+                <span class="ident">MessageSecretsStore::new_with_secret</span>(<span class="number">0</span>, <span class="ident">state</span>.<span class="ident">message_secrets</span>);
             <span class="self">self</span>.<span class="ident">interim_transcript_hash</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">interim_transcript_hash</span>;
             <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">merge_diff</span>(<span class="ident">state</span>.<span class="ident">staged_diff</span>)<span class="question-mark">?</span>;
         };
@@ -712,7 +717,10 @@
 
             <span class="comment">// Replace the previous message secrets with the new ones and return the previous message secrets</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">message_secrets</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">message_secrets</span>;
-            <span class="ident">mem::swap</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">message_secrets</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">message_secrets</span>);
+            <span class="ident">mem::swap</span>(
+                <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">message_secrets</span>,
+                <span class="self">self</span>.<span class="ident">message_secrets_store</span>.<span class="ident">message_secrets_mut</span>(),
+            );
 
             <span class="self">self</span>.<span class="ident">interim_transcript_hash</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">interim_transcript_hash</span>;
 

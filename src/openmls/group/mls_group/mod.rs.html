@@ -382,10 +382,6 @@
 <span id="382">382</span>
 <span id="383">383</span>
 <span id="384">384</span>
-<span id="385">385</span>
-<span id="386">386</span>
-<span id="387">387</span>
-<span id="388">388</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">application</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
 <span class="kw">mod</span> <span class="ident">creation</span>;
@@ -424,7 +420,6 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">resumption::ResumptionSecretStore</span>;
 <span class="kw">use</span> <span class="ident">ser</span>::<span class="kw-2">*</span>;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::past_secrets::MessageSecretsStore</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::proposals</span>::{<span class="ident">ProposalStore</span>, <span class="ident">QueuedProposal</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::staged_commit::StagedCommit</span>;
 
@@ -548,9 +543,6 @@
     <span class="comment">// A [ProposalStore] that stores incoming proposals from the DS within one epoch.</span>
     <span class="comment">// The store is emptied after every epoch change.</span>
     <span class="ident">proposal_store</span>: <span class="ident">ProposalStore</span>,
-    <span class="comment">// A [MessageSecretsStore] that stores message secrets from past epochs in order to be able to decrypt</span>
-    <span class="comment">// application messages from previous epochs.</span>
-    <span class="ident">message_secrets_store</span>: <span class="ident">MessageSecretsStore</span>,
     <span class="comment">// Own `KeyPackageBundle`s that were created for update proposals and that</span>
     <span class="comment">// are needed in case an update proposal is commited by another group</span>
     <span class="comment">// member. The vector is emptied after every epoch change.</span>

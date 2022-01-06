@@ -126,6 +126,7 @@
 <span id="126">126</span>
 <span id="127">127</span>
 <span id="128">128</span>
+<span id="129">129</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite::signable::Verifiable</span>,
     <span class="ident">group::errors::ExternalCommitError</span>,
@@ -219,6 +220,7 @@
             <span class="ident">group_context</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>,
             <span class="ident">treesync</span>.<span class="ident">leaf_count</span>()<span class="question-mark">?</span>,
         );
+        <span class="kw">let</span> <span class="ident">message_secrets_store</span> <span class="op">=</span> <span class="ident">MessageSecretsStore::new_with_secret</span>(<span class="number">0</span>, <span class="ident">message_secrets</span>);
 
         <span class="comment">// Prepare interim transcript hash</span>
         <span class="kw">let</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">CoreGroup</span> {
@@ -229,7 +231,7 @@
             <span class="ident">use_ratchet_tree_extension</span>: <span class="ident">enable_ratchet_tree_extension</span>,
             <span class="ident">mls_version</span>: <span class="ident">pgs</span>.<span class="ident">version</span>,
             <span class="ident">group_epoch_secrets</span>,
-            <span class="ident">message_secrets</span>,
+            <span class="ident">message_secrets_store</span>,
         };
 
         <span class="kw">let</span> <span class="ident">external_init_proposal</span> <span class="op">=</span> <span class="ident">Proposal::ExternalInit</span>(<span class="ident">ExternalInitProposal::from</span>(<span class="ident">kem_output</span>));
