@@ -20,9 +20,9 @@ use super::*;
     TlsDeserialize,
     TlsSize,
 )]
-pub struct NodeIndex(u32);
+pub struct SecretTreeNodeIndex(u32);
 
-impl NodeIndex {
+impl SecretTreeNodeIndex {
     pub fn as_u32(self) -> u32 {
         self.0
     }
@@ -37,21 +37,21 @@ impl NodeIndex {
     }
 }
 
-impl From<u32> for NodeIndex {
-    fn from(i: u32) -> NodeIndex {
-        NodeIndex(i)
+impl From<u32> for SecretTreeNodeIndex {
+    fn from(i: u32) -> SecretTreeNodeIndex {
+        SecretTreeNodeIndex(i)
     }
 }
 
-impl From<usize> for NodeIndex {
-    fn from(i: usize) -> NodeIndex {
-        NodeIndex(i as u32)
+impl From<usize> for SecretTreeNodeIndex {
+    fn from(i: usize) -> SecretTreeNodeIndex {
+        SecretTreeNodeIndex(i as u32)
     }
 }
 
-impl From<LeafIndex> for NodeIndex {
-    fn from(node_index: LeafIndex) -> NodeIndex {
-        NodeIndex(node_index.as_u32() * 2)
+impl From<SecretTreeLeafIndex> for SecretTreeNodeIndex {
+    fn from(node_index: SecretTreeLeafIndex) -> SecretTreeNodeIndex {
+        SecretTreeNodeIndex(node_index.as_u32() * 2)
     }
 }
 
@@ -72,9 +72,9 @@ impl From<LeafIndex> for NodeIndex {
     TlsSerialize,
     TlsSize,
 )]
-pub struct LeafIndex(pub(crate) u32);
+pub struct SecretTreeLeafIndex(pub(crate) u32);
 
-impl LeafIndex {
+impl SecretTreeLeafIndex {
     pub fn as_u32(self) -> u32 {
         self.0
     }
@@ -83,39 +83,39 @@ impl LeafIndex {
     }
 }
 
-impl From<u32> for LeafIndex {
-    fn from(i: u32) -> LeafIndex {
-        LeafIndex(i)
+impl From<u32> for SecretTreeLeafIndex {
+    fn from(i: u32) -> SecretTreeLeafIndex {
+        SecretTreeLeafIndex(i)
     }
 }
 
-impl From<usize> for LeafIndex {
-    fn from(i: usize) -> LeafIndex {
-        LeafIndex(i as u32)
+impl From<usize> for SecretTreeLeafIndex {
+    fn from(i: usize) -> SecretTreeLeafIndex {
+        SecretTreeLeafIndex(i as u32)
     }
 }
 
-impl From<LeafIndex> for u32 {
-    fn from(i: LeafIndex) -> u32 {
+impl From<SecretTreeLeafIndex> for u32 {
+    fn from(i: SecretTreeLeafIndex) -> u32 {
         i.as_u32()
     }
 }
 
-impl From<LeafIndex> for usize {
-    fn from(i: LeafIndex) -> usize {
+impl From<SecretTreeLeafIndex> for usize {
+    fn from(i: SecretTreeLeafIndex) -> usize {
         i.as_usize()
     }
 }
 
-impl TryFrom<NodeIndex> for LeafIndex {
+impl TryFrom<SecretTreeNodeIndex> for SecretTreeLeafIndex {
     type Error = &'static str;
-    fn try_from(node_index: NodeIndex) -> Result<Self, Self::Error> {
+    fn try_from(node_index: SecretTreeNodeIndex) -> Result<Self, Self::Error> {
         // A node with an odd index must be a parent node and therefore cannot be
         // converted to a leaf node
         if node_index.is_parent() {
             Err("Cannot convert a parent node index to a leaf node index.")
         } else {
-            Ok(LeafIndex((node_index.as_u32() + 1) / 2))
+            Ok(SecretTreeLeafIndex((node_index.as_u32() + 1) / 2))
         }
     }
 }

@@ -2,7 +2,7 @@
 
 use super::*;
 #[cfg(test)]
-use crate::tree::index::LeafIndex;
+use crate::tree::index::SecretTreeLeafIndex;
 /// Combined message secrets that need to be stored for later decryption/verification
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MessageSecrets {
@@ -79,7 +79,7 @@ impl MessageSecrets {
                 .expect("Not enough randomness."),
             secret_tree: SecretTree::new(
                 EncryptionSecret::random(ciphersuite, backend),
-                LeafIndex(10),
+                SecretTreeLeafIndex(10),
             ),
         }
     }
