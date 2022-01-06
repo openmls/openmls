@@ -93,7 +93,7 @@ pub struct CoreGroup {
     /// A [`MessageSecretsStore`] that stores message secrets.
     /// By default this store has the length of 1, i.e. only the [`MessageSecrets`]
     /// of the current epoch is kept.
-    /// If more secrets should from past epochs should be kept in order to be
+    /// If more secrets from past epochs should be kept in order to be
     /// able to decrypt application messages from previous epochs, the size of
     /// the store must be increased through [`max_past_epochs()`].
     message_secrets_store: MessageSecretsStore,
