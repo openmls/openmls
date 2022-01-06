@@ -38,9 +38,7 @@ jobs:
           version: latest
       - name: Fuzz Welcome
         run: cargo fuzz run welcome_decode -- -runs=100000
-      - name: Fuzz MLSCiphertext
-        run: cargo fuzz run mls_ciphertext_decode -- -runs=100000
-      - name: Fuzz MLSPlaintext
-        run: cargo fuzz run mls_plaintext_decode -- -runs=100000
+      - name: Fuzz MLSMessageIn
+        run: cargo fuzz run mls_message_decode -- -runs=100000
       - name: Fuzz Proposal
         run: cargo fuzz run proposal_decode -- -runs=100000

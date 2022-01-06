@@ -14,7 +14,7 @@ use crate::{
 use super::{proposals::ProposalQueue, CoreGroup};
 
 /// This struct contain the return values of the `apply_proposals()` function
-pub struct ApplyProposalsValues {
+pub(crate) struct ApplyProposalsValues {
     pub(crate) path_required: bool,
     pub(crate) self_removed: bool,
     pub(crate) invitation_list: Vec<(LeafIndex, AddProposal)>,
@@ -26,7 +26,7 @@ impl ApplyProposalsValues {
     /// This function creates a `HashSet` of node indexes of the new nodes that
     /// were added to the tree. The `HashSet` will be querried by the
     /// `resolve()` function to filter out those nodes from the resolution.
-    pub fn exclusion_list(&self) -> HashSet<&LeafIndex> {
+    pub(crate) fn exclusion_list(&self) -> HashSet<&LeafIndex> {
         // Collect the new leaves' indexes so we can filter them out in the resolution
         // later
         let new_leaves_indexes: HashSet<&LeafIndex> = self

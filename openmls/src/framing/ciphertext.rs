@@ -12,7 +12,7 @@ use super::*;
 /// This message format is meant to be sent to and received from the Delivery
 /// Service.
 #[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize)]
-pub struct MlsCiphertext {
+pub(crate) struct MlsCiphertext {
     wire_format: WireFormat,
     group_id: GroupId,
     epoch: GroupEpoch,
@@ -294,7 +294,8 @@ impl MlsCiphertext {
     }
 
     /// Returns `true` if this is a handshake message and `false` otherwise.
-    pub fn is_handshake_message(&self) -> bool {
+    #[cfg(test)]
+    pub(crate) fn is_handshake_message(&self) -> bool {
         self.content_type.is_handshake_message()
     }
 
@@ -346,17 +347,18 @@ impl MlsCiphertext {
     }
 
     /// Get the `group_id` in the `MlsCiphertext`.
-    pub fn group_id(&self) -> &GroupId {
+    pub(crate) fn group_id(&self) -> &GroupId {
         &self.group_id
     }
 
     /// Get the cipher text bytes as slice.
-    pub fn ciphertext(&self) -> &[u8] {
+    #[cfg(test)]
+    pub(crate) fn ciphertext(&self) -> &[u8] {
         self.ciphertext.as_slice()
     }
 
     /// Get the `epoch` in the `MlsCiphertext`.
-    pub fn epoch(&self) -> GroupEpoch {
+    pub(crate) fn epoch(&self) -> GroupEpoch {
         self.epoch
     }
 
@@ -373,7 +375,7 @@ impl MlsCiphertext {
 
     /// Set the ciphertext.
     #[cfg(test)]
-    pub fn set_ciphertext(&mut self, ciphertext: Vec<u8>) {
+    pub(crate) fn set_ciphertext(&mut self, ciphertext: Vec<u8>) {
         self.ciphertext = ciphertext.into();
     }
 }
@@ -390,7 +392,7 @@ pub(crate) struct MlsSenderData {
 }
 
 impl MlsSenderData {
-    pub fn new(sender: LeafIndex, generation: u32, reuse_guard: ReuseGuard) -> Self {
+    pub(crate) fn new(sender: LeafIndex, generation: u32, reuse_guard: ReuseGuard) -> Self {
         MlsSenderData {
             sender,
             generation,

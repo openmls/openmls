@@ -1,5 +1,5 @@
 use crate::{
-    config::Config, group::core_group::create_commit_params::CreateCommitParams,
+    group::core_group::create_commit_params::CreateCommitParams,
     messages::VerifiablePublicGroupState,
 };
 
@@ -30,7 +30,6 @@ impl MlsGroup {
             .map_err(|_| MlsGroupError::KeyStoreError)?;
         let group_config = CoreGroupConfig {
             add_ratchet_tree_extension: mls_group_config.use_ratchet_tree_extension,
-            ..Default::default()
         };
         let group = CoreGroup::builder(group_id, key_package_bundle)
             .with_config(group_config)
@@ -110,21 +109,13 @@ impl MlsGroup {
         mls_group_config: &MlsGroupConfig,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
-        proposals_by_reference: &[MlsPlaintext],
+        proposal_store: ProposalStore,
     ) -> Result<(Self, MlsMessageOut), MlsGroupError> {
         let resumption_secret_store =
             ResumptionSecretStore::new(mls_group_config.number_of_resumption_secrets);
 
         // Prepare the commit parameters
         let framing_parameters = FramingParameters::new(aad, mls_group_config.wire_format());
-        let ciphersuite = Config::ciphersuite(verifiable_public_group_state.ciphersuite())?;
-        let mut proposal_store = ProposalStore::new();
-        for proposal in proposals_by_reference {
-            let queued_proposal =
-                QueuedProposal::from_mls_plaintext(ciphersuite, backend, proposal.clone())
-                    .map_err(CoreGroupError::QueuedProposalError)?;
-            proposal_store.add(queued_proposal);
-        }
 
         let params = CreateCommitParams::builder()
             .framing_parameters(framing_parameters)

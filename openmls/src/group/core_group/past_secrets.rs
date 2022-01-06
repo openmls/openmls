@@ -16,7 +16,7 @@ struct EpochTree {
 /// with [`Self::get_epoch()`].
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct MessageSecretsStore {
+pub(crate) struct MessageSecretsStore {
     // Maximum size of the `past_epoch_trees` list.
     max_epochs: usize,
     // Past message secrets.
@@ -50,7 +50,7 @@ impl MessageSecretsStore {
     /// Add a secret tree for a given epoch `group_epoch`.
     /// Note that this does not take the epoch into account and pops out the
     /// oldest element.
-    pub fn add(&mut self, group_epoch: GroupEpoch, message_secrets: MessageSecrets) {
+    pub(crate) fn add(&mut self, group_epoch: GroupEpoch, message_secrets: MessageSecrets) {
         // Don't store the tree if it's not intended
         if self.max_epochs == 0 {
             return;
@@ -73,7 +73,7 @@ impl MessageSecretsStore {
 
     /// Get a mutable reference to a secret tree for a given epoch `group_epoch`.
     /// If no message secrets are found for that epoch, `None` is returned.
-    pub fn secrets_for_epoch_mut(
+    pub(crate) fn secrets_for_epoch_mut(
         &mut self,
         group_epoch: GroupEpoch,
     ) -> Option<&mut MessageSecrets> {
@@ -81,18 +81,6 @@ impl MessageSecretsStore {
         for epoch_tree in self.past_epoch_trees.iter_mut() {
             if epoch_tree.epoch == epoch {
                 return Some(&mut epoch_tree.message_secrets);
-            }
-        }
-        None
-    }
-
-    /// Get a reference to a secret tree for a given epoch `group_epoch`.
-    /// If no message secrets are found for that epoch, `None` is returned.
-    pub fn secrets_for_epoch(&self, group_epoch: GroupEpoch) -> Option<&MessageSecrets> {
-        let GroupEpoch(epoch) = group_epoch;
-        for epoch_tree in self.past_epoch_trees.iter() {
-            if epoch_tree.epoch == epoch {
-                return Some(&epoch_tree.message_secrets);
             }
         }
         None

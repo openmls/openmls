@@ -31,8 +31,6 @@ fn create_encoding_test_setup(backend: &impl OpenMlsCryptoProvider) -> TestSetup
             ciphersuite: *ciphersuite_name,
             config: CoreGroupConfig {
                 add_ratchet_tree_extension: true,
-                padding_block_size: 10,
-                additional_as_epochs: 0,
             },
             members: vec![alice_config.clone(), bob_config.clone()],
         };

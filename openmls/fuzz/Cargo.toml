@@ -31,14 +31,8 @@ test = false
 doc = false
 
 [[bin]]
-name = "mls_plaintext_decode"
-path = "fuzz_targets/mls_plaintext_decode.rs"
-test = false
-doc = false
-
-[[bin]]
-name = "mls_ciphertext_decode"
-path = "fuzz_targets/mls_ciphertext_decode.rs"
+name = "mls_message_decode"
+path = "fuzz_targets/mls_message_decode.rs"
 test = false
 doc = false
 
