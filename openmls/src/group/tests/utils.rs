@@ -7,10 +7,7 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use crate::{
-    credentials::*, framing::*, group::core_group::past_secrets::*, group::*, key_packages::*,
-    test_utils::*, *,
-};
+use crate::{credentials::*, framing::*, group::*, key_packages::*, test_utils::*, *};
 use ::rand::rngs::OsRng;
 use ::rand::RngCore;
 use openmls_traits::types::SignatureScheme;
@@ -227,11 +224,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                 .expect("An unexpected error occurred.");
 
             core_group
-                .merge_staged_commit(
-                    create_commit_result.staged_commit,
-                    &mut proposal_store,
-                    &mut MessageSecretsStore::new(0),
-                )
+                .merge_staged_commit(create_commit_result.staged_commit, &mut proposal_store)
                 .expect("error merging own commits");
 
             // Distribute the Welcome message to the other members.

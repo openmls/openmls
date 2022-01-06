@@ -226,7 +226,7 @@ fn build_handshake_messages(
             epoch: group.context().epoch(),
             sender: leaf,
         },
-        group.message_secrets_mut(),
+        group.message_secrets_test_mut(),
         0,
     )
     .expect("Could not create MlsCiphertext");
@@ -275,7 +275,7 @@ fn build_application_messages(
             epoch: group.context().epoch(),
             sender: leaf,
         },
-        group.message_secrets_mut(),
+        group.message_secrets_test_mut(),
         0,
     ) {
         Ok(c) => c,
@@ -334,12 +334,12 @@ pub fn generate_test_vector(
     };
 
     let (mut group, credential_bundle) = group(ciphersuite, &crypto);
-    *group.message_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
+    *group.message_secrets_test_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
         sender_data_secret_bytes,
         ProtocolVersion::default(),
         ciphersuite,
     );
-    *group.message_secrets_mut().secret_tree_mut() = group_secret_tree;
+    *group.message_secrets_test_mut().secret_tree_mut() = group_secret_tree;
 
     let mut leaves = Vec::new();
     for leaf in 0..n_leaves {
@@ -554,26 +554,33 @@ pub fn run_test_vector(
                     .expect("Error parsing MlsCiphertext");
             let mut group =
                 receiver_group(ciphersuite, backend, mls_ciphertext_application.group_id());
-            *group.message_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
-                hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
-                ProtocolVersion::default(),
-                ciphersuite,
-            );
+            *group.message_secrets_test_mut().sender_data_secret_mut() =
+                SenderDataSecret::from_slice(
+                    hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
+                    ProtocolVersion::default(),
+                    ciphersuite,
+                );
 
             // Note that we can't actually get an MlsPlaintext because we don't
             // have enough information. We encode the VerifiableMlsPlaintext
             // and compare it to the plaintext in the test vector instead.
 
             // Swap secret tree
-            let temp_secret_tree = group.message_secrets_mut().replace_secret_tree(secret_tree);
+            let temp_secret_tree = group
+                .message_secrets_test_mut()
+                .replace_secret_tree(secret_tree);
 
             // Decrypt and check application message
+            let sender_data = mls_ciphertext_application
+                .sender_data(group.message_secrets_test_mut(), backend, ciphersuite)
+                .expect("Unable to get sender data");
             let mls_plaintext_application = mls_ciphertext_application
                 .to_plaintext(
                     ciphersuite,
                     backend,
-                    group.message_secrets_mut(),
+                    group.message_secrets_test_mut(),
                     &SenderRatchetConfiguration::default(),
+                    sender_data,
                 )
                 .expect("Error decrypting MlsCiphertext");
             if hex_to_bytes(&application.plaintext)
@@ -589,7 +596,7 @@ pub fn run_test_vector(
 
             // Swap secret tree back
             secret_tree = group
-                .message_secrets_mut()
+                .message_secrets_test_mut()
                 .replace_secret_tree(temp_secret_tree);
 
             // Check handshake keys
@@ -621,22 +628,29 @@ pub fn run_test_vector(
             let mls_ciphertext_handshake =
                 MlsCiphertext::tls_deserialize(&mut handshake_bytes.as_slice())
                     .expect("Error parsing MlsCiphertext");
-            *group.message_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
-                hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
-                ProtocolVersion::default(),
-                ciphersuite,
-            );
+            *group.message_secrets_test_mut().sender_data_secret_mut() =
+                SenderDataSecret::from_slice(
+                    hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
+                    ProtocolVersion::default(),
+                    ciphersuite,
+                );
 
             // Swap secret tree
-            let temp_secret_tree = group.message_secrets_mut().replace_secret_tree(secret_tree);
+            let temp_secret_tree = group
+                .message_secrets_test_mut()
+                .replace_secret_tree(secret_tree);
 
             // Decrypt and check message
+            let sender_data = mls_ciphertext_handshake
+                .sender_data(group.message_secrets_test_mut(), backend, ciphersuite)
+                .expect("Unable to get sender data");
             let mls_plaintext_handshake = mls_ciphertext_handshake
                 .to_plaintext(
                     ciphersuite,
                     backend,
-                    group.message_secrets_mut(),
+                    group.message_secrets_test_mut(),
                     &SenderRatchetConfiguration::default(),
+                    sender_data,
                 )
                 .expect("Error decrypting MlsCiphertext");
             if hex_to_bytes(&handshake.plaintext)
@@ -652,7 +666,7 @@ pub fn run_test_vector(
 
             // Swap secret tree back
             secret_tree = group
-                .message_secrets_mut()
+                .message_secrets_test_mut()
                 .replace_secret_tree(temp_secret_tree);
 
             // Check handshake keys
@@ -680,22 +694,29 @@ pub fn run_test_vector(
                     .expect("Error parsing MLSCiphertext");
             let mut group =
                 receiver_group(ciphersuite, backend, mls_ciphertext_handshake.group_id());
-            *group.message_secrets_mut().sender_data_secret_mut() = SenderDataSecret::from_slice(
-                &hex_to_bytes(&test_vector.sender_data_secret),
-                ProtocolVersion::default(),
-                ciphersuite,
-            );
+            *group.message_secrets_test_mut().sender_data_secret_mut() =
+                SenderDataSecret::from_slice(
+                    &hex_to_bytes(&test_vector.sender_data_secret),
+                    ProtocolVersion::default(),
+                    ciphersuite,
+                );
 
             // Swap secret tree
-            let temp_secret_tree = group.message_secrets_mut().replace_secret_tree(secret_tree);
+            let temp_secret_tree = group
+                .message_secrets_test_mut()
+                .replace_secret_tree(secret_tree);
 
             // Decrypt and check message
+            let sender_data = mls_ciphertext_handshake
+                .sender_data(group.message_secrets_test_mut(), backend, ciphersuite)
+                .expect("Unable to get sender data");
             let mls_plaintext_handshake = mls_ciphertext_handshake
                 .to_plaintext(
                     ciphersuite,
                     backend,
-                    group.message_secrets_mut(),
+                    group.message_secrets_test_mut(),
                     &SenderRatchetConfiguration::default(),
+                    sender_data,
                 )
                 .expect("Error decrypting MLSCiphertext");
             if hex_to_bytes(&handshake.plaintext)
@@ -708,7 +729,7 @@ pub fn run_test_vector(
 
             // Swap secret tree back
             secret_tree = group
-                .message_secrets_mut()
+                .message_secrets_test_mut()
                 .replace_secret_tree(temp_secret_tree);
         }
         log::trace!("Finished test vector for leaf {:?}", leaf_index);

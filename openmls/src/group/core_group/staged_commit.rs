@@ -296,7 +296,10 @@ impl CoreGroup {
 
             // Replace the previous message secrets with the new ones and return the previous message secrets
             let mut message_secrets = state.message_secrets;
-            mem::swap(&mut message_secrets, &mut self.message_secrets);
+            mem::swap(
+                &mut message_secrets,
+                self.message_secrets_store.message_secrets_mut(),
+            );
 
             self.interim_transcript_hash = state.interim_transcript_hash;
 

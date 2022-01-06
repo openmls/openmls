@@ -42,7 +42,7 @@ use crate::{
     messages::{proposals::*, *},
     schedule::psk::*,
     schedule::*,
-    tree::sender_ratchet::*,
+    tree::{secret_tree::SecretTreeError, sender_ratchet::*},
     treesync::{node::Node, *},
 };
 
@@ -62,7 +62,7 @@ use std::io::{Error, Read, Write};
 
 use tls_codec::Serialize as TlsSerializeTrait;
 
-use self::staged_commit::StagedCommit;
+use self::{past_secrets::MessageSecretsStore, staged_commit::StagedCommit};
 
 use super::{
     errors::{CoreGroupError, ExporterError, FramingValidationError, ProposalValidationError},
@@ -81,7 +81,6 @@ pub(crate) struct CoreGroup {
     ciphersuite: &'static Ciphersuite,
     group_context: GroupContext,
     group_epoch_secrets: GroupEpochSecrets,
-    message_secrets: MessageSecrets,
     tree: TreeSync,
     interim_transcript_hash: Vec<u8>,
     // Group config.
@@ -90,17 +89,24 @@ pub(crate) struct CoreGroup {
     use_ratchet_tree_extension: bool,
     // The MLS protocol version used in this group.
     mls_version: ProtocolVersion,
+    /// A [`MessageSecretsStore`] that stores message secrets.
+    /// By default this store has the length of 1, i.e. only the [`MessageSecrets`]
+    /// of the current epoch is kept.
+    /// If more secrets from past epochs should be kept in order to be
+    /// able to decrypt application messages from previous epochs, the size of
+    /// the store must be increased through [`max_past_epochs()`].
+    message_secrets_store: MessageSecretsStore,
 }
 
 implement_persistence!(
     CoreGroup,
     group_context,
     group_epoch_secrets,
-    message_secrets,
     tree,
     interim_transcript_hash,
     use_ratchet_tree_extension,
-    mls_version
+    mls_version,
+    message_secrets_store
 );
 
 /// Builder for [`CoreGroup`].
@@ -111,6 +117,7 @@ pub(crate) struct CoreGroupBuilder {
     psk_ids: Vec<PreSharedKeyId>,
     version: Option<ProtocolVersion>,
     required_capabilities: Option<RequiredCapabilitiesExtension>,
+    max_past_epochs: usize,
 }
 
 impl CoreGroupBuilder {
@@ -123,6 +130,7 @@ impl CoreGroupBuilder {
             psk_ids: vec![],
             version: None,
             required_capabilities: None,
+            max_past_epochs: 0,
         }
     }
     /// Set the [`CoreGroupConfig`] of the [`CoreGroup`].
@@ -142,6 +150,11 @@ impl CoreGroupBuilder {
         required_capabilities: RequiredCapabilitiesExtension,
     ) -> Self {
         self.required_capabilities = Some(required_capabilities);
+        self
+    }
+    /// Set the number of past epochs the group should keep secrets.
+    pub fn with_max_past_epoch_secrets(mut self, max_past_epochs: usize) -> Self {
+        self.max_past_epochs = max_past_epochs;
         self
     }
 
@@ -194,6 +207,8 @@ impl CoreGroupBuilder {
 
         let (group_epoch_secrets, message_secrets) =
             epoch_secrets.split_secrets(serialized_group_context, 1u32);
+        let message_secrets_store =
+            MessageSecretsStore::new_with_secret(self.max_past_epochs, message_secrets);
 
         let interim_transcript_hash = vec![];
 
@@ -201,11 +216,11 @@ impl CoreGroupBuilder {
             ciphersuite,
             group_context,
             group_epoch_secrets,
-            message_secrets,
             tree,
             interim_transcript_hash,
             use_ratchet_tree_extension: config.add_ratchet_tree_extension,
             mls_version: version,
+            message_secrets_store,
         })
     }
 }
@@ -424,7 +439,7 @@ impl CoreGroup {
                 epoch: self.context().epoch(),
                 sender: self.sender_index(),
             },
-            self.message_secrets_mut(),
+            self.message_secrets_mut(mls_plaintext.epoch())?,
             padding_size,
         )
         .map_err(CoreGroupError::MlsCiphertextError)
@@ -438,11 +453,15 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
     ) -> Result<VerifiableMlsPlaintext, CoreGroupError> {
+        let ciphersuite = self.ciphersuite();
+        let message_secrets = self.message_secrets_test_mut();
+        let sender_data = mls_ciphertext.sender_data(message_secrets, backend, ciphersuite)?;
         Ok(mls_ciphertext.to_plaintext(
-            self.ciphersuite(),
+            ciphersuite,
             backend,
-            &mut self.message_secrets,
+            message_secrets,
             sender_ratchet_configuration,
+            sender_data,
         )?)
     }
 
@@ -603,12 +622,37 @@ impl CoreGroup {
 
     /// Get a reference to the message secrets from a group
     pub(crate) fn message_secrets(&self) -> &MessageSecrets {
-        &self.message_secrets
+        self.message_secrets_store.message_secrets()
     }
 
-    /// Get a mutable reference to the message secrets from a group
-    pub(crate) fn message_secrets_mut(&mut self) -> &mut MessageSecrets {
-        &mut self.message_secrets
+    /// Sets the size of the [`MessageSecretsStore`], i.e. the number of past
+    /// epochs to keep.
+    /// This allows application messages from previous epochs to be decrypted.
+    pub(crate) fn set_max_past_epochs(&mut self, max_past_epochs: usize) {
+        self.message_secrets_store.resize(max_past_epochs);
+    }
+
+    /// Get the message secrets. Either from the secrets store or from the group.
+    pub(super) fn message_secrets_mut<'secret, 'group: 'secret>(
+        &'group mut self,
+        epoch: GroupEpoch,
+    ) -> Result<&'secret mut MessageSecrets, CoreGroupError> {
+        if epoch < self.context().epoch() {
+            self.message_secrets_store
+                .secrets_for_epoch_mut(epoch)
+                .ok_or({
+                    CoreGroupError::MlsCiphertextError(MlsCiphertextError::SecretTreeError(
+                        SecretTreeError::TooDistantInThePast,
+                    ))
+                })
+        } else {
+            Ok(self.message_secrets_store.message_secrets_mut())
+        }
+    }
+
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn message_secrets_test_mut(&mut self) -> &mut MessageSecrets {
+        self.message_secrets_store.message_secrets_mut()
     }
 
     /// Current interim transcript hash of the group

@@ -75,11 +75,13 @@ impl DecryptedMessage {
     ) -> Result<Self, ValidationError> {
         // This will be refactored with #265.
         if let MlsMessage::Ciphertext(ciphertext) = inbound_message.mls_message {
+            let sender_data = ciphertext.sender_data(message_secrets, backend, ciphersuite)?;
             let plaintext = ciphertext.to_plaintext(
                 ciphersuite,
                 backend,
                 message_secrets,
                 sender_ratchet_configuration,
+                sender_data,
             )?;
             Self::from_plaintext(plaintext)
         } else {
