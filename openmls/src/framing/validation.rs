@@ -45,9 +45,9 @@ use super::*;
 /// Intermediate message that can be constructed either from a plaintext message or from ciphertext message.
 /// If it it constructed from a ciphertext message, the ciphertext message is decrypted first.
 /// This function implements the following checks:
-///  - `ValSem5`
-///  - `ValSem7`
-///  - `ValSem9`
+///  - ValSem005
+///  - ValSem007
+///  - ValSem009
 pub struct DecryptedMessage {
     plaintext: VerifiableMlsPlaintext,
 }
@@ -92,19 +92,19 @@ impl DecryptedMessage {
     // - Membership tag must be present for member messages, if the original incoming message was not an MlsCiphertext
     // - Ensures application messages were originally MlsCiphertext messages
     fn from_plaintext(plaintext: VerifiableMlsPlaintext) -> Result<Self, ValidationError> {
-        // `ValSem7`
+        // ValSem007
         if plaintext.sender().is_member()
             && plaintext.wire_format() != WireFormat::MlsCiphertext
             && plaintext.membership_tag().is_none()
         {
             return Err(ValidationError::MissingMembershipTag);
         }
-        // `ValSem9`
+        // ValSem009
         if plaintext.content_type() == ContentType::Commit && plaintext.confirmation_tag().is_none()
         {
             return Err(ValidationError::MissingConfirmationTag);
         }
-        // `ValSem5`
+        // ValSem005
         if plaintext.content_type() == ContentType::Application {
             if plaintext.wire_format() != WireFormat::MlsCiphertext {
                 return Err(ValidationError::UnencryptedApplicationMessage);
@@ -198,7 +198,7 @@ pub enum UnverifiedContextMessage {
 impl UnverifiedContextMessage {
     /// Constructs an [UnverifiedContextMessage] from an [UnverifiedMessage] and adds the serialized group context.
     /// This function implements the following checks:
-    ///  - `ValSem8`
+    ///  - ValSem008
     pub(crate) fn from_unverified_message(
         unverified_message: UnverifiedMessage,
         message_secrets: &MessageSecrets,
@@ -213,7 +213,7 @@ impl UnverifiedContextMessage {
             // Verify the membership tag. This needs to be done explicitly for MlsPlaintext messages,
             // it is implicit for MlsCiphertext messages (because the encryption can only be known by members).
             if plaintext.wire_format() != WireFormat::MlsCiphertext {
-                // `ValSem8`
+                // ValSem008
                 plaintext.verify_membership(backend, message_secrets.membership_key())?;
             }
         }
@@ -247,7 +247,7 @@ impl UnverifiedMemberMessage {
     /// Verifies the signature on an [UnverifiedMemberMessage] and returns a [VerifiedMemberMessage] if the
     /// verification is successful.
     /// This function implements the following checks:
-    ///  - `ValSem10`
+    ///  - ValSem010
     pub(crate) fn into_verified(
         self,
         backend: &impl OpenMlsCryptoProvider,
@@ -256,11 +256,11 @@ impl UnverifiedMemberMessage {
         // If a signature key is provided it will be used,
         // otherwise we take the key from the credential
         let verified_member_message = if let Some(signature_public_key) = signature_key {
-            // `ValSem10`
+            // ValSem010
             self.plaintext
                 .verify_with_key(backend, signature_public_key)
         } else {
-            // `ValSem10`
+            // ValSem010
             self.plaintext.verify(backend, &self.credential)
         }
         .map(|plaintext| VerifiedMemberMessage { plaintext })?;
@@ -278,13 +278,13 @@ impl UnverifiedExternalMessage {
     /// Verifies the signature on an [UnverifiedExternalMessage] and returns a [VerifiedExternalMessage] if the
     /// verification is successful.
     /// This function implements the following checks:
-    ///  - `ValSem10`
+    ///  - ValSem010
     pub(crate) fn into_verified(
         self,
         backend: &impl OpenMlsCryptoProvider,
         signature_key: &SignaturePublicKey,
     ) -> Result<VerifiedExternalMessage, ValidationError> {
-        // `ValSem10`
+        // ValSem010
         match self.plaintext.verify_with_key(backend, signature_key) {
             Ok(plaintext) => Ok(VerifiedExternalMessage { plaintext }),
             Err(e) => Err(e.into()),
