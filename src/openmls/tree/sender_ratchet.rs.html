@@ -213,9 +213,9 @@
 <span class="doccomment">//! error, will still return a `Result` since they may throw a `LibraryError`.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite</span>::{<span class="ident">AeadNonce</span>, <span class="kw-2">*</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree</span>::{<span class="ident">index::LeafIndex</span>, <span class="ident">secret_tree</span>::<span class="kw-2">*</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree</span>::{<span class="ident">index::SecretTreeLeafIndex</span>, <span class="ident">secret_tree</span>::<span class="kw-2">*</span>};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::index::NodeIndex</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::index::SecretTreeNodeIndex</span>;
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// Stores the configuration parameters for sender ratchets.</span>
@@ -266,14 +266,14 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>), <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SenderRatchet</span> {
-    <span class="ident">index</span>: <span class="ident">LeafIndex</span>,
+    <span class="ident">index</span>: <span class="ident">SecretTreeLeafIndex</span>,
     <span class="ident">generation</span>: <span class="ident">u32</span>,
     <span class="ident">past_secrets</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Secret</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">SenderRatchet</span> {
     <span class="doccomment">/// Creates e new SenderRatchet</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">index</span>: <span class="ident">LeafIndex</span>, <span class="ident">secret</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>) -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">index</span>: <span class="ident">SecretTreeLeafIndex</span>, <span class="ident">secret</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">index</span>,
             <span class="ident">generation</span>: <span class="number">0</span>,
@@ -373,7 +373,7 @@
         <span class="ident">derive_tree_secret</span>(
             <span class="ident">secret</span>,
             <span class="string">&quot;secret&quot;</span>,
-            <span class="ident">NodeIndex::from</span>(<span class="self">self</span>.<span class="ident">index</span>).<span class="ident">as_u32</span>(),
+            <span class="ident">SecretTreeNodeIndex::from</span>(<span class="self">self</span>.<span class="ident">index</span>).<span class="ident">as_u32</span>(),
             <span class="self">self</span>.<span class="ident">generation</span>,
             <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>(),
             <span class="ident">backend</span>,
@@ -387,7 +387,7 @@
         <span class="ident">secret</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>,
         <span class="ident">generation</span>: <span class="ident">u32</span>,
     ) -&gt; <span class="ident">RatchetSecrets</span> {
-        <span class="kw">let</span> <span class="ident">tree_index</span> <span class="op">=</span> <span class="ident">NodeIndex::from</span>(<span class="self">self</span>.<span class="ident">index</span>).<span class="ident">as_u32</span>();
+        <span class="kw">let</span> <span class="ident">tree_index</span> <span class="op">=</span> <span class="ident">SecretTreeNodeIndex::from</span>(<span class="self">self</span>.<span class="ident">index</span>).<span class="ident">as_u32</span>();
         <span class="kw">let</span> <span class="ident">nonce</span> <span class="op">=</span> <span class="ident">derive_tree_secret</span>(
             <span class="ident">secret</span>,
             <span class="string">&quot;nonce&quot;</span>,
