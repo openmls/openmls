@@ -186,6 +186,8 @@
 <span id="186">186</span>
 <span id="187">187</span>
 <span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">core_group</span>::{<span class="ident">proposals::QueuedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
 
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">proposals::ProposalStore</span>, <span class="kw-2">*</span>};
@@ -197,13 +199,13 @@
     <span class="doccomment">/// Returns an [UnverifiedMessage] that can be inspected and later processed in</span>
     <span class="doccomment">/// [Self::process_unverified_message()].</span>
     <span class="doccomment">/// Checks the following semantic validation:</span>
-    <span class="doccomment">///  - ValSem2</span>
-    <span class="doccomment">///  - ValSem3</span>
-    <span class="doccomment">///  - ValSem4</span>
-    <span class="doccomment">///  - ValSem5</span>
-    <span class="doccomment">///  - ValSem6</span>
-    <span class="doccomment">///  - ValSem7</span>
-    <span class="doccomment">///  - ValSem9</span>
+    <span class="doccomment">///  - ValSem002</span>
+    <span class="doccomment">///  - ValSem003</span>
+    <span class="doccomment">///  - ValSem004</span>
+    <span class="doccomment">///  - ValSem005</span>
+    <span class="doccomment">///  - ValSem006</span>
+    <span class="doccomment">///  - ValSem007</span>
+    <span class="doccomment">///  - ValSem009</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">parse_message</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">message</span>: <span class="ident">MlsMessageIn</span>,
@@ -211,12 +213,12 @@
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnverifiedMessage</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="comment">// Checks the following semantic validation:</span>
-        <span class="comment">//  - ValSem2</span>
-        <span class="comment">//  - ValSem3</span>
+        <span class="comment">//  - ValSem002</span>
+        <span class="comment">//  - ValSem003</span>
         <span class="self">self</span>.<span class="ident">validate_framing</span>(<span class="kw-2">&amp;</span><span class="ident">message</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Checks the following semantic validation:</span>
-        <span class="comment">//  - ValSem6</span>
+        <span class="comment">//  - ValSem006</span>
         <span class="kw">let</span> <span class="ident">decrypted_message</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">message</span>.<span class="ident">wire_format</span>() {
             <span class="ident">WireFormat::MlsPlaintext</span> =&gt; <span class="ident">DecryptedMessage::from_inbound_plaintext</span>(<span class="ident">message</span>)<span class="question-mark">?</span>,
             <span class="ident">WireFormat::MlsCiphertext</span> =&gt; {
@@ -236,10 +238,10 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">credential</span> <span class="op">=</span> <span class="prelude-val">None</span>;
 
         <span class="comment">// Checks the following semantic validation:</span>
-        <span class="comment">//  - ValSem4</span>
-        <span class="comment">//  - ValSem5</span>
-        <span class="comment">//  - ValSem7</span>
-        <span class="comment">//  - ValSem9</span>
+        <span class="comment">//  - ValSem004</span>
+        <span class="comment">//  - ValSem005</span>
+        <span class="comment">//  - ValSem007</span>
+        <span class="comment">//  - ValSem009</span>
         <span class="self">self</span>.<span class="ident">validate_plaintext</span>(<span class="ident">decrypted_message</span>.<span class="ident">plaintext</span>())<span class="question-mark">?</span>;
 
         <span class="comment">// Extract the credential if the sender is a member</span>
@@ -262,8 +264,8 @@
     <span class="doccomment">/// This processing function does most of the semantic verifications.</span>
     <span class="doccomment">/// It returns a [ProcessedMessage] enum.</span>
     <span class="doccomment">/// Checks the following semantic validation:</span>
-    <span class="doccomment">///  - ValSem8</span>
-    <span class="doccomment">///  - ValSem10</span>
+    <span class="doccomment">///  - ValSem008</span>
+    <span class="doccomment">///  - ValSem010</span>
     <span class="doccomment">///  - ValSem100</span>
     <span class="doccomment">///  - ValSem101</span>
     <span class="doccomment">///  - ValSem102</span>
@@ -272,6 +274,7 @@
     <span class="doccomment">///  - ValSem105</span>
     <span class="doccomment">///  - ValSem106</span>
     <span class="doccomment">///  - ValSem107</span>
+    <span class="doccomment">///  - ValSem108</span>
     <span class="doccomment">///  - ValSem109</span>
     <span class="doccomment">///  - ValSem110</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">process_unverified_message</span>(
@@ -287,7 +290,7 @@
         <span class="kw">let</span> <span class="ident">message_secrets</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">message_secrets_mut</span>(<span class="ident">unverified_message</span>.<span class="ident">epoch</span>())<span class="question-mark">?</span>;
 
         <span class="comment">// Checks the following semantic validation:</span>
-        <span class="comment">//  - ValSem8</span>
+        <span class="comment">//  - ValSem008</span>
         <span class="kw">let</span> <span class="ident">context_plaintext</span> <span class="op">=</span> <span class="ident">UnverifiedContextMessage::from_unverified_message</span>(
             <span class="ident">unverified_message</span>,
             <span class="ident">message_secrets</span>,
@@ -299,7 +302,7 @@
         <span class="kw">match</span> <span class="ident">context_plaintext</span> {
             <span class="ident">UnverifiedContextMessage::Member</span>(<span class="ident">member_message</span>) =&gt; {
                 <span class="comment">// Checks the following semantic validation:</span>
-                <span class="comment">//  - ValSem10</span>
+                <span class="comment">//  - ValSem010</span>
                 <span class="kw">let</span> <span class="ident">verified_member_message</span> <span class="op">=</span>
                     <span class="ident">member_message</span>.<span class="ident">into_verified</span>(<span class="ident">backend</span>, <span class="ident">signature_key</span>)<span class="question-mark">?</span>;
 
@@ -328,6 +331,7 @@
                         <span class="comment">//  - ValSem105</span>
                         <span class="comment">//  - ValSem106</span>
                         <span class="comment">//  - ValSem107</span>
+                        <span class="comment">//  - ValSem108</span>
                         <span class="comment">//  - ValSem109</span>
                         <span class="comment">//  - ValSem110</span>
                         <span class="kw">let</span> <span class="ident">staged_commit</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">stage_commit</span>(

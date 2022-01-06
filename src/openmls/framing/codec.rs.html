@@ -325,7 +325,7 @@
         <span class="kw">let</span> <span class="ident">confirmation_tag</span> <span class="op">=</span> <span class="prelude-ty">Option</span>::<span class="op">&lt;</span><span class="ident">ConfirmationTag</span><span class="op">&gt;</span><span class="ident">::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">membership_tag</span> <span class="op">=</span> <span class="prelude-ty">Option</span>::<span class="op">&lt;</span><span class="ident">MembershipTag</span><span class="op">&gt;</span><span class="ident">::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
 
-        <span class="comment">// ValSem1: Check the wire format</span>
+        <span class="comment">// ValSem001: Check the wire format</span>
         <span class="kw">if</span> <span class="ident">wire_format</span> <span class="op">!</span><span class="op">=</span> <span class="ident">WireFormat::MlsPlaintext</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::DecodingError</span>(
                 <span class="string">&quot;Wrong wire format.&quot;</span>.<span class="ident">to_string</span>(),
@@ -517,7 +517,7 @@
         <span class="kw">let</span> <span class="ident">encrypted_sender_data</span> <span class="op">=</span> <span class="ident">TlsByteVecU8::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="ident">TlsByteVecU32::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
 
-        <span class="comment">// ValSem1: Check the wire format</span>
+        <span class="comment">// ValSem001: Check the wire format</span>
         <span class="kw">if</span> <span class="ident">wire_format</span> <span class="op">!</span><span class="op">=</span> <span class="ident">WireFormat::MlsCiphertext</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::DecodingError</span>(
                 <span class="string">&quot;Wrong wire format.&quot;</span>.<span class="ident">to_string</span>(),
