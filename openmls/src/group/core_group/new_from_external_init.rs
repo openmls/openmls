@@ -13,7 +13,7 @@ use super::{
 };
 use crate::group::core_group::*;
 
-pub type ExternalCommitResult = (CoreGroup, CreateCommitResult);
+pub(crate) type ExternalCommitResult = (CoreGroup, CreateCommitResult);
 
 impl CoreGroup {
     /// Join a group without the help of an internal member. This function
@@ -24,7 +24,7 @@ impl CoreGroup {
     ///
     /// Returns the new `CoreGroup` object, as well as the `MlsPlaintext`
     /// containing the commit.
-    pub fn join_by_external_commit(
+    pub(crate) fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
         params: CreateCommitParams,
         tree_option: Option<&[Option<Node>]>,
@@ -91,6 +91,7 @@ impl CoreGroup {
             group_context.tls_serialize_detached()?,
             treesync.leaf_count()?,
         );
+        let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);
 
         // Prepare interim transcript hash
         let group = CoreGroup {
@@ -101,7 +102,7 @@ impl CoreGroup {
             use_ratchet_tree_extension: enable_ratchet_tree_extension,
             mls_version: pgs.version,
             group_epoch_secrets,
-            message_secrets,
+            message_secrets_store,
         };
 
         let external_init_proposal = Proposal::ExternalInit(ExternalInitProposal::from(kem_output));

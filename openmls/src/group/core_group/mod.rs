@@ -42,7 +42,7 @@ use crate::{
     messages::{proposals::*, *},
     schedule::psk::*,
     schedule::*,
-    tree::sender_ratchet::*,
+    tree::{secret_tree::SecretTreeError, sender_ratchet::*},
     treesync::{node::Node, *},
 };
 
@@ -55,34 +55,32 @@ use serde::{
     ser::{SerializeStruct, Serializer},
     Deserialize, Deserializer, Serialize,
 };
-#[cfg(any(feature = "test-utils", test))]
-use std::collections::BTreeMap;
+#[cfg(test)]
 use std::convert::TryFrom;
-#[cfg(any(feature = "test-utils", test))]
+#[cfg(test)]
 use std::io::{Error, Read, Write};
 
 use tls_codec::Serialize as TlsSerializeTrait;
 
-use self::staged_commit::StagedCommit;
+use self::{past_secrets::MessageSecretsStore, staged_commit::StagedCommit};
 
 use super::{
     errors::{CoreGroupError, ExporterError, FramingValidationError, ProposalValidationError},
     group_context::*,
 };
 
-pub struct CreateCommitResult {
-    pub commit: MlsPlaintext,
-    pub welcome_option: Option<Welcome>,
-    pub staged_commit: StagedCommit,
+pub(crate) struct CreateCommitResult {
+    pub(crate) commit: MlsPlaintext,
+    pub(crate) welcome_option: Option<Welcome>,
+    pub(crate) staged_commit: StagedCommit,
 }
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct CoreGroup {
+pub(crate) struct CoreGroup {
     ciphersuite: &'static Ciphersuite,
     group_context: GroupContext,
     group_epoch_secrets: GroupEpochSecrets,
-    message_secrets: MessageSecrets,
     tree: TreeSync,
     interim_transcript_hash: Vec<u8>,
     // Group config.
@@ -91,32 +89,40 @@ pub struct CoreGroup {
     use_ratchet_tree_extension: bool,
     // The MLS protocol version used in this group.
     mls_version: ProtocolVersion,
+    /// A [`MessageSecretsStore`] that stores message secrets.
+    /// By default this store has the length of 1, i.e. only the [`MessageSecrets`]
+    /// of the current epoch is kept.
+    /// If more secrets from past epochs should be kept in order to be
+    /// able to decrypt application messages from previous epochs, the size of
+    /// the store must be increased through [`max_past_epochs()`].
+    message_secrets_store: MessageSecretsStore,
 }
 
 implement_persistence!(
     CoreGroup,
     group_context,
     group_epoch_secrets,
-    message_secrets,
     tree,
     interim_transcript_hash,
     use_ratchet_tree_extension,
-    mls_version
+    mls_version,
+    message_secrets_store
 );
 
 /// Builder for [`CoreGroup`].
-pub struct CoreGroupBuilder {
+pub(crate) struct CoreGroupBuilder {
     key_package_bundle: KeyPackageBundle,
     group_id: GroupId,
     config: Option<CoreGroupConfig>,
     psk_ids: Vec<PreSharedKeyId>,
     version: Option<ProtocolVersion>,
     required_capabilities: Option<RequiredCapabilitiesExtension>,
+    max_past_epochs: usize,
 }
 
 impl CoreGroupBuilder {
     /// Create a new [`CoreGroupBuilder`].
-    pub fn new(group_id: GroupId, key_package_bundle: KeyPackageBundle) -> Self {
+    pub(crate) fn new(group_id: GroupId, key_package_bundle: KeyPackageBundle) -> Self {
         Self {
             key_package_bundle,
             group_id,
@@ -124,31 +130,31 @@ impl CoreGroupBuilder {
             psk_ids: vec![],
             version: None,
             required_capabilities: None,
+            max_past_epochs: 0,
         }
     }
     /// Set the [`CoreGroupConfig`] of the [`CoreGroup`].
-    pub fn with_config(mut self, config: CoreGroupConfig) -> Self {
+    pub(crate) fn with_config(mut self, config: CoreGroupConfig) -> Self {
         self.config = Some(config);
         self
     }
     /// Set the [`Vec<PreSharedKeyId>`] of the [`CoreGroup`].
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn with_psk(mut self, psk_ids: Vec<PreSharedKeyId>) -> Self {
+    #[cfg(test)]
+    pub(crate) fn with_psk(mut self, psk_ids: Vec<PreSharedKeyId>) -> Self {
         self.psk_ids = psk_ids;
         self
     }
-    /// Set the [`ProtocolVersion`] of the [`CoreGroup`].
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn with_version(mut self, version: ProtocolVersion) -> Self {
-        self.version = Some(version);
-        self
-    }
     /// Set the [`RequiredCapabilitiesExtension`] of the [`CoreGroup`].
-    pub fn with_required_capabilities(
+    pub(crate) fn with_required_capabilities(
         mut self,
         required_capabilities: RequiredCapabilitiesExtension,
     ) -> Self {
         self.required_capabilities = Some(required_capabilities);
+        self
+    }
+    /// Set the number of past epochs the group should keep secrets.
+    pub fn with_max_past_epoch_secrets(mut self, max_past_epochs: usize) -> Self {
+        self.max_past_epochs = max_past_epochs;
         self
     }
 
@@ -158,7 +164,10 @@ impl CoreGroupBuilder {
     ///
     /// This function performs cryptographic operations and there requires an
     /// [`OpenMlsCryptoProvider`].
-    pub fn build(self, backend: &impl OpenMlsCryptoProvider) -> Result<CoreGroup, CoreGroupError> {
+    pub(crate) fn build(
+        self,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<CoreGroup, CoreGroupError> {
         let ciphersuite = self.key_package_bundle.key_package().ciphersuite();
         let config = self.config.unwrap_or_default();
         let required_capabilities = self.required_capabilities.unwrap_or_default();
@@ -198,6 +207,8 @@ impl CoreGroupBuilder {
 
         let (group_epoch_secrets, message_secrets) =
             epoch_secrets.split_secrets(serialized_group_context, 1u32);
+        let message_secrets_store =
+            MessageSecretsStore::new_with_secret(self.max_past_epochs, message_secrets);
 
         let interim_transcript_hash = vec![];
 
@@ -205,11 +216,11 @@ impl CoreGroupBuilder {
             ciphersuite,
             group_context,
             group_epoch_secrets,
-            message_secrets,
             tree,
             interim_transcript_hash,
             use_ratchet_tree_extension: config.add_ratchet_tree_extension,
             mls_version: version,
+            message_secrets_store,
         })
     }
 }
@@ -217,12 +228,15 @@ impl CoreGroupBuilder {
 /// Public [`CoreGroup`] functions.
 impl CoreGroup {
     /// Get a builder for [`CoreGroup`].
-    pub fn builder(group_id: GroupId, key_package_bundle: KeyPackageBundle) -> CoreGroupBuilder {
+    pub(crate) fn builder(
+        group_id: GroupId,
+        key_package_bundle: KeyPackageBundle,
+    ) -> CoreGroupBuilder {
         CoreGroupBuilder::new(group_id, key_package_bundle)
     }
 
     // Join a group from a welcome message
-    pub fn new_from_welcome(
+    pub(crate) fn new_from_welcome(
         welcome: Welcome,
         nodes_option: Option<Vec<Option<Node>>>,
         kpb: KeyPackageBundle,
@@ -243,7 +257,7 @@ impl CoreGroup {
     // struct {
     //     KeyPackage key_package;
     // } Add;
-    pub fn create_add_proposal(
+    pub(crate) fn create_add_proposal(
         &self,
         framing_parameters: FramingParameters,
         credential_bundle: &CredentialBundle,
@@ -271,7 +285,7 @@ impl CoreGroup {
     // struct {
     //     KeyPackage key_package;
     // } Update;
-    pub fn create_update_proposal(
+    pub(crate) fn create_update_proposal(
         &self,
         framing_parameters: FramingParameters,
         credential_bundle: &CredentialBundle,
@@ -296,7 +310,7 @@ impl CoreGroup {
     // struct {
     //     uint32 removed;
     // } Remove;
-    pub fn create_remove_proposal(
+    pub(crate) fn create_remove_proposal(
         &self,
         framing_parameters: FramingParameters,
         credential_bundle: &CredentialBundle,
@@ -323,8 +337,9 @@ impl CoreGroup {
     // struct {
     //     PreSharedKeyID psk;
     // } PreSharedKey;
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn create_presharedkey_proposal(
+    // TODO: #141
+    #[cfg(test)]
+    pub(crate) fn create_presharedkey_proposal(
         &self,
         framing_parameters: FramingParameters,
         credential_bundle: &CredentialBundle,
@@ -346,8 +361,8 @@ impl CoreGroup {
     }
 
     /// Create a `GroupContextExtensions` proposal.
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn create_group_context_ext_proposal(
+    #[cfg(test)]
+    pub(crate) fn create_group_context_ext_proposal(
         &self,
         framing_parameters: FramingParameters,
         credential_bundle: &CredentialBundle,
@@ -387,7 +402,7 @@ impl CoreGroup {
     }
 
     // Create application message
-    pub fn create_application_message(
+    pub(crate) fn create_application_message(
         &mut self,
         aad: &[u8],
         msg: &[u8],
@@ -408,7 +423,7 @@ impl CoreGroup {
     }
 
     // Encrypt an MlsPlaintext into an MlsCiphertext
-    pub fn encrypt(
+    pub(crate) fn encrypt(
         &mut self,
         mls_plaintext: MlsPlaintext,
         padding_size: usize,
@@ -424,7 +439,7 @@ impl CoreGroup {
                 epoch: self.context().epoch(),
                 sender: self.sender_index(),
             },
-            self.message_secrets_mut(),
+            self.message_secrets_mut(mls_plaintext.epoch())?,
             padding_size,
         )
         .map_err(CoreGroupError::MlsCiphertextError)
@@ -432,24 +447,28 @@ impl CoreGroup {
 
     /// Decrypt an MlsCiphertext into an MlsPlaintext
     #[cfg(any(feature = "test-utils", test))]
-    pub fn decrypt(
+    pub(crate) fn decrypt(
         &mut self,
         mls_ciphertext: &MlsCiphertext,
         backend: &impl OpenMlsCryptoProvider,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
     ) -> Result<VerifiableMlsPlaintext, CoreGroupError> {
+        let ciphersuite = self.ciphersuite();
+        let message_secrets = self.message_secrets_test_mut();
+        let sender_data = mls_ciphertext.sender_data(message_secrets, backend, ciphersuite)?;
         Ok(mls_ciphertext.to_plaintext(
-            self.ciphersuite(),
+            ciphersuite,
             backend,
-            &mut self.message_secrets,
+            message_secrets,
             sender_ratchet_configuration,
+            sender_data,
         )?)
     }
 
     /// Set the context of the [`VerifiableMlsPlaintext`] (if it has not been
     /// set already), verify it and return the [`MlsPlaintext`].
     #[cfg(any(feature = "test-utils", test))]
-    pub fn verify(
+    pub(crate) fn verify(
         &self,
         mut verifiable: VerifiableMlsPlaintext,
         backend: &impl OpenMlsCryptoProvider,
@@ -478,8 +497,8 @@ impl CoreGroup {
 
     /// Set the context of the `UnverifiedMlsPlaintext` and verify its
     /// membership tag.
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn verify_membership_tag(
+    #[cfg(test)]
+    pub(crate) fn verify_membership_tag(
         &self,
         backend: &impl OpenMlsCryptoProvider,
         verifiable_mls_plaintext: &mut VerifiableMlsPlaintext,
@@ -490,7 +509,7 @@ impl CoreGroup {
     }
 
     /// Exporter
-    pub fn export_secret(
+    pub(crate) fn export_secret(
         &self,
         backend: &impl OpenMlsCryptoProvider,
         label: &str,
@@ -508,82 +527,72 @@ impl CoreGroup {
     }
 
     /// Returns the authentication secret
-    pub fn authentication_secret(&self) -> Vec<u8> {
+    pub(crate) fn authentication_secret(&self) -> Vec<u8> {
         self.group_epoch_secrets().authentication_secret().export()
     }
 
     /// Loads the state from persisted state
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn load<R: Read>(reader: R) -> Result<CoreGroup, Error> {
+    #[cfg(test)]
+    pub(crate) fn load<R: Read>(reader: R) -> Result<CoreGroup, Error> {
         serde_json::from_reader(reader).map_err(|e| e.into())
     }
 
     /// Persists the state
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn save<W: Write>(&self, writer: &mut W) -> Result<(), Error> {
+    #[cfg(test)]
+    pub(crate) fn save<W: Write>(&self, writer: &mut W) -> Result<(), Error> {
         let serialized_core_group = serde_json::to_string_pretty(self)?;
         writer.write_all(&serialized_core_group.into_bytes())
     }
 
     /// Returns the ratchet tree
-    pub fn treesync(&self) -> &TreeSync {
+    pub(crate) fn treesync(&self) -> &TreeSync {
         &self.tree
     }
 
     /// Get the ciphersuite implementation used in this group.
-    pub fn ciphersuite(&self) -> &'static Ciphersuite {
+    pub(crate) fn ciphersuite(&self) -> &'static Ciphersuite {
         self.ciphersuite
     }
 
     /// Get the MLS version used in this group.
-    pub fn version(&self) -> ProtocolVersion {
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn version(&self) -> ProtocolVersion {
         self.mls_version
     }
 
     /// Get the group context
-    pub fn context(&self) -> &GroupContext {
+    pub(crate) fn context(&self) -> &GroupContext {
         &self.group_context
     }
 
     /// Get the group ID
-    pub fn group_id(&self) -> &GroupId {
+    pub(crate) fn group_id(&self) -> &GroupId {
         self.group_context.group_id()
-    }
-
-    /// Get the members of the group, indexed by their leaves.
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn members(&self) -> Result<BTreeMap<LeafIndex, &Credential>, CoreGroupError> {
-        Ok(self
-            .tree
-            .full_leaves()?
-            .into_iter()
-            .map(|(index, kp)| (index, kp.credential()))
-            .collect())
     }
 
     /// Get the groups extensions.
     /// Right now this is limited to the ratchet tree extension which is built
     /// on the fly when calling this function.
     #[cfg(any(feature = "test-utils", test))]
-    pub fn other_extensions(&self) -> Vec<Extension> {
+    pub(crate) fn other_extensions(&self) -> Vec<Extension> {
         vec![Extension::RatchetTree(RatchetTreeExtension::new(
             self.treesync().export_nodes(),
         ))]
     }
 
     /// Get the group context extensions.
-    pub fn group_context_extensions(&self) -> &[Extension] {
+    pub(crate) fn group_context_extensions(&self) -> &[Extension] {
         self.group_context.extensions()
     }
 
     /// Get the required capabilities extension of this group.
-    pub fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {
+    pub(crate) fn required_capabilities(&self) -> Option<&RequiredCapabilitiesExtension> {
         self.group_context.required_capabilities()
     }
 
     /// Export the `PublicGroupState`
     #[cfg(any(feature = "test-utils", test))]
-    pub fn export_public_group_state(
+    pub(crate) fn export_public_group_state(
         &self,
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
@@ -594,8 +603,8 @@ impl CoreGroup {
 
     /// Returns `true` if the group uses the ratchet tree extension anf `false
     /// otherwise
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn use_ratchet_tree_extension(&self) -> bool {
+    #[cfg(test)]
+    pub(crate) fn use_ratchet_tree_extension(&self) -> bool {
         self.use_ratchet_tree_extension
     }
 }
@@ -613,12 +622,37 @@ impl CoreGroup {
 
     /// Get a reference to the message secrets from a group
     pub(crate) fn message_secrets(&self) -> &MessageSecrets {
-        &self.message_secrets
+        self.message_secrets_store.message_secrets()
     }
 
-    /// Get a mutable reference to the message secrets from a group
-    pub(crate) fn message_secrets_mut(&mut self) -> &mut MessageSecrets {
-        &mut self.message_secrets
+    /// Sets the size of the [`MessageSecretsStore`], i.e. the number of past
+    /// epochs to keep.
+    /// This allows application messages from previous epochs to be decrypted.
+    pub(crate) fn set_max_past_epochs(&mut self, max_past_epochs: usize) {
+        self.message_secrets_store.resize(max_past_epochs);
+    }
+
+    /// Get the message secrets. Either from the secrets store or from the group.
+    pub(super) fn message_secrets_mut<'secret, 'group: 'secret>(
+        &'group mut self,
+        epoch: GroupEpoch,
+    ) -> Result<&'secret mut MessageSecrets, CoreGroupError> {
+        if epoch < self.context().epoch() {
+            self.message_secrets_store
+                .secrets_for_epoch_mut(epoch)
+                .ok_or({
+                    CoreGroupError::MlsCiphertextError(MlsCiphertextError::SecretTreeError(
+                        SecretTreeError::TooDistantInThePast,
+                    ))
+                })
+        } else {
+            Ok(self.message_secrets_store.message_secrets_mut())
+        }
+    }
+
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn message_secrets_test_mut(&mut self) -> &mut MessageSecrets {
+        self.message_secrets_store.message_secrets_mut()
     }
 
     /// Current interim transcript hash of the group
@@ -634,7 +668,7 @@ impl CoreGroup {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub fn context_mut(&mut self) -> &mut GroupContext {
+    pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
         &mut self.group_context
     }
 }
@@ -668,21 +702,9 @@ pub(crate) fn update_interim_transcript_hash(
 }
 
 /// Configuration for core group.
-#[derive(Clone, Copy, Debug)]
-pub struct CoreGroupConfig {
+#[derive(Clone, Copy, Default, Debug)]
+pub(crate) struct CoreGroupConfig {
     /// Flag whether to send the ratchet tree along with the `GroupInfo` or not.
     /// Defaults to false.
-    pub add_ratchet_tree_extension: bool,
-    pub padding_block_size: u32,
-    pub additional_as_epochs: u32,
-}
-
-impl Default for CoreGroupConfig {
-    fn default() -> Self {
-        Self {
-            add_ratchet_tree_extension: false,
-            padding_block_size: 10,
-            additional_as_epochs: 0,
-        }
-    }
+    pub(crate) add_ratchet_tree_extension: bool,
 }

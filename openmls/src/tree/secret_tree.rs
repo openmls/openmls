@@ -82,7 +82,7 @@ pub struct SecretTree {
     nodes: Vec<Option<SecretTreeNode>>,
     handshake_sender_ratchets: Vec<Option<SenderRatchet>>,
     application_sender_ratchets: Vec<Option<SenderRatchet>>,
-    size: LeafIndex,
+    size: SecretTreeLeafIndex,
 }
 
 impl SecretTree {
@@ -90,9 +90,9 @@ impl SecretTree {
     /// `size`. The inner nodes of the tree and the SenderRatchets only get
     /// initialized when secrets are requested either through `secret()`
     /// or `next_secret()`.
-    pub(crate) fn new(encryption_secret: EncryptionSecret, size: LeafIndex) -> Self {
+    pub(crate) fn new(encryption_secret: EncryptionSecret, size: SecretTreeLeafIndex) -> Self {
         let root = root(size);
-        let num_indices = NodeIndex::from(size).as_usize() - 1;
+        let num_indices = SecretTreeNodeIndex::from(size).as_usize() - 1;
         let mut nodes = vec![None; num_indices];
         nodes[root.as_usize()] = Some(SecretTreeNode {
             secret: encryption_secret.consume_secret(),
@@ -108,7 +108,7 @@ impl SecretTree {
 
     /// Get current generation for a specific SenderRatchet
     #[cfg(test)]
-    pub(crate) fn generation(&self, index: LeafIndex, secret_type: SecretType) -> u32 {
+    pub(crate) fn generation(&self, index: SecretTreeLeafIndex, secret_type: SecretType) -> u32 {
         match self
             .ratchet_opt(index, secret_type)
             .expect("Index out of bounds.")
@@ -124,7 +124,7 @@ impl SecretTree {
         &mut self,
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        index: LeafIndex,
+        index: SecretTreeLeafIndex,
     ) -> Result<(), SecretTreeError> {
         log::trace!(
             "Initializing sender ratchets for {:?} with {}",
@@ -149,14 +149,14 @@ impl SecretTree {
             return Ok(());
         }
         // Calculate direct path
-        let index_in_tree = NodeIndex::from(index);
+        let index_in_tree = SecretTreeNodeIndex::from(index);
         let mut dir_path = vec![index_in_tree];
         dir_path.extend(
             leaf_direct_path(index, self.size)
                 .expect("initialize_sender_ratchets: Error while computing direct path."),
         );
         log::trace!("Direct path for leaf {:?}: {:?}", index, dir_path);
-        let mut empty_nodes: Vec<NodeIndex> = vec![];
+        let mut empty_nodes: Vec<SecretTreeNodeIndex> = vec![];
         for n in dir_path {
             empty_nodes.push(n);
             if self.nodes[n.as_usize()].is_some() {
@@ -207,7 +207,7 @@ impl SecretTree {
         &mut self,
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        index: LeafIndex,
+        index: SecretTreeLeafIndex,
         secret_type: SecretType,
         generation: u32,
         configuration: &SenderRatchetConfiguration,
@@ -236,7 +236,7 @@ impl SecretTree {
         &mut self,
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        index: LeafIndex,
+        index: SecretTreeLeafIndex,
         secret_type: SecretType,
     ) -> Result<(u32, RatchetSecrets), SecretTreeError> {
         if self.ratchet_opt(index, secret_type)?.is_none() {
@@ -249,7 +249,11 @@ impl SecretTree {
 
     /// Returns a mutable reference to a specific SenderRatchet. The
     /// SenderRatchet needs to be initialized.
-    fn ratchet_mut(&mut self, index: LeafIndex, secret_type: SecretType) -> &mut SenderRatchet {
+    fn ratchet_mut(
+        &mut self,
+        index: SecretTreeLeafIndex,
+        secret_type: SecretType,
+    ) -> &mut SenderRatchet {
         let sender_ratchets = match secret_type {
             SecretType::HandshakeSecret => &mut self.handshake_sender_ratchets,
             SecretType::ApplicationSecret => &mut self.application_sender_ratchets,
@@ -264,7 +268,7 @@ impl SecretTree {
     /// Returns an optional reference to a specific SenderRatchet
     fn ratchet_opt(
         &self,
-        index: LeafIndex,
+        index: SecretTreeLeafIndex,
         secret_type: SecretType,
     ) -> Result<Option<&SenderRatchet>, SecretTreeError> {
         let sender_ratchets = match secret_type {
@@ -283,7 +287,7 @@ impl SecretTree {
         &mut self,
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        index_in_tree: NodeIndex,
+        index_in_tree: SecretTreeNodeIndex,
     ) {
         log::debug!(
             "Deriving tree secret for node {} with {}",

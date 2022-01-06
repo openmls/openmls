@@ -29,7 +29,7 @@ struct PathProcessingResult {
 }
 
 impl CoreGroup {
-    pub fn create_commit(
+    pub(crate) fn create_commit(
         &self,
         params: CreateCommitParams,
         backend: &impl OpenMlsCryptoProvider,

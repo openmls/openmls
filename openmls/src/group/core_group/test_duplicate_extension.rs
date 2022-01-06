@@ -53,7 +53,6 @@ fn duplicate_ratchet_tree_extension(
 
     let config = CoreGroupConfig {
         add_ratchet_tree_extension: true,
-        ..CoreGroupConfig::default()
     };
 
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);

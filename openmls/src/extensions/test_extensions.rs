@@ -130,7 +130,6 @@ fn ratchet_tree_extension(ciphersuite: &'static Ciphersuite, backend: &impl Open
 
     let config = CoreGroupConfig {
         add_ratchet_tree_extension: true,
-        ..CoreGroupConfig::default()
     };
 
     // === Alice creates a group with the ratchet tree extension ===
@@ -212,7 +211,6 @@ fn ratchet_tree_extension(ciphersuite: &'static Ciphersuite, backend: &impl Open
 
     let config = CoreGroupConfig {
         add_ratchet_tree_extension: false,
-        ..CoreGroupConfig::default()
     };
 
     let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)

@@ -50,7 +50,6 @@ fn generate_key_package_bundle(
 }
 
 // Test setup values
-#[cfg(test)]
 struct ValidationTestSetup {
     alice_group: MlsGroup,
     _alice_credential: Credential,

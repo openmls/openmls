@@ -36,7 +36,7 @@ impl CoreGroup {
     ///  - ValSem205
     /// Returns an error if the given commit was sent by the owner of this
     /// group.
-    pub fn stage_commit(
+    pub(crate) fn stage_commit(
         &mut self,
         mls_plaintext: &MlsPlaintext,
         proposal_store: &ProposalStore,
@@ -281,28 +281,12 @@ impl CoreGroup {
         })
     }
 
-    /// Merges a [StagedCommit] into the group state.
-    ///
-    /// This function should not fail and only returns a [`Result`], because it
-    /// might throw a `LibraryError`.
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn merge_commit(&mut self, staged_commit: StagedCommit) -> Result<(), CoreGroupError> {
-        if let Some(state) = staged_commit.state {
-            self.group_context = state.group_context;
-            self.group_epoch_secrets = state.group_epoch_secrets;
-            self.message_secrets = state.message_secrets;
-            self.interim_transcript_hash = state.interim_transcript_hash;
-            self.tree.merge_diff(state.staged_diff)?;
-        };
-        Ok(())
-    }
-
     /// Merges a [StagedCommit] into the group state and optionally return a [`SecretTree`]
     /// from the previous epoch. The secret tree is returned if the Commit does not contain a self removal.
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a `LibraryError`.
-    pub fn merge_commit_take_message_secrets(
+    pub(crate) fn merge_commit(
         &mut self,
         staged_commit: StagedCommit,
     ) -> Result<Option<MessageSecrets>, CoreGroupError> {
@@ -312,7 +296,10 @@ impl CoreGroup {
 
             // Replace the previous message secrets with the new ones and return the previous message secrets
             let mut message_secrets = state.message_secrets;
-            mem::swap(&mut message_secrets, &mut self.message_secrets);
+            mem::swap(
+                &mut message_secrets,
+                self.message_secrets_store.message_secrets_mut(),
+            );
 
             self.interim_transcript_hash = state.interim_transcript_hash;
 

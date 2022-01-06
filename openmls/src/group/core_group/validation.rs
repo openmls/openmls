@@ -11,7 +11,7 @@ impl CoreGroup {
     /// Checks the following semantic validation:
     ///  - ValSem002
     ///  - ValSem003
-    pub fn validate_framing(&self, message: &MlsMessageIn) -> Result<(), CoreGroupError> {
+    pub(crate) fn validate_framing(&self, message: &MlsMessageIn) -> Result<(), CoreGroupError> {
         // ValSem002
         if message.group_id() != self.group_id() {
             return Err(FramingValidationError::WrongGroupId.into());
@@ -42,7 +42,7 @@ impl CoreGroup {
     ///  - ValSem005
     ///  - ValSem007
     ///  - ValSem009
-    pub fn validate_plaintext(
+    pub(crate) fn validate_plaintext(
         &self,
         plaintext: &VerifiableMlsPlaintext,
     ) -> Result<(), CoreGroupError> {
@@ -97,7 +97,7 @@ impl CoreGroup {
     ///  - ValSem104
     ///  - ValSem105
     ///  - TODO: ValSem106
-    pub fn validate_add_proposals(
+    pub(crate) fn validate_add_proposals(
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), CoreGroupError> {
@@ -164,7 +164,7 @@ impl CoreGroup {
     /// Validate Remove proposals. This function implements the following checks:
     ///  - ValSem107
     ///  - ValSem108
-    pub fn validate_remove_proposals(
+    pub(crate) fn validate_remove_proposals(
         &self,
         proposal_queue: &ProposalQueue,
     ) -> Result<(), CoreGroupError> {
@@ -194,7 +194,7 @@ impl CoreGroup {
     /// Validate Update proposals. This function implements the following checks:
     ///  - ValSem109
     ///  - ValSem110
-    pub fn validate_update_proposals(
+    pub(crate) fn validate_update_proposals(
         &self,
         proposal_queue: &ProposalQueue,
         path_key_package: Option<(Sender, &KeyPackage)>,
