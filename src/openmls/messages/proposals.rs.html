@@ -782,7 +782,7 @@
 
 <span class="kw">impl</span> <span class="ident">GroupContextExtensionProposal</span> {
     <span class="doccomment">/// Create a new [`GroupContextExtensionProposal`].</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">extensions</span>: <span class="kw-2">&amp;</span>[<span class="ident">Extension</span>]) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">extensions</span>: <span class="ident">extensions</span>.<span class="ident">into</span>(),

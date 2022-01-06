@@ -365,6 +365,7 @@
 <span id="365">365</span>
 <span id="366">366</span>
 <span id="367">367</span>
+<span id="368">368</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ```text</span>
@@ -655,7 +656,7 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">VerifiedExternalMessage</span>, <span class="ident">ValidationError</span><span class="op">&gt;</span> {
         <span class="comment">// ValSem10</span>
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">plaintext</span>.<span class="ident">verify_with_key</span>(<span class="ident">backend</span>, <span class="ident">signature_key</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">plaintext</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">VerifiedExternalMessage</span> { <span class="ident">plaintext</span> }),
+            <span class="prelude-val">Ok</span>(<span class="ident">_plaintext</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">VerifiedExternalMessage</span> { <span class="ident">_plaintext</span> }),
             <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>.<span class="ident">into</span>()),
         }
     }
@@ -668,30 +669,31 @@
 
 <span class="kw">impl</span> <span class="ident">VerifiedMemberMessage</span> {
     <span class="doccomment">/// Returns a reference to the inner [MlsPlaintext].</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">plaintext</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">plaintext</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">plaintext</span>
     }
 
     <span class="doccomment">/// Consumes the message and returns the inner [MlsPlaintext].</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">take_plaintext</span>(<span class="self">self</span>) -&gt; <span class="ident">MlsPlaintext</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">take_plaintext</span>(<span class="self">self</span>) -&gt; <span class="ident">MlsPlaintext</span> {
         <span class="self">self</span>.<span class="ident">plaintext</span>
     }
 }
 
 <span class="doccomment">/// External message, where all semantic checks on the framing have been successfully performed.</span>
+<span class="doccomment">/// Note: External messages are not fully supported yet #106</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">VerifiedExternalMessage</span> {
-    <span class="ident">plaintext</span>: <span class="ident">MlsPlaintext</span>,
+    <span class="ident">_plaintext</span>: <span class="ident">MlsPlaintext</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">VerifiedExternalMessage</span> {
     <span class="doccomment">/// Returns a reference to the inner [MlsPlaintext].</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">plaintext</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">plaintext</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">_plaintext</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">MlsPlaintext</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">_plaintext</span>
     }
 
     <span class="doccomment">/// Consumes the message and returns the inner [MlsPlaintext].</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">take_plaintext</span>(<span class="self">self</span>) -&gt; <span class="ident">MlsPlaintext</span> {
-        <span class="self">self</span>.<span class="ident">plaintext</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">_take_plaintext</span>(<span class="self">self</span>) -&gt; <span class="ident">MlsPlaintext</span> {
+        <span class="self">self</span>.<span class="ident">_plaintext</span>
     }
 }
 

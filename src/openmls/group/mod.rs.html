@@ -119,8 +119,7 @@
 
 <span class="comment">// Crate</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">core_group</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">errors</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">core_group</span>::<span class="kw-2">*</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">core_group</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">errors</span>::{
     <span class="ident">CoreGroupError</span>, <span class="ident">CreateCommitError</span>, <span class="ident">ExporterError</span>, <span class="ident">InterimTranscriptHashError</span>, <span class="ident">StageCommitError</span>,
     <span class="ident">WelcomeError</span>,
@@ -129,12 +128,13 @@
 
 <span class="comment">// Public</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">mls_group</span>::<span class="kw-2">*</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">errors</span>;
 
 <span class="comment">// Tests</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">tests</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">create_commit_params</span>::<span class="kw-2">*</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">create_commit_params</span>::<span class="kw-2">*</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">tests</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">use</span> <span class="ident">openmls_traits::random::OpenMlsRand</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>

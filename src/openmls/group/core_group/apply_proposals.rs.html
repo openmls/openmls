@@ -181,7 +181,7 @@
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">proposals::ProposalQueue</span>, <span class="ident">CoreGroup</span>};
 
 <span class="doccomment">/// This struct contain the return values of the `apply_proposals()` function</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ApplyProposalsValues</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ApplyProposalsValues</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">path_required</span>: <span class="ident">bool</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">self_removed</span>: <span class="ident">bool</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">invitation_list</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">LeafIndex</span>, <span class="ident">AddProposal</span>)<span class="op">&gt;</span>,
@@ -193,7 +193,7 @@
     <span class="doccomment">/// This function creates a `HashSet` of node indexes of the new nodes that</span>
     <span class="doccomment">/// were added to the tree. The `HashSet` will be querried by the</span>
     <span class="doccomment">/// `resolve()` function to filter out those nodes from the resolution.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">exclusion_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">HashSet</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LeafIndex</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">exclusion_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">HashSet</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LeafIndex</span><span class="op">&gt;</span> {
         <span class="comment">// Collect the new leaves&#39; indexes so we can filter them out in the resolution</span>
         <span class="comment">// later</span>
         <span class="kw">let</span> <span class="ident">new_leaves_indexes</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LeafIndex</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>

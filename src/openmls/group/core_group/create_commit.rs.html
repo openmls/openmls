@@ -356,7 +356,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">CoreGroup</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_commit</span>(
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">create_commit</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">params</span>: <span class="ident">CreateCommitParams</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,

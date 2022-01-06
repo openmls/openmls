@@ -142,7 +142,7 @@
 };
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::core_group</span>::<span class="kw-2">*</span>;
 
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">ExternalCommitResult</span> <span class="op">=</span> (<span class="ident">CoreGroup</span>, <span class="ident">CreateCommitResult</span>);
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type</span> <span class="ident">ExternalCommitResult</span> <span class="op">=</span> (<span class="ident">CoreGroup</span>, <span class="ident">CreateCommitResult</span>);
 
 <span class="kw">impl</span> <span class="ident">CoreGroup</span> {
     <span class="doccomment">/// Join a group without the help of an internal member. This function</span>
@@ -153,7 +153,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Returns the new `CoreGroup` object, as well as the `MlsPlaintext`</span>
     <span class="doccomment">/// containing the commit.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">join_by_external_commit</span>(
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">join_by_external_commit</span>(
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">params</span>: <span class="ident">CreateCommitParams</span>,
         <span class="ident">tree_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span>]<span class="op">&gt;</span>,
