@@ -136,12 +136,6 @@ impl CoreGroupBuilder {
         self.psk_ids = psk_ids;
         self
     }
-    /// Set the [`ProtocolVersion`] of the [`CoreGroup`].
-    #[cfg(test)]
-    pub(crate) fn _with_version(mut self, version: ProtocolVersion) -> Self {
-        self.version = Some(version);
-        self
-    }
     /// Set the [`RequiredCapabilitiesExtension`] of the [`CoreGroup`].
     pub(crate) fn with_required_capabilities(
         mut self,

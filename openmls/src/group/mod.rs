@@ -32,6 +32,7 @@ pub mod errors;
 // Tests
 #[cfg(any(feature = "test-utils", test))]
 pub(crate) use create_commit_params::*;
+#[cfg(any(feature = "test-utils", test))]
 pub(crate) mod tests;
 #[cfg(any(feature = "test-utils", test))]
 use openmls_traits::random::OpenMlsRand;
