@@ -1,5 +1,5 @@
-//! This module contains all tests regarding the validation of incoming messages
-//! as defined in https://github.com/openmls/openmls/wiki/Message-validation
+//! This module tests regarding the validation of incoming message framing
+//! as defined in https://openmls.tech/book/#semantic-validation-of-message-framing
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMlsCryptoProvider};
