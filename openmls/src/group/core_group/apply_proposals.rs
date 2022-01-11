@@ -57,10 +57,14 @@ impl CoreGroup {
         let mut self_removed = false;
         let mut external_init_secret_option = None;
 
-        // Process external init proposals. We do this before the removes, so we know
-        // that removing "ourselves" (i.e. removing the group member in the same leaf as
-        // we are in) is valid in this case.
-        for queued_proposal in proposal_queue.filtered_by_type(ProposalType::ExternalInit) {
+        // Process external init proposals. We do this before the removes, so we
+        // know that removing "ourselves" (i.e. removing the group member in the
+        // same leaf as we are in) is valid in this case. We only care about the
+        // first proposal and ignore all others.
+        if let Some(queued_proposal) = proposal_queue
+            .filtered_by_type(ProposalType::ExternalInit)
+            .next()
+        {
             let external_init_proposal = &queued_proposal
                 .proposal()
                 .as_external_init()
@@ -80,8 +84,6 @@ impl CoreGroup {
                 &external_priv,
                 external_init_proposal.kem_output(),
             )?);
-            // Ignore every external init beyond the first one.
-            break;
         }
 
         // Process updates first
