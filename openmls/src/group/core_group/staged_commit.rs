@@ -151,7 +151,10 @@ impl CoreGroup {
             // fit in.
             if apply_proposals_values.external_init_secret_option.is_some() {
                 let sender_leaf_index = diff.add_leaf(key_package.clone())?;
-                debug_assert_eq!(sender_leaf_index, mls_plaintext.sender_index())
+                // The new member should have the same index as the claimed sender index.
+                if sender_leaf_index != mls_plaintext.sender_index() {
+                    return Err(StageCommitError::InconsistentSenderIndex.into());
+                }
             }
 
             // Decrypt the UpdatePath

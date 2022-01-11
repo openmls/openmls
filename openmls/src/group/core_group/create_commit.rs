@@ -85,7 +85,7 @@ impl CoreGroup {
             params.inline_proposals(),
             own_leaf_index,
             // We can use the old leaf count here, because the proposals will
-            // only affect members of the old tree. TODO: Double check that this doesn't cause problems.
+            // only affect members of the old tree.
             self.treesync().leaf_count()?,
         )?;
 
@@ -101,8 +101,8 @@ impl CoreGroup {
         // Make a copy of the current tree to apply proposals safely
         let mut diff: TreeSyncDiff = self.treesync().empty_diff()?;
 
-        // If this is not an external commit we have to set our own leaf index
-        if sender_type == SenderType::NewMember {
+        // If this is not an external commit we have to set our own leaf index manually
+        if params.commit_type() == CommitType::External {
             diff.set_own_index(own_leaf_index);
         }
 
@@ -134,8 +134,6 @@ impl CoreGroup {
                     key_package_bundle_payload,
                     params.credential_bundle(),
                 )?;
-
-                println!("Path length before encryption: {:?}", plain_path.len());
 
                 // Encrypt the path to the correct recipient nodes.
                 let encrypted_path = diff.encrypt_path(
@@ -334,7 +332,7 @@ impl CoreGroup {
         params: &CreateCommitParams,
         diff: &mut TreeSyncDiff,
     ) -> Result<KeyPackageBundlePayload, CoreGroupError> {
-        let kpb_payload = if params.commit_type() == CommitType::External {
+        if params.commit_type() == CommitType::External {
             // Generate a KeyPackageBundle to generate a payload from for later
             // path generation.
             let key_package_bundle = KeyPackageBundle::new(
@@ -345,19 +343,12 @@ impl CoreGroup {
             )?;
 
             diff.add_leaf(key_package_bundle.key_package().clone())?;
-
-            KeyPackageBundlePayload::from_rekeyed_key_package(
-                key_package_bundle.key_package(),
-                backend,
-            )?
-        } else {
-            // Create a new key package bundle payload from the existing key
-            // package.
-            KeyPackageBundlePayload::from_rekeyed_key_package(
-                self.treesync().own_leaf_node()?.key_package(),
-                backend,
-            )?
         };
-        Ok(kpb_payload)
+        // Create a new key package bundle payload from the existing key
+        // package.
+        Ok(KeyPackageBundlePayload::from_rekeyed_key_package(
+            self.treesync().own_leaf_node()?.key_package(),
+            backend,
+        )?)
     }
 }
