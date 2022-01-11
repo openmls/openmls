@@ -332,7 +332,7 @@ impl CoreGroup {
         params: &CreateCommitParams,
         diff: &mut TreeSyncDiff,
     ) -> Result<KeyPackageBundlePayload, CoreGroupError> {
-        if params.commit_type() == CommitType::External {
+        let key_package = if params.commit_type() == CommitType::External {
             // Generate a KeyPackageBundle to generate a payload from for later
             // path generation.
             let key_package_bundle = KeyPackageBundle::new(
@@ -343,11 +343,14 @@ impl CoreGroup {
             )?;
 
             diff.add_leaf(key_package_bundle.key_package().clone())?;
+            diff.own_leaf()?.key_package()
+        } else {
+            self.treesync().own_leaf_node()?.key_package()
         };
         // Create a new key package bundle payload from the existing key
         // package.
         Ok(KeyPackageBundlePayload::from_rekeyed_key_package(
-            self.treesync().own_leaf_node()?.key_package(),
+            key_package,
             backend,
         )?)
     }
