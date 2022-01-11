@@ -150,7 +150,8 @@ impl CoreGroup {
             // there are no blanks and the new member extended the tree to
             // fit in.
             if apply_proposals_values.external_init_secret_option.is_some() {
-                diff.add_leaf(key_package.clone())?;
+                let sender_leaf_index = diff.add_leaf(key_package.clone())?;
+                debug_assert_eq!(sender_leaf_index, mls_plaintext.sender_index())
             }
 
             // Decrypt the UpdatePath

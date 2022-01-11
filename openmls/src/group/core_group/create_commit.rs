@@ -38,9 +38,41 @@ impl CoreGroup {
 
         // If this is an external commit, we don't have an `own_leaf_index` set
         // yet. Instead, we use the index in which we will be put in course of
-        // this commit.
+        // this commit. Our index is determined as if we'd be added through an
+        // Add proposal. However, since this might be the "resync" flavour of an
+        // external commit, it could be that we're first removing our past self
+        // from the group, in which case, we can't just take the next free leaf
+        // in the existing tree. Note, that we have to determine the index here
+        // (before we actually add our own leaf), because it's needed in the
+        // process of proposal filtering and application.
         let (own_leaf_index, sender_type) = match params.commit_type() {
-            CommitType::External => (self.treesync().free_leaf_index()?, SenderType::NewMember),
+            CommitType::External => {
+                // If this is a "resync" external commit, it should contain a
+                // `remove` proposal with the index of our previous self in the
+                // group.
+                let free_leaf_index = self.treesync().free_leaf_index()?;
+                let remove_proposal_option = params
+                    .inline_proposals()
+                    .iter()
+                    .find(|proposal| proposal.is_type(ProposalType::Remove));
+                // The external commit is processed like an add, so our new leaf
+                // index is the same as if we'd process an add after the remove
+                // proposal.
+                let leaf_index = if let Some(remove_proposal) = remove_proposal_option {
+                    let removed_index = remove_proposal
+                        .as_remove()
+                        .ok_or(CoreGroupError::LibraryError)?
+                        .removed();
+                    if removed_index < free_leaf_index {
+                        removed_index
+                    } else {
+                        free_leaf_index
+                    }
+                } else {
+                    free_leaf_index
+                };
+                (leaf_index, SenderType::NewMember)
+            }
             CommitType::Member => (self.treesync().own_leaf_index(), SenderType::Member),
         };
 
@@ -53,16 +85,16 @@ impl CoreGroup {
             params.inline_proposals(),
             own_leaf_index,
             // We can use the old leaf count here, because the proposals will
-            // only affect members of the old tree.
+            // only affect members of the old tree. TODO: Double check that this doesn't cause problems.
             self.treesync().leaf_count()?,
         )?;
 
         // TODO: #581 Filter proposals by support
         // 11.2:
         // Proposals with a non-default proposal type MUST NOT be included in a commit
-        // unless the proposal type is supported by all the members of the group that will
-        // process the Commit (i.e., not including any members being added or removed by
-        // the Commit).
+        // unless the proposal type is supported by all the members of the group that
+        // will process the Commit (i.e., not including any members being added
+        // or removed by the Commit).
 
         let proposal_reference_list = proposal_queue.commit_list();
 
@@ -70,10 +102,9 @@ impl CoreGroup {
         let mut diff: TreeSyncDiff = self.treesync().empty_diff()?;
 
         // If this is not an external commit we have to set our own leaf index
-        // and add our leaf. Also, we have to generate the
-        // [`KeyPackageBundlePayload`] slightly differently, because we can't
-        // just pull it from the tree if we're a `NewMember`.
-        let key_package_bundle_payload = self.prepare_kpb_payload(backend, &params, &mut diff)?;
+        if sender_type == SenderType::NewMember {
+            diff.set_own_index(own_leaf_index);
+        }
 
         // Apply proposals to tree
         let apply_proposals_values =
@@ -81,6 +112,11 @@ impl CoreGroup {
         if apply_proposals_values.self_removed {
             return Err(CreateCommitError::CannotRemoveSelf.into());
         }
+
+        // Generate the [`KeyPackageBundlePayload`]. If we're doing an external
+        // commit, this is also the place, where we're adding ourselves to the
+        // tree.
+        let key_package_bundle_payload = self.prepare_kpb_payload(backend, &params, &mut diff)?;
 
         let serialized_group_context = self.group_context.tls_serialize_detached()?;
         let path_processing_result =
@@ -98,6 +134,8 @@ impl CoreGroup {
                     key_package_bundle_payload,
                     params.credential_bundle(),
                 )?;
+
+                println!("Path length before encryption: {:?}", plain_path.len());
 
                 // Encrypt the path to the correct recipient nodes.
                 let encrypted_path = diff.encrypt_path(
@@ -306,9 +344,7 @@ impl CoreGroup {
                 vec![],
             )?;
 
-            let own_leaf_index = diff.add_leaf(key_package_bundle.key_package().clone())?;
-            // Set our own index in the diff.
-            diff.set_own_index(own_leaf_index);
+            diff.add_leaf(key_package_bundle.key_package().clone())?;
 
             KeyPackageBundlePayload::from_rekeyed_key_package(
                 key_package_bundle.key_package(),

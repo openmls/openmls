@@ -1,4 +1,5 @@
 use crate::group::GroupId;
+use crate::messages::ProposalType;
 use crate::{
     ciphersuite::Ciphersuite,
     config::Config,
@@ -154,6 +155,7 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
         .merge_commit(staged_commit)
         .expect("error merging commit");
 
+    // Have charly process their own staged commit
     group_charly
         .merge_commit(create_commit_result.staged_commit)
         .expect("error merging own external commit");
@@ -166,6 +168,107 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
     assert_eq!(
         group_charly.treesync().export_nodes(),
         group_bob.treesync().export_nodes()
+    );
+
+    // Check if charly can create valid commits
+    let proposal_store = ProposalStore::default();
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&charly_credential_bundle)
+        .proposal_store(&proposal_store)
+        .build();
+    let create_commit_result = group_charly
+        .create_commit(params, backend)
+        .expect("Error creating commit");
+
+    let staged_commit = group_alice
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .expect("error staging commit");
+    group_alice
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
+
+    group_charly
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging commit");
+
+    // Now we assume that Bob somehow lost his group state and wants to add
+    // themselves back through an external commit.
+
+    // Have Alice export everything that Bob needs.
+    let pgs_encoded: Vec<u8> = group_alice
+        .export_public_group_state(backend, &alice_credential_bundle)
+        .expect("Error exporting PGS")
+        .tls_serialize_detached()
+        .expect("Error serializing PGS");
+    let verifiable_public_group_state =
+        VerifiablePublicGroupState::tls_deserialize(&mut pgs_encoded.as_slice())
+            .expect("Error deserializing PGS");
+    let nodes_option = group_alice.treesync().export_nodes();
+
+    let proposal_store = ProposalStore::new();
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&bob_credential_bundle)
+        .proposal_store(&proposal_store)
+        .build();
+    println!("\nBob joins externally.");
+    let (mut new_group_bob, create_commit_result) = CoreGroup::join_by_external_commit(
+        backend,
+        params,
+        Some(&nodes_option),
+        verifiable_public_group_state,
+    )
+    .expect("Error initializing group externally.");
+
+    // Let's make sure there's a remove in the commit.
+    let contains_remove = match create_commit_result.commit.content() {
+        crate::prelude_test::plaintext::MlsPlaintextContentType::Commit(commit) => commit
+            .proposals
+            .as_slice()
+            .iter()
+            .find(|&proposal| match proposal {
+                crate::messages::ProposalOrRef::Proposal(proposal) => {
+                    proposal.is_type(ProposalType::Remove)
+                }
+                _ => false,
+            }),
+        _ => panic!("Wrong content type."),
+    }
+    .is_some();
+    assert!(contains_remove);
+
+    // Have alice and charly process the commit resulting from external init.
+    let proposal_store = ProposalStore::default();
+    println!("\nAlice processes.");
+    let staged_commit = group_alice
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .expect("error staging commit");
+    group_alice
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
+
+    println!("\nCharly processes.");
+    let staged_commit = group_charly
+        .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
+        .expect("error staging commit");
+    group_charly
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
+
+    // Have Bob process his own staged commit
+    new_group_bob
+        .merge_commit(create_commit_result.staged_commit)
+        .expect("error merging own external commit");
+
+    assert_eq!(
+        group_charly.export_secret(backend, "", &[], ciphersuite.hash_length()),
+        new_group_bob.export_secret(backend, "", &[], ciphersuite.hash_length())
+    );
+
+    assert_eq!(
+        group_charly.treesync().export_nodes(),
+        new_group_bob.treesync().export_nodes()
     );
 }
 

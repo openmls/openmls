@@ -130,6 +130,15 @@ impl ProposalQueue {
         proposal_store: &ProposalStore,
         sender: Sender,
     ) -> Result<Self, ProposalQueueError> {
+        // Figure out if this is for an external commit. If so, self-removal is actually
+        // allowed.
+        let is_external_commit = committed_proposals
+            .iter()
+            .find(|&proposal| match proposal {
+                ProposalOrRef::Proposal(proposal) => matches!(proposal, Proposal::ExternalInit(_)),
+                ProposalOrRef::Reference(_) => false,
+            })
+            .is_some();
         // Feed the `proposals_by_reference` in a `HashMap` so that we can easily
         // extract then by reference later
         let mut proposals_by_reference_queue: HashMap<ProposalReference, QueuedProposal> =
@@ -140,7 +149,6 @@ impl ProposalQueue {
                 queued_proposal.clone(),
             );
         }
-
         // Build the actual queue
         let mut proposal_queue = ProposalQueue::default();
 
@@ -150,7 +158,7 @@ impl ProposalQueue {
                 ProposalOrRef::Proposal(proposal) => {
                     // ValSem200
                     if let Proposal::Remove(ref remove_proposal) = proposal {
-                        if remove_proposal.removed() == sender.sender {
+                        if remove_proposal.removed() == sender.sender && !is_external_commit {
                             return Err(ProposalQueueError::SelfRemoval);
                         }
                     }
@@ -168,7 +176,8 @@ impl ProposalQueue {
                             // ValSem200
                             if let Proposal::Remove(ref remove_proposal) = queued_proposal.proposal
                             {
-                                if remove_proposal.removed() == sender.sender {
+                                if remove_proposal.removed() == sender.sender && !is_external_commit
+                                {
                                     return Err(ProposalQueueError::SelfRemoval);
                                 }
                             }
