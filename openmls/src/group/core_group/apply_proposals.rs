@@ -65,25 +65,22 @@ impl CoreGroup {
             .filtered_by_type(ProposalType::ExternalInit)
             .next()
         {
-            let external_init_proposal = &queued_proposal
-                .proposal()
-                .as_external_init()
-                // We know the proposal type, so it's a library error if we're wrong.
-                .ok_or(CoreGroupError::LibraryError)?;
-            // Decrypt the content and derive the external init secret.
-            let external_priv = self
-                .group_epoch_secrets()
-                .external_secret()
-                .derive_external_keypair(backend.crypto(), self.ciphersuite())
-                .private
-                .into();
-            external_init_secret_option = Some(InitSecret::from_kem_output(
-                backend,
-                self.ciphersuite(),
-                self.mls_version,
-                &external_priv,
-                external_init_proposal.kem_output(),
-            )?);
+            if let Some(external_init_proposal) = &queued_proposal.proposal().as_external_init() {
+                // Decrypt the content and derive the external init secret.
+                let external_priv = self
+                    .group_epoch_secrets()
+                    .external_secret()
+                    .derive_external_keypair(backend.crypto(), self.ciphersuite())
+                    .private
+                    .into();
+                external_init_secret_option = Some(InitSecret::from_kem_output(
+                    backend,
+                    self.ciphersuite(),
+                    self.mls_version,
+                    &external_priv,
+                    external_init_proposal.kem_output(),
+                )?);
+            }
         }
 
         // Process updates first

@@ -101,7 +101,7 @@ impl CoreGroup {
         // Make a copy of the current tree to apply proposals safely
         let mut diff: TreeSyncDiff = self.treesync().empty_diff()?;
 
-        // If this is not an external commit we have to set our own leaf index manually
+        // If this is an external commit we have to set our own leaf index manually
         if params.commit_type() == CommitType::External {
             diff.set_own_index(own_leaf_index);
         }
