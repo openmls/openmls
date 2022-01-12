@@ -45,8 +45,6 @@ impl CoreGroup {
             }
         };
 
-        let mut credential = None;
-
         // Checks the following semantic validation:
         //  - ValSem004
         //  - ValSem005
@@ -54,16 +52,12 @@ impl CoreGroup {
         //  - ValSem009
         self.validate_plaintext(decrypted_message.plaintext())?;
 
-        // Extract the credential if the sender is a member
-        let sender = decrypted_message.sender();
-        if sender.is_member() {
-            let sender_index = sender.to_leaf_index();
-
-            credential = self
-                .treesync()
-                .leaf(sender_index)?
-                .map(|leaf_node| leaf_node.key_package().credential().clone());
-        }
+        // Extract the credential if the sender is a member or a new member.
+        // Checks the following semantic validation:
+        //  - ValSem246
+        //  - ValSem247
+        //  - ValSem248
+        let credential = decrypted_message.credential(self.treesync())?.clone();
 
         Ok(UnverifiedMessage::from_decrypted_message(
             decrypted_message,
@@ -107,14 +101,12 @@ impl CoreGroup {
             backend,
         )?;
 
-        // FIXME #680: Validation of external commits
-
         match context_plaintext {
-            UnverifiedContextMessage::Member(member_message) => {
+            UnverifiedContextMessage::Group(unverified_message) => {
                 // Checks the following semantic validation:
                 //  - ValSem010
                 let verified_member_message =
-                    member_message.into_verified(backend, signature_key)?;
+                    unverified_message.into_verified(backend, signature_key)?;
 
                 Ok(match verified_member_message.plaintext().content() {
                     MlsPlaintextContentType::Application(application_message) => {
@@ -154,7 +146,7 @@ impl CoreGroup {
                     }
                 })
             }
-            UnverifiedContextMessage::External(external_message) => {
+            UnverifiedContextMessage::Preconfigured(external_message) => {
                 // Signature verification
                 if let Some(signature_public_key) = signature_key {
                     let _verified_external_message =
@@ -163,8 +155,8 @@ impl CoreGroup {
                     return Err(CoreGroupError::NoSignatureKey);
                 }
 
-                // We don't support external messages yet
-                // TODO #192
+                // We don't support external messages from preconfigured senders yet
+                // TODO #151
                 todo!()
             }
         }
