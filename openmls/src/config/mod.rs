@@ -52,7 +52,7 @@ lazy_static! {
             };
             let ciphersuites = SUPPORTED_CIPHERSUITE_NAMES
                 .iter()
-                .map(|ciphersuite_name| Ciphersuite::new(*ciphersuite_name).unwrap())
+                .map(|ciphersuite_name| Ciphersuite::new_from_supported(*ciphersuite_name))
                 .collect::<Vec<Ciphersuite>>();
             let config = PersistentConfig {
                 protocol_versions: vec![ProtocolVersion::Mls10, ProtocolVersion::Mls10Draft11],

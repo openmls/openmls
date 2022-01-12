@@ -61,8 +61,6 @@ impl Group {
     /// Return the identity of a random member of the group.
     pub fn random_group_member(&self) -> Vec<u8> {
         let index = (OsRng.next_u32() as usize) % self.members.len();
-        // We can unwrap here, because the index is scoped with the size of the
-        // HashSet.
         let (_, identity) = self.members[index].clone();
         identity
     }
@@ -299,7 +297,7 @@ impl MlsGroupTestSetup {
                     .expect("An unexpected error occurred.")
                     .read()
                     .expect("An unexpected error occurred.");
-                let mut group_states = m.groups.write().unwrap();
+                let mut group_states = m.groups.write().expect("An unexpected error occurred.");
                 // Some group members may not have received their welcome messages yet.
                 if let Some(group_state) = group_states.get_mut(&group.group_id) {
                     assert_eq!(group_state.export_ratchet_tree(), group.public_tree);
@@ -353,8 +351,6 @@ impl MlsGroupTestSetup {
                     .iter()
                     .any(|(_, member_id)| client_id == member_id)
             };
-            // We can unwrap here, because we checked that enough eligible
-            // members exist.
             let new_member_id = clients
                 .keys()
                 .find(|&client_id| !is_in_group(client_id) && !is_in_new_members(client_id))
