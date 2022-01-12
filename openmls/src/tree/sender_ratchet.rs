@@ -108,7 +108,8 @@ impl SenderRatchet {
                 .past_secrets
                 .get(index)
                 .ok_or(SecretTreeError::LibraryError)?;
-            let ratchet_secrets = self.derive_key_nonce(ciphersuite, backend, secret, generation);
+            let ratchet_secrets =
+                self.derive_key_nonce(ciphersuite, backend, secret, generation)?;
             Ok(ratchet_secrets)
         // If generation is in the future
         } else {
@@ -121,7 +122,7 @@ impl SenderRatchet {
                     .past_secrets
                     .last()
                     .ok_or(SecretTreeError::LibraryError)?;
-                let new_secret = self.ratchet_secret(ciphersuite, backend, last_secret);
+                let new_secret = self.ratchet_secret(ciphersuite, backend, last_secret)?;
                 self.past_secrets.push(new_secret);
                 self.generation += 1;
             }
@@ -130,7 +131,8 @@ impl SenderRatchet {
                 // We return a library error because there must be a mistake in the implementation
                 None => return Err(SecretTreeError::LibraryError),
             };
-            let ratchet_secrets = self.derive_key_nonce(ciphersuite, backend, secret, generation);
+            let ratchet_secrets =
+                self.derive_key_nonce(ciphersuite, backend, secret, generation)?;
             Ok(ratchet_secrets)
         }
     }
@@ -139,22 +141,22 @@ impl SenderRatchet {
         &mut self,
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> (u32, RatchetSecrets) {
+    ) -> Result<(u32, RatchetSecrets), SecretTreeError> {
         let current_path_secret = match self.past_secrets.last() {
             Some(secret) => secret.clone(),
             None => {
                 panic!("Library error. PastSecrets should never be depleted in SenderRatchet.")
             }
         };
-        let next_path_secret = self.ratchet_secret(ciphersuite, backend, &current_path_secret);
+        let next_path_secret = self.ratchet_secret(ciphersuite, backend, &current_path_secret)?;
         let generation = self.generation;
         // We remove all past_secrets when encrypting so that we get immediate FS
         self.past_secrets = vec![next_path_secret];
         self.generation += 1;
-        (
+        Ok((
             generation,
-            self.derive_key_nonce(ciphersuite, backend, &current_path_secret, generation),
-        )
+            self.derive_key_nonce(ciphersuite, backend, &current_path_secret, generation)?,
+        ))
     }
     /// Computes the new secret
     fn ratchet_secret(
@@ -162,7 +164,7 @@ impl SenderRatchet {
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         secret: &Secret,
-    ) -> Secret {
+    ) -> Result<Secret, SecretTreeError> {
         derive_tree_secret(
             secret,
             "secret",
@@ -179,7 +181,7 @@ impl SenderRatchet {
         backend: &impl OpenMlsCryptoProvider,
         secret: &Secret,
         generation: u32,
-    ) -> RatchetSecrets {
+    ) -> Result<RatchetSecrets, SecretTreeError> {
         let tree_index = SecretTreeNodeIndex::from(self.index).as_u32();
         let nonce = derive_tree_secret(
             secret,
@@ -188,7 +190,7 @@ impl SenderRatchet {
             generation,
             ciphersuite.aead_nonce_length(),
             backend,
-        );
+        )?;
         let key = derive_tree_secret(
             secret,
             "key",
@@ -196,8 +198,8 @@ impl SenderRatchet {
             generation,
             ciphersuite.aead_key_length(),
             backend,
-        );
-        (AeadKey::from_secret(key), AeadNonce::from_secret(nonce))
+        )?;
+        Ok((AeadKey::from_secret(key), AeadNonce::from_secret(nonce)))
     }
     /// Gets the current generation
     #[cfg(test)]
