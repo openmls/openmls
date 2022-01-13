@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 defaults:
   run:
@@ -42,7 +43,7 @@ jobs:
           mdbook-version: 'latest'
       - name: Build mdBook
         run: |
-          cd book
+          cd openmls/book
           mdbook build
       - name: Deploy mdBook
         run: | 
