@@ -54,10 +54,12 @@ impl CoreGroup {
 
         // Extract the credential if the sender is a member or a new member.
         // Checks the following semantic validation:
+        //  - ValSem245
         //  - ValSem246
-        //  - ValSem247
-        //  - ValSem248
-        let credential = decrypted_message.credential(self.treesync())?.clone();
+        //  - Prepares ValSem247 by setting the right credential. The remainder
+        //    of ValSem247 is validated as part of ValSem010.
+        // Preconfigured senders are not supported yet #106/#151.
+        let credential = decrypted_message.credential(self.treesync())?;
 
         Ok(UnverifiedMessage::from_decrypted_message(
             decrypted_message,
@@ -156,7 +158,7 @@ impl CoreGroup {
                 }
 
                 // We don't support external messages from preconfigured senders yet
-                // TODO #151
+                // TODO #151/#106
                 todo!()
             }
         }

@@ -121,8 +121,8 @@ impl DecryptedMessage {
     /// Gets the correct credential from the message depending on the sender type.
     /// Checks the following semantic validation:
     ///  - ValSem246
-    ///  - ValSem247
-    ///  - ValSem248
+    ///  - Prepares ValSem247 by setting the right credential. The remainder
+    ///    of ValSem247 is validated as part of ValSem010.
     pub fn credential(&self, treesync: &TreeSync) -> Result<Credential, ValidationError> {
         let sender = self.sender();
         match sender.sender_type {
@@ -137,6 +137,7 @@ impl DecryptedMessage {
                     Err(ValidationError::UnknownSender)
                 }
             }
+            // Preconfigured senders are not supported yet #106/#151.
             SenderType::Preconfigured => todo!(),
             SenderType::NewMember => {
                 if let MlsPlaintextContentType::Commit(commit) = self.plaintext().content() {

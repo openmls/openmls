@@ -294,7 +294,6 @@ implement_error! {
 
 implement_error! {
     pub enum ExternalCommitValidationError {
-        WrongContentType = "External Commit does not have content type `Commit`",
         NoExternalInitProposals = "No ExternalInit proposal found.",
         MultipleExternalInitProposals = "Multiple ExternalInit proposal found.",
         InvalidInlineProposals = "Found inline Add or Update proposals.",

@@ -111,6 +111,17 @@ impl CoreGroup {
         // ValSem109
         // ValSem110
         self.validate_update_proposals(&proposal_queue, sender_key_package_tuple)?;
+        if sender.sender_type == SenderType::NewMember {
+            // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
+            // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
+            // ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.
+            // ValSem243: External Commit, inline Proposals: There MUST NOT be any Update proposals.
+            // ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
+            //            leaf are identical to the ones in the path KeyPackage.
+            // ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+            // ValSem246: External Commit: MUST contain a path.
+            self.validate_external_commit(&proposal_queue, path_key_package.as_ref())?;
+        }
 
         // Create provisional tree and apply proposals
         let mut diff = self.treesync().empty_diff()?;
