@@ -212,7 +212,6 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
         .credential_bundle(&bob_credential_bundle)
         .proposal_store(&proposal_store)
         .build();
-    println!("\nBob joins externally.");
     let (mut new_group_bob, create_commit_result) = CoreGroup::join_by_external_commit(
         backend,
         params,
@@ -240,7 +239,6 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
 
     // Have alice and charly process the commit resulting from external init.
     let proposal_store = ProposalStore::default();
-    println!("\nAlice processes.");
     let staged_commit = group_alice
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
@@ -248,7 +246,6 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
         .merge_commit(staged_commit)
         .expect("error merging commit");
 
-    println!("\nCharly processes.");
     let staged_commit = group_charly
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
