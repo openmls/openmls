@@ -109,6 +109,8 @@ impl Ciphersuite {
 
     /// This creates a Ciphersuite from one of the supported ciphersuite names.
     /// This should only be used if it is clear the ciphersuite is supported.
+    /// If the ciphersuite is not supported, might lead to inconsistencies.
+    /// TODO #701: This should go away.
     pub(crate) fn new_from_supported(name: CiphersuiteName) -> Self {
         Ciphersuite {
             name,
