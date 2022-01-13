@@ -30,6 +30,7 @@ evercrypt_backend = { version = "0.1", path = "../evercrypt_backend", optional =
 rstest = {version = "^0.12", optional = true}
 rstest_reuse = {version = "^0.1", optional = true}
 rayon = "^1.5.0"
+thiserror = "^1.0"
 
 [features]
 default = []
