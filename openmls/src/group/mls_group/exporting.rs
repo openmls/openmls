@@ -1,3 +1,5 @@
+use crate::messages::PublicGroupState;
+
 use super::*;
 
 impl MlsGroup {
@@ -29,5 +31,19 @@ impl MlsGroup {
     /// is available `None` is returned.
     pub fn get_resumption_secret(&self, epoch: GroupEpoch) -> Option<&ResumptionSecret> {
         self.resumption_secret_store.get(epoch)
+    }
+
+    // === Export public group state ===
+    pub fn export_public_group_state(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<PublicGroupState, MlsGroupError> {
+        let credential_bundle: CredentialBundle = backend
+            .key_store()
+            .read(self.credential()?.signature_key())
+            .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
+        Ok(self
+            .group
+            .export_public_group_state(backend, &credential_bundle)?)
     }
 }

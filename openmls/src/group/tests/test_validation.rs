@@ -9,8 +9,14 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::{
-    config::*, credentials::*, framing::*, group::errors::FramingValidationError, group::*,
+    config::*,
+    credentials::*,
+    framing::*,
+    group::errors::{ExternalCommitValidationError, FramingValidationError},
+    group::*,
     key_packages::*,
+    messages::{public_group_state::VerifiablePublicGroupState, ProposalType},
+    prelude_test::signable::Signable,
 };
 
 // Helper function to generate a CredentialBundle
@@ -768,6 +774,132 @@ fn test_valsem10(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypto
         .parse_message(MlsMessageIn::from(original_message), backend)
         .expect("Could not parse message.");
     bob_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect("Unexpected error.");
+}
+
+// ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
+#[apply(ciphersuites_and_backends)]
+fn test_valsem240(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    // Test with MlsPlaintext
+    let ValidationTestSetup {
+        mut alice_group,
+        _alice_credential: alice_credential,
+        _bob_credential: bob_credential,
+        _alice_key_package: _,
+        bob_key_package,
+    } = validation_test_setup(WireFormat::MlsPlaintext, ciphersuite, backend);
+
+    let bob_credential_bundle = backend
+        .key_store()
+        .read(bob_credential.signature_key())
+        .expect("An unexpected error occurred.");
+
+    // Bob wants to commit externally.
+
+    // Have Alice export everything that bob needs.
+    let pgs_encoded: Vec<u8> = alice_group
+        .export_public_group_state(backend)
+        .expect("Error exporting PGS")
+        .tls_serialize_detached()
+        .expect("Error serializing PGS");
+    let verifiable_public_group_state =
+        VerifiablePublicGroupState::tls_deserialize(&mut pgs_encoded.as_slice())
+            .expect("Error deserializing PGS");
+    let tree_option = alice_group.export_ratchet_tree();
+
+    let proposal_store = ProposalStore::new();
+    let (mut bob_group, message) = MlsGroup::join_by_external_commit(
+        backend,
+        Some(&tree_option),
+        verifiable_public_group_state,
+        alice_group.configuration(),
+        &[],
+        &bob_credential_bundle,
+        proposal_store,
+    )
+    .expect("Error initializing group externally.");
+
+    let serialized_message = message
+        .tls_serialize_detached()
+        .expect("Could not serialize message.");
+
+    let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
+        .expect("Could not deserialize message.");
+
+    let original_message = plaintext.clone();
+    println!("Confirmation tag: {:?}", plaintext.confirmation_tag());
+
+    let mut content = if let MlsPlaintextContentType::Commit(commit) = plaintext.content() {
+        commit.clone()
+    } else {
+        panic!("Unexpected content type.");
+    };
+
+    let proposal_position = content
+        .proposals
+        .iter()
+        .position(|proposal| match proposal {
+            crate::messages::ProposalOrRef::Proposal(proposal) => {
+                proposal.is_type(ProposalType::ExternalInit)
+            }
+            crate::messages::ProposalOrRef::Reference(_) => false,
+        })
+        .expect("Couldn't find external init proposal.");
+
+    content.proposals.remove(proposal_position);
+
+    plaintext.set_content(MlsPlaintextContentType::Commit(content));
+
+    // Set the serialized group context
+    let serialized_context = bob_group
+        .group()
+        .context()
+        .tls_serialize_detached()
+        .expect("Could not serialize the group context.");
+    //plaintext.set_context(serialized_context.clone());
+
+    // We have to re-sign, since we changed the content.
+    let mut signed_plaintext: MlsPlaintext = plaintext
+        .payload()
+        .clone()
+        .sign(backend, &bob_credential_bundle)
+        .expect("Error signing modified payload.");
+
+    // Set old confirmation tag
+    signed_plaintext.set_confirmation_tag(
+        original_message
+            .confirmation_tag()
+            .expect("no confirmation tag on original message")
+            .clone(),
+    );
+
+    let verifiable_plaintext: VerifiableMlsPlaintext =
+        VerifiableMlsPlaintext::from_plaintext(signed_plaintext, None);
+
+    // Have alice process the commit resulting from external init.
+    let message_in = MlsMessageIn::from(verifiable_plaintext);
+
+    let unverified_message = alice_group
+        .parse_message(message_in, backend)
+        .expect("Could not parse message.");
+
+    let err = alice_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect_err("Could process unverified message despite wrong signature.");
+
+    assert_eq!(
+        err,
+        MlsGroupError::Group(CoreGroupError::ExternalCommitValidationError(
+            ExternalCommitValidationError::NoExternalInitProposals
+        ))
+    );
+
+    // Positive case
+    let unverified_message = alice_group
+        .parse_message(MlsMessageIn::from(original_message), backend)
+        .expect("Could not parse message.");
+    alice_group
         .process_unverified_message(unverified_message, None, backend)
         .expect("Unexpected error.");
 }

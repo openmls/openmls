@@ -4,11 +4,10 @@ use crate::{
     ciphersuite::Ciphersuite,
     config::Config,
     credentials::{CredentialBundle, CredentialType},
-    framing::{FramingParameters, ProcessedMessage, WireFormat},
+    framing::{FramingParameters, WireFormat},
     key_packages::KeyPackageBundle,
     messages::public_group_state::VerifiablePublicGroupState,
     test_utils::*,
-    tree::SenderRatchetConfiguration,
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -213,7 +212,6 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
         .credential_bundle(&bob_credential_bundle)
         .proposal_store(&proposal_store)
         .build();
-    println!("\nBob joins externally.");
     let (mut new_group_bob, create_commit_result) = CoreGroup::join_by_external_commit(
         backend,
         params,
@@ -241,7 +239,6 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
 
     // Have alice and charly process the commit resulting from external init.
     let proposal_store = ProposalStore::default();
-    println!("\nAlice processes.");
     let staged_commit = group_alice
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
@@ -249,7 +246,6 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
         .merge_commit(staged_commit)
         .expect("error merging commit");
 
-    println!("\nCharly processes.");
     let staged_commit = group_charly
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect("error staging commit");
@@ -349,122 +345,6 @@ fn test_external_init_single_member_group(
         .expect("error staging commit");
     group_alice
         .merge_commit(staged_commit)
-        .expect("error merging commit");
-
-    group_charly
-        .merge_commit(create_commit_result.staged_commit)
-        .expect("error merging own external commit");
-
-    assert_eq!(
-        group_charly.export_secret(backend, "", &[], ciphersuite.hash_length()),
-        group_alice.export_secret(backend, "", &[], ciphersuite.hash_length())
-    );
-
-    assert_eq!(
-        group_charly.treesync().export_nodes(),
-        group_alice.treesync().export_nodes()
-    );
-}
-
-#[apply(ciphersuites_and_backends)]
-fn test_external_init_validation(
-    ciphersuite: &'static Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
-    use crate::prelude_test::message::{MlsMessageIn, MlsMessageOut};
-
-    // Basic group setup.
-    let group_aad = b"Alice's test group";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
-
-    // Define credential bundles
-    let alice_credential_bundle = CredentialBundle::new(
-        "Alice".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_scheme(),
-        backend,
-    )
-    .unwrap();
-
-    // Generate KeyPackages
-    let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &alice_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .unwrap();
-
-    // === Alice creates a group ===
-    let group_id = GroupId::random(backend);
-
-    let mut group_alice = CoreGroup::builder(group_id, alice_key_package_bundle)
-        .build(backend)
-        .unwrap();
-
-    // Now set up charly and try to init externally.
-    // Define credential bundles
-    let charly_credential_bundle = CredentialBundle::new(
-        "Charly".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_scheme(),
-        backend,
-    )
-    .unwrap();
-
-    // Have Alice export everything that Charly needs.
-    let pgs_encoded: Vec<u8> = group_alice
-        .export_public_group_state(backend, &alice_credential_bundle)
-        .expect("Error exporting PGS")
-        .tls_serialize_detached()
-        .expect("Error serializing PGS");
-    let verifiable_public_group_state =
-        VerifiablePublicGroupState::tls_deserialize(&mut pgs_encoded.as_slice())
-            .expect("Error deserializing PGS");
-    let nodes_option = group_alice.treesync().export_nodes();
-
-    let proposal_store = ProposalStore::new();
-    let params = CreateCommitParams::builder()
-        .framing_parameters(framing_parameters)
-        .credential_bundle(&charly_credential_bundle)
-        .proposal_store(&proposal_store)
-        .build();
-    let (mut group_charly, create_commit_result) = CoreGroup::join_by_external_commit(
-        backend,
-        params,
-        Some(&nodes_option),
-        verifiable_public_group_state,
-    )
-    .expect("Error initializing group externally.");
-
-    // Create MlsMessageOut from MlsPlaintext
-    let mls_message_out: MlsMessageOut = create_commit_result.commit.into();
-    let mls_message_in: MlsMessageIn = mls_message_out.into();
-
-    // Have alice verify the message first.
-    let unverified_message = group_alice
-        .parse_message(
-            mls_message_in,
-            &SenderRatchetConfiguration::default(),
-            backend,
-        )
-        .expect("Error parsing message.");
-
-    let proposal_store = ProposalStore::default();
-    let processed_message = group_alice
-        .process_unverified_message(unverified_message, None, &proposal_store, &[], backend)
-        .expect("Error processing message.");
-
-    let staged_commit =
-        if let ProcessedMessage::StagedCommitMessage(staged_commit) = processed_message {
-            staged_commit
-        } else {
-            panic!("Wrong message type.")
-        };
-
-    // Have alice and charly process the commit resulting from external init.
-    group_alice
-        .merge_commit(*staged_commit)
         .expect("error merging commit");
 
     group_charly
