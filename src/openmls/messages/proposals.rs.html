@@ -371,36 +371,6 @@
 <span id="371">371</span>
 <span id="372">372</span>
 <span id="373">373</span>
-<span id="374">374</span>
-<span id="375">375</span>
-<span id="376">376</span>
-<span id="377">377</span>
-<span id="378">378</span>
-<span id="379">379</span>
-<span id="380">380</span>
-<span id="381">381</span>
-<span id="382">382</span>
-<span id="383">383</span>
-<span id="384">384</span>
-<span id="385">385</span>
-<span id="386">386</span>
-<span id="387">387</span>
-<span id="388">388</span>
-<span id="389">389</span>
-<span id="390">390</span>
-<span id="391">391</span>
-<span id="392">392</span>
-<span id="393">393</span>
-<span id="394">394</span>
-<span id="395">395</span>
-<span id="396">396</span>
-<span id="397">397</span>
-<span id="398">398</span>
-<span id="399">399</span>
-<span id="400">400</span>
-<span id="401">401</span>
-<span id="402">402</span>
-<span id="403">403</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite</span>::<span class="kw-2">*</span>, <span class="ident">config::ProtocolVersion</span>, <span class="ident">extensions::Extension</span>, <span class="ident">group::GroupId</span>,
     <span class="ident">key_packages</span>::<span class="kw-2">*</span>, <span class="ident">schedule::psk</span>::<span class="kw-2">*</span>,
@@ -546,36 +516,6 @@
     }
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">is_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">proposal_type</span>: <span class="ident">ProposalType</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">proposal_type</span>() <span class="op">==</span> <span class="ident">proposal_type</span>
-    }
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_add</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">AddProposal</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Proposal::Add</span>(<span class="ident">add_proposal</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">add_proposal</span>.<span class="ident">clone</span>()),
-            <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
-        }
-    }
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_update</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UpdateProposal</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Proposal::Update</span>(<span class="ident">update_proposal</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">update_proposal</span>.<span class="ident">clone</span>()),
-            <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
-        }
-    }
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_remove</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RemoveProposal</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Proposal::Remove</span>(<span class="ident">remove_proposal</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">remove_proposal</span>.<span class="ident">clone</span>()),
-            <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
-        }
-    }
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_presharedkey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PreSharedKeyProposal</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Proposal::PreSharedKey</span>(<span class="ident">psk_proposal</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">psk_proposal</span>.<span class="ident">clone</span>()),
-            <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
-        }
-    }
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_external_init</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ExternalInitProposal</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Proposal::ExternalInit</span>(<span class="ident">external_init_proposal</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">external_init_proposal</span>.<span class="ident">clone</span>()),
-            <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
-        }
     }
 }
 

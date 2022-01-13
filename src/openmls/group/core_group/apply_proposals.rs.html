@@ -165,6 +165,13 @@
 <span id="165">165</span>
 <span id="166">166</span>
 <span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::HashSet</span>;
 
 <span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
@@ -173,7 +180,10 @@
     <span class="ident">binary_tree::LeafIndex</span>,
     <span class="ident">group::CoreGroupError</span>,
     <span class="ident">key_packages::KeyPackageBundle</span>,
-    <span class="ident">messages::proposals</span>::{<span class="ident">AddProposal</span>, <span class="ident">ProposalType</span>},
+    <span class="ident">messages</span>::{
+        <span class="ident">proposals</span>::{<span class="ident">AddProposal</span>, <span class="ident">ProposalType</span>},
+        <span class="ident">Proposal</span>,
+    },
     <span class="ident">schedule</span>::{<span class="ident">InitSecret</span>, <span class="ident">PreSharedKeyId</span>, <span class="ident">PreSharedKeys</span>},
     <span class="ident">treesync</span>::{<span class="ident">diff::TreeSyncDiff</span>, <span class="ident">node::leaf_node::LeafNode</span>},
 };
@@ -227,37 +237,39 @@
         <span class="comment">// Process updates first</span>
         <span class="kw">for</span> <span class="ident">queued_proposal</span> <span class="kw">in</span> <span class="ident">proposal_queue</span>.<span class="ident">filtered_by_type</span>(<span class="ident">ProposalType::Update</span>) {
             <span class="ident">has_updates</span> <span class="op">=</span> <span class="bool-val">true</span>;
-            <span class="comment">// Unwrapping here is safe because we know the proposal type</span>
-            <span class="kw">let</span> <span class="ident">update_proposal</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">queued_proposal</span>.<span class="ident">proposal</span>().<span class="ident">as_update</span>().<span class="ident">unwrap</span>();
-            <span class="comment">// Check if this is our own update.</span>
-            <span class="kw">let</span> <span class="ident">sender_index</span> <span class="op">=</span> <span class="ident">queued_proposal</span>.<span class="ident">sender</span>().<span class="ident">to_leaf_index</span>();
-            <span class="kw">let</span> <span class="ident">leaf_node</span>: <span class="ident">LeafNode</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">sender_index</span> <span class="op">==</span> <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">own_leaf_index</span>() {
-                <span class="kw">let</span> <span class="ident">own_kpb</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">key_package_bundles</span>
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">find</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">kpb</span><span class="op">|</span> <span class="ident">kpb</span>.<span class="ident">key_package</span>() <span class="op">==</span> <span class="ident">update_proposal</span>.<span class="ident">key_package</span>())
-                {
-                    <span class="prelude-val">Some</span>(<span class="ident">kpb</span>) =&gt; <span class="ident">kpb</span>,
-                    <span class="comment">// We lost the KeyPackageBundle apparently</span>
-                    <span class="prelude-val">None</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CoreGroupError::MissingKeyPackageBundle</span>),
+            <span class="comment">// We know this is an update proposal</span>
+            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Proposal::Update</span>(<span class="ident">update_proposal</span>) <span class="op">=</span> <span class="ident">queued_proposal</span>.<span class="ident">proposal</span>() {
+                <span class="comment">// Check if this is our own update.</span>
+                <span class="kw">let</span> <span class="ident">sender_index</span> <span class="op">=</span> <span class="ident">queued_proposal</span>.<span class="ident">sender</span>().<span class="ident">to_leaf_index</span>();
+                <span class="kw">let</span> <span class="ident">leaf_node</span>: <span class="ident">LeafNode</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">sender_index</span> <span class="op">==</span> <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">own_leaf_index</span>() {
+                    <span class="kw">let</span> <span class="ident">own_kpb</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">key_package_bundles</span>
+                        .<span class="ident">iter</span>()
+                        .<span class="ident">find</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">kpb</span><span class="op">|</span> <span class="ident">kpb</span>.<span class="ident">key_package</span>() <span class="op">==</span> <span class="ident">update_proposal</span>.<span class="ident">key_package</span>())
+                    {
+                        <span class="prelude-val">Some</span>(<span class="ident">kpb</span>) =&gt; <span class="ident">kpb</span>,
+                        <span class="comment">// We lost the KeyPackageBundle apparently</span>
+                        <span class="prelude-val">None</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CoreGroupError::MissingKeyPackageBundle</span>),
+                    };
+                    <span class="ident">own_kpb</span>.<span class="ident">clone</span>().<span class="ident">into</span>()
+                } <span class="kw">else</span> {
+                    <span class="ident">update_proposal</span>.<span class="ident">key_package</span>().<span class="ident">clone</span>().<span class="ident">into</span>()
                 };
-                <span class="ident">own_kpb</span>.<span class="ident">clone</span>().<span class="ident">into</span>()
-            } <span class="kw">else</span> {
-                <span class="ident">update_proposal</span>.<span class="ident">key_package</span>().<span class="ident">clone</span>().<span class="ident">into</span>()
-            };
-            <span class="ident">diff</span>.<span class="ident">update_leaf</span>(<span class="ident">leaf_node</span>, <span class="ident">queued_proposal</span>.<span class="ident">sender</span>().<span class="ident">to_leaf_index</span>())<span class="question-mark">?</span>;
+                <span class="ident">diff</span>.<span class="ident">update_leaf</span>(<span class="ident">leaf_node</span>, <span class="ident">queued_proposal</span>.<span class="ident">sender</span>().<span class="ident">to_leaf_index</span>())<span class="question-mark">?</span>;
+            }
         }
 
         <span class="comment">// Process removes</span>
         <span class="kw">for</span> <span class="ident">queued_proposal</span> <span class="kw">in</span> <span class="ident">proposal_queue</span>.<span class="ident">filtered_by_type</span>(<span class="ident">ProposalType::Remove</span>) {
             <span class="ident">has_removes</span> <span class="op">=</span> <span class="bool-val">true</span>;
-            <span class="comment">// Unwrapping here is safe because we know the proposal type</span>
-            <span class="kw">let</span> <span class="ident">remove_proposal</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">queued_proposal</span>.<span class="ident">proposal</span>().<span class="ident">as_remove</span>().<span class="ident">unwrap</span>();
-            <span class="comment">// Check if we got removed from the group</span>
-            <span class="kw">if</span> <span class="ident">remove_proposal</span>.<span class="ident">removed</span>() <span class="op">==</span> <span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">own_leaf_index</span>() {
-                <span class="ident">self_removed</span> <span class="op">=</span> <span class="bool-val">true</span>;
+            <span class="comment">// We know this is a remove proposal</span>
+            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Proposal::Remove</span>(<span class="ident">remove_proposal</span>) <span class="op">=</span> <span class="ident">queued_proposal</span>.<span class="ident">proposal</span>() {
+                <span class="comment">// Check if we got removed from the group</span>
+                <span class="kw">if</span> <span class="ident">remove_proposal</span>.<span class="ident">removed</span>() <span class="op">==</span> <span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">own_leaf_index</span>() {
+                    <span class="ident">self_removed</span> <span class="op">=</span> <span class="bool-val">true</span>;
+                }
+                <span class="comment">// Blank the direct path of the removed member</span>
+                <span class="ident">diff</span>.<span class="ident">blank_leaf</span>(<span class="ident">remove_proposal</span>.<span class="ident">removed</span>())<span class="question-mark">?</span>;
             }
-            <span class="comment">// Blank the direct path of the removed member</span>
-            <span class="ident">diff</span>.<span class="ident">blank_leaf</span>(<span class="ident">remove_proposal</span>.<span class="ident">removed</span>())<span class="question-mark">?</span>;
         }
 
         <span class="comment">// Process external init proposals</span>
@@ -266,43 +278,44 @@
             <span class="comment">// get the init secret from the proposal. This branching will not be</span>
             <span class="comment">// necessary after #617.</span>
             <span class="kw">if</span> <span class="ident">queued_proposal</span>.<span class="ident">sender</span>().<span class="ident">to_leaf_index</span>() <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">own_leaf_index</span>() {
-                <span class="comment">// Unwrapping here is safe because we know the proposal type</span>
-                <span class="kw">let</span> <span class="ident">external_init_proposal</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">queued_proposal</span>
-                    .<span class="ident">proposal</span>()
-                    .<span class="ident">as_external_init</span>()
-                    .<span class="ident">ok_or</span>(<span class="ident">CoreGroupError::LibraryError</span>)<span class="question-mark">?</span>;
-                <span class="comment">// Decrypt the context an derive the external init.</span>
-                <span class="kw">let</span> <span class="ident">external_priv</span> <span class="op">=</span> <span class="self">self</span>
-                    .<span class="ident">group_epoch_secrets</span>()
-                    .<span class="ident">external_secret</span>()
-                    .<span class="ident">derive_external_keypair</span>(<span class="ident">backend</span>.<span class="ident">crypto</span>(), <span class="self">self</span>.<span class="ident">ciphersuite</span>())
-                    .<span class="ident">private</span>
-                    .<span class="ident">into</span>();
-                <span class="ident">external_init_secret_option</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">InitSecret::from_kem_output</span>(
-                    <span class="ident">backend</span>,
-                    <span class="self">self</span>.<span class="ident">ciphersuite</span>(),
-                    <span class="self">self</span>.<span class="ident">mls_version</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">external_priv</span>,
-                    <span class="ident">external_init_proposal</span>.<span class="ident">kem_output</span>(),
-                )<span class="question-mark">?</span>);
+                <span class="comment">// We know the proposal type</span>
+                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Proposal::ExternalInit</span>(<span class="ident">external_init_proposal</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">queued_proposal</span>.<span class="ident">proposal</span>()
+                {
+                    <span class="comment">// Decrypt the context an derive the external init.</span>
+                    <span class="kw">let</span> <span class="ident">external_priv</span> <span class="op">=</span> <span class="self">self</span>
+                        .<span class="ident">group_epoch_secrets</span>()
+                        .<span class="ident">external_secret</span>()
+                        .<span class="ident">derive_external_keypair</span>(<span class="ident">backend</span>.<span class="ident">crypto</span>(), <span class="self">self</span>.<span class="ident">ciphersuite</span>())
+                        .<span class="ident">private</span>
+                        .<span class="ident">into</span>();
+                    <span class="ident">external_init_secret_option</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">InitSecret::from_kem_output</span>(
+                        <span class="ident">backend</span>,
+                        <span class="self">self</span>.<span class="ident">ciphersuite</span>(),
+                        <span class="self">self</span>.<span class="ident">mls_version</span>,
+                        <span class="kw-2">&amp;</span><span class="ident">external_priv</span>,
+                        <span class="ident">external_init_proposal</span>.<span class="ident">kem_output</span>(),
+                    )<span class="question-mark">?</span>);
+                }
                 <span class="comment">// Ignore every external init beyond the first one.</span>
                 <span class="kw">break</span>;
             }
         }
 
         <span class="comment">// Process adds</span>
-        <span class="kw">let</span> <span class="ident">add_proposals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AddProposal</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">proposal_queue</span>
+        <span class="kw">let</span> <span class="ident">add_proposals</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">AddProposal</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">proposal_queue</span>
             .<span class="ident">filtered_by_type</span>(<span class="ident">ProposalType::Add</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">queued_proposal</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">queued_proposal</span>.<span class="ident">proposal</span>();
-                <span class="comment">// Unwrapping here is safe because we know the proposal type</span>
-                <span class="ident">proposal</span>.<span class="ident">as_add</span>().<span class="ident">unwrap</span>()
+            .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">queued_proposal</span><span class="op">|</span> {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Proposal::Add</span>(<span class="ident">add_proposal</span>) <span class="op">=</span> <span class="ident">queued_proposal</span>.<span class="ident">proposal</span>() {
+                    <span class="prelude-val">Some</span>(<span class="ident">add_proposal</span>)
+                } <span class="kw">else</span> {
+                    <span class="prelude-val">None</span>
+                }
             })
             .<span class="ident">collect</span>();
 
         <span class="comment">// Extract KeyPackages from proposals</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">invitation_list</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-        <span class="kw">for</span> <span class="ident">add_proposal</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">add_proposals</span> {
+        <span class="kw">for</span> <span class="ident">add_proposal</span> <span class="kw">in</span> <span class="ident">add_proposals</span> {
             <span class="kw">let</span> <span class="ident">leaf_index</span> <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">add_leaf</span>(<span class="ident">add_proposal</span>.<span class="ident">key_package</span>().<span class="ident">clone</span>())<span class="question-mark">?</span>;
             <span class="ident">invitation_list</span>.<span class="ident">push</span>((<span class="ident">leaf_index</span>, <span class="ident">add_proposal</span>.<span class="ident">clone</span>()))
         }
@@ -310,11 +323,12 @@
         <span class="comment">// Process PSK proposals</span>
         <span class="kw">let</span> <span class="ident">psks</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PreSharedKeyId</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">proposal_queue</span>
             .<span class="ident">filtered_by_type</span>(<span class="ident">ProposalType::Presharedkey</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">queued_proposal</span><span class="op">|</span> {
-                <span class="comment">// FIXME: remove unwrap</span>
-                <span class="comment">// Unwrapping here is safe because we know the proposal type</span>
-                <span class="kw">let</span> <span class="ident">psk_proposal</span> <span class="op">=</span> <span class="ident">queued_proposal</span>.<span class="ident">proposal</span>().<span class="ident">as_presharedkey</span>().<span class="ident">unwrap</span>();
-                <span class="ident">psk_proposal</span>.<span class="ident">into_psk_id</span>()
+            .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">queued_proposal</span><span class="op">|</span> {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Proposal::PreSharedKey</span>(<span class="ident">psk_proposal</span>) <span class="op">=</span> <span class="ident">queued_proposal</span>.<span class="ident">proposal</span>() {
+                    <span class="prelude-val">Some</span>(<span class="ident">psk_proposal</span>.<span class="ident">clone</span>().<span class="ident">into_psk_id</span>())
+                } <span class="kw">else</span> {
+                    <span class="prelude-val">None</span>
+                }
             })
             .<span class="ident">collect</span>();
 

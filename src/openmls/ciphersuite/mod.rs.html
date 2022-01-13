@@ -182,6 +182,13 @@
 <span id="182">182</span>
 <span id="183">183</span>
 <span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Ciphersuites for MLS</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This file contains the API to interact with ciphersuites.</span>
@@ -288,7 +295,15 @@
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ConfigError::UnsupportedCiphersuite</span>);
         }
 
-        <span class="prelude-val">Ok</span>(<span class="ident">Ciphersuite</span> {
+        <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::new_from_supported</span>(<span class="ident">name</span>))
+    }
+
+    <span class="doccomment">/// This creates a Ciphersuite from one of the supported ciphersuite names.</span>
+    <span class="doccomment">/// This should only be used if it is clear the ciphersuite is supported.</span>
+    <span class="doccomment">/// If the ciphersuite is not supported, might lead to inconsistencies.</span>
+    <span class="doccomment">/// TODO #701: This should go away.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new_from_supported</span>(<span class="ident">name</span>: <span class="ident">CiphersuiteName</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">Ciphersuite</span> {
             <span class="ident">name</span>,
             <span class="ident">signature_scheme</span>: <span class="ident">SignatureScheme::from</span>(<span class="ident">name</span>),
             <span class="ident">hash</span>: <span class="ident">hash_from_suite</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>),
@@ -296,13 +311,12 @@
             <span class="ident">hpke_kem</span>: <span class="ident">kem_from_suite</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>),
             <span class="ident">hpke_kdf</span>: <span class="ident">hpke_kdf_from_suite</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>),
             <span class="ident">hpke_aead</span>: <span class="ident">hpke_aead_from_suite</span>(<span class="kw-2">&amp;</span><span class="ident">name</span>),
-        })
+        }
     }
 
     <span class="doccomment">/// Get the default ciphersuite.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="self">Self</span> {
-        <span class="ident">Config::ciphersuite</span>(<span class="ident">CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519</span>)
-            .<span class="ident">unwrap</span>()
+        <span class="kw-2">&amp;</span><span class="ident">Config::supported_ciphersuites</span>()[<span class="number">0</span>]
     }
 
     <span class="doccomment">/// Get the signature scheme of this ciphersuite.</span>
