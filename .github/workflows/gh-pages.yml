@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 defaults:
   run:
@@ -36,15 +37,16 @@ jobs:
       group: ${{ github.workflow }}-${{ github.ref }}
     steps:
       - uses: actions/checkout@v2
-      - name: Build mdBook
+      - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v1
         with:
           mdbook-version: 'latest'
-      - run: |
-          cd book
+      - name: Build mdBook
+        run: |
+          cd openmls/book
           mdbook build
       - name: Deploy mdBook
-      - run: | 
+        run: | 
           curl -X POST https://api.github.com/repos/openmls/book/dispatches \
           -H 'Accept: application/vnd.github.everest-preview+json' \
           -u ${{ secrets.ACCESS_TOKEN }} \
