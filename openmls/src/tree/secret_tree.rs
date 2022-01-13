@@ -179,7 +179,7 @@ impl SecretTree {
         // Calculate node secret and initialize SenderRatchets
         let node_secret = match &self.nodes[index_in_tree.as_usize()] {
             Some(node) => &node.secret,
-            // We just derive all necessary nodes so this should not happen
+            // We just derived all necessary nodes so this should not happen
             None => return Err(SecretTreeError::LibraryError),
         };
 
