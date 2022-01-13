@@ -6,10 +6,6 @@ on:
       - main
   workflow_dispatch:
 
-defaults:
-  run:
-    working-directory: openmls
-
 jobs:
   rustdoc:
     runs-on: ubuntu-latest
@@ -18,6 +14,7 @@ jobs:
       - uses: actions/checkout@master
       - name: Build docs
         run: |
+          cd openmls
           cargo doc --no-deps
           touch target/doc/.nojekyll
           cat > target/doc/index.html <<EOF
@@ -43,7 +40,7 @@ jobs:
           mdbook-version: 'latest'
       - name: Build mdBook
         run: |
-          cd openmls/book
+          cd book
           mdbook build
       - name: Deploy mdBook
         run: | 
