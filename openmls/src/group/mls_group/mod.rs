@@ -339,9 +339,9 @@ impl MlsGroup {
         plaintext: MlsPlaintext,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsMessageOut, MlsGroupError> {
-        let msg = match self.configuration().wire_format() {
-            WireFormat::MlsPlaintext => MlsMessageOut::from(plaintext),
-            WireFormat::MlsCiphertext => {
+        let msg = match self.configuration().wire_format_policy().outgoing() {
+            OutgoingWireFormatPolicy::AlwaysPlaintext => MlsMessageOut::from(plaintext),
+            OutgoingWireFormatPolicy::AlwaysCiphertext => {
                 let ciphertext =
                     self.group
                         .encrypt(plaintext, self.configuration().padding_size(), backend)?;
@@ -358,7 +358,10 @@ impl MlsGroup {
 
     /// Group framing parameters
     fn framing_parameters(&self) -> FramingParameters {
-        FramingParameters::new(&self.aad, self.mls_group_config.wire_format)
+        FramingParameters::new(
+            &self.aad,
+            self.mls_group_config.wire_format_policy().outgoing(),
+        )
     }
 
     /// Check if the group is operational. Throws an error if the group is

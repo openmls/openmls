@@ -13,10 +13,7 @@ fn decryption_key_index_computation(ciphersuite: &'static Ciphersuite) {
     println!("Testing ciphersuite {:?}", ciphersuite.name());
 
     // Some basic setup functions for the MlsGroup.
-    let mls_group_config = MlsGroupConfig::builder()
-        .wire_format(WireFormat::MlsPlaintext)
-        .padding_size(10)
-        .build();
+    let mls_group_config = MlsGroupConfig::test_default();
     let number_of_clients = 20;
     let setup = MlsGroupTestSetup::new(
         mls_group_config,

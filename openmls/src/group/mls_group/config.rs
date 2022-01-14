@@ -5,13 +5,13 @@ use super::*;
 use serde::{Deserialize, Serialize};
 
 /// Specifies the configuration parameters for a [`MlsGroup`]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct MlsGroupConfig {
     /// Defines whether handshake messages (Proposals & Commits) are encrypted.
     /// Application are always encrypted regardless. `Plaintext`: Handshake messages
     /// are returned as MlsPlaintext messages `Ciphertext`: Handshake messages are
     /// returned as MlsCiphertext messages
-    pub(crate) wire_format: WireFormat,
+    pub(crate) wire_format_policy: WireFormatPolicy,
     /// Size of padding in bytes
     pub(crate) padding_size: usize,
     /// Maximum number of past epochs for which application messages
@@ -33,9 +33,9 @@ impl MlsGroupConfig {
         MlsGroupConfigBuilder::new()
     }
 
-    /// Get the [`MlsGroupConfig`] wire format.
-    pub fn wire_format(&self) -> WireFormat {
-        self.wire_format
+    /// Get the [`MlsGroupConfig`] wire format policy.
+    pub fn wire_format_policy(&self) -> WireFormatPolicy {
+        self.wire_format_policy
     }
 
     /// Get the [`MlsGroupConfig`] padding size.
@@ -66,22 +66,11 @@ impl MlsGroupConfig {
     #[cfg(any(feature = "test-utils", test))]
     pub fn test_default() -> Self {
         Self::builder()
-            .wire_format(WireFormat::MlsPlaintext)
+            .wire_format_policy(WireFormatPolicy::new(
+                OutgoingWireFormatPolicy::AlwaysPlaintext,
+                IncomingWireFormatPolicy::Mixed,
+            ))
             .build()
-    }
-}
-
-impl Default for MlsGroupConfig {
-    fn default() -> Self {
-        MlsGroupConfig {
-            wire_format: WireFormat::MlsCiphertext,
-            padding_size: 0,
-            max_past_epochs: 0,
-            number_of_resumption_secrets: 0,
-            use_ratchet_tree_extension: false,
-            required_capabilities: RequiredCapabilitiesExtension::default(),
-            sender_ratchet_configuration: SenderRatchetConfiguration::default(),
-        }
     }
 }
 
@@ -97,8 +86,8 @@ impl MlsGroupConfigBuilder {
     }
 
     /// Sets the `wire_format` property of the MlsGroupConfig.
-    pub fn wire_format(mut self, wire_format: WireFormat) -> Self {
-        self.config.wire_format = wire_format;
+    pub fn wire_format_policy(mut self, wire_format_policy: WireFormatPolicy) -> Self {
+        self.config.wire_format_policy = wire_format_policy;
         self
     }
 

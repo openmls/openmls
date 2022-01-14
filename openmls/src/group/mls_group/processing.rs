@@ -30,7 +30,12 @@ impl MlsGroup {
         let sender_ratchet_configuration =
             self.configuration().sender_ratchet_configuration().clone();
         self.group
-            .parse_message(message, &sender_ratchet_configuration, backend)
+            .parse_message(
+                backend,
+                message,
+                &sender_ratchet_configuration,
+                self.configuration().wire_format_policy().incoming(),
+            )
             .map_err(MlsGroupError::Group)
     }
 
