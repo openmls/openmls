@@ -120,9 +120,13 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         &crypto,
     )
     .expect("An unexpected error occurred.");
-    let joiner_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite_name], &joiner_credential_bundle, &crypto, Vec::new())
-            .expect("An unexpected error occurred.");
+    let joiner_key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite_name],
+        &joiner_credential_bundle,
+        &crypto,
+        Vec::new(),
+    )
+    .expect("An unexpected error occurred.");
     let add_proposal = AddProposal {
         key_package: joiner_key_package_bundle.key_package().clone(),
     };
