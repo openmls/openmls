@@ -322,7 +322,7 @@ impl CoreGroup {
         let remove_proposals = proposal_queue.filtered_by_type(ProposalType::Remove);
         for proposal in remove_proposals {
             if proposal.proposal_or_ref_type() == ProposalOrRefType::Proposal {
-                if let Some(remove_proposal) = proposal.proposal().as_remove() {
+                if let Proposal::Remove(remove_proposal) = proposal.proposal() {
                     let removed_leaf = self
                         .treesync()
                         .leaf(remove_proposal.removed())
