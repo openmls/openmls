@@ -301,6 +301,7 @@ fn test_valsem242(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     )
     .expect("An unexpected error occurred.");
 
+    // Add an Add proposal to the external commit.
     let add_proposal = ProposalOrRef::Proposal(Proposal::Add(AddProposal {
         key_package: bob_key_package,
     }));
@@ -336,7 +337,9 @@ fn test_valsem242(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     let err = alice_group
         .process_unverified_message(unverified_message, None, backend)
-        .expect_err("Could process unverified message despite wrong signature.");
+        .expect_err(
+            "Could process unverified message despite Add proposal in the external commit.",
+        );
 
     assert_eq!(
         err,
@@ -434,6 +437,7 @@ fn test_valsem243(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     )
     .expect("Error generating key package");
 
+    // Add an Update proposal to the external commit.
     let update_proposal = ProposalOrRef::Proposal(Proposal::Update(UpdateProposal {
         key_package: bob_key_package,
     }));
@@ -469,7 +473,7 @@ fn test_valsem243(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     let err = alice_group
         .process_unverified_message(unverified_message, None, backend)
-        .expect_err("Could process unverified message despite wrong signature.");
+        .expect_err("Could process unverified message Update proposal in the external commit.");
 
     assert_eq!(
         err,
@@ -604,7 +608,7 @@ fn test_valsem244(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     let err = alice_group
         .process_unverified_message(unverified_message, None, backend)
-        .expect_err("Could process unverified message despite wrong signature.");
+        .expect_err("Could process unverified message despite the remove proposal targeting the wrong group member.");
 
     assert_eq!(
         err,
@@ -690,7 +694,7 @@ fn test_valsem245(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     let err = alice_group
         .process_unverified_message(unverified_message, None, backend)
-        .expect_err("Could process unverified message despite wrong signature.");
+        .expect_err("Could process unverified message despite the external commit including an external init proposal by reference.");
 
     assert_eq!(
         err,
