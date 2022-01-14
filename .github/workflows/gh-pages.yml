@@ -22,7 +22,7 @@ jobs:
             <meta http-equiv="refresh" content="0; URL='openmls/index.html'" />
           </head></html>
           EOF
-      - name: Deploy to docs GitHub Pages
+      - name: Deploy docs to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
