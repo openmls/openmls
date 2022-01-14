@@ -1,5 +1,5 @@
 //! This module tests the validation of proposals as defined in
-//! https://openmls.tech/book/#semantic-validation-of-proposals-covered-by-a-commit
+//! https://openmls.tech/book/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::OpenMlsCryptoProvider;
@@ -133,6 +133,8 @@ fn test_valsem100(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
             ProposalValidationError::DuplicateIdentityAddProposal
         )
     );
+
+    // TODO #525: Also test that we are correctly validating incoming proposals.
 }
 
 /// ValSem103:
@@ -183,4 +185,6 @@ fn test_valsem103(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
             ProposalValidationError::ExistingIdentityAddProposal
         )
     );
+
+    // TODO #525: Also test that we are correctly validating incoming proposals.
 }

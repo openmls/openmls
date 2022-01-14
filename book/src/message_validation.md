@@ -13,25 +13,25 @@
 
 | ValidationStep | Description                                                 | Implemented | Tested | Test File                                    |
 | -------------- | ----------------------------------------------------------- | ----------- | ------ | -------------------------------------------- |
-| `ValSem001`    | Wire format                                                 | ✅          | ✅     | `openmls/src/group/tests/test_validation.rs` |
-| `ValSem002`    | Group id                                                    | ✅          | ✅     | `openmls/src/group/tests/test_validation.rs` |
-| `ValSem003`    | Epoch                                                       | ✅          | ✅     | `openmls/src/group/tests/test_validation.rs` |
-| `ValSem004`    | Sender: Member: check the sender points to a non-blank leaf | ✅          | ✅     | `openmls/src/group/tests/test_validation.rs` |
-| `ValSem005`    | Application messages must use ciphertext                    | ✅          | ✅     | `openmls/src/group/tests/test_validation.rs` |
-| `ValSem006`    | Ciphertext: decryption needs to work                        | ✅          | ✅     | `openmls/src/group/tests/test_validation.rs` |
-| `ValSem007`    | Membership tag presence                                     | ✅          | ✅     | `openmls/src/group/tests/test_validation.rs` |
-| `ValSem008`    | Membership tag verification                                 | ✅          | ✅     | `openmls/src/group/tests/test_validation.rs` |
-| `ValSem009`    | Confirmation tag presence                                   | ✅          | ✅     | `openmls/src/group/tests/test_validation.rs` |
-| `ValSem010`    | Signature verification                                      | ✅          | ✅     | `openmls/src/group/tests/test_validation.rs` |
+| `ValSem001`    | Wire format                                                 | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem002`    | Group id                                                    | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem003`    | Epoch                                                       | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem004`    | Sender: Member: check the sender points to a non-blank leaf | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem005`    | Application messages must use ciphertext                    | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem006`    | Ciphertext: decryption needs to work                        | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem007`    | Membership tag presence                                     | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem008`    | Membership tag verification                                 | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem009`    | Confirmation tag presence                                   | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem010`    | Signature verification                                      | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
 
 ### Semantic validation of proposals covered by a Commit
 
 | ValidationStep | Description                                                                                 | Implemented    | Tested | Test File |
 | -------------- | ------------------------------------------------------------------------------------------- | -------------- | ------ | --------- |
-| `ValSem100`    | Add Proposal: Identity in proposals must be unique among proposals                          | ✅             | ❌     | TBD       |
+| `ValSem100`    | Add Proposal: Identity in proposals must be unique among proposals                          | ✅             | ❌<sup>2</sup> | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem101`    | Add Proposal: Signature public key in proposals must be unique among proposals              | ✅             | ❌     | TBD       |
 | `ValSem102`    | Add Proposal: HPKE init key in proposals must be unique among proposals                     | ✅             | ❌     | TBD       |
-| `ValSem103`    | Add Proposal: Identity in proposals must be unique among existing group members             | ✅             | ❌     | TBD       |
+| `ValSem103`    | Add Proposal: Identity in proposals must be unique among existing group members             | ✅             | ❌<sup>2</sup> | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem104`    | Add Proposal: Signature public key in proposals must be unique among existing group members | ✅             | ❌     | TBD       |
 | `ValSem105`    | Add Proposal: HPKE init key in proposals must be unique among existing group members        | ✅             | ❌     | TBD       |
 | `ValSem106`    | Add Proposal: required capabilities                                                         | ❌<sup>1</sup> | ❌     | TBD       |
@@ -41,6 +41,7 @@
 | `ValSem110`    | Update Proposal: HPKE init key must be unique among existing members                        | ✅             | ❌     | TBD       |
 
 <sup>1</sup> Partly implemented, see `TODO`s in `openmls/src/group/core_group/validation.rs`.
+<sup>2</sup> Partly implemented, see `TODO`s in `openmls/src/group/core_group/test_proposal_validation.rs`.
 
 ### Commit message validation
 

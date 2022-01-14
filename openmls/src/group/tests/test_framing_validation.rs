@@ -1,5 +1,5 @@
 //! This module tests the validation of message framing as defined in
-//! https://openmls.tech/book/#semantic-validation-of-message-framing
+//! https://openmls.tech/book/message_validation.html#semantic-validation-of-message-framing
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMlsCryptoProvider};
