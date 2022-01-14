@@ -653,7 +653,7 @@ fn test_subtree_path() {
         .subtree_path(0, 0)
         .expect("error computing subtree path");
     let node = diff
-        .node(*subtree_path.first().unwrap())
+        .node(*subtree_path.first().expect("An unexpected error occurred."))
         .expect("error dereferencing");
     assert_eq!(node, &0);
 
@@ -667,7 +667,7 @@ fn test_subtree_path() {
         .subtree_path(0, 1)
         .expect("error computing subtree path");
     assert_eq!(
-        diff.node(*subtree_path.first().unwrap())
+        diff.node(*subtree_path.first().expect("An unexpected error occurred."))
             .expect("error dereferencing"),
         &1
     );
@@ -688,7 +688,7 @@ fn test_subtree_path() {
         .subtree_path(0, 49)
         .expect("error computing subtree path");
     assert_eq!(
-        diff.node(*subtree_path.first().unwrap())
+        diff.node(*subtree_path.first().expect("An unexpected error occurred."))
             .expect("error dereferencing"),
         diff.node(diff.root()).expect("error dereferencing")
     );

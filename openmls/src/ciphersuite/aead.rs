@@ -98,7 +98,7 @@ impl AeadNonce {
     #[cfg(test)]
     pub fn random(rng: &impl OpenMlsCryptoProvider) -> Self {
         AeadNonce {
-            value: rng.rand().random_array().unwrap(),
+            value: rng.rand().random_array().expect("Not enough entropy."),
         }
     }
 
@@ -129,9 +129,13 @@ pub(crate) fn aead_key_gen(
     rng: &impl OpenMlsRand,
 ) -> Vec<u8> {
     match alg {
-        openmls_traits::types::AeadType::Aes128Gcm => rng.random_vec(16).unwrap(),
+        openmls_traits::types::AeadType::Aes128Gcm => {
+            rng.random_vec(16).expect("An unexpected error occurred.")
+        }
         openmls_traits::types::AeadType::Aes256Gcm
-        | openmls_traits::types::AeadType::ChaCha20Poly1305 => rng.random_vec(32).unwrap(),
+        | openmls_traits::types::AeadType::ChaCha20Poly1305 => {
+            rng.random_vec(32).expect("An unexpected error occurred.")
+        }
     }
 }
 
@@ -145,7 +149,8 @@ mod unit_tests {
     /// state.
     #[apply(backends)]
     fn test_xor(backend: &impl OpenMlsCryptoProvider) {
-        let reuse_guard: ReuseGuard = ReuseGuard::from_random(backend);
+        let reuse_guard: ReuseGuard =
+            ReuseGuard::try_from_random(backend).expect("An unexpected error occurred.");
         let original_nonce = AeadNonce::random(backend);
         let mut nonce = original_nonce.clone();
         nonce.xor_with_reuse_guard(&reuse_guard);

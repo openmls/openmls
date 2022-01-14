@@ -541,7 +541,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .expect("error decrypting message");
     let received_message = group_charlie.verify(received_message, backend);
     assert_eq!(
-        received_message.unwrap_err(),
+        received_message.expect_err("Expected an error."),
         CoreGroupError::MlsPlaintextError(MlsPlaintextError::UnknownSender)
     );
 
@@ -577,7 +577,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     let received_message = group_charlie.decrypt(&enc_message, backend, configuration);
     assert_eq!(
-        received_message.unwrap_err(),
+        received_message.expect_err("Expected an error."),
         CoreGroupError::MlsCiphertextError(MlsCiphertextError::GenerationOutOfBound)
     );
 }

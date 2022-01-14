@@ -263,7 +263,8 @@ pub fn print_tree(tree: &TreeSync, message: &str) {
                 Node::LeafNode(leaf_node) => {
                     print!("\tL");
                     let key_bytes = leaf_node.public_key().as_slice();
-                    let parent_hash_bytes = node.parent_hash().unwrap();
+                    let parent_hash_bytes =
+                        node.parent_hash().expect("An unexpected error occurred.");
                     (key_bytes, parent_hash_bytes.unwrap_or_default())
                 }
                 Node::ParentNode(parent_node) => {
@@ -273,7 +274,8 @@ pub fn print_tree(tree: &TreeSync, message: &str) {
                         print!("\tP");
                     }
                     let key_bytes = parent_node.public_key().as_slice();
-                    let parent_hash_bytes = node.parent_hash().unwrap();
+                    let parent_hash_bytes =
+                        node.parent_hash().expect("An unexpected error occurred.");
                     (key_bytes, parent_hash_bytes.unwrap_or_default())
                 }
             };
