@@ -386,6 +386,10 @@
 <span id="385">385</span>
 <span id="386">386</span>
 <span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::diff::StagedTreeSyncDiff</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::proposals</span>::{<span class="ident">ProposalQueue</span>, <span class="ident">ProposalStore</span>, <span class="ident">QueuedProposal</span>};
@@ -538,7 +542,11 @@
             <span class="comment">// there are no blanks and the new member extended the tree to</span>
             <span class="comment">// fit in.</span>
             <span class="kw">if</span> <span class="ident">apply_proposals_values</span>.<span class="ident">external_init_secret_option</span>.<span class="ident">is_some</span>() {
-                <span class="ident">diff</span>.<span class="ident">add_leaf</span>(<span class="ident">key_package</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">sender_leaf_index</span> <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">add_leaf</span>(<span class="ident">key_package</span>.<span class="ident">clone</span>())<span class="question-mark">?</span>;
+                <span class="comment">// The new member should have the same index as the claimed sender index.</span>
+                <span class="kw">if</span> <span class="ident">sender_leaf_index</span> <span class="op">!</span><span class="op">=</span> <span class="ident">mls_plaintext</span>.<span class="ident">sender_index</span>() {
+                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::InconsistentSenderIndex</span>.<span class="ident">into</span>());
+                }
             }
 
             <span class="comment">// Decrypt the UpdatePath</span>

@@ -300,6 +300,8 @@
 <span id="299">299</span>
 <span id="300">300</span>
 <span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS CoreGroup errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -508,6 +510,8 @@
                 <span class="string">&quot;The proposal queue is missing a proposal for the commit.&quot;</span>,
             <span class="ident">OwnKeyNotFound</span> <span class="op">=</span>
                 <span class="string">&quot;Missing own key to apply proposal.&quot;</span>,
+            <span class="ident">InconsistentSenderIndex</span> <span class="op">=</span>
+                <span class="string">&quot;External Committer used the wrong index.&quot;</span>,
         }
         <span class="ident">Complex</span> {
             <span class="ident">PlaintextSignatureFailure</span>(<span class="ident">VerificationError</span>) <span class="op">=</span>

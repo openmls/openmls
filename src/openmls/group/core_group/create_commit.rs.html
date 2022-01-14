@@ -326,6 +326,37 @@
 <span id="325">325</span>
 <span id="326">326</span>
 <span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -366,9 +397,42 @@
 
         <span class="comment">// If this is an external commit, we don&#39;t have an `own_leaf_index` set</span>
         <span class="comment">// yet. Instead, we use the index in which we will be put in course of</span>
-        <span class="comment">// this commit.</span>
+        <span class="comment">// this commit. Our index is determined as if we&#39;d be added through an</span>
+        <span class="comment">// Add proposal. However, since this might be the &quot;resync&quot; flavour of an</span>
+        <span class="comment">// external commit, it could be that we&#39;re first removing our past self</span>
+        <span class="comment">// from the group, in which case, we can&#39;t just take the next free leaf</span>
+        <span class="comment">// in the existing tree. Note, that we have to determine the index here</span>
+        <span class="comment">// (before we actually add our own leaf), because it&#39;s needed in the</span>
+        <span class="comment">// process of proposal filtering and application.</span>
         <span class="kw">let</span> (<span class="ident">own_leaf_index</span>, <span class="ident">sender_type</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">params</span>.<span class="ident">commit_type</span>() {
-            <span class="ident">CommitType::External</span> =&gt; (<span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">free_leaf_index</span>()<span class="question-mark">?</span>, <span class="ident">SenderType::NewMember</span>),
+            <span class="ident">CommitType::External</span> =&gt; {
+                <span class="comment">// If this is a &quot;resync&quot; external commit, it should contain a</span>
+                <span class="comment">// `remove` proposal with the index of our previous self in the</span>
+                <span class="comment">// group.</span>
+                <span class="kw">let</span> <span class="ident">free_leaf_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">free_leaf_index</span>()<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">remove_proposal_option</span> <span class="op">=</span> <span class="ident">params</span>
+                    .<span class="ident">inline_proposals</span>()
+                    .<span class="ident">iter</span>()
+                    .<span class="ident">find</span>(<span class="op">|</span><span class="ident">proposal</span><span class="op">|</span> <span class="ident">proposal</span>.<span class="ident">is_type</span>(<span class="ident">ProposalType::Remove</span>));
+                <span class="comment">// The external commit is processed like an add, so our new leaf</span>
+                <span class="comment">// index is the same as if we&#39;d process an add after the remove</span>
+                <span class="comment">// proposal.</span>
+                <span class="kw">let</span> <span class="ident">leaf_index</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">remove_proposal</span>) <span class="op">=</span> <span class="ident">remove_proposal_option</span> {
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Proposal::Remove</span>(<span class="ident">remove_proposal</span>) <span class="op">=</span> <span class="ident">remove_proposal</span> {
+                        <span class="kw">let</span> <span class="ident">removed_index</span> <span class="op">=</span> <span class="ident">remove_proposal</span>.<span class="ident">removed</span>();
+                        <span class="kw">if</span> <span class="ident">removed_index</span> <span class="op">&lt;</span> <span class="ident">free_leaf_index</span> {
+                            <span class="ident">removed_index</span>
+                        } <span class="kw">else</span> {
+                            <span class="ident">free_leaf_index</span>
+                        }
+                    } <span class="kw">else</span> {
+                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CoreGroupError::LibraryError</span>);
+                    }
+                } <span class="kw">else</span> {
+                    <span class="ident">free_leaf_index</span>
+                };
+                (<span class="ident">leaf_index</span>, <span class="ident">SenderType::NewMember</span>)
+            }
             <span class="ident">CommitType::Member</span> =&gt; (<span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">own_leaf_index</span>(), <span class="ident">SenderType::Member</span>),
         };
 
@@ -388,20 +452,19 @@
         <span class="comment">// TODO: #581 Filter proposals by support</span>
         <span class="comment">// 11.2:</span>
         <span class="comment">// Proposals with a non-default proposal type MUST NOT be included in a commit</span>
-        <span class="comment">// unless the proposal type is supported by all the members of the group that will</span>
-        <span class="comment">// process the Commit (i.e., not including any members being added or removed by</span>
-        <span class="comment">// the Commit).</span>
+        <span class="comment">// unless the proposal type is supported by all the members of the group that</span>
+        <span class="comment">// will process the Commit (i.e., not including any members being added</span>
+        <span class="comment">// or removed by the Commit).</span>
 
         <span class="kw">let</span> <span class="ident">proposal_reference_list</span> <span class="op">=</span> <span class="ident">proposal_queue</span>.<span class="ident">commit_list</span>();
 
         <span class="comment">// Make a copy of the current tree to apply proposals safely</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">diff</span>: <span class="ident">TreeSyncDiff</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">empty_diff</span>()<span class="question-mark">?</span>;
 
-        <span class="comment">// If this is not an external commit we have to set our own leaf index</span>
-        <span class="comment">// and add our leaf. Also, we have to generate the</span>
-        <span class="comment">// [`KeyPackageBundlePayload`] slightly differently, because we can&#39;t</span>
-        <span class="comment">// just pull it from the tree if we&#39;re a `NewMember`.</span>
-        <span class="kw">let</span> <span class="ident">key_package_bundle_payload</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">prepare_kpb_payload</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">params</span>, <span class="kw-2">&amp;mut</span> <span class="ident">diff</span>)<span class="question-mark">?</span>;
+        <span class="comment">// If this is an external commit we have to set our own leaf index manually</span>
+        <span class="kw">if</span> <span class="ident">params</span>.<span class="ident">commit_type</span>() <span class="op">==</span> <span class="ident">CommitType::External</span> {
+            <span class="ident">diff</span>.<span class="ident">set_own_index</span>(<span class="ident">own_leaf_index</span>);
+        }
 
         <span class="comment">// Apply proposals to tree</span>
         <span class="kw">let</span> <span class="ident">apply_proposals_values</span> <span class="op">=</span>
@@ -409,6 +472,11 @@
         <span class="kw">if</span> <span class="ident">apply_proposals_values</span>.<span class="ident">self_removed</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CreateCommitError::CannotRemoveSelf</span>.<span class="ident">into</span>());
         }
+
+        <span class="comment">// Generate the [`KeyPackageBundlePayload`]. If we&#39;re doing an external</span>
+        <span class="comment">// commit, this is also the place, where we&#39;re adding ourselves to the</span>
+        <span class="comment">// tree.</span>
+        <span class="kw">let</span> <span class="ident">key_package_bundle_payload</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">prepare_kpb_payload</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">params</span>, <span class="kw-2">&amp;mut</span> <span class="ident">diff</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">serialized_group_context</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">path_processing_result</span> <span class="op">=</span>
@@ -624,7 +692,7 @@
         <span class="ident">params</span>: <span class="kw-2">&amp;</span><span class="ident">CreateCommitParams</span>,
         <span class="ident">diff</span>: <span class="kw-2">&amp;mut</span> <span class="ident">TreeSyncDiff</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">KeyPackageBundlePayload</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">kpb_payload</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">params</span>.<span class="ident">commit_type</span>() <span class="op">==</span> <span class="ident">CommitType::External</span> {
+        <span class="kw">let</span> <span class="ident">key_package</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">params</span>.<span class="ident">commit_type</span>() <span class="op">==</span> <span class="ident">CommitType::External</span> {
             <span class="comment">// Generate a KeyPackageBundle to generate a payload from for later</span>
             <span class="comment">// path generation.</span>
             <span class="kw">let</span> <span class="ident">key_package_bundle</span> <span class="op">=</span> <span class="ident">KeyPackageBundle::new</span>(
@@ -634,23 +702,17 @@
                 <span class="macro">vec!</span>[],
             )<span class="question-mark">?</span>;
 
-            <span class="kw">let</span> <span class="ident">own_leaf_index</span> <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">add_leaf</span>(<span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>().<span class="ident">clone</span>())<span class="question-mark">?</span>;
-            <span class="comment">// Set our own index in the diff.</span>
-            <span class="ident">diff</span>.<span class="ident">set_own_index</span>(<span class="ident">own_leaf_index</span>);
-
-            <span class="ident">KeyPackageBundlePayload::from_rekeyed_key_package</span>(
-                <span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>(),
-                <span class="ident">backend</span>,
-            )<span class="question-mark">?</span>
+            <span class="ident">diff</span>.<span class="ident">add_leaf</span>(<span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>().<span class="ident">clone</span>())<span class="question-mark">?</span>;
+            <span class="ident">diff</span>.<span class="ident">own_leaf</span>()<span class="question-mark">?</span>.<span class="ident">key_package</span>()
         } <span class="kw">else</span> {
-            <span class="comment">// Create a new key package bundle payload from the existing key</span>
-            <span class="comment">// package.</span>
-            <span class="ident">KeyPackageBundlePayload::from_rekeyed_key_package</span>(
-                <span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">own_leaf_node</span>()<span class="question-mark">?</span>.<span class="ident">key_package</span>(),
-                <span class="ident">backend</span>,
-            )<span class="question-mark">?</span>
+            <span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">own_leaf_node</span>()<span class="question-mark">?</span>.<span class="ident">key_package</span>()
         };
-        <span class="prelude-val">Ok</span>(<span class="ident">kpb_payload</span>)
+        <span class="comment">// Create a new key package bundle payload from the existing key</span>
+        <span class="comment">// package.</span>
+        <span class="prelude-val">Ok</span>(<span class="ident">KeyPackageBundlePayload::from_rekeyed_key_package</span>(
+            <span class="ident">key_package</span>,
+            <span class="ident">backend</span>,
+        )<span class="question-mark">?</span>)
     }
 }
 </code></pre></div>
