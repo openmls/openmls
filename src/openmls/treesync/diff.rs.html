@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src&#x2F;treesync&#x2F;diff.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>diff.rs - source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled ><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav><section id="main" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">  1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src&#x2F;treesync&#x2F;diff.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>diff.rs - source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled ><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
+    <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav><section id="main" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
 <span id="4">  4</span>
@@ -882,7 +883,7 @@
     <span class="doccomment">/// differs from that in the MLS spec. This is because there is a suspected</span>
     <span class="doccomment">/// bug in the trimming algorithm in the spec, which is currently under</span>
     <span class="doccomment">/// discussion.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">trim_tree</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">trim_tree</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
         <span class="comment">// Nothing to trim if there&#39;s only one leaf left.</span>
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">leaf_count</span>() <span class="op">==</span> <span class="number">1</span> {
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
@@ -916,7 +917,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Returns an error if the target leaf is blank or outside of the tree.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">update_leaf</span>(
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">leaf_node</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">LeafNode</span><span class="op">&gt;</span>,
         <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
@@ -955,7 +956,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Returns the LeafIndex of the new leaf.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">add_leaf</span>(
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">leaf_node</span>: <span class="ident">KeyPackage</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LeafIndex</span>, <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Node::LeafNode</span>(<span class="ident">leaf_node</span>.<span class="ident">into</span>());
@@ -983,7 +984,7 @@
 
     <span class="doccomment">/// Set the `own_leaf_index` to `leaf_index`. This has to be used with</span>
     <span class="doccomment">/// caution, as it can invalidate the [`TreeSync`] invariants.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">set_own_index</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>) {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">set_own_index</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>) {
         <span class="self">self</span>.<span class="ident">own_leaf_index</span> <span class="op">=</span> <span class="ident">leaf_index</span>
     }
 
@@ -993,7 +994,7 @@
     <span class="doccomment">/// parent are non-blank.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Returns an error if the target leaf is outside of the tree.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">blank_leaf</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">blank_leaf</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">replace_leaf</span>(<span class="ident">leaf_index</span>, <span class="ident">TreeSyncNode::blank</span>())<span class="question-mark">?</span>;
         <span class="comment">// This also erases any cached tree hash in the direct path.</span>
         <span class="self">self</span>.<span class="ident">diff</span>
@@ -1029,7 +1030,7 @@
     <span class="doccomment">/// Returns the [`CommitSecret`] and the path resulting from the path</span>
     <span class="doccomment">/// derivation, as well as the [`KeyPackage`].</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">apply_own_update_path</span>(
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="kw-2">mut</span> <span class="ident">key_package_bundle_payload</span>: <span class="ident">KeyPackageBundlePayload</span>,
@@ -1061,7 +1062,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Returns an error if the `sender_leaf_index` is outside of the tree.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">apply_received_update_path</span>(
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">sender_leaf_index</span>: <span class="ident">LeafIndex</span>,
@@ -1097,14 +1098,14 @@
     <span class="doccomment">/// Returns the parent hash of the leaf at `leaf_index`. Returns an error if</span>
     <span class="doccomment">/// the target leaf is outside of the tree.</span>
     <span class="kw">fn</span> <span class="ident">process_update_path</span>(
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>,
         <span class="kw-2">mut</span> <span class="ident">path</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ParentNode</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
         <span class="comment">// Compute the parent hash.</span>
-        <span class="kw">let</span> <span class="ident">parent_hash</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">set_parent_hashes</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">path</span>, <span class="ident">leaf_index</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">parent_hash</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">set_parent_hashes</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>, <span class="kw-2">&amp;mut</span> <span class="ident">path</span>, <span class="ident">leaf_index</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">direct_path</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">TreeSyncNode</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">path</span>
             .<span class="ident">into_iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">parent_node</span><span class="op">|</span> <span class="ident">Node::ParentNode</span>(<span class="ident">parent_node</span>).<span class="ident">into</span>())
@@ -1123,7 +1124,7 @@
     <span class="doccomment">/// Returns the `CommitSecret` derived from the path secret of the root</span>
     <span class="doccomment">/// node. Returns an error if the target leaf is outside of the tree.</span>
     <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">set_path_secrets</span>(
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="kw-2">mut</span> <span class="ident">path_secret</span>: <span class="ident">PathSecret</span>,
@@ -1164,7 +1165,7 @@
     <span class="kw">fn</span> <span class="ident">filter_resolution</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">parent_node</span>: <span class="kw-2">&amp;</span><span class="ident">ParentNode</span>,
-        <span class="ident">resolution</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HpkePublicKey</span><span class="op">&gt;</span>,
+        <span class="ident">resolution</span>: <span class="kw-2">&amp;mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HpkePublicKey</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
         <span class="kw">for</span> <span class="ident">leaf_index</span> <span class="kw">in</span> <span class="ident">parent_node</span>.<span class="ident">unmerged_leaves</span>() {
             <span class="kw">let</span> <span class="ident">leaf_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">leaf</span>(<span class="kw-2">*</span><span class="ident">leaf_index</span>)<span class="question-mark">?</span>;
@@ -1192,10 +1193,10 @@
     <span class="doccomment">/// Returns the parent hash of the leaf node at `leaf_index`. Returns an</span>
     <span class="doccomment">/// error if the target leaf is outside of the tree.</span>
     <span class="kw">fn</span> <span class="ident">set_parent_hashes</span>(
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
-        <span class="ident">path</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> [<span class="ident">ParentNode</span>],
+        <span class="ident">path</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">ParentNode</span>],
         <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
         <span class="comment">// If the path is empty, return a zero-length string. This is the case</span>
@@ -1284,8 +1285,8 @@
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">resolution</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
                 <span class="kw">let</span> <span class="ident">left_child</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">left_child</span>(<span class="ident">node_id</span>)<span class="question-mark">?</span>;
                 <span class="kw">let</span> <span class="ident">right_child</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">right_child</span>(<span class="ident">node_id</span>)<span class="question-mark">?</span>;
-                <span class="ident">resolution</span>.<span class="ident">append</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">resolution</span>(<span class="ident">left_child</span>, <span class="ident">excluded_indices</span>)<span class="question-mark">?</span>);
-                <span class="ident">resolution</span>.<span class="ident">append</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">resolution</span>(<span class="ident">right_child</span>, <span class="ident">excluded_indices</span>)<span class="question-mark">?</span>);
+                <span class="ident">resolution</span>.<span class="ident">append</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">resolution</span>(<span class="ident">left_child</span>, <span class="ident">excluded_indices</span>)<span class="question-mark">?</span>);
+                <span class="ident">resolution</span>.<span class="ident">append</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">resolution</span>(<span class="ident">right_child</span>, <span class="ident">excluded_indices</span>)<span class="question-mark">?</span>);
                 <span class="prelude-val">Ok</span>(<span class="ident">resolution</span>)
             }
         }
@@ -1318,7 +1319,7 @@
         <span class="kw">if</span> <span class="op">!</span><span class="ident">direct_path</span>.<span class="ident">is_empty</span>() {
             <span class="ident">direct_path</span>.<span class="ident">pop</span>();
         }
-        <span class="ident">full_path</span>.<span class="ident">append</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">direct_path</span>);
+        <span class="ident">full_path</span>.<span class="ident">append</span>(<span class="kw-2">&amp;mut</span> <span class="ident">direct_path</span>);
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">copath_resolutions</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
         <span class="kw">for</span> <span class="ident">node_id</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">full_path</span> {
@@ -1350,7 +1351,7 @@
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">right_child_resolution</span> <span class="op">=</span>
                         <span class="self">self</span>.<span class="ident">resolution</span>(<span class="ident">right_child_id</span>, <span class="kw-2">&amp;</span><span class="ident">HashSet::new</span>())<span class="question-mark">?</span>;
                     <span class="comment">// Filter unmerged leaves from resolution.</span>
-                    <span class="self">self</span>.<span class="ident">filter_resolution</span>(<span class="ident">parent_node</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">right_child_resolution</span>)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.<span class="ident">filter_resolution</span>(<span class="ident">parent_node</span>, <span class="kw-2">&amp;mut</span> <span class="ident">right_child_resolution</span>)<span class="question-mark">?</span>;
                     <span class="kw">let</span> <span class="ident">node_hash</span> <span class="op">=</span> <span class="ident">parent_node</span>.<span class="ident">compute_parent_hash</span>(
                         <span class="ident">backend</span>,
                         <span class="ident">ciphersuite</span>,
@@ -1381,7 +1382,7 @@
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">left_child_resolution</span> <span class="op">=</span>
                         <span class="self">self</span>.<span class="ident">resolution</span>(<span class="ident">left_child_id</span>, <span class="kw-2">&amp;</span><span class="ident">HashSet::new</span>())<span class="question-mark">?</span>;
                     <span class="comment">// Filter unmerged leaves from resolution.</span>
-                    <span class="self">self</span>.<span class="ident">filter_resolution</span>(<span class="ident">parent_node</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">left_child_resolution</span>)<span class="question-mark">?</span>;
+                    <span class="self">self</span>.<span class="ident">filter_resolution</span>(<span class="ident">parent_node</span>, <span class="kw-2">&amp;mut</span> <span class="ident">left_child_resolution</span>)<span class="question-mark">?</span>;
                     <span class="kw">let</span> <span class="ident">node_hash</span> <span class="op">=</span> <span class="ident">parent_node</span>.<span class="ident">compute_parent_hash</span>(
                         <span class="ident">backend</span>,
                         <span class="ident">ciphersuite</span>,
@@ -1427,7 +1428,7 @@
     <span class="doccomment">/// values. If a cached value is found it is returned without further</span>
     <span class="doccomment">/// computation of hashes of the node or the nodes below it.</span>
     <span class="kw">fn</span> <span class="ident">compute_tree_hash</span>(
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">node_id</span>: <span class="ident">NodeId</span>,
@@ -1474,7 +1475,7 @@
 
     <span class="doccomment">/// Compute and set the tree hash of all nodes in the tree.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">compute_tree_hashes</span>(
-        <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
@@ -1522,7 +1523,7 @@
         <span class="comment">// direct path.</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">own_node_ids</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">leaf</span>(<span class="self">self</span>.<span class="ident">own_leaf_index</span>)<span class="question-mark">?</span>];
 
-        <span class="ident">own_node_ids</span>.<span class="ident">append</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">direct_path</span>(<span class="self">self</span>.<span class="ident">own_leaf_index</span>)<span class="question-mark">?</span>);
+        <span class="ident">own_node_ids</span>.<span class="ident">append</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">direct_path</span>(<span class="self">self</span>.<span class="ident">own_leaf_index</span>)<span class="question-mark">?</span>);
         <span class="kw">for</span> <span class="ident">node_id</span> <span class="kw">in</span> <span class="ident">own_node_ids</span> {
             <span class="kw">let</span> <span class="ident">node_tsn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">node</span>(<span class="ident">node_id</span>)<span class="question-mark">?</span>;
             <span class="comment">// If the node is blank, skip it.</span>
@@ -1582,5 +1583,4 @@
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div>
-    <script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script>
 </body></html>

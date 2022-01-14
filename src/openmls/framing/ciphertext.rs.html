@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src&#x2F;framing&#x2F;ciphertext.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ciphertext.rs - source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled ><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav><section id="main" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">  1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `src&#x2F;framing&#x2F;ciphertext.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>ciphertext.rs - source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled ><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
+    <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav><section id="main" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">  1</span>
 <span id="2">  2</span>
 <span id="3">  3</span>
 <span id="4">  4</span>
@@ -489,7 +490,7 @@
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">header</span>: <span class="ident">MlsMessageHeader</span>,
-        <span class="ident">message_secrets</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">MessageSecrets</span>,
+        <span class="ident">message_secrets</span>: <span class="kw-2">&amp;mut</span> <span class="ident">MessageSecrets</span>,
         <span class="ident">padding_size</span>: <span class="ident">usize</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsCiphertext</span>, <span class="ident">MlsCiphertextError</span><span class="op">&gt;</span> {
         <span class="macro">log::debug!</span>(<span class="string">&quot;MlsCiphertext::try_from_plaintext&quot;</span>);
@@ -579,7 +580,7 @@
     <span class="doccomment">/// Decrypt the sender data from this [`MlsCiphertext`].</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">sender_data</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">message_secrets</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">MessageSecrets</span>,
+        <span class="ident">message_secrets</span>: <span class="kw-2">&amp;mut</span> <span class="ident">MessageSecrets</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsSenderData</span>, <span class="ident">MlsCiphertextError</span><span class="op">&gt;</span> {
@@ -616,7 +617,7 @@
             })<span class="question-mark">?</span>;
         <span class="macro">log::trace!</span>(<span class="string">&quot;  Successfully decrypted sender data.&quot;</span>);
         <span class="prelude-val">Ok</span>(<span class="ident">MlsSenderData::tls_deserialize</span>(
-            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">sender_data_bytes</span>.<span class="ident">as_slice</span>(),
+            <span class="kw-2">&amp;mut</span> <span class="ident">sender_data_bytes</span>.<span class="ident">as_slice</span>(),
         )<span class="question-mark">?</span>)
     }
 
@@ -626,7 +627,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">message_secrets</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">MessageSecrets</span>,
+        <span class="ident">message_secrets</span>: <span class="kw-2">&amp;mut</span> <span class="ident">MessageSecrets</span>,
         <span class="ident">sender_ratchet_configuration</span>: <span class="kw-2">&amp;</span><span class="ident">SenderRatchetConfiguration</span>,
         <span class="ident">sender_data</span>: <span class="kw-2">&amp;</span><span class="ident">MlsSenderData</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsCiphertextContent</span>, <span class="ident">MlsCiphertextError</span><span class="op">&gt;</span> {
@@ -676,7 +677,7 @@
         );
         <span class="prelude-val">Ok</span>(<span class="ident">MlsCiphertextContent::deserialize</span>(
             <span class="self">self</span>.<span class="ident">content_type</span>,
-            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">mls_ciphertext_content_bytes</span>.<span class="ident">as_slice</span>(),
+            <span class="kw-2">&amp;mut</span> <span class="ident">mls_ciphertext_content_bytes</span>.<span class="ident">as_slice</span>(),
         )<span class="question-mark">?</span>)
     }
 
@@ -686,7 +687,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">message_secrets</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">MessageSecrets</span>,
+        <span class="ident">message_secrets</span>: <span class="kw-2">&amp;mut</span> <span class="ident">MessageSecrets</span>,
         <span class="ident">sender_ratchet_configuration</span>: <span class="kw-2">&amp;</span><span class="ident">SenderRatchetConfiguration</span>,
         <span class="ident">sender_data</span>: <span class="ident">MlsSenderData</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">VerifiableMlsPlaintext</span>, <span class="ident">MlsCiphertextError</span><span class="op">&gt;</span> {
@@ -759,7 +760,7 @@
         <span class="ident">mac_len</span>: <span class="ident">usize</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="comment">// Persist all initial fields manually (avoids cloning them)</span>
-        <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec::with_capacity</span>(
+        <span class="kw">let</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="kw-2">&amp;mut</span> <span class="ident">Vec::with_capacity</span>(
             <span class="ident">mls_plaintext</span>.<span class="ident">content</span>().<span class="ident">tls_serialized_len</span>()
                 <span class="op">+</span> <span class="ident">mls_plaintext</span>.<span class="ident">signature</span>().<span class="ident">tls_serialized_len</span>()
                 <span class="op">+</span> <span class="ident">mls_plaintext</span>.<span class="ident">confirmation_tag</span>().<span class="ident">tls_serialized_len</span>(),
@@ -804,13 +805,13 @@
 
     <span class="doccomment">/// Set the wire format.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">set_wire_format</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">wire_format</span>: <span class="ident">WireFormat</span>) {
+    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">set_wire_format</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">wire_format</span>: <span class="ident">WireFormat</span>) {
         <span class="self">self</span>.<span class="ident">wire_format</span> <span class="op">=</span> <span class="ident">wire_format</span>;
     }
 
     <span class="doccomment">/// Set the ciphertext.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">set_ciphertext</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">ciphertext</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">set_ciphertext</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ciphertext</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) {
         <span class="self">self</span>.<span class="ident">ciphertext</span> <span class="op">=</span> <span class="ident">ciphertext</span>.<span class="ident">into</span>();
     }
 }
@@ -870,5 +871,4 @@
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div>
-    <script src="../../../main.js"></script><script src="../../../source-script.js"></script><script src="../../../source-files.js"></script>
 </body></html>
