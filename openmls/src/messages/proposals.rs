@@ -144,36 +144,6 @@ impl Proposal {
     pub(crate) fn is_type(&self, proposal_type: ProposalType) -> bool {
         self.proposal_type() == proposal_type
     }
-    pub(crate) fn as_add(&self) -> Option<AddProposal> {
-        match self {
-            Proposal::Add(add_proposal) => Some(add_proposal.clone()),
-            _ => None,
-        }
-    }
-    pub(crate) fn as_update(&self) -> Option<UpdateProposal> {
-        match self {
-            Proposal::Update(update_proposal) => Some(update_proposal.clone()),
-            _ => None,
-        }
-    }
-    pub(crate) fn as_remove(&self) -> Option<RemoveProposal> {
-        match self {
-            Proposal::Remove(remove_proposal) => Some(remove_proposal.clone()),
-            _ => None,
-        }
-    }
-    pub(crate) fn as_presharedkey(&self) -> Option<PreSharedKeyProposal> {
-        match self {
-            Proposal::PreSharedKey(psk_proposal) => Some(psk_proposal.clone()),
-            _ => None,
-        }
-    }
-    pub(crate) fn as_external_init(&self) -> Option<ExternalInitProposal> {
-        match self {
-            Proposal::ExternalInit(external_init_proposal) => Some(external_init_proposal.clone()),
-            _ => None,
-        }
-    }
 }
 
 /// Reference to a Proposal. This can be used in Commit messages to reference
