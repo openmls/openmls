@@ -108,31 +108,25 @@ impl KeyPackagePayload {
 pub struct KeyPackage {
     payload: KeyPackagePayload,
     signature: Signature,
-    encoded: Vec<u8>,
 }
 
 impl PartialEq for KeyPackage {
     fn eq(&self, other: &Self) -> bool {
         // We ignore the signature in the comparison. The same key package
         // may have different, valid signatures.
-        self.payload == other.payload && self.encoded == other.encoded
+        self.payload == other.payload
     }
 }
 
 impl SignedStruct<KeyPackagePayload> for KeyPackage {
     fn from_payload(payload: KeyPackagePayload, signature: Signature) -> Self {
-        let encoded = payload.unsigned_payload().unwrap();
-        Self {
-            payload,
-            signature,
-            encoded,
-        }
+        Self { payload, signature }
     }
 }
 
 impl Verifiable for KeyPackage {
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        Ok(self.encoded.clone())
+        self.payload.tls_serialize_detached()
     }
 
     fn signature(&self) -> &Signature {
@@ -188,7 +182,6 @@ impl KeyPackage {
         // Verify the signature on this key package.
         <Self as Verifiable>::verify_no_out(self, backend, &self.payload.credential).map_err(|_| {
             log::error!("Key package signature is invalid.");
-            log::trace!("Payload: {:x?}", self.encoded);
             KeyPackageError::InvalidSignature
         })
     }

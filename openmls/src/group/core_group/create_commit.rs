@@ -59,14 +59,15 @@ impl CoreGroup {
                 // index is the same as if we'd process an add after the remove
                 // proposal.
                 let leaf_index = if let Some(remove_proposal) = remove_proposal_option {
-                    let removed_index = remove_proposal
-                        .as_remove()
-                        .ok_or(CoreGroupError::LibraryError)?
-                        .removed();
-                    if removed_index < free_leaf_index {
-                        removed_index
+                    if let Proposal::Remove(remove_proposal) = remove_proposal {
+                        let removed_index = remove_proposal.removed();
+                        if removed_index < free_leaf_index {
+                            removed_index
+                        } else {
+                            free_leaf_index
+                        }
                     } else {
-                        free_leaf_index
+                        return Err(CoreGroupError::LibraryError);
                     }
                 } else {
                     free_leaf_index
@@ -101,7 +102,7 @@ impl CoreGroup {
         // Make a copy of the current tree to apply proposals safely
         let mut diff: TreeSyncDiff = self.treesync().empty_diff()?;
 
-        // If this is not an external commit we have to set our own leaf index manually
+        // If this is an external commit we have to set our own leaf index manually
         if params.commit_type() == CommitType::External {
             diff.set_own_index(own_leaf_index);
         }

@@ -104,7 +104,15 @@ impl Ciphersuite {
             return Err(ConfigError::UnsupportedCiphersuite);
         }
 
-        Ok(Ciphersuite {
+        Ok(Self::new_from_supported(name))
+    }
+
+    /// This creates a Ciphersuite from one of the supported ciphersuite names.
+    /// This should only be used if it is clear the ciphersuite is supported.
+    /// If the ciphersuite is not supported, might lead to inconsistencies.
+    /// TODO #701: This should go away.
+    pub(crate) fn new_from_supported(name: CiphersuiteName) -> Self {
+        Ciphersuite {
             name,
             signature_scheme: SignatureScheme::from(name),
             hash: hash_from_suite(&name),
@@ -112,13 +120,12 @@ impl Ciphersuite {
             hpke_kem: kem_from_suite(&name),
             hpke_kdf: hpke_kdf_from_suite(&name),
             hpke_aead: hpke_aead_from_suite(&name),
-        })
+        }
     }
 
     /// Get the default ciphersuite.
     pub(crate) fn default() -> &'static Self {
-        Config::ciphersuite(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519)
-            .unwrap()
+        &Config::supported_ciphersuites()[0]
     }
 
     /// Get the signature scheme of this ciphersuite.

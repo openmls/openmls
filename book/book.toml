@@ -1,0 +1,6 @@
+[book]
+authors = ["OpenMLS Authors"]
+language = "en"
+multilingual = false
+src = "src"
+title = "OpenMLS Book"
