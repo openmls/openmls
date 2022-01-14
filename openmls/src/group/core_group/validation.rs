@@ -275,7 +275,6 @@ impl CoreGroup {
     ///  - ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
     ///               leaf are identical to the ones in the path KeyPackage.
     ///  - ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
-    ///  - ValSem246: External Commit: MUST contain a path.
     pub(crate) fn validate_external_commit(
         &self,
         proposal_queue: &ProposalQueue,
@@ -331,7 +330,6 @@ impl CoreGroup {
                         .map_err(|_| ProposalValidationError::UnknownMemberRemoval)?
                         // Unknown because blank.
                         .ok_or(ProposalValidationError::UnknownMemberRemoval)?;
-                    // ValSem246: External Commit: MUST contain a path.
                     if let Some(path_key_package) = path_key_package_option {
                         // ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed leaf are identical to the ones in the path KeyPackage.
                         if removed_leaf.key_package().credential().identity()
@@ -339,8 +337,6 @@ impl CoreGroup {
                         {
                             return Err(ExternalCommitValidationError::InvalidRemoveProposal.into());
                         }
-                    } else {
-                        return Err(ExternalCommitValidationError::NoPath.into());
                     };
                 }
             }
