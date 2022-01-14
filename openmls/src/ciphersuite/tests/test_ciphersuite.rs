@@ -74,9 +74,12 @@ fn test_hpke_seal_open(ciphersuite: &'static Ciphersuite, backend: &impl OpenMls
 
 #[apply(ciphersuites_and_backends)]
 fn test_sign_verify(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let keypair = SignatureKeypair::new(ciphersuite.signature_scheme(), backend).unwrap();
+    let keypair = SignatureKeypair::new(ciphersuite.signature_scheme(), backend)
+        .expect("An unexpected error occurred.");
     let payload = &[1, 2, 3];
-    let signature = keypair.sign(backend, payload).unwrap();
+    let signature = keypair
+        .sign(backend, payload)
+        .expect("An unexpected error occurred.");
     assert!(keypair.verify(backend, &signature, payload).is_ok());
 }
 

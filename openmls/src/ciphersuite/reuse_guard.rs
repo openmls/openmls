@@ -8,9 +8,12 @@ pub struct ReuseGuard {
 
 impl ReuseGuard {
     /// Samples a fresh reuse guard uniformly at random.
-    pub fn from_random(crypto: &impl OpenMlsCryptoProvider) -> Self {
-        Self {
-            value: crypto.rand().random_array().unwrap(),
-        }
+    pub fn try_from_random(crypto: &impl OpenMlsCryptoProvider) -> Result<Self, CryptoError> {
+        Ok(Self {
+            value: crypto
+                .rand()
+                .random_array()
+                .map_err(|_| CryptoError::InsufficientRandomness)?,
+        })
     }
 }

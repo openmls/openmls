@@ -59,14 +59,15 @@ impl CoreGroup {
                 // index is the same as if we'd process an add after the remove
                 // proposal.
                 let leaf_index = if let Some(remove_proposal) = remove_proposal_option {
-                    let removed_index = remove_proposal
-                        .as_remove()
-                        .ok_or(CoreGroupError::LibraryError)?
-                        .removed();
-                    if removed_index < free_leaf_index {
-                        removed_index
+                    if let Proposal::Remove(remove_proposal) = remove_proposal {
+                        let removed_index = remove_proposal.removed();
+                        if removed_index < free_leaf_index {
+                            removed_index
+                        } else {
+                            free_leaf_index
+                        }
                     } else {
-                        free_leaf_index
+                        return Err(CoreGroupError::LibraryError);
                     }
                 } else {
                     free_leaf_index

@@ -6,7 +6,10 @@ use crate::{
     binary_tree::LeafIndex,
     group::CoreGroupError,
     key_packages::KeyPackageBundle,
-    messages::proposals::{AddProposal, ProposalType},
+    messages::{
+        proposals::{AddProposal, ProposalType},
+        Proposal,
+    },
     schedule::{InitSecret, PreSharedKeyId, PreSharedKeys},
     treesync::{diff::TreeSyncDiff, node::leaf_node::LeafNode},
 };
@@ -65,7 +68,7 @@ impl CoreGroup {
             .filtered_by_type(ProposalType::ExternalInit)
             .next()
         {
-            if let Some(external_init_proposal) = &queued_proposal.proposal().as_external_init() {
+            if let Proposal::ExternalInit(external_init_proposal) = queued_proposal.proposal() {
                 // Decrypt the content and derive the external init secret.
                 let external_priv = self
                     .group_epoch_secrets()
@@ -79,62 +82,65 @@ impl CoreGroup {
                     self.mls_version,
                     &external_priv,
                     external_init_proposal.kem_output(),
-                )?);
+                )?)
             }
         }
 
         // Process updates first
         for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Update) {
             has_updates = true;
-            // Unwrapping here is safe because we know the proposal type
-            let update_proposal = &queued_proposal.proposal().as_update().unwrap();
-            // Check if this is our own update.
-            let sender_index = queued_proposal.sender().to_leaf_index();
-            let leaf_node: LeafNode = if sender_index == self.tree.own_leaf_index() {
-                let own_kpb = match key_package_bundles
-                    .iter()
-                    .find(|&kpb| kpb.key_package() == update_proposal.key_package())
-                {
-                    Some(kpb) => kpb,
-                    // We lost the KeyPackageBundle apparently
-                    None => return Err(CoreGroupError::MissingKeyPackageBundle),
+            // We know this is an update proposal
+            if let Proposal::Update(update_proposal) = queued_proposal.proposal() {
+                // Check if this is our own update.
+                let sender_index = queued_proposal.sender().to_leaf_index();
+                let leaf_node: LeafNode = if sender_index == self.tree.own_leaf_index() {
+                    let own_kpb = match key_package_bundles
+                        .iter()
+                        .find(|&kpb| kpb.key_package() == update_proposal.key_package())
+                    {
+                        Some(kpb) => kpb,
+                        // We lost the KeyPackageBundle apparently
+                        None => return Err(CoreGroupError::MissingKeyPackageBundle),
+                    };
+                    own_kpb.clone().into()
+                } else {
+                    update_proposal.key_package().clone().into()
                 };
-                own_kpb.clone().into()
-            } else {
-                update_proposal.key_package().clone().into()
-            };
-            diff.update_leaf(leaf_node, queued_proposal.sender().to_leaf_index())?;
+                diff.update_leaf(leaf_node, queued_proposal.sender().to_leaf_index())?;
+            }
         }
 
         // Process removes
         for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Remove) {
             has_removes = true;
-            // Unwrapping here is safe because we know the proposal type
-            let remove_proposal = &queued_proposal.proposal().as_remove().unwrap();
-            // Check if we got removed from the group. If it's an external init, it's not
-            // really a self-remove.
-            if remove_proposal.removed() == self.treesync().own_leaf_index()
-                && external_init_secret_option.is_none()
-            {
-                self_removed = true;
+            // We know this is a remove proposal
+            if let Proposal::Remove(remove_proposal) = queued_proposal.proposal() {
+                // Check if we got removed from the group
+                if remove_proposal.removed() == self.treesync().own_leaf_index()
+                    && external_init_secret_option.is_none()
+                {
+                    self_removed = true;
+                }
+                // Blank the direct path of the removed member
+                diff.blank_leaf(remove_proposal.removed())?;
             }
-            // Blank the direct path of the removed member
-            diff.blank_leaf(remove_proposal.removed())?;
         }
 
         // Process adds
-        let add_proposals: Vec<AddProposal> = proposal_queue
+        let add_proposals: Vec<&AddProposal> = proposal_queue
             .filtered_by_type(ProposalType::Add)
-            .map(|queued_proposal| {
-                let proposal = &queued_proposal.proposal();
-                // Unwrapping here is safe because we know the proposal type
-                proposal.as_add().unwrap()
+            .filter_map(|queued_proposal| {
+                if let Proposal::Add(add_proposal) = queued_proposal.proposal() {
+                    Some(add_proposal)
+                } else {
+                    None
+                }
             })
             .collect();
 
         // Extract KeyPackages from proposals
         let mut invitation_list = Vec::new();
-        for add_proposal in &add_proposals {
+        for add_proposal in add_proposals {
             let leaf_index = diff.add_leaf(add_proposal.key_package().clone())?;
             invitation_list.push((leaf_index, add_proposal.clone()))
         }
@@ -142,11 +148,12 @@ impl CoreGroup {
         // Process PSK proposals
         let psks: Vec<PreSharedKeyId> = proposal_queue
             .filtered_by_type(ProposalType::Presharedkey)
-            .map(|queued_proposal| {
-                // FIXME: remove unwrap
-                // Unwrapping here is safe because we know the proposal type
-                let psk_proposal = queued_proposal.proposal().as_presharedkey().unwrap();
-                psk_proposal.into_psk_id()
+            .filter_map(|queued_proposal| {
+                if let Proposal::PreSharedKey(psk_proposal) = queued_proposal.proposal() {
+                    Some(psk_proposal.clone().into_psk_id())
+                } else {
+                    None
+                }
             })
             .collect();
 

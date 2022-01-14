@@ -90,7 +90,9 @@ fn test_forward_secrecy(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
     let mut ratchet1 = SenderRatchet::new(leaf, &secret);
 
     // Generate an encryption secret
-    let (generation, _encryption_secret) = ratchet1.secret_for_encryption(ciphersuite, backend);
+    let (generation, _encryption_secret) = ratchet1
+        .secret_for_encryption(ciphersuite, backend)
+        .expect("An unexpected error occurred.");
 
     // We expect this to fail, because we should no longer have the key material for this generation
     let err = ratchet1
