@@ -75,6 +75,23 @@ impl CoreGroup {
         // just pull it from the tree if we're a `NewMember`.
         let key_package_bundle_payload = self.prepare_kpb_payload(backend, &params, &mut diff)?;
 
+        // Validate the proposals by doing the following checks:
+
+        // ValSem100
+        // ValSem101
+        // ValSem102
+        // ValSem103
+        // ValSem104
+        // ValSem105
+        // ValSem106
+        self.validate_add_proposals(&proposal_queue)?;
+        // ValSem107
+        // ValSem108
+        self.validate_remove_proposals(&proposal_queue)?;
+        // ValSem109
+        // ValSem110
+        self.validate_update_proposals(&proposal_queue, None)?;
+
         // Apply proposals to tree
         let apply_proposals_values =
             self.apply_proposals(&mut diff, backend, &proposal_queue, &[])?;

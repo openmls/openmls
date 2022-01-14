@@ -1,5 +1,5 @@
-//! This module tests regarding the validation of incoming message framing
-//! as defined in https://openmls.tech/book/#semantic-validation-of-message-framing
+//! This module tests the validation of message framing as defined in
+//! https://openmls.tech/book/#semantic-validation-of-message-framing
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMlsCryptoProvider};
@@ -118,7 +118,7 @@ fn validation_test_setup(
 
 // ValSem001 Wire format
 #[apply(ciphersuites_and_backends)]
-fn test_valsem1(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem001(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test with MlsPlaintext
     let ValidationTestSetup {
         mut alice_group,
@@ -187,7 +187,7 @@ fn test_valsem1(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
 // ValSem002 Group id
 #[apply(ciphersuites_and_backends)]
-fn test_valsem2(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem002(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
         mut alice_group,
         _alice_credential: _,
@@ -232,7 +232,7 @@ fn test_valsem2(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
 // ValSem003 Epoch
 #[apply(ciphersuites_and_backends)]
-fn test_valsem3(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem003(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
         mut alice_group,
         _alice_credential: _,
@@ -336,7 +336,7 @@ fn test_valsem3(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
 // ValSem004 Sender: Member: check the member exists
 #[apply(ciphersuites_and_backends)]
-fn test_valsem4(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem004(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
         mut alice_group,
         _alice_credential: _,
@@ -384,7 +384,7 @@ fn test_valsem4(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
 // ValSem005 Application messages must use ciphertext
 #[apply(ciphersuites_and_backends)]
-fn test_valsem5(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem005(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
         mut alice_group,
         _alice_credential: _,
@@ -430,7 +430,7 @@ fn test_valsem5(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
 // ValSem006 Ciphertext: decryption needs to work
 #[apply(ciphersuites_and_backends)]
-fn test_valsem6(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem006(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
         mut alice_group,
         _alice_credential: _,
@@ -493,7 +493,7 @@ fn test_valsem6(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
 // ValSem007 Membership tag presence
 #[apply(ciphersuites_and_backends)]
-fn test_valsem7(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem007(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
         mut alice_group,
         _alice_credential: _,
@@ -538,7 +538,7 @@ fn test_valsem7(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
 // ValSem008 Membership tag verification
 #[apply(ciphersuites_and_backends)]
-fn test_valsem8(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem008(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
         mut alice_group,
         _alice_credential: _,
@@ -617,7 +617,7 @@ fn test_valsem8(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
 // ValSem009 Confirmation tag presence
 #[apply(ciphersuites_and_backends)]
-fn test_valsem9(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem009(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
         mut alice_group,
         _alice_credential: _,
@@ -662,7 +662,7 @@ fn test_valsem9(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
 
 // ValSem010 Signature verification
 #[apply(ciphersuites_and_backends)]
-fn test_valsem10(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem010(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let ValidationTestSetup {
         mut alice_group,
         _alice_credential: _,

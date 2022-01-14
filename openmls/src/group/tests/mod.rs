@@ -11,11 +11,11 @@ mod test_encoding;
 #[cfg(test)]
 mod test_framing;
 #[cfg(test)]
+mod test_framing_validation;
+#[cfg(test)]
 mod test_group;
 #[cfg(test)]
 mod test_past_secrets;
-#[cfg(test)]
-mod test_framing_validation;
 #[cfg(test)]
 mod test_proposal_validation;
 #[cfg(test)]
