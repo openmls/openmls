@@ -46,7 +46,6 @@ use crate::{
     treesync::{node::Node, *},
 };
 
-#[cfg(any(feature = "test-utils", test))]
 use crate::{ciphersuite::signable::*, messages::public_group_state::*};
 
 use log::{debug, trace};
@@ -555,7 +554,6 @@ impl CoreGroup {
     }
 
     /// Get the MLS version used in this group.
-    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn version(&self) -> ProtocolVersion {
         self.mls_version
     }
@@ -573,7 +571,6 @@ impl CoreGroup {
     /// Get the groups extensions.
     /// Right now this is limited to the ratchet tree extension which is built
     /// on the fly when calling this function.
-    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn other_extensions(&self) -> Vec<Extension> {
         vec![Extension::RatchetTree(RatchetTreeExtension::new(
             self.treesync().export_nodes(),
@@ -591,7 +588,6 @@ impl CoreGroup {
     }
 
     /// Export the `PublicGroupState`
-    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn export_public_group_state(
         &self,
         backend: &impl OpenMlsCryptoProvider,
@@ -656,13 +652,11 @@ impl CoreGroup {
     }
 
     /// Current interim transcript hash of the group
-    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn interim_transcript_hash(&self) -> &[u8] {
         &self.interim_transcript_hash
     }
 
     /// Current confirmed transcript hash of the group
-    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn confirmed_transcript_hash(&self) -> &[u8] {
         self.group_context.confirmed_transcript_hash()
     }
