@@ -103,18 +103,32 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         .export_public_group_state(&crypto, &credential_bundle)
         .expect("An unexpected error occurred.");
 
-    // Create some proposals
+    // Create a proposal to update the user's KeyPackage
     let key_package_bundle =
         KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, &crypto, Vec::new())
             .expect("An unexpected error occurred.");
     let key_package = key_package_bundle.key_package();
-
-    let add_proposal = AddProposal {
-        key_package: key_package.clone(),
-    };
     let update_proposal = UpdateProposal {
         key_package: key_package.clone(),
     };
+
+    // Create proposal to add a user
+    let joiner_credential_bundle = CredentialBundle::new(
+        b"MLS rocks".to_vec(),
+        CredentialType::Basic,
+        SignatureScheme::from(ciphersuite_name),
+        &crypto,
+    )
+    .expect("An unexpected error occurred.");
+    let joiner_key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite_name], &joiner_credential_bundle, &crypto, Vec::new())
+            .expect("An unexpected error occurred.");
+    let add_proposal = AddProposal {
+        key_package: joiner_key_package_bundle.key_package().clone(),
+    };
+
+    // Create proposal to remove a user
+    // TODO #525: This is not a valid RemoveProposal since random_u32() is not a valid KeyPackageRef.
     let remove_proposal = RemoveProposal {
         removed: random_u32(),
     };
@@ -145,9 +159,6 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     let external_init_proposal = tls_codec::TlsByteVecU16::new(Vec::new());
     // We don't support app ack proposals yet.
     let app_ack_proposal = tls_codec::TlsByteVecU32::new(Vec::new());
-    let joiner_key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, &crypto, Vec::new())
-            .expect("An unexpected error occurred.");
 
     let framing_parameters = FramingParameters::new(b"aad", WireFormat::MlsCiphertext);
 
