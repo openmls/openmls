@@ -207,6 +207,8 @@ implement_error! {
                 "The proposal queue is missing a proposal for the commit.",
             OwnKeyNotFound =
                 "Missing own key to apply proposal.",
+            InconsistentSenderIndex =
+                "External Committer used the wrong index.",
         }
         Complex {
             PlaintextSignatureFailure(VerificationError) =

@@ -72,9 +72,6 @@ impl CoreGroup {
 
         let (init_secret, kem_output) = InitSecret::from_public_group_state(backend, &pgs)?;
 
-        // We create the GroupContext with the values from the PGS, even though
-        // we already changed the tree by adding our own leaf, thus invalidating
-        // the tree hash.
         let group_context = GroupContext::new(
             pgs.group_id,
             pgs.epoch,
@@ -107,9 +104,21 @@ impl CoreGroup {
 
         let external_init_proposal = Proposal::ExternalInit(ExternalInitProposal::from(kem_output));
 
-        // FIXME #682: Check if old self is in the group. If that is the case,
-        // add a remove proposal.
-        let inline_proposals = vec![external_init_proposal];
+        let mut inline_proposals = vec![external_init_proposal];
+
+        // If there is a group member in the group with the same identity as us,
+        // commit a remove proposal.
+        for (leaf_index, key_package) in group.treesync().full_leaves()? {
+            if key_package.credential().identity()
+                == params.credential_bundle().credential().identity()
+            {
+                let remove_proposal = Proposal::Remove(RemoveProposal {
+                    removed: leaf_index,
+                });
+                inline_proposals.push(remove_proposal);
+                break;
+            };
+        }
 
         let params = CreateCommitParams::builder()
             .framing_parameters(*params.framing_parameters())
