@@ -84,9 +84,11 @@ impl<'a> LeafNodeHashInput<'a> {
         &self,
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Vec<u8>, CryptoError> {
-        let payload = self.tls_serialize_detached().unwrap();
-        ciphersuite.hash(backend, &payload)
+    ) -> Result<Vec<u8>, ParentHashError> {
+        let payload = self.tls_serialize_detached()?;
+        ciphersuite
+            .hash(backend, &payload)
+            .map_err(ParentHashError::HashError)
     }
 }
 
@@ -120,8 +122,10 @@ impl<'a> ParentNodeTreeHashInput<'a> {
         &self,
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Vec<u8>, CryptoError> {
-        let payload = self.tls_serialize_detached().unwrap();
-        ciphersuite.hash(backend, &payload)
+    ) -> Result<Vec<u8>, ParentHashError> {
+        let payload = self.tls_serialize_detached()?;
+        ciphersuite
+            .hash(backend, &payload)
+            .map_err(ParentHashError::HashError)
     }
 }

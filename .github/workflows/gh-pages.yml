@@ -1,22 +1,19 @@
-name: Deploy Docs
+name: Documentation
 
 on:
   push:
     branches:
       - main
 
-defaults:
-  run:
-    working-directory: openmls
-
 jobs:
-  rustdoc:
+  documentation:
     runs-on: ubuntu-latest
     steps:
       - uses: hecrj/setup-rust-action@master
       - uses: actions/checkout@master
       - name: Build docs
         run: |
+          cd openmls
           cargo doc --no-deps
           touch target/doc/.nojekyll
           cat > target/doc/index.html <<EOF
@@ -25,8 +22,16 @@ jobs:
             <meta http-equiv="refresh" content="0; URL='openmls/index.html'" />
           </head></html>
           EOF
-      - name: Deploy to Github Pages
+      - name: Deploy docs to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: openmls/target/doc
+      - name: Setup mdBook
+        uses: peaceiris/actions-mdbook@v1
+        with:
+          mdbook-version: 'latest'
+      - name: Build mdBook
+        run: |
+          cd book
+          mdbook build

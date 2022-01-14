@@ -140,7 +140,6 @@ impl ProposalQueue {
                 queued_proposal.clone(),
             );
         }
-
         // Build the actual queue
         let mut proposal_queue = ProposalQueue::default();
 
@@ -150,7 +149,7 @@ impl ProposalQueue {
                 ProposalOrRef::Proposal(proposal) => {
                     // ValSem200
                     if let Proposal::Remove(ref remove_proposal) = proposal {
-                        if remove_proposal.removed() == sender.sender {
+                        if remove_proposal.removed() == sender.sender && sender.is_member() {
                             return Err(ProposalQueueError::SelfRemoval);
                         }
                     }
@@ -168,7 +167,8 @@ impl ProposalQueue {
                             // ValSem200
                             if let Proposal::Remove(ref remove_proposal) = queued_proposal.proposal
                             {
-                                if remove_proposal.removed() == sender.sender {
+                                if remove_proposal.removed() == sender.sender && sender.is_member()
+                                {
                                     return Err(ProposalQueueError::SelfRemoval);
                                 }
                             }

@@ -171,7 +171,7 @@ fn invalid_inputs() {
 fn test_node_in_tree() {
     let tests = [(0u32, 2u32), (1, 2), (2, 4), (5, 6), (2, 10)];
     for test in tests.iter() {
-        node_in_tree(test.0, test.1).unwrap();
+        node_in_tree(test.0, test.1).expect("An unexpected error occurred.");
     }
 }
 
