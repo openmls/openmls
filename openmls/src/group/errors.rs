@@ -24,6 +24,7 @@ implement_error! {
                 "Couldn't find KeyPackageBundle corresponding to own update proposal.",
             NoSignatureKey = "No signature key was found.",
             OwnCommitError = "Can't process a commit created by the owner of the group. Please merge the [`StagedCommit`] returned by `create_commit` instead.",
+            IncompatibleWireFormat = "The incoming message's wire format was not compatible with the wire format policy for incoming messages.",
             LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
         }
         Complex {

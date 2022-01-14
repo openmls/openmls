@@ -11,10 +11,7 @@ use openmls::{
 // using BasicCredentials. We can change the test setup once #134 is fixed.
 
 fn default_mls_group_config() -> MlsGroupConfig {
-    MlsGroupConfig::builder()
-        .wire_format(WireFormat::MlsPlaintext)
-        .padding_size(10)
-        .build()
+    MlsGroupConfig::test_default()
 }
 
 // # 1:1 join
