@@ -1,13 +1,12 @@
-name: Deploy Docs & Book
+name: Documentation
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
-  rustdoc:
+  documentation:
     runs-on: ubuntu-latest
     steps:
       - uses: hecrj/setup-rust-action@master
@@ -23,17 +22,11 @@ jobs:
             <meta http-equiv="refresh" content="0; URL='openmls/index.html'" />
           </head></html>
           EOF
-      - name: Deploy to Github Pages
+      - name: Deploy docs to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: openmls/target/doc
-  book:
-    runs-on: ubuntu-latest
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}
-    steps:
-      - uses: actions/checkout@v2
       - name: Setup mdBook
         uses: peaceiris/actions-mdbook@v1
         with:
@@ -42,9 +35,3 @@ jobs:
         run: |
           cd book
           mdbook build
-      - name: Deploy mdBook
-        run: | 
-          curl -X POST https://api.github.com/repos/openmls/book/dispatches \
-          -H 'Accept: application/vnd.github.everest-preview+json' \
-          -u ${{ secrets.ACCESS_TOKEN }} \
-          --data '{"event_type": "deploy"}'
