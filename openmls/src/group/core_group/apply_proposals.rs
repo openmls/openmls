@@ -60,6 +60,32 @@ impl CoreGroup {
         let mut self_removed = false;
         let mut external_init_secret_option = None;
 
+        // Process external init proposals. We do this before the removes, so we
+        // know that removing "ourselves" (i.e. removing the group member in the
+        // same leaf as we are in) is valid in this case. We only care about the
+        // first proposal and ignore all others.
+        if let Some(queued_proposal) = proposal_queue
+            .filtered_by_type(ProposalType::ExternalInit)
+            .next()
+        {
+            if let Proposal::ExternalInit(external_init_proposal) = queued_proposal.proposal() {
+                // Decrypt the content and derive the external init secret.
+                let external_priv = self
+                    .group_epoch_secrets()
+                    .external_secret()
+                    .derive_external_keypair(backend.crypto(), self.ciphersuite())
+                    .private
+                    .into();
+                external_init_secret_option = Some(InitSecret::from_kem_output(
+                    backend,
+                    self.ciphersuite(),
+                    self.mls_version,
+                    &external_priv,
+                    external_init_proposal.kem_output(),
+                )?)
+            }
+        }
+
         // Process updates first
         for queued_proposal in proposal_queue.filtered_by_type(ProposalType::Update) {
             has_updates = true;
@@ -90,40 +116,13 @@ impl CoreGroup {
             // We know this is a remove proposal
             if let Proposal::Remove(remove_proposal) = queued_proposal.proposal() {
                 // Check if we got removed from the group
-                if remove_proposal.removed() == self.treesync().own_leaf_index() {
+                if remove_proposal.removed() == self.treesync().own_leaf_index()
+                    && external_init_secret_option.is_none()
+                {
                     self_removed = true;
                 }
                 // Blank the direct path of the removed member
                 diff.blank_leaf(remove_proposal.removed())?;
-            }
-        }
-
-        // Process external init proposals
-        for queued_proposal in proposal_queue.filtered_by_type(ProposalType::ExternalInit) {
-            // If we are the originator of the external init, we don't need to
-            // get the init secret from the proposal. This branching will not be
-            // necessary after #617.
-            if queued_proposal.sender().to_leaf_index() != self.treesync().own_leaf_index() {
-                // We know the proposal type
-                if let Proposal::ExternalInit(external_init_proposal) = &queued_proposal.proposal()
-                {
-                    // Decrypt the context an derive the external init.
-                    let external_priv = self
-                        .group_epoch_secrets()
-                        .external_secret()
-                        .derive_external_keypair(backend.crypto(), self.ciphersuite())
-                        .private
-                        .into();
-                    external_init_secret_option = Some(InitSecret::from_kem_output(
-                        backend,
-                        self.ciphersuite(),
-                        self.mls_version,
-                        &external_priv,
-                        external_init_proposal.kem_output(),
-                    )?);
-                }
-                // Ignore every external init beyond the first one.
-                break;
             }
         }
 

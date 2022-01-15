@@ -681,6 +681,16 @@ impl<'a> TreeSyncDiff<'a> {
         self.own_leaf_index
     }
 
+    /// Return a reference to our own leaf.
+    pub(crate) fn own_leaf(&self) -> Result<&LeafNode, TreeSyncDiffError> {
+        let leaf_id = self.diff.leaf(self.own_leaf_index)?;
+        let node = self.diff.node(leaf_id)?;
+        match node.node() {
+            Some(node) => Ok(node.as_leaf_node()?),
+            None => Err(TreeSyncDiffError::LibraryError),
+        }
+    }
+
     /// Compute and set the tree hash of all nodes in the tree.
     pub(crate) fn compute_tree_hashes(
         &mut self,
