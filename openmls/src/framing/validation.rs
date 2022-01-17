@@ -230,7 +230,7 @@ impl UnverifiedMessage {
 /// an external signature key.
 pub enum UnverifiedContextMessage {
     Group(UnverifiedGroupMessage),
-    Preconfigured(UnverifiedExternalMessage),
+    Preconfigured(UnverifiedPreconfiguredMessage),
 }
 
 impl UnverifiedContextMessage {
@@ -303,11 +303,11 @@ impl UnverifiedGroupMessage {
 
 // TODO #151/#106: We don't support preconfigured senders yet
 /// Part of [UnverifiedContextMessage].
-pub struct UnverifiedExternalMessage {
+pub struct UnverifiedPreconfiguredMessage {
     plaintext: VerifiableMlsPlaintext,
 }
 
-impl UnverifiedExternalMessage {
+impl UnverifiedPreconfiguredMessage {
     /// Verifies the signature on an [UnverifiedExternalMessage] and returns a [VerifiedExternalMessage] if the
     /// verification is successful.
     /// This function implements the following checks:

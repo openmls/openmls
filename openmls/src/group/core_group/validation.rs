@@ -293,15 +293,9 @@ impl CoreGroup {
         };
 
         // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
-        if let Some(additional_external_init_proposal) = external_init_proposals.next() {
+        if external_init_proposals.next().is_some() {
             // ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
-            if additional_external_init_proposal.proposal_or_ref_type()
-                == ProposalOrRefType::Reference
-            {
-                return Err(ExternalCommitValidationError::ReferencedExternalInitProposal.into());
-            } else {
-                return Err(ExternalCommitValidationError::MultipleExternalInitProposals.into());
-            }
+            return Err(ExternalCommitValidationError::MultipleExternalInitProposals.into());
         }
 
         let add_proposals = proposal_queue.filtered_by_type(ProposalType::Add);
