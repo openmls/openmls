@@ -96,7 +96,7 @@ impl CoreGroup {
     ///  - ValSem103
     ///  - ValSem104
     ///  - ValSem105
-    ///  - TODO: ValSem106
+    ///  - ValSem106
     pub(crate) fn validate_add_proposals(
         &self,
         proposal_queue: &ProposalQueue,
@@ -138,6 +138,19 @@ impl CoreGroup {
             if !public_key_set.insert(public_key) {
                 return Err(ProposalValidationError::DuplicatePublicKeyAddProposal.into());
             }
+            // ValSem106: Check the required capabilities of the add proposals
+            if let Some(required_capabilities_extension) = self
+                .group_context_extensions()
+                .iter()
+                .find(|&e| e.extension_type() == ExtensionType::RequiredCapabilities)
+            {
+                let required_capabilities =
+                    required_capabilities_extension.as_required_capabilities_extension()?;
+                add_proposal
+                    .add_proposal()
+                    .key_package()
+                    .validate_required_capabilities(required_capabilities)?;
+            }
         }
 
         for (_index, key_package) in self.treesync().full_leaves()? {
@@ -157,7 +170,6 @@ impl CoreGroup {
                 return Err(ProposalValidationError::ExistingPublicKeyAddProposal.into());
             }
         }
-        // TODO #538: ValSem106: Check the required capabilities of the add proposals
         Ok(())
     }
 
@@ -194,6 +206,7 @@ impl CoreGroup {
     /// Validate Update proposals. This function implements the following checks:
     ///  - ValSem109
     ///  - ValSem110
+    ///  - ValSem111
     pub(crate) fn validate_update_proposals(
         &self,
         proposal_queue: &ProposalQueue,
@@ -232,6 +245,19 @@ impl CoreGroup {
                 // ValSem110
                 if public_key_set.contains(public_key) {
                     return Err(ProposalValidationError::ExistingPublicKeyUpdateProposal.into());
+                }
+                // ValSem111
+                if let Some(required_capabilities_extension) = self
+                    .group_context_extensions()
+                    .iter()
+                    .find(|&e| e.extension_type() == ExtensionType::RequiredCapabilities)
+                {
+                    let required_capabilities =
+                        required_capabilities_extension.as_required_capabilities_extension()?;
+                    update_proposal
+                        .update_proposal()
+                        .key_package()
+                        .validate_required_capabilities(required_capabilities)?;
                 }
             } else {
                 return Err(ProposalValidationError::UnknownMember.into());

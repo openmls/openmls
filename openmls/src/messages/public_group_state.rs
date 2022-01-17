@@ -98,6 +98,12 @@ impl VerifiablePublicGroupState {
     pub(crate) fn other_extensions(&self) -> &[Extension] {
         self.tbs.other_extensions.as_slice()
     }
+
+    /// Get a reference to the [`GroupContext`] extensions of the unverified
+    /// `PublicGroupState`.
+    pub(crate) fn group_context_extensions(&self) -> &[Extension] {
+        self.tbs.group_context_extensions.as_slice()
+    }
 }
 
 mod private_mod {

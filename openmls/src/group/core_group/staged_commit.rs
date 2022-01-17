@@ -32,6 +32,7 @@ impl CoreGroup {
     ///  - ValSem108
     ///  - ValSem109
     ///  - ValSem110
+    ///  - ValSem111
     ///  - ValSem201
     ///  - ValSem205
     /// Returns an error if the given commit was sent by the owner of this
@@ -110,6 +111,7 @@ impl CoreGroup {
         self.validate_remove_proposals(&proposal_queue)?;
         // ValSem109
         // ValSem110
+        // ValSem111
         self.validate_update_proposals(&proposal_queue, sender_key_package_tuple)?;
 
         // Create provisional tree and apply proposals

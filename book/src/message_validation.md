@@ -34,13 +34,12 @@
 | `ValSem103`    | Add Proposal: Identity in proposals must be unique among existing group members             | ✅             | ❌     | TBD       |
 | `ValSem104`    | Add Proposal: Signature public key in proposals must be unique among existing group members | ✅             | ❌     | TBD       |
 | `ValSem105`    | Add Proposal: HPKE init key in proposals must be unique among existing group members        | ✅             | ❌     | TBD       |
-| `ValSem106`    | Add Proposal: required capabilities                                                         | ❌<sup>1</sup> | ❌     | TBD       |
+| `ValSem106`    | Add Proposal: required capabilities                                                         | ✅             | ❌     | TBD       |
 | `ValSem107`    | Remove Proposal: Removed member must be unique among proposals                              | ✅             | ❌     | TBD       |
 | `ValSem108`    | Remove Proposal: Removed member must be an existing group member                            | ✅             | ❌     | TBD       |
 | `ValSem109`    | Update Proposal: Identity must be unchanged between existing member and new proposal        | ✅             | ❌     | TBD       |
 | `ValSem110`    | Update Proposal: HPKE init key must be unique among existing members                        | ✅             | ❌     | TBD       |
-
-<sup>1</sup> Partly implemented, see `TODO`s in `openmls/src/group/core_group/validation.rs`.
+| `ValSem111`    | Update Proposal: required capabilities                                                      | ✅             | ❌     | TBD       |
 
 ### Commit message validation
 

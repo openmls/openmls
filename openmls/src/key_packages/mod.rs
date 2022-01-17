@@ -208,21 +208,6 @@ impl KeyPackage {
         self.payload.extensions.as_slice()
     }
 
-    /// Check whether the this key package supports all the required extensions
-    /// in the provided list.
-    pub fn check_extension_support(
-        &self,
-        required_extensions: &[ExtensionType],
-    ) -> Result<(), KeyPackageError> {
-        let my_extension_types = self.extensions().iter().map(|ext| ext.extension_type());
-        for required in required_extensions.iter() {
-            if !my_extension_types.clone().any(|e| &e == required) {
-                return Err(KeyPackageError::UnsupportedExtension);
-            }
-        }
-        Ok(())
-    }
-
     /// Get a reference to the credential.
     pub fn credential(&self) -> &Credential {
         &self.payload.credential
@@ -235,10 +220,28 @@ impl KeyPackage {
         required_capabilities: impl Into<Option<&'a RequiredCapabilitiesExtension>>,
     ) -> Result<(), KeyPackageError> {
         if let Some(required_capabilities) = required_capabilities.into() {
-            let my_extension_types = self.extensions().iter().map(|e| e.extension_type());
+            let my_capabilities = self
+                .extension_with_type(ExtensionType::Capabilities)
+                .ok_or(KeyPackageError::MandatoryExtensionsMissing)?
+                .as_capabilities_extension()?;
+            // Check required extension support.
             for required_extension in required_capabilities.extensions() {
-                if !my_extension_types.clone().any(|e| &e == required_extension) {
+                if !my_capabilities
+                    .extensions()
+                    .iter()
+                    .any(|e| e == required_extension)
+                {
                     return Err(KeyPackageError::UnsupportedExtension);
+                }
+            }
+            // Check required proposal support.
+            for required_proposal in required_capabilities.proposals() {
+                if !my_capabilities
+                    .proposals()
+                    .iter()
+                    .any(|p| p == required_proposal)
+                {
+                    return Err(KeyPackageError::UnsupportedProposal);
                 }
             }
         }

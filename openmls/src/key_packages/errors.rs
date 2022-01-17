@@ -19,6 +19,7 @@ implement_error! {
             LibraryError = "An unknown OpenMLS library error occurred.",
             DuplicateExtension = "Duplicate extensions are not allowed.",
             UnsupportedExtension = "The key package does not support all required extensions.",
+            UnsupportedProposal = "The key package does not support all required proposals.",
             NoCiphersuitesSupplied = "Creating a new key package requires at least one ciphersuite.",
             CiphersuiteMismatch = "The list of ciphersuites is not consistent with the capabilities extension.",
             CiphersuiteSignatureSchemeMismatch = "The ciphersuite does not match the signature scheme.",

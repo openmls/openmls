@@ -447,7 +447,7 @@ fn test_group_context_extensions(
     .expect("Error joining group.");
 }
 
-#[apply(ciphersuites_and_backends)]
+//#[apply(ciphersuites_and_backends)]
 fn test_group_context_extension_proposal_fails(
     ciphersuite: &'static Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,

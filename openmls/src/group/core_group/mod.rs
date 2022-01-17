@@ -369,24 +369,58 @@ impl CoreGroup {
         extensions: &[Extension],
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsPlaintext, CoreGroupError> {
-        // Ensure that the group supports all the extensions that are wanted.
-        let required_extension = extensions
-            .iter()
-            .find(|extension| extension.extension_type() == ExtensionType::RequiredCapabilities);
-        if let Some(required_extension) = required_extension {
-            let required_capabilities = required_extension.as_required_capabilities_extension()?;
-            // Ensure we support all the capabilities.
-            check_required_capabilities_support(required_capabilities)?;
-            self.treesync()
-                .own_leaf_node()?
-                .key_package()
-                .validate_required_capabilities(required_capabilities)?;
-            // Ensure that all other key packages support all the required
-            // extensions as well.
-            for (_index, key_package) in self.treesync().full_leaves()? {
-                key_package.check_extension_support(required_capabilities.extensions())?;
+        for new_extension in extensions {
+            // If we're trying to add a `RequiredCapabilitiesExtension`, make sure
+            // that the whole group (including us) supports all required
+            // capabilities.
+            if new_extension.extension_type() == ExtensionType::RequiredCapabilities {
+                let required_capabilities = new_extension.as_required_capabilities_extension()?;
+                // Ensure we support all the capabilities.
+                check_required_capabilities_support(required_capabilities)?;
+                // Ensure that we advertise support for all required
+                // capabilities in our key package.
+                self.treesync()
+                    .own_leaf_node()?
+                    .key_package()
+                    .validate_required_capabilities(required_capabilities)?;
+                // Ensure that all other key packages advertise support all the
+                // required extensions as well.
+                for (_index, key_package) in self.treesync().full_leaves()? {
+                    key_package.validate_required_capabilities(required_capabilities)?;
+                }
+            } else {
+                let new_extension_type = new_extension.extension_type();
+                // Ensure we support the new extension.
+                if !new_extension_type.is_supported() {
+                    return Err(ConfigError::UnsupportedExtensionsType.into());
+                }
+                // Ensure that we advertise support for the new extension.
+                let own_key_package = self.treesync().own_leaf_node()?.key_package();
+                let my_capabilities = own_key_package
+                    .extension_with_type(ExtensionType::Capabilities)
+                    .ok_or(KeyPackageError::MandatoryExtensionsMissing)?
+                    .as_capabilities_extension()?;
+                if !my_capabilities.extensions().contains(&new_extension_type) {
+                    return Err(KeyPackageError::UnsupportedExtension.into());
+                }
+                // Ensure that all other key packages advertise support for the
+                // new extension.
+                for (_index, key_package) in self.treesync().full_leaves()? {
+                    let member_capabilities = key_package
+                        .extension_with_type(ExtensionType::Capabilities)
+                        .ok_or(KeyPackageError::MandatoryExtensionsMissing)?
+                        .as_capabilities_extension()?;
+                    if !member_capabilities
+                        .extensions()
+                        .contains(&new_extension_type)
+                    {
+                        return Err(KeyPackageError::UnsupportedExtension.into());
+                    }
+                }
             }
         }
+        // If it's some other extension, make sure that everyone supports that
+        // extensions.
         let proposal = GroupContextExtensionProposal::new(extensions);
         let proposal = Proposal::GroupContextExtensions(proposal);
         MlsPlaintext::member_proposal(

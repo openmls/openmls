@@ -83,6 +83,10 @@ impl CapabilitiesExtension {
     pub fn extensions(&self) -> &[ExtensionType] {
         self.extensions.as_slice()
     }
+    /// Get a reference to the list of supported proposals.
+    pub fn proposals(&self) -> &[ProposalType] {
+        self.proposals.as_slice()
+    }
 }
 
 // We deserialize manually in order to perform some checks on the values.

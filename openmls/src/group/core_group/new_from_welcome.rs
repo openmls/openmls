@@ -78,11 +78,6 @@ impl CoreGroup {
             let required_capabilities =
                 required_capabilities.as_required_capabilities_extension()?;
             check_required_capabilities_support(required_capabilities)?;
-            // Also check that our key package actually supports the extensions.
-            // Per spec the sender must have checked this. But you never know.
-            key_package_bundle
-                .key_package()
-                .check_extension_support(required_capabilities.extensions())?
         }
 
         let path_secret_option = group_secrets.path_secret;

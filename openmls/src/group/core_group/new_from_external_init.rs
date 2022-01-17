@@ -51,6 +51,17 @@ impl CoreGroup {
             },
         };
 
+        // Validate that we fulfill the required capabilities.
+        let required_extension = verifiable_public_group_state
+            .group_context_extensions()
+            .iter()
+            .find(|extension| extension.extension_type() == ExtensionType::RequiredCapabilities);
+        if let Some(required_extension) = required_extension {
+            let required_capabilities = required_extension.as_required_capabilities_extension()?;
+            // Ensure we support all the capabilities.
+            check_required_capabilities_support(required_capabilities)?;
+        }
+
         // Create a RatchetTree from the given nodes. We have to do this before
         // verifying the PGS, since we need to find the Credential to verify the
         // signature against.

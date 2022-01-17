@@ -248,7 +248,7 @@ pub(crate) fn check_required_capabilities_support(
 ) -> Result<(), ConfigError> {
     for extension in required_capabilities.extensions() {
         if !extension.is_supported() {
-            return Err(ConfigError::UnsupportedProposalType);
+            return Err(ConfigError::UnsupportedExtensionsType);
         }
     }
     for proposal in required_capabilities.proposals() {
