@@ -295,6 +295,12 @@ impl UpdatePath {
         }
         self.nodes = new_nodes.into();
     }
+
+    #[cfg(test)]
+    /// Set the path key package.
+    pub fn set_leaf_key_package(&mut self, key_package: KeyPackage) {
+        self.leaf_key_package = key_package
+    }
 }
 
 implement_error! {

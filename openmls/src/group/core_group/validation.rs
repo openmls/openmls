@@ -3,6 +3,8 @@
 
 use std::collections::HashSet;
 
+use crate::group::errors::ExternalCommitValidationError;
+
 use super::{proposals::ProposalQueue, *};
 
 impl CoreGroup {
@@ -262,6 +264,77 @@ impl CoreGroup {
             }
         }
 
+        Ok(())
+    }
+
+    /// Validate constraints on an external commit. This function implements the following checks:
+    ///  - ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
+    ///  - ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
+    ///  - ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.
+    ///  - ValSem243: External Commit, inline Proposals: There MUST NOT be any Update proposals.
+    ///  - ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
+    ///               leaf are identical to the ones in the path KeyPackage.
+    ///  - ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+    pub(crate) fn validate_external_commit(
+        &self,
+        proposal_queue: &ProposalQueue,
+        path_key_package_option: Option<&KeyPackage>,
+    ) -> Result<(), CoreGroupError> {
+        let mut external_init_proposals =
+            proposal_queue.filtered_by_type(ProposalType::ExternalInit);
+        // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
+        if let Some(external_init_proposal) = external_init_proposals.next() {
+            // ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+            if external_init_proposal.proposal_or_ref_type() == ProposalOrRefType::Reference {
+                return Err(ExternalCommitValidationError::ReferencedExternalInitProposal.into());
+            }
+        } else {
+            return Err(ExternalCommitValidationError::NoExternalInitProposals.into());
+        };
+
+        // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
+        if external_init_proposals.next().is_some() {
+            // ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+            return Err(ExternalCommitValidationError::MultipleExternalInitProposals.into());
+        }
+
+        let add_proposals = proposal_queue.filtered_by_type(ProposalType::Add);
+        for proposal in add_proposals {
+            // ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.
+            if proposal.proposal_or_ref_type() == ProposalOrRefType::Proposal {
+                return Err(ExternalCommitValidationError::InvalidInlineProposals.into());
+            }
+        }
+        let update_proposals = proposal_queue.filtered_by_type(ProposalType::Update);
+        for proposal in update_proposals {
+            // ValSem243: External Commit, inline Proposals: There MUST NOT be any Update proposals.
+            if proposal.proposal_or_ref_type() == ProposalOrRefType::Proposal {
+                return Err(ExternalCommitValidationError::InvalidInlineProposals.into());
+            }
+        }
+
+        let remove_proposals = proposal_queue.filtered_by_type(ProposalType::Remove);
+        for proposal in remove_proposals {
+            if proposal.proposal_or_ref_type() == ProposalOrRefType::Proposal {
+                if let Proposal::Remove(remove_proposal) = proposal.proposal() {
+                    let removed_leaf = self
+                        .treesync()
+                        .leaf(remove_proposal.removed())
+                        // Unknown because outside of tree.
+                        .map_err(|_| ProposalValidationError::UnknownMemberRemoval)?
+                        // Unknown because blank.
+                        .ok_or(ProposalValidationError::UnknownMemberRemoval)?;
+                    if let Some(path_key_package) = path_key_package_option {
+                        // ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed leaf are identical to the ones in the path KeyPackage.
+                        if removed_leaf.key_package().credential().identity()
+                            != path_key_package.credential().identity()
+                        {
+                            return Err(ExternalCommitValidationError::InvalidRemoveProposal.into());
+                        }
+                    };
+                }
+            }
+        }
         Ok(())
     }
 }

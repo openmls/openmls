@@ -118,6 +118,41 @@ impl DecryptedMessage {
         Ok(DecryptedMessage { plaintext })
     }
 
+    /// Gets the correct credential from the message depending on the sender type.
+    /// Checks the following semantic validation:
+    ///  - ValSem246
+    ///  - Prepares ValSem247 by setting the right credential. The remainder
+    ///    of ValSem247 is validated as part of ValSem010.
+    pub fn credential(&self, treesync: &TreeSync) -> Result<Credential, ValidationError> {
+        let sender = self.sender();
+        match sender.sender_type {
+            SenderType::Member => {
+                let sender_index = sender.to_leaf_index();
+                if let Some(sender_leaf) = treesync
+                    .leaf(sender_index)
+                    .map_err(|_| ValidationError::UnknownSender)?
+                {
+                    Ok(sender_leaf.key_package().credential().clone())
+                } else {
+                    Err(ValidationError::UnknownSender)
+                }
+            }
+            // Preconfigured senders are not supported yet #106/#151.
+            SenderType::Preconfigured => todo!(),
+            SenderType::NewMember => {
+                if let MlsPlaintextContentType::Commit(commit) = self.plaintext().content() {
+                    if let Some(path) = commit.path() {
+                        Ok(path.leaf_key_package().credential().clone())
+                    } else {
+                        Err(ValidationError::NoPath)
+                    }
+                } else {
+                    Err(ValidationError::NotACommit)
+                }
+            }
+        }
+    }
+
     /// Returns the wire format
     pub fn wire_format(&self) -> WireFormat {
         self.plaintext.wire_format()
@@ -188,13 +223,14 @@ impl UnverifiedMessage {
     }
 }
 
-/// Contains an [VerifiableMlsPlaintext] and a [Credential] if it is a member message.
-/// It sets the serialized group context and verifies the membership tag for member messages.
-/// It can be converted to a verified message by verifying the signature, either with the credential
-/// or an external signature key.
+/// Contains an [VerifiableMlsPlaintext] and a [Credential] if it is a message
+/// from a `Member` or a `NewMember`.  It sets the serialized group context and
+/// verifies the membership tag for member messages.  It can be converted to a
+/// verified message by verifying the signature, either with the credential or
+/// an external signature key.
 pub enum UnverifiedContextMessage {
-    Member(UnverifiedMemberMessage),
-    External(UnverifiedExternalMessage),
+    Group(UnverifiedGroupMessage),
+    Preconfigured(UnverifiedPreconfiguredMessage),
 }
 
 impl UnverifiedContextMessage {
@@ -220,32 +256,27 @@ impl UnverifiedContextMessage {
             }
         }
         match plaintext.sender().sender_type {
-            // We want to return a credential when the sender type is member
-            SenderType::Member => {
-                if let Some(credential) = credential_option {
-                    Ok(UnverifiedContextMessage::Member(UnverifiedMemberMessage {
-                        plaintext,
-                        credential,
-                    }))
-                } else {
-                    // If the sender is a member, there must be a credential
-                    Err(ValidationError::LibraryError)
-                }
+            SenderType::Member | SenderType::NewMember => {
+                Ok(UnverifiedContextMessage::Group(UnverifiedGroupMessage {
+                    plaintext,
+                    // If the message type is `Sender` or `NewMember`, the
+                    // message always contains a credential.
+                    credential: credential_option.ok_or(ValidationError::LibraryError)?,
+                }))
             }
-            // TODO #192: We don't support external senders yet
+            // TODO #151/#106: We don't support preconfigured senders yet
             SenderType::Preconfigured => todo!(),
-            SenderType::NewMember => todo!(),
         }
     }
 }
 
 /// Part of [UnverifiedContextMessage].
-pub struct UnverifiedMemberMessage {
+pub struct UnverifiedGroupMessage {
     plaintext: VerifiableMlsPlaintext,
     credential: Credential,
 }
 
-impl UnverifiedMemberMessage {
+impl UnverifiedGroupMessage {
     /// Verifies the signature on an [UnverifiedMemberMessage] and returns a [VerifiedMemberMessage] if the
     /// verification is successful.
     /// This function implements the following checks:
@@ -270,13 +301,13 @@ impl UnverifiedMemberMessage {
     }
 }
 
-// TODO #192: We don't support external senders yet
+// TODO #151/#106: We don't support preconfigured senders yet
 /// Part of [UnverifiedContextMessage].
-pub struct UnverifiedExternalMessage {
+pub struct UnverifiedPreconfiguredMessage {
     plaintext: VerifiableMlsPlaintext,
 }
 
-impl UnverifiedExternalMessage {
+impl UnverifiedPreconfiguredMessage {
     /// Verifies the signature on an [UnverifiedExternalMessage] and returns a [VerifiedExternalMessage] if the
     /// verification is successful.
     /// This function implements the following checks:

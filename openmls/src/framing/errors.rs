@@ -61,6 +61,8 @@ implement_error! {
     pub enum ValidationError {
         Simple {
             NotAnApplicationMessage = "The MlsPlaintext message is not an application message.",
+            NotACommit = "The MlsPlaintext message is not a Commit despite the sender begin of type NewMember.",
+            NoPath = "The Commit doesn't have a path despite the sender being of type NewMember.",
             UnencryptedApplicationMessage = "The MlsPlaintext contains an application message but was not encrypted.",
             UnknownSender = "Sender is not part of the group",
             MissingMembershipTag = "The membership tag is missing.",

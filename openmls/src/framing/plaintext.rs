@@ -612,6 +612,11 @@ impl VerifiableMlsPlaintext {
         &self.tbs
     }
 
+    /// Get the content of the message.
+    pub(crate) fn content(&self) -> &MlsPlaintextContentType {
+        &self.tbs.payload
+    }
+
     /// Get the wire format.
     pub(crate) fn wire_format(&self) -> WireFormat {
         self.tbs.wire_format
