@@ -21,19 +21,11 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider,
         message: MlsMessageIn,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
-        incoming_wire_format_policy: IncomingWireFormatPolicy,
     ) -> Result<UnverifiedMessage, CoreGroupError> {
         // Checks the following semantic validation:
         //  - ValSem002
         //  - ValSem003
         self.validate_framing(&message)?;
-
-        // Check that handshake messages are compatible with the incoming wire format policy
-        if message.is_handshake_message()
-            && !incoming_wire_format_policy.is_compatible(message.wire_format())
-        {
-            return Err(CoreGroupError::IncompatibleWireFormat);
-        }
 
         // Checks the following semantic validation:
         //  - ValSem006
