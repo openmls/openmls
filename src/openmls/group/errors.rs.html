@@ -302,6 +302,21 @@
 <span id="301">301</span>
 <span id="302">302</span>
 <span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS CoreGroup errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -374,6 +389,8 @@
             <span class="ident">FramingValidationError</span>(<span class="ident">FramingValidationError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`FramingValidationError`](crate::group::FramingValidationError) for details.&quot;</span>,
             <span class="ident">ProposalValidationError</span>(<span class="ident">ProposalValidationError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`ProposalValidationError`](crate::group::ProposalValidationError) for details.&quot;</span>,
+            <span class="ident">ExternalCommitValidationError</span>(<span class="ident">ExternalCommitValidationError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`ProposalValidationError`](crate::group::ProposalValidationError) for details.&quot;</span>,
             <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`CryptoError`](openmls_traits::types::CryptoError) for details.&quot;</span>,
@@ -591,6 +608,19 @@
         <span class="ident">ExistingPublicKeyUpdateProposal</span> <span class="op">=</span> <span class="string">&quot;HPKE public key of the update proposal already existed in tree.&quot;</span>,
         <span class="ident">DuplicateMemberRemoval</span> <span class="op">=</span> <span class="string">&quot;Duplicate remove proposals for the same member.&quot;</span>,
         <span class="ident">UnknownMemberRemoval</span> <span class="op">=</span> <span class="string">&quot;The remove proposal referenced a non-existing member.&quot;</span>,
+    }
+}
+
+<span class="macro">implement_error!</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExternalCommitValidationError</span> {
+        <span class="ident">NoExternalInitProposals</span> <span class="op">=</span> <span class="string">&quot;No ExternalInit proposal found.&quot;</span>,
+        <span class="ident">MultipleExternalInitProposals</span> <span class="op">=</span> <span class="string">&quot;Multiple ExternalInit proposal found.&quot;</span>,
+        <span class="ident">InvalidInlineProposals</span> <span class="op">=</span> <span class="string">&quot;Found inline Add or Update proposals.&quot;</span>,
+        <span class="ident">MultipleRemoveProposals</span> <span class="op">=</span> <span class="string">&quot;Found multiple inline Remove proposals.&quot;</span>,
+        <span class="ident">InvalidRemoveProposal</span> <span class="op">=</span> <span class="string">&quot;Remove proposal targets the wrong group member.&quot;</span>,
+        <span class="ident">ReferencedExternalInitProposal</span> <span class="op">=</span> <span class="string">&quot;Found an ExternalInit proposal among the referenced proposals.&quot;</span>,
+        <span class="ident">NoPath</span> <span class="op">=</span> <span class="string">&quot;External Commit has to contain a path.&quot;</span>,
+        <span class="ident">NoCommit</span> <span class="op">=</span> <span class="string">&quot;A Message sent by a sender with type NewMember can only be a Commit.&quot;</span>,
     }
 }
 

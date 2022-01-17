@@ -318,6 +318,12 @@
 <span id="317">317</span>
 <span id="318">318</span>
 <span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Module to encrypt and decrypt update paths for a [`TreeSyncDiff`] instance.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -614,6 +620,12 @@
             <span class="ident">new_nodes</span>.<span class="ident">push</span>(<span class="ident">new_node</span>);
         }
         <span class="self">self</span>.<span class="ident">nodes</span> <span class="op">=</span> <span class="ident">new_nodes</span>.<span class="ident">into</span>();
+    }
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="doccomment">/// Set the path key package.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_leaf_key_package</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">key_package</span>: <span class="ident">KeyPackage</span>) {
+        <span class="self">self</span>.<span class="ident">leaf_key_package</span> <span class="op">=</span> <span class="ident">key_package</span>
     }
 }
 

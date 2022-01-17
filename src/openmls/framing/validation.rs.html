@@ -367,6 +367,37 @@
 <span id="366">366</span>
 <span id="367">367</span>
 <span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ```text</span>
@@ -487,6 +518,41 @@
         <span class="prelude-val">Ok</span>(<span class="ident">DecryptedMessage</span> { <span class="ident">plaintext</span> })
     }
 
+    <span class="doccomment">/// Gets the correct credential from the message depending on the sender type.</span>
+    <span class="doccomment">/// Checks the following semantic validation:</span>
+    <span class="doccomment">///  - ValSem246</span>
+    <span class="doccomment">///  - Prepares ValSem247 by setting the right credential. The remainder</span>
+    <span class="doccomment">///    of ValSem247 is validated as part of ValSem010.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">credential</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">treesync</span>: <span class="kw-2">&amp;</span><span class="ident">TreeSync</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Credential</span>, <span class="ident">ValidationError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sender</span>();
+        <span class="kw">match</span> <span class="ident">sender</span>.<span class="ident">sender_type</span> {
+            <span class="ident">SenderType::Member</span> =&gt; {
+                <span class="kw">let</span> <span class="ident">sender_index</span> <span class="op">=</span> <span class="ident">sender</span>.<span class="ident">to_leaf_index</span>();
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">sender_leaf</span>) <span class="op">=</span> <span class="ident">treesync</span>
+                    .<span class="ident">leaf</span>(<span class="ident">sender_index</span>)
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ValidationError::UnknownSender</span>)<span class="question-mark">?</span>
+                {
+                    <span class="prelude-val">Ok</span>(<span class="ident">sender_leaf</span>.<span class="ident">key_package</span>().<span class="ident">credential</span>().<span class="ident">clone</span>())
+                } <span class="kw">else</span> {
+                    <span class="prelude-val">Err</span>(<span class="ident">ValidationError::UnknownSender</span>)
+                }
+            }
+            <span class="comment">// Preconfigured senders are not supported yet #106/#151.</span>
+            <span class="ident">SenderType::Preconfigured</span> =&gt; <span class="macro">todo!</span>(),
+            <span class="ident">SenderType::NewMember</span> =&gt; {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">MlsPlaintextContentType::Commit</span>(<span class="ident">commit</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext</span>().<span class="ident">content</span>() {
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">path</span>) <span class="op">=</span> <span class="ident">commit</span>.<span class="ident">path</span>() {
+                        <span class="prelude-val">Ok</span>(<span class="ident">path</span>.<span class="ident">leaf_key_package</span>().<span class="ident">credential</span>().<span class="ident">clone</span>())
+                    } <span class="kw">else</span> {
+                        <span class="prelude-val">Err</span>(<span class="ident">ValidationError::NoPath</span>)
+                    }
+                } <span class="kw">else</span> {
+                    <span class="prelude-val">Err</span>(<span class="ident">ValidationError::NotACommit</span>)
+                }
+            }
+        }
+    }
+
     <span class="doccomment">/// Returns the wire format</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">wire_format</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">WireFormat</span> {
         <span class="self">self</span>.<span class="ident">plaintext</span>.<span class="ident">wire_format</span>()
@@ -557,13 +623,14 @@
     }
 }
 
-<span class="doccomment">/// Contains an [VerifiableMlsPlaintext] and a [Credential] if it is a member message.</span>
-<span class="doccomment">/// It sets the serialized group context and verifies the membership tag for member messages.</span>
-<span class="doccomment">/// It can be converted to a verified message by verifying the signature, either with the credential</span>
-<span class="doccomment">/// or an external signature key.</span>
+<span class="doccomment">/// Contains an [VerifiableMlsPlaintext] and a [Credential] if it is a message</span>
+<span class="doccomment">/// from a `Member` or a `NewMember`.  It sets the serialized group context and</span>
+<span class="doccomment">/// verifies the membership tag for member messages.  It can be converted to a</span>
+<span class="doccomment">/// verified message by verifying the signature, either with the credential or</span>
+<span class="doccomment">/// an external signature key.</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">UnverifiedContextMessage</span> {
-    <span class="ident">Member</span>(<span class="ident">UnverifiedMemberMessage</span>),
-    <span class="ident">External</span>(<span class="ident">UnverifiedExternalMessage</span>),
+    <span class="ident">Group</span>(<span class="ident">UnverifiedGroupMessage</span>),
+    <span class="ident">Preconfigured</span>(<span class="ident">UnverifiedPreconfiguredMessage</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">UnverifiedContextMessage</span> {
@@ -589,32 +656,27 @@
             }
         }
         <span class="kw">match</span> <span class="ident">plaintext</span>.<span class="ident">sender</span>().<span class="ident">sender_type</span> {
-            <span class="comment">// We want to return a credential when the sender type is member</span>
-            <span class="ident">SenderType::Member</span> =&gt; {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">credential</span>) <span class="op">=</span> <span class="ident">credential_option</span> {
-                    <span class="prelude-val">Ok</span>(<span class="ident">UnverifiedContextMessage::Member</span>(<span class="ident">UnverifiedMemberMessage</span> {
-                        <span class="ident">plaintext</span>,
-                        <span class="ident">credential</span>,
-                    }))
-                } <span class="kw">else</span> {
-                    <span class="comment">// If the sender is a member, there must be a credential</span>
-                    <span class="prelude-val">Err</span>(<span class="ident">ValidationError::LibraryError</span>)
-                }
+            <span class="ident">SenderType::Member</span> <span class="op">|</span> <span class="ident">SenderType::NewMember</span> =&gt; {
+                <span class="prelude-val">Ok</span>(<span class="ident">UnverifiedContextMessage::Group</span>(<span class="ident">UnverifiedGroupMessage</span> {
+                    <span class="ident">plaintext</span>,
+                    <span class="comment">// If the message type is `Sender` or `NewMember`, the</span>
+                    <span class="comment">// message always contains a credential.</span>
+                    <span class="ident">credential</span>: <span class="ident">credential_option</span>.<span class="ident">ok_or</span>(<span class="ident">ValidationError::LibraryError</span>)<span class="question-mark">?</span>,
+                }))
             }
-            <span class="comment">// TODO #192: We don&#39;t support external senders yet</span>
+            <span class="comment">// TODO #151/#106: We don&#39;t support preconfigured senders yet</span>
             <span class="ident">SenderType::Preconfigured</span> =&gt; <span class="macro">todo!</span>(),
-            <span class="ident">SenderType::NewMember</span> =&gt; <span class="macro">todo!</span>(),
         }
     }
 }
 
 <span class="doccomment">/// Part of [UnverifiedContextMessage].</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UnverifiedMemberMessage</span> {
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UnverifiedGroupMessage</span> {
     <span class="ident">plaintext</span>: <span class="ident">VerifiableMlsPlaintext</span>,
     <span class="ident">credential</span>: <span class="ident">Credential</span>,
 }
 
-<span class="kw">impl</span> <span class="ident">UnverifiedMemberMessage</span> {
+<span class="kw">impl</span> <span class="ident">UnverifiedGroupMessage</span> {
     <span class="doccomment">/// Verifies the signature on an [UnverifiedMemberMessage] and returns a [VerifiedMemberMessage] if the</span>
     <span class="doccomment">/// verification is successful.</span>
     <span class="doccomment">/// This function implements the following checks:</span>
@@ -639,13 +701,13 @@
     }
 }
 
-<span class="comment">// TODO #192: We don&#39;t support external senders yet</span>
+<span class="comment">// TODO #151/#106: We don&#39;t support preconfigured senders yet</span>
 <span class="doccomment">/// Part of [UnverifiedContextMessage].</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UnverifiedExternalMessage</span> {
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UnverifiedPreconfiguredMessage</span> {
     <span class="ident">plaintext</span>: <span class="ident">VerifiableMlsPlaintext</span>,
 }
 
-<span class="kw">impl</span> <span class="ident">UnverifiedExternalMessage</span> {
+<span class="kw">impl</span> <span class="ident">UnverifiedPreconfiguredMessage</span> {
     <span class="doccomment">/// Verifies the signature on an [UnverifiedExternalMessage] and returns a [VerifiedExternalMessage] if the</span>
     <span class="doccomment">/// verification is successful.</span>
     <span class="doccomment">/// This function implements the following checks:</span>

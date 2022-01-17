@@ -315,8 +315,8 @@
                 <span class="ident">PreSharedKeyProposal::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>,
             )),
             <span class="ident">ProposalType::Reinit</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Proposal::ReInit</span>(<span class="ident">ReInitProposal::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>)),
-            <span class="ident">ProposalType::ExternalInit</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::DecodingError</span>(
-                <span class="string">&quot;External Init is not supported yet in OpenMLS.&quot;</span>.<span class="ident">to_string</span>(),
+            <span class="ident">ProposalType::ExternalInit</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Proposal::ExternalInit</span>(
+                <span class="ident">ExternalInitProposal::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>,
             )),
             <span class="ident">ProposalType::AppAck</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::DecodingError</span>(
                 <span class="string">&quot;App ack is not supported yet in OpenMLS.&quot;</span>.<span class="ident">to_string</span>(),

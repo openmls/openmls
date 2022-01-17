@@ -84,6 +84,8 @@
 <span id="83">83</span>
 <span id="84">84</span>
 <span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Framing errors.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `MlsPlaintextError` and `MlsCiphertextError` are thrown on errors</span>
@@ -147,6 +149,8 @@
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ValidationError</span> {
         <span class="ident">Simple</span> {
             <span class="ident">NotAnApplicationMessage</span> <span class="op">=</span> <span class="string">&quot;The MlsPlaintext message is not an application message.&quot;</span>,
+            <span class="ident">NotACommit</span> <span class="op">=</span> <span class="string">&quot;The MlsPlaintext message is not a Commit despite the sender begin of type NewMember.&quot;</span>,
+            <span class="ident">NoPath</span> <span class="op">=</span> <span class="string">&quot;The Commit doesn&#39;t have a path despite the sender being of type NewMember.&quot;</span>,
             <span class="ident">UnencryptedApplicationMessage</span> <span class="op">=</span> <span class="string">&quot;The MlsPlaintext contains an application message but was not encrypted.&quot;</span>,
             <span class="ident">UnknownSender</span> <span class="op">=</span> <span class="string">&quot;Sender is not part of the group&quot;</span>,
             <span class="ident">MissingMembershipTag</span> <span class="op">=</span> <span class="string">&quot;The membership tag is missing.&quot;</span>,
