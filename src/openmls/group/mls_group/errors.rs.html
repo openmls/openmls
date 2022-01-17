@@ -106,6 +106,7 @@
 <span id="105">105</span>
 <span id="106">106</span>
 <span id="107">107</span>
+<span id="108">108</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS MlsGroup errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -133,6 +134,7 @@
             <span class="ident">NoPendingCommit</span> <span class="op">=</span> <span class="string">&quot;There is no pending commit that can be merged.&quot;</span>,
             <span class="ident">ExternalCommitError</span> <span class="op">=</span> <span class="string">&quot;Can&#39;t clear an external commit, as the group can&#39;t merge `Member` commits yet. If an external commit is rejected by the DS, a new external init must be performed. See the MLS spec for more information.&quot;</span>,
             <span class="ident">KeyStoreError</span> <span class="op">=</span> <span class="string">&quot;Error performing key store operation.&quot;</span>,
+            <span class="ident">IncompatibleWireFormat</span> <span class="op">=</span> <span class="string">&quot;The incoming message&#39;s wire format was not compatible with the wire format policy for incoming messages.&quot;</span>,
         }
         <span class="ident">Complex</span> {
             <span class="ident">LibraryError</span>(<span class="ident">ErrorString</span>) <span class="op">=</span>

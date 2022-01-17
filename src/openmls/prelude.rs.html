@@ -59,14 +59,16 @@
 <span id="58">58</span>
 <span id="59">59</span>
 <span id="60">60</span>
+<span id="61">61</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Prelude for OpenMLS.</span>
 <span class="doccomment">//! Include this to get access to all the public functions of OpenMLS.</span>
 
 <span class="comment">// MlsGroup</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group</span>::{
     <span class="ident">proposals</span>::{<span class="ident">ProposalStore</span>, <span class="ident">QueuedProposal</span>},
-    <span class="ident">EmptyInputError</span>, <span class="ident">GroupEpoch</span>, <span class="ident">GroupId</span>, <span class="ident">InnerState</span>, <span class="ident">InvalidMessageError</span>, <span class="ident">MlsGroup</span>,
-    <span class="ident">MlsGroupConfig</span>, <span class="ident">MlsGroupError</span>,
+    <span class="ident">EmptyInputError</span>, <span class="ident">GroupEpoch</span>, <span class="ident">GroupId</span>, <span class="ident">IncomingWireFormatPolicy</span>, <span class="ident">InnerState</span>,
+    <span class="ident">InvalidMessageError</span>, <span class="ident">MlsGroup</span>, <span class="ident">MlsGroupConfig</span>, <span class="ident">MlsGroupError</span>, <span class="ident">OutgoingWireFormatPolicy</span>,
+    <span class="ident">WireFormatPolicy</span>, <span class="ident">ALL_VALID_WIRE_FORMAT_POLICIES</span>,
 };
 
 <span class="comment">// Group errors</span>

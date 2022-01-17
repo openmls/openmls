@@ -147,6 +147,7 @@
 <span id="146">146</span>
 <span id="147">147</span>
 <span id="148">148</span>
+<span id="149">149</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">group::core_group::create_commit_params::CreateCommitParams</span>,
     <span class="ident">messages::VerifiablePublicGroupState</span>,
@@ -264,7 +265,8 @@
             <span class="ident">ResumptionSecretStore::new</span>(<span class="ident">mls_group_config</span>.<span class="ident">number_of_resumption_secrets</span>);
 
         <span class="comment">// Prepare the commit parameters</span>
-        <span class="kw">let</span> <span class="ident">framing_parameters</span> <span class="op">=</span> <span class="ident">FramingParameters::new</span>(<span class="ident">aad</span>, <span class="ident">mls_group_config</span>.<span class="ident">wire_format</span>());
+        <span class="kw">let</span> <span class="ident">framing_parameters</span> <span class="op">=</span>
+            <span class="ident">FramingParameters::new</span>(<span class="ident">aad</span>, <span class="ident">mls_group_config</span>.<span class="ident">wire_format_policy</span>().<span class="ident">outgoing</span>());
 
         <span class="kw">let</span> <span class="ident">params</span> <span class="op">=</span> <span class="ident">CreateCommitParams::builder</span>()
             .<span class="ident">framing_parameters</span>(<span class="ident">framing_parameters</span>)
