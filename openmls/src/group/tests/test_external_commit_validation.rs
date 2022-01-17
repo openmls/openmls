@@ -22,7 +22,7 @@ use crate::{
     prelude_test::signable::{Signable, Verifiable},
 };
 
-use super::test_validation::{generate_credential_bundle, generate_key_package_bundle};
+use super::utils::{generate_credential_bundle, generate_key_package_bundle};
 
 // Test setup values
 struct ECValidationTestSetup {
