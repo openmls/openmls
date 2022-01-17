@@ -128,9 +128,6 @@ fn test_wire_policy_negative(
         let err = alice_group
             .parse_message(message.into(), backend)
             .expect_err("An unexpected error occurred.");
-        assert_eq!(
-            err,
-            MlsGroupError::Group(CoreGroupError::IncompatibleWireFormat)
-        );
+        assert_eq!(err, MlsGroupError::IncompatibleWireFormat);
     }
 }

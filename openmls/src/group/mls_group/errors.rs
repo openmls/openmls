@@ -25,6 +25,7 @@ implement_error! {
             NoPendingCommit = "There is no pending commit that can be merged.",
             ExternalCommitError = "Can't clear an external commit, as the group can't merge `Member` commits yet. If an external commit is rejected by the DS, a new external init must be performed. See the MLS spec for more information.",
             KeyStoreError = "Error performing key store operation.",
+            IncompatibleWireFormat = "The incoming message's wire format was not compatible with the wire format policy for incoming messages.",
         }
         Complex {
             LibraryError(ErrorString) =
