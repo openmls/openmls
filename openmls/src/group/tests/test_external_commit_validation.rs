@@ -659,7 +659,7 @@ fn test_valsem245(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     .expect("error creating queued proposal");
 
     // Add it to Alice's proposal store
-    alice_group.add_pending_proposal(queued_proposal.clone());
+    alice_group.store_pending_proposal(queued_proposal.clone());
 
     let proposal_reference = ProposalOrRef::Reference(queued_proposal.proposal_reference());
 

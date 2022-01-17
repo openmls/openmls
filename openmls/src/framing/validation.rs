@@ -180,7 +180,7 @@ impl DecryptedMessage {
 #[derive(Debug)]
 pub struct UnverifiedMessage {
     plaintext: VerifiableMlsPlaintext,
-    credential: Credential,
+    credential: Option<Credential>,
     aad_option: Option<Vec<u8>>,
 }
 
@@ -188,7 +188,7 @@ impl UnverifiedMessage {
     /// Construct an [UnverifiedMessage] from a [DecryptedMessage] and an optional [Credential].
     pub(crate) fn from_decrypted_message(
         decrypted_message: DecryptedMessage,
-        credential: Credential,
+        credential: Option<Credential>,
     ) -> Self {
         UnverifiedMessage {
             plaintext: decrypted_message.plaintext,
@@ -213,12 +213,12 @@ impl UnverifiedMessage {
     }
 
     /// Return the credential if there is one.
-    pub fn credential(&self) -> &Credential {
-        &self.credential
+    pub fn credential(&self) -> Option<&Credential> {
+        self.credential.as_ref()
     }
 
     /// Decomposes an [UnverifiedMessage] into its parts.
-    pub(crate) fn into_parts(self) -> (VerifiableMlsPlaintext, Credential) {
+    pub(crate) fn into_parts(self) -> (VerifiableMlsPlaintext, Option<Credential>) {
         (self.plaintext, self.credential)
     }
 }
@@ -243,7 +243,7 @@ impl UnverifiedContextMessage {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, ValidationError> {
         // Decompose UnverifiedMessage
-        let (mut plaintext, credential) = unverified_message.into_parts();
+        let (mut plaintext, credential_option) = unverified_message.into_parts();
 
         if plaintext.sender().is_member() {
             // Add serialized context to plaintext. This is needed for signature & membership verification.
@@ -259,10 +259,12 @@ impl UnverifiedContextMessage {
             SenderType::Member | SenderType::NewMember => {
                 Ok(UnverifiedContextMessage::Group(UnverifiedGroupMessage {
                     plaintext,
-                    credential,
+                    // If the message type is `Sender` or `NewMember`, the
+                    // message always contains a credential.
+                    credential: credential_option.ok_or(ValidationError::LibraryError)?,
                 }))
             }
-            // TODO #151: We don't support preconfigured senders yet
+            // TODO #151/#106: We don't support preconfigured senders yet
             SenderType::Preconfigured => todo!(),
         }
     }
@@ -299,7 +301,7 @@ impl UnverifiedGroupMessage {
     }
 }
 
-// TODO #151: We don't support preconfigured senders yet
+// TODO #151/#106: We don't support preconfigured senders yet
 /// Part of [UnverifiedContextMessage].
 pub struct UnverifiedExternalMessage {
     plaintext: VerifiableMlsPlaintext,

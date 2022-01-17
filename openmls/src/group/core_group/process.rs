@@ -63,7 +63,7 @@ impl CoreGroup {
 
         Ok(UnverifiedMessage::from_decrypted_message(
             decrypted_message,
-            credential,
+            Some(credential),
         ))
     }
 

@@ -239,12 +239,6 @@ impl MlsGroup {
         self.proposal_store.proposals()
     }
 
-    /// Inserts the given proposal into the proposal store.
-    #[cfg(test)]
-    pub fn add_pending_proposal(&mut self, queued_proposal: QueuedProposal) {
-        self.proposal_store.add(queued_proposal)
-    }
-
     /// Returns a reference to the [`StagedCommit`] of the most recently created
     /// commit. If there was no commit created in this epoch, either because
     /// this commit or another commit was merged, it returns `None`.
