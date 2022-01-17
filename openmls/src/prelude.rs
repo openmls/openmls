@@ -4,8 +4,9 @@
 // MlsGroup
 pub use crate::group::{
     proposals::{ProposalStore, QueuedProposal},
-    EmptyInputError, GroupEpoch, GroupId, InnerState, InvalidMessageError, MlsGroup,
-    MlsGroupConfig, MlsGroupError,
+    EmptyInputError, GroupEpoch, GroupId, IncomingWireFormatPolicy, InnerState,
+    InvalidMessageError, MlsGroup, MlsGroupConfig, MlsGroupError, OutgoingWireFormatPolicy,
+    WireFormatPolicy, ALL_VALID_WIRE_FORMAT_POLICIES,
 };
 
 // Group errors

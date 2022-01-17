@@ -60,7 +60,7 @@ fn generate_key_package_bundle(
 ///  - Test saving the group state
 #[apply(ciphersuites_and_backends)]
 fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    for wire_format in vec![WireFormat::MlsPlaintext, WireFormat::MlsCiphertext].into_iter() {
+    for wire_format_policy in ALL_VALID_WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
 
         // Generate credential bundles
@@ -99,7 +99,9 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
 
         // Define the MlsGroup configuration
 
-        let mls_group_config = MlsGroupConfig::builder().wire_format(wire_format).build();
+        let mls_group_config = MlsGroupConfig::builder()
+            .wire_format_policy(*wire_format_policy)
+            .build();
 
         // === Alice creates a group ===
         let mut alice_group = MlsGroup::new(
@@ -948,7 +950,7 @@ fn mls_group_ratchet_tree_extension(
     ciphersuite: &'static Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
-    for wire_format in vec![WireFormat::MlsPlaintext, WireFormat::MlsCiphertext].into_iter() {
+    for wire_format_policy in ALL_VALID_WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
 
         // === Positive case: using the ratchet tree extension ===
@@ -980,7 +982,7 @@ fn mls_group_ratchet_tree_extension(
                 .expect("An unexpected error occurred.");
 
         let mls_group_config = MlsGroupConfig::builder()
-            .wire_format(wire_format)
+            .wire_format_policy(*wire_format_policy)
             .use_ratchet_tree_extension(true)
             .build();
 

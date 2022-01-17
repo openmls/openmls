@@ -52,8 +52,11 @@ pub(crate) struct FramingParameters<'a> {
 }
 
 impl<'a> FramingParameters<'a> {
-    pub(crate) fn new(aad: &'a [u8], wire_format: WireFormat) -> Self {
-        Self { aad, wire_format }
+    pub(crate) fn new(aad: &'a [u8], wire_format: impl Into<WireFormat>) -> Self {
+        Self {
+            aad,
+            wire_format: wire_format.into(),
+        }
     }
     pub(crate) fn aad(&self) -> &'a [u8] {
         self.aad

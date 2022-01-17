@@ -4,7 +4,6 @@
 //! the `MlsPlaintext` and as described in the [`OpenMLS Wiki`].
 //!
 //! [`OpenMLS Wiki`]: https://github.com/openmls/openmls/wiki/Signable
-#[cfg(any(feature = "test-utils", test))]
 use openmls_traits::{types::CryptoError, OpenMlsCryptoProvider};
 use tls_codec::{Serialize, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
@@ -187,7 +186,6 @@ pub(crate) struct PublicGroupStateTbs {
 impl PublicGroupStateTbs {
     /// Creates a new `PublicGroupStateTbs` struct from the current internal state
     /// of the group.
-    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn new(
         backend: &impl OpenMlsCryptoProvider,
         core_group: &CoreGroup,

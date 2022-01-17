@@ -23,6 +23,17 @@ impl MlsGroup {
             return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
         }
 
+        // Check that handshake messages are compatible with the incoming wire format policy
+        if message.is_handshake_message()
+            && !self
+                .configuration()
+                .wire_format_policy()
+                .incoming()
+                .is_compatible_with(message.wire_format())
+        {
+            return Err(MlsGroupError::IncompatibleWireFormat);
+        }
+
         // Since the state of the group might be changed, arm the state flag
         self.flag_state_change();
 
@@ -30,7 +41,7 @@ impl MlsGroup {
         let sender_ratchet_configuration =
             self.configuration().sender_ratchet_configuration().clone();
         self.group
-            .parse_message(message, &sender_ratchet_configuration, backend)
+            .parse_message(backend, message, &sender_ratchet_configuration)
             .map_err(MlsGroupError::Group)
     }
 

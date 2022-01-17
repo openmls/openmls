@@ -298,9 +298,7 @@ fn export_secret(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypto
             .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupConfig::builder()
-        .wire_format(WireFormat::MlsPlaintext)
-        .build();
+    let mls_group_config = MlsGroupConfig::test_default();
 
     // === Alice creates a group ===
     let alice_group = MlsGroup::new(
@@ -334,10 +332,7 @@ fn export_secret(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypto
 #[apply(ciphersuites)]
 fn test_invalid_plaintext(ciphersuite: &'static Ciphersuite) {
     // Some basic setup functions for the MlsGroup.
-    let mls_group_config = MlsGroupConfig::builder()
-        .wire_format(WireFormat::MlsPlaintext)
-        .padding_size(10)
-        .build();
+    let mls_group_config = MlsGroupConfig::test_default();
 
     let number_of_clients = 20;
     let setup = MlsGroupTestSetup::new(
@@ -457,9 +452,7 @@ fn test_pending_commit_logic(
             .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
-    let mls_group_config = MlsGroupConfig::builder()
-        .wire_format(WireFormat::MlsPlaintext)
-        .build();
+    let mls_group_config = MlsGroupConfig::test_default();
 
     // === Alice creates a group ===
     let mut alice_group = MlsGroup::new(

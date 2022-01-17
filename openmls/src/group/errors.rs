@@ -71,6 +71,8 @@ implement_error! {
                 "See [`FramingValidationError`](crate::group::FramingValidationError) for details.",
             ProposalValidationError(ProposalValidationError) =
                 "See [`ProposalValidationError`](crate::group::ProposalValidationError) for details.",
+            ExternalCommitValidationError(ExternalCommitValidationError) =
+                "See [`ProposalValidationError`](crate::group::ProposalValidationError) for details.",
             CryptoError(CryptoError) =
                 "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
             InterimTranscriptHashError(InterimTranscriptHashError) =
@@ -287,6 +289,19 @@ implement_error! {
         ExistingPublicKeyUpdateProposal = "HPKE public key of the update proposal already existed in tree.",
         DuplicateMemberRemoval = "Duplicate remove proposals for the same member.",
         UnknownMemberRemoval = "The remove proposal referenced a non-existing member.",
+    }
+}
+
+implement_error! {
+    pub enum ExternalCommitValidationError {
+        NoExternalInitProposals = "No ExternalInit proposal found.",
+        MultipleExternalInitProposals = "Multiple ExternalInit proposal found.",
+        InvalidInlineProposals = "Found inline Add or Update proposals.",
+        MultipleRemoveProposals = "Found multiple inline Remove proposals.",
+        InvalidRemoveProposal = "Remove proposal targets the wrong group member.",
+        ReferencedExternalInitProposal = "Found an ExternalInit proposal among the referenced proposals.",
+        NoPath = "External Commit has to contain a path.",
+        NoCommit = "A Message sent by a sender with type NewMember can only be a Commit.",
     }
 }
 
