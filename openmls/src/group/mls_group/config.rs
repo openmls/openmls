@@ -1,17 +1,16 @@
-use crate::tree::sender_ratchet::SenderRatchetConfiguration;
-
 use super::*;
-
+use crate::tree::sender_ratchet::SenderRatchetConfiguration;
+use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 
 /// Specifies the configuration parameters for a [`MlsGroup`]
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct MlsGroupConfig {
     /// Defines whether handshake messages (Proposals & Commits) are encrypted.
     /// Application are always encrypted regardless. `Plaintext`: Handshake messages
     /// are returned as MlsPlaintext messages `Ciphertext`: Handshake messages are
     /// returned as MlsCiphertext messages
-    pub(crate) wire_format: WireFormat,
+    pub(crate) wire_format_policy: WireFormatPolicy,
     /// Size of padding in bytes
     pub(crate) padding_size: usize,
     /// Maximum number of past epochs for which application messages
@@ -33,9 +32,9 @@ impl MlsGroupConfig {
         MlsGroupConfigBuilder::new()
     }
 
-    /// Get the [`MlsGroupConfig`] wire format.
-    pub fn wire_format(&self) -> WireFormat {
-        self.wire_format
+    /// Get the [`MlsGroupConfig`] wire format policy.
+    pub fn wire_format_policy(&self) -> WireFormatPolicy {
+        self.wire_format_policy
     }
 
     /// Get the [`MlsGroupConfig`] padding size.
@@ -66,22 +65,11 @@ impl MlsGroupConfig {
     #[cfg(any(feature = "test-utils", test))]
     pub fn test_default() -> Self {
         Self::builder()
-            .wire_format(WireFormat::MlsPlaintext)
+            .wire_format_policy(WireFormatPolicy::new(
+                OutgoingWireFormatPolicy::AlwaysPlaintext,
+                IncomingWireFormatPolicy::Mixed,
+            ))
             .build()
-    }
-}
-
-impl Default for MlsGroupConfig {
-    fn default() -> Self {
-        MlsGroupConfig {
-            wire_format: WireFormat::MlsCiphertext,
-            padding_size: 0,
-            max_past_epochs: 0,
-            number_of_resumption_secrets: 0,
-            use_ratchet_tree_extension: false,
-            required_capabilities: RequiredCapabilitiesExtension::default(),
-            sender_ratchet_configuration: SenderRatchetConfiguration::default(),
-        }
     }
 }
 
@@ -97,8 +85,8 @@ impl MlsGroupConfigBuilder {
     }
 
     /// Sets the `wire_format` property of the MlsGroupConfig.
-    pub fn wire_format(mut self, wire_format: WireFormat) -> Self {
-        self.config.wire_format = wire_format;
+    pub fn wire_format_policy(mut self, wire_format_policy: WireFormatPolicy) -> Self {
+        self.config.wire_format_policy = wire_format_policy;
         self
     }
 
@@ -148,4 +136,124 @@ impl MlsGroupConfigBuilder {
     pub fn build(self) -> MlsGroupConfig {
         self.config
     }
+}
+
+/// Defines what wire format is acceptable for incoming handshake messages.
+/// Note that application messages must always be encrypted.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub enum IncomingWireFormatPolicy {
+    /// Handshake messages must always be MlsCiphertext
+    AlwaysCiphertext,
+    /// Handshake messages must always be MlsPlaintext
+    AlwaysPlaintext,
+    /// Handshake messages can either be MlsCiphertext or MlsPlaintext
+    Mixed,
+}
+
+impl IncomingWireFormatPolicy {
+    pub(crate) fn is_compatible_with(&self, wire_format: WireFormat) -> bool {
+        match self {
+            IncomingWireFormatPolicy::AlwaysCiphertext => wire_format == WireFormat::MlsCiphertext,
+            IncomingWireFormatPolicy::AlwaysPlaintext => wire_format == WireFormat::MlsPlaintext,
+            IncomingWireFormatPolicy::Mixed => {
+                wire_format == WireFormat::MlsCiphertext || wire_format == WireFormat::MlsPlaintext
+            }
+        }
+    }
+}
+
+/// Defines what wire format should be used for outgoing handshake messages.
+/// Note that application messages must always be encrypted.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub enum OutgoingWireFormatPolicy {
+    /// Handshake messages must always be MlsCiphertext
+    AlwaysCiphertext,
+    /// Handshake messages must always be MlsPlaintext
+    AlwaysPlaintext,
+}
+
+/// Defines what wire format is desired for outgoing handshake messages.
+/// Note that application messages must always be encrypted.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct WireFormatPolicy {
+    outgoing: OutgoingWireFormatPolicy,
+    incoming: IncomingWireFormatPolicy,
+}
+
+impl WireFormatPolicy {
+    pub fn new(outgoing: OutgoingWireFormatPolicy, incoming: IncomingWireFormatPolicy) -> Self {
+        Self { outgoing, incoming }
+    }
+
+    /// Get a reference to the wire format policy's outgoing wire format policy.
+    pub fn outgoing(&self) -> OutgoingWireFormatPolicy {
+        self.outgoing
+    }
+
+    /// Get a reference to the wire format policy's incoming wire format policy.
+    pub fn incoming(&self) -> IncomingWireFormatPolicy {
+        self.incoming
+    }
+
+    /// Set the wire format policy's outgoing wire format policy.
+    pub fn set_outgoing(&mut self, outgoing: OutgoingWireFormatPolicy) {
+        self.outgoing = outgoing;
+    }
+
+    /// Set the wire format policy's incoming wire format policy.
+    pub fn set_incoming(&mut self, incoming: IncomingWireFormatPolicy) {
+        self.incoming = incoming;
+    }
+}
+
+impl Default for WireFormatPolicy {
+    fn default() -> Self {
+        *PURE_CIPHERTEXT_WIRE_FORMAT_POLICY
+    }
+}
+
+impl From<OutgoingWireFormatPolicy> for WireFormat {
+    fn from(outgoing: OutgoingWireFormatPolicy) -> Self {
+        match outgoing {
+            OutgoingWireFormatPolicy::AlwaysCiphertext => WireFormat::MlsCiphertext,
+            OutgoingWireFormatPolicy::AlwaysPlaintext => WireFormat::MlsPlaintext,
+        }
+    }
+}
+
+lazy_static! {
+    pub static ref ALL_VALID_WIRE_FORMAT_POLICIES: Vec<WireFormatPolicy> = vec![
+        *PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        *PURE_CIPHERTEXT_WIRE_FORMAT_POLICY,
+        *MIXED_PLAINTEXT_WIRE_FORMAT_POLICY,
+        *MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY,
+    ];
+}
+
+lazy_static! {
+    pub static ref PURE_PLAINTEXT_WIRE_FORMAT_POLICY: WireFormatPolicy = WireFormatPolicy::new(
+        OutgoingWireFormatPolicy::AlwaysPlaintext,
+        IncomingWireFormatPolicy::AlwaysPlaintext,
+    );
+}
+
+lazy_static! {
+    pub static ref PURE_CIPHERTEXT_WIRE_FORMAT_POLICY: WireFormatPolicy = WireFormatPolicy::new(
+        OutgoingWireFormatPolicy::AlwaysCiphertext,
+        IncomingWireFormatPolicy::AlwaysCiphertext,
+    );
+}
+
+lazy_static! {
+    pub static ref MIXED_PLAINTEXT_WIRE_FORMAT_POLICY: WireFormatPolicy = WireFormatPolicy::new(
+        OutgoingWireFormatPolicy::AlwaysPlaintext,
+        IncomingWireFormatPolicy::Mixed,
+    );
+}
+
+lazy_static! {
+    pub static ref MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY: WireFormatPolicy = WireFormatPolicy::new(
+        OutgoingWireFormatPolicy::AlwaysCiphertext,
+        IncomingWireFormatPolicy::Mixed,
+    );
 }

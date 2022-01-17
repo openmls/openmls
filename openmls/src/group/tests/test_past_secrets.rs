@@ -10,7 +10,7 @@ use crate::{
     ciphersuite::{Ciphersuite, CiphersuiteName},
     config::Config,
     credentials::{CredentialBundle, CredentialType},
-    framing::{MlsCiphertextError, ProcessedMessage, WireFormat},
+    framing::{MlsCiphertextError, ProcessedMessage},
     group::{CoreGroupError, GroupId, MlsGroup, MlsGroupConfig, MlsGroupError},
     key_packages::KeyPackageBundle,
     tree::secret_tree::SecretTreeError,
@@ -94,7 +94,6 @@ fn test_past_secrets_in_group(
         // Define the MlsGroup configuration
 
         let mls_group_config = MlsGroupConfig::builder()
-            .wire_format(WireFormat::MlsCiphertext)
             .max_past_epochs(max_epochs / 2)
             .build();
 

@@ -18,9 +18,9 @@ impl CoreGroup {
     ///  - ValSem009
     pub(crate) fn parse_message(
         &mut self,
+        backend: &impl OpenMlsCryptoProvider,
         message: MlsMessageIn,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
-        backend: &impl OpenMlsCryptoProvider,
     ) -> Result<UnverifiedMessage, CoreGroupError> {
         // Checks the following semantic validation:
         //  - ValSem002

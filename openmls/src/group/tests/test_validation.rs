@@ -60,7 +60,7 @@ struct ValidationTestSetup {
 
 // Validation test setup
 fn validation_test_setup(
-    wire_format: WireFormat,
+    wire_format_policy: WireFormatPolicy,
     ciphersuite: &'static Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) -> ValidationTestSetup {
@@ -93,8 +93,9 @@ fn validation_test_setup(
             .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
-
-    let mls_group_config = MlsGroupConfig::builder().wire_format(wire_format).build();
+    let mls_group_config = MlsGroupConfig::builder()
+        .wire_format_policy(wire_format_policy)
+        .build();
 
     // === Alice creates a group ===
     let alice_group = MlsGroup::new(
@@ -126,7 +127,7 @@ fn test_valsem1(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         _bob_credential: _,
         _alice_key_package: _,
         bob_key_package,
-    } = validation_test_setup(WireFormat::MlsPlaintext, ciphersuite, backend);
+    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome) = alice_group
         .add_members(backend, &[bob_key_package])
@@ -159,7 +160,7 @@ fn test_valsem1(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         _bob_credential: _,
         _alice_key_package: _,
         bob_key_package,
-    } = validation_test_setup(WireFormat::MlsCiphertext, ciphersuite, backend);
+    } = validation_test_setup(*PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome) = alice_group
         .add_members(backend, &[bob_key_package])
@@ -194,7 +195,7 @@ fn test_valsem2(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         _bob_credential: _,
         _alice_key_package: _,
         bob_key_package,
-    } = validation_test_setup(WireFormat::MlsPlaintext, ciphersuite, backend);
+    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome) = alice_group
         .add_members(backend, &[bob_key_package])
@@ -239,7 +240,7 @@ fn test_valsem3(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         _bob_credential: _,
         _alice_key_package: _,
         bob_key_package,
-    } = validation_test_setup(WireFormat::MlsPlaintext, ciphersuite, backend);
+    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // Alice can't process her own commits, so we'll have to add Bob.
     let (_message, welcome) = alice_group
@@ -251,7 +252,7 @@ fn test_valsem3(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         .expect("error merging pending commit");
 
     let mls_group_config = MlsGroupConfig::builder()
-        .wire_format(WireFormat::MlsPlaintext)
+        .wire_format_policy(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build();
 
     let mut bob_group = MlsGroup::new_from_welcome(
@@ -343,7 +344,7 @@ fn test_valsem4(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         _bob_credential: _,
         _alice_key_package: _,
         bob_key_package,
-    } = validation_test_setup(WireFormat::MlsPlaintext, ciphersuite, backend);
+    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome) = alice_group
         .add_members(backend, &[bob_key_package])
@@ -391,7 +392,7 @@ fn test_valsem5(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         _bob_credential: _,
         _alice_key_package: _,
         bob_key_package,
-    } = validation_test_setup(WireFormat::MlsPlaintext, ciphersuite, backend);
+    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome) = alice_group
         .add_members(backend, &[bob_key_package])
@@ -437,7 +438,7 @@ fn test_valsem6(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         _bob_credential: _,
         _alice_key_package: _,
         bob_key_package,
-    } = validation_test_setup(WireFormat::MlsCiphertext, ciphersuite, backend);
+    } = validation_test_setup(*PURE_CIPHERTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (_message, welcome) = alice_group
         .add_members(backend, &[bob_key_package])
@@ -467,7 +468,7 @@ fn test_valsem6(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
     let ratchet_tree = alice_group.export_ratchet_tree();
 
     let mls_group_config = MlsGroupConfig::builder()
-        .wire_format(WireFormat::MlsCiphertext)
+        .wire_format_policy(*PURE_CIPHERTEXT_WIRE_FORMAT_POLICY)
         .build();
 
     let mut bob_group =
@@ -500,7 +501,7 @@ fn test_valsem7(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         _bob_credential: _,
         _alice_key_package: _,
         bob_key_package,
-    } = validation_test_setup(WireFormat::MlsPlaintext, ciphersuite, backend);
+    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome) = alice_group
         .add_members(backend, &[bob_key_package])
@@ -545,7 +546,7 @@ fn test_valsem8(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         _bob_credential: _,
         _alice_key_package: _,
         bob_key_package,
-    } = validation_test_setup(WireFormat::MlsPlaintext, ciphersuite, backend);
+    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // Alice can't process her own commits, so we'll have to add Bob.
     let (_message, welcome) = alice_group
@@ -557,7 +558,7 @@ fn test_valsem8(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         .expect("error merging pending commit");
 
     let mls_group_config = MlsGroupConfig::builder()
-        .wire_format(WireFormat::MlsPlaintext)
+        .wire_format_policy(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build();
 
     let mut bob_group = MlsGroup::new_from_welcome(
@@ -624,7 +625,7 @@ fn test_valsem9(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoP
         _bob_credential: _,
         _alice_key_package: _,
         bob_key_package,
-    } = validation_test_setup(WireFormat::MlsPlaintext, ciphersuite, backend);
+    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let (message, _welcome) = alice_group
         .add_members(backend, &[bob_key_package])
@@ -669,7 +670,7 @@ fn test_valsem10(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypto
         _bob_credential: _,
         _alice_key_package: _,
         bob_key_package,
-    } = validation_test_setup(WireFormat::MlsPlaintext, ciphersuite, backend);
+    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // Alice can't process her own commits, so we'll have to add Bob.
     let (_message, welcome) = alice_group
@@ -681,7 +682,7 @@ fn test_valsem10(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypto
         .expect("error merging pending commit");
 
     let mls_group_config = MlsGroupConfig::builder()
-        .wire_format(WireFormat::MlsPlaintext)
+        .wire_format_policy(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY)
         .build();
 
     let mut bob_group = MlsGroup::new_from_welcome(

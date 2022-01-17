@@ -46,7 +46,7 @@ impl TryFrom<i32> for TestVectorType {
 /// this simple structure is sufficient.
 pub struct InteropGroup {
     group: MlsGroup,
-    wire_format: WireFormat,
+    wire_format_policy: WireFormatPolicy,
     credential_bundle: CredentialBundle,
     own_kpbs: Vec<KeyPackageBundle>,
 }
@@ -121,10 +121,16 @@ pub fn write(file_name: &str, payload: &[u8]) {
 }
 
 // A helper function translating the bool in the protobuf to OpenMLS' WireFormat
-pub fn wire_format(encrypt: bool) -> WireFormat {
+pub fn wire_format_policy(encrypt: bool) -> WireFormatPolicy {
     match encrypt {
-        false => WireFormat::MlsPlaintext,
-        true => WireFormat::MlsCiphertext,
+        false => WireFormatPolicy::new(
+            OutgoingWireFormatPolicy::AlwaysPlaintext,
+            IncomingWireFormatPolicy::AlwaysPlaintext,
+        ),
+        true => WireFormatPolicy::new(
+            OutgoingWireFormatPolicy::AlwaysCiphertext,
+            IncomingWireFormatPolicy::AlwaysCiphertext,
+        ),
     }
 }
 
@@ -410,9 +416,9 @@ impl MlsClient for MlsClientImpl {
             .key_store()
             .store(&kp_hash, &key_package_bundle)
             .unwrap();
-        let wire_format = wire_format(create_group_request.encrypt_handshake);
+        let wire_format_policy = wire_format_policy(create_group_request.encrypt_handshake);
         let mls_group_config = MlsGroupConfig::builder()
-            .wire_format(wire_format)
+            .wire_format_policy(wire_format_policy)
             .use_ratchet_tree_extension(true)
             .build();
         let group = MlsGroup::new(
@@ -425,7 +431,7 @@ impl MlsClient for MlsClientImpl {
 
         let interop_group = InteropGroup {
             credential_bundle,
-            wire_format,
+            wire_format_policy,
             group,
             own_kpbs: Vec::new(),
         };
@@ -488,9 +494,9 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<JoinGroupResponse>, tonic::Status> {
         let join_group_request = request.get_ref();
 
-        let wire_format = wire_format(join_group_request.encrypt_handshake);
+        let wire_format_policy = wire_format_policy(join_group_request.encrypt_handshake);
         let mls_group_config = MlsGroupConfig::builder()
-            .wire_format(wire_format)
+            .wire_format_policy(wire_format_policy)
             .use_ratchet_tree_extension(true)
             .build();
 
@@ -512,7 +518,7 @@ impl MlsClient for MlsClientImpl {
 
         let interop_group = InteropGroup {
             credential_bundle,
-            wire_format,
+            wire_format_policy,
             group,
             own_kpbs: Vec::new(),
         };
@@ -658,7 +664,7 @@ impl MlsClient for MlsClientImpl {
                 .map_err(|_| Status::aborted("failed to deserialize key package"))?;
         let mls_group_config = MlsGroupConfig::builder()
             .use_ratchet_tree_extension(true)
-            .wire_format(interop_group.wire_format)
+            .wire_format_policy(interop_group.wire_format_policy)
             .build();
         interop_group.group.set_configuration(&mls_group_config);
         let proposal = interop_group
@@ -690,7 +696,7 @@ impl MlsClient for MlsClientImpl {
         .unwrap();
         let mls_group_config = MlsGroupConfig::builder()
             .use_ratchet_tree_extension(true)
-            .wire_format(interop_group.wire_format)
+            .wire_format_policy(interop_group.wire_format_policy)
             .build();
         interop_group.group.set_configuration(&mls_group_config);
         let proposal = interop_group
@@ -718,7 +724,7 @@ impl MlsClient for MlsClientImpl {
 
         let mls_group_config = MlsGroupConfig::builder()
             .use_ratchet_tree_extension(true)
-            .wire_format(interop_group.wire_format)
+            .wire_format_policy(interop_group.wire_format_policy)
             .build();
         interop_group.group.set_configuration(&mls_group_config);
 
