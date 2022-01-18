@@ -6,7 +6,11 @@
 use openmls_traits::types::CryptoError;
 use tls_codec::Error as TlsCodecError;
 
-use crate::{config::ConfigError, credentials::CredentialError, extensions::ExtensionError};
+use crate::{
+    config::ConfigError,
+    credentials::{CredentialBundleError, CredentialError},
+    extensions::ExtensionError,
+};
 
 implement_error! {
     pub enum KeyPackageError {
@@ -28,6 +32,8 @@ implement_error! {
                 "See [`ExtensionError`](crate::extensions::ExtensionError`) for details.",
             ConfigError(ConfigError) =
                 "See [`ConfigError`](crate::config::ConfigError`) for details.",
+            CredentialBundleError(CredentialBundleError) =
+                "See [`CredentialBundleError`](crate::credentials::CredentialBundleError`) for details.",
             CredentialError(CredentialError) =
                 "See [`CredentialError`](crate::credentials::CredentialError`) for details.",
             CodecError(TlsCodecError) =

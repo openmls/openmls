@@ -2,7 +2,7 @@ use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
     ciphersuite::Signature,
-    credentials::{Credential, CredentialBundle, CredentialError},
+    credentials::{Credential, CredentialBundle, CredentialBundleError, CredentialError},
 };
 
 use super::SignaturePublicKey;
@@ -54,12 +54,16 @@ pub trait Signable: Sized {
         self,
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
-    ) -> Result<Self::SignedOutput, CredentialError>
+    ) -> Result<Self::SignedOutput, CredentialBundleError>
     where
         Self::SignedOutput: SignedStruct<Self>,
     {
-        let payload = self.unsigned_payload()?;
-        let signature = credential_bundle.sign(backend, &payload)?;
+        let payload = self
+            .unsigned_payload()
+            .map_err(|_| CredentialBundleError::LibraryError)?;
+        let signature = credential_bundle
+            .sign(backend, &payload)
+            .map_err(|_| CredentialBundleError::SigningFailed)?;
         Ok(Self::SignedOutput::from_payload(self, signature))
     }
 }
@@ -94,7 +98,9 @@ pub trait Verifiable: Sized {
     where
         T: VerifiedStruct<Self>,
     {
-        let payload = self.unsigned_payload()?;
+        let payload = self
+            .unsigned_payload()
+            .map_err(|_| CredentialError::LibraryError)?;
         credential.verify(backend, &payload, self.signature())?;
         Ok(T::from_verifiable(self, T::SealingType::default()))
     }
@@ -113,8 +119,12 @@ pub trait Verifiable: Sized {
     where
         T: VerifiedStruct<Self>,
     {
-        let payload = self.unsigned_payload()?;
-        signature_public_key.verify(backend, self.signature(), &payload)?;
+        let payload = self
+            .unsigned_payload()
+            .map_err(|_| CredentialError::LibraryError)?;
+        signature_public_key
+            .verify(backend, self.signature(), &payload)
+            .map_err(|_| CredentialError::VerificationFailed)?;
         Ok(T::from_verifiable(self, T::SealingType::default()))
     }
 
@@ -129,7 +139,9 @@ pub trait Verifiable: Sized {
         backend: &impl OpenMlsCryptoProvider,
         credential: &Credential,
     ) -> Result<(), CredentialError> {
-        let payload = self.unsigned_payload()?;
+        let payload = self
+            .unsigned_payload()
+            .map_err(|_| CredentialError::LibraryError)?;
         credential.verify(backend, &payload, self.signature())
     }
 }

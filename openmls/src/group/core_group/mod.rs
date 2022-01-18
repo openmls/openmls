@@ -592,8 +592,8 @@ impl CoreGroup {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
-    ) -> Result<PublicGroupState, CredentialError> {
-        let pgs_tbs = PublicGroupStateTbs::new(backend, self)?;
+    ) -> Result<PublicGroupState, CredentialBundleError> {
+        let pgs_tbs = PublicGroupStateTbs::new(backend, self);
         pgs_tbs.sign(backend, credential_bundle)
     }
 

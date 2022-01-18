@@ -4,6 +4,7 @@
 //! `CreateCommitError`.
 
 use crate::config::ConfigError;
+use crate::credentials::CredentialBundleError;
 use crate::credentials::CredentialError;
 use crate::error::ErrorString;
 use crate::framing::MlsCiphertextError;
@@ -46,6 +47,7 @@ implement_error! {
                 "Empty input. Additional detail is provided.",
             InvalidMessage(InvalidMessageError) = "The message could not be processed.",
             CredentialError(CredentialError) = "See [`CredentialError`](`crate::credentials::CredentialError`) for details",
+            CredentialBundleError(CredentialBundleError) = "See [`CredentialBundleError`](`crate::credentials::CredentialBundleError`) for details",
             TreeSyncError(TreeSyncError) = "See [`TreeSyncError`](`crate::treesync::TreeSyncError`) for details",
             ValidationError(ValidationError) = "See [`ValidationError`](`crate::framing::ValidationError`) for details",
             TlsCodecError(TlsCodecError) = "An error occured during TLS encoding/decoding.",

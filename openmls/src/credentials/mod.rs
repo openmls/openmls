@@ -158,8 +158,9 @@ impl CredentialBundle {
         signature_scheme: SignatureScheme,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, CredentialError> {
-        let (private_key, public_key) =
-            SignatureKeypair::new(signature_scheme, backend)?.into_tuple();
+        let (private_key, public_key) = SignatureKeypair::new(signature_scheme, backend)
+            .map_err(|_| CredentialError::LibraryError)?
+            .into_tuple();
         let mls_credential = match credential_type {
             CredentialType::Basic => BasicCredential {
                 identity: identity.into(),

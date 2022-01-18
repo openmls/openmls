@@ -3,7 +3,7 @@
 //! `MlsPlaintextError` and `MlsCiphertextError` are thrown on errors
 //! handling `MlsPlaintext` and `MlsCiphertext`.
 
-use crate::credentials::CredentialError;
+use crate::credentials::{CredentialBundleError, CredentialError};
 use crate::schedule::errors::MembershipKeyError;
 use crate::tree::secret_tree::SecretTreeError;
 use openmls_traits::types::CryptoError;
@@ -20,6 +20,7 @@ implement_error! {
         Complex {
             CodecError(TlsCodecError) = "TLS Codec error",
             CredentialError(CredentialError) = "See [`CredentialError`](`crate::credentials::CredentialError`) for details.",
+            CredentialBundleError(CredentialBundleError) = "See [`CredentialBundleError`](`crate::credentials::CredentialBundleError`) for details.",
             VerificationError(VerificationError) = "See [`VerificationError`](`VerificationError`) for details.",
             MembershipKeyError(MembershipKeyError) = "See [`MembershipKeyError`](`MembershipKeyError`) for details.",
             CryptoError(CryptoError) = "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",

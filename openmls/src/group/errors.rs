@@ -4,7 +4,7 @@
 //! `CreateCommitError`.
 
 use crate::config::ConfigError;
-use crate::credentials::CredentialError;
+use crate::credentials::{CredentialBundleError, CredentialError};
 use crate::extensions::errors::ExtensionError;
 use crate::framing::errors::{
     MlsCiphertextError, MlsPlaintextError, ValidationError, VerificationError,
@@ -53,6 +53,8 @@ implement_error! {
                 "A PskSecret error occurred.",
             CredentialError(CredentialError) =
                 "See [`CredentialError`](crate::credentials::CredentialError) for details.",
+            CredentialBundleError(CredentialBundleError) =
+                "See [`CredentialBundleError`](crate::credentials::CredentialBundleError) for details.",
             TreeError(TreeError) =
                 "See [`TreeError`](crate::tree::TreeError) for details.",
             TreeSyncError(TreeSyncError) =

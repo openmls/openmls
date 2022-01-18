@@ -1,6 +1,4 @@
-use openmls_traits::types::CryptoError;
 use thiserror::Error;
-use tls_codec::Error as TlsCodecError;
 
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum CredentialError {
@@ -8,8 +6,16 @@ pub enum CredentialError {
     UnsupportedCredentialType,
     #[error("Invalid signature.")]
     InvalidSignature,
-    #[error(transparent)]
-    CryptoError(#[from] CryptoError),
-    #[error(transparent)]
-    CodecError(#[from] TlsCodecError),
+    #[error("An unrecoverable error has occurred due to a bug in the implementation.")]
+    LibraryError,
+    #[error("Could not verify the signature of the Credential.")]
+    VerificationFailed,
+}
+
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum CredentialBundleError {
+    #[error("An unrecoverable error has occurred due to a bug in the implementation.")]
+    LibraryError,
+    #[error("Could not sign with the CredentialBundle.")]
+    SigningFailed,
 }
