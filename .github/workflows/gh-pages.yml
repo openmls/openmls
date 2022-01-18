@@ -12,15 +12,27 @@ jobs:
     steps:
       - uses: hecrj/setup-rust-action@master
       - uses: actions/checkout@master
+      - name: Setup mdBook
+        uses: peaceiris/actions-mdbook@v1
+        with:
+          mdbook-version: 'latest'
       - name: Build docs
         run: |
           cd openmls
           cargo doc --no-deps
           touch target/doc/.nojekyll
-          cat > target/doc/index.html <<EOF
+          cd ..
+          mkdir temp_docs
+          mv openmls/target/doc temp_docs
+          cd book
+          mdbook build
+          cd ..
+          mv book/book temp_docs
+          cd temp_docs
+          cat > index.html <<EOF
           <!doctype html>
           <html>
-          <a href="openmls/index.html">Docs</a>
+          <a href="doc/openmls/index.html">Docs</a>
           <a href="book/index.html">Book</a>
           </html>
           EOF
@@ -28,17 +40,4 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: openmls/target/doc
-      - name: Setup mdBook
-        uses: peaceiris/actions-mdbook@v1
-        with:
-          mdbook-version: 'latest'
-      - name: Build mdBook
-        run: |
-          cd book
-          mdbook build
-      - name: Deploy book to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: openmls/book/book
+          publish_dir: openmls/temp_docs
