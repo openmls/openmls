@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
   documentation:
@@ -18,9 +19,10 @@ jobs:
           touch target/doc/.nojekyll
           cat > target/doc/index.html <<EOF
           <!doctype html>
-          <html><head>
-            <meta http-equiv="refresh" content="0; URL='openmls/index.html'" />
-          </head></html>
+          <html>
+          <a href="openmls/index.html">Docs</a>
+          <a href="book/index.html">Book</a>
+          </html>
           EOF
       - name: Deploy docs to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
@@ -35,3 +37,8 @@ jobs:
         run: |
           cd book
           mdbook build
+      - name: Deploy book to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: openmls/book/book
