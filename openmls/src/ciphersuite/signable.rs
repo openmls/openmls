@@ -124,7 +124,7 @@ pub trait Verifiable: Sized {
             .map_err(|_| CredentialError::LibraryError)?;
         signature_public_key
             .verify(backend, self.signature(), &payload)
-            .map_err(|_| CredentialError::VerificationFailed)?;
+            .map_err(|_| CredentialError::InvalidSignature)?;
         Ok(T::from_verifiable(self, T::SealingType::default()))
     }
 
