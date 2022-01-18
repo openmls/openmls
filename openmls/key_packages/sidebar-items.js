@@ -1,1 +1,0 @@
-initSidebarItems({"mod":[["errors","Key Package errors"]],"struct":[["KeyPackage",""],["KeyPackageBundle",""],["KeyPackageBundlePayload",""],["KeyPackagePayload","The unsigned payload of a key package. Any modification must happen on this unsigned struct. Use `sign` to get a signed key package."]]});
