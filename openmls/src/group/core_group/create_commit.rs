@@ -38,9 +38,42 @@ impl CoreGroup {
 
         // If this is an external commit, we don't have an `own_leaf_index` set
         // yet. Instead, we use the index in which we will be put in course of
-        // this commit.
+        // this commit. Our index is determined as if we'd be added through an
+        // Add proposal. However, since this might be the "resync" flavour of an
+        // external commit, it could be that we're first removing our past self
+        // from the group, in which case, we can't just take the next free leaf
+        // in the existing tree. Note, that we have to determine the index here
+        // (before we actually add our own leaf), because it's needed in the
+        // process of proposal filtering and application.
         let (own_leaf_index, sender_type) = match params.commit_type() {
-            CommitType::External => (self.treesync().free_leaf_index()?, SenderType::NewMember),
+            CommitType::External => {
+                // If this is a "resync" external commit, it should contain a
+                // `remove` proposal with the index of our previous self in the
+                // group.
+                let free_leaf_index = self.treesync().free_leaf_index()?;
+                let remove_proposal_option = params
+                    .inline_proposals()
+                    .iter()
+                    .find(|proposal| proposal.is_type(ProposalType::Remove));
+                // The external commit is processed like an add, so our new leaf
+                // index is the same as if we'd process an add after the remove
+                // proposal.
+                let leaf_index = if let Some(remove_proposal) = remove_proposal_option {
+                    if let Proposal::Remove(remove_proposal) = remove_proposal {
+                        let removed_index = remove_proposal.removed();
+                        if removed_index < free_leaf_index {
+                            removed_index
+                        } else {
+                            free_leaf_index
+                        }
+                    } else {
+                        return Err(CoreGroupError::LibraryError);
+                    }
+                } else {
+                    free_leaf_index
+                };
+                (leaf_index, SenderType::NewMember)
+            }
             CommitType::Member => (self.treesync().own_leaf_index(), SenderType::Member),
         };
 
@@ -60,20 +93,19 @@ impl CoreGroup {
         // TODO: #581 Filter proposals by support
         // 11.2:
         // Proposals with a non-default proposal type MUST NOT be included in a commit
-        // unless the proposal type is supported by all the members of the group that will
-        // process the Commit (i.e., not including any members being added or removed by
-        // the Commit).
+        // unless the proposal type is supported by all the members of the group that
+        // will process the Commit (i.e., not including any members being added
+        // or removed by the Commit).
 
         let proposal_reference_list = proposal_queue.commit_list();
 
         // Make a copy of the current tree to apply proposals safely
         let mut diff: TreeSyncDiff = self.treesync().empty_diff()?;
 
-        // If this is not an external commit we have to set our own leaf index
-        // and add our leaf. Also, we have to generate the
-        // [`KeyPackageBundlePayload`] slightly differently, because we can't
-        // just pull it from the tree if we're a `NewMember`.
-        let key_package_bundle_payload = self.prepare_kpb_payload(backend, &params, &mut diff)?;
+        // If this is an external commit we have to set our own leaf index manually
+        if params.commit_type() == CommitType::External {
+            diff.set_own_index(own_leaf_index);
+        }
 
         // Apply proposals to tree
         let apply_proposals_values =
@@ -81,6 +113,11 @@ impl CoreGroup {
         if apply_proposals_values.self_removed {
             return Err(CreateCommitError::CannotRemoveSelf.into());
         }
+
+        // Generate the [`KeyPackageBundlePayload`]. If we're doing an external
+        // commit, this is also the place, where we're adding ourselves to the
+        // tree.
+        let key_package_bundle_payload = self.prepare_kpb_payload(backend, &params, &mut diff)?;
 
         let serialized_group_context = self.group_context.tls_serialize_detached()?;
         let path_processing_result =
@@ -296,7 +333,7 @@ impl CoreGroup {
         params: &CreateCommitParams,
         diff: &mut TreeSyncDiff,
     ) -> Result<KeyPackageBundlePayload, CoreGroupError> {
-        let kpb_payload = if params.commit_type() == CommitType::External {
+        let key_package = if params.commit_type() == CommitType::External {
             // Generate a KeyPackageBundle to generate a payload from for later
             // path generation.
             let key_package_bundle = KeyPackageBundle::new(
@@ -306,22 +343,16 @@ impl CoreGroup {
                 vec![],
             )?;
 
-            let own_leaf_index = diff.add_leaf(key_package_bundle.key_package().clone())?;
-            // Set our own index in the diff.
-            diff.set_own_index(own_leaf_index);
-
-            KeyPackageBundlePayload::from_rekeyed_key_package(
-                key_package_bundle.key_package(),
-                backend,
-            )?
+            diff.add_leaf(key_package_bundle.key_package().clone())?;
+            diff.own_leaf()?.key_package()
         } else {
-            // Create a new key package bundle payload from the existing key
-            // package.
-            KeyPackageBundlePayload::from_rekeyed_key_package(
-                self.treesync().own_leaf_node()?.key_package(),
-                backend,
-            )?
+            self.treesync().own_leaf_node()?.key_package()
         };
-        Ok(kpb_payload)
+        // Create a new key package bundle payload from the existing key
+        // package.
+        Ok(KeyPackageBundlePayload::from_rekeyed_key_package(
+            key_package,
+            backend,
+        )?)
     }
 }

@@ -115,7 +115,8 @@ impl MlsGroup {
             ResumptionSecretStore::new(mls_group_config.number_of_resumption_secrets);
 
         // Prepare the commit parameters
-        let framing_parameters = FramingParameters::new(aad, mls_group_config.wire_format());
+        let framing_parameters =
+            FramingParameters::new(aad, mls_group_config.wire_format_policy().outgoing());
 
         let params = CreateCommitParams::builder()
             .framing_parameters(framing_parameters)

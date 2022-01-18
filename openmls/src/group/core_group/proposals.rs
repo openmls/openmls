@@ -97,6 +97,10 @@ impl QueuedProposal {
     pub(crate) fn proposal_reference(&self) -> ProposalReference {
         self.proposal_reference.clone()
     }
+    /// Returns the `ProposalOrRefType`.
+    pub(crate) fn proposal_or_ref_type(&self) -> ProposalOrRefType {
+        self.proposal_or_ref_type
+    }
     /// Returns the `Sender` as a reference
     pub fn sender(&self) -> &Sender {
         &self.sender
@@ -140,7 +144,6 @@ impl ProposalQueue {
                 queued_proposal.clone(),
             );
         }
-
         // Build the actual queue
         let mut proposal_queue = ProposalQueue::default();
 
@@ -150,7 +153,7 @@ impl ProposalQueue {
                 ProposalOrRef::Proposal(proposal) => {
                     // ValSem200
                     if let Proposal::Remove(ref remove_proposal) = proposal {
-                        if remove_proposal.removed() == sender.sender {
+                        if remove_proposal.removed() == sender.sender && sender.is_member() {
                             return Err(ProposalQueueError::SelfRemoval);
                         }
                     }
@@ -168,7 +171,8 @@ impl ProposalQueue {
                             // ValSem200
                             if let Proposal::Remove(ref remove_proposal) = queued_proposal.proposal
                             {
-                                if remove_proposal.removed() == sender.sender {
+                                if remove_proposal.removed() == sender.sender && sender.is_member()
+                                {
                                     return Err(ProposalQueueError::SelfRemoval);
                                 }
                             }
