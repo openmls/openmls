@@ -36,6 +36,7 @@ mod test_proposals;
 use crate::{
     config::*,
     credentials::*,
+    error::LibraryError,
     framing::*,
     group::*,
     key_packages::*,
@@ -592,7 +593,7 @@ impl CoreGroup {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
-    ) -> Result<PublicGroupState, CredentialBundleError> {
+    ) -> Result<PublicGroupState, LibraryError> {
         let pgs_tbs = PublicGroupStateTbs::new(backend, self);
         pgs_tbs.sign(backend, credential_bundle)
     }

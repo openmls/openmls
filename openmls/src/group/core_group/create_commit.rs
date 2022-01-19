@@ -67,7 +67,9 @@ impl CoreGroup {
                             free_leaf_index
                         }
                     } else {
-                        return Err(CoreGroupError::LibraryError);
+                        return Err(
+                            LibraryError::Custom("create_commit(): Wrong proposal type").into()
+                        );
                     }
                 } else {
                     free_leaf_index
@@ -182,8 +184,9 @@ impl CoreGroup {
             backend,
             // It is ok to a library error here, because we know the MlsPlaintext contains a
             // Commit
-            &MlsPlaintextCommitContent::try_from(&mls_plaintext)
-                .map_err(|_| CoreGroupError::LibraryError)?,
+            &MlsPlaintextCommitContent::try_from(&mls_plaintext).map_err(|_| {
+                LibraryError::Custom("create_commit(): MlsPlaintext did not contain a commit")
+            })?,
             &self.interim_transcript_hash,
         )?;
 

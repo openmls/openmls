@@ -1,6 +1,6 @@
 use crate::{
-    ciphersuite::*, config::ProtocolVersion, extensions::Extension, group::GroupId,
-    key_packages::*, schedule::psk::*,
+    ciphersuite::*, config::ProtocolVersion, error::LibraryError, extensions::Extension,
+    group::GroupId, key_packages::*, schedule::psk::*,
 };
 
 use openmls_traits::OpenMlsCryptoProvider;
@@ -160,7 +160,7 @@ impl ProposalReference {
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         proposal: &Proposal,
-    ) -> Result<Self, ProposalError> {
+    ) -> Result<Self, LibraryError> {
         let encoded = proposal.tls_serialize_detached()?;
         let value = ciphersuite.hash(backend, &encoded)?.into();
         Ok(Self { value })

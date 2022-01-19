@@ -59,9 +59,7 @@ impl MlsGroup {
         let welcome = match create_commit_result.welcome_option {
             Some(welcome) => welcome,
             None => {
-                return Err(MlsGroupError::LibraryError(
-                    "No secrets to generate commit message.".into(),
-                ))
+                return Err(LibraryError::Custom("No secrets to generate commit message.").into())
             }
         };
 

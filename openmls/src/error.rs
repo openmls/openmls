@@ -2,6 +2,20 @@
 //!
 //! Each module has their own errors it is returning. This module will defines
 //! helper macros and functions to define OpenMLS errors.
+use openmls_traits::types::CryptoError;
+use thiserror::Error;
+use tls_codec::Error as TlsCodecError;
+
+/// Generic error type that indicates unrecoverable errors in the library.
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum LibraryError {
+    #[error(transparent)]
+    TlsCodecError(#[from] TlsCodecError),
+    #[error(transparent)]
+    CryptoError(#[from] CryptoError),
+    #[error("Custom library error: {0}")]
+    Custom(&'static str),
+}
 
 // Macro helpers
 

@@ -3,9 +3,10 @@
 //! `MlsPlaintextError` and `MlsCiphertextError` are thrown on errors
 //! handling `MlsPlaintext` and `MlsCiphertext`.
 
-use crate::credentials::{CredentialBundleError, CredentialError};
-use crate::schedule::errors::MembershipKeyError;
-use crate::tree::secret_tree::SecretTreeError;
+use crate::{
+    credentials::CredentialError, error::LibraryError, schedule::errors::MembershipKeyError,
+    tree::secret_tree::SecretTreeError,
+};
 use openmls_traits::types::CryptoError;
 use tls_codec::Error as TlsCodecError;
 
@@ -18,9 +19,9 @@ implement_error! {
             InvalidMembershipTag = "The MlsPlaintext membership tag is invalid",
         }
         Complex {
+            LibraryError(LibraryError) = "A LibraryError occurred",
             CodecError(TlsCodecError) = "TLS Codec error",
             CredentialError(CredentialError) = "See [`CredentialError`](`crate::credentials::CredentialError`) for details.",
-            CredentialBundleError(CredentialBundleError) = "See [`CredentialBundleError`](`crate::credentials::CredentialBundleError`) for details.",
             VerificationError(VerificationError) = "See [`VerificationError`](`VerificationError`) for details.",
             MembershipKeyError(MembershipKeyError) = "See [`MembershipKeyError`](`MembershipKeyError`) for details.",
             CryptoError(CryptoError) = "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",

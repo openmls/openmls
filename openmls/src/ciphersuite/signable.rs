@@ -2,7 +2,8 @@ use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
     ciphersuite::Signature,
-    credentials::{Credential, CredentialBundle, CredentialBundleError, CredentialError},
+    credentials::{Credential, CredentialBundle, CredentialError},
+    error::LibraryError,
 };
 
 use super::SignaturePublicKey;
@@ -54,16 +55,16 @@ pub trait Signable: Sized {
         self,
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
-    ) -> Result<Self::SignedOutput, CredentialBundleError>
+    ) -> Result<Self::SignedOutput, LibraryError>
     where
         Self::SignedOutput: SignedStruct<Self>,
     {
         let payload = self
             .unsigned_payload()
-            .map_err(|_| CredentialBundleError::LibraryError)?;
+            .map_err(LibraryError::TlsCodecError)?;
         let signature = credential_bundle
             .sign(backend, &payload)
-            .map_err(|_| CredentialBundleError::SigningFailed)?;
+            .map_err(LibraryError::CryptoError)?;
         Ok(Self::SignedOutput::from_payload(self, signature))
     }
 }
@@ -100,7 +101,7 @@ pub trait Verifiable: Sized {
     {
         let payload = self
             .unsigned_payload()
-            .map_err(|_| CredentialError::LibraryError)?;
+            .map_err(LibraryError::TlsCodecError)?;
         credential.verify(backend, &payload, self.signature())?;
         Ok(T::from_verifiable(self, T::SealingType::default()))
     }
@@ -121,7 +122,7 @@ pub trait Verifiable: Sized {
     {
         let payload = self
             .unsigned_payload()
-            .map_err(|_| CredentialError::LibraryError)?;
+            .map_err(LibraryError::TlsCodecError)?;
         signature_public_key
             .verify(backend, self.signature(), &payload)
             .map_err(|_| CredentialError::InvalidSignature)?;
@@ -141,7 +142,7 @@ pub trait Verifiable: Sized {
     ) -> Result<(), CredentialError> {
         let payload = self
             .unsigned_payload()
-            .map_err(|_| CredentialError::LibraryError)?;
+            .map_err(LibraryError::TlsCodecError)?;
         credential.verify(backend, &payload, self.signature())
     }
 }

@@ -4,9 +4,8 @@
 //! `CreateCommitError`.
 
 use crate::config::ConfigError;
-use crate::credentials::CredentialBundleError;
 use crate::credentials::CredentialError;
-use crate::error::ErrorString;
+use crate::error::LibraryError;
 use crate::framing::MlsCiphertextError;
 use crate::framing::ValidationError;
 use crate::group::errors::QueuedProposalError;
@@ -29,7 +28,7 @@ implement_error! {
             IncompatibleWireFormat = "The incoming message's wire format was not compatible with the wire format policy for incoming messages.",
         }
         Complex {
-            LibraryError(ErrorString) =
+            LibraryError(LibraryError) =
                 "An internal library error occurred. Additional detail is provided.",
             Config(ConfigError) =
                 "See [`ConfigError`](`crate::config::ConfigError`) for details",
@@ -47,7 +46,6 @@ implement_error! {
                 "Empty input. Additional detail is provided.",
             InvalidMessage(InvalidMessageError) = "The message could not be processed.",
             CredentialError(CredentialError) = "See [`CredentialError`](`crate::credentials::CredentialError`) for details",
-            CredentialBundleError(CredentialBundleError) = "See [`CredentialBundleError`](`crate::credentials::CredentialBundleError`) for details",
             TreeSyncError(TreeSyncError) = "See [`TreeSyncError`](`crate::treesync::TreeSyncError`) for details",
             ValidationError(ValidationError) = "See [`ValidationError`](`crate::framing::ValidationError`) for details",
             TlsCodecError(TlsCodecError) = "An error occured during TLS encoding/decoding.",

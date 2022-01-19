@@ -1,11 +1,8 @@
 use crate::group::errors::*;
 
-use crate::messages::proposals::{
-    AddProposal, PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalOrRefType,
-    ProposalReference, ProposalType, RemoveProposal, UpdateProposal,
+use crate::{
+    ciphersuite::*, error::LibraryError, framing::*, messages::proposals::*, treesync::LeafIndex,
 };
-use crate::treesync::LeafIndex;
-use crate::{ciphersuite::*, framing::*};
 
 use openmls_traits::OpenMlsCryptoProvider;
 use serde::{Deserialize, Serialize};
@@ -80,7 +77,7 @@ impl QueuedProposal {
         backend: &impl OpenMlsCryptoProvider,
         proposal: Proposal,
         sender: Sender,
-    ) -> Result<Self, QueuedProposalError> {
+    ) -> Result<Self, LibraryError> {
         let proposal_reference = ProposalReference::from_proposal(ciphersuite, backend, &proposal)?;
         Ok(Self {
             proposal,

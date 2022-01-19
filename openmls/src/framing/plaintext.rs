@@ -21,7 +21,10 @@
 //! [`MlsPlaintext`] by calling `verify` on it. This ensures that all [`MlsPlaintext`]
 //! objects contain a valid signature.
 
-use crate::ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct};
+use crate::{
+    ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
+    error::LibraryError,
+};
 
 use super::*;
 use core_group::create_commit_params::CommitType;
@@ -123,7 +126,7 @@ impl MlsPlaintext {
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, MlsPlaintextError> {
+    ) -> Result<Self, LibraryError> {
         let mut mls_plaintext = MlsPlaintextTbs::new(
             framing_parameters.wire_format(),
             context.group_id().clone(),
@@ -138,7 +141,7 @@ impl MlsPlaintext {
             mls_plaintext = mls_plaintext.with_context(serialized_context);
         }
 
-        Ok(mls_plaintext.sign(backend, credential_bundle)?)
+        mls_plaintext.sign(backend, credential_bundle)
     }
 
     /// Create message with membership tag
@@ -151,7 +154,7 @@ impl MlsPlaintext {
         context: &GroupContext,
         membership_key: &MembershipKey,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, MlsPlaintextError> {
+    ) -> Result<Self, LibraryError> {
         let sender = Sender {
             sender_type: SenderType::Member,
             sender: sender_index,
@@ -182,7 +185,7 @@ impl MlsPlaintext {
         context: &GroupContext,
         membership_key: &MembershipKey,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, MlsPlaintextError> {
+    ) -> Result<Self, LibraryError> {
         Self::new_with_membership_tag(
             framing_parameters,
             sender_index,
@@ -210,7 +213,7 @@ impl MlsPlaintext {
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, MlsPlaintextError> {
+    ) -> Result<Self, LibraryError> {
         let sender = Sender {
             sender_type: commit_type.into(),
             sender: sender_index,
@@ -238,7 +241,7 @@ impl MlsPlaintext {
         context: &GroupContext,
         membership_key: &MembershipKey,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, MlsPlaintextError> {
+    ) -> Result<Self, LibraryError> {
         let framing_parameters =
             FramingParameters::new(authenticated_data, WireFormat::MlsCiphertext);
         Self::new_with_membership_tag(
@@ -284,7 +287,7 @@ impl MlsPlaintext {
         backend: &impl OpenMlsCryptoProvider,
         serialized_context: &[u8],
         membership_key: &MembershipKey,
-    ) -> Result<(), MlsPlaintextError> {
+    ) -> Result<(), LibraryError> {
         let tbs_payload = encode_tbs(self, serialized_context)?;
         let tbm_payload =
             MlsPlaintextTbmPayload::new(&tbs_payload, &self.signature, &self.confirmation_tag)?;
@@ -423,7 +426,7 @@ impl<'a> MlsPlaintextTbmPayload<'a> {
         tbs_payload: &'a [u8],
         signature: &'a Signature,
         confirmation_tag: &'a Option<ConfirmationTag>,
-    ) -> Result<Self, MlsPlaintextError> {
+    ) -> Result<Self, LibraryError> {
         Ok(Self {
             tbs_payload,
             signature,
