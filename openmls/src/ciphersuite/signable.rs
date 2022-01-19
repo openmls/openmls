@@ -59,9 +59,7 @@ pub trait Signable: Sized {
     where
         Self::SignedOutput: SignedStruct<Self>,
     {
-        let payload = self
-            .unsigned_payload()
-            .map_err(LibraryError::TlsCodecError)?;
+        let payload = self.unsigned_payload()?;
         let signature = credential_bundle
             .sign(backend, &payload)
             .map_err(LibraryError::CryptoError)?;
@@ -101,7 +99,7 @@ pub trait Verifiable: Sized {
     {
         let payload = self
             .unsigned_payload()
-            .map_err(LibraryError::TlsCodecError)?;
+            .map_err(LibraryError::MissingBoundsCheck)?;
         credential.verify(backend, &payload, self.signature())?;
         Ok(T::from_verifiable(self, T::SealingType::default()))
     }
@@ -122,7 +120,7 @@ pub trait Verifiable: Sized {
     {
         let payload = self
             .unsigned_payload()
-            .map_err(LibraryError::TlsCodecError)?;
+            .map_err(LibraryError::MissingBoundsCheck)?;
         signature_public_key
             .verify(backend, self.signature(), &payload)
             .map_err(|_| CredentialError::InvalidSignature)?;
@@ -142,7 +140,7 @@ pub trait Verifiable: Sized {
     ) -> Result<(), CredentialError> {
         let payload = self
             .unsigned_payload()
-            .map_err(LibraryError::TlsCodecError)?;
+            .map_err(LibraryError::MissingBoundsCheck)?;
         credential.verify(backend, &payload, self.signature())
     }
 }
