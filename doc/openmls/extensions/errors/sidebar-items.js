@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["CapabilitiesExtensionError",""],["ExtensionError",""],["InvalidExtensionError",""],["KeyPackageIdError",""],["LifetimeExtensionError",""],["ParentHashError",""],["RatchetTreeError",""]]});

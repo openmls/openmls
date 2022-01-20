@@ -1,0 +1,1002 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>OpenMLS Book</title>
+        <meta name="robots" content="noindex" />
+        <!-- Custom HTML head -->
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+    </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="user_manual/index.html"><strong aria-hidden="true">1.</strong> User manual</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="user_manual/identity.html"><strong aria-hidden="true">1.1.</strong> Creating identity keys</a></li><li class="chapter-item expanded "><a href="user_manual/create_key_package.html"><strong aria-hidden="true">1.2.</strong> Creating key packges</a></li><li class="chapter-item expanded "><a href="user_manual/group_config.html"><strong aria-hidden="true">1.3.</strong> Group configuration</a></li><li class="chapter-item expanded "><a href="user_manual/create_group.html"><strong aria-hidden="true">1.4.</strong> Creating groups</a></li><li class="chapter-item expanded "><a href="user_manual/join_from_welcome.html"><strong aria-hidden="true">1.5.</strong> Join a group from a Welcome message</a></li><li class="chapter-item expanded "><a href="user_manual/add_members.html"><strong aria-hidden="true">1.6.</strong> Adding members to a group</a></li><li class="chapter-item expanded "><a href="user_manual/remove_members.html"><strong aria-hidden="true">1.7.</strong> Removing members from a group</a></li><li class="chapter-item expanded "><a href="user_manual/updates.html"><strong aria-hidden="true">1.8.</strong> Updating own key package</a></li><li class="chapter-item expanded "><a href="user_manual/leaving.html"><strong aria-hidden="true">1.9.</strong> Leaving a group</a></li><li class="chapter-item expanded "><a href="user_manual/application_messages.html"><strong aria-hidden="true">1.10.</strong> Creating application messages</a></li><li class="chapter-item expanded "><a href="user_manual/commit_to_proposals.html"><strong aria-hidden="true">1.11.</strong> Committing to pending proposals</a></li><li class="chapter-item expanded "><a href="user_manual/processing.html"><strong aria-hidden="true">1.12.</strong> Processing incoming messages</a></li></ol></li><li class="chapter-item expanded "><a href="message_validation.html"><strong aria-hidden="true">2.</strong> Message Validation</a></li><li class="chapter-item expanded "><a href="tree_rewrite.html"><strong aria-hidden="true">3.</strong> Tree Rewrite Project</a></li><li class="chapter-item expanded "><a href="type_enfored_verification.html"><strong aria-hidden="true">4.</strong> Type-Enforced Verification</a></li><li class="chapter-item expanded "><a href="performance.html"><strong aria-hidden="true">5.</strong> Performance</a></li><li class="chapter-item expanded "><a href="forward_secrecy.html"><strong aria-hidden="true">6.</strong> Forward Secrecy</a></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">OpenMLS Book</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="user-manual"><a class="header" href="#user-manual">User manual</a></h1>
+<p>The user manual describes how to use the different parts of the OpenMLS API.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="creating-an-identity"><a class="header" href="#creating-an-identity">Creating an identity</a></h1>
+<p>Every client that wants to use OpenMLS needs to create an identity keypair initially.
+Clients need to choose a few parameters to create a <code>CredentialBundle</code>:</p>
+<ul>
+<li><code>identity: Vec&lt;u8&gt;</code>: An octet string that uniquely identifies the client.</li>
+<li><code>credential_type: CredentialType</code>: The type of the credential, e.g. <code>CredentialType::Basic</code>.</li>
+<li><code>signature_scheme: SignatureScheme</code>: The cryptographic primitive of the identity keypair, e.g. <code>SignatureScheme::ED25519</code>.</li>
+</ul>
+<pre><code class="language-rust no_run noplayground">    let credential_bundle =
+        CredentialBundle::new(identity, credential_type, signature_scheme, backend)?;
+</code></pre>
+<p>After creating the credential bundle, clients should store it in the key store so that it can be reused during group operations:</p>
+<pre><code class="language-rust no_run noplayground">    let credential = credential_bundle.credential().clone();
+    backend
+        .key_store()
+        .store(credential.signature_key(), &amp;credential_bundle)
+        .expect(&quot;An unexpected error occurred.&quot;);
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="creating-key-packges"><a class="header" href="#creating-key-packges">Creating key packges</a></h1>
+<p>Before clients can communicate with each other usind OpenMLS they need to generate key packages and publish them with the Delivery Service. Clients can generate an arbirary number of key packages ahead of time.</p>
+<p>Clients keep the private key material corresponding to a key package locally in the key store and fetch it from there when a key package was used to add them to a new group.</p>
+<p>Clients need to choose a few parameters to create a <code>KeyPackageBundle</code>:</p>
+<ul>
+<li><code>ciphersuites: &amp;[CiphersuiteName]</code>: A list of ciphersuites supported by the client.</li>
+<li><code>extensions: Vec&lt;Extensions&gt;</code>: A list of supported extensions.</li>
+</ul>
+<p>Clients must specify at least one ciphersuite, and must not advertize ciphersuites they do not support.</p>
+<p>Clients should specify all extensions they support. Mandatory extensions, like the <code>LifetimeExtension</code> can be specified here with specific values. If no extensions are specified, mandatory extensions are created on the fly with default values. See the documentation of extensions for more details.</p>
+<pre><code class="language-rust no_run noplayground">    // Define extensions
+    let extensions = vec![Extension::LifeTime(LifetimeExtension::new(
+        60 * 60 * 24 * 90, // Maximum lifetime of 90 days, expressed in seconds
+    ))];
+
+    // Fetch the credential bundle from the key store
+    let credential_bundle = backend
+        .key_store()
+        .read(credential.signature_key())
+        .expect(&quot;An unexpected error occurred.&quot;);
+
+    // Create the key package bundle
+    let key_package_bundle =
+        KeyPackageBundle::new(ciphersuites, &amp;credential_bundle, backend, extensions)?;
+</code></pre>
+<p>After creating the key package bundle, clients should store it in the key store so that it can be reused during group operations:</p>
+<pre><code class="language-rust no_run noplayground">    let key_package = key_package_bundle.key_package().clone();
+
+    // Store it in the key store
+    backend
+        .key_store()
+        .store(
+            &amp;key_package
+                .hash(backend)
+                .expect(&quot;Could not hash KeyPackage.&quot;),
+            &amp;key_package_bundle,
+        )
+        .expect(&quot;An unexpected error occurred.&quot;);
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="group-configuration"><a class="header" href="#group-configuration">Group configuration</a></h1>
+<p>The group configuration can be specified by building a <code>MlsGroupConfig</code> object or choosing the default value. The default velaue contains safe values for all parameters and is suitable for scenarios whithout particular requirements.</p>
+<p>The following parameters can be set:</p>
+<table><thead><tr><th>Name</th><th>Type</th><th>Explanation</th></tr></thead><tbody>
+<tr><td><code>wire_format</code></td><td><code>WireFormat</code></td><td>Defines whether handshake messages are encrypted. The default <code>Ciphertext</code>.</td></tr>
+<tr><td><code>padding_size</code></td><td><code>usize</code></td><td>Size of padding in bytes. The default is 0.</td></tr>
+<tr><td><code>max_past_epochs</code></td><td><code>usize</code></td><td>Maximum number of past epochs for which application messages can be decrypted. The default is 0.</td></tr>
+<tr><td><code>number_of_resumption_secrets</code></td><td><code>usize</code></td><td>Number of resumtion secrets to keep. The default is 0.</td></tr>
+<tr><td><code>use_ratchet_tree_extension</code></td><td><code>bool</code></td><td>Flag indicating the Ratchet Tree Extension should be used. The default is <code>false</code>.</td></tr>
+<tr><td><code>required_capabilities</code></td><td><code>RequiredCapabilitiesExtension</code></td><td>Required capabilities (extensions and proposal types).</td></tr>
+<tr><td><code>sender_ratchet_configuration</code></td><td><code>SenderRatchetConfiguration</code></td><td>Sender ratchet configuration.</td></tr>
+</tbody></table>
+<p>Example configuration:</p>
+<pre><code class="language-rust no_run noplayground">    let mls_group_config = MlsGroupConfig::builder()
+        .padding_size(100)
+        .sender_ratchet_configuration(SenderRatchetConfiguration::new(
+            10,   // out_of_order_tolerance
+            2000, // maximum_forward_distance
+        ))
+        .use_ratchet_tree_extension(true)
+        .build();
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="creating-groups"><a class="header" href="#creating-groups">Creating groups</a></h1>
+<p>Before a group can be created, a group configuration (<code>MlsGroupConfiguration</code>) needs to be defined. The default values of configuration parameters are picked for safety, however be sure to check all parameters carefully to ascertain if they match your implementation's requirements. See <a href="user_manual/group_config.html">Group configuration</a> for more details.</p>
+<p>In addition to the group configuration, the client should define all supported and requitred extension for the group. The negotatiation mechanism for extension in MLS consists in setting an intial list of extensions at group creation time and choosing key packages of subsequent new members accordingly.</p>
+<p>In practice, the supported and required extensions are set by adding them to the initial <code>KeyPackage</code> of the creator:</p>
+<pre><code class="language-rust no_run noplayground">    // Define extensions
+    let extensions = vec![Extension::LifeTime(LifetimeExtension::new(
+        60 * 60 * 24 * 90, // Maximum lifetime of 90 days, expressed in seconds
+    ))];
+
+    // Fetch the credential bundle from the key store
+    let credential_bundle = backend
+        .key_store()
+        .read(credential.signature_key())
+        .expect(&quot;An unexpected error occurred.&quot;);
+
+    // Create the key package bundle
+    let key_package_bundle =
+        KeyPackageBundle::new(ciphersuites, &amp;credential_bundle, backend, extensions)?;
+</code></pre>
+<p>Every group has a unique group ID that needs to be specified at the time of the group creation. The group ID cannot be changed after the group creation and therefore remains immutable throughout the group's lifetime. It should be chosen so that it doesn't collide with any other group IDs in the same system:</p>
+<pre><code class="language-rust no_run noplayground">    let group_id = GroupId::from_slice(b&quot;Test Group&quot;);
+</code></pre>
+<p>After that the group can be created:</p>
+<pre><code class="language-rust no_run noplayground">    let mut alice_group = MlsGroup::new(
+        backend,
+        &amp;mls_group_config,
+        group_id,
+        &amp;alice_key_package
+            .hash(backend)
+            .expect(&quot;Could not hash KeyPackage.&quot;),
+    )
+    .expect(&quot;An unexpected error occurred.&quot;);
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="join-a-group-from-a-welcome-message"><a class="header" href="#join-a-group-from-a-welcome-message">Join a group from a Welcome message</a></h1>
+<p>To join a group from a <code>Welcome</code> message, a new <code>MlsGroup</code> can be instantiated directly from the <code>Welcome</code> message.
+If the group configuration does not use the ratchet tree extension, the ratchet tree needs to be provided as well.</p>
+<pre><code class="language-rust no_run noplayground">    let mut bob_group = MlsGroup::new_from_welcome(
+        backend,
+        &amp;mls_group_config,
+        welcome,
+        None, // We use the ratchet tree extension, so we don't provide a ratchet tree here
+    )
+    .expect(&quot;Error joining group from Welcome&quot;);
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="adding-members-to-a-group"><a class="header" href="#adding-members-to-a-group">Adding members to a group</a></h1>
+<h2 id="immediate-operation"><a class="header" href="#immediate-operation">Immediate operation</a></h2>
+<p>Members can be added to the group atomically with the <code>.add_members()</code> function. The application needs to fetch the corresponding key packages from every new member from the Delivery Service first.</p>
+<pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome) = alice_group
+        .add_members(backend, &amp;[bob_key_package])
+        .expect(&quot;Could not add members.&quot;);
+</code></pre>
+<p>The function returns the tuple <code>(MlsMessageOut, Welcome)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing members of the group. The <code>Welcome</code> message needs to be sent to the newly added members.</p>
+<h2 id="proposal"><a class="header" href="#proposal">Proposal</a></h2>
+<p>Members can also be added as a proposal (without the corresponding Commit message) by using the <code>.propose_add_member()</code> function:</p>
+<pre><code class="language-rust no_run noplayground">    let mls_message_out = alice_group
+        .propose_add_member(backend, &amp;bob_key_package)
+        .expect(&quot;Could not create proposal to add Bob&quot;);
+</code></pre>
+<p>In this case the the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="removing-members-from-a-group"><a class="header" href="#removing-members-from-a-group">Removing members from a group</a></h1>
+<h2 id="immediate-operation-1"><a class="header" href="#immediate-operation-1">Immediate operation</a></h2>
+<p>Members can be removed from the group atomically with the <code>.remove_members()</code> function.</p>
+<pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option) = charlie_group
+        .remove_members(backend, &amp;[1])
+        .expect(&quot;Could not remove Bob from group.&quot;);
+</code></pre>
+<p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing members of the group.
+Despite the fact that members were only removed in this operation, the Commit message could potentially also cover Add Proposals that were previously received in the epoch. Therefore the function can also optionally return a <code>Welcome</code> message. The <code>Welcome</code> message needs to be sent to the newly added members.</p>
+<h2 id="proposal-1"><a class="header" href="#proposal-1">Proposal</a></h2>
+<p>Members can also be removed as a proposal (without the corresponding Commit message) by using the <code>.propose_remove_member()</code> function:</p>
+<pre><code class="language-rust no_run noplayground">    let mls_message_out = alice_group
+        .propose_remove_member(backend, 2)
+        .expect(&quot;Could not create proposal to remove Charlie.&quot;);
+</code></pre>
+<p>In this case the the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="updating-own-key-package"><a class="header" href="#updating-own-key-package">Updating own key package</a></h1>
+<h2 id="immediate-operation-2"><a class="header" href="#immediate-operation-2">Immediate operation</a></h2>
+<p>Members can update their own leaf key package atomically with the <code>.self_update()</code> function.
+The application can optionally provide a <code>KeyPackage</code> manually. If not, a key package will be created on the fly with the same extensions as the current one, but with a fresh HPKE init key.</p>
+<pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option) = bob_group
+        .self_update(
+            backend,
+            None, // We don't provide a key package, it will be created on the fly instead
+        )
+        .expect(&quot;Could not update own key package.&quot;);
+</code></pre>
+<p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing members of the group.
+Despite the fact that the member only updates its own key package in this operation, the Commit message could potentially also cover Add Proposals that were previously received in the epoch. Therefore the function can also optionally return a <code>Welcome</code> message. The <code>Welcome</code> message needs to be sent to the newly added members.</p>
+<h2 id="proposal-2"><a class="header" href="#proposal-2">Proposal</a></h2>
+<p>Members can also update their key package as a proposal (without the corresponding Commit message) by using the <code>.propose_self_update()</code> function. Just like with the <code>.self_update()</code> function, an optional key package can be provided:</p>
+<pre><code class="language-rust no_run noplayground">    let mls_message_out = alice_group
+        .propose_self_update(
+            backend,
+            None, // We don't provide a key package, it will be created on the fly instead
+        )
+        .expect(&quot;Could not create update proposal.&quot;);
+</code></pre>
+<p>In this case the the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="leaving-a-group"><a class="header" href="#leaving-a-group">Leaving a group</a></h1>
+<p>Members can indicate to the other members of the group that they wish to leave the group by creating and sending a Remove Proposal for their own identifier. It is not possible for the member to create a Commit message that covers this proposal, as that would violate the Post-compromise Security guarantees of MLS because the member would know the epoch secrets of the next epoch.</p>
+<p>After successfully sending the proposal to the DS for fanout, it is safe for the member to tear down the local group state and ignore all subsequent messages for that group.</p>
+<p>For details on how to create Remove Proposals, see <a href="user_manual/remove_members.html">Removing members from a group</a>.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="creating-application-messages"><a class="header" href="#creating-application-messages">Creating application messages</a></h1>
+<p>Application messages are created from byte slices with the <code>.create_message()</code> function:</p>
+<pre><code class="language-rust no_run noplayground">    let message_alice = b&quot;Hi, I'm Alice!&quot;;
+    let mls_message_out = alice_group
+        .create_message(backend, message_alice)
+        .expect(&quot;Error creating application message.&quot;);
+</code></pre>
+<p>Note that the theoretical maximum length of application messages is 2^32 bytes, however in practice messages should be much shorter unless the Delivery Service can cope with very long messages.</p>
+<p>The function returns an <code>MlsMessageOut</code> that needs to be sent to the Delivery Service for fanout to other members of the group. To guarantee the best possible Forward Secrecy, the key material used to encrypt messages is immediately discarded after encryption. This means that the message author cannot decrypt application messages. If access to the messages content is required after creating the message, a copy of the plaintext message should be kept by the application.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="committing-to-pending-proposals"><a class="header" href="#committing-to-pending-proposals">Committing to pending proposals</a></h1>
+<p>During an epoch, members can create proposals that are not immediately committed. These proposals are called &quot;pending proposals&quot;. They will automatically be covered by any operation that creates a Commit message (like <code>.add_members(),</code> <code>.remove_members()</code>, etc.).</p>
+<p>Some operations, (like creating application messages) are not allowed as long as pending proposals exist for the current epoch. In that case, the application needs to first commit to the pending proposals by creating a Commit message that covers these proposals. This can be done with the <code>commit_to_pending_proposals()</code> function:</p>
+<pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option) = alice_group
+        .commit_to_pending_proposals(backend)
+        .expect(&quot;Could not commit to pending proposals.&quot;);
+</code></pre>
+<p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing members of the group.
+In case the Commit message also covers Add Proposals that were previously received in the epoch, a <code>Welcome</code> message is required to invite the new members. Therefore the function can also optionally return a <code>Welcome</code> message. The <code>Welcome</code> message needs to be sent to the newly added members.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="processing-incoming-messages"><a class="header" href="#processing-incoming-messages">Processing incoming messages</a></h1>
+<p>Processing incoming messages happens in different phases:</p>
+<h2 id="deserializing-messages"><a class="header" href="#deserializing-messages">Deserializing messages</a></h2>
+<p>Incoming messages can be deserialized from byte slices into an <code>MlsMessageIn</code>:</p>
+<pre><code class="language-rust no_run noplayground">    let mls_message_in =
+        MlsMessageIn::try_from_bytes(&amp;bytes).expect(&quot;Could not deserialize message.&quot;);
+</code></pre>
+<p>If the message is malformed, the function will fail with an error.</p>
+<h2 id="parsing-messages"><a class="header" href="#parsing-messages">Parsing messages</a></h2>
+<p>In the next step, the incoming message needs to be parsed. If the message was encrypted, it will be decrypted automatically:</p>
+<pre><code class="language-rust no_run noplayground">    let unverified_message = bob_group
+        .parse_message(mls_message_in, backend)
+        .expect(&quot;Could not parse message.&quot;);
+</code></pre>
+<p>Parsing can fail, if e.g. dercrypting the message fails. The exact reason for failure is returned in the error.</p>
+<h2 id="processing-messages"><a class="header" href="#processing-messages">Processing messages</a></h2>
+<p>In the next step the unverified message needs to be processed. This step performs all remeining validity checks and also verifies the message's signature. Optionally, a signature key can be provided to verify the message's signature. This can be used when processing external messages. By default, the sender's credential is used to verify the signature.</p>
+<pre><code class="language-rust no_run noplayground">    let processed_message = bob_group
+        .process_unverified_message(
+            unverified_message,
+            None, // No external signature key
+            backend,
+        )
+        .expect(&quot;Could not process unverified message.&quot;);
+</code></pre>
+<h2 id="interpreting-the-processed-message"><a class="header" href="#interpreting-the-processed-message">Interpreting the processed message</a></h2>
+<p>In the last step, the message is ready for inspection. There are 3 different kinds of messages:</p>
+<h3 id="application-messages"><a class="header" href="#application-messages">Application messages</a></h3>
+<p>Application messages simply return the original byte slice:</p>
+<pre><code class="language-rust no_run noplayground">    if let ProcessedMessage::ApplicationMessage(application_message) = processed_message {
+        // Check the message
+        assert_eq!(application_message.message(), b&quot;Hi, I'm Alice!&quot;);
+    }
+</code></pre>
+<h3 id="proposals"><a class="header" href="#proposals">Proposals</a></h3>
+<p>Standalone proposals are returned as a <code>QueuedProposal</code>, indicating the fact that they are pending proposals. The actual proposal can be inspected through the <code>.proposal()</code> function. After inspection, applications should store the pending proposal in the proposal store of the group:</p>
+<pre><code class="language-rust no_run noplayground">    if let ProcessedMessage::ProposalMessage(staged_proposal) = charlie_processed_message {
+        // In the case we received an Add Proposal
+        if let Proposal::Add(add_proposal) = staged_proposal.proposal() {
+            // Check that Bob was added
+            assert_eq!(add_proposal.key_package().credential(), &amp;bob_credential);
+        } else {
+            panic!(&quot;Expected an AddProposal.&quot;);
+        }
+
+        // Check that Alice added Bob
+        // TODO #575: Replace this with the adequate API call
+        assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
+        // Store proposal
+        charlie_group.store_pending_proposal(*staged_proposal);
+    }
+</code></pre>
+<h3 id="commit-messages"><a class="header" href="#commit-messages">Commit messages</a></h3>
+<p>Commit messages are returned as <code>StagedCommit</code> objects. The proposals they cover can be inspected through different functions, depending on the proposal type. For more details see the <code>StagedCommit</code> documentation. After the application has inspected the <code>StagedCommit</code> and approved all the proposals it covers, the <code>StagedCommit</code> can be merged in the current group state by calling the <code>.merge_staged_commit()</code> function.</p>
+<pre><code class="language-rust no_run noplayground">    if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
+        // We expect a remove proposal
+        let remove = staged_commit
+            .remove_proposals()
+            .next()
+            .expect(&quot;Expected a proposal.&quot;);
+        // Check that Bob was removed
+        // TODO #575: Replace this with the adequate API call
+        assert_eq!(remove.remove_proposal().removed(), 1u32);
+        // Check that Charlie removed Bob
+        // TODO #575: Replace this with the adequate API call
+        assert_eq!(remove.sender().to_leaf_index(), 2u32);
+        // Merge staged commit
+        alice_group
+            .merge_staged_commit(*staged_commit)
+            .expect(&quot;Could not merge Commit.&quot;);
+    }
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="message-validation"><a class="header" href="#message-validation">Message Validation</a></h1>
+<h2 id="validation-steps"><a class="header" href="#validation-steps">Validation steps</a></h2>
+<ul>
+<li>Syntax validation: This should be mostly covered by the decoding</li>
+<li>Semantic validation: Checks to make sure a message is valid in a given context (signature verification, epoch number check, etc.)</li>
+<li>Group policy validation: checks about handshake type, etc.</li>
+<li>AS/policy validation: Checks to see whether syntactically and semantically correct messages should be adopted or dropped (Is a member allowed to add another member? Is a member allowed to remove another member?)</li>
+</ul>
+<h2 id="detailed-list-of-validation-steps"><a class="header" href="#detailed-list-of-validation-steps">Detailed list of validation steps</a></h2>
+<h3 id="semantic-validation-of-message-framing"><a class="header" href="#semantic-validation-of-message-framing">Semantic validation of message framing</a></h3>
+<table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
+<tr><td><code>ValSem001</code></td><td>Wire format</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_validation.rs</code></td></tr>
+<tr><td><code>ValSem002</code></td><td>Group id</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_validation.rs</code></td></tr>
+<tr><td><code>ValSem003</code></td><td>Epoch</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_validation.rs</code></td></tr>
+<tr><td><code>ValSem004</code></td><td>Sender: Member: check the sender points to a non-blank leaf</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_validation.rs</code></td></tr>
+<tr><td><code>ValSem005</code></td><td>Application messages must use ciphertext</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_validation.rs</code></td></tr>
+<tr><td><code>ValSem006</code></td><td>Ciphertext: decryption needs to work</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_validation.rs</code></td></tr>
+<tr><td><code>ValSem007</code></td><td>Membership tag presence</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_validation.rs</code></td></tr>
+<tr><td><code>ValSem008</code></td><td>Membership tag verification</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_validation.rs</code></td></tr>
+<tr><td><code>ValSem009</code></td><td>Confirmation tag presence</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_validation.rs</code></td></tr>
+<tr><td><code>ValSem010</code></td><td>Signature verification</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_validation.rs</code></td></tr>
+</tbody></table>
+<h3 id="semantic-validation-of-proposals-covered-by-a-commit"><a class="header" href="#semantic-validation-of-proposals-covered-by-a-commit">Semantic validation of proposals covered by a Commit</a></h3>
+<table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
+<tr><td><code>ValSem100</code></td><td>Add Proposal: Identity in proposals must be unique among proposals</td><td>✅</td><td>❌</td><td>TBD</td></tr>
+<tr><td><code>ValSem101</code></td><td>Add Proposal: Signature public key in proposals must be unique among proposals</td><td>✅</td><td>❌</td><td>TBD</td></tr>
+<tr><td><code>ValSem102</code></td><td>Add Proposal: HPKE init key in proposals must be unique among proposals</td><td>✅</td><td>❌</td><td>TBD</td></tr>
+<tr><td><code>ValSem103</code></td><td>Add Proposal: Identity in proposals must be unique among existing group members</td><td>✅</td><td>❌</td><td>TBD</td></tr>
+<tr><td><code>ValSem104</code></td><td>Add Proposal: Signature public key in proposals must be unique among existing group members</td><td>✅</td><td>❌</td><td>TBD</td></tr>
+<tr><td><code>ValSem105</code></td><td>Add Proposal: HPKE init key in proposals must be unique among existing group members</td><td>✅</td><td>❌</td><td>TBD</td></tr>
+<tr><td><code>ValSem106</code></td><td>Add Proposal: required capabilities</td><td>❌<sup>1</sup></td><td>❌</td><td>TBD</td></tr>
+<tr><td><code>ValSem107</code></td><td>Remove Proposal: Removed member must be unique among proposals</td><td>✅</td><td>❌</td><td>TBD</td></tr>
+<tr><td><code>ValSem108</code></td><td>Remove Proposal: Removed member must be an existing group member</td><td>✅</td><td>❌</td><td>TBD</td></tr>
+<tr><td><code>ValSem109</code></td><td>Update Proposal: Identity must be unchanged between existing member and new proposal</td><td>✅</td><td>❌</td><td>TBD</td></tr>
+<tr><td><code>ValSem110</code></td><td>Update Proposal: HPKE init key must be unique among existing members</td><td>✅</td><td>❌</td><td>TBD</td></tr>
+</tbody></table>
+<p><sup>1</sup> Partly implemented, see <code>TODO</code>s in <code>openmls/src/group/core_group/validation.rs</code>.</p>
+<h3 id="commit-message-validation"><a class="header" href="#commit-message-validation">Commit message validation</a></h3>
+<table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
+<tr><td><code>ValSem200</code></td><td>Commit must not cover inline self Remove proposal</td><td>✅</td><td>❌</td><td>TBD</td></tr>
+<tr><td><code>ValSem201</code></td><td>Path must be present, if Commit contains Removes or Updates</td><td>❌</td><td>❌</td><td>TBD</td></tr>
+<tr><td><code>ValSem202</code></td><td>Path must be the right length</td><td>❌</td><td>❌</td><td>TBD</td></tr>
+<tr><td><code>ValSem203</code></td><td>Path secrets must decrypt correctly</td><td>❌</td><td>❌</td><td>TBD</td></tr>
+<tr><td><code>ValSem204</code></td><td>Public keys from Path must be verified and match the private keys from the direct path</td><td>✅</td><td>❌</td><td>TBD</td></tr>
+<tr><td><code>ValSem205</code></td><td>Confirmation tag must be successfully verified</td><td>✅</td><td>❌</td><td>TBD</td></tr>
+</tbody></table>
+<h3 id="external-commit-message-validation"><a class="header" href="#external-commit-message-validation">External Commit message validation</a></h3>
+<table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
+<tr><td><code>ValSem240</code></td><td>External Commit must cover at least one inline ExternalInit proposal</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
+<tr><td><code>ValSem241</code></td><td>External Commit must cover at most one inline ExternalInit proposal</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
+<tr><td><code>ValSem242</code></td><td>External Commit must not cover any inline Add proposals</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
+<tr><td><code>ValSem243</code></td><td>External Commit must not cover any inline Update proposals</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
+<tr><td><code>ValSem244</code></td><td>Identity of inline Remove proposal target and external committer must be the same</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
+<tr><td><code>ValSem245</code></td><td>External Commit must not cover any ExternalInit proposals by reference</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
+<tr><td><code>ValSem246</code></td><td>External Commit must contain a path</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
+<tr><td><code>ValSem247</code></td><td>External Commit signature must be verified using the credential in the path KeyPackage</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
+</tbody></table>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="tree-rewrite-project"><a class="header" href="#tree-rewrite-project">Tree Rewrite Project</a></h1>
+<p><img src="https://img.shields.io/badge/status-wip-orange.svg?style=for-the-badge" alt="" /></p>
+<h2 id="treesync"><a class="header" href="#treesync">TreeSync</a></h2>
+<p>TreeSync is a tree structure that keeps public data in a left-balanced binary
+tree structure and relies on a KeyStore to store private data. Not every node
+has to contain data. A node not containing data is considered blank. The
+TreeSyncNode API determines how TreeSync interacts with the data it stores.</p>
+<p><img src="./static/treesync_api.svg" alt="TreeSync Architecture" /></p>
+<h4 id="node-indexing"><a class="header" href="#node-indexing">Node Indexing</a></h4>
+<p>The current MLS spec explicitly relies on leaf- or node indices specific to the
+array-representation of a tree to indicate individual nodes. Thus, to keep it
+simple, this draft of a TreeSync API relies on the same indices.</p>
+<p>In an actual implementation, we might have to translate from the array-specific
+indices to whatever is used by the actual binary tree implementation underneath
+<code>TreeSync</code>.</p>
+<h3 id="treesyncnode-api"><a class="header" href="#treesyncnode-api">TreeSyncNode API</a></h3>
+<p>TreeSync relies on the <code>TreeSyncNode</code> to represent the layer of abstraction
+below it.</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>trait TreeSyncNode {
+    /// Return the value of the node relevant for the parent hash and tree hash.
+    /// In case of MLS, this would be the node's HPKEPublicKey. TreeSync
+    /// can then gather everything necessary to build the `ParentHashInput`,
+    /// `LeafNodeHashInput` and `ParentNodeTreeHashInput` structs for a given node.
+    fn node_content(&amp;self) -&gt; &amp;[u8] {}
+
+    /// Get the list of unmerged leaves.
+    fn unmerged_leaves(&amp;self) -&gt; &amp;[LeafIndex] {}
+
+    /// Clear the list of unmerged leaves.
+    fn clear_unmerged_leaves(&amp;mut self) {}
+
+    /// Add a `LeafIndex` to the node's list of unmerged leaves.
+    fn add_unmerged_leaf(&amp;mut self, LeafIndex) {}
+
+    /// Set the parent hash value of this node.
+    fn set_parent_hash(&amp;mut self, Vec&lt;u8&gt;) {}
+
+    /// Get the parent hash value of this node.
+    fn parent_hash(&amp;self) -&gt; &amp;[u8] {}
+
+    /// Set the tree hash value for the given node.
+    /// This assuming that the node caches the tree hash.
+    fn set_tree_hash(&amp;mut self, Vec&lt;u8&gt;) {}
+
+    /// Get the tree hash value for the given node.
+    fn tree_hash(&amp;self) -&gt; &amp;[u8] {}
+
+    /// Verify the signature on a given leaf node. Returns an
+    /// error if called on a non-leaf node.
+    fn verify(&amp;self) -&gt; Result&lt;bool, TreeSyncNodeError&gt; {}
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h3 id="treesync-api"><a class="header" href="#treesync-api">TreeSync API</a></h3>
+<p>Note, that a majority of the tree operations are performed on TreeSyncDiffs (see
+below).</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>struct TreeSync&lt;Node: TreeSyncNode, KeyStore: TreeSyncKeyStore&gt; {
+    FLBBinaryTree&lt;Option&lt;Node&gt;&gt;
+}
+
+impl&lt;Node: TreeSyncNode, KeyStore: TreeSyncKeyStore&gt; TreeSync&lt;Node, KeyStore&gt; {
+    /// Return the tree hash of the root node.
+    fn tree_hash(&amp;self) -&gt; Vec&lt;u8&gt; {}
+
+    /// Verify the parent hash of every parent node in the tree.
+    fn verify_parent_hashes -&gt; Result&lt;(), TreeSyncError&gt; {}
+
+    /// Merge the given diff into the `TreeSync` instance. This operation
+    /// re-computes all necessary tree hashes.
+    /// Note, that the private values corresponding to the ones in the
+    /// TreeSync should be committed at the same time.
+    fn merge_diff(&amp;mut self, tree_sync_diff: TreeSyncDiff) -&gt; Result&lt;(), TreeSyncError&gt; {}
+
+    /// Create an empty diff based on this TreeSync instance all operations
+    /// are created based on an initial, empty diff.
+    fn empty_diff(&amp;self) -&gt; TreeSyncDiff {}
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h3 id="treesyncdiffs"><a class="header" href="#treesyncdiffs">TreeSyncDiffs</a></h3>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>struct&lt;Node: TreeSyncNode&gt; TreeSyncDiff&lt;Node&gt; {
+    nodes: HashMap&lt;NodeIndex,Option&lt;Node&gt;&gt;,
+}
+
+impl&lt;Node: TreeSyncNode, KeyStore: TreeSyncKeyStore&gt; TreeSyncDiff&lt;Node&gt; {
+    /// Update a leaf node and blank the nodes in the updated leaf's direct path.
+    fn update_leaf(&amp;mut self, leaf_node: Node, leaf_index: LeafIndex) -&gt; TreeSyncDiff {}
+
+    /// Adds a new leaf to the tree either by filling a blank leaf or by creating a new leaf,
+    /// inserting intermediate blanks as necessary. This also adds the leaf_index of the new
+    /// leaf to the `unmerged_leaves` state of the parent nodes in its direct path.
+    fn add_leaf(&amp;mut self, leaf_node: Node) -&gt; Result&lt;TreeSyncDiff, TreeSyncError&gt; {}
+
+    /// Remove a group member by blanking the target leaf and its direct path.
+    fn remove_leaf(&amp;mut self, leaf_index: LeafIndex) -&gt; Result&lt;TreeSyncDiff, TreeSyncError&gt; {}
+
+    /// Process a given update path, consisting of a vector of `Node`. This
+    /// function
+    /// * replaces the nodes in the direct path of the given `leaf_node` with the
+    ///   the ones in `path` and
+    /// * computes the `parent_hash` of all nodes in the path and compares it to the one in
+    ///   the `leaf_node`.
+    fn update_path(&amp;mut self, leaf_node: Node, path: Vec&lt;Node&gt;) -&gt; TreeSyncDiff {}
+
+    /// Compute the tree hash of the TreeSync instance we would get when merging the diff.
+    fn tree_hash(&amp;self) -&gt; Vec&lt;u8&gt; {}
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h3 id="treesync-usage-example"><a class="header" href="#treesync-usage-example">TreeSync Usage Example</a></h3>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>/// This function demonstrates how TreeSync could be used to manage a tree and could be
+/// used in create_commit to create a provisional tree and the
+/// corresponding values (tree_hash, commit_secret, etc).
+/// It returns the diff resulting from the operations applied to the TreeSync instance,
+/// as well as the vector of `NodeSeed`s that can then be encrypted using TreeKEM.
+/// Note, that the application with apply_commit is slightly asymmetrical, as we would potentially have
+/// to pass in an additional `path` for TreeSync to apply.
+fn apply_proposals(&amp;self, key_store: &amp;KeyStore, proposal_list: Vec&lt;Proposal&gt;) -&gt; Result&lt;(TreeSyncDiff), ApplyProposalsError&gt;{
+    // ...
+    // as Proposals are not generic, we have to translate them
+    // individually to TreeSync operations
+    // the assumption here is that the list of proposals is already
+    // ordered by type and order as per commit
+    let mut path_required = false;
+    let mut my_new_key_package = None;
+    let mut diff = self.tree_sync.empty_diff();
+    for proposal in &amp;proposal_list {
+        match proposal {
+          Update(key_package) =&gt; {
+              // If we process an update, we need to include a path in the end
+              path_required = true;
+              // We process self updates later using the update_path function
+              if key_package.identity() != &amp;self.identity {
+                  diff.update_leaf(key_package.into())
+              } else {
+                  my_new_key_package = Some(key_package)
+              }
+          },
+          Add(key_package) =&gt; diff.add(TreeSyncNode::from(key_package)),
+          // It's not clear yet how to expose &quot;identity&quot; to TreeSync.
+          Remove(leaf_index) =&gt; {
+              // If we process a remove, we need to include a path in the end
+              path_required = true;
+              diff.remove(leaf_index),
+          }
+        };
+    }
+
+
+    // If we want to create a path and/or one of the updates was a
+    // self-update.
+    if path_required || my_new_key_package.is_some() {
+        // a path is required, but there's no explicit update, generate a new key_package
+        if my_new_key_package.is_none() {
+            my_new_key_package = key_store.generate_key_package_bundle(...);
+        }
+        // We assume that this function gives us the path based on the leaf_secret of the
+        // key package bundle, which is in the key store.
+        let (path, path_secrets) = create_path(&amp;key_store, &amp;my_new_key_package)?;
+        // The private values generated in the process are put into the key store
+        // This will compute the path secret and set it in the new leaf node.
+        diff.update_path(TreeSyncLeafNode(my_new_key_package.unwrap()), path)?;
+    } else {
+        diff
+    }
+
+    // We can now call TreeKEM and encrypt the `path_secrets` (see below).
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h2 id="treekem-trait"><a class="header" href="#treekem-trait">TreeKEM Trait</a></h2>
+<p>TreeKEM would take one of the &quot;node seed&quot; discussed above and encrypt/decrypt
+it. For encryption/decryption it would need access to a TreeSync instance, where
+<code>Node</code> implements <code>TreeKemNode</code>, which in turn provides the functions that
+TreeKEM needs. In particular, it would have to provide access to the public keys
+of each node.</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>trait TreeKemNode&lt;KeyStore: TreeSyncKeyStore&gt; {
+    /// Encrypt a given plaintext to the node's public key.
+    fn encrypt(&amp;self, plaintext: &amp;[u8]) -&gt; HpkeCiphertext {}
+
+    /// Decrypt a given ciphertext using the secret key corresponding to the node.
+    fn decrypt(&amp;self, key_store: &amp;KeyStore, ciphertext: &amp;HpkeCiphertext) -&gt; Vec&lt;u8&gt; {}
+}
+
+trait&lt;KeyStore: TreeSyncKeyStore&gt; TreeKem&lt;KeyStore&gt; {
+    /// Create an UpdatePath by encrypting a vector of `NodeSeed`s
+    /// to the direct path of our own leaf.
+    fn encrypt_path(&amp;self, path: Vec&lt;NodeSeed&gt;) -&gt; Result&lt;UpdatePath, TreeKemError&gt; {}
+
+    /// Decrypt an UpdatePath, returning the `NodeSeed` and the vector of `Node`s.
+    fn decrypt_path(&amp;self, key_store: KeyStore, update_path: UpdatePath) -&gt; Result&lt;(NodeSeed, Vec&lt;Node&gt;), TreeKemError&gt; {}
+}
+
+<span class="boring">}
+</span></code></pre></pre>
+<p>Questions:</p>
+<ul>
+<li>Should we allow TreeKEM to know about KeyPackages or do we draw the
+abstraction line at public keys? It needs to know about KeyPackages to be able
+to return an UpdatePath. Otherwise it would be a vector of UpdatePathNode.</li>
+</ul>
+<p>TODO: Create a KeyStore API for TreeKem. See https://github.com/franziskuskiefer/key-store-rs/blob/main/src/traits.rs</p>
+<h3 id="keystore-api-old-api-for-treesync"><a class="header" href="#keystore-api-old-api-for-treesync">KeyStore API (old API for TreeSync)</a></h3>
+<p>TreeSync requires a place in which to store secrets and private keys. In
+particular, it should store:</p>
+<ul>
+<li>Pairs of <code>(PrivateState, NodeSeed)</code> indexed by <code>PrivateStateHandle</code> for updates to one's own leaf node. These
+are independent of a given group and get consumed when used.</li>
+<li>A <code>NodeSeed</code>, which represents the <code>CommitSecret</code> in MLS-terms.</li>
+<li>A number of <code>PrivateState</code>, representing the private values of the nodes in
+one's own direct path, indexed by Node indices. This includes the
+<code>PrivateState</code> of the leaf.</li>
+<li>A temporary <code>Vec&lt;PrivateState&gt;</code>, for the private part of a provisional
+TreeSync state.</li>
+<li>A temporary <code>NodeSeed</code>, for the private part of a provisional TreeSync state.</li>
+</ul>
+<p>The individual get and erase functions allow the persistence of derivations of
+the <code>NodeSeed</code> before deleting it.</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>trait TreeSyncKeyStore&lt;Node: TreeSyncNode&gt; {
+    /// Store a pair of `Node::NodeSeed` and `Node::PrivateState` corresponding to a
+    /// `Node` meant to be used as a leaf node in a future update. Note, that
+    /// the `Node::NodeSeed` will only be used if we commit the update ourselves.
+    fn store_leaf_node_private_state(&amp;mut self, node_seed: Node::NodeSeed, private_values: Node::PrivateState) {}
+
+    /// Take a pair of `Node::NodeSeed` and `Node::PrivateState` corresponding to a
+    /// `Node::PrivatStateHandle`, thereby removing it from the store.
+    fn take_leaf_node_private_state(&amp;mut self, handle: Node::PrivateStateHandle) -&gt; Result&lt;(Node::NodeSeed, Node:: PrivateState), KeyStoreError&gt; {}
+
+    /// Store the temporary `Vec&lt;Node::PrivateState&gt;` and `Node::NodeSeed`.
+    fn store_temporary_private_states(&amp;mut self, private_values: (Vec&lt;Node::PrivateState&gt;, Node::NodeSeed)) {}
+
+    /// Commit to the current temporary `Vec&lt;Node::PrivateState&gt;` and `Node::NodeSeed`
+    /// by using it to overwrite the corresponding non-temporary values.
+    fn commit_to_temporary_values(&amp;mut self) {}
+
+    /// Get the `Node::NodeSeed`. Note, that it should be removed using
+    /// `erase_node_seed` after it was used.
+    fn node_seed(&amp;self) -&gt; Node::NodeSeed {}
+
+    /// Get the `Node::NodeSeed`. Note, that it should be removed using
+    /// `erase_node_seed` after it was used.
+    fn erase_node_seed(&amp;mut self) {}
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h2 id="binary-tree-api"><a class="header" href="#binary-tree-api">Binary Tree API</a></h2>
+<p><code>TreeSync</code>, <code>TreeKEM</code> and <code>TreeDEM</code> rely on an underlying full, left-balenced
+binary tree representation <code>FLBBinaryTree</code> to organise its data and to process
+it.</p>
+<p>As discussed above, the following binary tree API relies on the indices of an
+array-based binary tree representation. While the binary tree implementation
+needs to provide an interface based on these indices, it does not necessarily
+need to organise the data in memory in the style of the array-representation.</p>
+<pre><pre class="playground"><code class="language-rust">
+<span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>trait FLBBinaryTree&lt;Node&gt; {
+    /// Obtain a reference to the data contained in the `Node` at index `node_index`.
+    /// Returns an error if the index is outside of the tree.
+    fn node(&amp;self, node_index: NodeIndex) -&gt; Result&lt;&amp;Node, FLBBBinaryTreeError&gt; {}
+
+    /// Obtain a mutable reference to the data contained in the `Node` at index `node_index`.
+    /// Returns an error if the index is outside of the tree.
+    fn node_mut(&amp;mut self, node_index: NodeIndex) -&gt; Result&lt;&amp;mut Node, FLBBBinaryTreeError&gt; {}
+
+    /// Add two nodes to the right side of the tree. Nodes can only be
+    /// added in pairs to keep the tree full.
+    fn add(&amp;mut self, node_1:Node , node_2: Node) -&gt; Result&lt;(), FLBBBinaryTreeError&gt; {}
+
+    /// Remove the two rightmost nodes of the tree.
+    fn remove(&amp;mut self) -&gt; Result&lt;(), FLBBBinaryTreeError&gt; {}
+}
+<span class="boring">}
+</span></code></pre></pre>
+<h2 id="open-questionstodos"><a class="header" href="#open-questionstodos">Open Questions/TODOs:</a></h2>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+What's the <code>BinaryTree</code> API? (FK)
+<ul>
+<li>Added a secion on full, left-balanced BinaryTree API. It leaves a lot of
+functionality in <code>TreeSync</code>, but it keeps the interface simple and small.</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox"/>
+How do diffs work with the key store? (FK)
+<ul>
+<li>There's now a TreeSync specific KeyStore API that includes temporary values.</li>
+</ul>
+<ul>
+<li><input disabled="" type="checkbox" checked=""/>
+Write an example of what kind of secrets we want to store and when, as
+well as what kind of secrets we want to delete and when.</li>
+<li><input disabled="" type="checkbox"/>
+Store secrets based on group + epoch.</li>
+<li><input disabled="" type="checkbox"/>
+Implement CRUD interface.</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox"/>
+What's the most efficient data structure for <code>TreeSyncDiff</code>? (FK)
+<ul>
+<li>If it's a vector, the elements should get a struct.</li>
+<li>Initial idea is to make it a <code>HashMap&lt;NodeIndex,TreeSyncNode&gt;</code></li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox"/>
+Does any of these structs need internal mutability? (FK)</li>
+<li><input disabled="" type="checkbox"/>
+Should there be shared functionality for diffs? (FK)</li>
+<li><input disabled="" type="checkbox"/>
+<code>TreeSync</code> should have a cache for hashes. (FK)
+<ul>
+<li>The current design requires the underlying nodes to do the hashing.
+Not sure if that's the optimal approach.</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox"/>
+Design API for TreeDEM</li>
+<li><input disabled="" type="checkbox"/>
+Rework Diff types to be abstract and independent of the binary tree implementation
+<ul>
+<li>We have the same argument here as for MLS. We need some way to address individual nodes
+and we use indices from the array-based representation for that. As long as the underlying
+binary tree maps that to the underlying memory model, it should work fine.</li>
+</ul>
+</li>
+<li><input disabled="" type="checkbox"/>
+Do we want persistence for diffs?</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="type-enforced-verification"><a class="header" href="#type-enforced-verification">Type-Enforced Verification</a></h1>
+<p>We use Rust's type checker to achieve additional security guarantees regarding
+the signing and verification of structs. There are four traits:</p>
+<ul>
+<li><code>Signable</code>: A payload that the sender/signer of a message can create. The
+trait provides a <code>sign</code> function that produces a <code>SignedStruct</code>.</li>
+<li><code>SignedStruct</code>: The result of signing a <code>Signable</code> struct. This struct can
+actually be encoded and sent over the wire. The <code>SignedStruct</code> does not
+necessarily contain all the information required to sign or verify the struct.</li>
+<li><code>Verifiable</code>: A payload, potentially received from the wire with a signature
+and all information required to verify the struct. When receiving a
+<code>SignedStruct</code>, the receiver can add additional information required to make
+the struct verifiable. Provides a <code>verify</code> function.</li>
+<li><code>VerifiedStruct</code>: The result of calling the <code>verify</code> function on a
+<code>Verifiable</code> struct. The <code>VerifiedStruct</code> is what is accepted by further
+processing functions on the receiving side.</li>
+</ul>
+<p><img src="./static/signable.svg" alt="Traits around signing and verification in OpenMLS." /></p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="performance"><a class="header" href="#performance">Performance</a></h1>
+<p>How does OpenMLS (and MLS in general) perform in different settings?</p>
+<p>Performance measurements are implemented <a href="https://github.com/openmls/openmls/blob/franziskus/benchmarks/benches/group.rs">here</a> and can be run with <code>cargo bench --bench group</code>.
+Make sure that check in the code which scenarios and group sizes are enabled.</p>
+<p><a href="https://docs.google.com/spreadsheets/d/1nZv8lpT28JctDVo4ARBLZCKcIdvo-h8cIyN3_dIedFU">OpenMLS Performance Spreadsheet</a></p>
+<h2 id="real-world-scenarios"><a class="header" href="#real-world-scenarios">Real World Scenarios</a></h2>
+<h3 id="stable-group"><a class="header" href="#stable-group">Stable group</a></h3>
+<p>Many private groups follow this model</p>
+<ul>
+<li>Group is created by user P1</li>
+<li>P1 invites a set of N other users</li>
+<li>The group is used for messaging between the N+1 members</li>
+<li>Every X messages one user in the group sends an update</li>
+</ul>
+<h3 id="somewhat-stable-group"><a class="header" href="#somewhat-stable-group">Somewhat stable group</a></h3>
+<p>This can model a company or team wide group where regularly but infrequently users are added and users leave</p>
+<ul>
+<li>Group is created by user P1</li>
+<li>P1 invites a set of N other users</li>
+<li>The group is used for messaging between the members</li>
+<li>Every X messages one user in the group sends an update</li>
+<li>Every Y messages Q users are added</li>
+<li>Every Z messages R users are removed</li>
+</ul>
+<h3 id="high-fluctuation-group"><a class="header" href="#high-fluctuation-group">High fluctuation group</a></h3>
+<p>This models public groups where users frequently join and leave.
+Real-time scenarios such as <a href="https://gather.town">gather.town</a> are an example of high fluctuation groups.
+It is the same scenario as the somewhat stable group but with a very small Y, Z.</p>
+<h2 id="extreme-scenarios"><a class="header" href="#extreme-scenarios">Extreme Scenarios</a></h2>
+<p>In addition to the three scenarios above extreme and corner cases are interesting.</p>
+<h3 id="every-second-leave-is-blank"><a class="header" href="#every-second-leave-is-blank">Every second leave is blank</a></h3>
+<p>Only every second leave in the tree is non-blank.</p>
+<h2 id="use-case-scenarios"><a class="header" href="#use-case-scenarios">Use Case Scenarios</a></h2>
+<p>A collection of common use cases/flows.</p>
+<h3 id="long-time-offline-device"><a class="header" href="#long-time-offline-device">Long-time offline device</a></h3>
+<p>If a device has been offline for a while, it has to process a large number of application and protocol messages.</p>
+<h2 id="tree-scenarios"><a class="header" href="#tree-scenarios">Tree scenarios</a></h2>
+<p>In addition the scenarios above it is interesting to look at the same scenario but with different states of the tree.
+For example, take the stable group with N members messaging each other.
+How is the performance different between a message sent right after group setup, i.e. each member only joined the group without other messages being sent, and a tree where every member has sent an update before the message?</p>
+<h2 id="measurements"><a class="header" href="#measurements">Measurements</a></h2>
+<ul>
+<li>Group creation
+<ul>
+<li>create group</li>
+<li>create proposals</li>
+<li>create welcome</li>
+<li>apply commit</li>
+</ul>
+</li>
+<li>Join group
+<ul>
+<li>create group from welcome</li>
+</ul>
+</li>
+<li>Send application message</li>
+<li>Receive application message</li>
+<li>Send update
+<ul>
+<li>create proposal</li>
+<li>create commit</li>
+<li>apply commit</li>
+</ul>
+</li>
+<li>Receive update
+<ul>
+<li>apply commit</li>
+</ul>
+</li>
+<li>Add user sender
+<ul>
+<li>create proposal</li>
+<li>create welcome</li>
+<li>apply commit</li>
+</ul>
+</li>
+<li>Existing user getting an add
+<ul>
+<li>apply commit</li>
+</ul>
+</li>
+<li>Remove user sender
+<ul>
+<li>create proposal</li>
+<li>create commit</li>
+<li>apply commit</li>
+</ul>
+</li>
+<li>Existing user getting a remove
+<ul>
+<li>apply commit</li>
+</ul>
+</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="forward-secrecy"><a class="header" href="#forward-secrecy">Forward Secrecy</a></h1>
+<p>To achieve forward secrecy, OpenMLS drops key material immediately after a given
+key is no longer required by the protocol. For some keys this is simple, as they
+are used only once and there is no need to store them for later use. However,
+for other keys, the time of deletion is a result of a trade-off between
+functionality and forward secrecy. For example, it can be desirable to keep the
+<code>SecretTree</code> of past epochs for a while to allow decryption of straggling
+application messages sent in previous epochs.</p>
+<p>In this chapter, we detail how we achieve forward secrecy for the different types of keys used throughout MLS.</p>
+<h2 id="ratchet-tree"><a class="header" href="#ratchet-tree">Ratchet Tree</a></h2>
+<p>The ratchet tree contains the secret key material of the client's leaf, as well
+(potentially) that of nodes in its direct path. The secrets in the tree are
+changed in the same way as the tree itself: via the merge of a previously
+prepared diff.</p>
+<h3 id="commit-creation"><a class="header" href="#commit-creation">Commit Creation</a></h3>
+<p>Upon the creation of a commit, any fresh key material introduced by the
+committer is stored in the diff. It exists alongside the key material of the
+ratchet tree before the commit until the client merges the diff, upon which the
+key material in the original ratchet tree is dropped.</p>
+<h3 id="commit-processing"><a class="header" href="#commit-processing">Commit Processing</a></h3>
+<p>Upon receiving a commit from another group member, the client processes the
+commit until they have a <code>StagedCommit</code>, which in turn contains a ratchet tree
+diff. The diff contains any potential key material they decrypted from the
+commit, as well as any potential key material that was introduced to the tree as
+part of an update that someone else committed for them. The key material in the
+original ratchet tree is dropped as soon as the <code>StagedCommit</code> (and thus the
+diff) is merged into the tree.</p>
+<h3 id="sending-application-messages"><a class="header" href="#sending-application-messages">Sending application messages</a></h3>
+<p>When an application message is created, the corresponding encryption key is derived from the <code>SecretTree</code> and immediately discarded after encrypting the message to guarantee the best possible Forward Secrecy. This means that the message author cannot decrypt application messages. If access to the messages content is required after creating the message, a copy of the plaintext message should be kept by the application.</p>
+<h3 id="receiving-encrypted-messages"><a class="header" href="#receiving-encrypted-messages">Receiving encrypted messages</a></h3>
+<p>When an encrypted message is received, the corresponding decryption key is derived from the <code>SecretTree</code>. By default, the key material is discarded immediately after decryption for the best possible Forward Secrecy. In some cases, the Delivery Service cannot guarantee reliable operation and applications need to be more tolerant to accomodate this – at the expense of Forward Secrecy.</p>
+<p>OpenMLS can address 3 scenarios:</p>
+<ul>
+<li>
+<p>The Delivery Service cannot guarantee that application messages from one epoch are sent before the beginning of the next epoch. To address this, applications can configure their groups to keep the necessary key material around for past epochs by setting the <code>max_past_epochs</code> field in the <code>MlsGroupConfig</code> to the desired number of epochs.</p>
+</li>
+<li>
+<p>The Delivery Service cannot guarantee that application messages will arrive in order within the same epoch. To address this, applications can configure the <code>out_of_order_tolerance</code> parameter of the <code>SenderRatchetConfiguration</code>. The configuration can be set as the <code>sender_ratchet_configuration</code> parameter of the <code>MlsGroupConfig</code>.</p>
+</li>
+<li>
+<p>The Delivery Service cannot guarantee that application messages won't be dropped within the same epoch. To address this, applications can configure the <code>maximum_forward_distance</code> parameter of the <code>SenderRatchetConfiguration</code>. The configuration can be set as the <code>sender_ratchet_configuration</code> parameter of the <code>MlsGroupConfig</code>.</p>
+</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+            </nav>
+
+        </div>
+
+        <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        <script type="text/javascript">
+        window.addEventListener('load', function() {
+            window.setTimeout(window.print, 100);
+        });
+        </script>
+    </body>
+</html>

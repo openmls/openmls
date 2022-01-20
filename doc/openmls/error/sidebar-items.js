@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["ErrorString","A wrapper struct for an error string. This can be used when no complex error variant is needed."]]});
