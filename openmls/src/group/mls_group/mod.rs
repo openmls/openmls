@@ -234,6 +234,11 @@ impl MlsGroup {
         self.group.group_id()
     }
 
+    /// Return the epoch
+    pub fn epoch(&self) -> GroupEpoch {
+        self.group.context().epoch()
+    }
+
     /// Returns an `Iterator` over staged proposals.
     pub fn pending_proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
         self.proposal_store.proposals()
