@@ -6,8 +6,8 @@
 
 use crate::{
     ciphersuite::signable::Signable, config::*, credentials::*, framing::*, group::*,
-    key_packages::*, messages::proposals::*, messages::public_group_state::*, messages::*,
-    schedule::*, test_utils::*, tree::sender_ratchet::*, treesync::node::Node,
+    key_packages::*, messages::proposals::*, messages::*, schedule::*, test_utils::*,
+    tree::sender_ratchet::*, treesync::node::Node,
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -25,8 +25,6 @@ pub struct MessagesTestVector {
     group_info: String,    /* serialized GroupInfo */
     group_secrets: String, /* serialized GroupSecrets */
     welcome: String,       /* serialized Welcome */
-
-    public_group_state: String, /* serialized PublicGroupState */
 
     add_proposal: String,            /* serialized Add */
     update_proposal: String,         /* serialized Update */
@@ -68,7 +66,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
     let ratchet_tree: Vec<Option<Node>> = group.treesync().export_nodes();
 
     // We can't easily get a "natural" GroupInfo, so we just create one here.
-    let group_info = GroupInfoPayload::new(
+    let group_info = GroupInfoTbs::new(
         group.group_id().clone(),
         GroupEpoch(0),
         crypto
@@ -252,12 +250,6 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
                 .tls_serialize_detached()
                 .expect("An unexpected error occurred."),
         ), /* serialized Welcome */
-
-        public_group_state: bytes_to_hex(
-            &public_group_state
-                .tls_serialize_detached()
-                .expect("An unexpected error occurred."),
-        ), /* serialized PublicGroupState */
 
         add_proposal: bytes_to_hex(
             &add_proposal
@@ -457,23 +449,6 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
             panic!("Welcome encoding mismatch");
         }
         return Err(MessagesTestVectorError::WelcomeEncodingMismatch);
-    }
-
-    // PublicGroupState
-    let tv_public_group_state = hex_to_bytes(&tv.public_group_state);
-    let my_public_group_state =
-        VerifiablePublicGroupState::tls_deserialize(&mut tv_public_group_state.as_slice())
-            .expect("An unexpected error occurred.")
-            .tls_serialize_detached()
-            .expect("An unexpected error occurred.");
-    if tv_public_group_state != my_public_group_state {
-        log::error!("  PublicGroupState encoding mismatch");
-        log::debug!("    Encoded: {:x?}", my_public_group_state);
-        log::debug!("    Expected: {:x?}", tv_public_group_state);
-        if cfg!(test) {
-            panic!("PublicGroupState encoding mismatch");
-        }
-        return Err(MessagesTestVectorError::PublicGroupStateEncodingMismatch);
     }
 
     // AddProposal

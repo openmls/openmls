@@ -1,5 +1,3 @@
-use crate::messages::PublicGroupState;
-
 use super::*;
 
 impl MlsGroup {

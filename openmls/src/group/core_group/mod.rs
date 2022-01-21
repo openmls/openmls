@@ -588,13 +588,20 @@ impl CoreGroup {
     }
 
     /// Export the `PublicGroupState`
-    pub(crate) fn export_public_group_state(
+    pub(crate) fn export_group_info(
         &self,
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
-    ) -> Result<PublicGroupState, CredentialError> {
-        let pgs_tbs = PublicGroupStateTbs::new(backend, self)?;
-        pgs_tbs.sign(backend, credential_bundle)
+    ) -> Result<GroupInfo, CredentialError> {
+        let ciphersuite = self.ciphersuite();
+        let external_pub = self
+            .group_epoch_secrets()
+            .external_secret()
+            .derive_external_keypair(backend.crypto(), ciphersuite)
+            .public;
+        let other_extensions = &[]
+        let group_info_tbs = GroupInfoTbs::new(self.version(), &self.group_context, other_extensions, confirmation_tag, signer);
+        group_info_tbs.sign(backend, credential_bundle)
     }
 
     /// Returns `true` if the group uses the ratchet tree extension anf `false

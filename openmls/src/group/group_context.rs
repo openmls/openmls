@@ -60,6 +60,10 @@ impl GroupContext {
     pub fn epoch(&self) -> GroupEpoch {
         self.epoch
     }
+    /// Return the tree hash as slice.
+    pub fn tree_hash(&self) -> &[u8] {
+        self.tree_hash.as_slice()
+    }
     /// Return the extensions of the context
     pub fn extensions(&self) -> &[Extension] {
         self.extensions.as_slice()

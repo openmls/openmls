@@ -1,7 +1,7 @@
 use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
-    ciphersuite::signable::Signable,
+    ciphersuite::{hash_ref::HashReference, signable::Signable},
     config::Config,
     framing::*,
     group::{core_group::*, *},
@@ -261,15 +261,20 @@ impl CoreGroup {
                 Vec::new()
             };
             // Create GroupInfo object
-            let group_info = GroupInfoPayload::new(
-                provisional_group_context.group_id().clone(),
-                provisional_group_context.epoch(),
-                tree_hash,
-                confirmed_transcript_hash.clone(),
-                self.group_context_extensions(),
+            let group_info = GroupInfoTbs::new(
+                self.version(),
+                &provisional_group_context,
                 &other_extensions,
                 confirmation_tag.clone(),
-                own_leaf_index,
+                HashReference::new(
+                    &self
+                        .treesync()
+                        .own_leaf_node()?
+                        .key_package()
+                        .hash(backend)?,
+                    ciphersuite,
+                    backend.crypto(),
+                )?,
             );
             let group_info = group_info.sign(backend, params.credential_bundle())?;
 

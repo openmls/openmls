@@ -1,6 +1,5 @@
 use crate::{
-    binary_tree::LeafIndex,
-    ciphersuite::{signable::*, *},
+    ciphersuite::{hash_ref::KeyPackageRef, signable::*, *},
     config::ProtocolVersion,
     extensions::*,
     group::*,
@@ -21,13 +20,13 @@ use tls_codec::{Serialize as TlsSerializeTrait, *};
 
 // Public
 pub mod errors;
+pub mod group_info;
 pub mod proposals;
-pub mod public_group_state;
 
 pub use codec::*;
 pub use errors::*;
+pub use group_info::*;
 pub use proposals::*;
-pub use public_group_state::*;
 
 // Tests
 #[cfg(test)]
@@ -148,146 +147,6 @@ impl Commit {
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct ConfirmationTag(pub(crate) Mac);
-
-#[derive(TlsDeserialize, TlsSerialize, TlsSize)]
-pub(crate) struct GroupInfoPayload {
-    group_id: GroupId,
-    epoch: GroupEpoch,
-    tree_hash: TlsByteVecU8,
-    confirmed_transcript_hash: TlsByteVecU8,
-    group_context_extensions: TlsVecU32<Extension>,
-    other_extensions: TlsVecU32<Extension>,
-    confirmation_tag: ConfirmationTag,
-    // TODO: #541 replace sender_index with [`KeyPackageRef`]
-    signer_index: LeafIndex,
-}
-
-impl GroupInfoPayload {
-    #[allow(clippy::too_many_arguments)] // TODO: #569 refactor GroupInfoPayload
-    /// Create a new group info payload struct.
-    pub(crate) fn new(
-        group_id: GroupId,
-        epoch: GroupEpoch,
-        tree_hash: Vec<u8>,
-        confirmed_transcript_hash: Vec<u8>,
-        group_context_extensions: &[Extension],
-        other_extensions: &[Extension],
-        confirmation_tag: ConfirmationTag,
-        signer_index: LeafIndex,
-    ) -> Self {
-        Self {
-            group_id,
-            epoch,
-            tree_hash: tree_hash.into(),
-            confirmed_transcript_hash: confirmed_transcript_hash.into(),
-            group_context_extensions: group_context_extensions.into(),
-            other_extensions: other_extensions.into(),
-            confirmation_tag,
-            signer_index,
-        }
-    }
-}
-
-impl Signable for GroupInfoPayload {
-    type SignedOutput = GroupInfo;
-
-    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        self.tls_serialize_detached()
-    }
-}
-
-/// GroupInfo
-///
-/// The struct is split into the payload and the signature.
-/// `GroupInfoPayload` holds the actual values, stored in `payload` here.
-///
-/// > 11.2.2. Welcoming New Members
-///
-/// ```text
-/// struct {
-///   opaque group_id<0..255>;
-///   uint64 epoch;
-///   opaque tree_hash<0..255>;
-///   opaque confirmed_transcript_hash<0..255>;
-///   Extension extensions<0..2^32-1>;
-///   MAC confirmation_tag;
-///   uint32 signer_index;
-///   opaque signature<0..2^16-1>;
-/// } GroupInfo;
-/// ```
-pub(crate) struct GroupInfo {
-    payload: GroupInfoPayload,
-    signature: Signature,
-}
-
-impl GroupInfo {
-    /// Get the signer index.
-    pub(crate) fn signer_index(&self) -> LeafIndex {
-        self.payload.signer_index
-    }
-
-    /// Get the group ID.
-    pub(crate) fn group_id(&self) -> &GroupId {
-        &self.payload.group_id
-    }
-
-    /// Get the epoch.
-    pub(crate) fn epoch(&self) -> GroupEpoch {
-        self.payload.epoch
-    }
-
-    /// Get the confirmed transcript hash.
-    pub(crate) fn confirmed_transcript_hash(&self) -> &[u8] {
-        self.payload.confirmed_transcript_hash.as_slice()
-    }
-
-    /// Get the confirmed tag.
-    pub(crate) fn confirmation_tag(&self) -> &ConfirmationTag {
-        &self.payload.confirmation_tag
-    }
-
-    /// Get other application extensions.
-    pub(crate) fn other_extensions(&self) -> &[Extension] {
-        self.payload.other_extensions.as_slice()
-    }
-
-    /// Get the [`GroupContext`] extensions.
-    pub(crate) fn group_context_extensions(&self) -> &[Extension] {
-        self.payload.group_context_extensions.as_slice()
-    }
-
-    /// Set the group info's other extensions.
-    #[cfg(test)]
-    pub(crate) fn set_other_extensions(&mut self, extensions: Vec<Extension>) {
-        self.payload.other_extensions = extensions.into();
-    }
-
-    /// Re-sign the group info.
-    #[cfg(test)]
-    pub(crate) fn re_sign(
-        self,
-        credential_bundle: &CredentialBundle,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, CredentialError> {
-        self.payload.sign(backend, credential_bundle)
-    }
-}
-
-impl Verifiable for GroupInfo {
-    fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        self.payload.unsigned_payload()
-    }
-
-    fn signature(&self) -> &Signature {
-        &self.signature
-    }
-}
-
-impl SignedStruct<GroupInfoPayload> for GroupInfo {
-    fn from_payload(payload: GroupInfoPayload, signature: Signature) -> Self {
-        Self { payload, signature }
-    }
-}
 
 /// PathSecret
 ///

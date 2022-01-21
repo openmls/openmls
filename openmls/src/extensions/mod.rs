@@ -27,6 +27,7 @@ pub(crate) use serde::{Deserialize, Serialize};
 
 mod capabilities_extension;
 pub mod errors;
+mod external_pub;
 mod key_package_id_extension;
 mod life_time_extension;
 mod parent_hash_extension;

@@ -102,20 +102,23 @@ impl CoreGroup {
                 },
             };
 
+        // Get the signer index from the KeyPackageRef in the group info.
+        let signer_index: LeafIndex = { todo!() };
+
         // Commit secret is ignored when joining a group, since we already have
         // the joiner_secret.
         let (tree, _commit_secret_option) = TreeSync::from_nodes_with_secrets(
             backend,
             ciphersuite,
             nodes,
-            group_info.signer_index(),
+            signer_index,
             path_secret_option,
             key_package_bundle,
         )?;
 
         let group_members = tree.full_leaves()?;
         let signer_key_package = group_members
-            .get(&group_info.signer_index())
+            .get(&signer_index)
             .ok_or(WelcomeError::UnknownSender)?;
 
         // Verify GroupInfo signature

@@ -7,7 +7,7 @@ use crate::{
     config::{Config, ProtocolVersion},
     credentials::{CredentialBundle, CredentialType},
     group::{GroupEpoch, GroupId},
-    messages::{ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload, Welcome},
+    messages::{ConfirmationTag, EncryptedGroupSecrets, GroupInfoTbs, Welcome},
 };
 
 use rstest::*;
@@ -28,7 +28,7 @@ fn test_welcome_message_with_version(
     version: ProtocolVersion,
 ) {
     // We use this dummy group info in all test cases.
-    let group_info = GroupInfoPayload::new(
+    let group_info = GroupInfoTbs::new(
         GroupId::random(backend),
         GroupEpoch(123),
         vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
