@@ -26,8 +26,10 @@ pub(crate) use errors::{
 pub(crate) use group_context::*;
 
 // Public
-pub use mls_group::*;
 pub mod errors;
+pub use core_group::proposals::*;
+pub use core_group::staged_commit::StagedCommit;
+pub use mls_group::*;
 
 // Tests
 #[cfg(any(feature = "test-utils", test))]
