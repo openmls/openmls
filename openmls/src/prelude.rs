@@ -2,12 +2,7 @@
 //! Include this to get access to all the public functions of OpenMLS.
 
 // MlsGroup
-pub use crate::group::{
-    proposals::{ProposalStore, QueuedProposal},
-    EmptyInputError, GroupEpoch, GroupId, IncomingWireFormatPolicy, InnerState,
-    InvalidMessageError, MlsGroup, MlsGroupConfig, MlsGroupError, OutgoingWireFormatPolicy,
-    WireFormatPolicy, ALL_VALID_WIRE_FORMAT_POLICIES,
-};
+pub use crate::group::*;
 
 // Group errors
 pub use crate::group::errors::{
