@@ -2,7 +2,7 @@
 //! https://openmls.tech/book/message_validation.html#semantic-validation-of-message-framing
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme, OpenMlsCryptoProvider};
+use openmls_traits::OpenMlsCryptoProvider;
 use tls_codec::{Deserialize, Serialize};
 
 use rstest::*;
@@ -13,41 +13,7 @@ use crate::{
     key_packages::*,
 };
 
-// Helper function to generate a CredentialBundle
-pub(super) fn generate_credential_bundle(
-    identity: Vec<u8>,
-    credential_type: CredentialType,
-    signature_scheme: SignatureScheme,
-    backend: &impl OpenMlsCryptoProvider,
-) -> Result<Credential, CredentialError> {
-    let cb = CredentialBundle::new(identity, credential_type, signature_scheme, backend)?;
-    let credential = cb.credential().clone();
-    backend
-        .key_store()
-        .store(credential.signature_key(), &cb)
-        .expect("An unexpected error occurred.");
-    Ok(credential)
-}
-
-// Helper function to generate a KeyPackageBundle
-pub(super) fn generate_key_package_bundle(
-    ciphersuites: &[CiphersuiteName],
-    credential: &Credential,
-    extensions: Vec<Extension>,
-    backend: &impl OpenMlsCryptoProvider,
-) -> Result<KeyPackage, KeyPackageError> {
-    let credential_bundle = backend
-        .key_store()
-        .read(credential.signature_key())
-        .expect("An unexpected error occurred.");
-    let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, backend, extensions)?;
-    let kp = kpb.key_package().clone();
-    backend
-        .key_store()
-        .store(&kp.hash(backend).expect("Could not hash KeyPackage."), &kpb)
-        .expect("An unexpected error occurred.");
-    Ok(kp)
-}
+use super::utils::{generate_credential_bundle, generate_key_package_bundle};
 
 // Test setup values
 struct ValidationTestSetup {

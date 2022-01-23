@@ -8,7 +8,7 @@ use rstest_reuse::{self, *};
 
 use crate::{config::*, credentials::*, framing::*, group::*};
 
-use super::test_framing_validation::{generate_credential_bundle, generate_key_package_bundle};
+use super::utils::{generate_credential_bundle, generate_key_package_bundle};
 
 // Creates a group with one member
 fn create_group(

@@ -2,7 +2,7 @@
 //! https://openmls.tech/book/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -16,39 +16,38 @@ use crate::{
     key_packages::*,
 };
 
-/// Helper function to generate a CredentialBundle
-fn generate_credential_bundle(
-    identity: Vec<u8>,
-    ciphersuite: &Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) -> CredentialBundle {
-    CredentialBundle::new(
-        identity,
-        CredentialType::Basic,
-        ciphersuite.signature_scheme(),
-        backend,
-    )
-    .expect("Failed to generate CredentialBundle.")
-}
+use super::utils::{generate_credential_bundle, generate_key_package_bundle};
 
-/// Helper function to generate a KeyPackageBundle
-fn generate_key_package_bundle(
-    credential_bundle: &CredentialBundle,
-    ciphersuite: &Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) -> KeyPackageBundle {
-    KeyPackageBundle::new(&[ciphersuite.name()], credential_bundle, backend, vec![])
-        .expect("Failed to generate KeyPackageBundle")
-}
-
-/// Helper function to generate a CredentialBundle and KeyPackageBundle
+/// Helper function to generate and output CredentialBundle and KeyPackageBundle
 fn generate_credential_bundle_and_key_package_bundle(
     identity: Vec<u8>,
     ciphersuite: &Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) -> (CredentialBundle, KeyPackageBundle) {
-    let credential_bundle = generate_credential_bundle(identity, ciphersuite, backend);
-    let key_package_bundle = generate_key_package_bundle(&credential_bundle, ciphersuite, backend);
+    let credential = generate_credential_bundle(
+        identity,
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+        backend,
+    )
+    .expect("Failed to generate CredentialBundle.");
+    let credential_bundle = backend
+        .key_store()
+        .read::<SignaturePublicKey, CredentialBundle>(credential.signature_key())
+        .expect("An unexpected error occurred.");
+
+    let key_package =
+        generate_key_package_bundle(&[ciphersuite.name()], &credential, vec![], backend)
+            .expect("Failed to generate KeyPackage.");
+    let key_package_bundle = backend
+        .key_store()
+        .read(
+            &key_package
+                .hash(backend)
+                .expect("Could not hash KeyPackage"),
+        )
+        .expect("An unexpected error occurred.");
+
     (credential_bundle, key_package_bundle)
 }
 
