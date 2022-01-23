@@ -53,11 +53,11 @@ pub mod key_packages;
 pub mod key_store;
 pub mod messages;
 pub mod schedule;
+pub mod treesync;
 
 // Private
 mod binary_tree;
 mod tree;
-mod treesync;
 
 /// Single place, re-exporting the most used public functions.
 pub mod prelude;

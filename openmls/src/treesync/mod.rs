@@ -46,7 +46,7 @@ use self::{
 
 pub(crate) mod diff;
 mod hashes;
-pub(crate) mod node;
+pub mod node;
 pub(crate) mod treekem;
 pub(crate) mod treesync_node;
 
