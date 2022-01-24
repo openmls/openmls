@@ -68,6 +68,7 @@ use super::{
     group_context::*,
 };
 
+#[derive(Debug)]
 pub(crate) struct CreateCommitResult {
     pub(crate) commit: MlsPlaintext,
     pub(crate) welcome_option: Option<Welcome>,
