@@ -145,23 +145,23 @@
 <h2 id="detailed-list-of-validation-steps"><a class="header" href="#detailed-list-of-validation-steps">Detailed list of validation steps</a></h2>
 <h3 id="semantic-validation-of-message-framing"><a class="header" href="#semantic-validation-of-message-framing">Semantic validation of message framing</a></h3>
 <table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
-<tr><td><code>ValSem001</code></td><td>Wire format</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_validation.rs</code></td></tr>
-<tr><td><code>ValSem002</code></td><td>Group id</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_validation.rs</code></td></tr>
-<tr><td><code>ValSem003</code></td><td>Epoch</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_validation.rs</code></td></tr>
-<tr><td><code>ValSem004</code></td><td>Sender: Member: check the sender points to a non-blank leaf</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_validation.rs</code></td></tr>
-<tr><td><code>ValSem005</code></td><td>Application messages must use ciphertext</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_validation.rs</code></td></tr>
-<tr><td><code>ValSem006</code></td><td>Ciphertext: decryption needs to work</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_validation.rs</code></td></tr>
-<tr><td><code>ValSem007</code></td><td>Membership tag presence</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_validation.rs</code></td></tr>
-<tr><td><code>ValSem008</code></td><td>Membership tag verification</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_validation.rs</code></td></tr>
-<tr><td><code>ValSem009</code></td><td>Confirmation tag presence</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_validation.rs</code></td></tr>
-<tr><td><code>ValSem010</code></td><td>Signature verification</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_validation.rs</code></td></tr>
+<tr><td><code>ValSem001</code></td><td>Wire format</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
+<tr><td><code>ValSem002</code></td><td>Group id</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
+<tr><td><code>ValSem003</code></td><td>Epoch</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
+<tr><td><code>ValSem004</code></td><td>Sender: Member: check the sender points to a non-blank leaf</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
+<tr><td><code>ValSem005</code></td><td>Application messages must use ciphertext</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
+<tr><td><code>ValSem006</code></td><td>Ciphertext: decryption needs to work</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
+<tr><td><code>ValSem007</code></td><td>Membership tag presence</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
+<tr><td><code>ValSem008</code></td><td>Membership tag verification</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
+<tr><td><code>ValSem009</code></td><td>Confirmation tag presence</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
+<tr><td><code>ValSem010</code></td><td>Signature verification</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
 </tbody></table>
 <h3 id="semantic-validation-of-proposals-covered-by-a-commit"><a class="header" href="#semantic-validation-of-proposals-covered-by-a-commit">Semantic validation of proposals covered by a Commit</a></h3>
 <table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
-<tr><td><code>ValSem100</code></td><td>Add Proposal: Identity in proposals must be unique among proposals</td><td>✅</td><td>❌</td><td>TBD</td></tr>
+<tr><td><code>ValSem100</code></td><td>Add Proposal: Identity in proposals must be unique among proposals</td><td>✅</td><td>❌<sup>2</sup></td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem101</code></td><td>Add Proposal: Signature public key in proposals must be unique among proposals</td><td>✅</td><td>❌</td><td>TBD</td></tr>
 <tr><td><code>ValSem102</code></td><td>Add Proposal: HPKE init key in proposals must be unique among proposals</td><td>✅</td><td>❌</td><td>TBD</td></tr>
-<tr><td><code>ValSem103</code></td><td>Add Proposal: Identity in proposals must be unique among existing group members</td><td>✅</td><td>❌</td><td>TBD</td></tr>
+<tr><td><code>ValSem103</code></td><td>Add Proposal: Identity in proposals must be unique among existing group members</td><td>✅</td><td>❌<sup>2</sup></td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem104</code></td><td>Add Proposal: Signature public key in proposals must be unique among existing group members</td><td>✅</td><td>❌</td><td>TBD</td></tr>
 <tr><td><code>ValSem105</code></td><td>Add Proposal: HPKE init key in proposals must be unique among existing group members</td><td>✅</td><td>❌</td><td>TBD</td></tr>
 <tr><td><code>ValSem106</code></td><td>Add Proposal: required capabilities</td><td>❌<sup>1</sup></td><td>❌</td><td>TBD</td></tr>
@@ -170,7 +170,8 @@
 <tr><td><code>ValSem109</code></td><td>Update Proposal: Identity must be unchanged between existing member and new proposal</td><td>✅</td><td>❌</td><td>TBD</td></tr>
 <tr><td><code>ValSem110</code></td><td>Update Proposal: HPKE init key must be unique among existing members</td><td>✅</td><td>❌</td><td>TBD</td></tr>
 </tbody></table>
-<p><sup>1</sup> Partly implemented, see <code>TODO</code>s in <code>openmls/src/group/core_group/validation.rs</code>.</p>
+<p><sup>1</sup> Partly implemented, see <code>TODO</code>s in <code>openmls/src/group/core_group/validation.rs</code>.
+<sup>2</sup> Partly implemented, see <code>TODO</code>s in <code>openmls/src/group/core_group/test_proposal_validation.rs</code>.</p>
 <h3 id="commit-message-validation"><a class="header" href="#commit-message-validation">Commit message validation</a></h3>
 <table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
 <tr><td><code>ValSem200</code></td><td>Commit must not cover inline self Remove proposal</td><td>✅</td><td>❌</td><td>TBD</td></tr>

@@ -703,6 +703,7 @@
 <span id="702">702</span>
 <span id="703">703</span>
 <span id="704">704</span>
+<span id="705">705</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Functions in this module should never panic. However, if there is a bug in</span>
@@ -773,6 +774,7 @@
     <span class="ident">group_context</span>::<span class="kw-2">*</span>,
 };
 
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">CreateCommitResult</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">commit</span>: <span class="ident">MlsPlaintext</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">welcome_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Welcome</span><span class="op">&gt;</span>,
