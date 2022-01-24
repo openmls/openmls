@@ -146,7 +146,7 @@ impl<'a> TreeSyncDiff<'a> {
         let mut leaf_index_option = None;
         for (leaf_index, leaf_id) in leaf_ids.iter().enumerate() {
             let leaf_index: LeafIndex = u32::try_from(leaf_index)
-                .map_err(|_| LibraryError::Custom("free_leaf_index(): Could not convert index"))?;
+                .map_err(|_| LibraryError::custom("free_leaf_index(): Could not convert index"))?;
             if self.diff.node(*leaf_id)?.node().is_none() {
                 leaf_index_option = Some(leaf_index);
                 break;
@@ -288,7 +288,7 @@ impl<'a> TreeSyncDiff<'a> {
         let key_package_parent_hash = phe
             .as_parent_hash_extension()
             .map_err(|_| {
-                LibraryError::Custom("apply_received_update-path(): No parent hash etxension")
+                LibraryError::custom("apply_received_update-path(): No parent hash etxension")
             })?
             .parent_hash();
         if key_package_parent_hash != parent_hash {
@@ -384,7 +384,7 @@ impl<'a> TreeSyncDiff<'a> {
             let leaf_node = leaf
                 .node()
                 .as_ref()
-                .ok_or(LibraryError::Custom("filter_resolution(): Node was empty."))?;
+                .ok_or_else(|| LibraryError::custom("filter_resolution(): Node was empty."))?;
             let leaf = leaf_node.as_leaf_node()?;
             if let Some(position) = resolution
                 .iter()
@@ -689,7 +689,7 @@ impl<'a> TreeSyncDiff<'a> {
         let node = self.diff.node(leaf_id)?;
         match node.node() {
             Some(node) => Ok(node.as_leaf_node()?),
-            None => Err(LibraryError::Custom("own_leaf(): Node was empty.").into()),
+            None => Err(LibraryError::custom("own_leaf(): Node was empty.").into()),
         }
     }
 

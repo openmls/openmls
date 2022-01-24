@@ -137,7 +137,9 @@ impl MlsPlaintext {
         );
 
         if sender.sender_type == SenderType::Member {
-            let serialized_context = context.tls_serialize_detached()?;
+            let serialized_context = context
+                .tls_serialize_detached()
+                .map_err(LibraryError::missing_bound_check)?;
             mls_plaintext = mls_plaintext.with_context(serialized_context);
         }
 
@@ -169,7 +171,9 @@ impl MlsPlaintext {
         )?;
         mls_plaintext.set_membership_tag(
             backend,
-            &context.tls_serialize_detached()?,
+            &context
+                .tls_serialize_detached()
+                .map_err(LibraryError::missing_bound_check)?,
             membership_key,
         )?;
         Ok(mls_plaintext)
@@ -288,7 +292,8 @@ impl MlsPlaintext {
         serialized_context: &[u8],
         membership_key: &MembershipKey,
     ) -> Result<(), LibraryError> {
-        let tbs_payload = encode_tbs(self, serialized_context)?;
+        let tbs_payload =
+            encode_tbs(self, serialized_context).map_err(LibraryError::missing_bound_check)?;
         let tbm_payload =
             MlsPlaintextTbmPayload::new(&tbs_payload, &self.signature, &self.confirmation_tag)?;
         let membership_tag = membership_key.tag(backend, tbm_payload)?;

@@ -161,8 +161,13 @@ impl ProposalReference {
         backend: &impl OpenMlsCryptoProvider,
         proposal: &Proposal,
     ) -> Result<Self, LibraryError> {
-        let encoded = proposal.tls_serialize_detached()?;
-        let value = ciphersuite.hash(backend, &encoded)?.into();
+        let encoded = proposal
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
+        let value = ciphersuite
+            .hash(backend, &encoded)
+            .map_err(LibraryError::unexpected_crypto_error)?
+            .into();
         Ok(Self { value })
     }
 }

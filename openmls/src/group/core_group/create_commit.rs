@@ -68,7 +68,7 @@ impl CoreGroup {
                         }
                     } else {
                         return Err(
-                            LibraryError::Custom("create_commit(): Wrong proposal type").into()
+                            LibraryError::custom("create_commit(): Wrong proposal type").into()
                         );
                     }
                 } else {
@@ -185,7 +185,7 @@ impl CoreGroup {
             // It is ok to a library error here, because we know the MlsPlaintext contains a
             // Commit
             &MlsPlaintextCommitContent::try_from(&mls_plaintext).map_err(|_| {
-                LibraryError::Custom("create_commit(): MlsPlaintext did not contain a commit")
+                LibraryError::custom("create_commit(): MlsPlaintext did not contain a commit")
             })?,
             &self.interim_transcript_hash,
         )?;

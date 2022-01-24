@@ -2,6 +2,8 @@
 //!
 //! Each module has their own errors it is returning. This module will defines
 //! helper macros and functions to define OpenMLS errors.
+use std::fmt::Display;
+
 use openmls_traits::types::CryptoError;
 use thiserror::Error;
 use tls_codec::Error as TlsCodecError;
@@ -33,7 +35,42 @@ use tls_codec::Error as TlsCodecError;
 /// In all cases, when a `LibraryError` is returned, applications should try to recover gracefully from it.
 /// It is recommended to log the error for potential debugging.
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum LibraryError {
+pub struct LibraryError {
+    internal: InternalLibraryError,
+}
+
+impl LibraryError {
+    /// A custom error (typically to avoid an unwrap())
+    pub(crate) fn custom(s: &'static str) -> Self {
+        Self {
+            internal: InternalLibraryError::Custom(s),
+        }
+    }
+
+    /// Used when encoding doesn't work because of missing bound checks
+    pub(crate) fn missing_bound_check(e: TlsCodecError) -> Self {
+        Self {
+            internal: InternalLibraryError::MissingBoundsCheck(e),
+        }
+    }
+
+    /// Used when the crypto provider returns an unexpected error
+    pub(crate) fn unexpected_crypto_error(e: CryptoError) -> Self {
+        Self {
+            internal: InternalLibraryError::CryptoError(e),
+        }
+    }
+}
+
+impl Display for LibraryError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.internal)
+    }
+}
+
+/// Internal enum to differentiate between the different types of library errors
+#[derive(Error, Debug, PartialEq, Clone)]
+enum InternalLibraryError {
     #[error(transparent)]
     MissingBoundsCheck(#[from] TlsCodecError),
     #[error(transparent)]

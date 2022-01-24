@@ -59,10 +59,12 @@ pub trait Signable: Sized {
     where
         Self::SignedOutput: SignedStruct<Self>,
     {
-        let payload = self.unsigned_payload()?;
+        let payload = self
+            .unsigned_payload()
+            .map_err(LibraryError::missing_bound_check)?;
         let signature = credential_bundle
             .sign(backend, &payload)
-            .map_err(LibraryError::CryptoError)?;
+            .map_err(LibraryError::unexpected_crypto_error)?;
         Ok(Self::SignedOutput::from_payload(self, signature))
     }
 }
@@ -99,7 +101,7 @@ pub trait Verifiable: Sized {
     {
         let payload = self
             .unsigned_payload()
-            .map_err(LibraryError::MissingBoundsCheck)?;
+            .map_err(LibraryError::missing_bound_check)?;
         credential.verify(backend, &payload, self.signature())?;
         Ok(T::from_verifiable(self, T::SealingType::default()))
     }
@@ -120,7 +122,7 @@ pub trait Verifiable: Sized {
     {
         let payload = self
             .unsigned_payload()
-            .map_err(LibraryError::MissingBoundsCheck)?;
+            .map_err(LibraryError::missing_bound_check)?;
         signature_public_key
             .verify(backend, self.signature(), &payload)
             .map_err(|_| CredentialError::InvalidSignature)?;
@@ -140,7 +142,7 @@ pub trait Verifiable: Sized {
     ) -> Result<(), CredentialError> {
         let payload = self
             .unsigned_payload()
-            .map_err(LibraryError::MissingBoundsCheck)?;
+            .map_err(LibraryError::missing_bound_check)?;
         credential.verify(backend, &payload, self.signature())
     }
 }

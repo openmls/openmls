@@ -214,7 +214,7 @@ impl CoreGroup {
             backend,
             // It is ok to use return a library error here, because we know the MlsPlaintext contains a Commit
             &MlsPlaintextCommitContent::try_from(mls_plaintext).map_err(|_| {
-                LibraryError::Custom("stage_commit(): Could not convert commit content")
+                LibraryError::custom("stage_commit(): Could not convert commit content")
             })?,
             &self.interim_transcript_hash,
         )?;

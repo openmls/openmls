@@ -858,11 +858,16 @@ impl MembershipKey {
         backend: &impl OpenMlsCryptoProvider,
         tbm_payload: MlsPlaintextTbmPayload,
     ) -> Result<MembershipTag, LibraryError> {
-        Ok(MembershipTag(Mac::new(
-            backend,
-            &self.secret,
-            &tbm_payload.into_bytes()?,
-        )?))
+        Ok(MembershipTag(
+            Mac::new(
+                backend,
+                &self.secret,
+                &tbm_payload
+                    .into_bytes()
+                    .map_err(LibraryError::missing_bound_check)?,
+            )
+            .map_err(LibraryError::unexpected_crypto_error)?,
+        ))
     }
 
     #[cfg(any(feature = "test-utils", test))]
