@@ -13,11 +13,13 @@ mod test_external_commit_validation;
 #[cfg(test)]
 mod test_framing;
 #[cfg(test)]
+mod test_framing_validation;
+#[cfg(test)]
 mod test_group;
 #[cfg(test)]
 mod test_past_secrets;
 #[cfg(test)]
-mod test_validation;
+mod test_proposal_validation;
 #[cfg(test)]
 mod test_wire_format_policy;
 #[cfg(test)]
