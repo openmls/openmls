@@ -122,7 +122,7 @@ fn validation_test_setup(
         alice_group,
         bob_credential_bundle,
         plaintext: message,
-        original_plaintext: original_plaintext,
+        original_plaintext,
     }
 }
 

@@ -72,7 +72,7 @@ pub(super) fn parent_step(x: NodeIndex) -> NodeIndex {
 
 // This function is only safe to use if index <= size.
 // If this is not checked before calling the function, `parent` should be used.
-fn unsafe_parent(index: NodeIndex, size: NodeIndex) -> Result<NodeIndex, TreeMathError> {
+fn try_parent(index: NodeIndex, size: NodeIndex) -> Result<NodeIndex, TreeMathError> {
     let x = index;
     let n = size;
     if index == root(size) {
@@ -91,7 +91,7 @@ fn unsafe_parent(index: NodeIndex, size: NodeIndex) -> Result<NodeIndex, TreeMat
 
 pub(super) fn sibling(index: NodeIndex, size: NodeIndex) -> Result<NodeIndex, TreeMathError> {
     node_in_tree(index, size)?;
-    let p = unsafe_parent(index, size)?;
+    let p = try_parent(index, size)?;
     match index.cmp(&p) {
         Ordering::Less => right(p, size),
         Ordering::Greater => left(p),
@@ -124,7 +124,7 @@ pub(super) fn direct_path(
     let mut d = vec![];
     let mut x = node_index;
     while x != r {
-        x = unsafe_parent(x, size)?;
+        x = try_parent(x, size)?;
         d.push(x);
     }
     Ok(d)
@@ -150,7 +150,7 @@ pub(super) fn lowest_common_ancestor(x: NodeIndex, y: NodeIndex) -> NodeIndex {
 
 pub(super) fn parent(index: NodeIndex, size: NodeIndex) -> Result<NodeIndex, TreeMathError> {
     node_in_tree(index, size)?;
-    unsafe_parent(index, size)
+    try_parent(index, size)
 }
 
 #[cfg(any(feature = "test-utils", test))]

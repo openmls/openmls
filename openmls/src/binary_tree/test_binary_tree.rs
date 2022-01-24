@@ -25,11 +25,10 @@ fn test_tree_basics() {
 
     // Test tree creation: Too many nodes (only in cases where usize is 64 bit).
     #[cfg(target_pointer_width = "64")]
-    unsafe {
+    {
         let len = NodeIndex::MAX as usize + 2;
-        let mut nodes: Vec<u32> = Vec::new();
-
-        nodes.set_len(len);
+        // This allocation should get optimized away by the compiler
+        let nodes = vec![0u32; len];
 
         assert_eq!(
             MlsBinaryTree::new(nodes).expect_err("No error while creating too large tree."),
@@ -285,19 +284,18 @@ fn test_leaf_addition_and_removal_errors() {
     );
 
     // Let's test what happens when the tree is getting too large.
-    let mut nodes: Vec<u32> = Vec::new();
+    let len = NodeIndex::MAX as usize;
+    // This allocation should get optimized away by the compiler
+    let nodes: Vec<u32> = vec![0; len];
 
-    unsafe {
-        nodes.set_len(NodeIndex::MAX as usize);
+    let tree = MlsBinaryTree::new(nodes).expect("error creating tree");
+    let mut diff = tree.empty_diff().expect("error creating empty diff");
 
-        let tree = MlsBinaryTree::new(nodes).expect("error creating tree");
-        let mut diff = tree.empty_diff().expect("error creating empty diff");
-        assert_eq!(
-            diff.add_leaf(666, 667)
-                .expect_err("no error adding beyond u32 max"),
-            MlsBinaryTreeDiffError::TreeTooLarge
-        )
-    }
+    assert_eq!(
+        diff.add_leaf(666, 667)
+            .expect_err("no error adding beyond u32 max"),
+        MlsBinaryTreeDiffError::TreeTooLarge
+    )
 }
 
 #[test]
