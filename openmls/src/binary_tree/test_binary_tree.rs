@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::mem::MaybeUninit;
 
 use crate::binary_tree::{MlsBinaryTree, MlsBinaryTreeDiffError, MlsBinaryTreeError};
 
@@ -25,10 +26,11 @@ fn test_tree_basics() {
 
     // Test tree creation: Too many nodes (only in cases where usize is 64 bit).
     #[cfg(target_pointer_width = "64")]
-    {
+    unsafe {
         let len = NodeIndex::MAX as usize + 2;
-        // This allocation should get optimized away by the compiler
-        let nodes = vec![0u32; len];
+        let mut nodes: Vec<MaybeUninit<u32>> = Vec::with_capacity(len);
+
+        nodes.set_len(len);
 
         assert_eq!(
             MlsBinaryTree::new(nodes).expect_err("No error while creating too large tree."),
@@ -285,17 +287,21 @@ fn test_leaf_addition_and_removal_errors() {
 
     // Let's test what happens when the tree is getting too large.
     let len = NodeIndex::MAX as usize;
-    // This allocation should get optimized away by the compiler
-    let nodes: Vec<u32> = vec![0; len];
+    let mut nodes: Vec<MaybeUninit<u32>> = Vec::with_capacity(len);
 
-    let tree = MlsBinaryTree::new(nodes).expect("error creating tree");
-    let mut diff = tree.empty_diff().expect("error creating empty diff");
+    unsafe {
+        nodes.set_len(NodeIndex::MAX as usize);
 
-    assert_eq!(
-        diff.add_leaf(666, 667)
-            .expect_err("no error adding beyond u32 max"),
-        MlsBinaryTreeDiffError::TreeTooLarge
-    )
+        let tree = MlsBinaryTree::new(nodes).expect("error creating tree");
+        let mut diff = tree.empty_diff().expect("error creating empty diff");
+        let new_leaves: Vec<MaybeUninit<u32>> = vec![MaybeUninit::new(666), MaybeUninit::new(667)];
+
+        assert_eq!(
+            diff.add_leaf(new_leaves[0], new_leaves[1])
+                .expect_err("no error adding beyond u32 max"),
+            MlsBinaryTreeDiffError::TreeTooLarge
+        )
+    }
 }
 
 #[test]
