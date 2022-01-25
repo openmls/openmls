@@ -190,11 +190,9 @@ impl CoreGroup {
             }
 
             // TODO: ValSem108
-            //       This check does not take into account members added in the
-            //       same commit.
-            // if !self.treesync().leaves()?.contains_key(&Some(*removed)) {
-            //     return Err(ProposalValidationError::UnknownMemberRemoval.into());
-            // }
+            if !self.treesync().leaves()?.contains_key(&Some(*removed)) {
+                return Err(ProposalValidationError::UnknownMemberRemoval.into());
+            }
         }
 
         Ok(())

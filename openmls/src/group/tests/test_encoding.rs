@@ -305,7 +305,6 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .expect("An unexpected error occurred.")
             .pop()
             .expect("An unexpected error occurred.");
-        let charlie_kpr = charlie_key_package.hash_ref(backend.crypto()).unwrap();
         let add = group_state
             .create_add_proposal(
                 framing_parameters,
@@ -315,22 +314,8 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             )
             .expect("Could not create proposal.");
 
-        // Alice removes Charlie
-        let remove = group_state
-            .create_remove_proposal(
-                framing_parameters,
-                alice_credential_bundle,
-                &charlie_kpr,
-                backend,
-            )
-            .expect("Could not create proposal.");
-
         let mut proposal_store = ProposalStore::from_queued_proposal(
             QueuedProposal::from_mls_plaintext(group_state.ciphersuite(), backend, add)
-                .expect("Could not create QueuedProposal."),
-        );
-        proposal_store.add(
-            QueuedProposal::from_mls_plaintext(group_state.ciphersuite(), backend, remove)
                 .expect("Could not create QueuedProposal."),
         );
         proposal_store.add(
