@@ -18,7 +18,6 @@
 
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
-use std::slice::Iter;
 
 use serde::{Deserialize, Serialize};
 
@@ -115,11 +114,6 @@ impl<T: Clone + Debug> ABinaryTree<T> {
             leaf_references.push(node_ref);
         }
         Ok(leaf_references)
-    }
-
-    /// Get an iterator over the nodes in the tree (infix, left-to-right).
-    pub(crate) fn iter(&self) -> Iter<T> {
-        self.nodes.iter()
     }
 
     /// Creates and returns an empty [`AbDiff`].

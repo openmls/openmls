@@ -89,7 +89,6 @@ impl TreeSync {
         let key_package = key_package_bundle.key_package();
         // We generate our own leaf without a private key for now. The private
         // key is set in the `from_nodes` constructor below.
-        // let node: Node = Node::LeafNode(key_package.clone().into());
         let node = Node::LeafNode(
             LeafNode::new(key_package.clone(), backend.crypto()).map_err(|e| {
                 if let KeyPackageError::CryptoError(e) = e {
@@ -354,7 +353,7 @@ impl TreeSync {
     pub(crate) fn leaves(
         &self,
     ) -> Result<BTreeMap<Option<KeyPackageRef>, &KeyPackage>, TreeSyncError> {
-        let tsn_leaves = self.tree.iter().filter(|tsn| tsn.node().is_some());
+        let tsn_leaves = self.tree.nodes().iter().filter(|tsn| tsn.node().is_some());
         let mut leaves = BTreeMap::new();
         for tsn_leaf in tsn_leaves {
             if let Some(ref node) = tsn_leaf.node() {
@@ -421,6 +420,7 @@ impl TreeSync {
     /// Get the [`LeafIndex`] for a given [`KeyPackageRef`].
     ///
     /// This should go away and this tree should handle [`KeyPackageRef`] instead.
+    /// See: #732
     pub(crate) fn leaf_index(
         &self,
         key_package_ref: &KeyPackageRef,

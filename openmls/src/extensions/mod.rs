@@ -325,7 +325,7 @@ impl Ord for Extension {
 /// error if there is either no [`RatchetTreeExtension`] or more than one.
 pub(crate) fn try_nodes_from_extensions(
     other_extensions: &[Extension],
-    backend: &impl OpenMlsCrypto,
+    crypto_backend: &impl OpenMlsCrypto,
 ) -> Result<Option<Vec<Option<Node>>>, ExtensionError> {
     let mut ratchet_tree_extensions = other_extensions
         .iter()
@@ -337,7 +337,7 @@ pub(crate) fn try_nodes_from_extensions(
             // Compute the key package references.
             for node in nodes.iter_mut() {
                 if let Some(Node::LeafNode(leaf)) = node {
-                    leaf.set_key_package_ref(backend)?;
+                    leaf.set_key_package_ref(crypto_backend)?;
                 }
             }
             Some(nodes)

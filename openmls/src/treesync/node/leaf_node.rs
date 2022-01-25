@@ -16,6 +16,10 @@ pub struct LeafNode {
     private_key_option: Option<HpkePrivateKey>,
 }
 
+// When comparing leaf nodes we ignore the key package reference.
+// Sometimes it's not set yet. This might be remedied in #731.
+// Note that the key package reference is computed deterministically from the
+// key package such that there no additional value in comparing it.
 impl PartialEq for LeafNode {
     fn eq(&self, other: &Self) -> bool {
         self.key_package == other.key_package && self.private_key_option == other.private_key_option
