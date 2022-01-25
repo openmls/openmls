@@ -172,8 +172,6 @@ fn duplicate_ratchet_tree_extension(
     // We expect an error because the ratchet tree is duplicated
     assert_eq!(
         error.expect("We expected an error"),
-        CoreGroupError::WelcomeError(WelcomeError::ExtensionError(
-            ExtensionError::DuplicateRatchetTreeExtension
-        ))
+        WelcomeError::ExtensionError(ExtensionError::DuplicateRatchetTreeExtension)
     );
 }

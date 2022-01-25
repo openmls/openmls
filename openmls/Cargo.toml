@@ -47,6 +47,7 @@ openmls = { path = ".", features = ["test-utils"] }
 tempfile = "3"
 rstest = "^0.12"
 rstest_reuse = "^0.1"
+backtrace = "0.3"
 
 # x64 targets get evercrypt compiled into dev-dependencies.
 [target.'cfg(target_arch = "x86_64")'.dev-dependencies.openmls]

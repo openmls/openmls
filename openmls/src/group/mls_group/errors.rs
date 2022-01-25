@@ -9,6 +9,7 @@ use crate::error::ErrorString;
 use crate::framing::MlsCiphertextError;
 use crate::framing::ValidationError;
 use crate::group::errors::QueuedProposalError;
+use crate::group::WelcomeError;
 use crate::group::{CoreGroupError, CreateCommitError, ExporterError, StageCommitError};
 use crate::treesync::TreeSyncError;
 use openmls_traits::types::CryptoError;
@@ -26,6 +27,11 @@ implement_error! {
             ExternalCommitError = "Can't clear an external commit, as the group can't merge `Member` commits yet. If an external commit is rejected by the DS, a new external init must be performed. See the MLS spec for more information.",
             KeyStoreError = "Error performing key store operation.",
             IncompatibleWireFormat = "The incoming message's wire format was not compatible with the wire format policy for incoming messages.",
+            UnsupportedMlsVersion = "The version stated in the group info is not supported by this client.",
+            MissingRatchetTree = "No ratchet tree was provided, neither explicitly, nor by the given [`GroupInfo`].",
+            RatchetTreeTooLarge = "The given ratchet tree is too large to process.",
+            InvalidRatchetTree = "Found a non-leaf node at a leaf index in the given ratchet tree.",
+            UnknownSigner = "Couldn't find GroupInfo signer in the given ratchet tree.",
         }
         Complex {
             LibraryError(ErrorString) =
@@ -53,6 +59,7 @@ implement_error! {
                 "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
             QueuedProposalError(QueuedProposalError) =
                 "See [`QueuedProposalError`](crate::group::QueuedProposalError) for details.",
+            WelcomeError(WelcomeError) = "See [`WelcomeError`] for details.",
         }
     }
 }

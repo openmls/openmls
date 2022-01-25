@@ -1,7 +1,7 @@
 //! This module defines the [`MessageSecrets`] struct that can be used for message decryption & verification
 
 use super::*;
-#[cfg(test)]
+#[cfg(any(feature = "test-utils", test))]
 use crate::tree::index::SecretTreeLeafIndex;
 /// Combined message secrets that need to be stored for later decryption/verification
 #[derive(Debug, Serialize, Deserialize)]
@@ -64,8 +64,18 @@ impl MessageSecrets {
     pub fn sender_data_secret_mut(&mut self) -> &mut SenderDataSecret {
         &mut self.sender_data_secret
     }
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn sender_data_secret_only(
+        sender_data_secret: SenderDataSecret,
+        ciphersuite: &'static Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Self {
+        let mut out = Self::random(ciphersuite, backend);
+        out.sender_data_secret = sender_data_secret;
+        out
+    }
 
-    #[cfg(test)]
+    #[cfg(any(feature = "test-utils", test))]
     pub fn random(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) -> Self {
         use openmls_traits::random::OpenMlsRand;
 

@@ -122,10 +122,10 @@
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
 use crate::{
-    ciphersuite::{AeadKey, AeadNonce, Ciphersuite, HpkePrivateKey, Mac, Secret},
-    config::{Config, ProtocolVersion},
+    ciphersuite::{AeadKey, AeadNonce, Ciphersuite, HpkePrivateKey, HpkePublicKey, Mac, Secret},
+    config::ProtocolVersion,
     framing::{MembershipTag, MlsPlaintextTbmPayload},
-    messages::{ConfirmationTag, PathSecret, PublicGroupState},
+    messages::{ConfirmationTag, PathSecret},
     tree::secret_tree::SecretTree,
     treesync::LeafIndex,
 };
@@ -247,16 +247,15 @@ impl InitSecret {
 
     /// Create an `InitSecret` and the corresponding `kem_output` from a public
     /// group state.
-    pub(crate) fn from_public_group_state(
+    pub(crate) fn for_external_commit(
         backend: &impl OpenMlsCryptoProvider,
-        public_group_state: &PublicGroupState,
+        ciphersuite: &'static Ciphersuite,
+        version: ProtocolVersion,
+        external_pub: &HpkePublicKey,
     ) -> Result<(Self, Vec<u8>), KeyScheduleError> {
-        let ciphersuite = Config::ciphersuite(public_group_state.ciphersuite)
-            .map_err(|_| KeyScheduleError::UnsupportedCiphersuite)?;
-        let version = public_group_state.version;
         let (kem_output, raw_init_secret) = backend.crypto().hpke_setup_sender_and_export(
             ciphersuite.hpke_config(),
-            public_group_state.external_pub.as_slice(),
+            external_pub.as_slice(),
             &[],
             hpke_info_from_version(version).as_bytes(),
             ciphersuite.hash_length(),
@@ -625,8 +624,7 @@ impl EncryptionSecret {
     }
 
     /// Create a random `EncryptionSecret`. For testing purposes only.
-    #[cfg(test)]
-    #[doc(hidden)]
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn random(
         ciphersuite: &'static Ciphersuite,
         rng: &impl OpenMlsCryptoProvider,

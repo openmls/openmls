@@ -123,7 +123,6 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
     let verifiable_public_group_state =
         VerifiablePublicGroupState::tls_deserialize(&mut pgs_encoded.as_slice())
             .expect("Error deserializing PGS");
-    let nodes_option = group_alice.treesync().export_nodes();
 
     let proposal_store = ProposalStore::new();
     let params = CreateCommitParams::builder()
@@ -131,13 +130,9 @@ fn test_external_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
         .credential_bundle(&charly_credential_bundle)
         .proposal_store(&proposal_store)
         .build();
-    let (mut group_charly, create_commit_result) = CoreGroup::join_by_external_commit(
-        backend,
-        params,
-        Some(&nodes_option),
-        verifiable_public_group_state,
-    )
-    .expect("Error initializing group externally.");
+    let (mut group_charly, create_commit_result) =
+        CoreGroup::join_by_external_commit(backend, params, None, verifiable_public_group_state)
+            .expect("Error initializing group externally.");
 
     // Have alice and bob process the commit resulting from external init.
     let proposal_store = ProposalStore::default();

@@ -18,6 +18,7 @@ use super::{
     proposals::ProposalQueue,
     staged_commit::{StagedCommit, StagedCommitState},
 };
+use core::slice::Iter;
 
 /// A helper struct which contains the values resulting from the preparation of
 /// a commit with path.
@@ -26,6 +27,7 @@ struct PathProcessingResult {
     commit_secret: Option<CommitSecret>,
     encrypted_path: Option<UpdatePath>,
     plain_path: Option<Vec<PlainUpdatePathNode>>,
+    use_diff: bool,
 }
 
 impl CoreGroup {
@@ -45,48 +47,35 @@ impl CoreGroup {
         // in the existing tree. Note, that we have to determine the index here
         // (before we actually add our own leaf), because it's needed in the
         // process of proposal filtering and application.
-        let (own_leaf_index, sender_type) = match params.commit_type() {
+        let (sender, own_leaf_index) = match params.commit_type() {
             CommitType::External => {
                 // If this is a "resync" external commit, it should contain a
                 // `remove` proposal with the index of our previous self in the
                 // group.
-                let free_leaf_index = self.treesync().free_leaf_index()?;
-                let remove_proposal_option = params
-                    .inline_proposals()
-                    .iter()
-                    .find(|proposal| proposal.is_type(ProposalType::Remove));
-                // The external commit is processed like an add, so our new leaf
-                // index is the same as if we'd process an add after the remove
-                // proposal.
-                let leaf_index = if let Some(remove_proposal) = remove_proposal_option {
-                    if let Proposal::Remove(remove_proposal) = remove_proposal {
-                        let removed_index = remove_proposal.removed();
-                        if removed_index < free_leaf_index {
-                            removed_index
-                        } else {
-                            free_leaf_index
-                        }
-                    } else {
-                        return Err(CoreGroupError::LibraryError);
-                    }
-                } else {
-                    free_leaf_index
-                };
-                (leaf_index, SenderType::NewMember)
+                let leaf_index =
+                    self.free_leaf_index(params.inline_proposals().iter().map(|p| Some(p)))?;
+                (Sender::build_new_member(), leaf_index)
             }
-            CommitType::Member => (self.treesync().own_leaf_index(), SenderType::Member),
+            CommitType::Member => (
+                Sender::build_member(self.key_package_ref().ok_or(CoreGroupError::LibraryError)?),
+                self.own_leaf_index(),
+            ),
         };
 
         // Filter proposals
+        let own_kpr = if params.commit_type() == CommitType::External {
+            None
+        } else {
+            Some(self.key_package_ref().ok_or(CoreGroupError::LibraryError)?)
+        };
         let (proposal_queue, contains_own_updates) = ProposalQueue::filter_proposals(
+            Some(&self),
             ciphersuite,
             backend,
-            sender_type,
+            sender,
             params.proposal_store(),
             params.inline_proposals(),
-            own_leaf_index,
-            // We can use the old leaf count here, because the proposals will
-            // only affect members of the old tree.
+            own_kpr,
             self.treesync().leaf_count()?,
         )?;
 
@@ -126,7 +115,6 @@ impl CoreGroup {
                 || contains_own_updates
                 || params.force_self_update()
             {
-
                 // Derive and apply an update path based on the previously
                 // generated KeyPackageBundle.
                 let (key_package, plain_path, commit_secret) = diff.apply_own_update_path(
@@ -149,11 +137,37 @@ impl CoreGroup {
                     commit_secret: Some(commit_secret),
                     encrypted_path: Some(encrypted_path),
                     plain_path: Some(plain_path),
+                    use_diff: true,
                 }
             } else {
                 // If path is not needed, return empty path processing results
                 PathProcessingResult::default()
             };
+
+        let sender = match params.commit_type() {
+            CommitType::External => Sender::build_new_member(),
+            CommitType::Member => {
+                if path_processing_result.use_diff {
+                    debug_assert!(
+                        self.key_package_ref().unwrap() != diff.hash_ref().unwrap(),
+                        "{} == {}",
+                        self.key_package_ref().unwrap(),
+                        diff.hash_ref().unwrap()
+                    );
+                    Sender::build_member(diff.hash_ref()?)
+                } else {
+                    debug_assert!(
+                        self.key_package_ref().unwrap() == diff.hash_ref().unwrap(),
+                        "{} != {}",
+                        self.key_package_ref().unwrap(),
+                        diff.hash_ref().unwrap()
+                    );
+                    Sender::build_member(
+                        self.key_package_ref().ok_or(CoreGroupError::LibraryError)?,
+                    )
+                }
+            }
+        };
 
         // Create commit message
         let commit = Commit {
@@ -168,9 +182,8 @@ impl CoreGroup {
         // Build MlsPlaintext
         let mut mls_plaintext = MlsPlaintext::commit(
             *params.framing_parameters(),
-            own_leaf_index,
+            sender,
             commit,
-            params.commit_type(),
             params.credential_bundle(),
             &self.group_context,
             backend,
@@ -263,18 +276,11 @@ impl CoreGroup {
             // Create GroupInfo object
             let group_info = GroupInfoTbs::new(
                 self.version(),
+                self.ciphersuite().name(),
                 &provisional_group_context,
                 &other_extensions,
                 confirmation_tag.clone(),
-                HashReference::new(
-                    &self
-                        .treesync()
-                        .own_leaf_node()?
-                        .key_package()
-                        .hash(backend)?,
-                    ciphersuite,
-                    backend.crypto(),
-                )?,
+                diff.hash_ref()?,
             );
             let group_info = group_info.sign(backend, params.credential_bundle())?;
 
@@ -330,6 +336,35 @@ impl CoreGroup {
         })
     }
 
+    pub(crate) fn free_leaf_index<'a>(
+        &self,
+        mut inline_proposals: impl Iterator<Item = Option<&'a Proposal>>,
+    ) -> Result<u32, CoreGroupError> {
+        let free_leaf_index = self.treesync().free_leaf_index()?;
+        let remove_proposal_option = inline_proposals
+            .find(|proposal| match proposal {
+                Some(p) => p.is_type(ProposalType::Remove),
+                None => false,
+            })
+            .flatten();
+        let leaf_index = if let Some(remove_proposal) = remove_proposal_option {
+            if let Proposal::Remove(remove_proposal) = remove_proposal {
+                let removed = remove_proposal.removed();
+                let removed_index = self.treesync().leaf_index(removed)?;
+                if removed_index < free_leaf_index {
+                    removed_index
+                } else {
+                    free_leaf_index
+                }
+            } else {
+                return Err(CoreGroupError::LibraryError);
+            }
+        } else {
+            free_leaf_index
+        };
+        Ok(leaf_index)
+    }
+
     /// Helper function that prepares the [`KeyPackageBundlePayload`] for use in
     /// a commit depending on the [`CommitType`].
     fn prepare_kpb_payload(
@@ -348,7 +383,7 @@ impl CoreGroup {
                 vec![],
             )?;
 
-            diff.add_leaf(key_package_bundle.key_package().clone())?;
+            diff.add_leaf(key_package_bundle.key_package().clone(), backend.crypto())?;
             diff.own_leaf()?.key_package()
         } else {
             self.treesync().own_leaf_node()?.key_package()

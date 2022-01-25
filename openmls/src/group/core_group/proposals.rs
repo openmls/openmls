@@ -5,12 +5,17 @@ use crate::messages::proposals::{
     ProposalReference, ProposalType, RemoveProposal, UpdateProposal,
 };
 use crate::treesync::LeafIndex;
-use crate::{ciphersuite::*, framing::*};
+use crate::{
+    ciphersuite::{hash_ref::KeyPackageRef, *},
+    framing::*,
+};
 
 use openmls_traits::OpenMlsCryptoProvider;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::collections::{hash_map::Entry, HashMap};
+
+use super::CoreGroup;
 
 /// A [ProposalStore] can store the standalone proposals that are received from the DS
 /// in between two commit messages.
@@ -70,7 +75,7 @@ impl QueuedProposal {
         Ok(Self {
             proposal: proposal.clone(), // FIXME
             proposal_reference,
-            sender: *mls_plaintext.sender(),
+            sender: mls_plaintext.sender().clone(),
             proposal_or_ref_type: ProposalOrRefType::Reference,
         })
     }
@@ -79,13 +84,13 @@ impl QueuedProposal {
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         proposal: Proposal,
-        sender: Sender,
+        sender: &Sender,
     ) -> Result<Self, QueuedProposalError> {
         let proposal_reference = ProposalReference::from_proposal(ciphersuite, backend, &proposal)?;
         Ok(Self {
             proposal,
             proposal_reference,
-            sender,
+            sender: sender.clone(),
             proposal_or_ref_type: ProposalOrRefType::Proposal,
         })
     }
@@ -132,7 +137,7 @@ impl ProposalQueue {
         backend: &impl OpenMlsCryptoProvider,
         committed_proposals: Vec<ProposalOrRef>,
         proposal_store: &ProposalStore,
-        sender: Sender,
+        sender: &Sender,
     ) -> Result<Self, ProposalQueueError> {
         // Feed the `proposals_by_reference` in a `HashMap` so that we can easily
         // extract then by reference later
@@ -153,7 +158,7 @@ impl ProposalQueue {
                 ProposalOrRef::Proposal(proposal) => {
                     // ValSem200
                     if let Proposal::Remove(ref remove_proposal) = proposal {
-                        if remove_proposal.removed() == sender.sender && sender.is_member() {
+                        if remove_proposal.removed() == sender.as_key_package_ref()? {
                             return Err(ProposalQueueError::SelfRemoval);
                         }
                     }
@@ -171,8 +176,7 @@ impl ProposalQueue {
                             // ValSem200
                             if let Proposal::Remove(ref remove_proposal) = queued_proposal.proposal
                             {
-                                if remove_proposal.removed() == sender.sender && sender.is_member()
-                                {
+                                if remove_proposal.removed() == sender.as_key_package_ref()? {
                                     return Err(ProposalQueueError::SelfRemoval);
                                 }
                             }
@@ -316,41 +320,42 @@ impl ProposalQueue {
     ///
     /// Return a [`ProposalQueue`] and a bool that indicates whether Updates for the
     /// own node were included
-    pub(crate) fn filter_proposals(
+    pub(crate) fn filter_proposals<'a>(
+        group: Option<&CoreGroup>,
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        sender_type: SenderType,
-        proposal_store: &ProposalStore,
-        inline_proposals: &[Proposal],
-        own_index: LeafIndex,
+        sender: Sender,
+        proposal_store: &'a ProposalStore,
+        inline_proposals: &'a [Proposal],
+        own_kpr: impl Into<Option<&'a hash_ref::KeyPackageRef>>,
         leaf_count: LeafIndex,
     ) -> Result<(Self, bool), ProposalQueueError> {
-        fn to_usize(leaf_index: LeafIndex) -> Result<usize, ProposalQueueError> {
-            usize::try_from(leaf_index).map_err(|_| ProposalQueueError::ArchitectureError)
-        }
+        // fn to_usize(leaf_index: LeafIndex) -> Result<usize, ProposalQueueError> {
+        //     usize::try_from(leaf_index).map_err(|_| ProposalQueueError::ArchitectureError)
+        // }
 
-        #[derive(Clone)]
+        #[derive(Clone, Default)]
         struct Member {
             updates: Vec<QueuedProposal>,
             removes: Vec<QueuedProposal>,
         }
-        let mut members: Vec<Member> = vec![
-            Member {
-                updates: vec![],
-                removes: vec![],
-            };
-            to_usize(leaf_count)?
-        ];
+        let mut members = HashMap::<KeyPackageRef, Member>::new();
+        /// Get or create a member in the `members` map.
+        fn get_member<'a>(
+            members: &'a mut HashMap<KeyPackageRef, Member>,
+            kpr: &KeyPackageRef,
+        ) -> Result<&'a mut Member, ProposalQueueError> {
+            if members.get(kpr).is_none() {
+                members.insert(*kpr, Member::default());
+            }
+            members.get_mut(kpr).ok_or(ProposalQueueError::LibraryError)
+        }
+
         let mut adds: HashSet<ProposalReference> = HashSet::new();
         let mut valid_proposals: HashSet<ProposalReference> = HashSet::new();
         let mut proposal_pool: HashMap<ProposalReference, QueuedProposal> = HashMap::new();
         let mut contains_own_updates = false;
         let mut contains_external_init = false;
-
-        let sender = Sender {
-            sender_type,
-            sender: own_index,
-        };
 
         // Aggregate both proposal types to a common iterator
         // We checked earlier that only proposals can end up here
@@ -365,7 +370,7 @@ impl ProposalQueue {
                         ciphersuite,
                         backend,
                         p.clone(),
-                        sender,
+                        &sender,
                     )
                 })
                 .collect::<Result<Vec<QueuedProposal>, _>>()?
@@ -373,6 +378,7 @@ impl ProposalQueue {
         );
 
         // Parse proposals and build adds and member list
+        let own_kpr = own_kpr.into();
         for queued_proposal in queued_proposal_list {
             match queued_proposal.proposal {
                 Proposal::Add(_) => {
@@ -380,9 +386,14 @@ impl ProposalQueue {
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::Update(_) => {
-                    let sender_index = queued_proposal.sender.sender;
-                    if sender_index != own_index {
-                        members[to_usize(sender_index)?]
+                    let own_kpr = own_kpr.ok_or(ProposalQueueError::LibraryError)?;
+                    // let group = group.ok_or(ProposalQueueError::LibraryError)?;
+                    let sender = queued_proposal.sender.as_key_package_ref()?;
+                    // let sender_index = group
+                    //     .sender_index(sender)
+                    //     .map_err(|_| ProposalQueueError::LibraryError)?;
+                    if sender != own_kpr {
+                        get_member(&mut members, sender)?
                             .updates
                             .push(queued_proposal.clone());
                     } else {
@@ -392,12 +403,11 @@ impl ProposalQueue {
                     proposal_pool.insert(proposal_reference, queued_proposal);
                 }
                 Proposal::Remove(ref remove_proposal) => {
-                    let removed_index = remove_proposal.removed;
-                    if removed_index < leaf_count {
-                        members[to_usize(removed_index)?]
-                            .updates
-                            .push(queued_proposal.clone());
-                    }
+                    // let group = group.ok_or(ProposalQueueError::LibraryError)?;
+                    let removed = remove_proposal.removed();
+                    get_member(&mut members, removed)?
+                        .updates
+                        .push(queued_proposal.clone());
                     let proposal_reference = queued_proposal.proposal_reference();
                     proposal_pool.insert(proposal_reference, queued_proposal);
                 }
@@ -425,7 +435,7 @@ impl ProposalQueue {
             }
         }
         // Check for presence of Removes and delete Updates
-        for member in members.iter_mut() {
+        for (_, member) in members.iter_mut() {
             // Check if there are Removes
             if let Some(last_remove) = member.removes.last() {
                 // Delete all Updates when a Remove is found

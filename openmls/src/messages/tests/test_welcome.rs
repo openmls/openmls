@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 
 use crate::{
+    ciphersuite::hash_ref::KeyPackageRef,
     ciphersuite::{
         signable::Signable, AeadKey, AeadNonce, Ciphersuite, CiphersuiteName, Mac, Secret,
     },
@@ -14,7 +15,7 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, OpenMlsCryptoProvider};
 use tls_codec::{Deserialize, Serialize};
 
 #[apply(ciphersuites_and_backends)]
@@ -38,7 +39,7 @@ fn test_welcome_message_with_version(
         ConfirmationTag(Mac {
             mac_value: vec![1, 2, 3, 4, 5].into(),
         }),
-        8u32,
+        &KeyPackageRef::from_slice(&backend.rand().random_vec(16).unwrap()),
     );
 
     // We need a credential bundle to sign the group info.

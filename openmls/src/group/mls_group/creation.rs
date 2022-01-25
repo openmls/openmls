@@ -1,6 +1,6 @@
 use crate::{
-    group::core_group::create_commit_params::CreateCommitParams,
-    messages::VerifiablePublicGroupState,
+    config::Config, group::core_group::create_commit_params::CreateCommitParams,
+    messages::VerifiableGroupInfo, prelude_test::signable::Verifiable,
 };
 
 use super::*;
@@ -105,7 +105,7 @@ impl MlsGroup {
     pub fn join_by_external_commit(
         backend: &impl OpenMlsCryptoProvider,
         tree_option: Option<&[Option<Node>]>,
-        verifiable_public_group_state: VerifiablePublicGroupState,
+        verifiable_group_info: VerifiableGroupInfo,
         mls_group_config: &MlsGroupConfig,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
@@ -123,12 +123,54 @@ impl MlsGroup {
             .credential_bundle(credential_bundle)
             .proposal_store(&proposal_store)
             .build();
-        let (mut group, create_commit_result) = CoreGroup::join_by_external_commit(
-            backend,
-            params,
-            tree_option,
-            verifiable_public_group_state,
-        )?;
+
+        // Before we create the group, we must first verify the group info.
+        let ciphersuite = Config::ciphersuite(verifiable_group_info.ciphersuite())?;
+        if !Config::supported_versions().contains(&verifiable_group_info.version()) {
+            return Err(MlsGroupError::UnsupportedMlsVersion);
+        }
+
+        // Build the ratchet tree
+
+        // Set nodes either from the extension or from the `nodes_option`.
+        // If we got a ratchet tree extension in the welcome, we enable it for
+        // this group. Note that this is not strictly necessary. But there's
+        // currently no other mechanism to enable the extension.
+        let extension_tree_option =
+            try_nodes_from_extensions(verifiable_group_info.other_extensions(), backend.crypto())?;
+        let (nodes, enable_ratchet_tree_extension) = match extension_tree_option {
+            Some(nodes) => (nodes, true),
+            None => match tree_option {
+                Some(n) => (n.into(), false),
+                None => return Err(MlsGroupError::MissingRatchetTree),
+            },
+        };
+
+        let mut group_info_option = None;
+        let ratchet_tree_size =
+            u32::try_from(nodes.len()).map_err(|_| MlsGroupError::RatchetTreeTooLarge)?;
+        for index in 0..ratchet_tree_size {
+            if index % 2 == 0 {
+                if let Some(node) = nodes[index as usize] {
+                    let leaf_node = node
+                        .as_leaf_node()
+                        .map_err(|_| MlsGroupError::InvalidRatchetTree)?;
+                    if &leaf_node.key_package().hash_ref(backend.crypto())?
+                        == verifiable_group_info.signer()
+                    {
+                        group_info_option = Some(
+                            verifiable_group_info
+                                .verify(backend, leaf_node.key_package().credential())?,
+                        );
+                    }
+                };
+            }
+        }
+
+        let group_info = group_info_option.ok_or(MlsGroupError::UnknownSigner)?;
+
+        let (mut group, create_commit_result) =
+            CoreGroup::join_by_external_commit(backend, params, tree_option, group_info)?;
         group.set_max_past_epochs(mls_group_config.max_past_epochs);
 
         let mls_group = MlsGroup {

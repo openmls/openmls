@@ -1,3 +1,5 @@
+use crate::messages::GroupInfo;
+
 use super::*;
 
 #[derive(
@@ -15,6 +17,18 @@ pub struct GroupContext {
 impl GroupContext {
     pub(crate) fn set_epoch(&mut self, epoch: GroupEpoch) {
         self.epoch = epoch;
+    }
+}
+
+impl From<&GroupInfo> for GroupContext {
+    fn from(group_info: &GroupInfo) -> Self {
+        Self {
+            group_id: group_info.group_id().clone(),
+            epoch: group_info.epoch(),
+            tree_hash: group_info.tree_hash().clone().into(),
+            confirmed_transcript_hash: group_info.confirmed_transcript_hash().clone().into(),
+            extensions: group_info.group_context_extensions().clone().into(),
+        }
     }
 }
 

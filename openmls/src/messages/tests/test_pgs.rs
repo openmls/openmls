@@ -44,6 +44,10 @@ fn test_pgs(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvi
         Vec::new(),
     )
     .expect("An unexpected error occurred.");
+    let alice_kpr = alice_key_package_bundle
+        .key_package()
+        .hash_ref(backend.crypto())
+        .expect("Error computing key package reference.");
 
     // Alice creates a group
     let mut group_alice = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
@@ -83,7 +87,7 @@ fn test_pgs(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvi
         .expect("Could not export the public group state");
 
     // Make sure Alice is the signer
-    assert_eq!(pgs.signer_index, 0u32);
+    assert_eq!(&pgs.signer, group_alice.key_package_ref().unwrap());
 
     let encoded = pgs.tls_serialize_detached().expect("Could not encode");
     let verifiable_pgs = VerifiablePublicGroupState::tls_deserialize(&mut encoded.as_slice())

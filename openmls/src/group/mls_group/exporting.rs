@@ -1,3 +1,5 @@
+use crate::messages::GroupInfo;
+
 use super::*;
 
 impl MlsGroup {
@@ -32,16 +34,18 @@ impl MlsGroup {
     }
 
     // === Export public group state ===
-    pub fn export_public_group_state(
+
+    /// Returns the `GroupInfo` object of this group and epoch for use in an
+    /// external commit. In particular, the returned `GroupInfo` instance
+    /// includes an `ExternalPub` extension.
+    pub fn export_group_info(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<PublicGroupState, MlsGroupError> {
+    ) -> Result<GroupInfo, MlsGroupError> {
         let credential_bundle: CredentialBundle = backend
             .key_store()
             .read(self.credential()?.signature_key())
             .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
-        Ok(self
-            .group
-            .export_public_group_state(backend, &credential_bundle)?)
+        Ok(self.group.export_group_info(backend, &credential_bundle)?)
     }
 }

@@ -36,7 +36,7 @@ pub struct TreeKemTestVector {
     // Chosen by the generator
     pub ratchet_tree_before: String,
 
-    pub add_sender: u32,
+    pub add_sender: String,
     pub my_leaf_secret: String,
     pub my_key_package: String,
     pub my_path_secret: String,
@@ -58,6 +58,8 @@ pub fn run_test_vector(
     test_vector: TreeKemTestVector,
     backend: &impl OpenMlsCryptoProvider,
 ) -> Result<(), TreeKemTestVectorError> {
+    use crate::prelude_test::hash_ref::KeyPackageRef;
+
     log::debug!("Running TreeKEM test vector");
     log::trace!("{:?}", test_vector);
     let ciphersuite =
@@ -112,7 +114,7 @@ pub fn run_test_vector(
             backend,
             ciphersuite,
             ratchet_tree_before.as_slice(),
-            test_vector.add_sender,
+            &KeyPackageRef::from_slice(hex_to_bytes(&test_vector.add_sender).as_slice()),
             start_secret,
             my_key_package_bundle,
         ) {

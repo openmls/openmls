@@ -16,8 +16,8 @@ use crate::{
     group::errors::ExternalCommitValidationError,
     group::*,
     messages::{
-        public_group_state::VerifiablePublicGroupState, AddProposal, ExternalInitProposal,
-        Proposal, ProposalOrRef, ProposalType, RemoveProposal, UpdateProposal,
+        AddProposal, ExternalInitProposal, Proposal, ProposalOrRef, ProposalType, RemoveProposal,
+        UpdateProposal,
     },
     prelude_test::signable::{Signable, Verifiable},
 };
@@ -577,7 +577,9 @@ fn test_valsem244(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     content.proposals.remove(proposal_position);
 
-    let remove_proposal = ProposalOrRef::Proposal(Proposal::Remove(RemoveProposal { removed: 0 }));
+    let remove_proposal = ProposalOrRef::Proposal(Proposal::Remove(RemoveProposal {
+        removed: *alice_group.key_package_ref().unwrap(),
+    }));
 
     content.proposals.push(remove_proposal);
 
@@ -653,9 +655,9 @@ fn test_valsem245(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         ciphersuite,
         backend,
         second_ext_init_prop,
-        Sender {
+        &Sender {
             sender_type: SenderType::Member,
-            sender: 0,
+            sender: SenderValue::Member(*alice_group.key_package_ref().unwrap()),
         },
     )
     .expect("error creating queued proposal");

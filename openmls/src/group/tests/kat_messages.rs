@@ -5,8 +5,8 @@
 //! for more description on the test vectors.
 
 use crate::{
-    ciphersuite::signable::Signable, config::*, credentials::*, framing::*, group::*,
-    key_packages::*, messages::proposals::*, messages::*, schedule::*, test_utils::*,
+    config::*, credentials::*, framing::*, group::*, key_packages::*, messages::proposals::*,
+    messages::*, prelude_test::hash_ref::KeyPackageRef, schedule::*, test_utils::*,
     tree::sender_ratchet::*, treesync::node::Node,
 };
 
@@ -65,41 +65,12 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
 
     let ratchet_tree: Vec<Option<Node>> = group.treesync().export_nodes();
 
-    // We can't easily get a "natural" GroupInfo, so we just create one here.
-    let group_info = GroupInfoTbs::new(
-        group.group_id().clone(),
-        GroupEpoch(0),
-        crypto
-            .rand()
-            .random_vec(ciphersuite.hash_length())
-            .expect("An unexpected error occurred."),
-        crypto
-            .rand()
-            .random_vec(ciphersuite.hash_length())
-            .expect("An unexpected error occurred."),
-        &[Extension::RequiredCapabilities(
-            RequiredCapabilitiesExtension::default(),
-        )],
-        &[Extension::RatchetTree(RatchetTreeExtension::new(
-            ratchet_tree.clone(),
-        ))],
-        ConfirmationTag(Mac {
-            mac_value: crypto
-                .rand()
-                .random_vec(ciphersuite.hash_length())
-                .expect("An unexpected error occurred.")
-                .into(),
-        }),
-        random_u32(),
-    );
-    let group_info = group_info
-        .sign(&crypto, &credential_bundle)
-        .expect("An unexpected error occurred.");
+    let group_info = group
+        .export_group_info(&crypto, &credential_bundle)
+        .expect("error exporting group info");
+
     let group_secrets =
         GroupSecrets::random_encoded(ciphersuite, &crypto, ProtocolVersion::default());
-    let public_group_state = group
-        .export_public_group_state(&crypto, &credential_bundle)
-        .expect("An unexpected error occurred.");
 
     // Create some proposals
     let key_package_bundle =
@@ -114,7 +85,12 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         key_package: key_package.clone(),
     };
     let remove_proposal = RemoveProposal {
-        removed: random_u32(),
+        removed: KeyPackageRef::from_slice(
+            &crypto
+                .rand()
+                .random_vec(16)
+                .expect("Error getting randomnes"),
+        ),
     };
 
     let psk_id = PreSharedKeyId::new(
@@ -404,10 +380,12 @@ pub fn run_test_vector(tv: MessagesTestVector) -> Result<(), MessagesTestVectorE
 
     // GroupInfo
     let tv_group_info = hex_to_bytes(&tv.group_info);
-    let my_group_info = GroupInfo::tls_deserialize(&mut tv_group_info.as_slice())
-        .expect("An unexpected error occurred.")
-        .tls_serialize_detached()
-        .expect("An unexpected error occurred.");
+    let my_group_info = GroupInfo::from(
+        VerifiableGroupInfo::tls_deserialize(&mut tv_group_info.as_slice())
+            .expect("An unexpected error occurred."),
+    )
+    .tls_serialize_detached()
+    .expect("An unexpected error occurred.");
     if tv_group_info != my_group_info {
         log::error!("  GroupInfo encoding mismatch");
         log::debug!("    Encoded: {:x?}", my_group_info);

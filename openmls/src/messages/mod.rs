@@ -1,5 +1,6 @@
 use crate::{
-    ciphersuite::{hash_ref::KeyPackageRef, signable::*, *},
+    ciphersuite::hash_ref::KeyPackageRef,
+    ciphersuite::{signable::*, *},
     config::ProtocolVersion,
     extensions::*,
     group::*,

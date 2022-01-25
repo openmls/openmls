@@ -23,6 +23,7 @@ use std::{
     io::{Read, Write},
 };
 
+use openmls_traits::crypto::OpenMlsCrypto;
 pub(crate) use serde::{Deserialize, Serialize};
 
 mod capabilities_extension;
@@ -44,6 +45,8 @@ pub use ratchet_tree_extension::RatchetTreeExtension;
 pub use required_capabilities::RequiredCapabilitiesExtension;
 
 use crate::treesync::node::Node;
+
+use self::external_pub::ExternalPubExtension;
 
 #[cfg(test)]
 mod test_extensions;
@@ -75,6 +78,7 @@ pub enum ExtensionType {
     ParentHash = 4,
     RatchetTree = 5,
     RequiredCapabilities = 6,
+    ExternalPub = 7,
 }
 
 impl TryFrom<u16> for ExtensionType {
@@ -91,6 +95,8 @@ impl TryFrom<u16> for ExtensionType {
             3 => Ok(ExtensionType::KeyId),
             4 => Ok(ExtensionType::ParentHash),
             5 => Ok(ExtensionType::RatchetTree),
+            6 => Ok(ExtensionType::RequiredCapabilities),
+            7 => Ok(ExtensionType::ExternalPub),
             _ => Err(tls_codec::Error::DecodingError(format!(
                 "{} is an unkown extension type",
                 a
@@ -109,6 +115,7 @@ impl ExtensionType {
             | ExtensionType::KeyId
             | ExtensionType::ParentHash
             | ExtensionType::RatchetTree
+            | ExtensionType::ExternalPub
             | ExtensionType::RequiredCapabilities => true,
         }
     }
@@ -134,6 +141,9 @@ pub enum Extension {
 
     /// A [`RequiredCapabilitiesExtension`]
     RequiredCapabilities(RequiredCapabilitiesExtension),
+
+    /// An [`ExternalPubExtension`]
+    ExternalPub(ExternalPubExtension),
 }
 
 impl tls_codec::Size for Extension {
@@ -148,6 +158,7 @@ impl tls_codec::Size for Extension {
             Extension::ParentHash(e) => e.tls_serialized_len(),
             Extension::RatchetTree(e) => e.tls_serialized_len(),
             Extension::RequiredCapabilities(e) => e.tls_serialized_len(),
+            Extension::ExternalPub(e) => e.tls_serialized_len(),
         }
     }
 }
@@ -168,6 +179,7 @@ impl tls_codec::Serialize for Extension {
             Extension::ParentHash(e) => e.tls_serialize(&mut extension_data),
             Extension::RatchetTree(e) => e.tls_serialize(&mut extension_data),
             Extension::RequiredCapabilities(e) => e.tls_serialize(&mut extension_data),
+            Extension::ExternalPub(e) => e.tls_serialize(&mut extension_data),
         }?;
         debug_assert_eq!(extension_data_written, extension_data_len);
         debug_assert_eq!(extension_data_written, extension_data.len());
@@ -206,6 +218,9 @@ impl tls_codec::Deserialize for Extension {
             ExtensionType::RequiredCapabilities => Extension::RequiredCapabilities(
                 RequiredCapabilitiesExtension::tls_deserialize(&mut extension_data)?,
             ),
+            ExtensionType::ExternalPub => {
+                Extension::ExternalPub(ExternalPubExtension::tls_deserialize(&mut extension_data)?)
+            }
             ExtensionType::Reserved => {
                 return Err(tls_codec::Error::DecodingError(format!(
                     "{:?} is not a valid extension type",
@@ -291,6 +306,18 @@ impl Extension {
         }
     }
 
+    /// Get a reference to the `ExternalPubExtension`.
+    /// Returns an `InvalidExtensionType` error if called on an `Extension`
+    /// that's not an `ExternalPubExtension`.
+    pub fn as_external_pub_extension(&self) -> Result<&ExternalPubExtension, ExtensionError> {
+        match self {
+            Self::ExternalPub(e) => Ok(e),
+            _ => Err(ExtensionError::InvalidExtensionType(
+                "This is not an ExternalPubExtension".into(),
+            )),
+        }
+    }
+
     #[inline]
     pub const fn extension_type(&self) -> ExtensionType {
         match self {
@@ -300,6 +327,7 @@ impl Extension {
             Extension::ParentHash(_) => ExtensionType::ParentHash,
             Extension::RatchetTree(_) => ExtensionType::RatchetTree,
             Extension::RequiredCapabilities(_) => ExtensionType::RequiredCapabilities,
+            Extension::ExternalPub(_) => ExtensionType::ExternalPub,
         }
     }
 }
@@ -325,13 +353,23 @@ impl Ord for Extension {
 /// error if there is either no [`RatchetTreeExtension`] or more than one.
 pub(crate) fn try_nodes_from_extensions(
     other_extensions: &[Extension],
-) -> Result<Option<&[Option<Node>]>, ExtensionError> {
+    backend: &impl OpenMlsCrypto,
+) -> Result<Option<Vec<Option<Node>>>, ExtensionError> {
     let mut ratchet_tree_extensions = other_extensions
         .iter()
         .filter(|e| e.extension_type() == ExtensionType::RatchetTree);
 
-    let nodes_option = match ratchet_tree_extensions.next() {
-        Some(e) => Some(e.as_ratchet_tree_extension()?.as_slice()),
+    let nodes = match ratchet_tree_extensions.next() {
+        Some(e) => {
+            let mut nodes: Vec<Option<Node>> = e.as_ratchet_tree_extension()?.as_slice().into();
+            // Compute the key package references.
+            for node in nodes.iter_mut() {
+                if let Some(Node::LeafNode(leaf)) = node {
+                    leaf.set_key_package_ref(backend)?;
+                }
+            }
+            Some(nodes)
+        }
         None => None,
     };
 
@@ -344,5 +382,5 @@ pub(crate) fn try_nodes_from_extensions(
         return Err(ExtensionError::DuplicateRatchetTreeExtension);
     };
 
-    Ok(nodes_option)
+    Ok(nodes)
 }

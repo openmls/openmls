@@ -8,7 +8,7 @@ use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 
 use crate::{
     ciphersuite::*, credentials::*, extensions::*, framing::MlsMessageIn, framing::*, group::*,
-    key_packages::*, messages::*, treesync::node::Node,
+    key_packages::*, messages::*, prelude_test::hash_ref::KeyPackageRef, treesync::node::Node,
 };
 
 use super::{errors::ClientError, ActionType};
@@ -250,7 +250,7 @@ impl Client {
         &self,
         action_type: ActionType,
         group_id: &GroupId,
-        target_indices: &[usize],
+        targets: &[KeyPackageRef],
     ) -> Result<(Vec<MlsMessageOut>, Option<Welcome>), ClientError> {
         let mut groups = self.groups.write().expect("An unexpected error occurred.");
         let group = groups
@@ -258,19 +258,25 @@ impl Client {
             .ok_or(ClientError::NoMatchingGroup)?;
         let action_results = match action_type {
             ActionType::Commit => {
-                let (message, welcome_option) =
-                    group.remove_members(&self.crypto, target_indices)?;
+                let (message, welcome_option) = group.remove_members(&self.crypto, targets)?;
                 (vec![message], welcome_option)
             }
             ActionType::Proposal => {
                 let mut messages = Vec::new();
-                for &target_index in target_indices {
-                    let message = group.propose_remove_member(&self.crypto, target_index as u32)?;
+                for target in targets {
+                    let message = group.propose_remove_member(&self.crypto, target)?;
                     messages.push(message);
                 }
                 (messages, None)
             }
         };
         Ok(action_results)
+    }
+
+    /// Get the [`KeyPackageRef`] of this client in the given group.
+    pub fn key_package_ref(&self, group_id: &GroupId) -> Option<KeyPackageRef> {
+        let groups = self.groups.read().expect("An unexpected error occurred.");
+        let group = groups.get(group_id).unwrap();
+        group.key_package_ref().cloned()
     }
 }
