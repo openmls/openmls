@@ -32,11 +32,11 @@ sub-states, one for each
 <ul>
 <li>
 <p>If the client creates a commit for this group, the <code>PendingCommit</code> state
-is entered with <a href="enum.PendingCommitState.html#variant.Member" title="PendingCommitState::Member"><code>PendingCommitState::Member</code></a> and with the [<code>StagedCommit</code>] as
+is entered with <a href="enum.PendingCommitState.html#variant.Member" title="PendingCommitState::Member"><code>PendingCommitState::Member</code></a> and with the <a href="struct.StagedCommit.html" title="StagedCommit"><code>StagedCommit</code></a> as
 additional state variable. In this state, it can perform the same
 operations as in the <a href="enum.MlsGroupState.html#variant.Operational" title="MlsGroupState::Operational"><code>MlsGroupState::Operational</code></a>, except that it cannot
 create proposals or commits. However, it can merge or clear the stored
-[<code>StagedCommit</code>], where both actions result in a transition to the
+<a href="struct.StagedCommit.html" title="StagedCommit"><code>StagedCommit</code></a>, where both actions result in a transition to the
 <a href="enum.MlsGroupState.html#variant.Operational" title="MlsGroupState::Operational"><code>MlsGroupState::Operational</code></a>. Additionally, if a commit from another
 group member is processed, the own pending commit is also cleared and
 either the <code>Inactive</code> state is entered (if this client was removed from
