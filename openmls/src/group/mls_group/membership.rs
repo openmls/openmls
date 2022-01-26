@@ -104,11 +104,7 @@ impl MlsGroup {
         // Create inline remove proposals
         let inline_proposals = members
             .iter()
-            .map(|member| {
-                Proposal::Remove(RemoveProposal {
-                    removed: member.clone(),
-                })
-            })
+            .map(|member| Proposal::Remove(RemoveProposal { removed: *member }))
             .collect::<Vec<Proposal>>();
 
         let credential = self.credential()?;

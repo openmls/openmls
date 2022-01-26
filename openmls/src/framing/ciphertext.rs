@@ -83,7 +83,7 @@ impl MlsCiphertext {
             .map_err(|_| MlsCiphertextError::InvalidContentType)?;
         let (generation, (ratchet_key, mut ratchet_nonce)) = message_secrets
             .secret_tree_mut()
-            .secret_for_encryption(ciphersuite, backend, header.sender.into(), secret_type)?;
+            .secret_for_encryption(ciphersuite, backend, header.sender, secret_type)?;
         // Sample reuse guard uniformly at random.
         let reuse_guard: ReuseGuard = ReuseGuard::try_from_random(backend)?;
         // Prepare the nonce by xoring with the reuse guard.
@@ -395,7 +395,7 @@ impl MlsSenderData {
         reuse_guard: ReuseGuard,
     ) -> Result<Self, MlsCiphertextError> {
         Ok(MlsSenderData {
-            sender: sender.as_key_package_ref()?.clone(),
+            sender: *sender.as_key_package_ref()?,
             generation,
             reuse_guard,
         })

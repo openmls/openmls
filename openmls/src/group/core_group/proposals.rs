@@ -100,7 +100,7 @@ impl QueuedProposal {
     }
     /// Returns the `ProposalRef`.
     pub(crate) fn proposal_reference(&self) -> ProposalRef {
-        self.proposal_reference.clone()
+        self.proposal_reference
     }
     /// Returns the `ProposalOrRefType`.
     pub(crate) fn proposal_or_ref_type(&self) -> ProposalOrRefType {
@@ -205,7 +205,7 @@ impl ProposalQueue {
     pub(crate) fn add(&mut self, queued_proposal: QueuedProposal) {
         let proposal_reference = queued_proposal.proposal_reference();
         // Only add the proposal if it's not already there
-        if let Entry::Vacant(entry) = self.queued_proposals.entry(proposal_reference.clone()) {
+        if let Entry::Vacant(entry) = self.queued_proposals.entry(proposal_reference) {
             // Add the proposal reference to ensure the correct order
             self.proposal_references.push(proposal_reference);
             // Add the proposal to the queue
@@ -475,7 +475,7 @@ impl ProposalQueue {
                         ProposalOrRef::Proposal(queued_proposal.proposal.clone())
                     }
                     ProposalOrRefType::Reference => {
-                        ProposalOrRef::Reference(queued_proposal.proposal_reference.clone())
+                        ProposalOrRef::Reference(queued_proposal.proposal_reference)
                     }
                 }
             })

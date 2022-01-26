@@ -356,10 +356,8 @@ impl TreeSync {
         let tsn_leaves = self.tree.nodes().iter().filter(|tsn| tsn.node().is_some());
         let mut leaves = BTreeMap::new();
         for tsn_leaf in tsn_leaves {
-            if let Some(ref node) = tsn_leaf.node() {
-                if let Node::LeafNode(leaf) = node {
-                    leaves.insert(leaf.key_package_ref().cloned(), leaf.key_package());
-                }
+            if let Some(Node::LeafNode(leaf)) = tsn_leaf.node() {
+                leaves.insert(leaf.key_package_ref().cloned(), leaf.key_package());
             }
         }
         Ok(leaves)
@@ -445,7 +443,7 @@ impl TreeSync {
                 }
             })
             .map(|(node_index, _)| (node_index / 2) as u32)
-            .ok_or_else(|| TreeSyncError::KeyPackageRefNotInTree)
+            .ok_or(TreeSyncError::KeyPackageRefNotInTree)
     }
 }
 

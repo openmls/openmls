@@ -213,10 +213,9 @@ impl PublicGroupStateTbs {
             other_extensions,
             external_pub: external_pub.into(),
             ciphersuite: ciphersuite.name(),
-            signer: core_group
+            signer: *core_group
                 .key_package_ref()
-                .ok_or(CryptoError::CryptoLibraryError)?
-                .clone(),
+                .ok_or(CryptoError::CryptoLibraryError)?,
         })
     }
 }

@@ -181,7 +181,7 @@ impl GroupInfoPayload {
             group_context_extensions: group_context_extensions.into(),
             other_extensions: other_extensions.into(),
             confirmation_tag,
-            signer: signer.clone(),
+            signer: *signer,
         }
     }
 }

@@ -66,7 +66,7 @@ impl DecryptedMessage {
 
     /// Constructs a [DecryptedMessage] from a [MlsCiphertext] by attempting to decrypt it
     /// to a [VerifiableMlsPlaintext] first.
-    pub(crate) fn from_inbound_ciphertext<'a>(
+    pub(crate) fn from_inbound_ciphertext(
         inbound_message: MlsMessageIn,
         backend: &impl OpenMlsCryptoProvider,
         group: &mut CoreGroup,
@@ -79,7 +79,6 @@ impl DecryptedMessage {
                 .message_secrets_mut(ciphertext.epoch())
                 .map_err(|_| MlsCiphertextError::DecryptionError)?;
             let sender_data = ciphertext.sender_data(message_secrets, backend, ciphersuite)?;
-            drop(message_secrets);
             let sender_index = group
                 .sender_index(&sender_data.sender)
                 .map_err(|_| MlsCiphertextError::SenderError(SenderError::UnknownSender))?;

@@ -335,8 +335,8 @@ pub(crate) fn try_nodes_from_extensions(
         Some(e) => {
             let mut nodes: Vec<Option<Node>> = e.as_ratchet_tree_extension()?.as_slice().into();
             // Compute the key package references.
-            for node in nodes.iter_mut() {
-                if let Some(Node::LeafNode(leaf)) = node {
+            for node in nodes.iter_mut().flatten() {
+                if let Node::LeafNode(leaf) = node {
                     leaf.set_key_package_ref(crypto_backend)?;
                 }
             }

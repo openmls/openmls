@@ -92,7 +92,7 @@ impl Sender {
     pub(crate) fn build_member(kpr: &KeyPackageRef) -> Self {
         Self {
             sender_type: SenderType::Member,
-            sender: SenderValue::Member(kpr.clone()),
+            sender: SenderValue::Member(*kpr),
         }
     }
 

@@ -51,7 +51,7 @@ impl CoreGroup {
                 // `remove` proposal with the index of our previous self in the
                 // group.
                 let leaf_index =
-                    self.free_leaf_index(params.inline_proposals().iter().map(|p| Some(p)))?;
+                    self.free_leaf_index(params.inline_proposals().iter().map(Some))?;
                 (Sender::build_new_member(), leaf_index)
             }
             CommitType::Member => (
@@ -69,7 +69,7 @@ impl CoreGroup {
         let (proposal_queue, contains_own_updates) = ProposalQueue::filter_proposals(
             ciphersuite,
             backend,
-            sender.clone(),
+            sender,
             params.proposal_store(),
             params.inline_proposals(),
             own_kpr,

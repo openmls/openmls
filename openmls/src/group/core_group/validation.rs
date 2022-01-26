@@ -57,14 +57,13 @@ impl CoreGroup {
     ) -> Result<(), CoreGroupError> {
         // ValSem004
         let sender = plaintext.sender();
-        if sender.is_member() {
-            if self
+        if sender.is_member()
+            && self
                 .treesync()
                 .leaf_from_id(sender.as_key_package_ref()?)?
                 .is_none()
-            {
-                return Err(FramingValidationError::UnknownMember.into());
-            }
+        {
+            return Err(FramingValidationError::UnknownMember.into());
         }
 
         // ValSem005
@@ -185,7 +184,7 @@ impl CoreGroup {
         for remove_proposal in remove_proposals {
             let removed = remove_proposal.remove_proposal().removed();
             // ValSem107
-            if !removes_set.insert(removed.clone()) {
+            if !removes_set.insert(*removed) {
                 return Err(ProposalValidationError::DuplicateMemberRemoval.into());
             }
 
