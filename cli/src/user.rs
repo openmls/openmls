@@ -3,6 +3,7 @@ use std::{cell::RefCell, collections::HashMap};
 use ds_lib::{ClientKeyPackages, GroupMessage, Message};
 use openmls::prelude::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::OpenMlsCryptoProvider;
 
 use super::{backend::Backend, conversation::Conversation, identity::Identity};
 
@@ -60,8 +61,10 @@ impl User {
                 .borrow()
                 .kpb
                 .key_package()
-                .hash(&self.crypto)
-                .unwrap(),
+                .hash_ref(self.crypto.crypto())
+                .unwrap()
+                .as_slice()
+                .to_vec(),
             self.identity.borrow().kpb.key_package().clone(),
         )]
     }
@@ -153,10 +156,7 @@ impl User {
                     let unverified_message = match mls_group.parse_message(message, &self.crypto) {
                         Ok(msg) => msg,
                         Err(e) => {
-                            log::error!(
-                                "Error parsing message: {:?} -  Dropping message.",
-                                e
-                            );
+                            log::error!("Error parsing message: {:?} -  Dropping message.", e);
                             continue;
                         }
                     };
@@ -242,8 +242,9 @@ impl User {
             &group_config,
             GroupId::from_slice(group_id),
             &kpb.key_package()
-                .hash(&self.crypto)
-                .expect("Failed to hash KeyPackage."),
+                .hash_ref(self.crypto.crypto())
+                .expect("Failed to hash KeyPackage.")
+                .as_slice(),
         )
         .expect("Failed to create MlsGroup");
         mls_group.set_aad(group_aad.as_slice());

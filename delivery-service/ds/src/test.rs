@@ -36,7 +36,9 @@ fn generate_key_package(
     crypto_backend
         .key_store()
         .store(
-            &kp.hash(crypto_backend).expect("Could not hash KeyPackage."),
+            kp.hash_ref(crypto_backend.crypto())
+                .expect("Could not hash KeyPackage.")
+                .value(),
             &kpb,
         )
         .expect("An unexpected error occurred.");
@@ -91,7 +93,11 @@ async fn test_list_clients() {
     let client_key_package =
         generate_key_package(&[ciphersuite], &credential_bundle, vec![], crypto).unwrap();
     let client_key_package = vec![(
-        client_key_package.hash(crypto).unwrap(),
+        client_key_package
+            .hash_ref(crypto.crypto())
+            .unwrap()
+            .as_slice()
+            .to_vec(),
         client_key_package.clone(),
     )];
     let client_data = ClientInfo::new(client_name.to_string(), client_key_package.clone());
@@ -189,7 +195,11 @@ async fn test_group() {
         let client_data = ClientInfo::new(
             client_name.to_string(),
             vec![(
-                client_key_package.hash(crypto).unwrap(),
+                client_key_package
+                    .hash_ref(crypto.crypto())
+                    .unwrap()
+                    .as_slice()
+                    .to_vec(),
                 client_key_package.clone(),
             )],
         );
@@ -213,10 +223,11 @@ async fn test_group() {
         crypto,
         &mls_group_config,
         group_id,
-        &key_package_bundles
+        key_package_bundles
             .remove(0)
-            .hash(crypto)
-            .expect("Could not hash KeyPackage."),
+            .hash_ref(crypto.crypto())
+            .expect("Could not hash KeyPackage.")
+            .value(),
     )
     .expect("An unexpected error occurred.");
 

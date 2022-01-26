@@ -20,7 +20,7 @@ fn store_key_package_bundle_in_keystore(
         .store(
             &key_package_bundle
                 .key_package()
-                .hash(crypto_backend)
+                .hash_ref(crypto_backend.crypto())
                 .expect("Failed to hash KeyPackage."),
             key_package_bundle,
         )

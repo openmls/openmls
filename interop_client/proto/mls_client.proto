@@ -211,7 +211,7 @@ message UpdateProposalRequest {
 // rpc RemoveProposal
 message RemoveProposalRequest {
   uint32 state_id = 1;
-  uint32 removed = 2;
+  bytes removed = 2;
 }
 
 // rpc PSKProposal

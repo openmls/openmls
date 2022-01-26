@@ -11,7 +11,7 @@ pub use crate::group::errors::*;
 pub use crate::binary_tree::LeafIndex;
 
 // Ciphersuite
-pub use crate::ciphersuite::{ciphersuites::*, signable::*, *};
+pub use crate::ciphersuite::{ciphersuites::*, hash_ref::KeyPackageRef, signable::*, *};
 
 // Messages
 pub use crate::messages::*;

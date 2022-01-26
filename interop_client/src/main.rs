@@ -330,28 +330,29 @@ impl MlsClient for MlsClientImpl {
                 }
             }
             Ok(TestVectorType::Treekem) => {
-                let kat_tree_kem: TreeKemTestVector = match serde_json::from_slice(&obj.test_vector)
-                {
-                    Ok(test_vector) => test_vector,
-                    Err(_) => {
-                        return Err(tonic::Status::new(
-                            tonic::Code::InvalidArgument,
-                            "Couldn't decode TreeKEM test vector.",
-                        ));
-                    }
-                };
-                write(
-                    &format!("mlspp_tree_kem_{}.json", kat_tree_kem.cipher_suite),
-                    &obj.test_vector,
-                );
-                match kat_tree_kem::run_test_vector(kat_tree_kem, backend) {
-                    Ok(result) => ("TreeKEM", result),
-                    Err(e) => {
-                        let message = "Error while running TreeKEM test vector: ".to_string()
-                            + &e.to_string();
-                        return Err(tonic::Status::new(tonic::Code::Aborted, message));
-                    }
-                }
+                todo!("#624: See TreeKEM is currently not working. See https://github.com/openmls/openmls/issues/624");
+                // let kat_tree_kem: TreeKemTestVector = match serde_json::from_slice(&obj.test_vector)
+                // {
+                //     Ok(test_vector) => test_vector,
+                //     Err(_) => {
+                //         return Err(tonic::Status::new(
+                //             tonic::Code::InvalidArgument,
+                //             "Couldn't decode TreeKEM test vector.",
+                //         ));
+                //     }
+                // };
+                // write(
+                //     &format!("mlspp_tree_kem_{}.json", kat_tree_kem.cipher_suite),
+                //     &obj.test_vector,
+                // );
+                // match kat_tree_kem::run_test_vector(kat_tree_kem, backend) {
+                //     Ok(result) => ("TreeKEM", result),
+                //     Err(e) => {
+                //         let message = "Error while running TreeKEM test vector: ".to_string()
+                //             + &e.to_string();
+                //         return Err(tonic::Status::new(tonic::Code::Aborted, message));
+                //     }
+                // }
             }
             Ok(TestVectorType::Messages) => {
                 let kat_messages: MessagesTestVector =
@@ -410,11 +411,11 @@ impl MlsClient for MlsClientImpl {
         .unwrap();
         let kp_hash = key_package_bundle
             .key_package()
-            .hash(&self.crypto_provider)
+            .hash_ref(self.crypto_provider.crypto())
             .unwrap();
         self.crypto_provider
             .key_store()
-            .store(&kp_hash, &key_package_bundle)
+            .store(kp_hash.value(), &key_package_bundle)
             .unwrap();
         let wire_format_policy = wire_format_policy(create_group_request.encrypt_handshake);
         let mls_group_config = MlsGroupConfig::builder()
@@ -425,7 +426,7 @@ impl MlsClient for MlsClientImpl {
             &self.crypto_provider,
             &mls_group_config,
             GroupId::from_slice(&create_group_request.group_id),
-            &kp_hash,
+            kp_hash.as_slice(),
         )
         .map_err(into_status)?;
 
@@ -469,14 +470,20 @@ impl MlsClient for MlsClientImpl {
         let transaction_id = transaction_id_map.len() as u32;
         transaction_id_map.insert(
             transaction_id,
-            key_package.hash(&self.crypto_provider).unwrap(),
+            key_package
+                .hash_ref(self.crypto_provider.crypto())
+                .unwrap()
+                .value()
+                .to_vec(),
         );
 
         self.pending_key_packages.lock().unwrap().insert(
             key_package_bundle
                 .key_package()
-                .hash(&self.crypto_provider)
-                .unwrap(),
+                .hash_ref(self.crypto_provider.crypto())
+                .unwrap()
+                .as_slice()
+                .to_vec(),
             (key_package_bundle, credential_bundle),
         );
 
@@ -505,7 +512,7 @@ impl MlsClient for MlsClientImpl {
         let (_kpb, credential_bundle) = welcome
             .secrets()
             .iter()
-            .find_map(|egs| pending_key_packages.remove(egs.key_package_hash.as_slice()))
+            .find_map(|egs| pending_key_packages.remove(egs.new_member.as_slice()))
             .ok_or_else(|| {
                 tonic::Status::new(
                     tonic::Code::NotFound,
@@ -730,7 +737,10 @@ impl MlsClient for MlsClientImpl {
 
         let proposal = interop_group
             .group
-            .propose_remove_member(&self.crypto_provider, remove_proposal_request.removed)
+            .propose_remove_member(
+                &self.crypto_provider,
+                &KeyPackageRef::from_slice(&remove_proposal_request.removed),
+            )
             .map_err(into_status)?
             .to_bytes()
             .unwrap();
