@@ -339,7 +339,9 @@ fn test_valsem004(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::TreeSyncError(TreeSyncError::LeafNotInTree))
+        MlsGroupError::Group(CoreGroupError::TreeSyncError(
+            TreeSyncError::KeyPackageRefNotInTree
+        ))
     );
 
     // Positive case

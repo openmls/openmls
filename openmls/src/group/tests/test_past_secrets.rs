@@ -185,7 +185,7 @@ fn test_past_secrets_in_group(
             );
         }
 
-        // FIXME: It is impossible to decrypt this message now because the sender
+        // FIXME: #702 It is impossible to decrypt this message now because the sender
         //        does not exist any more.
         // The last messages should not fail
         // for application_message in application_messages.iter().skip(max_epochs / 2) {

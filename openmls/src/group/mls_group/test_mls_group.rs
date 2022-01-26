@@ -226,7 +226,9 @@ fn remover(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // === Alice removes Bob & Charlie commits ===
 
-    let bob_kpr = bob_group.key_package_ref().unwrap();
+    let bob_kpr = bob_group
+        .key_package_ref()
+        .expect("Error getting key package reference.");
     let alice_kpr = &alice_group.key_package_ref().unwrap().clone();
     let queued_messages = alice_group
         .propose_remove_member(backend, bob_kpr)
@@ -423,7 +425,7 @@ fn test_invalid_plaintext(ciphersuite: &'static Ciphersuite, backend: &impl Open
 
     assert_eq!(
         ClientError::MlsGroupError(MlsGroupError::Group(CoreGroupError::TreeSyncError(
-            TreeSyncError::LeafNotInTree
+            TreeSyncError::KeyPackageRefNotInTree
         ))),
         error
     );

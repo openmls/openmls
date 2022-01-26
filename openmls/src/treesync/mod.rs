@@ -445,7 +445,7 @@ impl TreeSync {
                 }
             })
             .map(|(node_index, _)| (node_index / 2) as u32)
-            .ok_or_else(|| TreeSyncError::LeafNotInTree)
+            .ok_or_else(|| TreeSyncError::KeyPackageRefNotInTree)
     }
 }
 
@@ -456,7 +456,7 @@ implement_error! {
             MissingKeyPackage = "Couldn't find our own key package in this tree.",
             DuplicateKeyPackage = "Found two KeyPackages with the same public key.",
             OutOfBounds = "The given `LeafIndex` is outside of the tree.",
-            LeafNotInTree = "The given `KeyPackageRef` is not in the tree.",
+            KeyPackageRefNotInTree = "The given `KeyPackageRef` is not in the tree.",
         }
         Complex {
             BinaryTreeError(MlsBinaryTreeError) = "An error occurred during an operation on the underlying binary tree.",

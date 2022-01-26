@@ -263,14 +263,6 @@ impl MlsGroup {
             .collect())
     }
 
-    /// Gets the current list of members
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn leaves(
-        &self,
-    ) -> Result<BTreeMap<Option<KeyPackageRef>, &KeyPackage>, crate::treesync::TreeSyncError> {
-        self.group.treesync().leaves()
-    }
-
     /// Gets the current list of members, indexed with the leaf index.
     /// This should go away in future when all tests are rewritten to use key
     /// package references instead of leaf indices.

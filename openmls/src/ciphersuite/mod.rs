@@ -32,8 +32,8 @@ mod signature;
 
 // Public
 pub mod ciphersuites;
-pub mod signable;
 pub mod hash_ref;
+pub mod signable;
 
 // Crate
 pub(crate) use aead::*;

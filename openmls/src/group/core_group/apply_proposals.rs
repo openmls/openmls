@@ -94,7 +94,7 @@ impl CoreGroup {
                 let sender = queued_proposal.sender();
                 let sender_index = self
                     .sender_index(sender.as_key_package_ref()?)
-                    .map_err(|_| TreeSyncError::LeafNotInTree)?;
+                    .map_err(|_| TreeSyncError::KeyPackageRefNotInTree)?;
                 let leaf_node: LeafNode = if sender_index == self.tree.own_leaf_index() {
                     let own_kpb = match key_package_bundles
                         .iter()

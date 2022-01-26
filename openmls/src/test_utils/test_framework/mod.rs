@@ -21,9 +21,14 @@
 //! can be manipulated manually via the `Client` struct, which contains their
 //! group states.
 
-use crate::prelude_test::hash_ref::KeyPackageRef;
 use crate::{
-    ciphersuite::*, config::*, credentials::*, framing::*, group::*, key_packages::*, messages::*,
+    ciphersuite::{hash_ref::KeyPackageRef, *},
+    config::*,
+    credentials::*,
+    framing::*,
+    group::*,
+    key_packages::*,
+    messages::*,
     treesync::node::Node,
 };
 use ::rand::{rngs::OsRng, RngCore};
