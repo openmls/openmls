@@ -194,7 +194,7 @@ impl MlsGroupTestSetup {
             .members
             .iter()
             .find(|(leaf_index, _)| index == *leaf_index)
-            .expect(&format!("Couldn't find member at leaf index {}", index));
+            .expect("Couldn't find member at leaf index");
         let clients = self.clients.read().expect("An unexpected error occurred.");
         let client = clients
             .get(id)
@@ -210,7 +210,7 @@ impl MlsGroupTestSetup {
             .members
             .iter()
             .find(|(_, leaf_id)| id == leaf_id)
-            .expect(&format!("Couldn't find member at leaf index {:x?}", id));
+            .expect("Couldn't find member at leaf index");
         let clients = self.clients.read().expect("An unexpected error occurred.");
         let client = clients
             .get(id)

@@ -42,7 +42,7 @@ fn decryption_key_index_computation(ciphersuite: &'static Ciphersuite) {
         .expect("An unexpected error occurred.")
         .clone();
     let kpr_2 = setup
-        .key_package_ref_by_index(2, &group)
+        .key_package_ref_by_index(2, group)
         .expect("Couldn't get key package reference.");
     setup
         .remove_clients(ActionType::Commit, group, remover_id, &[kpr_2])
@@ -61,7 +61,7 @@ fn decryption_key_index_computation(ciphersuite: &'static Ciphersuite) {
         .expect("An unexpected error occurred.")
         .clone();
     let kpr_3 = setup
-        .key_package_ref_by_index(3, &group)
+        .key_package_ref_by_index(3, group)
         .expect("Couldn't get key package reference.");
     setup
         .remove_clients(ActionType::Commit, group, remover_id, &[kpr_3])

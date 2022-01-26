@@ -68,7 +68,7 @@ fn validation_test_setup(
         backend,
         &mls_group_config,
         group_id,
-        &alice_key_package
+        alice_key_package
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage.")
             .as_slice(),

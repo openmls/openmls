@@ -307,7 +307,7 @@ fn large_group_lifecycle(ciphersuite: &'static Ciphersuite) {
             target_id = group.random_group_member();
         }
         let target_kpr = setup
-            .key_package_ref_by_id(&target_id, &group)
+            .key_package_ref_by_id(&target_id, group)
             .expect("Couldn't get key package reference.");
         setup
             .remove_clients(ActionType::Commit, group, &remover_id, &[target_kpr])

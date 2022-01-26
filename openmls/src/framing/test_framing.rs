@@ -725,7 +725,7 @@ fn invalid_plaintext_signature(
         .expect("Could not create proposal.");
 
     let proposal_store = ProposalStore::from_queued_proposal(
-        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal.clone())
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
             .expect("Could not create QueuedProposal."),
     );
 

@@ -333,8 +333,7 @@ impl CoreGroup {
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
         MlsPlaintext::member_proposal(
             framing_parameters,
-            self.key_package_ref()
-                .ok_or_else(|| CoreGroupError::LibraryError)?,
+            self.key_package_ref().ok_or(CoreGroupError::LibraryError)?,
             proposal,
             credential_bundle,
             self.context(),
@@ -375,8 +374,7 @@ impl CoreGroup {
         let proposal = Proposal::GroupContextExtensions(proposal);
         MlsPlaintext::member_proposal(
             framing_parameters,
-            self.key_package_ref()
-                .ok_or_else(|| CoreGroupError::LibraryError)?,
+            self.key_package_ref().ok_or(CoreGroupError::LibraryError)?,
             proposal,
             credential_bundle,
             self.context(),

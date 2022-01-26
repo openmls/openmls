@@ -155,8 +155,7 @@ fn test_failed_groupinfo_decryption(
             new_member: key_package_bundle
                 .key_package
                 .hash_ref(backend.crypto())
-                .expect("Could not hash KeyPackage.")
-                .into(),
+                .expect("Could not hash KeyPackage."),
             encrypted_group_secrets,
         }];
 

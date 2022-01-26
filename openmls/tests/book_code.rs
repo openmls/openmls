@@ -588,7 +588,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     let bob_processed_message = bob_group
         .process_unverified_message(unverified_message, None, backend)
         .expect("Could not process unverified message.");
-    let charlies_old_kpr = charlie_group.key_package_ref().unwrap().clone();
+    let charlies_old_kpr = *charlie_group.key_package_ref().unwrap();
     charlie_group
         .merge_pending_commit()
         .expect("error merging pending commit");

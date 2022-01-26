@@ -509,8 +509,8 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
         );
 
         // === Charlie removes Bob ===
-        let bob_kpr = bob_group.key_package_ref().unwrap().clone();
-        let charlie_kpr = charlie_group.key_package_ref().unwrap().clone();
+        let bob_kpr = *bob_group.key_package_ref().unwrap();
+        let charlie_kpr = *charlie_group.key_package_ref().unwrap();
         println!(" >>> Charlie is removing bob");
         let (queued_message, welcome_option) = charlie_group
             .remove_members(backend, &[bob_kpr])
@@ -614,8 +614,8 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             .expect("Couldn't get the key package reference for Bob.");
 
         // Create RemoveProposal and process it
-        let alice_kpr = alice_group.key_package_ref().unwrap().clone();
-        let charlie_kpr = charlie_group.key_package_ref().unwrap().clone();
+        let alice_kpr = *alice_group.key_package_ref().unwrap();
+        let charlie_kpr = *charlie_group.key_package_ref().unwrap();
         let queued_message = alice_group
             .propose_remove_member(backend, &charlie_kpr)
             .expect("Could not create proposal to remove Charlie");
@@ -760,7 +760,7 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             .expect("Could not process unverified message.");
 
         // Check that we received the correct message
-        let alice_kpr = alice_group.key_package_ref().unwrap().clone();
+        let alice_kpr = *alice_group.key_package_ref().unwrap();
         if let ProcessedMessage::ApplicationMessage(application_message) = bob_processed_message {
             // Check the message
             assert_eq!(application_message.message(), message_alice);

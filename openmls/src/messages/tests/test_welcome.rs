@@ -68,7 +68,7 @@ fn test_welcome_message_with_version(
     let hpke_info = b"group info welcome test info";
     let hpke_aad = b"group info welcome test aad";
     let hpke_input = b"these should be the group secrets";
-    let new_member = KeyPackageRef::from_slice(&vec![0u8; 16]);
+    let new_member = KeyPackageRef::from_slice(&[0u8; 16]);
     let secrets = vec![EncryptedGroupSecrets {
         new_member,
         encrypted_group_secrets: backend.crypto().hpke_seal(
