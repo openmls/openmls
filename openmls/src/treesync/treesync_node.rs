@@ -10,7 +10,10 @@ use crate::{
     treesync::hashes::{LeafNodeHashInput, ParentHashError, ParentNodeTreeHashInput},
 };
 
-use super::{node::NodeError, Node};
+use super::{
+    node::{leaf_node::LeafNode, NodeError},
+    Node,
+};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -59,7 +62,10 @@ impl TreeSyncNode {
     pub(in crate::treesync) fn node_without_private_key(&self) -> Option<Node> {
         if let Some(node) = self.node() {
             match node {
-                Node::LeafNode(leaf_node) => Node::LeafNode(leaf_node.key_package().clone().into()),
+                Node::LeafNode(leaf_node) => Node::LeafNode(LeafNode::new_with_ref(
+                    leaf_node.key_package().clone(),
+                    leaf_node.key_package_ref().cloned(),
+                )),
                 Node::ParentNode(parent_node) => {
                     Node::ParentNode(parent_node.clone_without_private_key())
                 }

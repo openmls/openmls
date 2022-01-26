@@ -9,13 +9,13 @@ use tls_codec::{Serialize, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize, 
 
 use crate::{
     ciphersuite::{
+        hash_ref::KeyPackageRef,
         signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
         CiphersuiteName, HpkePublicKey, Signature,
     },
     config::ProtocolVersion,
     extensions::Extension,
     group::*,
-    treesync::LeafIndex,
 };
 
 /// PublicGroupState as defined in the MLS specification as follows:
@@ -50,8 +50,7 @@ pub struct PublicGroupState {
     pub(crate) group_context_extensions: TlsVecU32<Extension>,
     pub(crate) other_extensions: TlsVecU32<Extension>,
     pub(crate) external_pub: HpkePublicKey,
-    // TODO: #541 replace signer_index with [`KeyPackageRef`]
-    pub(crate) signer_index: LeafIndex,
+    pub(crate) signer: KeyPackageRef,
     pub(crate) signature: Signature,
 }
 
@@ -87,9 +86,9 @@ impl VerifiablePublicGroupState {
         self.tbs.tree_hash.as_slice()
     }
 
-    /// Get the `LeafIndex` of the signer of the unverified `PublicGroupState`.
-    pub(crate) fn signer_index(&self) -> LeafIndex {
-        self.tbs.signer_index
+    /// Get a reference to the [`KeyPackageRef`] of the signer.
+    pub(crate) fn signer(&self) -> &KeyPackageRef {
+        &self.tbs.signer
     }
 
     /// Get a reference to the non [`GroupContext`] extensions of the unverified
@@ -117,7 +116,7 @@ impl VerifiedStruct<VerifiablePublicGroupState> for PublicGroupState {
             group_context_extensions: v.tbs.group_context_extensions,
             other_extensions: v.tbs.other_extensions,
             external_pub: v.tbs.external_pub,
-            signer_index: v.tbs.signer_index,
+            signer: v.tbs.signer,
             signature: v.signature,
         }
     }
@@ -138,7 +137,7 @@ impl SignedStruct<PublicGroupStateTbs> for PublicGroupState {
             group_context_extensions: tbs.group_context_extensions,
             other_extensions: tbs.other_extensions,
             external_pub: tbs.external_pub,
-            signer_index: tbs.signer_index,
+            signer: tbs.signer,
             signature,
         }
     }
@@ -179,8 +178,7 @@ pub(crate) struct PublicGroupStateTbs {
     pub(crate) group_context_extensions: TlsVecU32<Extension>,
     pub(crate) other_extensions: TlsVecU32<Extension>,
     pub(crate) external_pub: HpkePublicKey,
-    // TODO: #541 replace signer_index with [`KeyPackageRef`]
-    pub(crate) signer_index: LeafIndex,
+    pub(crate) signer: KeyPackageRef,
 }
 
 impl PublicGroupStateTbs {
@@ -215,7 +213,9 @@ impl PublicGroupStateTbs {
             other_extensions,
             external_pub: external_pub.into(),
             ciphersuite: ciphersuite.name(),
-            signer_index: core_group.treesync().own_leaf_index(),
+            signer: *core_group
+                .key_package_ref()
+                .ok_or(CryptoError::CryptoLibraryError)?,
         })
     }
 }

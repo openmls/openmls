@@ -11,8 +11,8 @@ mod ser;
 mod test_mls_group;
 mod updates;
 
-use crate::credentials::CredentialBundle;
-use crate::{treesync::node::Node, treesync::LeafIndex};
+use crate::treesync::node::Node;
+use crate::{ciphersuite::hash_ref::KeyPackageRef, credentials::CredentialBundle};
 
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 
@@ -227,6 +227,11 @@ impl MlsGroup {
         }
         let tree = self.group.treesync();
         Ok(tree.own_leaf_node()?.key_package().credential())
+    }
+
+    /// Get the [`KeyPackageRef`] of the client owning this group.
+    pub fn key_package_ref(&self) -> Option<&KeyPackageRef> {
+        self.group.key_package_ref()
     }
 
     /// Get group ID

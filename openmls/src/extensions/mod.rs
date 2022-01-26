@@ -23,6 +23,7 @@ use std::{
     io::{Read, Write},
 };
 
+use openmls_traits::crypto::OpenMlsCrypto;
 pub(crate) use serde::{Deserialize, Serialize};
 
 mod capabilities_extension;
@@ -324,13 +325,23 @@ impl Ord for Extension {
 /// error if there is either no [`RatchetTreeExtension`] or more than one.
 pub(crate) fn try_nodes_from_extensions(
     other_extensions: &[Extension],
-) -> Result<Option<&[Option<Node>]>, ExtensionError> {
+    crypto_backend: &impl OpenMlsCrypto,
+) -> Result<Option<Vec<Option<Node>>>, ExtensionError> {
     let mut ratchet_tree_extensions = other_extensions
         .iter()
         .filter(|e| e.extension_type() == ExtensionType::RatchetTree);
 
-    let nodes_option = match ratchet_tree_extensions.next() {
-        Some(e) => Some(e.as_ratchet_tree_extension()?.as_slice()),
+    let nodes = match ratchet_tree_extensions.next() {
+        Some(e) => {
+            let mut nodes: Vec<Option<Node>> = e.as_ratchet_tree_extension()?.as_slice().into();
+            // Compute the key package references.
+            for node in nodes.iter_mut().flatten() {
+                if let Node::LeafNode(leaf) = node {
+                    leaf.set_key_package_ref(crypto_backend)?;
+                }
+            }
+            Some(nodes)
+        }
         None => None,
     };
 
@@ -343,5 +354,5 @@ pub(crate) fn try_nodes_from_extensions(
         return Err(ExtensionError::DuplicateRatchetTreeExtension);
     };
 
-    Ok(nodes_option)
+    Ok(nodes)
 }

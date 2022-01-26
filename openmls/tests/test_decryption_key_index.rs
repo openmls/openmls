@@ -41,8 +41,11 @@ fn decryption_key_index_computation(ciphersuite: &'static Ciphersuite) {
         .find(|(index, _)| index == &0)
         .expect("An unexpected error occurred.")
         .clone();
+    let kpr_2 = setup
+        .key_package_ref_by_index(2, group)
+        .expect("Couldn't get key package reference.");
     setup
-        .remove_clients_by_index(ActionType::Commit, group, remover_id, &[2])
+        .remove_clients(ActionType::Commit, group, remover_id, &[kpr_2])
         .expect("An unexpected error occurred.");
 
     // Then we have the member at index 7 remove the one at index 3. This
@@ -57,8 +60,11 @@ fn decryption_key_index_computation(ciphersuite: &'static Ciphersuite) {
         .find(|(index, _)| index == &7)
         .expect("An unexpected error occurred.")
         .clone();
+    let kpr_3 = setup
+        .key_package_ref_by_index(3, group)
+        .expect("Couldn't get key package reference.");
     setup
-        .remove_clients_by_index(ActionType::Commit, group, remover_id, &[3])
+        .remove_clients(ActionType::Commit, group, remover_id, &[kpr_3])
         .expect("An unexpected error occurred.");
 
     // Since the decryption failure doesn't cause a panic, but only an error

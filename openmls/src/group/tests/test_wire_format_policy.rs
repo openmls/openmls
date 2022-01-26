@@ -42,9 +42,10 @@ fn create_group(
         backend,
         &mls_group_config,
         group_id,
-        &key_package
-            .hash(backend)
-            .expect("Could not hash KeyPackage."),
+        key_package
+            .hash_ref(backend.crypto())
+            .expect("Could not hash KeyPackage.")
+            .as_slice(),
     )
     .expect("An unexpected error occurred.")
 }

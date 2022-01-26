@@ -53,7 +53,9 @@ impl TestClient {
         let mut key_package_bundles = self.key_package_bundles.borrow_mut();
         key_package_bundles
             .iter()
-            .position(|x| x.key_package().hash(backend) == key_package.hash(backend))
+            .position(|x| {
+                x.key_package().hash_ref(backend.crypto()) == key_package.hash_ref(backend.crypto())
+            })
             .map(|index| key_package_bundles.remove(index))
     }
 }
@@ -246,9 +248,9 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                             .iter()
                             .any(|y| {
                                 y.key_package()
-                                    .hash(backend)
+                                    .hash_ref(backend.crypto())
                                     .expect("Could not hash KeyPackage.")
-                                    == x.key_package_hash.as_slice()
+                                    == x.new_member
                             })
                     })
                     .expect("An unexpected error occurred.");
@@ -258,9 +260,9 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                     .iter()
                     .position(|y| {
                         y.key_package()
-                            .hash(backend)
+                            .hash_ref(backend.crypto())
                             .expect("Could not hash KeyPackage.")
-                            == member_secret.key_package_hash.as_slice()
+                            == member_secret.new_member
                     })
                     .expect("An unexpected error occurred.");
                 let key_package_bundle = new_group_member
@@ -363,7 +365,12 @@ pub(super) fn generate_key_package_bundle(
     let kp = kpb.key_package().clone();
     backend
         .key_store()
-        .store(&kp.hash(backend).expect("Could not hash KeyPackage."), &kpb)
+        .store(
+            kp.hash_ref(backend.crypto())
+                .expect("Could not hash KeyPackage.")
+                .value(),
+            &kpb,
+        )
         .expect("An unexpected error occurred.");
     Ok(kp)
 }

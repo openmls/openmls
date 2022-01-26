@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::LeafIndex,
-    ciphersuite::{Ciphersuite, HpkePublicKey},
+    ciphersuite::{hash_ref::KeyPackageRef, Ciphersuite, HpkePublicKey},
     config::ProtocolVersion,
     key_packages::{KeyPackage, KeyPackageError},
     messages::{
@@ -194,7 +194,7 @@ impl UpdatePathNode {
 pub(crate) struct PlaintextSecret {
     public_key: HpkePublicKey,
     group_secrets_bytes: Vec<u8>,
-    key_package_hash: Vec<u8>,
+    key_package_ref: KeyPackageRef,
 }
 
 impl PlaintextSecret {
@@ -212,7 +212,6 @@ impl PlaintextSecret {
         let mut plaintext_secrets = vec![];
         for (leaf_index, add_proposal) in invited_members {
             let key_package = add_proposal.key_package;
-            let key_package_hash = key_package.hash(backend)?;
 
             let direct_path_position =
                 diff.subtree_root_position(diff.own_leaf_index(), leaf_index)?;
@@ -235,7 +234,7 @@ impl PlaintextSecret {
             plaintext_secrets.push(PlaintextSecret {
                 public_key: key_package.hpke_init_key().clone(),
                 group_secrets_bytes,
-                key_package_hash,
+                key_package_ref: key_package.hash_ref(backend.crypto())?,
             });
         }
         Ok(plaintext_secrets)
@@ -258,7 +257,7 @@ impl PlaintextSecret {
             &self.group_secrets_bytes,
         );
         EncryptedGroupSecrets {
-            key_package_hash: self.key_package_hash.into(),
+            new_member: self.key_package_ref,
             encrypted_group_secrets,
         }
     }

@@ -22,8 +22,6 @@ use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU16, TlsByteVecU32, Tl
 
 mod aead;
 mod codec;
-// TODO #541 This will change once hash based identifiers have been fully implemented
-pub mod hash_ref;
 mod hpke;
 mod kdf_label;
 mod mac;
@@ -34,6 +32,7 @@ mod signature;
 
 // Public
 pub mod ciphersuites;
+pub mod hash_ref;
 pub mod signable;
 
 // Crate

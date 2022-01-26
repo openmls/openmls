@@ -39,7 +39,12 @@ fn generate_key_package_bundle(
     let kp = kpb.key_package().clone();
     backend
         .key_store()
-        .store(&kp.hash(backend).expect("Could not hash KeyPackage."), &kpb)
+        .store(
+            kp.hash_ref(backend.crypto())
+                .expect("Could not hash KeyPackage.")
+                .value(),
+            &kpb,
+        )
         .expect("An unexpected error occurred.");
     Ok(kp)
 }
@@ -92,10 +97,16 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
         let alice_key_package =
             generate_key_package_bundle(&[ciphersuite.name()], &alice_credential, vec![], backend)
                 .expect("An unexpected error occurred.");
+        let alice_kpr = alice_key_package
+            .hash_ref(backend.crypto())
+            .expect("Couldn't get the key package reference for Alice.");
 
         let bob_key_package =
             generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, vec![], backend)
                 .expect("An unexpected error occurred.");
+        let bob_kpr = bob_key_package
+            .hash_ref(backend.crypto())
+            .expect("Couldn't get the key package reference for Bob.");
 
         // Define the MlsGroup configuration
 
@@ -108,9 +119,10 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             backend,
             &mls_group_config,
             group_id,
-            &alice_key_package
-                .hash(backend)
-                .expect("Could not hash KeyPackage."),
+            alice_key_package
+                .hash_ref(backend.crypto())
+                .expect("Could not hash KeyPackage.")
+                .as_slice(),
         )
         .expect("An unexpected error occurred.");
 
@@ -134,7 +146,12 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             );
             // Check that Alice added Bob
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(add.sender().to_leaf_index(), 0u32);
+            assert_eq!(
+                add.sender()
+                    .as_key_package_ref()
+                    .expect("An unexpected error occurred."),
+                &alice_kpr
+            );
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -202,7 +219,15 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             assert_eq!(application_message.message(), message_alice);
             // Check that Alice sent the message
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(application_message.sender().to_leaf_index(), 0u32);
+            assert_eq!(
+                application_message
+                    .sender()
+                    .as_key_package_ref()
+                    .expect("An unexpected error occurred."),
+                alice_group
+                    .key_package_ref()
+                    .expect("An unexpected error occurred.")
+            );
         } else {
             unreachable!("Expected an ApplicationMessage.");
         }
@@ -231,9 +256,15 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
                 update.update_proposal().key_package().credential(),
                 &bob_credential
             );
-            // Check that Alice added Bob
+            // Check that Bob sent the update
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(update.sender().to_leaf_index(), 1u32);
+            assert_eq!(
+                update
+                    .sender()
+                    .as_key_package_ref()
+                    .expect("An unexpected error occurred."),
+                &bob_kpr
+            );
             // Merge staged Commit
             alice_group
                 .merge_staged_commit(*staged_commit)
@@ -288,9 +319,17 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
                 unreachable!("Expected a Proposal.");
             }
 
-            // Check that Alice added bob
+            // Check that Alice sent the proposal.
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
+            assert_eq!(
+                staged_proposal
+                    .sender()
+                    .as_key_package_ref()
+                    .expect("An unexpected error occurred."),
+                alice_group
+                    .key_package_ref()
+                    .expect("An unexpected error occurred.")
+            );
             bob_group.store_pending_proposal(*staged_proposal);
         } else {
             unreachable!("Expected a QueuedProposal.");
@@ -320,9 +359,17 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
                 update.update_proposal().key_package().credential(),
                 &alice_credential
             );
-            // Check that Alice added Bob
+            // Check that Alice sent the update
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(update.sender().to_leaf_index(), 0u32);
+            assert_eq!(
+                update
+                    .sender()
+                    .as_key_package_ref()
+                    .expect("An unexpected error occurred."),
+                alice_group
+                    .key_package_ref()
+                    .expect("An unexpected error occurred.")
+            );
 
             bob_group
                 .merge_staged_commit(*staged_commit)
@@ -488,8 +535,15 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
         );
 
         // === Charlie removes Bob ===
+        let bob_kpr = *bob_group
+            .key_package_ref()
+            .expect("An unexpected error occurred.");
+        let charlie_kpr = *charlie_group
+            .key_package_ref()
+            .expect("An unexpected error occurred.");
+        println!(" >>> Charlie is removing bob");
         let (queued_message, welcome_option) = charlie_group
-            .remove_members(backend, &[1])
+            .remove_members(backend, &[bob_kpr])
             .expect("Could not remove member from group.");
 
         // Check that Bob's group is still active
@@ -519,10 +573,16 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
                 .expect("Expected a proposal.");
             // Check that Bob was removed
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(remove.remove_proposal().removed(), 1u32);
+            assert_eq!(remove.remove_proposal().removed(), &bob_kpr);
             // Check that Charlie removed Bob
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(remove.sender().to_leaf_index(), 2u32);
+            assert_eq!(
+                remove
+                    .sender()
+                    .as_key_package_ref()
+                    .expect("An unexpected error occurred."),
+                &charlie_kpr
+            );
             // Merge staged Commit
             alice_group
                 .merge_staged_commit(*staged_commit)
@@ -539,10 +599,16 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
                 .expect("Expected a proposal.");
             // Check that Bob was removed
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(remove.remove_proposal().removed(), 1u32);
+            assert_eq!(remove.remove_proposal().removed(), &bob_kpr);
             // Check that Charlie removed Bob
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(remove.sender().to_leaf_index(), 2u32);
+            assert_eq!(
+                remove
+                    .sender()
+                    .as_key_package_ref()
+                    .expect("An unexpected error occurred."),
+                &charlie_kpr
+            );
             // Merge staged Commit
             bob_group
                 .merge_staged_commit(*staged_commit)
@@ -585,10 +651,19 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
         let bob_key_package =
             generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, vec![], backend)
                 .expect("An unexpected error occurred.");
+        let bob_kpr = bob_key_package
+            .hash_ref(backend.crypto())
+            .expect("Couldn't get the key package reference for Bob.");
 
         // Create RemoveProposal and process it
+        let alice_kpr = *alice_group
+            .key_package_ref()
+            .expect("An unexpected error occurred.");
+        let charlie_kpr = *charlie_group
+            .key_package_ref()
+            .expect("An unexpected error occurred.");
         let queued_message = alice_group
-            .propose_remove_member(backend, 2)
+            .propose_remove_member(backend, &charlie_kpr)
             .expect("Could not create proposal to remove Charlie");
 
         let unverified_message = charlie_group
@@ -603,7 +678,7 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             if let Proposal::Remove(ref remove_proposal) = staged_proposal.proposal() {
                 // Check that Charlie was removed
                 // TODO #575: Replace this with the adequate API call
-                assert_eq!(remove_proposal.removed(), 2u32);
+                assert_eq!(remove_proposal.removed(), &charlie_kpr);
                 // Store proposal
                 charlie_group.store_pending_proposal(*staged_proposal.clone());
             } else {
@@ -612,7 +687,13 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
 
             // Check that Alice removed Charlie
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
+            assert_eq!(
+                staged_proposal
+                    .sender()
+                    .as_key_package_ref()
+                    .expect("An unexpected error occurred."),
+                &alice_kpr
+            );
         } else {
             unreachable!("Expected a QueuedProposal.");
         }
@@ -640,7 +721,13 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
 
             // Check that Alice added Bob
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
+            assert_eq!(
+                staged_proposal
+                    .sender()
+                    .as_key_package_ref()
+                    .expect("An unexpected error occurred."),
+                &alice_kpr
+            );
             // Store proposal
             charlie_group.store_pending_proposal(*staged_proposal);
         } else {
@@ -725,12 +812,21 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             .expect("Could not process unverified message.");
 
         // Check that we received the correct message
+        let alice_kpr = *alice_group
+            .key_package_ref()
+            .expect("An unexpected error occurred.");
         if let ProcessedMessage::ApplicationMessage(application_message) = bob_processed_message {
             // Check the message
             assert_eq!(application_message.message(), message_alice);
             // Check that Alice sent the message
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(application_message.sender().to_leaf_index(), 0u32);
+            assert_eq!(
+                application_message
+                    .sender()
+                    .as_key_package_ref()
+                    .expect("An unexpected error occurred."),
+                &alice_kpr
+            );
         } else {
             unreachable!("Expected an ApplicationMessage.");
         }
@@ -778,10 +874,16 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
                 .next()
                 .expect("Expected a proposal.");
             // Check that Bob was removed
-            assert_eq!(remove.remove_proposal().removed(), 1u32);
+            assert_eq!(remove.remove_proposal().removed(), &bob_kpr);
             // Check that Bob removed himself
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(remove.sender().to_leaf_index(), 1u32);
+            assert_eq!(
+                remove
+                    .sender()
+                    .as_key_package_ref()
+                    .expect("An unexpected error occurred."),
+                &bob_kpr
+            );
             // Merge staged Commit
         } else {
             unreachable!("Expected a StagedCommit.");
@@ -805,10 +907,16 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
                 .next()
                 .expect("Expected a proposal.");
             // Check that Bob was removed
-            assert_eq!(remove.remove_proposal().removed(), 1u32);
+            assert_eq!(remove.remove_proposal().removed(), &bob_kpr);
             // Check that Bob removed himself
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(remove.sender().to_leaf_index(), 1u32);
+            assert_eq!(
+                remove
+                    .sender()
+                    .as_key_package_ref()
+                    .expect("An unexpected error occurred."),
+                &bob_kpr
+            );
             assert!(staged_commit.self_removed());
             // Merge staged Commit
             bob_group
@@ -924,9 +1032,10 @@ fn test_empty_input_errors(
         backend,
         &mls_group_config,
         group_id,
-        &alice_key_package
-            .hash(backend)
-            .expect("Could not hash KeyPackage."),
+        alice_key_package
+            .hash_ref(backend.crypto())
+            .expect("Could not hash KeyPackage.")
+            .as_slice(),
     )
     .expect("An unexpected error occurred.");
 
@@ -991,9 +1100,10 @@ fn mls_group_ratchet_tree_extension(
             backend,
             &mls_group_config,
             group_id.clone(),
-            &alice_key_package
-                .hash(backend)
-                .expect("Could not hash KeyPackage."),
+            alice_key_package
+                .hash_ref(backend.crypto())
+                .expect("Could not hash KeyPackage.")
+                .as_slice(),
         )
         .expect("An unexpected error occurred.");
 
@@ -1043,9 +1153,10 @@ fn mls_group_ratchet_tree_extension(
             backend,
             &mls_group_config,
             group_id,
-            &alice_key_package
-                .hash(backend)
-                .expect("Could not hash KeyPackage."),
+            alice_key_package
+                .hash_ref(backend.crypto())
+                .expect("Could not hash KeyPackage.")
+                .as_slice(),
         )
         .expect("An unexpected error occurred.");
 
@@ -1062,9 +1173,7 @@ fn mls_group_ratchet_tree_extension(
 
         assert_eq!(
             error,
-            MlsGroupError::Group(CoreGroupError::WelcomeError(
-                WelcomeError::MissingRatchetTree
-            ))
+            MlsGroupError::WelcomeError(WelcomeError::MissingRatchetTree)
         );
     }
 }

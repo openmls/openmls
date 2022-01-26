@@ -1,6 +1,7 @@
 //! Codec implementations for message structs.
 
 use super::*;
+use crate::ciphersuite::hash_ref::ProposalRef;
 
 use std::convert::TryFrom;
 use std::io::{Read, Write};
@@ -65,7 +66,7 @@ impl tls_codec::Deserialize for ProposalOrRef {
                 Ok(ProposalOrRef::Proposal(Proposal::tls_deserialize(bytes)?))
             }
             ProposalOrRefType::Reference => Ok(ProposalOrRef::Reference(
-                ProposalReference::tls_deserialize(bytes)?,
+                ProposalRef::tls_deserialize(bytes)?,
             )),
         }
     }

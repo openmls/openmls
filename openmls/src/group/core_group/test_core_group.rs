@@ -8,7 +8,8 @@ use openmls_traits::{
 use tls_codec::Serialize;
 
 use crate::{
-    ciphersuite::{signable::Signable, AeadNonce},
+    binary_tree::MlsBinaryTreeDiffError,
+    ciphersuite::{hash_ref::KeyPackageRef, signable::Signable, AeadNonce},
     credentials::*,
     framing::*,
     group::*,
@@ -16,7 +17,7 @@ use crate::{
     messages::*,
     schedule::psk::*,
     test_utils::*,
-    treesync::treekem::TreeKemError,
+    treesync::{diff::TreeSyncDiffError, treekem::TreeKemError},
 };
 
 #[apply(ciphersuites_and_backends)]
@@ -85,7 +86,23 @@ fn test_failed_groupinfo_decryption(
         let confirmation_tag = ConfirmationTag(Mac {
             mac_value: vec![1, 2, 3, 4, 5, 6, 7, 8, 9].into(),
         });
-        let signer_index = 8u32;
+
+        let alice_credential_bundle = CredentialBundle::new(
+            "Alice".into(),
+            CredentialType::Basic,
+            ciphersuite.signature_scheme(),
+            backend,
+        )
+        .expect("An unexpected error occurred.");
+
+        let key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &alice_credential_bundle,
+            backend,
+            vec![],
+        )
+        .expect("An unexpected error occurred.");
+
         let group_info = GroupInfoPayload::new(
             group_id,
             epoch,
@@ -94,7 +111,15 @@ fn test_failed_groupinfo_decryption(
             &Vec::new(),
             &extensions,
             confirmation_tag,
-            signer_index,
+            &KeyPackageRef::new(
+                &key_package_bundle
+                    .key_package()
+                    .tls_serialize_detached()
+                    .expect("An unexpected error occurred."),
+                ciphersuite,
+                backend.crypto(),
+            )
+            .expect("An unexpected error occurred."),
         );
 
         // Generate key and nonce for the symmetric cipher.
@@ -119,34 +144,18 @@ fn test_failed_groupinfo_decryption(
             hpke_input,
         );
 
-        let alice_credential_bundle = CredentialBundle::new(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-            backend,
-        )
-        .expect("An unexpected error occurred.");
         let group_info = group_info
             .sign(backend, &alice_credential_bundle)
             .expect("Error signing group info");
-
-        let key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
-            &alice_credential_bundle,
-            backend,
-            vec![],
-        )
-        .expect("An unexpected error occurred.");
 
         // Mess with the ciphertext by flipping the last byte.
         flip_last_byte(&mut encrypted_group_secrets);
 
         let broken_secrets = vec![EncryptedGroupSecrets {
-            key_package_hash: key_package_bundle
+            new_member: key_package_bundle
                 .key_package
-                .hash(backend)
-                .expect("Could not hash KeyPackage.")
-                .into(),
+                .hash_ref(backend.crypto())
+                .expect("Could not hash KeyPackage."),
             encrypted_group_secrets,
         }];
 
@@ -170,9 +179,8 @@ fn test_failed_groupinfo_decryption(
             encrypted_group_info.clone(),
         );
 
-        let error =
-            CoreGroup::new_from_welcome_internal(broken_welcome, None, key_package_bundle, backend)
-                .expect_err("Creation of core group from a broken Welcome was successful.");
+        let error = CoreGroup::new_from_welcome(broken_welcome, None, key_package_bundle, backend)
+            .expect_err("Creation of core group from a broken Welcome was successful.");
 
         assert_eq!(
             error,
@@ -332,11 +340,17 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         path: Some(broken_path),
     };
 
+    let sender = Sender::build_member(
+        create_commit_result
+            .commit
+            .sender()
+            .as_key_package_ref()
+            .expect("An unexpected error occurred."),
+    );
     let mut broken_plaintext = MlsPlaintext::commit(
         framing_parameters,
-        create_commit_result.commit.sender_index(),
+        sender,
         broken_commit,
-        CommitType::Member,
         &bob_credential_bundle,
         group_bob.context(),
         backend,
@@ -676,5 +690,10 @@ fn test_own_commit_processing(
     let error = alice_group
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect_err("no error while processing own commit");
-    assert_eq!(error, CoreGroupError::OwnCommitError);
+    assert_eq!(
+        error,
+        CoreGroupError::TreeKemError(TreeKemError::TreeSyncDiffError(
+            TreeSyncDiffError::TreeDiffError(MlsBinaryTreeDiffError::SameLeafError)
+        ))
+    );
 }

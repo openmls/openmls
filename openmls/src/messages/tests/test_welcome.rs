@@ -1,6 +1,7 @@
 #![allow(non_snake_case)]
 
 use crate::{
+    ciphersuite::hash_ref::KeyPackageRef,
     ciphersuite::{
         signable::Signable, AeadKey, AeadNonce, Ciphersuite, CiphersuiteName, Mac, Secret,
     },
@@ -14,7 +15,7 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, OpenMlsCryptoProvider};
 use tls_codec::{Deserialize, Serialize};
 
 #[apply(ciphersuites_and_backends)]
@@ -38,7 +39,12 @@ fn test_welcome_message_with_version(
         ConfirmationTag(Mac {
             mac_value: vec![1, 2, 3, 4, 5].into(),
         }),
-        8u32,
+        &KeyPackageRef::from_slice(
+            &backend
+                .rand()
+                .random_vec(16)
+                .expect("An unexpected error occurred."),
+        ),
     );
 
     // We need a credential bundle to sign the group info.
@@ -67,9 +73,9 @@ fn test_welcome_message_with_version(
     let hpke_info = b"group info welcome test info";
     let hpke_aad = b"group info welcome test aad";
     let hpke_input = b"these should be the group secrets";
-    let key_package_hash = vec![0, 0, 0, 0];
+    let new_member = KeyPackageRef::from_slice(&[0u8; 16]);
     let secrets = vec![EncryptedGroupSecrets {
-        key_package_hash: key_package_hash.clone().into(),
+        new_member,
         encrypted_group_secrets: backend.crypto().hpke_seal(
             ciphersuite.hpke_config(),
             receiver_key_pair.public.as_slice(),
@@ -106,10 +112,7 @@ fn test_welcome_message_with_version(
     assert_eq!(msg_decoded.version, version);
     assert_eq!(msg_decoded.cipher_suite, ciphersuite.name());
     for secret in msg_decoded.secrets.iter() {
-        assert_eq!(
-            key_package_hash.as_slice(),
-            secret.key_package_hash.as_slice()
-        );
+        assert_eq!(new_member.as_slice(), secret.new_member.as_slice());
         let ptxt = backend
             .crypto()
             .hpke_open(
