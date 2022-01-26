@@ -548,7 +548,6 @@ impl MlsGroupTestSetup {
         Ok(())
     }
 
-
     /// Has the `remover` propose or commit (depending on the `action_type`) the
     /// removal the `target_members` from the Group `group`. If the `remover` or
     /// one of the `target_members` is not part of the group, it returns an
