@@ -33,7 +33,10 @@ fn codec_plaintext(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     )
     .expect("An unexpected error occurred.");
     let sender = Sender::build_member(&KeyPackageRef::from_slice(
-        &backend.rand().random_vec(16).unwrap(),
+        &backend
+            .rand()
+            .random_vec(16)
+            .expect("An unexpected error occurred."),
     ));
     let group_context =
         GroupContext::new(GroupId::random(backend), GroupEpoch(1), vec![], vec![], &[])
@@ -82,7 +85,10 @@ fn codec_ciphertext(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     )
     .expect("An unexpected error occurred.");
     let sender = Sender::build_member(&KeyPackageRef::from_slice(
-        &backend.rand().random_vec(16).unwrap(),
+        &backend
+            .rand()
+            .random_vec(16)
+            .expect("An unexpected error occurred."),
     ));
     let group_context = GroupContext::new(
         GroupId::from_slice(&[5, 5, 5]),
@@ -166,7 +172,10 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
     )
     .expect("An unexpected error occurred.");
     let sender = Sender::build_member(&KeyPackageRef::from_slice(
-        &backend.rand().random_vec(16).unwrap(),
+        &backend
+            .rand()
+            .random_vec(16)
+            .expect("An unexpected error occurred."),
     ));
     let group_context = GroupContext::new(
         GroupId::from_slice(&[5, 5, 5]),
@@ -304,7 +313,12 @@ fn membership_tag(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
             .expect("Not enough randomness."),
     );
     let mut mls_plaintext = MlsPlaintext::new_application(
-        &KeyPackageRef::from_slice(&backend.rand().random_vec(16).unwrap()),
+        &KeyPackageRef::from_slice(
+            &backend
+                .rand()
+                .random_vec(16)
+                .expect("An unexpected error occurred."),
+        ),
         &[1, 2, 3],
         &[4, 5, 6],
         &credential_bundle,
@@ -518,7 +532,12 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     // Alice sends a message with a sender that is outside of the group
     // Expected result: SenderError::UnknownSender
     let bogus_sender_message = MlsPlaintext::new_application(
-        &KeyPackageRef::from_slice(&backend.rand().random_vec(16).unwrap()),
+        &KeyPackageRef::from_slice(
+            &backend
+                .rand()
+                .random_vec(16)
+                .expect("An unexpected error occurred."),
+        ),
         &[],
         &[1, 2, 3],
         &alice_credential_bundle,

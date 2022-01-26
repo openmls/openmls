@@ -231,7 +231,12 @@ fn test_remove_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .create_remove_proposal(
                 framing_parameters,
                 credential_bundle,
-                &KeyPackageRef::from_slice(&backend.rand().random_vec(16).unwrap()),
+                &KeyPackageRef::from_slice(
+                    &backend
+                        .rand()
+                        .random_vec(16)
+                        .expect("An unexpected error occurred."),
+                ),
                 backend,
             )
             .expect("Could not create proposal.");

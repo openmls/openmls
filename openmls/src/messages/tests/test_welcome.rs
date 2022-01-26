@@ -39,7 +39,12 @@ fn test_welcome_message_with_version(
         ConfirmationTag(Mac {
             mac_value: vec![1, 2, 3, 4, 5].into(),
         }),
-        &KeyPackageRef::from_slice(&backend.rand().random_vec(16).unwrap()),
+        &KeyPackageRef::from_slice(
+            &backend
+                .rand()
+                .random_vec(16)
+                .expect("An unexpected error occurred."),
+        ),
     );
 
     // We need a credential bundle to sign the group info.

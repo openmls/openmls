@@ -276,7 +276,7 @@ impl Client {
     /// Get the [`KeyPackageRef`] of this client in the given group.
     pub fn key_package_ref(&self, group_id: &GroupId) -> Option<KeyPackageRef> {
         let groups = self.groups.read().expect("An unexpected error occurred.");
-        let group = groups.get(group_id).unwrap();
+        let group = groups.get(group_id).expect("An unexpected error occurred.");
         group.key_package_ref().cloned()
     }
 }

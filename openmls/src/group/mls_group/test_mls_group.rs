@@ -229,7 +229,10 @@ fn remover(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvid
     let bob_kpr = bob_group
         .key_package_ref()
         .expect("Error getting key package reference.");
-    let alice_kpr = &alice_group.key_package_ref().unwrap().clone();
+    let alice_kpr = &alice_group
+        .key_package_ref()
+        .expect("An unexpected error occurred.")
+        .clone();
     let queued_messages = alice_group
         .propose_remove_member(backend, bob_kpr)
         .expect("Could not propose removal");
@@ -256,7 +259,10 @@ fn remover(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvid
         // Check that Alice removed Bob
         // TODO #541: Replace this with the adequate API call
         assert_eq!(
-            staged_proposal.sender().as_key_package_ref().unwrap(),
+            staged_proposal
+                .sender()
+                .as_key_package_ref()
+                .expect("An unexpected error occurred."),
             alice_kpr
         );
     } else {
@@ -279,7 +285,13 @@ fn remover(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvid
         assert_eq!(remove.remove_proposal().removed(), bob_kpr);
         // Check that Alice removed Bob
         // TODO #541: Replace this with the adequate API call
-        assert_eq!(remove.sender().as_key_package_ref().unwrap(), alice_kpr);
+        assert_eq!(
+            remove
+                .sender()
+                .as_key_package_ref()
+                .expect("An unexpected error occurred."),
+            alice_kpr
+        );
     } else {
         unreachable!("Expected a StagedCommit.");
     };
@@ -410,7 +422,10 @@ fn test_invalid_plaintext(ciphersuite: &'static Ciphersuite, backend: &impl Open
     // Tamper with the message such that sender lookup fails
     let mut msg_invalid_sender = mls_message;
     let random_sender = Sender::build_member(&KeyPackageRef::from_slice(
-        &backend.rand().random_vec(16).unwrap(),
+        &backend
+            .rand()
+            .random_vec(16)
+            .expect("An unexpected error occurred."),
     ));
     match &mut msg_invalid_sender.mls_message {
         MlsMessage::Plaintext(pt) => pt.set_sender(random_sender),
@@ -465,11 +480,13 @@ fn test_pending_commit_logic(
             .expect("An unexpected error occurred.");
 
     let bob_kpr = KeyPackageRef::new(
-        &bob_key_package.tls_serialize_detached().unwrap(),
+        &bob_key_package
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred."),
         ciphersuite,
         backend.crypto(),
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::test_default();

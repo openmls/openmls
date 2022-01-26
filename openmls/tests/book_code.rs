@@ -172,8 +172,12 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         // Check that Alice added Bob
         // TODO #575: Replace this with the adequate API call
         assert_eq!(
-            add.sender().as_key_package_ref().unwrap(),
-            alice_group.key_package_ref().unwrap()
+            add.sender()
+                .as_key_package_ref()
+                .expect("An unexpected error occurred."),
+            alice_group
+                .key_package_ref()
+                .expect("An unexpected error occurred.")
         );
     } else {
         unreachable!("Expected a StagedCommit.");
@@ -302,8 +306,13 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         // Check that Bob sent the update
         // TODO #575: Replace this with the adequate API call
         assert_eq!(
-            update.sender().as_key_package_ref().unwrap(),
-            bob_group.key_package_ref().unwrap()
+            update
+                .sender()
+                .as_key_package_ref()
+                .expect("An unexpected error occurred."),
+            bob_group
+                .key_package_ref()
+                .expect("An unexpected error occurred.")
         );
         // Merge staged Commit
         alice_group
@@ -366,8 +375,13 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         // Check that Alice sent the proposal
         // TODO #575: Replace this with the adequate API call
         assert_eq!(
-            staged_proposal.sender().as_key_package_ref().unwrap(),
-            alice_group.key_package_ref().unwrap()
+            staged_proposal
+                .sender()
+                .as_key_package_ref()
+                .expect("An unexpected error occurred."),
+            alice_group
+                .key_package_ref()
+                .expect("An unexpected error occurred.")
         );
         bob_group.store_pending_proposal(*staged_proposal);
     } else {
@@ -404,8 +418,13 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         // Check that Alice sent the update
         // TODO #575: Replace this with the adequate API call
         assert_eq!(
-            update.sender().as_key_package_ref().unwrap(),
-            alice_group.key_package_ref().unwrap()
+            update
+                .sender()
+                .as_key_package_ref()
+                .expect("An unexpected error occurred."),
+            alice_group
+                .key_package_ref()
+                .expect("An unexpected error occurred.")
         );
 
         bob_group
@@ -569,7 +588,12 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     // === Charlie removes Bob ===
     // ANCHOR: charlie_removes_bob
     let (mls_message_out, welcome_option) = charlie_group
-        .remove_members(backend, &[*bob_group.key_package_ref().unwrap()])
+        .remove_members(
+            backend,
+            &[*bob_group
+                .key_package_ref()
+                .expect("An unexpected error occurred.")],
+        )
         .expect("Could not remove Bob from group.");
     // ANCHOR_END: charlie_removes_bob
 
@@ -588,7 +612,9 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     let bob_processed_message = bob_group
         .process_unverified_message(unverified_message, None, backend)
         .expect("Could not process unverified message.");
-    let charlies_old_kpr = *charlie_group.key_package_ref().unwrap();
+    let charlies_old_kpr = *charlie_group
+        .key_package_ref()
+        .expect("An unexpected error occurred.");
     charlie_group
         .merge_pending_commit()
         .expect("error merging pending commit");
@@ -605,12 +631,17 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         // TODO #575: Replace this with the adequate API call
         assert_eq!(
             remove.remove_proposal().removed(),
-            bob_group.key_package_ref().unwrap()
+            bob_group
+                .key_package_ref()
+                .expect("An unexpected error occurred.")
         );
         // Check that Charlie removed Bob
         // TODO #575: Replace this with the adequate API call
         assert_eq!(
-            remove.sender().as_key_package_ref().unwrap(),
+            remove
+                .sender()
+                .as_key_package_ref()
+                .expect("An unexpected error occurred."),
             &charlies_old_kpr
         );
         // Merge staged commit
@@ -633,12 +664,17 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         // TODO #575: Replace this with the adequate API call
         assert_eq!(
             remove.remove_proposal().removed(),
-            bob_group.key_package_ref().unwrap()
+            bob_group
+                .key_package_ref()
+                .expect("An unexpected error occurred.")
         );
         // Check that Charlie removed Bob
         // TODO #575: Replace this with the adequate API call
         assert_eq!(
-            remove.sender().as_key_package_ref().unwrap(),
+            remove
+                .sender()
+                .as_key_package_ref()
+                .expect("An unexpected error occurred."),
             &charlies_old_kpr
         );
         // Merge staged Commit
@@ -687,7 +723,12 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     // Create RemoveProposal and process it
     // ANCHOR: propose_remove
     let mls_message_out = alice_group
-        .propose_remove_member(backend, charlie_group.key_package_ref().unwrap())
+        .propose_remove_member(
+            backend,
+            charlie_group
+                .key_package_ref()
+                .expect("An unexpected error occurred."),
+        )
         .expect("Could not create proposal to remove Charlie.");
     // ANCHOR_END: propose_remove
 
@@ -705,7 +746,9 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
             // TODO #575: Replace this with the adequate API call
             assert_eq!(
                 remove_proposal.removed(),
-                charlie_group.key_package_ref().unwrap()
+                charlie_group
+                    .key_package_ref()
+                    .expect("An unexpected error occurred.")
             );
             // Store proposal
             charlie_group.store_pending_proposal(*staged_proposal.clone());
@@ -716,8 +759,13 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         // Check that Alice removed Charlie
         // TODO #575: Replace this with the adequate API call
         assert_eq!(
-            staged_proposal.sender().as_key_package_ref().unwrap(),
-            alice_group.key_package_ref().unwrap()
+            staged_proposal
+                .sender()
+                .as_key_package_ref()
+                .expect("An unexpected error occurred."),
+            alice_group
+                .key_package_ref()
+                .expect("An unexpected error occurred.")
         );
     } else {
         unreachable!("Expected a QueuedProposal.");
@@ -751,8 +799,13 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         // Check that Alice added Bob
         // TODO #575: Replace this with the adequate API call
         assert_eq!(
-            staged_proposal.sender().as_key_package_ref().unwrap(),
-            alice_group.key_package_ref().unwrap()
+            staged_proposal
+                .sender()
+                .as_key_package_ref()
+                .expect("An unexpected error occurred."),
+            alice_group
+                .key_package_ref()
+                .expect("An unexpected error occurred.")
         );
         // Store proposal
         charlie_group.store_pending_proposal(*staged_proposal);
@@ -846,8 +899,13 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         // Check that Alice sent the message
         // TODO #575: Replace this with the adequate API call
         assert_eq!(
-            application_message.sender().as_key_package_ref().unwrap(),
-            alice_group.key_package_ref().unwrap()
+            application_message
+                .sender()
+                .as_key_package_ref()
+                .expect("An unexpected error occurred."),
+            alice_group
+                .key_package_ref()
+                .expect("An unexpected error occurred.")
         );
     } else {
         unreachable!("Expected an ApplicationMessage.");
@@ -898,13 +956,20 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         // Check that Bob was removed
         assert_eq!(
             remove.remove_proposal().removed(),
-            bob_group.key_package_ref().unwrap()
+            bob_group
+                .key_package_ref()
+                .expect("An unexpected error occurred.")
         );
         // Check that Bob removed himself
         // TODO #575: Replace this with the adequate API call
         assert_eq!(
-            remove.sender().as_key_package_ref().unwrap(),
-            bob_group.key_package_ref().unwrap()
+            remove
+                .sender()
+                .as_key_package_ref()
+                .expect("An unexpected error occurred."),
+            bob_group
+                .key_package_ref()
+                .expect("An unexpected error occurred.")
         );
         // Merge staged Commit
     } else {
@@ -931,13 +996,20 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         // Check that Bob was removed
         assert_eq!(
             remove.remove_proposal().removed(),
-            bob_group.key_package_ref().unwrap()
+            bob_group
+                .key_package_ref()
+                .expect("An unexpected error occurred.")
         );
         // Check that Bob removed himself
         // TODO #575: Replace this with the adequate API call
         assert_eq!(
-            remove.sender().as_key_package_ref().unwrap(),
-            bob_group.key_package_ref().unwrap()
+            remove
+                .sender()
+                .as_key_package_ref()
+                .expect("An unexpected error occurred."),
+            bob_group
+                .key_package_ref()
+                .expect("An unexpected error occurred.")
         );
         assert!(staged_commit.self_removed());
         // Merge staged Commit

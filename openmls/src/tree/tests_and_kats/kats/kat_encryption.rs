@@ -370,7 +370,10 @@ pub fn generate_test_vector(
             let application_key_string = bytes_to_hex(application_secret_key.as_slice());
             let application_nonce_string = bytes_to_hex(application_secret_nonce.as_slice());
             let (application_plaintext, application_ciphertext) = build_application_messages(
-                &group.key_package_ref().unwrap().clone(),
+                &group
+                    .key_package_ref()
+                    .expect("An unexpected error occurred.")
+                    .clone(),
                 leaf.into(),
                 &mut group,
                 &credential_bundle,
@@ -399,7 +402,10 @@ pub fn generate_test_vector(
             let handshake_nonce_string = bytes_to_hex(handshake_secret_nonce.as_slice());
 
             let (handshake_plaintext, handshake_ciphertext) = build_handshake_messages(
-                &group.key_package_ref().unwrap().clone(),
+                &group
+                    .key_package_ref()
+                    .expect("An unexpected error occurred.")
+                    .clone(),
                 leaf.into(),
                 &mut group,
                 &credential_bundle,

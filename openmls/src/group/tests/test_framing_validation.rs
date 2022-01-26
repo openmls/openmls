@@ -327,7 +327,10 @@ fn test_valsem004(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     let original_message = plaintext.clone();
 
     let random_sender = Sender::build_member(&KeyPackageRef::from_slice(
-        &backend.rand().random_vec(16).unwrap(),
+        &backend
+            .rand()
+            .random_vec(16)
+            .expect("An unexpected error occurred."),
     ));
     plaintext.set_sender(random_sender);
 

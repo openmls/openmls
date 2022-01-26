@@ -115,11 +115,11 @@ fn test_failed_groupinfo_decryption(
                 &key_package_bundle
                     .key_package()
                     .tls_serialize_detached()
-                    .unwrap(),
+                    .expect("An unexpected error occurred."),
                 ciphersuite,
                 backend.crypto(),
             )
-            .unwrap(),
+            .expect("An unexpected error occurred."),
         );
 
         // Generate key and nonce for the symmetric cipher.
@@ -345,7 +345,7 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
             .commit
             .sender()
             .as_key_package_ref()
-            .unwrap(),
+            .expect("An unexpected error occurred."),
     );
     let mut broken_plaintext = MlsPlaintext::commit(
         framing_parameters,

@@ -641,10 +641,21 @@ impl MlsGroupTestSetup {
                             leaf_index = new_leaf_index;
                             identity = new_identity;
                         }
-                        let client = clients.get(&identity).unwrap().read().unwrap();
-                        let client_group = client.groups.read().unwrap();
-                        let client_group = client_group.get(&group.group_id).unwrap();
-                        target_member_ids.push(*client_group.key_package_ref().unwrap());
+                        let client = clients
+                            .get(&identity)
+                            .expect("An unexpected error occurred.")
+                            .read()
+                            .expect("An unexpected error occurred.");
+                        let client_group =
+                            client.groups.read().expect("An unexpected error occurred.");
+                        let client_group = client_group
+                            .get(&group.group_id)
+                            .expect("An unexpected error occurred.");
+                        target_member_ids.push(
+                            *client_group
+                                .key_package_ref()
+                                .expect("An unexpected error occurred."),
+                        );
                         target_member_identities.push(identity);
                     }
                     self.remove_clients(action_type, group, &member_id, &target_member_ids)?

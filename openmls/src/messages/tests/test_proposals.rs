@@ -18,7 +18,12 @@ fn proposals_codec(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     // Proposal
 
     let remove_proposal = RemoveProposal {
-        removed: KeyPackageRef::from_slice(&backend.rand().random_vec(16).unwrap()),
+        removed: KeyPackageRef::from_slice(
+            &backend
+                .rand()
+                .random_vec(16)
+                .expect("An unexpected error occurred."),
+        ),
     };
     let proposal = Proposal::Remove(remove_proposal);
     let proposal_or_ref = ProposalOrRef::Proposal(proposal.clone());

@@ -68,20 +68,20 @@ fn proposal_queue_functions(
         &alice_key_package_bundle
             .key_package()
             .tls_serialize_detached()
-            .unwrap(),
+            .expect("An unexpected error occurred."),
         ciphersuite,
         backend.crypto(),
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
     let bob_kpr = KeyPackageRef::new(
         &bob_key_package_bundle
             .key_package()
             .tls_serialize_detached()
-            .unwrap(),
+            .expect("An unexpected error occurred."),
         ciphersuite,
         backend.crypto(),
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     let bob_key_package = bob_key_package_bundle.key_package();
     let alice_update_key_package_bundle = KeyPackageBundle::new(
@@ -220,20 +220,20 @@ fn proposal_queue_order(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
         &alice_key_package_bundle
             .key_package()
             .tls_serialize_detached()
-            .unwrap(),
+            .expect("An unexpected error occurred."),
         ciphersuite,
         backend.crypto(),
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
     let bob_kpr = KeyPackageRef::new(
         &bob_key_package_bundle
             .key_package()
             .tls_serialize_detached()
-            .unwrap(),
+            .expect("An unexpected error occurred."),
         ciphersuite,
         backend.crypto(),
     )
-    .unwrap();
+    .expect("An unexpected error occurred.");
 
     let bob_key_package = bob_key_package_bundle.key_package();
     let alice_update_key_package_bundle = KeyPackageBundle::new(
