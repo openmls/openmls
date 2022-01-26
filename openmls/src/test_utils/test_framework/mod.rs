@@ -548,7 +548,6 @@ impl MlsGroupTestSetup {
         Ok(())
     }
 
-    // /// Has the `re-
 
     /// Has the `remover` propose or commit (depending on the `action_type`) the
     /// removal the `target_members` from the Group `group`. If the `remover` or
@@ -561,7 +560,6 @@ impl MlsGroupTestSetup {
         remover_id: &[u8],
         target_members: &[hash_ref::KeyPackageRef],
     ) -> Result<(), SetupError> {
-        // self.remove_clients_by_index(action_type, group, remover_id, &target_indices)?;
         let clients = self.clients.read().expect("An unexpected error occurred.");
         let remover = clients
             .get(remover_id)
