@@ -83,7 +83,7 @@ pub(crate) fn parent_step(x: usize) -> usize {
 
 // This function is only safe to use if index <= size.
 // If this is not checked before calling the function, `parent` should be used.
-fn unsafe_parent(
+fn try_parent(
     index: SecretTreeNodeIndex,
     size: SecretTreeLeafIndex,
 ) -> Result<SecretTreeNodeIndex, TreeMathError> {
@@ -131,7 +131,7 @@ pub(crate) fn leaf_direct_path(
     let mut d = vec![];
     let mut x = node_index;
     while x != r {
-        x = unsafe_parent(x, size)?;
+        x = try_parent(x, size)?;
         d.push(x);
     }
     Ok(d)
@@ -144,7 +144,7 @@ pub(crate) fn leaf_direct_path(
 fn invalid_inputs() {
     assert_eq!(
         Err(TreeMathError::InvalidInput),
-        unsafe_parent(1000u32.into(), 100u32.into())
+        try_parent(1000u32.into(), 100u32.into())
     );
 }
 

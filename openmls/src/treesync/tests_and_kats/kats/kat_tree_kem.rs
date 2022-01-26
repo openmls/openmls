@@ -24,6 +24,9 @@ use crate::{
     treesync::{node::Node, treekem::UpdatePath, TreeSync},
 };
 
+#[cfg(any(feature = "test-utils", test))]
+use crate::treesync::treekem::DecryptPathParams;
+
 use openmls_traits::OpenMlsCryptoProvider;
 use serde::{self, Deserialize, Serialize};
 use std::{collections::HashSet, convert::TryFrom};
@@ -172,16 +175,15 @@ pub fn run_test_vector(
     let (key_package, update_path_nodes) = update_path.into_parts();
 
     // Decrypt update path
+    let decrypt_path_params = DecryptPathParams {
+        version: ProtocolVersion::default(),
+        update_path: update_path_nodes,
+        sender_leaf_index: test_vector.update_sender,
+        exclusion_list: &HashSet::new(),
+        group_context: &group_context,
+    };
     let (path, commit_secret) = diff
-        .decrypt_path(
-            backend,
-            ciphersuite,
-            ProtocolVersion::default(),
-            update_path_nodes,
-            test_vector.update_sender,
-            &HashSet::new(),
-            &group_context,
-        )
+        .decrypt_path(backend, ciphersuite, decrypt_path_params)
         .expect("error decrypting update path");
     diff.apply_received_update_path(
         backend,

@@ -2,17 +2,10 @@
 //! Include this to get access to all the public functions of OpenMLS.
 
 // MlsGroup
-pub use crate::group::{
-    proposals::{ProposalStore, QueuedProposal},
-    EmptyInputError, GroupEpoch, GroupId, IncomingWireFormatPolicy, InnerState,
-    InvalidMessageError, MlsGroup, MlsGroupConfig, MlsGroupError, OutgoingWireFormatPolicy,
-    WireFormatPolicy, ALL_VALID_WIRE_FORMAT_POLICIES,
-};
+pub use crate::group::*;
 
 // Group errors
-pub use crate::group::errors::{
-    CoreGroupError, CreateCommitError, FramingValidationError, StageCommitError, WelcomeError,
-};
+pub use crate::group::errors::*;
 
 // Indexes
 pub use crate::binary_tree::LeafIndex;
@@ -33,8 +26,7 @@ pub use crate::config::*;
 pub use crate::extensions::*;
 
 // Framing
-// TODO #265: This should mostly disappear
-pub use crate::framing::{errors::*, message::*, sender::Sender, *};
+pub use crate::framing::{message::*, validation::*};
 
 // Key packages
 pub use crate::key_packages::*;
@@ -45,6 +37,9 @@ pub use crate::key_store::*;
 // Tree
 pub use crate::tree::SenderRatchetConfiguration;
 
+// TreeSync
+pub use crate::treesync::node::Node;
+
 // PSKs
 // TODO #141
 pub use crate::schedule::psk::{
@@ -52,7 +47,6 @@ pub use crate::schedule::psk::{
 };
 
 // TLS codec traits
-// TODO #265: This should mostly disappear
 pub use tls_codec::{
     Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, Size as TlsSizeTrait,
 };

@@ -1,4 +1,4 @@
-use crate::treesync::diff::StagedTreeSyncDiff;
+use crate::treesync::{diff::StagedTreeSyncDiff, treekem::DecryptPathParams};
 
 use super::proposals::{
     ProposalQueue, ProposalStore, QueuedAddProposal, QueuedProposal, QueuedPskProposal,
@@ -177,15 +177,15 @@ impl CoreGroup {
             }
 
             // Decrypt the UpdatePath
-            let (plain_path, commit_secret) = diff.decrypt_path(
-                backend,
-                ciphersuite,
-                self.mls_version,
-                update_path_nodes,
-                sender_index,
-                &apply_proposals_values.exclusion_list(),
-                &serialized_context,
-            )?;
+            let decrypt_path_params = DecryptPathParams {
+                version: self.mls_version,
+                update_path: update_path_nodes,
+                sender_leaf_index: sender_index,
+                exclusion_list: &apply_proposals_values.exclusion_list(),
+                group_context: &serialized_context,
+            };
+            let (plain_path, commit_secret) =
+                diff.decrypt_path(backend, ciphersuite, decrypt_path_params)?;
 
             diff.apply_received_update_path(
                 backend,

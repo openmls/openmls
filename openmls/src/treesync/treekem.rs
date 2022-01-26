@@ -77,19 +77,17 @@ impl<'a> TreeSyncDiff<'a> {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &'static Ciphersuite,
-        version: ProtocolVersion,
-        update_path: Vec<UpdatePathNode>,
-        sender_leaf_index: LeafIndex,
-        exclusion_list: &HashSet<&LeafIndex>,
-        group_context: &[u8],
+        params: DecryptPathParams,
     ) -> Result<(Vec<ParentNode>, CommitSecret), TreeKemError> {
-        let path_position = self.subtree_root_position(sender_leaf_index, self.own_leaf_index())?;
-        let update_path_node = update_path
+        let path_position =
+            self.subtree_root_position(params.sender_leaf_index, self.own_leaf_index())?;
+        let update_path_node = params
+            .update_path
             .get(path_position)
             .ok_or(TreeKemError::UpdatePathNodeNotFound)?;
 
         let (decryption_key, resolution_position) =
-            self.decryption_key(sender_leaf_index, exclusion_list)?;
+            self.decryption_key(params.sender_leaf_index, params.exclusion_list)?;
         let ciphertext = update_path_node
             .encrypted_path_secrets(resolution_position)
             .ok_or(TreeKemError::EncryptedCiphertextNotFound)?;
@@ -97,18 +95,19 @@ impl<'a> TreeSyncDiff<'a> {
         let path_secret = PathSecret::decrypt(
             backend,
             ciphersuite,
-            version,
+            params.version,
             ciphertext,
             decryption_key,
-            group_context,
+            params.group_context,
         )?;
 
-        let remaining_path_length = update_path.len() - path_position;
+        let remaining_path_length = params.update_path.len() - path_position;
         let (mut derived_path, _plain_update_path, commit_secret) =
             ParentNode::derive_path(backend, ciphersuite, path_secret, remaining_path_length)?;
         // We now check that the public keys in the update path and in the
         // derived path match up.
-        for (update_parent_node, derived_parent_node) in update_path
+        for (update_parent_node, derived_parent_node) in params
+            .update_path
             .iter()
             .skip(path_position)
             .zip(derived_path.iter())
@@ -120,9 +119,10 @@ impl<'a> TreeSyncDiff<'a> {
 
         // Finally, we append the derived path to the part of the update path
         // below the first node that we have a private key for.
-        let _update_path_len = update_path.len();
+        let _update_path_len = params.update_path.len();
 
-        let mut path: Vec<ParentNode> = update_path
+        let mut path: Vec<ParentNode> = params
+            .update_path
             .into_iter()
             .take(path_position)
             .map(|update_path_node| update_path_node.public_key.into())
@@ -133,6 +133,14 @@ impl<'a> TreeSyncDiff<'a> {
 
         Ok((path, commit_secret))
     }
+}
+
+pub(crate) struct DecryptPathParams<'a> {
+    pub(crate) version: ProtocolVersion,
+    pub(crate) update_path: Vec<UpdatePathNode>,
+    pub(crate) sender_leaf_index: LeafIndex,
+    pub(crate) exclusion_list: &'a HashSet<&'a LeafIndex>,
+    pub(crate) group_context: &'a [u8],
 }
 
 /// 7.7. Update Paths
