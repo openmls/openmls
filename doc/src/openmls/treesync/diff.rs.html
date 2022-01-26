@@ -800,6 +800,38 @@
 <span id="799">799</span>
 <span id="800">800</span>
 <span id="801">801</span>
+<span id="802">802</span>
+<span id="803">803</span>
+<span id="804">804</span>
+<span id="805">805</span>
+<span id="806">806</span>
+<span id="807">807</span>
+<span id="808">808</span>
+<span id="809">809</span>
+<span id="810">810</span>
+<span id="811">811</span>
+<span id="812">812</span>
+<span id="813">813</span>
+<span id="814">814</span>
+<span id="815">815</span>
+<span id="816">816</span>
+<span id="817">817</span>
+<span id="818">818</span>
+<span id="819">819</span>
+<span id="820">820</span>
+<span id="821">821</span>
+<span id="822">822</span>
+<span id="823">823</span>
+<span id="824">824</span>
+<span id="825">825</span>
+<span id="826">826</span>
+<span id="827">827</span>
+<span id="828">828</span>
+<span id="829">829</span>
+<span id="830">830</span>
+<span id="831">831</span>
+<span id="832">832</span>
+<span id="833">833</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -819,7 +851,7 @@
 <span class="doccomment">//! functions that are not expected to fail and throw an error, will still</span>
 <span class="doccomment">//! return a [`Result`] since they may throw a</span>
 <span class="doccomment">//! [`LibraryError`](TreeSyncDiffError::LibraryError).</span>
-<span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">types::CryptoError</span>, <span class="ident">OpenMlsCryptoProvider</span>};
+<span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">crypto::OpenMlsCrypto</span>, <span class="ident">types::CryptoError</span>, <span class="ident">OpenMlsCryptoProvider</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::HashSet</span>, <span class="ident">convert::TryFrom</span>};
@@ -839,10 +871,13 @@
         <span class="ident">array_representation::diff::NodeId</span>, <span class="ident">LeafIndex</span>, <span class="ident">MlsBinaryTreeDiff</span>, <span class="ident">MlsBinaryTreeDiffError</span>,
         <span class="ident">MlsBinaryTreeError</span>, <span class="ident">StagedMlsBinaryTreeDiff</span>,
     },
-    <span class="ident">ciphersuite</span>::{<span class="ident">signable::Signable</span>, <span class="ident">Ciphersuite</span>, <span class="ident">HpkePrivateKey</span>, <span class="ident">HpkePublicKey</span>, <span class="ident">Secret</span>},
+    <span class="ident">ciphersuite</span>::{
+        <span class="ident">hash_ref::KeyPackageRef</span>, <span class="ident">signable::Signable</span>, <span class="ident">Ciphersuite</span>, <span class="ident">HpkePrivateKey</span>, <span class="ident">HpkePublicKey</span>,
+        <span class="ident">Secret</span>,
+    },
     <span class="ident">credentials</span>::{<span class="ident">CredentialBundle</span>, <span class="ident">CredentialError</span>},
     <span class="ident">extensions::ExtensionType</span>,
-    <span class="ident">key_packages</span>::{<span class="ident">KeyPackage</span>, <span class="ident">KeyPackageBundlePayload</span>},
+    <span class="ident">key_packages</span>::{<span class="ident">KeyPackage</span>, <span class="ident">KeyPackageBundlePayload</span>, <span class="ident">KeyPackageError</span>},
     <span class="ident">messages</span>::{<span class="ident">PathSecret</span>, <span class="ident">PathSecretError</span>},
     <span class="ident">schedule::CommitSecret</span>,
 };
@@ -941,7 +976,7 @@
 
     <span class="doccomment">/// Find and return the index of either the left-most blank leaf, or, if</span>
     <span class="doccomment">/// there are no blank leaves, the leaf count.</span>
-    <span class="kw">pub</span>(<span class="kw">in</span> <span class="ident"><span class="kw">crate</span>::treesync</span>) <span class="kw">fn</span> <span class="ident">free_leaf_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LeafIndex</span>, <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">free_leaf_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LeafIndex</span>, <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
         <span class="comment">// Find a free leaf and fill it with the new key package.</span>
         <span class="kw">let</span> <span class="ident">leaf_ids</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">leaves</span>()<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">leaf_index_option</span> <span class="op">=</span> <span class="prelude-val">None</span>;
@@ -968,8 +1003,15 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">add_leaf</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">leaf_node</span>: <span class="ident">KeyPackage</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCrypto</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LeafIndex</span>, <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Node::LeafNode</span>(<span class="ident">leaf_node</span>.<span class="ident">into</span>());
+        <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Node::LeafNode</span>(<span class="ident">LeafNode::new</span>(<span class="ident">leaf_node</span>, <span class="ident">backend</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">KeyPackageError::CryptoError</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">e</span> {
+                <span class="ident">TreeSyncDiffError::CryptoError</span>(<span class="ident">e</span>)
+            } <span class="kw">else</span> {
+                <span class="ident">TreeSyncDiffError::LibraryError</span>
+            }
+        })<span class="question-mark">?</span>);
         <span class="comment">// Find a free leaf and fill it with the new key package.</span>
         <span class="kw">let</span> <span class="ident">leaf_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">free_leaf_index</span>()<span class="question-mark">?</span>;
         <span class="comment">// If the free leaf index is within the tree, put the new leaf there,</span>
@@ -1058,7 +1100,10 @@
         <span class="kw">let</span> <span class="ident">key_package_bundle</span> <span class="op">=</span> <span class="ident">key_package_bundle_payload</span>.<span class="ident">sign</span>(<span class="ident">backend</span>, <span class="ident">credential_bundle</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">key_package</span> <span class="op">=</span> <span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>().<span class="ident">clone</span>();
-        <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Node::LeafNode</span>(<span class="ident">key_package_bundle</span>.<span class="ident">into</span>());
+        <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Node::LeafNode</span>(<span class="ident">LeafNode::new_from_bundle</span>(
+            <span class="ident">key_package_bundle</span>,
+            <span class="ident">backend</span>.<span class="ident">crypto</span>(),
+        )<span class="question-mark">?</span>);
 
         <span class="comment">// Replace the leaf.</span>
         <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">replace_leaf</span>(<span class="self">self</span>.<span class="ident">own_leaf_index</span>, <span class="ident">node</span>.<span class="ident">into</span>())<span class="question-mark">?</span>;
@@ -1096,8 +1141,14 @@
         };
 
         <span class="comment">// Replace the leaf.</span>
-        <span class="self">self</span>.<span class="ident">diff</span>
-            .<span class="ident">replace_leaf</span>(<span class="ident">sender_leaf_index</span>, <span class="ident">Node::LeafNode</span>(<span class="ident">key_package</span>.<span class="ident">into</span>()).<span class="ident">into</span>())<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Node::LeafNode</span>(<span class="ident">LeafNode::new</span>(<span class="ident">key_package</span>, <span class="ident">backend</span>.<span class="ident">crypto</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">KeyPackageError::CryptoError</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">e</span> {
+                <span class="ident">TreeSyncDiffError::CryptoError</span>(<span class="ident">e</span>)
+            } <span class="kw">else</span> {
+                <span class="ident">TreeSyncDiffError::LibraryError</span>
+            }
+        })<span class="question-mark">?</span>);
+        <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">replace_leaf</span>(<span class="ident">sender_leaf_index</span>, <span class="ident">node</span>.<span class="ident">into</span>())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -1575,6 +1626,18 @@
             .<span class="ident">collect</span>();
         <span class="prelude-val">Ok</span>(<span class="ident">nodes</span>)
     }
+
+    <span class="doccomment">/// Returns the [`KeyPackageRef`] for the own leaf in the tree resulting from</span>
+    <span class="doccomment">/// merging this diff.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hash_ref</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">KeyPackageRef</span>, <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">node</span>(<span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">leaf</span>(<span class="self">self</span>.<span class="ident">own_leaf_index</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">Node::LeafNode</span>(<span class="ident">node</span>)) <span class="op">=</span> <span class="ident">node</span>.<span class="ident">node</span>() {
+            <span class="ident">node</span>.<span class="ident">key_package_ref</span>()
+                .<span class="ident">ok_or</span>(<span class="ident">TreeSyncDiffError::LibraryError</span>)
+        } <span class="kw">else</span> {
+            <span class="prelude-val">Err</span>(<span class="ident">TreeSyncDiffError::LibraryError</span>)
+        }
+    }
 }
 
 <span class="macro">implement_error!</span> {
@@ -1598,6 +1661,7 @@
             <span class="ident">DerivationError</span>(<span class="ident">PathSecretError</span>) <span class="op">=</span> <span class="string">&quot;An error occurred during PathSecret derivation.&quot;</span>,
             <span class="ident">ParentNodeError</span>(<span class="ident">ParentNodeError</span>) <span class="op">=</span> <span class="string">&quot;An error occurred during path derivation.&quot;</span>,
             <span class="ident">CreationError</span>(<span class="ident">MlsBinaryTreeError</span>) <span class="op">=</span> <span class="string">&quot;An error occurred while creating an empty diff.&quot;</span>,
+            <span class="ident">KeyPackageError</span>(<span class="ident">KeyPackageError</span>) <span class="op">=</span> <span class="string">&quot;An error occurred while building the leaf node from a key package bundle.&quot;</span>,
         }
     }
 }

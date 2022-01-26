@@ -86,6 +86,18 @@
 <span id="85">85</span>
 <span id="86">86</span>
 <span id="87">87</span>
+<span id="88">88</span>
+<span id="89">89</span>
+<span id="90">90</span>
+<span id="91">91</span>
+<span id="92">92</span>
+<span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
+<span id="96">96</span>
+<span id="97">97</span>
+<span id="98">98</span>
+<span id="99">99</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Framing errors.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `MlsPlaintextError` and `MlsCiphertextError` are thrown on errors</span>
@@ -129,7 +141,16 @@
             <span class="ident">SecretTreeError</span>(<span class="ident">SecretTreeError</span>) <span class="op">=</span> <span class="string">&quot;SecretTree error&quot;</span>,
             <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span> <span class="string">&quot;TLS codec error&quot;</span>,
             <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span> <span class="string">&quot;See [`CryptoError`](openmls_traits::types::CryptoError) for details.&quot;</span>,
+            <span class="ident">SenderError</span>(<span class="ident">SenderError</span>) <span class="op">=</span> <span class="string">&quot;See [`SenderError`] for details.&quot;</span>,
         }
+    }
+}
+
+<span class="macro">implement_error!</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SenderError</span> {
+        <span class="ident">NotAMember</span> <span class="op">=</span> <span class="string">&quot;The requested client is not a member of the group.&quot;</span>,
+        <span class="ident">NotAPreConfigured</span> <span class="op">=</span> <span class="string">&quot;The requested sender is not a preconfigured one.&quot;</span>,
+        <span class="ident">UnknownSender</span> <span class="op">=</span> <span class="string">&quot;Unknown sender&quot;</span>,
     }
 }
 
@@ -171,6 +192,9 @@
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsMessageError</span> {
         <span class="ident">DecodingError</span> <span class="op">=</span> <span class="string">&quot;The message could not be decoded.&quot;</span>,
         <span class="ident">EncodingError</span> <span class="op">=</span> <span class="string">&quot;The message could not be encoded.&quot;</span>,
+        <span class="ident">NotAMember</span> <span class="op">=</span> <span class="string">&quot;The requested client is not a member of the group.&quot;</span>,
+        <span class="ident">NotAPreConfigured</span> <span class="op">=</span> <span class="string">&quot;The requested sender is not a preconfigured one.&quot;</span>,
+        <span class="ident">UnknownSender</span> <span class="op">=</span> <span class="string">&quot;Unknown sender&quot;</span>,
     }
 }
 </code></pre></div>

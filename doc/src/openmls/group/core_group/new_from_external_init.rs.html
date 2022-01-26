@@ -137,6 +137,8 @@
 <span id="136">136</span>
 <span id="137">137</span>
 <span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite::signable::Verifiable</span>,
     <span class="ident">group::errors::ExternalCommitError</span>,
@@ -144,6 +146,7 @@
         <span class="ident">proposals</span>::{<span class="ident">ExternalInitProposal</span>, <span class="ident">Proposal</span>},
         <span class="ident">public_group_state</span>::{<span class="ident">PublicGroupState</span>, <span class="ident">VerifiablePublicGroupState</span>},
     },
+    <span class="ident">treesync::node::Node</span>,
 };
 
 <span class="kw">use</span> <span class="kw">super</span>::{
@@ -180,12 +183,14 @@
         <span class="comment">// If we got a ratchet tree extension in the welcome, we enable it for</span>
         <span class="comment">// this group. Note that this is not strictly necessary. But there&#39;s</span>
         <span class="comment">// currently no other mechanism to enable the extension.</span>
-        <span class="kw">let</span> <span class="ident">extension_tree_option</span> <span class="op">=</span>
-            <span class="ident">try_nodes_from_extensions</span>(<span class="ident">verifiable_public_group_state</span>.<span class="ident">other_extensions</span>())<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">extension_tree_option</span> <span class="op">=</span> <span class="ident">try_nodes_from_extensions</span>(
+            <span class="ident">verifiable_public_group_state</span>.<span class="ident">other_extensions</span>(),
+            <span class="ident">backend</span>.<span class="ident">crypto</span>(),
+        )<span class="question-mark">?</span>;
         <span class="kw">let</span> (<span class="ident">nodes</span>, <span class="ident">enable_ratchet_tree_extension</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">extension_tree_option</span> {
-            <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">nodes</span>) =&gt; (<span class="ident">nodes</span>, <span class="bool-val">true</span>),
-            <span class="prelude-val">None</span> =&gt; <span class="kw">match</span> <span class="ident">tree_option</span>.<span class="ident">as_ref</span>() {
-                <span class="prelude-val">Some</span>(<span class="ident">n</span>) =&gt; (<span class="ident">n</span>, <span class="bool-val">false</span>),
+            <span class="prelude-val">Some</span>(<span class="ident">nodes</span>) =&gt; (<span class="ident">nodes</span>, <span class="bool-val">true</span>),
+            <span class="prelude-val">None</span> =&gt; <span class="kw">match</span> <span class="ident">tree_option</span> {
+                <span class="prelude-val">Some</span>(<span class="ident">n</span>) =&gt; (<span class="ident">n</span>.<span class="ident">into</span>(), <span class="bool-val">false</span>),
                 <span class="prelude-val">None</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ExternalCommitError::MissingRatchetTree</span>.<span class="ident">into</span>()),
             },
         };
@@ -200,8 +205,7 @@
         }
 
         <span class="comment">// FIXME #680: Validation of external commits</span>
-
-        <span class="kw">let</span> <span class="ident">pgs_signer_leaf</span> <span class="op">=</span> <span class="ident">treesync</span>.<span class="ident">leaf</span>(<span class="ident">verifiable_public_group_state</span>.<span class="ident">signer_index</span>())<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">pgs_signer_leaf</span> <span class="op">=</span> <span class="ident">treesync</span>.<span class="ident">leaf_from_id</span>(<span class="ident">verifiable_public_group_state</span>.<span class="ident">signer</span>())<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">pgs_signer_credential</span> <span class="op">=</span> <span class="ident">pgs_signer_leaf</span>
             .<span class="ident">ok_or</span>(<span class="ident">ExternalCommitError::UnknownSender</span>)<span class="question-mark">?</span>
             .<span class="ident">key_package</span>()
@@ -247,12 +251,12 @@
 
         <span class="comment">// If there is a group member in the group with the same identity as us,</span>
         <span class="comment">// commit a remove proposal.</span>
-        <span class="kw">for</span> (<span class="ident">leaf_index</span>, <span class="ident">key_package</span>) <span class="kw">in</span> <span class="ident">group</span>.<span class="ident">treesync</span>().<span class="ident">full_leaves</span>()<span class="question-mark">?</span> {
+        <span class="kw">for</span> (<span class="kw">_</span>, <span class="ident">key_package</span>) <span class="kw">in</span> <span class="ident">group</span>.<span class="ident">treesync</span>().<span class="ident">full_leaves</span>()<span class="question-mark">?</span> {
             <span class="kw">if</span> <span class="ident">key_package</span>.<span class="ident">credential</span>().<span class="ident">identity</span>()
                 <span class="op">==</span> <span class="ident">params</span>.<span class="ident">credential_bundle</span>().<span class="ident">credential</span>().<span class="ident">identity</span>()
             {
                 <span class="kw">let</span> <span class="ident">remove_proposal</span> <span class="op">=</span> <span class="ident">Proposal::Remove</span>(<span class="ident">RemoveProposal</span> {
-                    <span class="ident">removed</span>: <span class="ident">leaf_index</span>,
+                    <span class="ident">removed</span>: <span class="ident">key_package</span>.<span class="ident">hash_ref</span>(<span class="ident">backend</span>.<span class="ident">crypto</span>())<span class="question-mark">?</span>,
                 });
                 <span class="ident">inline_proposals</span>.<span class="ident">push</span>(<span class="ident">remove_proposal</span>);
                 <span class="kw">break</span>;

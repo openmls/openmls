@@ -181,7 +181,15 @@
 
         // Check that Alice added Bob
         // TODO #575: Replace this with the adequate API call
-        assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
+        assert_eq!(
+            staged_proposal
+                .sender()
+                .as_key_package_ref()
+                .expect(&quot;An unexpected error occurred.&quot;),
+            alice_group
+                .key_package_ref()
+                .expect(&quot;An unexpected error occurred.&quot;)
+        );
         // Store proposal
         charlie_group.store_pending_proposal(*staged_proposal);
     }
@@ -196,10 +204,21 @@
             .expect(&quot;Expected a proposal.&quot;);
         // Check that Bob was removed
         // TODO #575: Replace this with the adequate API call
-        assert_eq!(remove.remove_proposal().removed(), 1u32);
+        assert_eq!(
+            remove.remove_proposal().removed(),
+            bob_group
+                .key_package_ref()
+                .expect(&quot;An unexpected error occurred.&quot;)
+        );
         // Check that Charlie removed Bob
         // TODO #575: Replace this with the adequate API call
-        assert_eq!(remove.sender().to_leaf_index(), 2u32);
+        assert_eq!(
+            remove
+                .sender()
+                .as_key_package_ref()
+                .expect(&quot;An unexpected error occurred.&quot;),
+            &amp;charlies_old_kpr
+        );
         // Merge staged commit
         alice_group
             .merge_staged_commit(*staged_commit)

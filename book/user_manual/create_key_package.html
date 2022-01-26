@@ -166,9 +166,10 @@
     backend
         .key_store()
         .store(
-            &amp;key_package
-                .hash(backend)
-                .expect(&quot;Could not hash KeyPackage.&quot;),
+            key_package
+                .hash_ref(backend.crypto())
+                .expect(&quot;Could not hash KeyPackage.&quot;)
+                .value(),
             &amp;key_package_bundle,
         )
         .expect(&quot;An unexpected error occurred.&quot;);

@@ -189,7 +189,6 @@
 <span id="188">188</span>
 <span id="189">189</span>
 <span id="190">190</span>
-<span id="191">191</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Ciphersuites for MLS</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This file contains the API to interact with ciphersuites.</span>
@@ -214,8 +213,6 @@
 
 <span class="kw">mod</span> <span class="ident">aead</span>;
 <span class="kw">mod</span> <span class="ident">codec</span>;
-<span class="comment">// TODO #541 This will change once hash based identifiers have been fully implemented</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">hash_ref</span>;
 <span class="kw">mod</span> <span class="ident">hpke</span>;
 <span class="kw">mod</span> <span class="ident">kdf_label</span>;
 <span class="kw">mod</span> <span class="ident">mac</span>;
@@ -226,6 +223,7 @@
 
 <span class="comment">// Public</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">ciphersuites</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">hash_ref</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">signable</span>;
 
 <span class="comment">// Crate</span>

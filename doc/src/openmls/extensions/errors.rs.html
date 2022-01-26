@@ -84,6 +84,9 @@
 <span id="83">83</span>
 <span id="84">84</span>
 <span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
+<span id="88">88</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Extension errors.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! An `ExtensionError` is thrown when an extension is invalid (for example when</span>
@@ -99,6 +102,7 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config::ConfigError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ErrorString</span>;
 
+<span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
 <span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
 
 <span class="macro">implement_error!</span> {
@@ -127,6 +131,8 @@
                 <span class="string">&quot;Configuration error. See `ConfigError` for details.&quot;</span>,
             <span class="ident">InvalidExtension</span>(<span class="ident">InvalidExtensionError</span>) <span class="op">=</span>
                 <span class="string">&quot;The extension is malformed. See [`InvalidExtensionError`](`InvalidExtensionError`) for details.&quot;</span>,
+            <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span>
+                <span class="string">&quot;See [`CryptoError`] for details.&quot;</span>,
         }
     }
 }

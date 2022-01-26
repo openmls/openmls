@@ -107,6 +107,8 @@
 <span id="106">106</span>
 <span id="107">107</span>
 <span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS MlsGroup errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -118,6 +120,7 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::framing::MlsCiphertextError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::framing::ValidationError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::errors::QueuedProposalError</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::WelcomeError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group</span>::{<span class="ident">CoreGroupError</span>, <span class="ident">CreateCommitError</span>, <span class="ident">ExporterError</span>, <span class="ident">StageCommitError</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::TreeSyncError</span>;
 <span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
@@ -162,6 +165,7 @@
                 <span class="string">&quot;See [`CryptoError`](openmls_traits::types::CryptoError) for details.&quot;</span>,
             <span class="ident">QueuedProposalError</span>(<span class="ident">QueuedProposalError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`QueuedProposalError`](crate::group::QueuedProposalError) for details.&quot;</span>,
+            <span class="ident">WelcomeError</span>(<span class="ident">WelcomeError</span>) <span class="op">=</span> <span class="string">&quot;See [`WelcomeError`] for details.&quot;</span>,
         }
     }
 }

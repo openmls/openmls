@@ -180,9 +180,6 @@
 <span id="179">179</span>
 <span id="180">180</span>
 <span id="181">181</span>
-<span id="182">182</span>
-<span id="183">183</span>
-<span id="184">184</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">core_group</span>::{<span class="ident">proposals::QueuedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
 
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">proposals::ProposalStore</span>, <span class="kw-2">*</span>};
@@ -218,13 +215,10 @@
             <span class="ident">WireFormat::MlsPlaintext</span> =&gt; <span class="ident">DecryptedMessage::from_inbound_plaintext</span>(<span class="ident">message</span>)<span class="question-mark">?</span>,
             <span class="ident">WireFormat::MlsCiphertext</span> =&gt; {
                 <span class="comment">// If the message is older than the current epoch, we need to fetch the correct secret tree first</span>
-                <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ciphersuite</span>();
-                <span class="kw">let</span> <span class="ident">message_secrets</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">message_secrets_mut</span>(<span class="ident">message</span>.<span class="ident">epoch</span>())<span class="question-mark">?</span>;
                 <span class="ident">DecryptedMessage::from_inbound_ciphertext</span>(
                     <span class="ident">message</span>,
-                    <span class="ident">ciphersuite</span>,
                     <span class="ident">backend</span>,
-                    <span class="ident">message_secrets</span>,
+                    <span class="self">self</span>,
                     <span class="ident">sender_ratchet_configuration</span>,
                 )<span class="question-mark">?</span>
             }
@@ -299,7 +293,7 @@
                     <span class="ident">MlsPlaintextContentType::Application</span>(<span class="ident">application_message</span>) =&gt; {
                         <span class="ident">ProcessedMessage::ApplicationMessage</span>(<span class="ident">ApplicationMessage::new</span>(
                             <span class="ident">application_message</span>.<span class="ident">as_slice</span>().<span class="ident">to_vec</span>(),
-                            <span class="kw-2">*</span><span class="ident">verified_member_message</span>.<span class="ident">plaintext</span>().<span class="ident">sender</span>(),
+                            <span class="ident">verified_member_message</span>.<span class="ident">plaintext</span>().<span class="ident">sender</span>(),
                         ))
                     }
                     <span class="ident">MlsPlaintextContentType::Proposal</span>(<span class="ident">_proposal</span>) =&gt; {

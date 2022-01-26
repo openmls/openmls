@@ -161,9 +161,10 @@
         backend,
         &amp;mls_group_config,
         group_id,
-        &amp;alice_key_package
-            .hash(backend)
-            .expect(&quot;Could not hash KeyPackage.&quot;),
+        alice_key_package
+            .hash_ref(backend.crypto())
+            .expect(&quot;Could not hash KeyPackage.&quot;)
+            .as_slice(),
     )
     .expect(&quot;An unexpected error occurred.&quot;);
 </code></pre>

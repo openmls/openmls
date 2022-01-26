@@ -398,6 +398,22 @@
 <span id="397">397</span>
 <span id="398">398</span>
 <span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ```text</span>
@@ -434,11 +450,11 @@
 <span class="doccomment">//! ProcessedMessage (Application, Proposal, ExternalProposal, Commit, External Commit)</span>
 <span class="doccomment">//! ```</span>
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">schedule::MessageSecrets</span>, <span class="ident">tree::sender_ratchet::SenderRatchetConfiguration</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">schedule::MessageSecrets</span>, <span class="ident">tree::index::SecretTreeLeafIndex</span>, <span class="ident">treesync::TreeSync</span>};
 <span class="kw">use</span> <span class="ident">core_group</span>::{<span class="ident">proposals::QueuedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
 <span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite::signable::Verifiable</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ciphersuite::signable::Verifiable</span>, <span class="ident">tree::sender_ratchet::SenderRatchetConfiguration</span>};
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
@@ -468,18 +484,29 @@
     <span class="doccomment">/// to a [VerifiableMlsPlaintext] first.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_inbound_ciphertext</span>(
         <span class="ident">inbound_message</span>: <span class="ident">MlsMessageIn</span>,
-        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">message_secrets</span>: <span class="kw-2">&amp;mut</span> <span class="ident">MessageSecrets</span>,
+        <span class="ident">group</span>: <span class="kw-2">&amp;mut</span> <span class="ident">CoreGroup</span>,
         <span class="ident">sender_ratchet_configuration</span>: <span class="kw-2">&amp;</span><span class="ident">SenderRatchetConfiguration</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ValidationError</span><span class="op">&gt;</span> {
         <span class="comment">// This will be refactored with #265.</span>
         <span class="kw">if</span> <span class="kw">let</span> <span class="ident">MlsMessage::Ciphertext</span>(<span class="ident">ciphertext</span>) <span class="op">=</span> <span class="ident">inbound_message</span>.<span class="ident">mls_message</span> {
+            <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">group</span>.<span class="ident">ciphersuite</span>();
+            <span class="kw">let</span> <span class="ident">message_secrets</span> <span class="op">=</span> <span class="ident">group</span>
+                .<span class="ident">message_secrets_mut</span>(<span class="ident">ciphertext</span>.<span class="ident">epoch</span>())
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MlsCiphertextError::DecryptionError</span>)<span class="question-mark">?</span>;
             <span class="kw">let</span> <span class="ident">sender_data</span> <span class="op">=</span> <span class="ident">ciphertext</span>.<span class="ident">sender_data</span>(<span class="ident">message_secrets</span>, <span class="ident">backend</span>, <span class="ident">ciphersuite</span>)<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">sender_index</span> <span class="op">=</span> <span class="ident">group</span>
+                .<span class="ident">sender_index</span>(<span class="kw-2">&amp;</span><span class="ident">sender_data</span>.<span class="ident">sender</span>)
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MlsCiphertextError::SenderError</span>(<span class="ident">SenderError::UnknownSender</span>))<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">sender_index</span> <span class="op">=</span> <span class="ident">SecretTreeLeafIndex</span>(<span class="ident">sender_index</span>);
+            <span class="kw">let</span> <span class="ident">message_secrets</span> <span class="op">=</span> <span class="ident">group</span>
+                .<span class="ident">message_secrets_mut</span>(<span class="ident">ciphertext</span>.<span class="ident">epoch</span>())
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MlsCiphertextError::DecryptionError</span>)<span class="question-mark">?</span>;
             <span class="kw">let</span> <span class="ident">plaintext</span> <span class="op">=</span> <span class="ident">ciphertext</span>.<span class="ident">to_plaintext</span>(
                 <span class="ident">ciphersuite</span>,
                 <span class="ident">backend</span>,
                 <span class="ident">message_secrets</span>,
+                <span class="ident">sender_index</span>,
                 <span class="ident">sender_ratchet_configuration</span>,
                 <span class="ident">sender_data</span>,
             )<span class="question-mark">?</span>;
@@ -527,9 +554,11 @@
         <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sender</span>();
         <span class="kw">match</span> <span class="ident">sender</span>.<span class="ident">sender_type</span> {
             <span class="ident">SenderType::Member</span> =&gt; {
-                <span class="kw">let</span> <span class="ident">sender_index</span> <span class="op">=</span> <span class="ident">sender</span>.<span class="ident">to_leaf_index</span>();
+                <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">sender</span>
+                    .<span class="ident">as_key_package_ref</span>()
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ValidationError::UnknownSender</span>)<span class="question-mark">?</span>;
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">sender_leaf</span>) <span class="op">=</span> <span class="ident">treesync</span>
-                    .<span class="ident">leaf</span>(<span class="ident">sender_index</span>)
+                    .<span class="ident">leaf_from_id</span>(<span class="ident">sender</span>)
                     .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ValidationError::UnknownSender</span>)<span class="question-mark">?</span>
                 {
                     <span class="prelude-val">Ok</span>(<span class="ident">sender_leaf</span>.<span class="ident">key_package</span>().<span class="ident">credential</span>().<span class="ident">clone</span>())
@@ -778,8 +807,11 @@
 
 <span class="kw">impl</span> <span class="ident">ApplicationMessage</span> {
     <span class="doccomment">/// Create a new [ApplicationMessage].</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">message</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">sender</span>: <span class="ident">Sender</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> { <span class="ident">message</span>, <span class="ident">sender</span> }
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">message</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">sender</span>: <span class="kw-2">&amp;</span><span class="ident">Sender</span>) -&gt; <span class="self">Self</span> {
+        <span class="self">Self</span> {
+            <span class="ident">message</span>,
+            <span class="ident">sender</span>: <span class="ident">sender</span>.<span class="ident">clone</span>(),
+        }
     }
 
     <span class="doccomment">/// Get a reference to the message.</span>

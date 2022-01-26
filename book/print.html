@@ -187,9 +187,10 @@ Clients need to choose a few parameters to create a <code>CredentialBundle</code
     backend
         .key_store()
         .store(
-            &amp;key_package
-                .hash(backend)
-                .expect(&quot;Could not hash KeyPackage.&quot;),
+            key_package
+                .hash_ref(backend.crypto())
+                .expect(&quot;Could not hash KeyPackage.&quot;)
+                .value(),
             &amp;key_package_bundle,
         )
         .expect(&quot;An unexpected error occurred.&quot;);
@@ -243,9 +244,10 @@ Clients need to choose a few parameters to create a <code>CredentialBundle</code
         backend,
         &amp;mls_group_config,
         group_id,
-        &amp;alice_key_package
-            .hash(backend)
-            .expect(&quot;Could not hash KeyPackage.&quot;),
+        alice_key_package
+            .hash_ref(backend.crypto())
+            .expect(&quot;Could not hash KeyPackage.&quot;)
+            .as_slice(),
     )
     .expect(&quot;An unexpected error occurred.&quot;);
 </code></pre>
@@ -279,7 +281,12 @@ If the group configuration does not use the ratchet tree extension, the ratchet 
 <h2 id="immediate-operation-1"><a class="header" href="#immediate-operation-1">Immediate operation</a></h2>
 <p>Members can be removed from the group atomically with the <code>.remove_members()</code> function.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option) = charlie_group
-        .remove_members(backend, &amp;[1])
+        .remove_members(
+            backend,
+            &amp;[*bob_group
+                .key_package_ref()
+                .expect(&quot;An unexpected error occurred.&quot;)],
+        )
         .expect(&quot;Could not remove Bob from group.&quot;);
 </code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing members of the group.
@@ -287,7 +294,12 @@ Despite the fact that members were only removed in this operation, the Commit me
 <h2 id="proposal-1"><a class="header" href="#proposal-1">Proposal</a></h2>
 <p>Members can also be removed as a proposal (without the corresponding Commit message) by using the <code>.propose_remove_member()</code> function:</p>
 <pre><code class="language-rust no_run noplayground">    let mls_message_out = alice_group
-        .propose_remove_member(backend, 2)
+        .propose_remove_member(
+            backend,
+            charlie_group
+                .key_package_ref()
+                .expect(&quot;An unexpected error occurred.&quot;),
+        )
         .expect(&quot;Could not create proposal to remove Charlie.&quot;);
 </code></pre>
 <p>In this case the the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
@@ -383,7 +395,15 @@ In case the Commit message also covers Add Proposals that were previously receiv
 
         // Check that Alice added Bob
         // TODO #575: Replace this with the adequate API call
-        assert_eq!(staged_proposal.sender().to_leaf_index(), 0u32);
+        assert_eq!(
+            staged_proposal
+                .sender()
+                .as_key_package_ref()
+                .expect(&quot;An unexpected error occurred.&quot;),
+            alice_group
+                .key_package_ref()
+                .expect(&quot;An unexpected error occurred.&quot;)
+        );
         // Store proposal
         charlie_group.store_pending_proposal(*staged_proposal);
     }
@@ -398,10 +418,21 @@ In case the Commit message also covers Add Proposals that were previously receiv
             .expect(&quot;Expected a proposal.&quot;);
         // Check that Bob was removed
         // TODO #575: Replace this with the adequate API call
-        assert_eq!(remove.remove_proposal().removed(), 1u32);
+        assert_eq!(
+            remove.remove_proposal().removed(),
+            bob_group
+                .key_package_ref()
+                .expect(&quot;An unexpected error occurred.&quot;)
+        );
         // Check that Charlie removed Bob
         // TODO #575: Replace this with the adequate API call
-        assert_eq!(remove.sender().to_leaf_index(), 2u32);
+        assert_eq!(
+            remove
+                .sender()
+                .as_key_package_ref()
+                .expect(&quot;An unexpected error occurred.&quot;),
+            &amp;charlies_old_kpr
+        );
         // Merge staged commit
         alice_group
             .merge_staged_commit(*staged_commit)

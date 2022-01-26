@@ -317,6 +317,28 @@
 <span id="316">316</span>
 <span id="317">317</span>
 <span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS CoreGroup errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -328,6 +350,7 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::framing::errors</span>::{
     <span class="ident">MlsCiphertextError</span>, <span class="ident">MlsPlaintextError</span>, <span class="ident">ValidationError</span>, <span class="ident">VerificationError</span>,
 };
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::framing::SenderError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::key_packages::KeyPackageError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::errors::ProposalError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schedule::errors</span>::{<span class="ident">KeyScheduleError</span>, <span class="ident">PskSecretError</span>};
@@ -398,6 +421,8 @@
                 <span class="string">&quot;See [`InterimTranscriptHashError`](crate::group::InterimTranscriptHashError) for details.&quot;</span>,
             <span class="ident">QueuedProposalError</span>(<span class="ident">QueuedProposalError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`QueuedProposalError`](crate::group::QueuedProposalError) for details.&quot;</span>,
+            <span class="ident">SenderError</span>(<span class="ident">SenderError</span>) <span class="op">=</span>
+                <span class="string">&quot;Sender error&quot;</span>,
         }
     }
 }
@@ -529,6 +554,8 @@
                 <span class="string">&quot;Missing own key to apply proposal.&quot;</span>,
             <span class="ident">InconsistentSenderIndex</span> <span class="op">=</span>
                 <span class="string">&quot;External Committer used the wrong index.&quot;</span>,
+            <span class="ident">LibraryError</span> <span class="op">=</span>
+                <span class="string">&quot;An unrecoverable error has occurred due to a bug in the implementation.&quot;</span>,
         }
         <span class="ident">Complex</span> {
             <span class="ident">PlaintextSignatureFailure</span>(<span class="ident">VerificationError</span>) <span class="op">=</span>
@@ -575,9 +602,26 @@
             <span class="ident">ProposalNotFound</span> <span class="op">=</span> <span class="string">&quot;Not all proposals in the Commit were found locally.&quot;</span>,
             <span class="ident">SelfRemoval</span> <span class="op">=</span> <span class="string">&quot;The sender of a Commit tried to remove themselves.&quot;</span>,
             <span class="ident">ArchitectureError</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t fit a `u32` into a `usize`.&quot;</span>,
+            <span class="ident">RemovedNotFound</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t find the member to remove.&quot;</span>,
+            <span class="ident">LibraryError</span> <span class="op">=</span> <span class="string">&quot;An unrecoverable error has occurred due to a bug in the implementation.&quot;</span>,
         }
         <span class="ident">Complex</span> {
             <span class="ident">NotAProposal</span>(<span class="ident">QueuedProposalError</span>) <span class="op">=</span> <span class="string">&quot;The given MLS Plaintext was not a Proposal.&quot;</span>,
+            <span class="ident">SenderError</span>(<span class="ident">SenderError</span>) <span class="op">=</span> <span class="string">&quot;Sender error&quot;</span>,
+        }
+    }
+}
+
+<span class="macro">implement_error!</span> {
+    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CreationProposalQueueError</span> {
+        <span class="ident">Simple</span> {
+            <span class="ident">ProposalNotFound</span> <span class="op">=</span> <span class="string">&quot;Not all proposals in the Commit were found locally.&quot;</span>,
+            <span class="ident">ArchitectureError</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t fit a `u32` into a `usize`.&quot;</span>,
+            <span class="ident">LibraryError</span> <span class="op">=</span> <span class="string">&quot;An unrecoverable error has occurred due to a bug in the implementation.&quot;</span>,
+        }
+        <span class="ident">Complex</span> {
+            <span class="ident">NotAProposal</span>(<span class="ident">QueuedProposalError</span>) <span class="op">=</span> <span class="string">&quot;The given MLS Plaintext was not a Proposal.&quot;</span>,
+            <span class="ident">SenderError</span>(<span class="ident">SenderError</span>) <span class="op">=</span> <span class="string">&quot;Sender error&quot;</span>,
         }
     }
 }

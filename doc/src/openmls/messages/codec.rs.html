@@ -163,9 +163,11 @@
 <span id="162">162</span>
 <span id="163">163</span>
 <span id="164">164</span>
+<span id="165">165</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Codec implementations for message structs.</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite::hash_ref::ProposalRef</span>;
 
 <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
 <span class="kw">use</span> <span class="ident">std::io</span>::{<span class="ident">Read</span>, <span class="ident">Write</span>};
@@ -230,7 +232,7 @@
                 <span class="prelude-val">Ok</span>(<span class="ident">ProposalOrRef::Proposal</span>(<span class="ident">Proposal::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>))
             }
             <span class="ident">ProposalOrRefType::Reference</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ProposalOrRef::Reference</span>(
-                <span class="ident">ProposalReference::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>,
+                <span class="ident">ProposalRef::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>,
             )),
         }
     }
