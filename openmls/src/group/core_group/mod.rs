@@ -443,7 +443,6 @@ impl CoreGroup {
             .message_secrets_mut(mls_ciphertext.epoch())
             .map_err(|_| MlsCiphertextError::DecryptionError)?;
         let sender_data = mls_ciphertext.sender_data(message_secrets, backend, ciphersuite)?;
-        drop(message_secrets);
         let sender_index = self
             .sender_index(&sender_data.sender)
             .map_err(|_| MlsCiphertextError::SenderError(SenderError::UnknownSender))?;

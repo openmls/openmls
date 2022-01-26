@@ -647,7 +647,7 @@ impl MlsGroupTestSetup {
                         let client = clients.get(&identity).unwrap().read().unwrap();
                         let client_group = client.groups.read().unwrap();
                         let client_group = client_group.get(&group.group_id).unwrap();
-                        target_member_ids.push(client_group.key_package_ref().unwrap().clone());
+                        target_member_ids.push(*client_group.key_package_ref().unwrap());
                         target_member_identities.push(identity);
                     }
                     self.remove_clients(action_type, group, &member_id, &target_member_ids)?
