@@ -1,3 +1,6 @@
+//! This module defines traits used for signing and verifying
+//! structs from the MLS protocol spec.
+
 use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
@@ -42,6 +45,7 @@ pub trait VerifiedStruct<T> {
 /// The `Signable` trait is implemented by all struct that are being signed.
 /// The implementation has to provide the `unsigned_payload` function.
 pub trait Signable: Sized {
+    /// The type of the object once it's signed.
     type SignedOutput;
 
     /// Return the unsigned, serialized payload that should be signed.

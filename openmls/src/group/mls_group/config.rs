@@ -1,3 +1,5 @@
+//! Configuration module for [`MlsGroup`] configurations.
+
 use super::*;
 use crate::tree::sender_ratchet::SenderRatchetConfiguration;
 use lazy_static::lazy_static;
@@ -6,10 +8,8 @@ use serde::{Deserialize, Serialize};
 /// Specifies the configuration parameters for a [`MlsGroup`]
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct MlsGroupConfig {
-    /// Defines whether handshake messages (Proposals & Commits) are encrypted.
-    /// Application are always encrypted regardless. `Plaintext`: Handshake messages
-    /// are returned as MlsPlaintext messages `Ciphertext`: Handshake messages are
-    /// returned as MlsCiphertext messages
+    /// Defines the wire format policy for outgoing and incoming handshake messages.
+    /// Application are always encrypted regardless.
     pub(crate) wire_format_policy: WireFormatPolicy,
     /// Size of padding in bytes
     pub(crate) padding_size: usize,
@@ -73,11 +73,13 @@ impl MlsGroupConfig {
     }
 }
 
+/// Builder for an [`MlsGroupConfig`].
 #[derive(Default)]
 pub struct MlsGroupConfigBuilder {
     config: MlsGroupConfig,
 }
 impl MlsGroupConfigBuilder {
+    /// Creates a new builder with default values.
     pub fn new() -> Self {
         MlsGroupConfigBuilder {
             config: MlsGroupConfig::default(),
@@ -133,6 +135,7 @@ impl MlsGroupConfigBuilder {
         self
     }
 
+    /// Finalizes the builder and retursn an `[MlsGroupConfig`].
     pub fn build(self) -> MlsGroupConfig {
         self.config
     }
@@ -181,6 +184,7 @@ pub struct WireFormatPolicy {
 }
 
 impl WireFormatPolicy {
+    /// Creates a new wire format policy from an [`OutgoingWireFormatPolicy`] and an [`IncomingWireFormatPolicy`].
     pub fn new(outgoing: OutgoingWireFormatPolicy, incoming: IncomingWireFormatPolicy) -> Self {
         Self { outgoing, incoming }
     }
@@ -222,6 +226,7 @@ impl From<OutgoingWireFormatPolicy> for WireFormat {
 }
 
 lazy_static! {
+    /// All valid wire format policy combinations
     pub static ref ALL_VALID_WIRE_FORMAT_POLICIES: Vec<WireFormatPolicy> = vec![
         *PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
         *PURE_CIPHERTEXT_WIRE_FORMAT_POLICY,
@@ -231,6 +236,7 @@ lazy_static! {
 }
 
 lazy_static! {
+    /// Pure plaintext wire format policy.
     pub static ref PURE_PLAINTEXT_WIRE_FORMAT_POLICY: WireFormatPolicy = WireFormatPolicy::new(
         OutgoingWireFormatPolicy::AlwaysPlaintext,
         IncomingWireFormatPolicy::AlwaysPlaintext,
@@ -238,6 +244,7 @@ lazy_static! {
 }
 
 lazy_static! {
+    /// Pure ciphertext wire format policy.
     pub static ref PURE_CIPHERTEXT_WIRE_FORMAT_POLICY: WireFormatPolicy = WireFormatPolicy::new(
         OutgoingWireFormatPolicy::AlwaysCiphertext,
         IncomingWireFormatPolicy::AlwaysCiphertext,
@@ -245,6 +252,7 @@ lazy_static! {
 }
 
 lazy_static! {
+    /// Mixed plaintext wire format policy combination.
     pub static ref MIXED_PLAINTEXT_WIRE_FORMAT_POLICY: WireFormatPolicy = WireFormatPolicy::new(
         OutgoingWireFormatPolicy::AlwaysPlaintext,
         IncomingWireFormatPolicy::Mixed,
@@ -252,6 +260,7 @@ lazy_static! {
 }
 
 lazy_static! {
+    /// Mixed ciphertext wire format policy combination.
     pub static ref MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY: WireFormatPolicy = WireFormatPolicy::new(
         OutgoingWireFormatPolicy::AlwaysCiphertext,
         IncomingWireFormatPolicy::Mixed,

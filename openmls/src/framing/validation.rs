@@ -242,7 +242,9 @@ impl UnverifiedMessage {
 /// verified message by verifying the signature, either with the credential or
 /// an external signature key.
 pub enum UnverifiedContextMessage {
+    /// Unverified message from a group member
     Group(UnverifiedGroupMessage),
+    /// Unverfied message from a preconfigured sender
     Preconfigured(UnverifiedPreconfiguredMessage),
 }
 
@@ -377,8 +379,11 @@ impl VerifiedExternalMessage {
 /// [StagedCommit] and [QueuedProposal] can be inspected for authorization purposes.
 #[derive(Debug)]
 pub enum ProcessedMessage {
+    /// Application message
     ApplicationMessage(ApplicationMessage),
+    /// Standalone proposal
     ProposalMessage(Box<QueuedProposal>),
+    /// Staged Commit
     StagedCommitMessage(Box<StagedCommit>),
 }
 

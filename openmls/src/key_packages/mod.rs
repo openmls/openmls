@@ -1,3 +1,24 @@
+//! Key Packages.
+//!
+//! In order to facilitate asynchronous addition of clients to a group,
+//! it is possible to pre-publish key packages that provide some public
+//! information about a user. KeyPackage structures provide information
+//! about a client that any existing member can use to add this client
+//! to the group asynchronously.A KeyPackage object specifies a ciphersuite
+//! that the client supports, as well as providing a public key that others
+//! can use for key agreement.The identity arising from the credential,
+//! together with the endpoint_id in the KeyPackage serve to uniquely identify
+//! a client in a group.When used as InitKeys, KeyPackages are intended to be
+//! used only once and SHOULD NOT be reused except in case of last
+//! resort. (See Section 15.4). Clients MAY generate and publish multiple InitKeys
+//!  to support multiple ciphersuites.KeyPackages contain a public key chosen by the
+//! client, which the client MUST ensure uniquely identifies a given KeyPackage
+//! object among the set of KeyPackages created by this client.The value for
+//! hpke_init_key MUST be a public key for the asymmetric encryption scheme
+//! defined by cipher_suite. The whole structure is signed using the client's
+//! signature key. A KeyPackage object with an invalid signature field MUST be
+//! considered malformed. The input to the signature computation comprises all
+//! of the fields except for the signature field.
 use log::error;
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::CryptoError;
@@ -104,6 +125,11 @@ impl KeyPackagePayload {
     }
 }
 
+/// A Key Package.
+///
+/// In order to facilitate asynchronous addition of clients to a group,
+/// it is possible to pre-publish key packages that provide some public
+/// information about a user.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KeyPackage {
     payload: KeyPackagePayload,
@@ -189,8 +215,8 @@ impl KeyPackage {
     /// Get the ID of this key package as byte slice.
     /// Returns an error if no Key ID extension is present.
     pub fn key_id(&self) -> Result<&[u8], KeyPackageError> {
-        if let Some(key_id_ext) = self.extension_with_type(ExtensionType::KeyId) {
-            return Ok(key_id_ext.as_key_id_extension()?.as_slice());
+        if let Some(key_id_ext) = self.extension_with_type(ExtensionType::ExternalKeyId) {
+            return Ok(key_id_ext.as_external_key_id_extension()?.as_slice());
         }
         Err(KeyPackageError::ExtensionError(
             ExtensionError::InvalidExtensionType("Tried to get a key ID extension".into()),
@@ -313,6 +339,7 @@ impl KeyPackage {
     }
 }
 
+/// Payload of the [`KeyPackageBundle`].
 pub struct KeyPackageBundlePayload {
     key_package_payload: KeyPackagePayload,
     private_key: HpkePrivateKey,
@@ -395,6 +422,7 @@ impl SignedStruct<KeyPackageBundlePayload> for KeyPackageBundle {
     }
 }
 
+/// Contains a [`KeyPackage`], the correponding `HpkePrivateKey` and a leaf secret.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct KeyPackageBundle {
@@ -571,6 +599,7 @@ impl KeyPackageBundle {
     }
 
     /// Get the unsigned payload version of this key package bundle for modificaiton.
+    #[cfg(feature = "test-utils")]
     pub fn unsigned(self) -> KeyPackageBundlePayload {
         self.into()
     }

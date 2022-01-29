@@ -34,6 +34,8 @@ impl MlsGroup {
     }
 
     // === Export public group state ===
+
+    /// Exports the publig group state.
     pub fn export_public_group_state(
         &self,
         backend: &impl OpenMlsCryptoProvider,

@@ -39,9 +39,13 @@ use ser::*;
 use super::proposals::{ProposalStore, QueuedProposal};
 use super::staged_commit::StagedCommit;
 
+/// Pending Commit state. Differentiates between Commits issued by group members
+/// and External Commits.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum PendingCommitState {
+    /// Commit from a group member
     Member(StagedCommit),
+    /// Commit from an external joiner
     External(StagedCommit),
 }
 
@@ -112,8 +116,11 @@ impl From<PendingCommitState> for StagedCommit {
 ///   Section 11.2.1 of the MLS specification.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum MlsGroupState {
+    /// There is currently a pending Commit that hasn't been merged yet.
     PendingCommit(Box<PendingCommitState>),
+    /// The group state is in an opertaional state, where new messages and Commits can be created.
     Operational,
+    /// The group is inactive because the member has been removed.
     Inactive,
 }
 
@@ -392,6 +399,8 @@ impl MlsGroup {
 /// `InnerState::Persisted` indicates that the state has not been modified and therefore doesn't need to be persisted.
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum InnerState {
+    /// The inner group state has changed and needs to be persisted.
     Changed,
+    /// The inner group state hasn't changed and doesn't need to be persisted.
     Persisted,
 }

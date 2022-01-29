@@ -1,3 +1,5 @@
+//! TLS codec implementation for preshared keys.
+
 use tls_codec::TlsByteVecU8;
 
 use super::*;
