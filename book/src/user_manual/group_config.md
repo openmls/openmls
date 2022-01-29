@@ -6,7 +6,7 @@ The following parameters can be set:
 
 | Name                           | Type                            | Explanation                                                                                      |
 | ------------------------------ | ------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `wire_format`                  | `WireFormat`                    | Defines whether handshake messages are encrypted. The default `Ciphertext`.                      |
+| `wire_format_policy`           | `WireFormatPolicy`              | Defines the wire format policy for outgoing and incoming handshake messages.                     |
 | `padding_size`                 | `usize`                         | Size of padding in bytes. The default is 0.                                                      |
 | `max_past_epochs`              | `usize`                         | Maximum number of past epochs for which application messages can be decrypted. The default is 0. |
 | `number_of_resumption_secrets` | `usize`                         | Number of resumtion secrets to keep. The default is 0.                                           |

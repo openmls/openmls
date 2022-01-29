@@ -26,6 +26,7 @@ use crate::messages::proposals::ProposalType;
 
 use super::{Deserialize, ExtensionType, Serialize};
 
+/// Required Capabilities Extension.
 #[derive(
     PartialEq, Clone, Debug, Default, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
@@ -35,6 +36,7 @@ pub struct RequiredCapabilitiesExtension {
 }
 
 impl RequiredCapabilitiesExtension {
+    /// Creates a new [`RequiredCapabilitiesExtension`] from extension nd proposal types.
     pub fn new(extensions: &[ExtensionType], proposals: &[ProposalType]) -> Self {
         Self {
             extensions: extensions.into(),

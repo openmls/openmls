@@ -37,6 +37,7 @@ mod test_framing;
     PartialEq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 #[repr(u8)]
+#[allow(missing_docs)]
 pub enum WireFormat {
     MlsPlaintext = 1,
     MlsCiphertext = 2,

@@ -20,6 +20,7 @@ pub(crate) type StagedMlsBinaryTreeDiff<Node> = StagedAbDiff<Node>;
 pub type MlsBinaryTreeError = ABinaryTreeError;
 pub type MlsBinaryTreeDiffError = ABinaryTreeDiffError;
 
+/// Index type to index the leaves in the binary tree
 pub type LeafIndex = u32;
 
 /// A tree can be at most `2^32 - 1` nodes big.

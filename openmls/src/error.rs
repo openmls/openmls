@@ -151,6 +151,7 @@ macro_rules! implement_error {
     ) => {
         as_item!{
             #[derive(Debug, PartialEq, Clone)]
+            /// See the error's module for more information.
             $visibility enum $src_name {
                 $(
                     #[doc = $description]

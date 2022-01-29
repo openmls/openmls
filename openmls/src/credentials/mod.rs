@@ -1,3 +1,14 @@
+//! # Credentials
+//!
+//! A member of a group authenticates the identities of other participants by means
+//! of credentials issued by some authentication system, like a PKI. Each type of
+//! credential MUST express the following data in the context of the group it is used with:
+//!  - The public key of a signature key pair matching the SignatureScheme specified by the CipherSuite of the group
+//!  - The identity of the holder of the private key
+//!
+//! Credentials MAY also include information that allows a relying party to verify
+//! the identity / signing key binding.Additionally, Credentials SHOULD specify the
+//! signature scheme corresponding to each contained public key.
 mod codec;
 mod errors;
 pub use errors::*;
@@ -22,7 +33,9 @@ use crate::{ciphersuite::*, error::LibraryError};
 )]
 #[repr(u16)]
 pub enum CredentialType {
+    /// A [`BasicCredential`]
     Basic = 1,
+    /// An X.509 [`Certificate`]
     X509 = 2,
 }
 
@@ -47,7 +60,9 @@ pub struct Certificate {
 /// This enum contains the different available credentials.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum MlsCredentialType {
+    /// A [`BasicCredential`]
     Basic(BasicCredential),
+    /// An X.509 [`Certificate`]
     X509(Certificate),
 }
 
@@ -114,6 +129,15 @@ impl From<MlsCredentialType> for Credential {
     }
 }
 
+/// A `BasicCredential as defined in the MLS protocol spec:
+///
+/// ```text
+/// struct {
+///     opaque identity<0..2^16-1>;
+///     SignatureScheme signature_scheme;
+///     opaque signature_key<0..2^16-1>;
+/// } BasicCredential;
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub struct BasicCredential {
     identity: TlsByteVecU16,
@@ -122,6 +146,8 @@ pub struct BasicCredential {
 }
 
 impl BasicCredential {
+    /// Verifies a signature issued by a [`BasicCredential`]. Returns a [`CredentialError`]
+    /// if the verification fails.
     pub fn verify(
         &self,
         backend: &impl OpenMlsCryptoProvider,
@@ -198,6 +224,7 @@ impl CredentialBundle {
         }
     }
 
+    /// Returns a reference to the [`Credential`].
     pub fn credential(&self) -> &Credential {
         &self.credential
     }
