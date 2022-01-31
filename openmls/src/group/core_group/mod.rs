@@ -659,6 +659,24 @@ impl CoreGroup {
         }
     }
 
+    /// Get the message secrets. Either from the secrets store or from the group.
+    pub(crate) fn message_secrets_and_leaves_mut<'secret, 'group: 'secret>(
+        &'group mut self,
+        epoch: GroupEpoch,
+    ) -> Result<(&'secret mut MessageSecrets, Vec<(u32, KeyPackageRef)>), CoreGroupError> {
+        if epoch < self.context().epoch() {
+            self.message_secrets_store
+                .secrets_and_leaves_for_epoch_mut(epoch)
+                .ok_or({
+                    CoreGroupError::MlsCiphertextError(MlsCiphertextError::SecretTreeError(
+                        SecretTreeError::TooDistantInThePast,
+                    ))
+                })
+        } else {
+            Ok((self.message_secrets_store.message_secrets_mut(), Vec::new()))
+        }
+    }
+
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn message_secrets_test_mut(&mut self) -> &mut MessageSecrets {
         self.message_secrets_store.message_secrets_mut()

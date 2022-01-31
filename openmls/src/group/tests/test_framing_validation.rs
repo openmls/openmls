@@ -10,7 +10,7 @@ use rstest_reuse::{self, *};
 
 use crate::{
     ciphersuite::hash_ref::KeyPackageRef, config::*, credentials::*, framing::*,
-    group::errors::FramingValidationError, group::*, key_packages::*, treesync::TreeSyncError,
+    group::errors::FramingValidationError, group::*, key_packages::*,
 };
 
 use super::utils::{generate_credential_bundle, generate_key_package_bundle};
@@ -342,8 +342,8 @@ fn test_valsem004(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::TreeSyncError(
-            TreeSyncError::KeyPackageRefNotInTree
+        MlsGroupError::Group(CoreGroupError::FramingValidationError(
+            FramingValidationError::UnknownMember
         ))
     );
 

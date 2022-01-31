@@ -6,6 +6,7 @@ use crate::{
     ciphersuite::hash_ref::KeyPackageRef,
     credentials::*,
     framing::*,
+    group::errors::FramingValidationError,
     group::*,
     key_packages::*,
     messages::proposals::*,
@@ -13,7 +14,6 @@ use crate::{
         errors::ClientError, ActionType::Commit, CodecUse, MlsGroupTestSetup,
     },
     test_utils::*,
-    treesync::TreeSyncError,
 };
 
 fn generate_credential_bundle(
@@ -439,9 +439,9 @@ fn test_invalid_plaintext(ciphersuite: &'static Ciphersuite, backend: &impl Open
         .expect_err("No error when distributing message with invalid signature.");
 
     assert_eq!(
-        ClientError::MlsGroupError(MlsGroupError::Group(CoreGroupError::TreeSyncError(
-            TreeSyncError::KeyPackageRefNotInTree
-        ))),
+        ClientError::MlsGroupError(MlsGroupError::Group(
+            CoreGroupError::FramingValidationError(FramingValidationError::UnknownMember)
+        )),
         error
     );
 }
