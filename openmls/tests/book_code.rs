@@ -200,8 +200,8 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     let members = alice_group
         .members()
         .expect("error getting members from group");
-    assert_eq!(members[0].identity(), b"Alice");
-    assert_eq!(members[1].identity(), b"Bob");
+    assert_eq!(members[0].credential().identity(), b"Alice");
+    assert_eq!(members[1].credential().identity(), b"Bob");
 
     // ANCHOR: bob_joins_with_welcome
     let mut bob_group = MlsGroup::new_from_welcome(
@@ -499,9 +499,9 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 
     // Check that Alice, Bob & Charlie are the members of the group
     let members = alice_group.members().expect("error getting member");
-    assert_eq!(members[0].identity(), b"Alice");
-    assert_eq!(members[1].identity(), b"Bob");
-    assert_eq!(members[2].identity(), b"Charlie");
+    assert_eq!(members[0].credential().identity(), b"Alice");
+    assert_eq!(members[1].credential().identity(), b"Bob");
+    assert_eq!(members[2].credential().identity(), b"Charlie");
 
     // === Charlie sends a message to the group ===
     let message_charlie = b"Hi, I'm Charlie!";
@@ -705,8 +705,8 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 
     // Check that Alice & Charlie are the members of the group
     let members = alice_group.members().expect("error getting members");
-    assert_eq!(members[0].identity(), b"Alice");
-    assert_eq!(members[1].identity(), b"Charlie");
+    assert_eq!(members[0].credential().identity(), b"Alice");
+    assert_eq!(members[1].credential().identity(), b"Charlie");
 
     // Check that Bob can no longer send messages
     assert!(bob_group
@@ -849,8 +849,8 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 
     // Check that Alice & Bob are the members of the group
     let members = alice_group.members().expect("error getting members");
-    assert_eq!(members[0].identity(), b"Alice");
-    assert_eq!(members[1].identity(), b"Bob");
+    assert_eq!(members[0].credential().identity(), b"Alice");
+    assert_eq!(members[1].credential().identity(), b"Bob");
 
     // Bob creates a new group
     let mut bob_group = MlsGroup::new_from_welcome(
@@ -869,16 +869,16 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 
     // Check that Alice & Bob are the members of the group
     let members = alice_group.members().expect("error getting members");
-    assert_eq!(members[0].identity(), b"Alice");
-    assert_eq!(members[1].identity(), b"Bob");
+    assert_eq!(members[0].credential().identity(), b"Alice");
+    assert_eq!(members[1].credential().identity(), b"Bob");
 
     // Make sure the group contains two members
     assert_eq!(bob_group.members().expect("error getting members").len(), 2);
 
     // Check that Alice & Bob are the members of the group
     let members = bob_group.members().expect("error getting members");
-    assert_eq!(members[0].identity(), b"Alice");
-    assert_eq!(members[1].identity(), b"Bob");
+    assert_eq!(members[0].credential().identity(), b"Alice");
+    assert_eq!(members[1].credential().identity(), b"Bob");
 
     // === Alice sends a message to the group ===
     let message_alice = b"Hi, I'm Alice!";
@@ -1031,7 +1031,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 
     // Check that Alice is the only member of the group
     let members = alice_group.members().expect("error getting members");
-    assert_eq!(members[0].identity(), b"Alice");
+    assert_eq!(members[0].credential().identity(), b"Alice");
 
     // === Save the group state ===
 
