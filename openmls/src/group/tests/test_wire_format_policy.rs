@@ -8,7 +8,7 @@ use rstest_reuse::{self, *};
 
 use crate::{config::*, credentials::*, framing::*, group::*};
 
-use super::test_validation::{generate_credential_bundle, generate_key_package_bundle};
+use super::utils::{generate_credential_bundle, generate_key_package_bundle};
 
 // Creates a group with one member
 fn create_group(
@@ -42,9 +42,10 @@ fn create_group(
         backend,
         &mls_group_config,
         group_id,
-        &key_package
-            .hash(backend)
-            .expect("Could not hash KeyPackage."),
+        key_package
+            .hash_ref(backend.crypto())
+            .expect("Could not hash KeyPackage.")
+            .as_slice(),
     )
     .expect("An unexpected error occurred.")
 }

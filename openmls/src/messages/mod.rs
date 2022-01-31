@@ -1,5 +1,5 @@
 use crate::{
-    binary_tree::LeafIndex,
+    ciphersuite::hash_ref::KeyPackageRef,
     ciphersuite::{signable::*, *},
     config::ProtocolVersion,
     extensions::*,
@@ -74,8 +74,7 @@ pub struct Welcome {
 /// ```
 #[derive(Clone, Debug, PartialEq, TlsDeserialize, TlsSerialize, TlsSize)]
 pub struct EncryptedGroupSecrets {
-    // TODO: #541 replace key_package_hash with [`KeyPackageRef`]
-    pub key_package_hash: TlsByteVecU8,
+    pub new_member: KeyPackageRef,
     pub encrypted_group_secrets: HpkeCiphertext,
 }
 
@@ -158,8 +157,7 @@ pub(crate) struct GroupInfoPayload {
     group_context_extensions: TlsVecU32<Extension>,
     other_extensions: TlsVecU32<Extension>,
     confirmation_tag: ConfirmationTag,
-    // TODO: #541 replace sender_index with [`KeyPackageRef`]
-    signer_index: LeafIndex,
+    signer: KeyPackageRef,
 }
 
 impl GroupInfoPayload {
@@ -173,7 +171,7 @@ impl GroupInfoPayload {
         group_context_extensions: &[Extension],
         other_extensions: &[Extension],
         confirmation_tag: ConfirmationTag,
-        signer_index: LeafIndex,
+        signer: &KeyPackageRef,
     ) -> Self {
         Self {
             group_id,
@@ -183,7 +181,7 @@ impl GroupInfoPayload {
             group_context_extensions: group_context_extensions.into(),
             other_extensions: other_extensions.into(),
             confirmation_tag,
-            signer_index,
+            signer: *signer,
         }
     }
 }
@@ -211,7 +209,7 @@ impl Signable for GroupInfoPayload {
 ///   opaque confirmed_transcript_hash<0..255>;
 ///   Extension extensions<0..2^32-1>;
 ///   MAC confirmation_tag;
-///   uint32 signer_index;
+///   KeyPackageRef signer;
 ///   opaque signature<0..2^16-1>;
 /// } GroupInfo;
 /// ```
@@ -221,9 +219,9 @@ pub(crate) struct GroupInfo {
 }
 
 impl GroupInfo {
-    /// Get the signer index.
-    pub(crate) fn signer_index(&self) -> LeafIndex {
-        self.payload.signer_index
+    /// Get the signer.
+    pub(crate) fn signer(&self) -> &KeyPackageRef {
+        &self.payload.signer
     }
 
     /// Get the group ID.

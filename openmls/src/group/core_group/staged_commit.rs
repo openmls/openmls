@@ -1,11 +1,11 @@
-use crate::treesync::diff::StagedTreeSyncDiff;
+use crate::treesync::{diff::StagedTreeSyncDiff, treekem::DecryptPathParams};
 
-use super::proposals::{ProposalQueue, ProposalStore, QueuedProposal};
+use super::proposals::{
+    ProposalQueue, ProposalStore, QueuedAddProposal, QueuedProposal, QueuedPskProposal,
+    QueuedRemoveProposal, QueuedUpdateProposal,
+};
 
 use super::super::errors::*;
-use super::proposals::{
-    QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal, QueuedUpdateProposal,
-};
 use super::*;
 use core::fmt::Debug;
 use std::mem;
@@ -50,13 +50,7 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<StagedCommit, CoreGroupError> {
         // Extract the sender of the Commit message
-        let sender = *mls_plaintext.sender();
-
-        // Own commits have to be merged directly instead of staging them.
-        if sender.sender == self.treesync().own_leaf_index() {
-            return Err(CoreGroupError::OwnCommitError);
-        };
-
+        let sender = mls_plaintext.sender();
         let ciphersuite = self.ciphersuite();
 
         // Verify epoch
@@ -97,12 +91,9 @@ impl CoreGroup {
             .as_ref()
             .map(|update_path| update_path.leaf_key_package().clone());
 
-        let sender_key_package_tuple = path_key_package
-            .as_ref()
-            .map(|key_package| (sender, key_package));
+        let sender = mls_plaintext.sender();
 
         // Validate the staged proposals by doing the following checks:
-
         // ValSem100
         // ValSem101
         // ValSem102
@@ -116,7 +107,7 @@ impl CoreGroup {
         self.validate_remove_proposals(&proposal_queue)?;
         // ValSem109
         // ValSem110
-        self.validate_update_proposals(&proposal_queue, sender_key_package_tuple)?;
+        let public_key_set = self.validate_update_proposals(&proposal_queue)?;
         if sender.sender_type == SenderType::NewMember {
             // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
             // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
@@ -135,6 +126,18 @@ impl CoreGroup {
             .apply_proposals(&mut diff, backend, &proposal_queue, own_key_packages)
             .map_err(|_| StageCommitError::OwnKeyNotFound)?;
 
+        // Now we can actually look at the public keys as they might have changed.
+        let sender_index = if let Ok(kpr) = sender.as_key_package_ref() {
+            // Own commits have to be merged directly instead of staging them.
+            // We can't check for this explicitly. But if it's an own commit
+            // we won't be able to get the sender index because the kpr is our
+            // own new one that's only in the staged commit.
+            self.sender_index(kpr)
+                .map_err(|_| StageCommitError::InconsistentSenderIndex)?
+        } else {
+            diff.free_leaf_index()?
+        };
+
         // Check if we were removed from the group
         if apply_proposals_values.self_removed {
             return Ok(StagedCommit {
@@ -142,9 +145,6 @@ impl CoreGroup {
                 state: None,
             });
         }
-
-        // Determine if Commit is own Commit
-        let sender = mls_plaintext.sender_index();
 
         // Determine if Commit has a path
         let commit_secret = if let Some(path) = commit.path.clone() {
@@ -159,6 +159,9 @@ impl CoreGroup {
 
             let (key_package, update_path_nodes) = path.into_parts();
 
+            // Make sure that the new path key package is valid
+            self.validate_path_key_package(sender_index, &key_package, public_key_set, sender)?;
+
             // If the committer is a `NewMember`, we have to add the leaf to
             // the tree before we can apply or even decrypt an update path.
             // While `apply_received_update_path` will happily update a
@@ -166,25 +169,31 @@ impl CoreGroup {
             // there are no blanks and the new member extended the tree to
             // fit in.
             if apply_proposals_values.external_init_secret_option.is_some() {
-                let sender_leaf_index = diff.add_leaf(key_package.clone())?;
+                let sender_leaf_index = diff.add_leaf(key_package.clone(), backend.crypto())?;
                 // The new member should have the same index as the claimed sender index.
-                if sender_leaf_index != mls_plaintext.sender_index() {
+                if sender_leaf_index != sender_index {
                     return Err(StageCommitError::InconsistentSenderIndex.into());
                 }
             }
 
             // Decrypt the UpdatePath
-            let (plain_path, commit_secret) = diff.decrypt_path(
+            let decrypt_path_params = DecryptPathParams {
+                version: self.mls_version,
+                update_path: update_path_nodes,
+                sender_leaf_index: sender_index,
+                exclusion_list: &apply_proposals_values.exclusion_list(),
+                group_context: &serialized_context,
+            };
+            let (plain_path, commit_secret) =
+                diff.decrypt_path(backend, ciphersuite, decrypt_path_params)?;
+
+            diff.apply_received_update_path(
                 backend,
                 ciphersuite,
-                self.mls_version,
-                update_path_nodes,
-                sender,
-                &apply_proposals_values.exclusion_list(),
-                &serialized_context,
+                sender_index,
+                key_package,
+                plain_path,
             )?;
-
-            diff.apply_received_update_path(backend, ciphersuite, sender, key_package, plain_path)?;
             commit_secret
         } else {
             if apply_proposals_values.path_required {
@@ -277,8 +286,9 @@ impl CoreGroup {
                 ciphersuite,
                 backend,
                 proposal,
-                *mls_plaintext.sender(),
-            )?;
+                mls_plaintext.sender(),
+            )
+            .map_err(|_| LibraryError::custom("s"))?;
             proposal_queue.add(staged_proposal);
         }
 

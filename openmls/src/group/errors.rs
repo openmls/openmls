@@ -8,7 +8,9 @@ use crate::{
     credentials::CredentialError,
     error::LibraryError,
     extensions::errors::ExtensionError,
-    framing::errors::{MlsCiphertextError, MlsPlaintextError, ValidationError, VerificationError},
+    framing::errors::{
+        MlsCiphertextError, MlsPlaintextError, SenderError, ValidationError, VerificationError,
+    },
     key_packages::KeyPackageError,
     messages::errors::ProposalError,
     schedule::{KeyScheduleError, PskSecretError},
@@ -80,6 +82,8 @@ implement_error! {
                 "See [`InterimTranscriptHashError`](crate::group::InterimTranscriptHashError) for details.",
             QueuedProposalError(QueuedProposalError) =
                 "See [`QueuedProposalError`](crate::group::QueuedProposalError) for details.",
+            SenderError(SenderError) =
+                "Sender error",
         }
     }
 }
@@ -211,6 +215,8 @@ implement_error! {
                 "Missing own key to apply proposal.",
             InconsistentSenderIndex =
                 "External Committer used the wrong index.",
+            LibraryError =
+                "An unrecoverable error has occurred due to a bug in the implementation.",
         }
         Complex {
             PlaintextSignatureFailure(VerificationError) =
@@ -258,10 +264,26 @@ implement_error! {
             ProposalNotFound = "Not all proposals in the Commit were found locally.",
             SelfRemoval = "The sender of a Commit tried to remove themselves.",
             ArchitectureError = "Couldn't fit a `u32` into a `usize`.",
+            RemovedNotFound = "Couldn't find the member to remove.",
+            LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
+        }
+        Complex {
+            NotAProposal(QueuedProposalError) = "The given MLS Plaintext was not a Proposal.",
+            SenderError(SenderError) = "Sender error",
+        }
+    }
+}
+
+implement_error! {
+    pub enum CreationProposalQueueError {
+        Simple {
+            ProposalNotFound = "Not all proposals in the Commit were found locally.",
+            ArchitectureError = "Couldn't fit a `u32` into a `usize`.",
         }
         Complex {
             LibraryError(LibraryError) = "A LibraryError occurred.",
             NotAProposal(QueuedProposalError) = "The given MLS Plaintext was not a Proposal.",
+            SenderError(SenderError) = "Sender error",
         }
     }
 }

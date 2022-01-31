@@ -1,7 +1,7 @@
 use ds_lib::{self, *};
 use openmls::prelude::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::types::SignatureScheme;
+use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};
 use tls_codec::{Deserialize, Serialize};
 
 #[test]
@@ -21,8 +21,10 @@ fn test_client_info() {
     let client_key_package = vec![(
         client_key_package_bundle
             .key_package()
-            .hash(crypto)
-            .expect("Could not hash KeyPackage."),
+            .hash_ref(crypto.crypto())
+            .expect("Could not hash KeyPackage.")
+            .as_slice()
+            .to_vec(),
         client_key_package_bundle.key_package().clone(),
     )];
     let client_data = ClientInfo::new(client_name.to_string(), client_key_package);

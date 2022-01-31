@@ -17,7 +17,7 @@
 //! functions that are not expected to fail and throw an error, will still
 //! return a [`Result`] since they may throw a
 //! [`LibraryError`](TreeSyncDiffError::LibraryError).
-use openmls_traits::{types::CryptoError, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, types::CryptoError, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 
 use std::{collections::HashSet, convert::TryFrom};
@@ -37,11 +37,14 @@ use crate::{
         array_representation::diff::NodeId, LeafIndex, MlsBinaryTreeDiff, MlsBinaryTreeDiffError,
         MlsBinaryTreeError, StagedMlsBinaryTreeDiff,
     },
-    ciphersuite::{signable::Signable, Ciphersuite, HpkePrivateKey, HpkePublicKey, Secret},
+    ciphersuite::{
+        hash_ref::KeyPackageRef, signable::Signable, Ciphersuite, HpkePrivateKey, HpkePublicKey,
+        Secret,
+    },
     credentials::CredentialBundle,
     error::LibraryError,
     extensions::ExtensionType,
-    key_packages::{KeyPackage, KeyPackageBundlePayload},
+    key_packages::{KeyPackage, KeyPackageBundlePayload, KeyPackageError},
     messages::{PathSecret, PathSecretError},
     schedule::CommitSecret,
 };
@@ -140,7 +143,7 @@ impl<'a> TreeSyncDiff<'a> {
 
     /// Find and return the index of either the left-most blank leaf, or, if
     /// there are no blank leaves, the leaf count.
-    pub(in crate::treesync) fn free_leaf_index(&self) -> Result<LeafIndex, TreeSyncDiffError> {
+    pub(crate) fn free_leaf_index(&self) -> Result<LeafIndex, TreeSyncDiffError> {
         // Find a free leaf and fill it with the new key package.
         let leaf_ids = self.diff.leaves()?;
         let mut leaf_index_option = None;
@@ -167,8 +170,17 @@ impl<'a> TreeSyncDiff<'a> {
     pub(crate) fn add_leaf(
         &mut self,
         leaf_node: KeyPackage,
+        backend: &impl OpenMlsCrypto,
     ) -> Result<LeafIndex, TreeSyncDiffError> {
-        let node = Node::LeafNode(leaf_node.into());
+        let node = Node::LeafNode(LeafNode::new(leaf_node, backend).map_err(|e| {
+            if let KeyPackageError::CryptoError(e) = e {
+                TreeSyncDiffError::CryptoError(e)
+            } else {
+                TreeSyncDiffError::LibraryError(LibraryError::custom(
+                    "TreeSyncDiff::add_leaf(): key package error",
+                ))
+            }
+        })?);
         // Find a free leaf and fill it with the new key package.
         let leaf_index = self.free_leaf_index()?;
         // If the free leaf index is within the tree, put the new leaf there,
@@ -257,7 +269,10 @@ impl<'a> TreeSyncDiff<'a> {
         let key_package_bundle = key_package_bundle_payload.sign(backend, credential_bundle)?;
 
         let key_package = key_package_bundle.key_package().clone();
-        let node = Node::LeafNode(key_package_bundle.into());
+        let node = Node::LeafNode(LeafNode::new_from_bundle(
+            key_package_bundle,
+            backend.crypto(),
+        )?);
 
         // Replace the leaf.
         self.diff.replace_leaf(self.own_leaf_index, node.into())?;
@@ -296,8 +311,16 @@ impl<'a> TreeSyncDiff<'a> {
         };
 
         // Replace the leaf.
-        self.diff
-            .replace_leaf(sender_leaf_index, Node::LeafNode(key_package.into()).into())?;
+        let node = Node::LeafNode(LeafNode::new(key_package, backend.crypto()).map_err(|e| {
+            if let KeyPackageError::CryptoError(e) = e {
+                TreeSyncDiffError::CryptoError(e)
+            } else {
+                TreeSyncDiffError::LibraryError(LibraryError::custom(
+                    "TreeSynDiff::apply_received_update_path(): key package error",
+                ))
+            }
+        })?);
+        self.diff.replace_leaf(sender_leaf_index, node.into())?;
         Ok(())
     }
 
@@ -775,6 +798,22 @@ impl<'a> TreeSyncDiff<'a> {
             .collect();
         Ok(nodes)
     }
+
+    /// Returns the [`KeyPackageRef`] for the own leaf in the tree resulting from
+    /// merging this diff.
+    pub(crate) fn hash_ref(&self) -> Result<&KeyPackageRef, TreeSyncDiffError> {
+        let node = self.diff.node(self.diff.leaf(self.own_leaf_index)?)?;
+        if let Some(Node::LeafNode(node)) = node.node() {
+            node.key_package_ref()
+                .ok_or(TreeSyncDiffError::LibraryError(LibraryError::custom(
+                    "TreeSynDiff::hash_ref(): missing key package ref",
+                )))
+        } else {
+            Err(TreeSyncDiffError::LibraryError(LibraryError::custom(
+                "TreeSynDiff::hash_ref(): missing leaf node",
+            )))
+        }
+    }
 }
 
 implement_error! {
@@ -797,6 +836,7 @@ implement_error! {
             DerivationError(PathSecretError) = "An error occurred during PathSecret derivation.",
             ParentNodeError(ParentNodeError) = "An error occurred during path derivation.",
             CreationError(MlsBinaryTreeError) = "An error occurred while creating an empty diff.",
+            KeyPackageError(KeyPackageError) = "An error occurred while building the leaf node from a key package bundle.",
         }
     }
 }

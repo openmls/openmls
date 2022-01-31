@@ -22,7 +22,13 @@
 //! group states.
 
 use crate::{
-    ciphersuite::*, config::*, credentials::*, framing::*, group::*, key_packages::*, messages::*,
+    ciphersuite::{hash_ref::KeyPackageRef, *},
+    config::*,
+    credentials::*,
+    framing::*,
+    group::*,
+    key_packages::*,
+    messages::*,
     treesync::node::Node,
 };
 use ::rand::{rngs::OsRng, RngCore};
@@ -172,8 +178,46 @@ impl MlsGroupTestSetup {
         self.waiting_for_welcome
             .write()
             .expect("An unexpected error occurred.")
-            .insert(key_package.hash(&client.crypto)?, client.identity.clone());
+            .insert(
+                key_package
+                    .hash_ref(client.crypto.crypto())?
+                    .value()
+                    .to_vec(),
+                client.identity.clone(),
+            );
         Ok(key_package)
+    }
+
+    /// Convert an index in the tree into the corresponding key package reference.
+    pub fn key_package_ref_by_index(&self, index: usize, group: &Group) -> Option<KeyPackageRef> {
+        let (_, id) = group
+            .members
+            .iter()
+            .find(|(leaf_index, _)| index == *leaf_index)
+            .expect("Couldn't find member at leaf index");
+        let clients = self.clients.read().expect("An unexpected error occurred.");
+        let client = clients
+            .get(id)
+            .expect("An unexpected error occurred.")
+            .read()
+            .expect("An unexpected error occurred.");
+        client.key_package_ref(&group.group_id)
+    }
+
+    /// Convert an identity in the tree into the corresponding key package reference.
+    pub fn key_package_ref_by_id(&self, id: &[u8], group: &Group) -> Option<KeyPackageRef> {
+        let (_, id) = group
+            .members
+            .iter()
+            .find(|(_, leaf_id)| id == leaf_id)
+            .expect("Couldn't find member at leaf index");
+        let clients = self.clients.read().expect("An unexpected error occurred.");
+        let client = clients
+            .get(id)
+            .expect("An unexpected error occurred.")
+            .read()
+            .expect("An unexpected error occurred.");
+        client.key_package_ref(&group.group_id)
     }
 
     /// Deliver a Welcome message to the intended recipients. It uses the given
@@ -201,7 +245,7 @@ impl MlsGroupTestSetup {
                 .waiting_for_welcome
                 .write()
                 .expect("An unexpected error occurred.")
-                .remove(egs.key_package_hash.as_slice())
+                .remove(egs.new_member.as_slice())
                 .ok_or(SetupError::NoFreshKeyPackage)?;
             let client = clients
                 .get(&client_id)
@@ -505,42 +549,6 @@ impl MlsGroupTestSetup {
     }
 
     /// Has the `remover` propose or commit (depending on the `action_type`) the
-    /// removal the members in in the given leaf indices in the tree from the
-    /// Group `group`. If the `remover` or one of the `target_members` is not
-    /// part of the group, it returns an error.
-    pub fn remove_clients_by_index(
-        &self,
-        action_type: ActionType,
-        group: &mut Group,
-        remover_id: &[u8],
-        target_indices: &[usize],
-    ) -> Result<(), SetupError> {
-        let clients = self.clients.read().expect("An unexpected error occurred.");
-        let remover = clients
-            .get(remover_id)
-            .ok_or(SetupError::UnknownClientId)?
-            .read()
-            .expect("An unexpected error occurred.");
-        let client_in_group = group.members.iter().any(|(member_index, _)| {
-            target_indices
-                .iter()
-                .any(|target_index| target_index == member_index)
-        });
-        if !client_in_group {
-            return Err(SetupError::ClientNotInGroup);
-        }
-        let (messages, welcome_option) =
-            remover.remove_members(action_type, &group.group_id, target_indices)?;
-        for message in &messages {
-            self.distribute_to_members(remover_id, group, message)?;
-        }
-        if let Some(welcome) = welcome_option {
-            self.deliver_welcome(welcome, group)?;
-        }
-        Ok(())
-    }
-
-    /// Has the `remover` propose or commit (depending on the `action_type`) the
     /// removal the `target_members` from the Group `group`. If the `remover` or
     /// one of the `target_members` is not part of the group, it returns an
     /// error.
@@ -549,18 +557,22 @@ impl MlsGroupTestSetup {
         action_type: ActionType,
         group: &mut Group,
         remover_id: &[u8],
-        target_members: Vec<Vec<u8>>,
+        target_members: &[hash_ref::KeyPackageRef],
     ) -> Result<(), SetupError> {
-        let mut target_indices = Vec::new();
-        for target in &target_members {
-            let (index, _) = group
-                .members
-                .iter()
-                .find(|(_, identity)| identity == target)
-                .ok_or(SetupError::ClientNotInGroup)?;
-            target_indices.push(*index);
+        let clients = self.clients.read().expect("An unexpected error occurred.");
+        let remover = clients
+            .get(remover_id)
+            .ok_or(SetupError::UnknownClientId)?
+            .read()
+            .expect("An unexpected error occurred.");
+        let (messages, welcome_option) =
+            remover.remove_members(action_type, &group.group_id, target_members)?;
+        for message in &messages {
+            self.distribute_to_members(remover_id, group, message)?;
         }
-        self.remove_clients_by_index(action_type, group, remover_id, &target_indices)?;
+        if let Some(welcome) = welcome_option {
+            self.deliver_welcome(welcome, group)?;
+        }
         Ok(())
     }
 
@@ -608,6 +620,8 @@ impl MlsGroupTestSetup {
                     );
 
                     let mut target_member_ids = Vec::new();
+                    let mut target_member_identities = Vec::new();
+                    let clients = self.clients.read().expect("An unexpected error occurred.");
                     // Get the client references, as opposed to just the member indices.
                     println!("Removing members:");
                     for _ in 0..number_of_removals {
@@ -618,16 +632,33 @@ impl MlsGroupTestSetup {
                         // not one that is not already being removed.
                         let (mut leaf_index, mut identity) =
                             group.members[member_list_index].clone();
-                        while leaf_index == own_index || target_member_ids.contains(&identity) {
+                        while leaf_index == own_index
+                            || target_member_identities.contains(&identity)
+                        {
                             member_list_index = (OsRng.next_u32() as usize) % group.members.len();
                             let (new_leaf_index, new_identity) =
                                 group.members[member_list_index].clone();
                             leaf_index = new_leaf_index;
                             identity = new_identity;
                         }
-                        target_member_ids.push(identity);
+                        let client = clients
+                            .get(&identity)
+                            .expect("An unexpected error occurred.")
+                            .read()
+                            .expect("An unexpected error occurred.");
+                        let client_group =
+                            client.groups.read().expect("An unexpected error occurred.");
+                        let client_group = client_group
+                            .get(&group.group_id)
+                            .expect("An unexpected error occurred.");
+                        target_member_ids.push(
+                            *client_group
+                                .key_package_ref()
+                                .expect("An unexpected error occurred."),
+                        );
+                        target_member_identities.push(identity);
                     }
-                    self.remove_clients(action_type, group, &member_id, target_member_ids)?
+                    self.remove_clients(action_type, group, &member_id, &target_member_ids)?
                 };
             }
             2 => {

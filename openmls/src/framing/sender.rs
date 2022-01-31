@@ -21,11 +21,16 @@
 //!
 //! struct {
 //!     SenderType sender_type;
-//!     uint32 sender;
+//!     switch (sender_type) {
+//!         case member:        KeyPackageRef member;
+//!         case preconfigured: opaque external_key_id<0..255>;
+//!         case new_member:    struct{};
+//!     }
 //! } Sender;
 //! ```
 
 use super::*;
+use crate::ciphersuite::hash_ref::KeyPackageRef;
 use core_group::create_commit_params::CommitType;
 use std::convert::TryFrom;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
@@ -61,20 +66,71 @@ impl TryFrom<u8> for SenderType {
     }
 }
 
-#[derive(
-    PartialEq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
-)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+pub enum SenderValue {
+    Member(KeyPackageRef),
+    Preconfigured(TlsByteVecU8),
+    NewMember,
+}
+
+#[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Sender {
     pub(crate) sender_type: SenderType,
-    // TODO: #541 replace sender with [`KeyPackageRef`] (and preconfigured/new)
-    pub(crate) sender: LeafIndex,
+    pub(crate) sender: SenderValue,
 }
 // Public functions
 impl Sender {
+    /// Build a [`Sender`] from [`MlsSenderData`].
+    pub(crate) fn from_sender_data(sender_data: MlsSenderData) -> Self {
+        Self {
+            sender_type: SenderType::Member,
+            sender: SenderValue::Member(sender_data.sender),
+        }
+    }
+
+    /// Create a member sender.
+    pub(crate) fn build_member(kpr: &KeyPackageRef) -> Self {
+        Self {
+            sender_type: SenderType::Member,
+            sender: SenderValue::Member(*kpr),
+        }
+    }
+
+    /// Create a new member sender.
+    pub(crate) fn build_new_member() -> Self {
+        Self {
+            sender_type: SenderType::NewMember,
+            sender: SenderValue::NewMember,
+        }
+    }
+
+    /// Returns true if this [`Sender`] has [`SenderType::Member`].
     pub fn is_member(&self) -> bool {
         self.sender_type == SenderType::Member
     }
-    pub fn to_leaf_index(self) -> LeafIndex {
-        self.sender
+
+    /// Returns true if this [`Sender`] has [`SenderType::NewMember`].
+    pub fn is_new_member(&self) -> bool {
+        self.sender_type == SenderType::NewMember
+    }
+
+    /// Get the sender a [`KeyPackageRef`].
+    ///
+    /// Returns a [`SenderError`] if this [`Sender`] is not a [`SenderType::Member`].
+    pub fn as_key_package_ref(&self) -> Result<&KeyPackageRef, SenderError> {
+        if let SenderValue::Member(ref key_package_ref) = self.sender {
+            return Ok(key_package_ref);
+        }
+        Err(SenderError::NotAMember)
+    }
+
+    /// Get the sender a [`TlsByteVecU8`] (pre configured).
+    ///
+    /// Returns a [`SenderError`] if this [`Sender`] is not a [`SenderType::Preconfigured`].
+    pub fn as_pre_configured(&self) -> Result<&TlsByteVecU8, SenderError> {
+        if let SenderValue::Preconfigured(ref value) = self.sender {
+            return Ok(value);
+        }
+        Err(SenderError::NotAPreConfigured)
     }
 }

@@ -14,4 +14,5 @@ pub use crate::group::tests::{
 };
 pub use crate::schedule::kat_key_schedule::{self, KeyScheduleTestVector};
 pub use crate::tree::tests_and_kats::kats::kat_encryption::{self, EncryptionTestVector};
-pub use crate::treesync::tests_and_kats::kats::kat_tree_kem::{self, TreeKemTestVector};
+// TODO: #624 - re-enable treekem test vectors.
+// pub use crate::treesync::tests_and_kats::kats::kat_tree_kem::{self, TreeKemTestVector};

@@ -20,6 +20,7 @@
 //! [MLS RFC]: https://datatracker.ietf.org/doc/draft-ietf-mls-protocol/
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(not(test), forbid(unsafe_code))]
+#![cfg_attr(not(feature = "test-utils"), warn(missing_docs))]
 
 // === Testing ===
 
@@ -53,11 +54,11 @@ pub mod key_packages;
 pub mod key_store;
 pub mod messages;
 pub mod schedule;
+pub mod treesync;
 
 // Private
 mod binary_tree;
 mod tree;
-mod treesync;
 
 /// Single place, re-exporting the most used public functions.
 pub mod prelude;

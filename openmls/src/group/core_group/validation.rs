@@ -3,9 +3,16 @@
 
 use std::collections::HashSet;
 
-use crate::group::errors::ExternalCommitValidationError;
+use crate::{
+    framing::Sender,
+    group::errors::ExternalCommitValidationError,
+    messages::{Proposal, ProposalOrRefType, ProposalType},
+};
 
-use super::{proposals::ProposalQueue, *};
+use super::{
+    proposals::ProposalQueue, ContentType, CoreGroup, CoreGroupError, FramingValidationError,
+    KeyPackage, MlsMessageIn, ProposalValidationError, VerifiableMlsPlaintext, WireFormat,
+};
 
 impl CoreGroup {
     // === Messages ===
@@ -50,13 +57,13 @@ impl CoreGroup {
     ) -> Result<(), CoreGroupError> {
         // ValSem004
         let sender = plaintext.sender();
-        if sender.is_member() {
-            let members = self.treesync().full_leaves()?;
-            let sender_index = sender.to_leaf_index();
-            if sender_index >= self.treesync().leaf_count()? || !members.contains_key(&sender_index)
-            {
-                return Err(FramingValidationError::UnknownMember.into());
-            }
+        if sender.is_member()
+            && self
+                .treesync()
+                .leaf_from_id(sender.as_key_package_ref()?)?
+                .is_none()
+        {
+            return Err(FramingValidationError::UnknownMember.into());
         }
 
         // ValSem005
@@ -173,19 +180,16 @@ impl CoreGroup {
         let remove_proposals = proposal_queue.remove_proposals();
 
         let mut removes_set = HashSet::new();
-        let tree = &self.treesync();
-
-        let full_leaves = tree.full_leaves()?;
 
         for remove_proposal in remove_proposals {
             let removed = remove_proposal.remove_proposal().removed();
             // ValSem107
-            if !removes_set.insert(removed) {
+            if !removes_set.insert(*removed) {
                 return Err(ProposalValidationError::DuplicateMemberRemoval.into());
             }
 
-            // ValSem108
-            if !full_leaves.contains_key(&removed) {
+            // TODO: ValSem108
+            if !self.treesync().leaves()?.contains_key(&Some(*removed)) {
                 return Err(ProposalValidationError::UnknownMemberRemoval.into());
             }
         }
@@ -199,8 +203,7 @@ impl CoreGroup {
     pub(crate) fn validate_update_proposals(
         &self,
         proposal_queue: &ProposalQueue,
-        path_key_package: Option<(Sender, &KeyPackage)>,
-    ) -> Result<(), CoreGroupError> {
+    ) -> Result<HashSet<Vec<u8>>, CoreGroupError> {
         let mut public_key_set = HashSet::new();
         for (_index, key_package) in self.treesync().full_leaves()? {
             let public_key = key_package.hpke_init_key().as_slice().to_vec();
@@ -209,13 +212,13 @@ impl CoreGroup {
 
         // Check the update proposals from the proposal queue first
         let update_proposals = proposal_queue.update_proposals();
-        let tree = &self.treesync();
+        let tree = self.treesync();
 
         for update_proposal in update_proposals {
-            let indexed_key_packages = tree.full_leaves()?;
-            if let Some(existing_key_package) =
-                indexed_key_packages.get(&update_proposal.sender().sender)
+            if let Some(leaf_node) =
+                tree.leaf_from_id(update_proposal.sender().as_key_package_ref()?)?
             {
+                let existing_key_package = leaf_node.key_package();
                 // ValSem109
                 if update_proposal
                     .update_proposal()
@@ -239,31 +242,33 @@ impl CoreGroup {
                 return Err(ProposalValidationError::UnknownMember.into());
             }
         }
+        Ok(public_key_set)
+    }
 
-        // Check the optional key package from the Commit's update path
-        // TODO #424: This won't be necessary anymore, we can just apply the proposals first
-        // and add a new fake Update proposal to the queue after that
-        if let Some((sender, key_package)) = path_key_package {
-            let indexed_key_packages = tree.full_leaves()?;
-            if let Some(existing_key_package) = indexed_key_packages.get(&sender.sender) {
-                // ValSem109
-                if key_package.credential().identity()
-                    != existing_key_package.credential().identity()
-                {
-                    return Err(ProposalValidationError::UpdateProposalIdentityMismatch.into());
-                }
-                // ValSem110
-                if public_key_set.contains(key_package.hpke_init_key().as_slice()) {
-                    return Err(ProposalValidationError::ExistingPublicKeyUpdateProposal.into());
-                }
-                // TODO: Proper validation of external inits (#680). For now,
-                // this is changed such that it doesn't consider external
-                // senders as "Unknown".
-            } else if sender.sender_type == SenderType::Member {
-                return Err(ProposalValidationError::UnknownMember.into());
+    /// Validate the new key package in a path
+    /// TODO: #730 - There's nothing testing this function.
+    /// - ValSem109
+    /// - ValSem109
+    pub(super) fn validate_path_key_package(
+        &self,
+        sender: u32,
+        key_package: &KeyPackage,
+        public_key_set: HashSet<Vec<u8>>,
+        proposal_sender: &Sender,
+    ) -> Result<(), CoreGroupError> {
+        let indexed_key_packages = self.treesync().full_leaves()?;
+        if let Some(existing_key_package) = indexed_key_packages.get(&sender) {
+            // ValSem109
+            if key_package.credential().identity() != existing_key_package.credential().identity() {
+                return Err(ProposalValidationError::UpdateProposalIdentityMismatch.into());
             }
+            // ValSem110
+            if public_key_set.contains(key_package.hpke_init_key().as_slice()) {
+                return Err(ProposalValidationError::ExistingPublicKeyUpdateProposal.into());
+            }
+        } else if proposal_sender.is_member() {
+            return Err(ProposalValidationError::UnknownMember.into());
         }
-
         Ok(())
     }
 
@@ -319,7 +324,7 @@ impl CoreGroup {
                 if let Proposal::Remove(remove_proposal) = proposal.proposal() {
                     let removed_leaf = self
                         .treesync()
-                        .leaf(remove_proposal.removed())
+                        .leaf_from_id(remove_proposal.removed())
                         // Unknown because outside of tree.
                         .map_err(|_| ProposalValidationError::UnknownMemberRemoval)?
                         // Unknown because blank.

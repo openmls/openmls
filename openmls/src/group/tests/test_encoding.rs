@@ -210,6 +210,8 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
 /// This test tests encoding and decoding of remove proposals.
 #[apply(backends)]
 fn test_remove_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
+    use ciphersuite::hash_ref::KeyPackageRef;
+
     let test_setup = create_encoding_test_setup(backend);
     let test_clients = test_setup.clients.borrow();
     let alice = test_clients
@@ -226,7 +228,17 @@ fn test_remove_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
             .expect("An unexpected error occurred.");
 
         let remove = group_state
-            .create_remove_proposal(framing_parameters, credential_bundle, 1u32, backend)
+            .create_remove_proposal(
+                framing_parameters,
+                credential_bundle,
+                &KeyPackageRef::from_slice(
+                    &backend
+                        .rand()
+                        .random_vec(16)
+                        .expect("An unexpected error occurred."),
+                ),
+                backend,
+            )
             .expect("Could not create proposal.");
         let remove_encoded = remove
             .tls_serialize_detached()
@@ -307,17 +319,8 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             )
             .expect("Could not create proposal.");
 
-        // Alice removes Bob
-        let remove = group_state
-            .create_remove_proposal(framing_parameters, alice_credential_bundle, 2u32, backend)
-            .expect("Could not create proposal.");
-
         let mut proposal_store = ProposalStore::from_queued_proposal(
             QueuedProposal::from_mls_plaintext(group_state.ciphersuite(), backend, add)
-                .expect("Could not create QueuedProposal."),
-        );
-        proposal_store.add(
-            QueuedProposal::from_mls_plaintext(group_state.ciphersuite(), backend, remove)
                 .expect("Could not create QueuedProposal."),
         );
         proposal_store.add(

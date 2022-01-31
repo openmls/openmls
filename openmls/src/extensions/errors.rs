@@ -13,6 +13,7 @@
 use crate::config::ConfigError;
 use crate::error::ErrorString;
 
+use openmls_traits::types::CryptoError;
 use tls_codec::Error as TlsCodecError;
 
 implement_error! {
@@ -41,6 +42,8 @@ implement_error! {
                 "Configuration error. See `ConfigError` for details.",
             InvalidExtension(InvalidExtensionError) =
                 "The extension is malformed. See [`InvalidExtensionError`](`InvalidExtensionError`) for details.",
+            CryptoError(CryptoError) =
+                "See [`CryptoError`] for details.",
         }
     }
 }

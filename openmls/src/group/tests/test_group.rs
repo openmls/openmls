@@ -799,7 +799,9 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .create_remove_proposal(
             framing_parameters,
             &charlie_credential_bundle,
-            1u32,
+            group_bob
+                .key_package_ref()
+                .expect("An unexpected error occurred."),
             backend,
         )
         .expect("Could not create proposal.");

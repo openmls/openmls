@@ -22,12 +22,14 @@
 //! objects contain a valid signature.
 
 use crate::{
-    ciphersuite::signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
+    ciphersuite::{
+        hash_ref::KeyPackageRef,
+        signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
+    },
     error::LibraryError,
 };
 
 use super::*;
-use core_group::create_commit_params::CommitType;
 use openmls_traits::OpenMlsCryptoProvider;
 use std::convert::TryFrom;
 use tls_codec::{Serialize, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize};
@@ -100,15 +102,16 @@ impl MlsPlaintext {
         self.content = content;
     }
 
-    #[cfg(test)]
-    pub(super) fn set_signature(&mut self, signature: Signature) {
-        self.signature = signature;
-    }
+    // TODO: #727 - Remove if not needed.
+    // #[cfg(test)]
+    // pub(super) fn set_signature(&mut self, signature: Signature) {
+    //     self.signature = signature;
+    // }
 
-    #[cfg(test)]
-    pub(super) fn set_membership_tag_test(&mut self, tag: MembershipTag) {
-        self.membership_tag = Some(tag);
-    }
+    // #[cfg(test)]
+    // pub(super) fn set_membership_tag_test(&mut self, tag: MembershipTag) {
+    //     self.membership_tag = Some(tag);
+    // }
 
     #[cfg(test)]
     pub(super) fn set_wire_format(&mut self, wire_format: WireFormat) {
@@ -127,6 +130,7 @@ impl MlsPlaintext {
         context: &GroupContext,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, LibraryError> {
+        let sender_type = sender.sender_type;
         let mut mls_plaintext = MlsPlaintextTbs::new(
             framing_parameters.wire_format(),
             context.group_id().clone(),
@@ -136,7 +140,7 @@ impl MlsPlaintext {
             payload,
         );
 
-        if sender.sender_type == SenderType::Member {
+        if sender_type == SenderType::Member {
             let serialized_context = context
                 .tls_serialize_detached()
                 .map_err(LibraryError::missing_bound_check)?;
@@ -150,17 +154,14 @@ impl MlsPlaintext {
     #[inline]
     fn new_with_membership_tag(
         framing_parameters: FramingParameters,
-        sender_index: LeafIndex,
+        sender_reference: &KeyPackageRef,
         payload: Payload,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         membership_key: &MembershipKey,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, LibraryError> {
-        let sender = Sender {
-            sender_type: SenderType::Member,
-            sender: sender_index,
-        };
+        let sender = Sender::build_member(sender_reference);
         let mut mls_plaintext = Self::new(
             framing_parameters,
             sender,
@@ -183,7 +184,7 @@ impl MlsPlaintext {
     /// The sender type is always `SenderType::Member`.
     pub(crate) fn member_proposal(
         framing_parameters: FramingParameters,
-        sender_index: LeafIndex,
+        sender_reference: &KeyPackageRef,
         proposal: Proposal,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
@@ -192,7 +193,7 @@ impl MlsPlaintext {
     ) -> Result<Self, LibraryError> {
         Self::new_with_membership_tag(
             framing_parameters,
-            sender_index,
+            sender_reference,
             Payload {
                 payload: MlsPlaintextContentType::Proposal(proposal),
                 content_type: ContentType::Proposal,
@@ -211,17 +212,12 @@ impl MlsPlaintext {
     /// commit.
     pub(crate) fn commit(
         framing_parameters: FramingParameters,
-        sender_index: LeafIndex,
+        sender: Sender,
         commit: Commit,
-        commit_type: CommitType,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, LibraryError> {
-        let sender = Sender {
-            sender_type: commit_type.into(),
-            sender: sender_index,
-        };
         Self::new(
             framing_parameters,
             sender,
@@ -238,7 +234,7 @@ impl MlsPlaintext {
     /// This constructor builds an `MlsPlaintext` containing an application
     /// message. The sender type is always `SenderType::Member`.
     pub(crate) fn new_application(
-        sender_index: LeafIndex,
+        sender_reference: &KeyPackageRef,
         authenticated_data: &[u8],
         application_message: &[u8],
         credential_bundle: &CredentialBundle,
@@ -250,7 +246,7 @@ impl MlsPlaintext {
             FramingParameters::new(authenticated_data, WireFormat::MlsCiphertext);
         Self::new_with_membership_tag(
             framing_parameters,
-            sender_index,
+            sender_reference,
             Payload {
                 payload: MlsPlaintextContentType::Application(application_message.into()),
                 content_type: ContentType::Application,
@@ -275,11 +271,6 @@ impl MlsPlaintext {
     /// Get the sender of this message.
     pub(crate) fn sender(&self) -> &Sender {
         &self.sender
-    }
-
-    /// Get the sender leaf index of this message.
-    pub(crate) fn sender_index(&self) -> LeafIndex {
-        self.sender.to_leaf_index()
     }
 
     /// Adds a membership tag to this `MlsPlaintext`. The membership_tag is
@@ -344,12 +335,13 @@ impl MlsPlaintext {
         self.authenticated_data.as_slice()
     }
 
-    #[cfg(test)]
-    pub(crate) fn invalidate_signature(&mut self) {
-        let mut modified_signature = self.signature().as_slice().to_vec();
-        modified_signature[0] ^= 0xFF;
-        self.signature.modify(&modified_signature);
-    }
+    // TODO: #727 - Remove if not needed.
+    // #[cfg(test)]
+    // pub(crate) fn invalidate_signature(&mut self) {
+    //     let mut modified_signature = self.signature().as_slice().to_vec();
+    //     modified_signature[0] ^= 0xFF;
+    //     self.signature.modify(&modified_signature);
+    // }
 }
 
 // === Helper structs ===
@@ -564,8 +556,8 @@ impl VerifiableMlsPlaintext {
         Ok(())
     }
 
-    /// Get the sender.
-    pub(crate) fn sender(&self) -> &Sender {
+    /// Get the [`Sender`].
+    pub fn sender(&self) -> &Sender {
         &self.tbs.sender
     }
 
@@ -573,12 +565,6 @@ impl VerifiableMlsPlaintext {
     #[cfg(test)]
     pub(crate) fn set_sender(&mut self, sender: Sender) {
         self.tbs.sender = sender;
-    }
-
-    /// Get the sender index as [`LeafIndex`].
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn sender_index(&self) -> LeafIndex {
-        self.tbs.sender.sender
     }
 
     /// Get the group id as [`GroupId`].

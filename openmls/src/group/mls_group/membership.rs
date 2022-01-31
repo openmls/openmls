@@ -3,6 +3,8 @@ use std::collections::BTreeMap;
 
 use core_group::create_commit_params::CreateCommitParams;
 
+use crate::ciphersuite::hash_ref::KeyPackageRef;
+
 use super::*;
 
 impl MlsGroup {
@@ -54,7 +56,6 @@ impl MlsGroup {
             .inline_proposals(inline_proposals)
             .build();
         let create_commit_result = self.group.create_commit(params, backend)?;
-        log::error!("plaintext (foo): {:?}", create_commit_result.commit);
 
         let welcome = match create_commit_result.welcome_option {
             Some(welcome) => welcome,
@@ -90,7 +91,7 @@ impl MlsGroup {
     pub fn remove_members(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        members: &[usize],
+        members: &[KeyPackageRef],
     ) -> Result<(MlsMessageOut, Option<Welcome>), MlsGroupError> {
         self.is_operational()?;
 
@@ -101,11 +102,7 @@ impl MlsGroup {
         // Create inline remove proposals
         let inline_proposals = members
             .iter()
-            .map(|member| {
-                Proposal::Remove(RemoveProposal {
-                    removed: *member as u32,
-                })
-            })
+            .map(|member| Proposal::Remove(RemoveProposal { removed: *member }))
             .collect::<Vec<Proposal>>();
 
         let credential = self.credential()?;
@@ -184,7 +181,7 @@ impl MlsGroup {
     pub fn propose_remove_member(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        member: LeafIndex,
+        member: &KeyPackageRef,
     ) -> Result<MlsMessageOut, MlsGroupError> {
         self.is_operational()?;
 
@@ -230,10 +227,13 @@ impl MlsGroup {
             .read(credential.signature_key())
             .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
+        let removed = self.group.key_package_ref().ok_or_else(|| {
+            LibraryError::custom("No key package reference for own key package.".into())
+        })?;
         let remove_proposal = self.group.create_remove_proposal(
             self.framing_parameters(),
             &credential_bundle,
-            self.group.treesync().own_leaf_index(),
+            removed,
             backend,
         )?;
 
@@ -257,9 +257,11 @@ impl MlsGroup {
             .collect())
     }
 
-    /// Gets the current list of members
+    /// Gets the current list of members, indexed with the leaf index.
+    /// This should go away in future when all tests are rewritten to use key
+    /// package references instead of leaf indices.
     #[cfg(any(feature = "test-utils", test))]
-    pub fn indexed_members(&self) -> Result<BTreeMap<LeafIndex, &KeyPackage>, MlsGroupError> {
+    pub fn indexed_members(&self) -> Result<BTreeMap<u32, &KeyPackage>, MlsGroupError> {
         Ok(self.group.treesync().full_leaves()?)
     }
 }

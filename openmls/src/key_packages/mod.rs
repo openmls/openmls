@@ -7,7 +7,7 @@ use openmls_traits::OpenMlsCryptoProvider;
 use tls_codec::{Serialize as TlsSerializeTrait, TlsSize, TlsVecU32};
 
 use crate::{
-    ciphersuite::{signable::*, *},
+    ciphersuite::{hash_ref::KeyPackageRef, signable::*, *},
     config::{Config, ProtocolVersion},
     credentials::*,
     error::LibraryError,
@@ -187,12 +187,6 @@ impl KeyPackage {
         })
     }
 
-    /// Compute the hash of the encoding of this key package.
-    pub fn hash(&self, backend: &impl OpenMlsCryptoProvider) -> Result<Vec<u8>, KeyPackageError> {
-        let bytes = self.tls_serialize_detached()?;
-        Ok(self.payload.ciphersuite.hash(backend, &bytes)?)
-    }
-
     /// Get the ID of this key package as byte slice.
     /// Returns an error if no Key ID extension is present.
     pub fn key_id(&self) -> Result<&[u8], KeyPackageError> {
@@ -244,6 +238,15 @@ impl KeyPackage {
             }
         }
         Ok(())
+    }
+
+    /// Compute the [`KeyPackageRef`] of this [`KeyPackage`].
+    pub fn hash_ref(&self, backend: &impl OpenMlsCrypto) -> Result<KeyPackageRef, KeyPackageError> {
+        Ok(KeyPackageRef::new(
+            &self.tls_serialize_detached()?,
+            self.payload.ciphersuite,
+            backend,
+        )?)
     }
 }
 

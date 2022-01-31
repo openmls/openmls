@@ -24,6 +24,9 @@ use crate::{
     treesync::{node::Node, treekem::UpdatePath, TreeSync},
 };
 
+#[cfg(any(feature = "test-utils", test))]
+use crate::treesync::treekem::DecryptPathParams;
+
 use openmls_traits::OpenMlsCryptoProvider;
 use serde::{self, Deserialize, Serialize};
 use std::{collections::HashSet, convert::TryFrom};
@@ -36,7 +39,7 @@ pub struct TreeKemTestVector {
     // Chosen by the generator
     pub ratchet_tree_before: String,
 
-    pub add_sender: u32,
+    pub add_sender: String,
     pub my_leaf_secret: String,
     pub my_key_package: String,
     pub my_path_secret: String,
@@ -58,6 +61,8 @@ pub fn run_test_vector(
     test_vector: TreeKemTestVector,
     backend: &impl OpenMlsCryptoProvider,
 ) -> Result<(), TreeKemTestVectorError> {
+    use crate::prelude_test::hash_ref::KeyPackageRef;
+
     log::debug!("Running TreeKEM test vector");
     log::trace!("{:?}", test_vector);
     let ciphersuite =
@@ -112,7 +117,7 @@ pub fn run_test_vector(
             backend,
             ciphersuite,
             ratchet_tree_before.as_slice(),
-            test_vector.add_sender,
+            &KeyPackageRef::from_slice(hex_to_bytes(&test_vector.add_sender).as_slice()),
             start_secret,
             my_key_package_bundle,
         ) {
@@ -170,16 +175,15 @@ pub fn run_test_vector(
     let (key_package, update_path_nodes) = update_path.into_parts();
 
     // Decrypt update path
+    let decrypt_path_params = DecryptPathParams {
+        version: ProtocolVersion::default(),
+        update_path: update_path_nodes,
+        sender_leaf_index: test_vector.update_sender,
+        exclusion_list: &HashSet::new(),
+        group_context: &group_context,
+    };
     let (path, commit_secret) = diff
-        .decrypt_path(
-            backend,
-            ciphersuite,
-            ProtocolVersion::default(),
-            update_path_nodes,
-            test_vector.update_sender,
-            &HashSet::new(),
-            &group_context,
-        )
+        .decrypt_path(backend, ciphersuite, decrypt_path_params)
         .expect("error decrypting update path");
     diff.apply_received_update_path(
         backend,

@@ -73,9 +73,10 @@ fn validation_test_setup(
         backend,
         &mls_group_config,
         group_id,
-        &alice_key_package
-            .hash(backend)
-            .expect("Could not hash KeyPackage."),
+        alice_key_package
+            .hash_ref(backend.crypto())
+            .expect("Could not hash KeyPackage.")
+            .as_slice(),
     )
     .expect("An unexpected error occurred.");
 
@@ -407,7 +408,7 @@ fn test_valsem243(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     let proposal_store = ProposalStore::new();
     let (_bob_group, message) = MlsGroup::join_by_external_commit(
         backend,
-        Some(&tree_option),
+        Some(&tree_option), // Note that this isn't actually used.
         verifiable_public_group_state,
         alice_group.configuration(),
         &[],
@@ -479,9 +480,7 @@ fn test_valsem243(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::ExternalCommitValidationError(
-            ExternalCommitValidationError::InvalidInlineProposals
-        ))
+        MlsGroupError::Group(CoreGroupError::SenderError(SenderError::NotAMember))
     );
 
     // Positive case
@@ -577,7 +576,11 @@ fn test_valsem244(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     content.proposals.remove(proposal_position);
 
-    let remove_proposal = ProposalOrRef::Proposal(Proposal::Remove(RemoveProposal { removed: 0 }));
+    let remove_proposal = ProposalOrRef::Proposal(Proposal::Remove(RemoveProposal {
+        removed: *alice_group
+            .key_package_ref()
+            .expect("An unexpected error occurred."),
+    }));
 
     content.proposals.push(remove_proposal);
 
@@ -653,9 +656,13 @@ fn test_valsem245(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         ciphersuite,
         backend,
         second_ext_init_prop,
-        Sender {
+        &Sender {
             sender_type: SenderType::Member,
-            sender: 0,
+            sender: SenderValue::Member(
+                *alice_group
+                    .key_package_ref()
+                    .expect("An unexpected error occurred."),
+            ),
         },
     )
     .expect("error creating queued proposal");
