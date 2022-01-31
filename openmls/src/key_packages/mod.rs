@@ -13,7 +13,7 @@
 //! resort. (See Section 15.4). Clients MAY generate and publish multiple InitKeys
 //!  to support multiple ciphersuites.KeyPackages contain a public key chosen by the
 //! client, which the client MUST ensure uniquely identifies a given KeyPackage
-//! object among the set of KeyPackages created by this client.The value for
+//! object among the set of KeyPackages created by this client. The value for
 //! hpke_init_key MUST be a public key for the asymmetric encryption scheme
 //! defined by cipher_suite. The whole structure is signed using the client's
 //! signature key. A KeyPackage object with an invalid signature field MUST be
