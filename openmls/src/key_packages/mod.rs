@@ -4,7 +4,7 @@
 //! it is possible to pre-publish key packages that provide some public
 //! information about a user. KeyPackage structures provide information
 //! about a client that any existing member can use to add this client
-//! to the group asynchronously.A KeyPackage object specifies a ciphersuite
+//! to the group asynchronously. A KeyPackage object specifies a ciphersuite
 //! that the client supports, as well as providing a public key that others
 //! can use for key agreement.The identity arising from the credential,
 //! together with the endpoint_id in the KeyPackage serve to uniquely identify
