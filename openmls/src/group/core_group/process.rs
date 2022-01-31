@@ -56,7 +56,11 @@ impl CoreGroup {
         //  - Prepares ValSem247 by setting the right credential. The remainder
         //    of ValSem247 is validated as part of ValSem010.
         // Preconfigured senders are not supported yet #106/#151.
-        let credential = decrypted_message.credential(self.treesync())?;
+        let credential = decrypted_message.credential(
+            self.treesync(),
+            self.message_secrets_store
+                .leaves_for_epoch(decrypted_message.plaintext().epoch()),
+        )?;
 
         Ok(UnverifiedMessage::from_decrypted_message(
             decrypted_message,
@@ -169,10 +173,23 @@ impl CoreGroup {
     ) -> Result<(), CoreGroupError> {
         // Save the past epoch
         let past_epoch = self.context().epoch();
+        // We may need to keep a mapping from key package references to indices.
+        let leaves = self.treesync().full_leaves()?;
+        let mut my_leaves = Vec::with_capacity(leaves.len());
+        for (&i, _) in leaves.iter() {
+            my_leaves.push((
+                i,
+                self.treesync()
+                    .leaf_id(i)
+                    .ok_or(CoreGroupError::LibraryError)?,
+            ))
+        }
         // Merge the staged commit into the group state and store the secret tree from the
         // previous epoch in the message secrets store.
         if let Some(message_secrets) = self.merge_commit(staged_commit)? {
-            self.message_secrets_store.add(past_epoch, message_secrets);
+            // let leaves = leaves.into_iter().map(|(i, kp)| (i, kp.hash_ref(crypto_backend).unwrap())).collect();
+            self.message_secrets_store
+                .add(past_epoch, message_secrets, my_leaves);
         }
         // Empty the proposal store
         proposal_store.empty();
