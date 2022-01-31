@@ -1,5 +1,6 @@
 #[cfg(any(feature = "test-utils", test))]
 use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 use core_group::create_commit_params::CreateCommitParams;
 
@@ -257,6 +258,32 @@ impl MlsGroup {
             .iter()
             .map(|(_, kp)| kp.credential())
             .collect())
+    }
+
+    /// Get a [`HashMap`] mapping the [`Credential`]s of current members to
+    /// their [`KeyPackageRef`]s.
+    pub fn member_refs(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<HashMap<&[u8], KeyPackageRef>, MlsGroupError> {
+        let member_option_refs =
+            self.group.treesync().leaves().map_err(|_| {
+                MlsGroupError::LibraryError("Error fetching list of leaves.".into())
+            })?;
+        let mut member_refs = HashMap::new();
+        for (member_ref_option, key_package) in member_option_refs {
+            let member_ref = if let Some(member_ref) = member_ref_option {
+                member_ref
+            } else {
+                key_package.hash_ref(backend.crypto()).map_err(|_| {
+                    MlsGroupError::LibraryError(
+                        "Error computing key package hash reference.".into(),
+                    )
+                })?
+            };
+            member_refs.insert(key_package.credential().identity(), member_ref);
+        }
+        Ok(member_refs)
     }
 
     /// Gets the current list of members, indexed with the leaf index.
