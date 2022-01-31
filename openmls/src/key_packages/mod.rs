@@ -11,7 +11,7 @@
 //! a client in a group.When used as InitKeys, KeyPackages are intended to be
 //! used only once and SHOULD NOT be reused except in case of last
 //! resort. (See Section 15.4). Clients MAY generate and publish multiple InitKeys
-//!  to support multiple ciphersuites.KeyPackages contain a public key chosen by the
+//!  to support multiple ciphersuites. KeyPackages contain a public key chosen by the
 //! client, which the client MUST ensure uniquely identifies a given KeyPackage
 //! object among the set of KeyPackages created by this client. The value for
 //! hpke_init_key MUST be a public key for the asymmetric encryption scheme
