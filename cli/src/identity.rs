@@ -18,10 +18,11 @@ fn store_key_package_bundle_in_keystore(
     crypto_backend
         .key_store()
         .store(
-            &key_package_bundle
+            key_package_bundle
                 .key_package()
                 .hash_ref(crypto_backend.crypto())
-                .expect("Failed to hash KeyPackage."),
+                .expect("Failed to hash KeyPackage.")
+                .as_slice(),
             key_package_bundle,
         )
         .expect("Failed to store KeyPackage in keystore.");
@@ -36,7 +37,11 @@ fn store_credential_bundle_in_keystore(
     crypto_backend
         .key_store()
         .store(
-            &credential_bundle.credential().signature_key(),
+            &credential_bundle
+                .credential()
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("Error serializing signature key"),
             credential_bundle,
         )
         .expect("Failed to store CredentialBundle in keystore.");
