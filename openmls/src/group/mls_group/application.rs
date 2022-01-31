@@ -1,3 +1,5 @@
+use tls_codec::Serialize;
+
 use super::*;
 
 impl MlsGroup {
@@ -26,7 +28,7 @@ impl MlsGroup {
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
-            .read(credential.signature_key())
+            .read(&credential.signature_key().tls_serialize_detached()?)
             .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
         let ciphertext = self.group.create_application_message(

@@ -4,6 +4,7 @@ use core_group::{
     create_commit_params::CreateCommitParams, proposals::QueuedProposal,
     staged_commit::StagedCommit,
 };
+use tls_codec::Serialize;
 
 use super::*;
 
@@ -86,7 +87,7 @@ impl MlsGroup {
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
-            .read(credential.signature_key())
+            .read(&credential.signature_key().tls_serialize_detached()?)
             .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
         // Create Commit over all pending proposals

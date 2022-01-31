@@ -446,7 +446,12 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
     let psk_bundle = PskBundle::new(secret).expect("Could not create PskBundle.");
     backend
         .key_store()
-        .store(&preshared_key_id, &psk_bundle)
+        .store(
+            &preshared_key_id
+                .tls_serialize_detached()
+                .expect("Error serializing signature key."),
+            &psk_bundle,
+        )
         .expect("An unexpected error occured.");
     let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .with_psk(vec![preshared_key_id.clone()])
