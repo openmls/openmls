@@ -36,7 +36,7 @@ pub struct RequiredCapabilitiesExtension {
 }
 
 impl RequiredCapabilitiesExtension {
-    /// Creates a new [`RequiredCapabilitiesExtension`] from extension nd proposal types.
+    /// Creates a new [`RequiredCapabilitiesExtension`] from extension and proposal types.
     pub fn new(extensions: &[ExtensionType], proposals: &[ProposalType]) -> Self {
         Self {
             extensions: extensions.into(),
