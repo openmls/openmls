@@ -257,9 +257,9 @@ impl CoreGroup {
         let proposal = Proposal::Add(add_proposal);
         MlsPlaintext::member_proposal(
             framing_parameters,
-            self.key_package_ref().ok_or(LibraryError::custom(
-                "CoreGroup::create_commit(): missing key package",
-            ))?,
+            self.key_package_ref().ok_or_else(|| {
+                LibraryError::custom("CoreGroup::create_commit(): missing key package")
+            })?,
             proposal,
             credential_bundle,
             self.context(),
@@ -284,9 +284,9 @@ impl CoreGroup {
         let proposal = Proposal::Update(update_proposal);
         MlsPlaintext::member_proposal(
             framing_parameters,
-            self.key_package_ref().ok_or(LibraryError::custom(
-                "CoreGroup::create_commit(): missing key package",
-            ))?,
+            self.key_package_ref().ok_or_else(|| {
+                LibraryError::custom("CoreGroup::create_commit(): missing key package")
+            })?,
             proposal,
             credential_bundle,
             self.context(),
@@ -311,9 +311,9 @@ impl CoreGroup {
         let proposal = Proposal::Remove(remove_proposal);
         MlsPlaintext::member_proposal(
             framing_parameters,
-            self.key_package_ref().ok_or(LibraryError::custom(
-                "CoreGroup::create_commit(): missing key package",
-            ))?,
+            self.key_package_ref().ok_or_else(|| {
+                LibraryError::custom("CoreGroup::create_commit(): missing key package")
+            })?,
             proposal,
             credential_bundle,
             self.context(),
@@ -340,7 +340,9 @@ impl CoreGroup {
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
         MlsPlaintext::member_proposal(
             framing_parameters,
-            self.key_package_ref().ok_or(CoreGroupError::LibraryError)?,
+            self.key_package_ref().ok_or_else(|| {
+                LibraryError::custom("CoreGroup::create_commit(): missing key package")
+            })?,
             proposal,
             credential_bundle,
             self.context(),
@@ -381,7 +383,9 @@ impl CoreGroup {
         let proposal = Proposal::GroupContextExtensions(proposal);
         MlsPlaintext::member_proposal(
             framing_parameters,
-            self.key_package_ref().ok_or(CoreGroupError::LibraryError)?,
+            self.key_package_ref().ok_or_else(|| {
+                LibraryError::custom("CoreGroup::create_commit(): missing key package")
+            })?,
             proposal,
             credential_bundle,
             self.context(),
@@ -401,9 +405,9 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsCiphertext, CoreGroupError> {
         let mls_plaintext = MlsPlaintext::new_application(
-            self.key_package_ref().ok_or(LibraryError::custom(
-                "CoreGroup::create_commit(): missing key package",
-            ))?,
+            self.key_package_ref().ok_or_else(|| {
+                LibraryError::custom("CoreGroup::create_commit(): missing key package")
+            })?,
             aad,
             msg,
             credential_bundle,

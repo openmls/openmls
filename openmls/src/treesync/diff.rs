@@ -804,10 +804,11 @@ impl<'a> TreeSyncDiff<'a> {
     pub(crate) fn hash_ref(&self) -> Result<&KeyPackageRef, TreeSyncDiffError> {
         let node = self.diff.node(self.diff.leaf(self.own_leaf_index)?)?;
         if let Some(Node::LeafNode(node)) = node.node() {
-            node.key_package_ref()
-                .ok_or(TreeSyncDiffError::LibraryError(LibraryError::custom(
+            node.key_package_ref().ok_or_else(|| {
+                TreeSyncDiffError::LibraryError(LibraryError::custom(
                     "TreeSynDiff::hash_ref(): missing key package ref",
-                )))
+                ))
+            })
         } else {
             Err(TreeSyncDiffError::LibraryError(LibraryError::custom(
                 "TreeSynDiff::hash_ref(): missing leaf node",

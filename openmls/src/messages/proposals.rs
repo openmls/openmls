@@ -162,8 +162,8 @@ impl ProposalRef {
         let encoded = proposal
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
-        Ok(Self::new(&encoded, ciphersuite, backend.crypto())
-            .map_err(LibraryError::unexpected_crypto_error)?)
+        Self::new(&encoded, ciphersuite, backend.crypto())
+            .map_err(LibraryError::unexpected_crypto_error)
     }
 }
 

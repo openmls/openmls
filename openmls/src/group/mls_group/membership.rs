@@ -227,9 +227,10 @@ impl MlsGroup {
             .read(credential.signature_key())
             .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
-        let removed = self.group.key_package_ref().ok_or_else(|| {
-            LibraryError::custom("No key package reference for own key package.".into())
-        })?;
+        let removed = self
+            .group
+            .key_package_ref()
+            .ok_or_else(|| LibraryError::custom("No key package reference for own key package."))?;
         let remove_proposal = self.group.create_remove_proposal(
             self.framing_parameters(),
             &credential_bundle,

@@ -214,9 +214,9 @@ impl PublicGroupStateTbs {
             other_extensions,
             external_pub: external_pub.into(),
             ciphersuite: ciphersuite.name(),
-            signer: *core_group.key_package_ref().ok_or(LibraryError::custom(
-                "PublicGroupStateTbs::new(): missing key package ref",
-            ))?,
+            signer: *core_group.key_package_ref().ok_or_else(|| {
+                LibraryError::custom("PublicGroupStateTbs::new(): missing key package ref")
+            })?,
         })
     }
 }

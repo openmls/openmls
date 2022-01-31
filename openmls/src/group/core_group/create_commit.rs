@@ -55,9 +55,9 @@ impl CoreGroup {
                 (Sender::build_new_member(), leaf_index)
             }
             CommitType::Member => (
-                Sender::build_member(self.key_package_ref().ok_or(LibraryError::custom(
-                    "CoreGroup::create_commit(): missing key package",
-                ))?),
+                Sender::build_member(self.key_package_ref().ok_or_else(|| {
+                    LibraryError::custom("CoreGroup::create_commit(): missing key package")
+                })?),
                 self.own_leaf_index(),
             ),
         };
@@ -66,9 +66,9 @@ impl CoreGroup {
         let own_kpr = if params.commit_type() == CommitType::External {
             None
         } else {
-            Some(self.key_package_ref().ok_or(LibraryError::custom(
-                "CoreGroup::create_commit(): missing key package",
-            ))?)
+            Some(self.key_package_ref().ok_or_else(|| {
+                LibraryError::custom("CoreGroup::create_commit(): missing key package")
+            })?)
         };
         let (proposal_queue, contains_own_updates) = ProposalQueue::filter_proposals(
             ciphersuite,
@@ -162,9 +162,11 @@ impl CoreGroup {
 
         let sender = match params.commit_type() {
             CommitType::External => Sender::build_new_member(),
-            CommitType::Member => Sender::build_member(self.key_package_ref().ok_or(
-                LibraryError::custom("CoreGroup::create_commit(): missing key package"),
-            )?),
+            CommitType::Member => {
+                Sender::build_member(self.key_package_ref().ok_or_else(|| {
+                    LibraryError::custom("CoreGroup::create_commit(): missing key package")
+                })?)
+            }
         };
 
         // Create commit message
