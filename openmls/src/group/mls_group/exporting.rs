@@ -1,3 +1,5 @@
+use tls_codec::Serialize;
+
 use crate::messages::PublicGroupState;
 
 use super::*;
@@ -40,7 +42,12 @@ impl MlsGroup {
     ) -> Result<PublicGroupState, MlsGroupError> {
         let credential_bundle: CredentialBundle = backend
             .key_store()
-            .read(self.credential()?.signature_key())
+            .read(
+                &self
+                    .credential()?
+                    .signature_key()
+                    .tls_serialize_detached()?,
+            )
             .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
         Ok(self
             .group
