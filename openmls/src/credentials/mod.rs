@@ -1,14 +1,18 @@
 //! # Credentials
 //!
-//! A member of a group authenticates the identities of other participants by means
-//! of credentials issued by some authentication system, like a PKI. Each type of
-//! credential MUST express the following data in the context of the group it is used with:
-//!  - The public key of a signature key pair matching the SignatureScheme specified by the CipherSuite of the group
-//!  - The identity of the holder of the private key
+//! Credentials are used to to authenticate messages and members of a group are represented
+//! by a Credential. Clients create a [`CredentialBundle`] which contains the private key material
+//! and expose a [`Credential`] in the key packages they generate.
 //!
-//! Credentials MAY also include information that allows a relying party to verify
-//! the identity / signing key binding.Additionally, Credentials SHOULD specify the
-//! signature scheme corresponding to each contained public key.
+//! The MLS protocol spec allows credentials to change over time. Concretely, members can issue an Update proposal
+//! or a Full Commit to update their credential. The new credential still needs to be signed by the old credential.
+//!
+//! When receiving a credential update from another member, applications must ensure the new credential is valid
+//! and need to query the Authentication Service for that matter.
+//!
+//! Credentials are specific to a signature scheme, which is part of the ciphersuite of a group. Clients can have several
+//! credentials with different signature schemes.
+
 mod codec;
 mod errors;
 pub use errors::*;

@@ -1,24 +1,17 @@
 //! Key Packages.
 //!
 //! In order to facilitate asynchronous addition of clients to a group,
-//! it is possible to pre-publish key packages that provide some public
+//! it is necessary to pre-publish key packages that provide some public
 //! information about a user. KeyPackage structures provide information
 //! about a client that any existing member can use to add this client
 //! to the group asynchronously. A KeyPackage object specifies a ciphersuite
 //! that the client supports, as well as providing a public key that others
-//! can use for key agreement.The identity arising from the credential,
+//! can use for key agreement. The identity arising from the credential,
 //! together with the endpoint_id in the KeyPackage serve to uniquely identify
-//! a client in a group.When used as InitKeys, KeyPackages are intended to be
+//! a client in a group. When used as InitKeys, KeyPackages are intended to be
 //! used only once and SHOULD NOT be reused except in case of last
 //! resort. (See Section 15.4). Clients MAY generate and publish multiple InitKeys
-//!  to support multiple ciphersuites. KeyPackages contain a public key chosen by the
-//! client, which the client MUST ensure uniquely identifies a given KeyPackage
-//! object among the set of KeyPackages created by this client. The value for
-//! hpke_init_key MUST be a public key for the asymmetric encryption scheme
-//! defined by cipher_suite. The whole structure is signed using the client's
-//! signature key. A KeyPackage object with an invalid signature field MUST be
-//! considered malformed. The input to the signature computation comprises all
-//! of the fields except for the signature field.
+//! to support multiple ciphersuites.
 use log::error;
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::CryptoError;
