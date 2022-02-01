@@ -47,7 +47,9 @@ impl From<&MlsPlaintext> for SecretType {
     }
 }
 
-/// Derives secrets for inner nodes of a SecretTree
+/// Derives secrets for inner nodes of a SecretTree. This function corresponds
+/// to the `DeriveTreeSecret` defined in Section 10.1 of the MLS specification.
+#[inline]
 pub(crate) fn derive_tree_secret(
     secret: &Secret,
     label: &str,

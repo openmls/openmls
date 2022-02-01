@@ -8,7 +8,6 @@
 use crate::ciphersuite::{AeadNonce, *};
 use crate::tree::{index::SecretTreeLeafIndex, secret_tree::*};
 
-use super::index::SecretTreeNodeIndex;
 use super::*;
 
 /// Stores the configuration parameters for sender ratchets.
