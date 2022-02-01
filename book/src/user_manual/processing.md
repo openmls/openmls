@@ -24,7 +24,7 @@ Parsing can fail, if e.g. dercrypting the message fails. The exact reason for fa
 
 ## Processing messages
 
-In the next step the unverified message needs to be processed. This step performs all remeining validity checks and also verifies the message's signature. Optionally, a signature key can be provided to verify the message's signature. This can be used when processing external messages. By default, the sender's credential is used to verify the signature.
+In the next step the unverified message needs to be processed. This step performs all remaining validity checks and also verifies the message's signature. Optionally, a signature key can be provided to verify the message's signature. This can be used when processing external messages. By default, the sender's credential is used to verify the signature.
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:process_message}}

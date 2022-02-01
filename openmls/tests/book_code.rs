@@ -585,15 +585,31 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         charlie_group.export_ratchet_tree()
     );
 
+    // ANCHOR: retrieve_members
+    let charlie_members = charlie_group
+        .members()
+        .expect("Error retrieving list of group members.");
+    // ANCHOR_END: retrieve_members
+
+    let bob_kp_ref = charlie_members
+        .iter()
+        .find(|&kp| kp.credential().identity() == b"Bob")
+        .expect("Couldn't find Bob in the list of group members.")
+        .hash_ref(backend.crypto())
+        .expect("Error computing hash reference.");
+
+    // Make sure that this is Bob's actual KP reference.
+    assert_eq!(
+        &bob_kp_ref,
+        bob_group
+            .key_package_ref()
+            .expect("An unexpected error occurred.")
+    );
+
     // === Charlie removes Bob ===
     // ANCHOR: charlie_removes_bob
     let (mls_message_out, welcome_option) = charlie_group
-        .remove_members(
-            backend,
-            &[*bob_group
-                .key_package_ref()
-                .expect("An unexpected error occurred.")],
-        )
+        .remove_members(backend, &[bob_kp_ref])
         .expect("Could not remove Bob from group.");
     // ANCHOR_END: charlie_removes_bob
 
@@ -603,6 +619,23 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     let unverified_message = alice_group
         .parse_message(mls_message_out.clone().into(), backend)
         .expect("Could not parse message.");
+
+    // Check that alice can use the member list to check if the message is
+    // actually from Charlie.
+    let alice_members = alice_group
+        .members()
+        .expect("Error getting list of members");
+    let sender_credential = unverified_message
+        .credential()
+        .expect("Couldn't retrieve credential from unverified message.");
+
+    assert!(alice_members
+        .iter()
+        .find(|&kp| kp.credential() == sender_credential)
+        .is_some());
+
+    assert_eq!(sender_credential, &charlie_credential);
+
     let alice_processed_message = alice_group
         .process_unverified_message(unverified_message, None, backend)
         .expect("Could not process unverified message.");
