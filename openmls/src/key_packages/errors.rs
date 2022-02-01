@@ -6,7 +6,10 @@
 use openmls_traits::types::CryptoError;
 use tls_codec::Error as TlsCodecError;
 
-use crate::{config::ConfigError, credentials::CredentialError, extensions::ExtensionError};
+use crate::{
+    config::ConfigError, credentials::CredentialError, error::LibraryError,
+    extensions::ExtensionError,
+};
 
 implement_error! {
     pub enum KeyPackageError {
@@ -16,7 +19,6 @@ implement_error! {
             MandatoryExtensionsMissing = "A mandatory extension is missing in the key package.",
             InvalidLifetimeExtension = "The lifetime extension of the key package is not valid.",
             InvalidSignature = "The key package signature is not valid.",
-            LibraryError = "An unknown OpenMLS library error occurred.",
             DuplicateExtension = "Duplicate extensions are not allowed.",
             UnsupportedExtension = "The key package does not support all required extensions.",
             NoCiphersuitesSupplied = "Creating a new key package requires at least one ciphersuite.",
@@ -24,6 +26,7 @@ implement_error! {
             CiphersuiteSignatureSchemeMismatch = "The ciphersuite does not match the signature scheme.",
         }
         Complex {
+            LibraryError(LibraryError) = "A LibraryError occurred.",
             ExtensionError(ExtensionError) =
                 "See [`ExtensionError`](crate::extensions::ExtensionError`) for details.",
             ConfigError(ConfigError) =
