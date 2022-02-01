@@ -3,18 +3,20 @@
 //! `WelcomeError`, `StageCommitError`, `DecryptionError`, and
 //! `CreateCommitError`.
 
-use crate::config::ConfigError;
-use crate::credentials::CredentialError;
-use crate::extensions::errors::ExtensionError;
-use crate::framing::errors::{
-    MlsCiphertextError, MlsPlaintextError, ValidationError, VerificationError,
+use crate::{
+    config::ConfigError,
+    credentials::CredentialError,
+    error::LibraryError,
+    extensions::errors::ExtensionError,
+    framing::errors::{
+        MlsCiphertextError, MlsPlaintextError, SenderError, ValidationError, VerificationError,
+    },
+    key_packages::KeyPackageError,
+    messages::errors::ProposalError,
+    schedule::{KeyScheduleError, PskSecretError},
+    tree::{ParentHashError, TreeError},
+    treesync::{diff::TreeSyncDiffError, treekem::TreeKemError, TreeSyncError},
 };
-use crate::framing::SenderError;
-use crate::key_packages::KeyPackageError;
-use crate::messages::errors::ProposalError;
-use crate::schedule::errors::{KeyScheduleError, PskSecretError};
-use crate::tree::{ParentHashError, TreeError};
-use crate::treesync::{diff::TreeSyncDiffError, treekem::TreeKemError, TreeSyncError};
 use openmls_traits::types::CryptoError;
 use tls_codec::Error as TlsCodecError;
 
@@ -25,9 +27,9 @@ implement_error! {
                 "Couldn't find KeyPackageBundle corresponding to own update proposal.",
             NoSignatureKey = "No signature key was found.",
             OwnCommitError = "Can't process a commit created by the owner of the group. Please merge the [`StagedCommit`] returned by `create_commit` instead.",
-            LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
         }
         Complex {
+            LibraryError(LibraryError) = "A LibraryError occurred.",
             MlsCiphertextError(MlsCiphertextError) =
                 "See [`MlsCiphertextError`](`crate::framing::errors::MlsCiphertextError`) for details.",
             MlsPlaintextError(MlsPlaintextError) =
@@ -249,6 +251,7 @@ implement_error! {
             WrongContentType = "API misuse. Only proposals can end up in the proposal queue",
         }
         Complex {
+            LibraryError(LibraryError) = "A LibraryError occurred.",
             ProposalError(ProposalError) = "A ProposalError occurred.",
             TlsCodecError(TlsCodecError) = "Error serializing",
         }
@@ -276,9 +279,9 @@ implement_error! {
         Simple {
             ProposalNotFound = "Not all proposals in the Commit were found locally.",
             ArchitectureError = "Couldn't fit a `u32` into a `usize`.",
-            LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
         }
         Complex {
+            LibraryError(LibraryError) = "A LibraryError occurred.",
             NotAProposal(QueuedProposalError) = "The given MLS Plaintext was not a Proposal.",
             SenderError(SenderError) = "Sender error",
         }

@@ -21,9 +21,12 @@
 //! [`MlsPlaintext`] by calling `verify` on it. This ensures that all [`MlsPlaintext`]
 //! objects contain a valid signature.
 
-use crate::ciphersuite::{
-    hash_ref::KeyPackageRef,
-    signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
+use crate::{
+    ciphersuite::{
+        hash_ref::KeyPackageRef,
+        signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
+    },
+    error::LibraryError,
 };
 
 use super::*;
@@ -126,7 +129,7 @@ impl MlsPlaintext {
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, MlsPlaintextError> {
+    ) -> Result<Self, LibraryError> {
         let sender_type = sender.sender_type;
         let mut mls_plaintext = MlsPlaintextTbs::new(
             framing_parameters.wire_format(),
@@ -138,11 +141,13 @@ impl MlsPlaintext {
         );
 
         if sender_type == SenderType::Member {
-            let serialized_context = context.tls_serialize_detached()?;
+            let serialized_context = context
+                .tls_serialize_detached()
+                .map_err(LibraryError::missing_bound_check)?;
             mls_plaintext = mls_plaintext.with_context(serialized_context);
         }
 
-        Ok(mls_plaintext.sign(backend, credential_bundle)?)
+        mls_plaintext.sign(backend, credential_bundle)
     }
 
     /// Create message with membership tag
@@ -155,7 +160,7 @@ impl MlsPlaintext {
         context: &GroupContext,
         membership_key: &MembershipKey,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, MlsPlaintextError> {
+    ) -> Result<Self, LibraryError> {
         let sender = Sender::build_member(sender_reference);
         let mut mls_plaintext = Self::new(
             framing_parameters,
@@ -167,7 +172,9 @@ impl MlsPlaintext {
         )?;
         mls_plaintext.set_membership_tag(
             backend,
-            &context.tls_serialize_detached()?,
+            &context
+                .tls_serialize_detached()
+                .map_err(LibraryError::missing_bound_check)?,
             membership_key,
         )?;
         Ok(mls_plaintext)
@@ -183,7 +190,7 @@ impl MlsPlaintext {
         context: &GroupContext,
         membership_key: &MembershipKey,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, MlsPlaintextError> {
+    ) -> Result<Self, LibraryError> {
         Self::new_with_membership_tag(
             framing_parameters,
             sender_reference,
@@ -210,7 +217,7 @@ impl MlsPlaintext {
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, MlsPlaintextError> {
+    ) -> Result<Self, LibraryError> {
         Self::new(
             framing_parameters,
             sender,
@@ -234,7 +241,7 @@ impl MlsPlaintext {
         context: &GroupContext,
         membership_key: &MembershipKey,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, MlsPlaintextError> {
+    ) -> Result<Self, LibraryError> {
         let framing_parameters =
             FramingParameters::new(authenticated_data, WireFormat::MlsCiphertext);
         Self::new_with_membership_tag(
@@ -275,8 +282,9 @@ impl MlsPlaintext {
         backend: &impl OpenMlsCryptoProvider,
         serialized_context: &[u8],
         membership_key: &MembershipKey,
-    ) -> Result<(), MlsPlaintextError> {
-        let tbs_payload = encode_tbs(self, serialized_context)?;
+    ) -> Result<(), LibraryError> {
+        let tbs_payload =
+            encode_tbs(self, serialized_context).map_err(LibraryError::missing_bound_check)?;
         let tbm_payload =
             MlsPlaintextTbmPayload::new(&tbs_payload, &self.signature, &self.confirmation_tag)?;
         let membership_tag = membership_key.tag(backend, tbm_payload)?;
@@ -415,7 +423,7 @@ impl<'a> MlsPlaintextTbmPayload<'a> {
         tbs_payload: &'a [u8],
         signature: &'a Signature,
         confirmation_tag: &'a Option<ConfirmationTag>,
-    ) -> Result<Self, MlsPlaintextError> {
+    ) -> Result<Self, LibraryError> {
         Ok(Self {
             tbs_payload,
             signature,

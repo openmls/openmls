@@ -41,7 +41,8 @@ use crate::{
         hash_ref::KeyPackageRef, signable::Signable, Ciphersuite, HpkePrivateKey, HpkePublicKey,
         Secret,
     },
-    credentials::{CredentialBundle, CredentialError},
+    credentials::CredentialBundle,
+    error::LibraryError,
     extensions::ExtensionType,
     key_packages::{KeyPackage, KeyPackageBundlePayload, KeyPackageError},
     messages::{PathSecret, PathSecretError},
@@ -147,8 +148,8 @@ impl<'a> TreeSyncDiff<'a> {
         let leaf_ids = self.diff.leaves()?;
         let mut leaf_index_option = None;
         for (leaf_index, leaf_id) in leaf_ids.iter().enumerate() {
-            let leaf_index: LeafIndex =
-                u32::try_from(leaf_index).map_err(|_| TreeSyncDiffError::LibraryError)?;
+            let leaf_index: LeafIndex = u32::try_from(leaf_index)
+                .map_err(|_| LibraryError::custom("free_leaf_index(): Could not convert index"))?;
             if self.diff.node(*leaf_id)?.node().is_none() {
                 leaf_index_option = Some(leaf_index);
                 break;
@@ -175,7 +176,9 @@ impl<'a> TreeSyncDiff<'a> {
             if let KeyPackageError::CryptoError(e) = e {
                 TreeSyncDiffError::CryptoError(e)
             } else {
-                TreeSyncDiffError::LibraryError
+                TreeSyncDiffError::LibraryError(LibraryError::custom(
+                    "TreeSyncDiff::add_leaf(): key package error",
+                ))
             }
         })?);
         // Find a free leaf and fill it with the new key package.
@@ -297,12 +300,13 @@ impl<'a> TreeSyncDiff<'a> {
         let phe = key_package
             .extension_with_type(ExtensionType::ParentHash)
             .ok_or(TreeSyncDiffError::MissingParentHash)?;
-        if phe
+        let key_package_parent_hash = phe
             .as_parent_hash_extension()
-            .map_err(|_| TreeSyncDiffError::LibraryError)?
-            .parent_hash()
-            != parent_hash
-        {
+            .map_err(|_| {
+                LibraryError::custom("apply_received_update-path(): No parent hash etxension")
+            })?
+            .parent_hash();
+        if key_package_parent_hash != parent_hash {
             return Err(TreeSyncDiffError::ParentHashMismatch);
         };
 
@@ -311,7 +315,9 @@ impl<'a> TreeSyncDiff<'a> {
             if let KeyPackageError::CryptoError(e) = e {
                 TreeSyncDiffError::CryptoError(e)
             } else {
-                TreeSyncDiffError::LibraryError
+                TreeSyncDiffError::LibraryError(LibraryError::custom(
+                    "TreeSynDiff::apply_received_update_path(): key package error",
+                ))
             }
         })?);
         self.diff.replace_leaf(sender_leaf_index, node.into())?;
@@ -401,7 +407,7 @@ impl<'a> TreeSyncDiff<'a> {
             let leaf_node = leaf
                 .node()
                 .as_ref()
-                .ok_or(TreeSyncDiffError::LibraryError)?;
+                .ok_or_else(|| LibraryError::custom("filter_resolution(): Node was empty."))?;
             let leaf = leaf_node.as_leaf_node()?;
             if let Some(position) = resolution
                 .iter()
@@ -706,7 +712,7 @@ impl<'a> TreeSyncDiff<'a> {
         let node = self.diff.node(leaf_id)?;
         match node.node() {
             Some(node) => Ok(node.as_leaf_node()?),
-            None => Err(TreeSyncDiffError::LibraryError),
+            None => Err(LibraryError::custom("own_leaf(): Node was empty.").into()),
         }
     }
 
@@ -798,10 +804,15 @@ impl<'a> TreeSyncDiff<'a> {
     pub(crate) fn hash_ref(&self) -> Result<&KeyPackageRef, TreeSyncDiffError> {
         let node = self.diff.node(self.diff.leaf(self.own_leaf_index)?)?;
         if let Some(Node::LeafNode(node)) = node.node() {
-            node.key_package_ref()
-                .ok_or(TreeSyncDiffError::LibraryError)
+            node.key_package_ref().ok_or_else(|| {
+                TreeSyncDiffError::LibraryError(LibraryError::custom(
+                    "TreeSynDiff::hash_ref(): missing key package ref",
+                ))
+            })
         } else {
-            Err(TreeSyncDiffError::LibraryError)
+            Err(TreeSyncDiffError::LibraryError(LibraryError::custom(
+                "TreeSynDiff::hash_ref(): missing leaf node",
+            )))
         }
     }
 }
@@ -809,7 +820,6 @@ impl<'a> TreeSyncDiff<'a> {
 implement_error! {
     pub enum TreeSyncDiffError {
         Simple {
-            LibraryError = "An unrecoverable error has occurred.",
             PathLengthError = "The given path does not have the length of the given leaf's direct path.",
             MissingParentHash = "The given key package does not contain a parent hash extension.",
             ParentHashMismatch = "The parent hash of the given key package is invalid.",
@@ -819,10 +829,10 @@ implement_error! {
             NoPrivateKeyFound = "Couldn't find a fitting private key in the filtered resolution of the given leaf index.",
         }
         Complex {
+            LibraryError(LibraryError) = "A LibraryError occurred.",
             NodeTypeError(NodeError) = "We found a node with an unexpected type.",
             TreeSyncNodeError(TreeSyncNodeError) = "Error computing tree hash.",
             TreeDiffError(MlsBinaryTreeDiffError) = "An error occurred while operating on the diff.",
-            CredentialError(CredentialError) = "An error occurred while signing a `KeyPackage`.",
             CryptoError(CryptoError) = "An error occurred during key derivation.",
             DerivationError(PathSecretError) = "An error occurred during PathSecret derivation.",
             ParentNodeError(ParentNodeError) = "An error occurred during path derivation.",

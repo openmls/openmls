@@ -4,7 +4,7 @@
 //! the `MlsPlaintext` and as described in the [`OpenMLS Wiki`].
 //!
 //! [`OpenMLS Wiki`]: https://github.com/openmls/openmls/wiki/Signable
-use openmls_traits::{types::CryptoError, OpenMlsCryptoProvider};
+use openmls_traits::OpenMlsCryptoProvider;
 use tls_codec::{Serialize, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
 use crate::{
@@ -14,6 +14,7 @@ use crate::{
         CiphersuiteName, HpkePublicKey, Signature,
     },
     config::ProtocolVersion,
+    error::LibraryError,
     extensions::Extension,
     group::*,
 };
@@ -187,7 +188,7 @@ impl PublicGroupStateTbs {
     pub(crate) fn new(
         backend: &impl OpenMlsCryptoProvider,
         core_group: &CoreGroup,
-    ) -> Result<Self, CryptoError> {
+    ) -> Result<Self, LibraryError> {
         let ciphersuite = core_group.ciphersuite();
         let external_pub = core_group
             .group_epoch_secrets()
@@ -213,9 +214,9 @@ impl PublicGroupStateTbs {
             other_extensions,
             external_pub: external_pub.into(),
             ciphersuite: ciphersuite.name(),
-            signer: *core_group
-                .key_package_ref()
-                .ok_or(CryptoError::CryptoLibraryError)?,
+            signer: *core_group.key_package_ref().ok_or_else(|| {
+                LibraryError::custom("PublicGroupStateTbs::new(): missing key package ref")
+            })?,
         })
     }
 }
