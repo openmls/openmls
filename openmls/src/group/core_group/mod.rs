@@ -327,7 +327,7 @@ impl CoreGroup {
     // struct {
     //     PreSharedKeyID psk;
     // } PreSharedKey;
-    // TODO: #141
+    // TODO: #751
     #[cfg(test)]
     pub(crate) fn create_presharedkey_proposal(
         &self,
