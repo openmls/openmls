@@ -141,7 +141,7 @@
             .<span class="ident">ok_or</span>(<span class="ident">MlsGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Create Commit over all proposals. If a `KeyPackageBundle` was passed</span>
-        <span class="comment">// in, use it to create an update proposal by value. TODO #141</span>
+        <span class="comment">// in, use it to create an update proposal by value. TODO #751</span>
         <span class="kw">let</span> <span class="ident">create_commit_result</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">key_package_bundle_option</span> {
             <span class="prelude-val">Some</span>(<span class="ident">kpb</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">update_proposal</span> <span class="op">=</span> <span class="ident">Proposal::Update</span>(<span class="ident">UpdateProposal</span> {

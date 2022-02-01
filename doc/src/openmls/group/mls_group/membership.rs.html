@@ -317,7 +317,7 @@
             .<span class="ident">ok_or</span>(<span class="ident">MlsGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Create Commit over all proposals</span>
-        <span class="comment">// TODO #141</span>
+        <span class="comment">// TODO #751</span>
         <span class="kw">let</span> <span class="ident">params</span> <span class="op">=</span> <span class="ident">CreateCommitParams::builder</span>()
             .<span class="ident">framing_parameters</span>(<span class="self">self</span>.<span class="ident">framing_parameters</span>())
             .<span class="ident">credential_bundle</span>(<span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>)
@@ -381,7 +381,7 @@
             .<span class="ident">ok_or</span>(<span class="ident">MlsGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Create Commit over all proposals</span>
-        <span class="comment">// TODO #141</span>
+        <span class="comment">// TODO #751</span>
         <span class="kw">let</span> <span class="ident">params</span> <span class="op">=</span> <span class="ident">CreateCommitParams::builder</span>()
             .<span class="ident">framing_parameters</span>(<span class="self">self</span>.<span class="ident">framing_parameters</span>())
             .<span class="ident">credential_bundle</span>(<span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>)
