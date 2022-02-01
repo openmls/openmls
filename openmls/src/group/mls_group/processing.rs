@@ -90,7 +90,7 @@ impl MlsGroup {
             .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
         // Create Commit over all pending proposals
-        // TODO #141
+        // TODO #751
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
             .credential_bundle(&credential_bundle)
