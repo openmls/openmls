@@ -637,6 +637,7 @@
 <span id="636">636</span>
 <span id="637">637</span>
 <span id="638">638</span>
+<span id="639">639</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">log::error</span>;
 <span class="kw">use</span> <span class="ident">openmls_traits::crypto::OpenMlsCrypto</span>;
 <span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
@@ -645,16 +646,15 @@
 <span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsVecU32</span>};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite::signable::Signable</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite::signable::SignedStruct</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite::signable::Verifiable</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite</span>::{<span class="ident">hash_ref::KeyPackageRef</span>, <span class="kw-2">*</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config</span>::{<span class="ident">Config</span>, <span class="ident">ProtocolVersion</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credentials</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::extensions::RequiredCapabilitiesExtension</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::extensions</span>::{
-    <span class="ident">CapabilitiesExtension</span>, <span class="ident">Extension</span>, <span class="ident">ExtensionError</span>, <span class="ident">ExtensionType</span>, <span class="ident">LifetimeExtension</span>,
-    <span class="ident">ParentHashExtension</span>,
+<span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="ident">ciphersuite</span>::{<span class="ident">hash_ref::KeyPackageRef</span>, <span class="ident">signable</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>},
+    <span class="ident">config</span>::{<span class="ident">Config</span>, <span class="ident">ProtocolVersion</span>},
+    <span class="ident">credentials</span>::<span class="kw-2">*</span>,
+    <span class="ident">error::LibraryError</span>,
+    <span class="ident">extensions</span>::{
+        <span class="ident">CapabilitiesExtension</span>, <span class="ident">Extension</span>, <span class="ident">ExtensionError</span>, <span class="ident">ExtensionType</span>, <span class="ident">LifetimeExtension</span>,
+        <span class="ident">ParentHashExtension</span>, <span class="ident">RequiredCapabilitiesExtension</span>,
+    },
 };
 
 <span class="kw">use</span> <span class="ident">serde</span>::{
@@ -803,10 +803,12 @@
                             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyPackageError::InvalidLifetimeExtension</span>);
                         }
                     }
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
+                    <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                         <span class="macro">log::error!</span>(<span class="string">&quot;as_lifetime_extension failed while verifying a key package.&quot;</span>);
-                        <span class="macro">error!</span>(<span class="string">&quot;Library error: {:?}&quot;</span>, <span class="ident">e</span>);
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyPackageError::LibraryError</span>);
+                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">LibraryError::custom</span>(
+                            <span class="string">&quot;verify(): Expected a lifetime extension&quot;</span>,
+                        )
+                        .<span class="ident">into</span>());
                     }
                 }
             }

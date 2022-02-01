@@ -38,6 +38,9 @@
 <span id="37">37</span>
 <span id="38">38</span>
 <span id="39">39</span>
+<span id="40">40</span>
+<span id="41">41</span>
+<span id="42">42</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Package errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `KeyPackageError` are thrown on errors handling `KeyPackage`s and</span>
@@ -46,7 +49,10 @@
 <span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
 <span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">config::ConfigError</span>, <span class="ident">credentials::CredentialError</span>, <span class="ident">extensions::ExtensionError</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="ident">config::ConfigError</span>, <span class="ident">credentials::CredentialError</span>, <span class="ident">error::LibraryError</span>,
+    <span class="ident">extensions::ExtensionError</span>,
+};
 
 <span class="macro">implement_error!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KeyPackageError</span> {
@@ -56,7 +62,6 @@
             <span class="ident">MandatoryExtensionsMissing</span> <span class="op">=</span> <span class="string">&quot;A mandatory extension is missing in the key package.&quot;</span>,
             <span class="ident">InvalidLifetimeExtension</span> <span class="op">=</span> <span class="string">&quot;The lifetime extension of the key package is not valid.&quot;</span>,
             <span class="ident">InvalidSignature</span> <span class="op">=</span> <span class="string">&quot;The key package signature is not valid.&quot;</span>,
-            <span class="ident">LibraryError</span> <span class="op">=</span> <span class="string">&quot;An unknown OpenMLS library error occurred.&quot;</span>,
             <span class="ident">DuplicateExtension</span> <span class="op">=</span> <span class="string">&quot;Duplicate extensions are not allowed.&quot;</span>,
             <span class="ident">UnsupportedExtension</span> <span class="op">=</span> <span class="string">&quot;The key package does not support all required extensions.&quot;</span>,
             <span class="ident">NoCiphersuitesSupplied</span> <span class="op">=</span> <span class="string">&quot;Creating a new key package requires at least one ciphersuite.&quot;</span>,
@@ -64,6 +69,7 @@
             <span class="ident">CiphersuiteSignatureSchemeMismatch</span> <span class="op">=</span> <span class="string">&quot;The ciphersuite does not match the signature scheme.&quot;</span>,
         }
         <span class="ident">Complex</span> {
+            <span class="ident">LibraryError</span>(<span class="ident">LibraryError</span>) <span class="op">=</span> <span class="string">&quot;A LibraryError occurred.&quot;</span>,
             <span class="ident">ExtensionError</span>(<span class="ident">ExtensionError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`ExtensionError`](crate::extensions::ExtensionError`) for details.&quot;</span>,
             <span class="ident">ConfigError</span>(<span class="ident">ConfigError</span>) <span class="op">=</span>

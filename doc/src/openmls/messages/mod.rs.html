@@ -516,7 +516,7 @@
 <span class="kw">mod</span> <span class="ident">tests</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credentials</span>::{<span class="ident">CredentialBundle</span>, <span class="ident">CredentialError</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">credentials::CredentialBundle</span>, <span class="ident">error::LibraryError</span>};
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schedule</span>::{
@@ -748,7 +748,7 @@
         <span class="self">self</span>,
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CredentialError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">payload</span>.<span class="ident">sign</span>(<span class="ident">backend</span>, <span class="ident">credential_bundle</span>)
     }
 }

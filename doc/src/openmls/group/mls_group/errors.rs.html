@@ -116,7 +116,7 @@
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config::ConfigError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credentials::CredentialError</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ErrorString</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::LibraryError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::framing::MlsCiphertextError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::framing::ValidationError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::errors::QueuedProposalError</span>;
@@ -140,7 +140,7 @@
             <span class="ident">IncompatibleWireFormat</span> <span class="op">=</span> <span class="string">&quot;The incoming message&#39;s wire format was not compatible with the wire format policy for incoming messages.&quot;</span>,
         }
         <span class="ident">Complex</span> {
-            <span class="ident">LibraryError</span>(<span class="ident">ErrorString</span>) <span class="op">=</span>
+            <span class="ident">LibraryError</span>(<span class="ident">LibraryError</span>) <span class="op">=</span>
                 <span class="string">&quot;An internal library error occurred. Additional detail is provided.&quot;</span>,
             <span class="ident">Config</span>(<span class="ident">ConfigError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`ConfigError`](`crate::config::ConfigError`) for details&quot;</span>,

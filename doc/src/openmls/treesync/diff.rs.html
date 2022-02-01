@@ -832,6 +832,16 @@
 <span id="831">831</span>
 <span id="832">832</span>
 <span id="833">833</span>
+<span id="834">834</span>
+<span id="835">835</span>
+<span id="836">836</span>
+<span id="837">837</span>
+<span id="838">838</span>
+<span id="839">839</span>
+<span id="840">840</span>
+<span id="841">841</span>
+<span id="842">842</span>
+<span id="843">843</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -875,7 +885,8 @@
         <span class="ident">hash_ref::KeyPackageRef</span>, <span class="ident">signable::Signable</span>, <span class="ident">Ciphersuite</span>, <span class="ident">HpkePrivateKey</span>, <span class="ident">HpkePublicKey</span>,
         <span class="ident">Secret</span>,
     },
-    <span class="ident">credentials</span>::{<span class="ident">CredentialBundle</span>, <span class="ident">CredentialError</span>},
+    <span class="ident">credentials::CredentialBundle</span>,
+    <span class="ident">error::LibraryError</span>,
     <span class="ident">extensions::ExtensionType</span>,
     <span class="ident">key_packages</span>::{<span class="ident">KeyPackage</span>, <span class="ident">KeyPackageBundlePayload</span>, <span class="ident">KeyPackageError</span>},
     <span class="ident">messages</span>::{<span class="ident">PathSecret</span>, <span class="ident">PathSecretError</span>},
@@ -981,8 +992,8 @@
         <span class="kw">let</span> <span class="ident">leaf_ids</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">leaves</span>()<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">leaf_index_option</span> <span class="op">=</span> <span class="prelude-val">None</span>;
         <span class="kw">for</span> (<span class="ident">leaf_index</span>, <span class="ident">leaf_id</span>) <span class="kw">in</span> <span class="ident">leaf_ids</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-            <span class="kw">let</span> <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span> <span class="op">=</span>
-                <span class="ident">u32::try_from</span>(<span class="ident">leaf_index</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">TreeSyncDiffError::LibraryError</span>)<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span> <span class="op">=</span> <span class="ident">u32::try_from</span>(<span class="ident">leaf_index</span>)
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;free_leaf_index(): Could not convert index&quot;</span>))<span class="question-mark">?</span>;
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">node</span>(<span class="kw-2">*</span><span class="ident">leaf_id</span>)<span class="question-mark">?</span>.<span class="ident">node</span>().<span class="ident">is_none</span>() {
                 <span class="ident">leaf_index_option</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">leaf_index</span>);
                 <span class="kw">break</span>;
@@ -1009,7 +1020,9 @@
             <span class="kw">if</span> <span class="kw">let</span> <span class="ident">KeyPackageError::CryptoError</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">e</span> {
                 <span class="ident">TreeSyncDiffError::CryptoError</span>(<span class="ident">e</span>)
             } <span class="kw">else</span> {
-                <span class="ident">TreeSyncDiffError::LibraryError</span>
+                <span class="ident">TreeSyncDiffError::LibraryError</span>(<span class="ident">LibraryError::custom</span>(
+                    <span class="string">&quot;TreeSyncDiff::add_leaf(): key package error&quot;</span>,
+                ))
             }
         })<span class="question-mark">?</span>);
         <span class="comment">// Find a free leaf and fill it with the new key package.</span>
@@ -1131,12 +1144,13 @@
         <span class="kw">let</span> <span class="ident">phe</span> <span class="op">=</span> <span class="ident">key_package</span>
             .<span class="ident">extension_with_type</span>(<span class="ident">ExtensionType::ParentHash</span>)
             .<span class="ident">ok_or</span>(<span class="ident">TreeSyncDiffError::MissingParentHash</span>)<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="ident">phe</span>
+        <span class="kw">let</span> <span class="ident">key_package_parent_hash</span> <span class="op">=</span> <span class="ident">phe</span>
             .<span class="ident">as_parent_hash_extension</span>()
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">TreeSyncDiffError::LibraryError</span>)<span class="question-mark">?</span>
-            .<span class="ident">parent_hash</span>()
-            <span class="op">!</span><span class="op">=</span> <span class="ident">parent_hash</span>
-        {
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                <span class="ident">LibraryError::custom</span>(<span class="string">&quot;apply_received_update-path(): No parent hash etxension&quot;</span>)
+            })<span class="question-mark">?</span>
+            .<span class="ident">parent_hash</span>();
+        <span class="kw">if</span> <span class="ident">key_package_parent_hash</span> <span class="op">!</span><span class="op">=</span> <span class="ident">parent_hash</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TreeSyncDiffError::ParentHashMismatch</span>);
         };
 
@@ -1145,7 +1159,9 @@
             <span class="kw">if</span> <span class="kw">let</span> <span class="ident">KeyPackageError::CryptoError</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">e</span> {
                 <span class="ident">TreeSyncDiffError::CryptoError</span>(<span class="ident">e</span>)
             } <span class="kw">else</span> {
-                <span class="ident">TreeSyncDiffError::LibraryError</span>
+                <span class="ident">TreeSyncDiffError::LibraryError</span>(<span class="ident">LibraryError::custom</span>(
+                    <span class="string">&quot;TreeSynDiff::apply_received_update_path(): key package error&quot;</span>,
+                ))
             }
         })<span class="question-mark">?</span>);
         <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">replace_leaf</span>(<span class="ident">sender_leaf_index</span>, <span class="ident">node</span>.<span class="ident">into</span>())<span class="question-mark">?</span>;
@@ -1235,7 +1251,7 @@
             <span class="kw">let</span> <span class="ident">leaf_node</span> <span class="op">=</span> <span class="ident">leaf</span>
                 .<span class="ident">node</span>()
                 .<span class="ident">as_ref</span>()
-                .<span class="ident">ok_or</span>(<span class="ident">TreeSyncDiffError::LibraryError</span>)<span class="question-mark">?</span>;
+                .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;filter_resolution(): Node was empty.&quot;</span>))<span class="question-mark">?</span>;
             <span class="kw">let</span> <span class="ident">leaf</span> <span class="op">=</span> <span class="ident">leaf_node</span>.<span class="ident">as_leaf_node</span>()<span class="question-mark">?</span>;
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">position</span>) <span class="op">=</span> <span class="ident">resolution</span>
                 .<span class="ident">iter</span>()
@@ -1540,7 +1556,7 @@
         <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">node</span>(<span class="ident">leaf_id</span>)<span class="question-mark">?</span>;
         <span class="kw">match</span> <span class="ident">node</span>.<span class="ident">node</span>() {
             <span class="prelude-val">Some</span>(<span class="ident">node</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">node</span>.<span class="ident">as_leaf_node</span>()<span class="question-mark">?</span>),
-            <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">TreeSyncDiffError::LibraryError</span>),
+            <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">LibraryError::custom</span>(<span class="string">&quot;own_leaf(): Node was empty.&quot;</span>).<span class="ident">into</span>()),
         }
     }
 
@@ -1632,10 +1648,15 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hash_ref</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">KeyPackageRef</span>, <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">node</span>(<span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">leaf</span>(<span class="self">self</span>.<span class="ident">own_leaf_index</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">Node::LeafNode</span>(<span class="ident">node</span>)) <span class="op">=</span> <span class="ident">node</span>.<span class="ident">node</span>() {
-            <span class="ident">node</span>.<span class="ident">key_package_ref</span>()
-                .<span class="ident">ok_or</span>(<span class="ident">TreeSyncDiffError::LibraryError</span>)
+            <span class="ident">node</span>.<span class="ident">key_package_ref</span>().<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                <span class="ident">TreeSyncDiffError::LibraryError</span>(<span class="ident">LibraryError::custom</span>(
+                    <span class="string">&quot;TreeSynDiff::hash_ref(): missing key package ref&quot;</span>,
+                ))
+            })
         } <span class="kw">else</span> {
-            <span class="prelude-val">Err</span>(<span class="ident">TreeSyncDiffError::LibraryError</span>)
+            <span class="prelude-val">Err</span>(<span class="ident">TreeSyncDiffError::LibraryError</span>(<span class="ident">LibraryError::custom</span>(
+                <span class="string">&quot;TreeSynDiff::hash_ref(): missing leaf node&quot;</span>,
+            )))
         }
     }
 }
@@ -1643,7 +1664,6 @@
 <span class="macro">implement_error!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TreeSyncDiffError</span> {
         <span class="ident">Simple</span> {
-            <span class="ident">LibraryError</span> <span class="op">=</span> <span class="string">&quot;An unrecoverable error has occurred.&quot;</span>,
             <span class="ident">PathLengthError</span> <span class="op">=</span> <span class="string">&quot;The given path does not have the length of the given leaf&#39;s direct path.&quot;</span>,
             <span class="ident">MissingParentHash</span> <span class="op">=</span> <span class="string">&quot;The given key package does not contain a parent hash extension.&quot;</span>,
             <span class="ident">ParentHashMismatch</span> <span class="op">=</span> <span class="string">&quot;The parent hash of the given key package is invalid.&quot;</span>,
@@ -1653,10 +1673,10 @@
             <span class="ident">NoPrivateKeyFound</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t find a fitting private key in the filtered resolution of the given leaf index.&quot;</span>,
         }
         <span class="ident">Complex</span> {
+            <span class="ident">LibraryError</span>(<span class="ident">LibraryError</span>) <span class="op">=</span> <span class="string">&quot;A LibraryError occurred.&quot;</span>,
             <span class="ident">NodeTypeError</span>(<span class="ident">NodeError</span>) <span class="op">=</span> <span class="string">&quot;We found a node with an unexpected type.&quot;</span>,
             <span class="ident">TreeSyncNodeError</span>(<span class="ident">TreeSyncNodeError</span>) <span class="op">=</span> <span class="string">&quot;Error computing tree hash.&quot;</span>,
             <span class="ident">TreeDiffError</span>(<span class="ident">MlsBinaryTreeDiffError</span>) <span class="op">=</span> <span class="string">&quot;An error occurred while operating on the diff.&quot;</span>,
-            <span class="ident">CredentialError</span>(<span class="ident">CredentialError</span>) <span class="op">=</span> <span class="string">&quot;An error occurred while signing a `KeyPackage`.&quot;</span>,
             <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span> <span class="string">&quot;An error occurred during key derivation.&quot;</span>,
             <span class="ident">DerivationError</span>(<span class="ident">PathSecretError</span>) <span class="op">=</span> <span class="string">&quot;An error occurred during PathSecret derivation.&quot;</span>,
             <span class="ident">ParentNodeError</span>(<span class="ident">ParentNodeError</span>) <span class="op">=</span> <span class="string">&quot;An error occurred during path derivation.&quot;</span>,
