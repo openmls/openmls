@@ -5,7 +5,7 @@
 
 use crate::config::ConfigError;
 use crate::credentials::CredentialError;
-use crate::error::ErrorString;
+use crate::error::LibraryError;
 use crate::framing::MlsCiphertextError;
 use crate::framing::ValidationError;
 use crate::group::errors::QueuedProposalError;
@@ -29,7 +29,7 @@ implement_error! {
             IncompatibleWireFormat = "The incoming message's wire format was not compatible with the wire format policy for incoming messages.",
         }
         Complex {
-            LibraryError(ErrorString) =
+            LibraryError(LibraryError) =
                 "An internal library error occurred. Additional detail is provided.",
             Config(ConfigError) =
                 "See [`ConfigError`](`crate::config::ConfigError`) for details",
