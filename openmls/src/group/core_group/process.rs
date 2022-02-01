@@ -187,7 +187,6 @@ impl CoreGroup {
         // Merge the staged commit into the group state and store the secret tree from the
         // previous epoch in the message secrets store.
         if let Some(message_secrets) = self.merge_commit(staged_commit)? {
-            // let leaves = leaves.into_iter().map(|(i, kp)| (i, kp.hash_ref(crypto_backend).unwrap())).collect();
             self.message_secrets_store
                 .add(past_epoch, message_secrets, my_leaves);
         }

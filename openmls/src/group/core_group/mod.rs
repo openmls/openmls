@@ -659,7 +659,8 @@ impl CoreGroup {
         }
     }
 
-    /// Get the message secrets. Either from the secrets store or from the group.
+    /// Get the message secrets and leaves for the given epoch. Either from the
+    /// secrets store or from the group.
     pub(crate) fn message_secrets_and_leaves_mut<'secret, 'group: 'secret>(
         &'group mut self,
         epoch: GroupEpoch,
