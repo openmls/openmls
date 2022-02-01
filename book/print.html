@@ -152,7 +152,13 @@ Clients need to choose a few parameters to create a <code>CredentialBundle</code
 <pre><code class="language-rust no_run noplayground">    let credential = credential_bundle.credential().clone();
     backend
         .key_store()
-        .store(credential.signature_key(), &amp;credential_bundle)
+        .store(
+            &amp;credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect(&quot;Error serializing signature key.&quot;),
+            &amp;credential_bundle,
+        )
         .expect(&quot;An unexpected error occurred.&quot;);
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="creating-key-packges"><a class="header" href="#creating-key-packges">Creating key packges</a></h1>
@@ -173,7 +179,12 @@ Clients need to choose a few parameters to create a <code>CredentialBundle</code
     // Fetch the credential bundle from the key store
     let credential_bundle = backend
         .key_store()
-        .read(credential.signature_key())
+        .read(
+            &amp;credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect(&quot;Error serializing signature key.&quot;),
+        )
         .expect(&quot;An unexpected error occurred.&quot;);
 
     // Create the key package bundle
@@ -229,7 +240,12 @@ Clients need to choose a few parameters to create a <code>CredentialBundle</code
     // Fetch the credential bundle from the key store
     let credential_bundle = backend
         .key_store()
-        .read(credential.signature_key())
+        .read(
+            &amp;credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect(&quot;Error serializing signature key.&quot;),
+        )
         .expect(&quot;An unexpected error occurred.&quot;);
 
     // Create the key package bundle

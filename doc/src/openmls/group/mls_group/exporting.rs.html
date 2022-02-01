@@ -48,7 +48,16 @@
 <span id="47">47</span>
 <span id="48">48</span>
 <span id="49">49</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::PublicGroupState</span>;
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">tls_codec::Serialize</span>;
+
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::PublicGroupState</span>;
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
@@ -90,7 +99,12 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PublicGroupState</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">credential_bundle</span>: <span class="ident">CredentialBundle</span> <span class="op">=</span> <span class="ident">backend</span>
             .<span class="ident">key_store</span>()
-            .<span class="ident">read</span>(<span class="self">self</span>.<span class="ident">credential</span>()<span class="question-mark">?</span>.<span class="ident">signature_key</span>())
+            .<span class="ident">read</span>(
+                <span class="kw-2">&amp;</span><span class="self">self</span>
+                    .<span class="ident">credential</span>()<span class="question-mark">?</span>
+                    .<span class="ident">signature_key</span>()
+                    .<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>,
+            )
             .<span class="ident">ok_or</span>(<span class="ident">MlsGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="self">self</span>
             .<span class="ident">group</span>

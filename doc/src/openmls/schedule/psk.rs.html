@@ -351,6 +351,10 @@
 <span id="350">350</span>
 <span id="351">351</span>
 <span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Pre shared keys.</span>
 <span class="doccomment">//! ```text</span>
 <span class="doccomment">//! enum {</span>
@@ -653,7 +657,11 @@
         <span class="comment">// Fetch the PskBundles from the key store and make sure we have all of them</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">psk_bundles</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PskBundle</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
         <span class="kw">for</span> <span class="ident">psk_id</span> <span class="kw">in</span> <span class="ident">psk_ids</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">psk_bundle</span>) <span class="op">=</span> <span class="ident">backend</span>.<span class="ident">key_store</span>().<span class="ident">read</span>(<span class="kw-2">&amp;</span><span class="ident">psk_id</span>) {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">psk_bundle</span>) <span class="op">=</span> <span class="ident">backend</span>.<span class="ident">key_store</span>().<span class="ident">read</span>(
+                <span class="kw-2">&amp;</span><span class="ident">psk_id</span>
+                    .<span class="ident">tls_serialize_detached</span>()
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PskSecretError::EncodingError</span>)<span class="question-mark">?</span>,
+            ) {
                 <span class="ident">psk_bundles</span>.<span class="ident">push</span>(<span class="ident">psk_bundle</span>);
             } <span class="kw">else</span> {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">PskSecretError::KeyNotFound</span>);

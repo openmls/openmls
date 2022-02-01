@@ -149,7 +149,13 @@ Clients need to choose a few parameters to create a <code>CredentialBundle</code
 <pre><code class="language-rust no_run noplayground">    let credential = credential_bundle.credential().clone();
     backend
         .key_store()
-        .store(credential.signature_key(), &amp;credential_bundle)
+        .store(
+            &amp;credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect(&quot;Error serializing signature key.&quot;),
+            &amp;credential_bundle,
+        )
         .expect(&quot;An unexpected error occurred.&quot;);
 </code></pre>
 

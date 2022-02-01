@@ -113,7 +113,9 @@
 <span id="112">112</span>
 <span id="113">113</span>
 <span id="114">114</span>
+<span id="115">115</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">core_group::create_commit_params::CreateCommitParams</span>;
+<span class="kw">use</span> <span class="ident">tls_codec::Serialize</span>;
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
@@ -137,7 +139,7 @@
         <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">credential</span>()<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">credential_bundle</span>: <span class="ident">CredentialBundle</span> <span class="op">=</span> <span class="ident">backend</span>
             .<span class="ident">key_store</span>()
-            .<span class="ident">read</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
+            .<span class="ident">read</span>(<span class="kw-2">&amp;</span><span class="ident">credential</span>.<span class="ident">signature_key</span>().<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>)
             .<span class="ident">ok_or</span>(<span class="ident">MlsGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Create Commit over all proposals. If a `KeyPackageBundle` was passed</span>
@@ -192,7 +194,7 @@
         <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">credential</span>()<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">credential_bundle</span>: <span class="ident">CredentialBundle</span> <span class="op">=</span> <span class="ident">backend</span>
             .<span class="ident">key_store</span>()
-            .<span class="ident">read</span>(<span class="ident">credential</span>.<span class="ident">signature_key</span>())
+            .<span class="ident">read</span>(<span class="kw-2">&amp;</span><span class="ident">credential</span>.<span class="ident">signature_key</span>().<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>)
             .<span class="ident">ok_or</span>(<span class="ident">MlsGroupError::NoMatchingCredentialBundle</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">treesync</span>();

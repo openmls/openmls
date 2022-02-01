@@ -146,7 +146,12 @@
     // Fetch the credential bundle from the key store
     let credential_bundle = backend
         .key_store()
-        .read(credential.signature_key())
+        .read(
+            &amp;credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect(&quot;Error serializing signature key.&quot;),
+        )
         .expect(&quot;An unexpected error occurred.&quot;);
 
     // Create the key package bundle
