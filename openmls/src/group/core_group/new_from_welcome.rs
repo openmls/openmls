@@ -134,7 +134,7 @@ impl CoreGroup {
         )?;
 
         let serialized_group_context = group_context.tls_serialize_detached()?;
-        // TODO #141: Implement PSK
+        // TODO #751: Implement PSK
         key_schedule.add_context(backend, &serialized_group_context)?;
         let epoch_secrets = key_schedule.epoch_secrets(backend)?;
 
