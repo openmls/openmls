@@ -2,6 +2,82 @@
 //!
 //! Each module has their own errors it is returning. This module will defines
 //! helper macros and functions to define OpenMLS errors.
+use std::fmt::Display;
+
+use openmls_traits::types::CryptoError;
+use thiserror::Error;
+use tls_codec::Error as TlsCodecError;
+
+/// Generic error type that indicates unrecoverable errors in the library.
+///
+/// This error has 3 subtypes:
+///
+/// **MissingBoundsCheck**
+///
+/// This error is returned when the library tries to serialize data that is too big for the
+/// MLS structs. In particular, when element lists contain more elements than the theoretical maximum
+/// defined in the spec, the serialization will fail. This should not happen when all input values are checked.
+/// TODO: #78
+///
+/// **CryptoEror**
+///
+/// This error is returned if the underlying crypto provider encountered an unexpected error. Possible reasons
+/// for this could be: the implementation of the crypto provider is not correct, the key material is not correct,
+/// the crypto provider does not support all functions required. Another reason could be that the OpenMLS library
+/// does not use the crypto provider API correctly.
+///
+/// **Custom**
+///
+/// This error is returned in situations where the implementation would otherwise use an `unwrap()`.
+/// If applications receive this error, it clearly indicates an implementation mistake in OpenMLS. The error
+/// includes a string that can give some more context about where the error originated and helps debugging.
+///
+/// In all cases, when a `LibraryError` is returned, applications should try to recover gracefully from it.
+/// It is recommended to log the error for potential debugging.
+#[derive(Error, Debug, PartialEq, Clone)]
+pub struct LibraryError {
+    internal: InternalLibraryError,
+}
+
+impl LibraryError {
+    /// A custom error (typically to avoid an unwrap())
+    pub(crate) fn custom(s: &'static str) -> Self {
+        Self {
+            internal: InternalLibraryError::Custom(s),
+        }
+    }
+
+    /// Used when encoding doesn't work because of missing bound checks
+    pub(crate) fn missing_bound_check(e: TlsCodecError) -> Self {
+        Self {
+            internal: InternalLibraryError::MissingBoundsCheck(e),
+        }
+    }
+
+    /// Used when the crypto provider returns an unexpected error
+    pub(crate) fn unexpected_crypto_error(e: CryptoError) -> Self {
+        Self {
+            internal: InternalLibraryError::CryptoError(e),
+        }
+    }
+}
+
+impl Display for LibraryError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.internal)
+    }
+}
+
+/// Internal enum to differentiate between the different types of library errors
+#[derive(Error, Debug, PartialEq, Clone)]
+enum InternalLibraryError {
+    #[error(transparent)]
+    MissingBoundsCheck(#[from] TlsCodecError),
+    #[error(transparent)]
+    CryptoError(#[from] CryptoError),
+    #[error("Custom library error: {0}")]
+    Custom(&'static str),
+}
 
 // Macro helpers
 
