@@ -26,7 +26,7 @@ impl MlsGroup {
             .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
         // Create Commit over all proposals. If a `KeyPackageBundle` was passed
-        // in, use it to create an update proposal by value. TODO #141
+        // in, use it to create an update proposal by value. TODO #751
         let create_commit_result = match key_package_bundle_option {
             Some(kpb) => {
                 let update_proposal = Proposal::Update(UpdateProposal {

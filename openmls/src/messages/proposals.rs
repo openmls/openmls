@@ -4,6 +4,7 @@ use crate::{
         *,
     },
     config::ProtocolVersion,
+    error::LibraryError,
     extensions::Extension,
     group::GroupId,
     key_packages::*,
@@ -157,9 +158,12 @@ impl ProposalRef {
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         proposal: &Proposal,
-    ) -> Result<Self, ProposalError> {
-        let encoded = proposal.tls_serialize_detached()?;
-        Ok(Self::new(&encoded, ciphersuite, backend.crypto())?)
+    ) -> Result<Self, LibraryError> {
+        let encoded = proposal
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
+        Self::new(&encoded, ciphersuite, backend.crypto())
+            .map_err(LibraryError::unexpected_crypto_error)
     }
 }
 
