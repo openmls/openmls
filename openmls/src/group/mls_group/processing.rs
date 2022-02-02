@@ -1,3 +1,5 @@
+//! Processing functions of an [`MlsGroup`] for incoming messages.
+
 use std::mem;
 
 use core_group::{

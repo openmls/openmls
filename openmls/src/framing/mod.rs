@@ -33,12 +33,16 @@ pub use validation::*;
 // Tests
 #[cfg(test)]
 mod test_framing;
+
+/// Wire format of MLS messages.
 #[derive(
     PartialEq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 #[repr(u8)]
 pub enum WireFormat {
+    /// Plaintext message
     MlsPlaintext = 1,
+    /// Encrypted message
     MlsCiphertext = 2,
 }
 

@@ -8,7 +8,6 @@
 use crate::ciphersuite::{AeadNonce, *};
 use crate::tree::{index::SecretTreeLeafIndex, secret_tree::*};
 
-use super::index::SecretTreeNodeIndex;
 use super::*;
 
 /// Stores the configuration parameters for sender ratchets.
@@ -168,7 +167,6 @@ impl SenderRatchet {
         derive_tree_secret(
             secret,
             "secret",
-            SecretTreeNodeIndex::from(self.index).as_u32(),
             self.generation,
             ciphersuite.hash_length(),
             backend,
@@ -182,11 +180,9 @@ impl SenderRatchet {
         secret: &Secret,
         generation: u32,
     ) -> Result<RatchetSecrets, SecretTreeError> {
-        let tree_index = SecretTreeNodeIndex::from(self.index).as_u32();
         let nonce = derive_tree_secret(
             secret,
             "nonce",
-            tree_index,
             generation,
             ciphersuite.aead_nonce_length(),
             backend,
@@ -194,7 +190,6 @@ impl SenderRatchet {
         let key = derive_tree_secret(
             secret,
             "key",
-            tree_index,
             generation,
             ciphersuite.aead_key_length(),
             backend,

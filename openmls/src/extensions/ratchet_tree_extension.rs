@@ -27,6 +27,7 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 use super::{Deserialize, Serialize};
 use crate::treesync::node::Node;
 
+/// Ratchet Tree Extension.
 #[derive(
     PartialEq, Clone, Debug, Default, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
