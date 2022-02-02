@@ -180,6 +180,26 @@
 <span id="179">179</span>
 <span id="180">180</span>
 <span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">core_group</span>::{<span class="ident">proposals::QueuedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
 
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">proposals::ProposalStore</span>, <span class="kw-2">*</span>};
@@ -238,7 +258,11 @@
         <span class="comment">//  - Prepares ValSem247 by setting the right credential. The remainder</span>
         <span class="comment">//    of ValSem247 is validated as part of ValSem010.</span>
         <span class="comment">// Preconfigured senders are not supported yet #106/#151.</span>
-        <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="ident">decrypted_message</span>.<span class="ident">credential</span>(<span class="self">self</span>.<span class="ident">treesync</span>())<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="ident">decrypted_message</span>.<span class="ident">credential</span>(
+            <span class="self">self</span>.<span class="ident">treesync</span>(),
+            <span class="self">self</span>.<span class="ident">message_secrets_store</span>
+                .<span class="ident">leaves_for_epoch</span>(<span class="ident">decrypted_message</span>.<span class="ident">plaintext</span>().<span class="ident">epoch</span>()),
+        )<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="ident">UnverifiedMessage::from_decrypted_message</span>(
             <span class="ident">decrypted_message</span>,
@@ -351,10 +375,26 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="comment">// Save the past epoch</span>
         <span class="kw">let</span> <span class="ident">past_epoch</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">context</span>().<span class="ident">epoch</span>();
+        <span class="comment">// We may need to keep a mapping from key package references to indices.</span>
+        <span class="kw">let</span> <span class="ident">leaves</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">full_leaves</span>()<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">my_leaves</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">leaves</span>.<span class="ident">len</span>());
+        <span class="kw">for</span> (<span class="kw-2">&amp;</span><span class="ident">i</span>, <span class="kw">_</span>) <span class="kw">in</span> <span class="ident">leaves</span>.<span class="ident">iter</span>() {
+            <span class="ident">my_leaves</span>.<span class="ident">push</span>((
+                <span class="ident">i</span>,
+                <span class="self">self</span>.<span class="ident">treesync</span>()
+                    .<span class="ident">leaf_id</span>(<span class="ident">i</span>)
+                    .<span class="ident">ok_or</span>(<span class="ident">CoreGroupError::LibraryError</span>(<span class="ident">LibraryError::custom</span>(
+                        <span class="string">&quot;Unable to get the key package reference for a leaf from \
+                         tree. This indicates a bug in the library where the tree \
+                         isn&#39;t built correctly.&quot;</span>,
+                    )))<span class="question-mark">?</span>,
+            ))
+        }
         <span class="comment">// Merge the staged commit into the group state and store the secret tree from the</span>
         <span class="comment">// previous epoch in the message secrets store.</span>
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">message_secrets</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">merge_commit</span>(<span class="ident">staged_commit</span>)<span class="question-mark">?</span> {
-            <span class="self">self</span>.<span class="ident">message_secrets_store</span>.<span class="ident">add</span>(<span class="ident">past_epoch</span>, <span class="ident">message_secrets</span>);
+            <span class="self">self</span>.<span class="ident">message_secrets_store</span>
+                .<span class="ident">add</span>(<span class="ident">past_epoch</span>, <span class="ident">message_secrets</span>, <span class="ident">my_leaves</span>);
         }
         <span class="comment">// Empty the proposal store</span>
         <span class="ident">proposal_store</span>.<span class="ident">empty</span>();

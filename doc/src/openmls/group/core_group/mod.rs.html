@@ -729,6 +729,30 @@
 <span id="728">728</span>
 <span id="729">729</span>
 <span id="730">730</span>
+<span id="731">731</span>
+<span id="732">732</span>
+<span id="733">733</span>
+<span id="734">734</span>
+<span id="735">735</span>
+<span id="736">736</span>
+<span id="737">737</span>
+<span id="738">738</span>
+<span id="739">739</span>
+<span id="740">740</span>
+<span id="741">741</span>
+<span id="742">742</span>
+<span id="743">743</span>
+<span id="744">744</span>
+<span id="745">745</span>
+<span id="746">746</span>
+<span id="747">747</span>
+<span id="748">748</span>
+<span id="749">749</span>
+<span id="750">750</span>
+<span id="751">751</span>
+<span id="752">752</span>
+<span id="753">753</span>
+<span id="754">754</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Functions in this module should never panic. However, if there is a bug in</span>
@@ -1400,6 +1424,30 @@
                 })
         } <span class="kw">else</span> {
             <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">message_secrets_store</span>.<span class="ident">message_secrets_mut</span>())
+        }
+    }
+
+    <span class="doccomment">/// Get the message secrets and leaves for the given epoch. Either from the</span>
+    <span class="doccomment">/// secrets store or from the group.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Note that the leaves vector is empty for message secrets of the current</span>
+    <span class="doccomment">/// epoch. The caller can use treesync in this case.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">message_secrets_and_leaves_mut</span><span class="op">&lt;</span><span class="lifetime">&#39;secret</span>, <span class="lifetime">&#39;group</span>: <span class="lifetime">&#39;secret</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;group</span> <span class="kw-2">mut</span> <span class="self">self</span>,
+        <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;secret</span> <span class="kw-2">mut</span> <span class="ident">MessageSecrets</span>, <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">u32</span>, <span class="ident">KeyPackageRef</span>)<span class="op">&gt;</span>), <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="ident">epoch</span> <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">context</span>().<span class="ident">epoch</span>() {
+            <span class="self">self</span>.<span class="ident">message_secrets_store</span>
+                .<span class="ident">secrets_and_leaves_for_epoch_mut</span>(<span class="ident">epoch</span>)
+                .<span class="ident">ok_or</span>({
+                    <span class="ident">CoreGroupError::MlsCiphertextError</span>(<span class="ident">MlsCiphertextError::SecretTreeError</span>(
+                        <span class="ident">SecretTreeError::TooDistantInThePast</span>,
+                    ))
+                })
+        } <span class="kw">else</span> {
+            <span class="comment">// No need for leaves here. The tree of the current epoch is</span>
+            <span class="comment">// available to the caller.</span>
+            <span class="prelude-val">Ok</span>((<span class="self">self</span>.<span class="ident">message_secrets_store</span>.<span class="ident">message_secrets_mut</span>(), <span class="ident">Vec::new</span>()))
         }
     }
 
