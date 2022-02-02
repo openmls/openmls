@@ -8,7 +8,7 @@ pub struct Signature {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(any(feature = "test-utils", test), derive(PartialEq))]
 pub struct SignaturePrivateKey {
     signature_scheme: SignatureScheme,
     value: Vec<u8>,
