@@ -12,7 +12,11 @@ fn test_secret_tree_store(ciphersuite: &'static Ciphersuite, backend: &impl Open
         MessageSecretsStore::new_with_secret(3, MessageSecrets::random(ciphersuite, backend));
 
     // Add message secrets to the store
-    message_secrets_store.add(GroupEpoch(0), MessageSecrets::random(ciphersuite, backend));
+    message_secrets_store.add(
+        GroupEpoch(0),
+        MessageSecrets::random(ciphersuite, backend),
+        Vec::new(),
+    );
 
     // Make sure we can access the message secrets we just stored
     assert!(message_secrets_store
@@ -21,7 +25,11 @@ fn test_secret_tree_store(ciphersuite: &'static Ciphersuite, backend: &impl Open
 
     // Add 5 more message secrets, this should drop trees from earlier epochs
     for i in 1..6u64 {
-        message_secrets_store.add(GroupEpoch(i), MessageSecrets::random(ciphersuite, backend));
+        message_secrets_store.add(
+            GroupEpoch(i),
+            MessageSecrets::random(ciphersuite, backend),
+            Vec::new(),
+        );
     }
 
     // These epochs should be in the store
@@ -60,7 +68,11 @@ fn test_empty_secret_tree_store(
         MessageSecretsStore::new_with_secret(0, MessageSecrets::random(ciphersuite, backend));
 
     // Add message secrets to the store
-    message_secrets_store.add(GroupEpoch(0), MessageSecrets::random(ciphersuite, backend));
+    message_secrets_store.add(
+        GroupEpoch(0),
+        MessageSecrets::random(ciphersuite, backend),
+        Vec::new(),
+    );
 
     // Make sure we cannot access the message secrets we just stored
     assert!(message_secrets_store
