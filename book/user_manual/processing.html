@@ -165,7 +165,7 @@
 <p>Application messages simply return the original byte slice:</p>
 <pre><code class="language-rust no_run noplayground">    if let ProcessedMessage::ApplicationMessage(application_message) = processed_message {
         // Check the message
-        assert_eq!(application_message.message(), b&quot;Hi, I'm Alice!&quot;);
+        assert_eq!(application_message.into_bytes(), b&quot;Hi, I'm Alice!&quot;);
     }
 </code></pre>
 <h3 id="proposals"><a class="header" href="#proposals">Proposals</a></h3>

@@ -199,7 +199,6 @@
 <span id="198">198</span>
 <span id="199">199</span>
 <span id="200">200</span>
-<span id="201">201</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">core_group</span>::{<span class="ident">proposals::QueuedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
 
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">proposals::ProposalStore</span>, <span class="kw-2">*</span>};
@@ -317,7 +316,6 @@
                     <span class="ident">MlsPlaintextContentType::Application</span>(<span class="ident">application_message</span>) =&gt; {
                         <span class="ident">ProcessedMessage::ApplicationMessage</span>(<span class="ident">ApplicationMessage::new</span>(
                             <span class="ident">application_message</span>.<span class="ident">as_slice</span>().<span class="ident">to_vec</span>(),
-                            <span class="ident">verified_member_message</span>.<span class="ident">plaintext</span>().<span class="ident">sender</span>(),
                         ))
                     }
                     <span class="ident">MlsPlaintextContentType::Proposal</span>(<span class="ident">_proposal</span>) =&gt; {
