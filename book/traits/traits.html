@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Creating groups - OpenMLS Book</title>
+        <title>Traits - OpenMLS Book</title>
         <!-- Custom HTML head -->
         <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
         <meta name="description" content="">
@@ -75,7 +75,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="../user_manual/index.html"><strong aria-hidden="true">1.</strong> User manual</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../user_manual/identity.html"><strong aria-hidden="true">1.1.</strong> Creating identity keys</a></li><li class="chapter-item expanded "><a href="../user_manual/create_key_package.html"><strong aria-hidden="true">1.2.</strong> Creating key packges</a></li><li class="chapter-item expanded "><a href="../user_manual/group_config.html"><strong aria-hidden="true">1.3.</strong> Group configuration</a></li><li class="chapter-item expanded "><a href="../user_manual/create_group.html" class="active"><strong aria-hidden="true">1.4.</strong> Creating groups</a></li><li class="chapter-item expanded "><a href="../user_manual/join_from_welcome.html"><strong aria-hidden="true">1.5.</strong> Join a group from a Welcome message</a></li><li class="chapter-item expanded "><a href="../user_manual/add_members.html"><strong aria-hidden="true">1.6.</strong> Adding members to a group</a></li><li class="chapter-item expanded "><a href="../user_manual/remove_members.html"><strong aria-hidden="true">1.7.</strong> Removing members from a group</a></li><li class="chapter-item expanded "><a href="../user_manual/updates.html"><strong aria-hidden="true">1.8.</strong> Updating own key package</a></li><li class="chapter-item expanded "><a href="../user_manual/leaving.html"><strong aria-hidden="true">1.9.</strong> Leaving a group</a></li><li class="chapter-item expanded "><a href="../user_manual/application_messages.html"><strong aria-hidden="true">1.10.</strong> Creating application messages</a></li><li class="chapter-item expanded "><a href="../user_manual/commit_to_proposals.html"><strong aria-hidden="true">1.11.</strong> Committing to pending proposals</a></li><li class="chapter-item expanded "><a href="../user_manual/processing.html"><strong aria-hidden="true">1.12.</strong> Processing incoming messages</a></li></ol></li><li class="chapter-item expanded "><a href="../traits/index.html"><strong aria-hidden="true">2.</strong> Traits &amp; External Types</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../traits/traits.html"><strong aria-hidden="true">2.1.</strong> Traits</a></li><li class="chapter-item expanded "><a href="../traits/types.html"><strong aria-hidden="true">2.2.</strong> Types</a></li></ol></li><li class="chapter-item expanded "><a href="../message_validation.html"><strong aria-hidden="true">3.</strong> Message Validation</a></li><li class="chapter-item expanded "><a href="../tree_rewrite.html"><strong aria-hidden="true">4.</strong> Tree Rewrite Project</a></li><li class="chapter-item expanded "><a href="../type_enfored_verification.html"><strong aria-hidden="true">5.</strong> Type-Enforced Verification</a></li><li class="chapter-item expanded "><a href="../performance.html"><strong aria-hidden="true">6.</strong> Performance</a></li><li class="chapter-item expanded "><a href="../forward_secrecy.html"><strong aria-hidden="true">7.</strong> Forward Secrecy</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="../user_manual/index.html"><strong aria-hidden="true">1.</strong> User manual</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../user_manual/identity.html"><strong aria-hidden="true">1.1.</strong> Creating identity keys</a></li><li class="chapter-item expanded "><a href="../user_manual/create_key_package.html"><strong aria-hidden="true">1.2.</strong> Creating key packges</a></li><li class="chapter-item expanded "><a href="../user_manual/group_config.html"><strong aria-hidden="true">1.3.</strong> Group configuration</a></li><li class="chapter-item expanded "><a href="../user_manual/create_group.html"><strong aria-hidden="true">1.4.</strong> Creating groups</a></li><li class="chapter-item expanded "><a href="../user_manual/join_from_welcome.html"><strong aria-hidden="true">1.5.</strong> Join a group from a Welcome message</a></li><li class="chapter-item expanded "><a href="../user_manual/add_members.html"><strong aria-hidden="true">1.6.</strong> Adding members to a group</a></li><li class="chapter-item expanded "><a href="../user_manual/remove_members.html"><strong aria-hidden="true">1.7.</strong> Removing members from a group</a></li><li class="chapter-item expanded "><a href="../user_manual/updates.html"><strong aria-hidden="true">1.8.</strong> Updating own key package</a></li><li class="chapter-item expanded "><a href="../user_manual/leaving.html"><strong aria-hidden="true">1.9.</strong> Leaving a group</a></li><li class="chapter-item expanded "><a href="../user_manual/application_messages.html"><strong aria-hidden="true">1.10.</strong> Creating application messages</a></li><li class="chapter-item expanded "><a href="../user_manual/commit_to_proposals.html"><strong aria-hidden="true">1.11.</strong> Committing to pending proposals</a></li><li class="chapter-item expanded "><a href="../user_manual/processing.html"><strong aria-hidden="true">1.12.</strong> Processing incoming messages</a></li></ol></li><li class="chapter-item expanded "><a href="../traits/index.html"><strong aria-hidden="true">2.</strong> Traits &amp; External Types</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="../traits/traits.html" class="active"><strong aria-hidden="true">2.1.</strong> Traits</a></li><li class="chapter-item expanded "><a href="../traits/types.html"><strong aria-hidden="true">2.2.</strong> Types</a></li></ol></li><li class="chapter-item expanded "><a href="../message_validation.html"><strong aria-hidden="true">3.</strong> Message Validation</a></li><li class="chapter-item expanded "><a href="../tree_rewrite.html"><strong aria-hidden="true">4.</strong> Tree Rewrite Project</a></li><li class="chapter-item expanded "><a href="../type_enfored_verification.html"><strong aria-hidden="true">5.</strong> Type-Enforced Verification</a></li><li class="chapter-item expanded "><a href="../performance.html"><strong aria-hidden="true">6.</strong> Performance</a></li><li class="chapter-item expanded "><a href="../forward_secrecy.html"><strong aria-hidden="true">7.</strong> Forward Secrecy</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -134,54 +134,103 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="creating-groups"><a class="header" href="#creating-groups">Creating groups</a></h1>
-<p>Before a group can be created, a group configuration (<code>MlsGroupConfiguration</code>) needs to be defined. The default values of configuration parameters are picked for safety, however be sure to check all parameters carefully to ascertain if they match your implementation's requirements. See <a href="group_config.html">Group configuration</a> for more details.</p>
-<p>In addition to the group configuration, the client should define all supported and requitred extension for the group. The negotatiation mechanism for extension in MLS consists in setting an intial list of extensions at group creation time and choosing key packages of subsequent new members accordingly.</p>
-<p>In practice, the supported and required extensions are set by adding them to the initial <code>KeyPackage</code> of the creator:</p>
-<pre><code class="language-rust no_run noplayground">    // Define extensions
-    let extensions = vec![Extension::LifeTime(LifetimeExtension::new(
-        60 * 60 * 24 * 90, // Maximum lifetime of 90 days, expressed in seconds
-    ))];
+                        <h1 id="openmls-traits"><a class="header" href="#openmls-traits">OpenMLS Traits</a></h1>
+<p>The OpenMLS project provides two default implementations for these traits</p>
+<ul>
+<li><a href="https://crates.io/crates/openmls_rust_crypto">Rust Crypto</a></li>
+<li><a href="https://crates.io/crates/openmls_evercrypt_backend">Evercrypt</a></li>
+</ul>
+<blockquote>
+<p><strong>⚠️☣️  These traits are responsible for all cryptographic operations and randomness
+within OpenMLS.
+Please ensure you know what you're doing when implementing your own versions.</strong></p>
+</blockquote>
+<h2 id="the-traits"><a class="header" href="#the-traits">The Traits</a></h2>
+<p>There are 4 different traits defined in the <a href="https://crates.io/crates/openmls_traits">OpenMLS traits crate</a>.</p>
+<h3 id="openmlsrand"><a class="header" href="#openmlsrand">OpenMlsRand</a></h3>
+<p>This trait defines two functions to generate arrays and vectors, and is used by
+OpenMLS to generate randomness.</p>
+<pre><code class="language-rust no_run noplayground">pub trait OpenMlsRand {
+    type Error: Debug + Clone + PartialEq + Into&lt;String&gt;;
 
-    // Fetch the credential bundle from the key store
-    let credential_bundle = backend
-        .key_store()
-        .read(
-            &amp;credential
-                .signature_key()
-                .tls_serialize_detached()
-                .expect(&quot;Error serializing signature key.&quot;),
-        )
-        .expect(&quot;An unexpected error occurred.&quot;);
+    /// Fill an array with random bytes.
+    fn random_array&lt;const N: usize&gt;(&amp;self) -&gt; Result&lt;[u8; N], Self::Error&gt;;
 
-    // Create the key package bundle
-    let key_package_bundle =
-        KeyPackageBundle::new(ciphersuites, &amp;credential_bundle, backend, extensions)?;
+    /// Fill a vector of length `len` with bytes.
+    fn random_vec(&amp;self, len: usize) -&gt; Result&lt;Vec&lt;u8&gt;, Self::Error&gt;;
+}
 </code></pre>
-<p>Every group has a unique group ID that needs to be specified at the time of the group creation. The group ID cannot be changed after the group creation and therefore remains immutable throughout the group's lifetime. It should be chosen so that it doesn't collide with any other group IDs in the same system:</p>
-<pre><code class="language-rust no_run noplayground">    let group_id = GroupId::from_slice(b&quot;Test Group&quot;);
+<h3 id="openmlscrypto"><a class="header" href="#openmlscrypto">OpenMlsCrypto</a></h3>
+<p>This trait defines all cryptographic functions required by OpenMLS, in particular</p>
+<ul>
+<li>HKDF</li>
+<li>Hashing</li>
+<li>AEAD</li>
+<li>Signatures</li>
+<li>HPKE</li>
+</ul>
+<pre><code class="language-rust no_run noplayground">pub trait OpenMlsCrypto {
 </code></pre>
-<p>After that the group can be created:</p>
-<pre><code class="language-rust no_run noplayground">    let mut alice_group = MlsGroup::new(
-        backend,
-        &amp;mls_group_config,
-        group_id,
-        alice_key_package
-            .hash_ref(backend.crypto())
-            .expect(&quot;Could not hash KeyPackage.&quot;)
-            .as_slice(),
-    )
-    .expect(&quot;An unexpected error occurred.&quot;);
+<h3 id="openmlskeystore"><a class="header" href="#openmlskeystore">OpenMlsKeyStore</a></h3>
+<p>This trait defines a CRUD API for a key store that is used to store long-term
+key material from OpenMLS.</p>
+<p>The key store provides functions to <code>store</code>, <code>read</code> and <code>delete</code> values.
+Note that it does not allow to update values.
+Instead entries must be deleted and newly stored.</p>
+<pre><code class="language-rust no_run noplayground">/// The Key Store trait
+pub trait OpenMlsKeyStore: Send + Sync {
+    /// The error type returned by the [`OpenMlsKeyStore`].
+    type Error: Debug + Clone + PartialEq + Into&lt;String&gt;;
+
+    /// Store a value `v` that implements the [`KeyStoreValue`] trait for
+    /// serialization for ID `k`.
+    ///
+    /// Returns an error if storing fails.
+    fn store&lt;V: ToKeyStoreValue&gt;(&amp;self, k: &amp;[u8], v: &amp;V) -&gt; Result&lt;(), Self::Error&gt;
+    where
+        Self: Sized;
+
+    /// Read and return a value stored for ID `k` that implements the
+    /// [`KeyStoreValue`] trait for deserialization.
+    ///
+    /// Returns [`None`] if no value is stored for `k` or reading fails.
+    fn read&lt;V: FromKeyStoreValue&gt;(&amp;self, k: &amp;[u8]) -&gt; Option&lt;V&gt;
+    where
+        Self: Sized;
+
+    /// Delete a value stored for ID `k`.
+    ///
+    /// Returns an error if storing fails.
+    fn delete(&amp;self, k: &amp;[u8]) -&gt; Result&lt;(), Self::Error&gt;;
+}
+</code></pre>
+<h3 id="openmlscryptoprovider"><a class="header" href="#openmlscryptoprovider">OpenMlsCryptoProvider</a></h3>
+<p>Additionally, there's a wrapper trait defined that is expected to be passed into
+the public OpenMLS API.</p>
+<pre><code class="language-rust no_run noplayground">pub trait OpenMlsCryptoProvider: Send + Sync {
+    type CryptoProvider: crypto::OpenMlsCrypto;
+    type RandProvider: random::OpenMlsRand;
+    type KeyStoreProvider: key_store::OpenMlsKeyStore;
+
+    /// Get the crypto provider.
+    fn crypto(&amp;self) -&gt; &amp;Self::CryptoProvider;
+
+    /// Get the randomness provider.
+    fn rand(&amp;self) -&gt; &amp;Self::RandProvider;
+
+    /// Get the key store provider.
+    fn key_store(&amp;self) -&gt; &amp;Self::KeyStoreProvider;
+}
 </code></pre>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../user_manual/group_config.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../traits/index.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
-                            <a rel="next" href="../user_manual/join_from_welcome.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next" href="../traits/types.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
                         <div style="clear: both"></div>
@@ -190,10 +239,10 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../user_manual/group_config.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../traits/index.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
-                    <a rel="next" href="../user_manual/join_from_welcome.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next" href="../traits/types.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

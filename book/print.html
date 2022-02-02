@@ -76,7 +76,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="user_manual/index.html"><strong aria-hidden="true">1.</strong> User manual</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="user_manual/identity.html"><strong aria-hidden="true">1.1.</strong> Creating identity keys</a></li><li class="chapter-item expanded "><a href="user_manual/create_key_package.html"><strong aria-hidden="true">1.2.</strong> Creating key packges</a></li><li class="chapter-item expanded "><a href="user_manual/group_config.html"><strong aria-hidden="true">1.3.</strong> Group configuration</a></li><li class="chapter-item expanded "><a href="user_manual/create_group.html"><strong aria-hidden="true">1.4.</strong> Creating groups</a></li><li class="chapter-item expanded "><a href="user_manual/join_from_welcome.html"><strong aria-hidden="true">1.5.</strong> Join a group from a Welcome message</a></li><li class="chapter-item expanded "><a href="user_manual/add_members.html"><strong aria-hidden="true">1.6.</strong> Adding members to a group</a></li><li class="chapter-item expanded "><a href="user_manual/remove_members.html"><strong aria-hidden="true">1.7.</strong> Removing members from a group</a></li><li class="chapter-item expanded "><a href="user_manual/updates.html"><strong aria-hidden="true">1.8.</strong> Updating own key package</a></li><li class="chapter-item expanded "><a href="user_manual/leaving.html"><strong aria-hidden="true">1.9.</strong> Leaving a group</a></li><li class="chapter-item expanded "><a href="user_manual/application_messages.html"><strong aria-hidden="true">1.10.</strong> Creating application messages</a></li><li class="chapter-item expanded "><a href="user_manual/commit_to_proposals.html"><strong aria-hidden="true">1.11.</strong> Committing to pending proposals</a></li><li class="chapter-item expanded "><a href="user_manual/processing.html"><strong aria-hidden="true">1.12.</strong> Processing incoming messages</a></li></ol></li><li class="chapter-item expanded "><a href="message_validation.html"><strong aria-hidden="true">2.</strong> Message Validation</a></li><li class="chapter-item expanded "><a href="tree_rewrite.html"><strong aria-hidden="true">3.</strong> Tree Rewrite Project</a></li><li class="chapter-item expanded "><a href="type_enfored_verification.html"><strong aria-hidden="true">4.</strong> Type-Enforced Verification</a></li><li class="chapter-item expanded "><a href="performance.html"><strong aria-hidden="true">5.</strong> Performance</a></li><li class="chapter-item expanded "><a href="forward_secrecy.html"><strong aria-hidden="true">6.</strong> Forward Secrecy</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="user_manual/index.html"><strong aria-hidden="true">1.</strong> User manual</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="user_manual/identity.html"><strong aria-hidden="true">1.1.</strong> Creating identity keys</a></li><li class="chapter-item expanded "><a href="user_manual/create_key_package.html"><strong aria-hidden="true">1.2.</strong> Creating key packges</a></li><li class="chapter-item expanded "><a href="user_manual/group_config.html"><strong aria-hidden="true">1.3.</strong> Group configuration</a></li><li class="chapter-item expanded "><a href="user_manual/create_group.html"><strong aria-hidden="true">1.4.</strong> Creating groups</a></li><li class="chapter-item expanded "><a href="user_manual/join_from_welcome.html"><strong aria-hidden="true">1.5.</strong> Join a group from a Welcome message</a></li><li class="chapter-item expanded "><a href="user_manual/add_members.html"><strong aria-hidden="true">1.6.</strong> Adding members to a group</a></li><li class="chapter-item expanded "><a href="user_manual/remove_members.html"><strong aria-hidden="true">1.7.</strong> Removing members from a group</a></li><li class="chapter-item expanded "><a href="user_manual/updates.html"><strong aria-hidden="true">1.8.</strong> Updating own key package</a></li><li class="chapter-item expanded "><a href="user_manual/leaving.html"><strong aria-hidden="true">1.9.</strong> Leaving a group</a></li><li class="chapter-item expanded "><a href="user_manual/application_messages.html"><strong aria-hidden="true">1.10.</strong> Creating application messages</a></li><li class="chapter-item expanded "><a href="user_manual/commit_to_proposals.html"><strong aria-hidden="true">1.11.</strong> Committing to pending proposals</a></li><li class="chapter-item expanded "><a href="user_manual/processing.html"><strong aria-hidden="true">1.12.</strong> Processing incoming messages</a></li></ol></li><li class="chapter-item expanded "><a href="traits/index.html"><strong aria-hidden="true">2.</strong> Traits &amp; External Types</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="traits/traits.html"><strong aria-hidden="true">2.1.</strong> Traits</a></li><li class="chapter-item expanded "><a href="traits/types.html"><strong aria-hidden="true">2.2.</strong> Types</a></li></ol></li><li class="chapter-item expanded "><a href="message_validation.html"><strong aria-hidden="true">3.</strong> Message Validation</a></li><li class="chapter-item expanded "><a href="tree_rewrite.html"><strong aria-hidden="true">4.</strong> Tree Rewrite Project</a></li><li class="chapter-item expanded "><a href="type_enfored_verification.html"><strong aria-hidden="true">5.</strong> Type-Enforced Verification</a></li><li class="chapter-item expanded "><a href="performance.html"><strong aria-hidden="true">6.</strong> Performance</a></li><li class="chapter-item expanded "><a href="forward_secrecy.html"><strong aria-hidden="true">7.</strong> Forward Secrecy</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -454,6 +454,261 @@ In case the Commit message also covers Add Proposals that were previously receiv
             .merge_staged_commit(*staged_commit)
             .expect(&quot;Could not merge Commit.&quot;);
     }
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="traits--external-types"><a class="header" href="#traits--external-types">Traits &amp; External Types</a></h1>
+<p>OpenMLS defines a number of traits that have to be implemented in order to use
+OpenMLS.</p>
+<ul>
+<li><a href="traits/./traits.html">Traits</a></li>
+<li><a href="traits/./types.html">External Types</a></li>
+</ul>
+<h2 id="using-the-key-store"><a class="header" href="#using-the-key-store">Using the key store</a></h2>
+<p>The key store is probably one of the most interesting traits because applications
+that use OpenMLS will interact with it.
+See the <a href="traits/./traits.html#openmlskeystore">OpenMlsKeyStore trait</a> description for details
+but note that the key used to store, read, and delete values in the key store has
+to be provided as a byte slice.</p>
+<p>In the following examples we have a <code>ciphersuite</code> and a <code>backend</code> (<code>OpenMlsCryptoProvider</code>).</p>
+<pre><code class="language-rust no_run noplayground">    // First we generate a credential and key package for our user.
+    let credential_bundle = CredentialBundle::new(
+        b&quot;User ID&quot;.to_vec(),
+        CredentialType::Basic,
+        SignatureScheme::from(ciphersuite.name()),
+        backend,
+    )
+    .unwrap();
+    let key_package_bundle =
+        KeyPackageBundle::new(&amp;[ciphersuite.name()], &amp;credential_bundle, backend, vec![])
+            .expect(&quot;Error generating new key package bundle.&quot;);
+
+    // In order to store something in the key store we need to define an ID.
+    // Here we simply take the key package reference.
+    let id = key_package_bundle
+        .key_package()
+        .hash_ref(backend.crypto())
+        .expect(&quot;Failed to hash KeyPackage.&quot;);
+
+    // Now we can store the key_package_bundle.
+    backend
+        .key_store()
+        .store(id.as_slice(), &amp;key_package_bundle)
+</code></pre>
+<p>In order to delete a value the <code>delete</code> is called with the identifier.</p>
+<pre><code class="language-rust no_run noplayground">    backend
+        .key_store()
+        .delete(id.as_slice())
+        .expect(&quot;Error deleting key package bundle&quot;);
+</code></pre>
+<p>Retrieving a value from the key store is as simple as calling <code>read</code>.
+In this example we assume that we got a <code>credential</code> where we want to retrieve
+the credential bundle for, i.e. the private key material.</p>
+<pre><code class="language-rust no_run noplayground">    // In order to read something from the key store we need to define an ID.
+    // Here we simply take the serialized public key of the credential.
+    let id = credential
+        .signature_key()
+        .tls_serialize_detached()
+        .expect(&quot;Error serializing the credential's public key.&quot;);
+
+    let credential_bundle: CredentialBundle = backend
+        .key_store()
+        .read(&amp;id)
+        .expect(&quot;Error retrieving the credential bundle&quot;);
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="openmls-traits"><a class="header" href="#openmls-traits">OpenMLS Traits</a></h1>
+<p>The OpenMLS project provides two default implementations for these traits</p>
+<ul>
+<li><a href="https://crates.io/crates/openmls_rust_crypto">Rust Crypto</a></li>
+<li><a href="https://crates.io/crates/openmls_evercrypt_backend">Evercrypt</a></li>
+</ul>
+<blockquote>
+<p><strong>⚠️☣️  These traits are responsible for all cryptographic operations and randomness
+within OpenMLS.
+Please ensure you know what you're doing when implementing your own versions.</strong></p>
+</blockquote>
+<h2 id="the-traits"><a class="header" href="#the-traits">The Traits</a></h2>
+<p>There are 4 different traits defined in the <a href="https://crates.io/crates/openmls_traits">OpenMLS traits crate</a>.</p>
+<h3 id="openmlsrand"><a class="header" href="#openmlsrand">OpenMlsRand</a></h3>
+<p>This trait defines two functions to generate arrays and vectors, and is used by
+OpenMLS to generate randomness.</p>
+<pre><code class="language-rust no_run noplayground">pub trait OpenMlsRand {
+    type Error: Debug + Clone + PartialEq + Into&lt;String&gt;;
+
+    /// Fill an array with random bytes.
+    fn random_array&lt;const N: usize&gt;(&amp;self) -&gt; Result&lt;[u8; N], Self::Error&gt;;
+
+    /// Fill a vector of length `len` with bytes.
+    fn random_vec(&amp;self, len: usize) -&gt; Result&lt;Vec&lt;u8&gt;, Self::Error&gt;;
+}
+</code></pre>
+<h3 id="openmlscrypto"><a class="header" href="#openmlscrypto">OpenMlsCrypto</a></h3>
+<p>This trait defines all cryptographic functions required by OpenMLS, in particular</p>
+<ul>
+<li>HKDF</li>
+<li>Hashing</li>
+<li>AEAD</li>
+<li>Signatures</li>
+<li>HPKE</li>
+</ul>
+<pre><code class="language-rust no_run noplayground">pub trait OpenMlsCrypto {
+</code></pre>
+<h3 id="openmlskeystore"><a class="header" href="#openmlskeystore">OpenMlsKeyStore</a></h3>
+<p>This trait defines a CRUD API for a key store that is used to store long-term
+key material from OpenMLS.</p>
+<p>The key store provides functions to <code>store</code>, <code>read</code> and <code>delete</code> values.
+Note that it does not allow to update values.
+Instead entries must be deleted and newly stored.</p>
+<pre><code class="language-rust no_run noplayground">/// The Key Store trait
+pub trait OpenMlsKeyStore: Send + Sync {
+    /// The error type returned by the [`OpenMlsKeyStore`].
+    type Error: Debug + Clone + PartialEq + Into&lt;String&gt;;
+
+    /// Store a value `v` that implements the [`KeyStoreValue`] trait for
+    /// serialization for ID `k`.
+    ///
+    /// Returns an error if storing fails.
+    fn store&lt;V: ToKeyStoreValue&gt;(&amp;self, k: &amp;[u8], v: &amp;V) -&gt; Result&lt;(), Self::Error&gt;
+    where
+        Self: Sized;
+
+    /// Read and return a value stored for ID `k` that implements the
+    /// [`KeyStoreValue`] trait for deserialization.
+    ///
+    /// Returns [`None`] if no value is stored for `k` or reading fails.
+    fn read&lt;V: FromKeyStoreValue&gt;(&amp;self, k: &amp;[u8]) -&gt; Option&lt;V&gt;
+    where
+        Self: Sized;
+
+    /// Delete a value stored for ID `k`.
+    ///
+    /// Returns an error if storing fails.
+    fn delete(&amp;self, k: &amp;[u8]) -&gt; Result&lt;(), Self::Error&gt;;
+}
+</code></pre>
+<h3 id="openmlscryptoprovider"><a class="header" href="#openmlscryptoprovider">OpenMlsCryptoProvider</a></h3>
+<p>Additionally, there's a wrapper trait defined that is expected to be passed into
+the public OpenMLS API.</p>
+<pre><code class="language-rust no_run noplayground">pub trait OpenMlsCryptoProvider: Send + Sync {
+    type CryptoProvider: crypto::OpenMlsCrypto;
+    type RandProvider: random::OpenMlsRand;
+    type KeyStoreProvider: key_store::OpenMlsKeyStore;
+
+    /// Get the crypto provider.
+    fn crypto(&amp;self) -&gt; &amp;Self::CryptoProvider;
+
+    /// Get the randomness provider.
+    fn rand(&amp;self) -&gt; &amp;Self::RandProvider;
+
+    /// Get the key store provider.
+    fn key_store(&amp;self) -&gt; &amp;Self::KeyStoreProvider;
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="external-types"><a class="header" href="#external-types">External Types</a></h1>
+<p>For interoperability this crate also defines a number of types and algorithm
+identifiers.</p>
+<p><strong>AEADs</strong></p>
+<p>The following AEADs are defined.</p>
+<pre><code class="language-rust no_run noplayground">pub enum AeadType {
+    /// AES GCM 128
+    Aes128Gcm = 0x0001,
+
+    /// AES GCM 256
+    Aes256Gcm = 0x0002,
+
+    /// ChaCha20 Poly1305
+    ChaCha20Poly1305 = 0x0003,
+}
+</code></pre>
+<p>An AEAD provides the following functions to get the according values for each
+algorithm.</p>
+<ul>
+<li><code>tag_size</code></li>
+<li><code>key_size</code></li>
+<li><code>nonce_size</code></li>
+</ul>
+<p><strong>Hashing</strong></p>
+<p>The following hash algorithms are defined.</p>
+<pre><code class="language-rust no_run noplayground">pub enum HashType {
+    Sha2_256 = 0x04,
+    Sha2_384 = 0x05,
+    Sha2_512 = 0x06,
+}
+</code></pre>
+<p>An hash algorithm provides the following functions to get the according values for each
+algorithm.</p>
+<ul>
+<li><code>size</code></li>
+</ul>
+<p><strong>Signatures</strong></p>
+<p>The following signature schemes are defined.</p>
+<pre><code class="language-rust no_run noplayground">pub enum SignatureScheme {
+    /// ECDSA_SECP256R1_SHA256
+    ECDSA_SECP256R1_SHA256 = 0x0403,
+    /// ECDSA_SECP384R1_SHA384
+    ECDSA_SECP384R1_SHA384 = 0x0503,
+    /// ECDSA_SECP521R1_SHA512
+    ECDSA_SECP521R1_SHA512 = 0x0603,
+    /// ED25519
+    ED25519 = 0x0807,
+    /// ED448
+    ED448 = 0x0808,
+}
+</code></pre>
+<h1 id="hpke-types"><a class="header" href="#hpke-types">HPKE Types</a></h1>
+<p>The HPKE implementation is part of the crypto provider as well.
+The crate therefore defines the necessary types too.</p>
+<p>The HPKE algorithms are defined as follows.</p>
+<pre><code class="language-rust no_run noplayground">pub enum HpkeKemType {
+    /// DH KEM on P256
+    DhKemP256 = 0x0010,
+
+    /// DH KEM on P384
+    DhKemP384 = 0x0011,
+
+    /// DH KEM on P521
+    DhKemP521 = 0x0012,
+
+    /// DH KEM on x25519
+    DhKem25519 = 0x0020,
+
+    /// DH KEM on x448
+    DhKem448 = 0x0021,
+}
+</code></pre>
+<pre><code class="language-rust no_run noplayground">pub enum HpkeKdfType {
+    /// HKDF SHA 256
+    HkdfSha256 = 0x0001,
+
+    /// HKDF SHA 384
+    HkdfSha384 = 0x0002,
+
+    /// HKDF SHA 512
+    HkdfSha512 = 0x0003,
+}
+</code></pre>
+<pre><code class="language-rust no_run noplayground">pub enum HpkeAeadType {
+    /// AES GCM 128
+    AesGcm128 = 0x0001,
+
+    /// AES GCM 256
+    AesGcm256 = 0x0002,
+
+    /// ChaCha20 Poly1305
+    ChaCha20Poly1305 = 0x0003,
+
+    /// Export-only
+    Export = 0xFFFF,
+}
+</code></pre>
+<p>In addition helper structs for <code>HpkeCiphertext</code> and <code>HpkeKeyPair</code> are defined.</p>
+<pre><code class="language-rust no_run noplayground">pub struct HpkeCiphertext {
+    pub kem_output: TlsByteVecU16,
+    pub ciphertext: TlsByteVecU16,
+}
+</code></pre>
+<pre><code class="language-rust no_run noplayground">pub struct HpkeKeyPair {
+    pub private: Vec&lt;u8&gt;,
+    pub public: Vec&lt;u8&gt;,
+}
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="message-validation"><a class="header" href="#message-validation">Message Validation</a></h1>
 <h2 id="validation-steps"><a class="header" href="#validation-steps">Validation steps</a></h2>
