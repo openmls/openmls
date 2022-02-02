@@ -899,6 +899,10 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     let unverified_message = bob_group
         .parse_message(queued_message.into(), backend)
         .expect("Could not parse message.");
+    let sender = unverified_message
+        .credential()
+        .expect("Expected a credential.")
+        .clone();
     let bob_processed_message = bob_group
         .process_unverified_message(unverified_message, None, backend)
         .expect("Could not process unverified message.");
@@ -910,13 +914,8 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         // Check that Alice sent the message
         // TODO #575: Replace this with the adequate API call
         assert_eq!(
-            application_message
-                .sender()
-                .as_key_package_ref()
-                .expect("An unexpected error occurred."),
-            alice_group
-                .key_package_ref()
-                .expect("An unexpected error occurred.")
+            &sender,
+            alice_group.credential().expect("Expected a credential.")
         );
     } else {
         unreachable!("Expected an ApplicationMessage.");

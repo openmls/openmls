@@ -429,30 +429,16 @@ pub enum ProcessedMessage {
 #[derive(Debug, PartialEq)]
 pub struct ApplicationMessage {
     message: Vec<u8>,
-    sender: Sender,
 }
 
 impl ApplicationMessage {
     /// Create a new [ApplicationMessage].
-    pub(crate) fn new(message: Vec<u8>, sender: &Sender) -> Self {
-        Self {
-            message,
-            sender: sender.clone(),
-        }
+    pub(crate) fn new(message: Vec<u8>) -> Self {
+        Self { message }
     }
 
-    /// Get a reference to the message.
-    pub fn message(&self) -> &[u8] {
-        &self.message
-    }
-
-    /// Get a reference to the sender.
-    pub fn sender(&self) -> &Sender {
-        &self.sender
-    }
-
-    /// Get the message and the sender and consume the [ApplicationMessage].
-    pub fn into_parts(self) -> (Vec<u8>, Sender) {
-        (self.message, self.sender)
+    /// Get the inner message.
+    pub fn message(self) -> Vec<u8> {
+        self.message
     }
 }
