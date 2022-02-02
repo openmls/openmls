@@ -60,6 +60,7 @@ use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU8, TlsVecU16};
     TlsSize,
 )]
 #[repr(u8)]
+#[allow(missing_docs)]
 pub enum PskType {
     External = 1,
     Reinit = 2,
@@ -169,6 +170,7 @@ impl BranchPsk {
 
 /// PSK enum that can contain the different PSK types
 #[derive(Debug, PartialEq, Clone, Hash, Serialize, Deserialize)]
+#[allow(missing_docs)]
 pub enum Psk {
     External(ExternalPsk),
     Reinit(ReinitPsk),

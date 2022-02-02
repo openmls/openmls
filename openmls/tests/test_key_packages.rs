@@ -67,7 +67,9 @@ fn key_package_generation(ciphersuite: &'static Ciphersuite, backend: &impl Open
     // Add and retrieve a key package ID.
     let key_id = [1, 2, 3, 4, 5, 6, 7];
     let mut kpb_unsigned: KeyPackageBundlePayload = kpb.into();
-    kpb_unsigned.add_extension(Extension::KeyPackageId(KeyIdExtension::new(&key_id)));
+    kpb_unsigned.add_extension(Extension::ExternalKeyId(ExternalKeyIdExtension::new(
+        &key_id,
+    )));
 
     // After re-signing the package it is valid.
     let kpb = kpb_unsigned
@@ -79,10 +81,10 @@ fn key_package_generation(ciphersuite: &'static Ciphersuite, backend: &impl Open
     let extensions = kpb.key_package().extensions();
     let key_id_extension = extensions
         .iter()
-        .find(|e| e.extension_type() == ExtensionType::KeyId)
+        .find(|e| e.extension_type() == ExtensionType::ExternalKeyId)
         .expect("Key ID extension is missing in key package");
     let key_id_extension = key_id_extension
-        .as_key_id_extension()
+        .as_external_key_id_extension()
         .expect("An unexpected error occurred.");
     assert_eq!(&key_id, key_id_extension.as_slice());
 }

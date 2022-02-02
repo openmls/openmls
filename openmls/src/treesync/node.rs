@@ -17,6 +17,7 @@ pub(crate) mod parent_node;
 
 /// Container enum for leaf and parent nodes.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[allow(missing_docs)]
 pub enum Node {
     LeafNode(LeafNode),
     ParentNode(ParentNode),

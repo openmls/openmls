@@ -57,7 +57,7 @@ lazy_static! {
             let config = PersistentConfig {
                 protocol_versions: vec![ProtocolVersion::Mls10, ProtocolVersion::Mls10Draft11],
                 ciphersuites,
-                extensions: vec![ExtensionType::Capabilities, ExtensionType::Lifetime, ExtensionType::KeyId],
+                extensions: vec![ExtensionType::Capabilities, ExtensionType::Lifetime, ExtensionType::ExternalKeyId],
                 proposals: vec![
                     ProposalType::Add,
                     ProposalType::Update,
@@ -191,6 +191,7 @@ impl Config {
     TlsSize,
 )]
 #[repr(u8)]
+#[allow(missing_docs)]
 pub enum ProtocolVersion {
     Reserved = 0,
     Mls10 = 1,

@@ -28,7 +28,7 @@ pub(crate) use serde::{Deserialize, Serialize};
 
 mod capabilities_extension;
 pub mod errors;
-mod key_package_id_extension;
+mod external_key_id_extension;
 mod life_time_extension;
 mod parent_hash_extension;
 mod ratchet_tree_extension;
@@ -37,7 +37,7 @@ use tls_codec::*;
 
 pub use capabilities_extension::CapabilitiesExtension;
 pub use errors::*;
-pub use key_package_id_extension::KeyIdExtension;
+pub use external_key_id_extension::ExternalKeyIdExtension;
 pub use life_time_extension::LifetimeExtension;
 pub use parent_hash_extension::ParentHashExtension;
 pub use ratchet_tree_extension::RatchetTreeExtension;
@@ -67,11 +67,12 @@ mod test_extensions;
     TlsSize,
 )]
 #[repr(u16)]
+#[allow(missing_docs)]
 pub enum ExtensionType {
     Reserved = 0,
     Capabilities = 1,
     Lifetime = 2,
-    KeyId = 3,
+    ExternalKeyId = 3,
     ParentHash = 4,
     RatchetTree = 5,
     RequiredCapabilities = 6,
@@ -88,7 +89,7 @@ impl TryFrom<u16> for ExtensionType {
             0 => Ok(ExtensionType::Reserved),
             1 => Ok(ExtensionType::Capabilities),
             2 => Ok(ExtensionType::Lifetime),
-            3 => Ok(ExtensionType::KeyId),
+            3 => Ok(ExtensionType::ExternalKeyId),
             4 => Ok(ExtensionType::ParentHash),
             5 => Ok(ExtensionType::RatchetTree),
             _ => Err(tls_codec::Error::DecodingError(format!(
@@ -106,7 +107,7 @@ impl ExtensionType {
             ExtensionType::Reserved
             | ExtensionType::Capabilities
             | ExtensionType::Lifetime
-            | ExtensionType::KeyId
+            | ExtensionType::ExternalKeyId
             | ExtensionType::ParentHash
             | ExtensionType::RatchetTree
             | ExtensionType::RequiredCapabilities => true,
@@ -121,7 +122,7 @@ pub enum Extension {
     Capabilities(CapabilitiesExtension),
 
     /// A [`KeyIdExtension`]
-    KeyPackageId(KeyIdExtension),
+    ExternalKeyId(ExternalKeyIdExtension),
 
     /// A [`LifetimeExtension`]
     LifeTime(LifetimeExtension),
@@ -143,7 +144,7 @@ impl tls_codec::Size for Extension {
         + 4 /* u32 len */ +
         match self {
             Extension::Capabilities(e) => e.tls_serialized_len(),
-            Extension::KeyPackageId(e) => e.tls_serialized_len(),
+            Extension::ExternalKeyId(e) => e.tls_serialized_len(),
             Extension::LifeTime(e) => e.tls_serialized_len(),
             Extension::ParentHash(e) => e.tls_serialized_len(),
             Extension::RatchetTree(e) => e.tls_serialized_len(),
@@ -163,7 +164,7 @@ impl tls_codec::Serialize for Extension {
 
         let extension_data_written = match self {
             Extension::Capabilities(e) => e.tls_serialize(&mut extension_data),
-            Extension::KeyPackageId(e) => e.tls_serialize(&mut extension_data),
+            Extension::ExternalKeyId(e) => e.tls_serialize(&mut extension_data),
             Extension::LifeTime(e) => e.tls_serialize(&mut extension_data),
             Extension::ParentHash(e) => e.tls_serialize(&mut extension_data),
             Extension::RatchetTree(e) => e.tls_serialize(&mut extension_data),
@@ -191,9 +192,9 @@ impl tls_codec::Deserialize for Extension {
             ExtensionType::Capabilities => Extension::Capabilities(
                 CapabilitiesExtension::tls_deserialize(&mut extension_data)?,
             ),
-            ExtensionType::KeyId => {
-                Extension::KeyPackageId(KeyIdExtension::tls_deserialize(&mut extension_data)?)
-            }
+            ExtensionType::ExternalKeyId => Extension::ExternalKeyId(
+                ExternalKeyIdExtension::tls_deserialize(&mut extension_data)?,
+            ),
             ExtensionType::Lifetime => {
                 Extension::LifeTime(LifetimeExtension::tls_deserialize(&mut extension_data)?)
             }
@@ -244,9 +245,9 @@ impl Extension {
     /// Get a reference to the `KeyIDExtension`.
     /// Returns an `InvalidExtensionType` error if called on an `Extension`
     /// that's not a `KeyIDExtension`.
-    pub fn as_key_id_extension(&self) -> Result<&KeyIdExtension, ExtensionError> {
+    pub fn as_external_key_id_extension(&self) -> Result<&ExternalKeyIdExtension, ExtensionError> {
         match self {
-            Self::KeyPackageId(e) => Ok(e),
+            Self::ExternalKeyId(e) => Ok(e),
             _ => Err(ExtensionError::InvalidExtensionType(
                 "This is not a KeyIDExtension".into(),
             )),
@@ -291,11 +292,12 @@ impl Extension {
         }
     }
 
+    /// Returns the [`ExtensionType`]
     #[inline]
     pub const fn extension_type(&self) -> ExtensionType {
         match self {
             Extension::Capabilities(_) => ExtensionType::Capabilities,
-            Extension::KeyPackageId(_) => ExtensionType::KeyId,
+            Extension::ExternalKeyId(_) => ExtensionType::ExternalKeyId,
             Extension::LifeTime(_) => ExtensionType::Lifetime,
             Extension::ParentHash(_) => ExtensionType::ParentHash,
             Extension::RatchetTree(_) => ExtensionType::RatchetTree,
