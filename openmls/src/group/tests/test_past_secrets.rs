@@ -2,6 +2,7 @@
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
+use tls_codec::Serialize;
 
 use rstest::*;
 use rstest_reuse::{self, *};
@@ -36,7 +37,13 @@ fn test_past_secrets_in_group(
         let alice_credential = alice_credential_bundle.credential().clone();
         backend
             .key_store()
-            .store(alice_credential.signature_key(), &alice_credential_bundle)
+            .store(
+                &alice_credential
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .expect("Error serializing signature key."),
+                &alice_credential_bundle,
+            )
             .expect("An unexpected error occurred.");
 
         let bob_credential_bundle = CredentialBundle::new(
@@ -49,7 +56,13 @@ fn test_past_secrets_in_group(
         let bob_credential = bob_credential_bundle.credential().clone();
         backend
             .key_store()
-            .store(bob_credential.signature_key(), &bob_credential_bundle)
+            .store(
+                &bob_credential
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .expect("Error serializing signature key."),
+                &bob_credential_bundle,
+            )
             .expect("An unexpected error occurred.");
 
         // Generate KeyPackages

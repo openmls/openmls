@@ -13,6 +13,7 @@ use ::rand::RngCore;
 use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsCryptoProvider;
+use tls_codec::Serialize;
 
 /// Configuration of a client meant to be used in a test setup.
 #[derive(Clone)]
@@ -345,7 +346,13 @@ pub(super) fn generate_credential_bundle(
     let credential = cb.credential().clone();
     backend
         .key_store()
-        .store(credential.signature_key(), &cb)
+        .store(
+            &credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("Error serializing signature key."),
+            &cb,
+        )
         .expect("An unexpected error occurred.");
     Ok(credential)
 }
@@ -359,7 +366,12 @@ pub(super) fn generate_key_package_bundle(
 ) -> Result<KeyPackage, KeyPackageError> {
     let credential_bundle = backend
         .key_store()
-        .read(credential.signature_key())
+        .read(
+            &credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("Error serializing signature key."),
+        )
         .expect("An unexpected error occurred.");
     let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, backend, extensions)?;
     let kp = kpb.key_package().clone();

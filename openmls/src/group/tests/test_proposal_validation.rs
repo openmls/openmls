@@ -6,6 +6,7 @@ use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 
 use rstest::*;
 use rstest_reuse::{self, *};
+use tls_codec::Serialize;
 
 use crate::{
     config::*,
@@ -33,7 +34,12 @@ fn generate_credential_bundle_and_key_package_bundle(
     .expect("Failed to generate CredentialBundle.");
     let credential_bundle = backend
         .key_store()
-        .read::<SignaturePublicKey, CredentialBundle>(credential.signature_key())
+        .read::<CredentialBundle>(
+            &credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("Error serializing signature key."),
+        )
         .expect("An unexpected error occurred.");
 
     let key_package =
