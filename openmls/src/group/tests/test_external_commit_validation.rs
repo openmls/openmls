@@ -82,7 +82,12 @@ fn validation_test_setup(
 
     let bob_credential_bundle = backend
         .key_store()
-        .read(bob_credential.signature_key())
+        .read(
+            &bob_credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("Error serializing signature key."),
+        )
         .expect("An unexpected error occurred.");
 
     // Bob wants to commit externally.

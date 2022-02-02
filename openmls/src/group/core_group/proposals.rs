@@ -408,7 +408,7 @@ impl ProposalQueue {
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::ReInit(_) => {
-                    // TODO #141: Only keep one ReInit
+                    // TODO #751: Only keep one ReInit
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::ExternalInit(_) => {

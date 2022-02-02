@@ -4,6 +4,7 @@ use crate::test_utils::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::{random::OpenMlsRand, OpenMlsCryptoProvider};
+use tls_codec::Serialize;
 
 use crate::{ciphersuite::Secret, config::Config, schedule::psk::PskBundle, schedule::psk::*};
 
@@ -39,7 +40,12 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
         let psk_bundle = PskBundle::new(secret).expect("Could not create PskBundle.");
         backend
             .key_store()
-            .store(&psk_id, &psk_bundle)
+            .store(
+                &psk_id
+                    .tls_serialize_detached()
+                    .expect("Error serializing signature key."),
+                &psk_bundle,
+            )
             .expect("An unexpected error occured.");
     }
 

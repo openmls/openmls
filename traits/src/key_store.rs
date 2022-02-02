@@ -1,7 +1,6 @@
 //! # OpenMLS Key Store Trait
 
 use std::fmt::Debug;
-use std::hash::Hash;
 
 pub trait FromKeyStoreValue: Sized {
     type Error: Debug + Clone + PartialEq + Into<String>;
@@ -22,7 +21,7 @@ pub trait OpenMlsKeyStore: Send + Sync {
     /// serialization for ID `k`.
     ///
     /// Returns an error if storing fails.
-    fn store<K: Hash, V: ToKeyStoreValue>(&self, k: &K, v: &V) -> Result<(), Self::Error>
+    fn store<V: ToKeyStoreValue>(&self, k: &[u8], v: &V) -> Result<(), Self::Error>
     where
         Self: Sized;
 
@@ -30,12 +29,12 @@ pub trait OpenMlsKeyStore: Send + Sync {
     /// [`KeyStoreValue`] trait for deserialization.
     ///
     /// Returns [`None`] if no value is stored for `k` or reading fails.
-    fn read<K: Hash, V: FromKeyStoreValue>(&self, k: &K) -> Option<V>
+    fn read<V: FromKeyStoreValue>(&self, k: &[u8]) -> Option<V>
     where
         Self: Sized;
 
     /// Delete a value stored for ID `k`.
     ///
     /// Returns an error if storing fails.
-    fn delete<K: Hash>(&self, k: &K) -> Result<(), Self::Error>;
+    fn delete(&self, k: &[u8]) -> Result<(), Self::Error>;
 }
