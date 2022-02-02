@@ -672,6 +672,30 @@ impl CoreGroup {
         }
     }
 
+    /// Get the message secrets and leaves for the given epoch. Either from the
+    /// secrets store or from the group.
+    ///
+    /// Note that the leaves vector is empty for message secrets of the current
+    /// epoch. The caller can use treesync in this case.
+    pub(crate) fn message_secrets_and_leaves_mut<'secret, 'group: 'secret>(
+        &'group mut self,
+        epoch: GroupEpoch,
+    ) -> Result<(&'secret mut MessageSecrets, Vec<(u32, KeyPackageRef)>), CoreGroupError> {
+        if epoch < self.context().epoch() {
+            self.message_secrets_store
+                .secrets_and_leaves_for_epoch_mut(epoch)
+                .ok_or({
+                    CoreGroupError::MlsCiphertextError(MlsCiphertextError::SecretTreeError(
+                        SecretTreeError::TooDistantInThePast,
+                    ))
+                })
+        } else {
+            // No need for leaves here. The tree of the current epoch is
+            // available to the caller.
+            Ok((self.message_secrets_store.message_secrets_mut(), Vec::new()))
+        }
+    }
+
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn message_secrets_test_mut(&mut self) -> &mut MessageSecrets {
         self.message_secrets_store.message_secrets_mut()
