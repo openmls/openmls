@@ -18,9 +18,9 @@ serde = {version = "1.0", features = ["derive"]}
 uuid = { version = "0.8", features = ["serde", "v4"] }
 clap = "2.33"
 base64 = "0.13"
-tls_codec = "0.2.0-pre.2"
+tls_codec = "0.2.0-pre.4"
 
 openmls = { path = "../../openmls" }
 ds-lib = { path = "../ds-lib/" }
 openmls_rust_crypto = { path = "../../openmls_rust_crypto" }
-openmls_traits = { version = "0.1", path = "../../traits" }
+openmls_traits = { path = "../../traits" }
