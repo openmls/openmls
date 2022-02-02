@@ -1,3 +1,5 @@
+//! # Message errors
+
 use openmls_traits::types::CryptoError;
 use tls_codec::Error as TlsCodecError;
 

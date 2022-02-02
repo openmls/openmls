@@ -1,3 +1,18 @@
+//! # Credentials
+//!
+//! Credentials are used to to authenticate messages and members of a group are represented
+//! by a Credential. Clients create a [`CredentialBundle`] which contains the private key material
+//! and expose a [`Credential`] in the key packages they generate.
+//!
+//! The MLS protocol spec allows credentials to change over time. Concretely, members can issue an Update proposal
+//! or a Full Commit to update their credential. The new credential still needs to be signed by the old credential.
+//!
+//! When receiving a credential update from another member, applications must ensure the new credential is valid
+//! and need to query the Authentication Service for that matter.
+//!
+//! Credentials are specific to a signature scheme, which is part of the ciphersuite of a group. Clients can have several
+//! credentials with different signature schemes.
+
 mod codec;
 mod errors;
 pub use errors::*;
@@ -22,7 +37,9 @@ use crate::{ciphersuite::*, error::LibraryError};
 )]
 #[repr(u16)]
 pub enum CredentialType {
+    /// A [`BasicCredential`]
     Basic = 1,
+    /// An X.509 [`Certificate`]
     X509 = 2,
 }
 
@@ -47,7 +64,9 @@ pub struct Certificate {
 /// This enum contains the different available credentials.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum MlsCredentialType {
+    /// A [`BasicCredential`]
     Basic(BasicCredential),
+    /// An X.509 [`Certificate`]
     X509(Certificate),
 }
 
@@ -114,6 +133,15 @@ impl From<MlsCredentialType> for Credential {
     }
 }
 
+/// A `BasicCredential as defined in the MLS protocol spec:
+///
+/// ```text
+/// struct {
+///     opaque identity<0..2^16-1>;
+///     SignatureScheme signature_scheme;
+///     opaque signature_key<0..2^16-1>;
+/// } BasicCredential;
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub struct BasicCredential {
     identity: TlsByteVecU16,
@@ -122,6 +150,8 @@ pub struct BasicCredential {
 }
 
 impl BasicCredential {
+    /// Verifies a signature issued by a [`BasicCredential`]. Returns a [`CredentialError`]
+    /// if the verification fails.
     pub fn verify(
         &self,
         backend: &impl OpenMlsCryptoProvider,
@@ -198,6 +228,7 @@ impl CredentialBundle {
         }
     }
 
+    /// Returns a reference to the [`Credential`].
     pub fn credential(&self) -> &Credential {
         &self.credential
     }

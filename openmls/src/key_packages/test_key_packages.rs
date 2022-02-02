@@ -112,7 +112,7 @@ fn key_package_id_extension(
 
     // Add an ID to the key package.
     let id = [1, 2, 3, 4];
-    kpb.add_extension(Extension::KeyPackageId(KeyIdExtension::new(&id)));
+    kpb.add_extension(Extension::ExternalKeyId(ExternalKeyIdExtension::new(&id)));
 
     // Sign it to make it valid.
     let kpb = kpb

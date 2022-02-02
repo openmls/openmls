@@ -22,6 +22,7 @@ use tls_codec::{TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::{Deserialize, Serialize};
 
+/// Parent Hash Extension.
 #[derive(
     PartialEq, Clone, Debug, Default, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
@@ -30,6 +31,7 @@ pub struct ParentHashExtension {
 }
 
 impl ParentHashExtension {
+    /// Creates a new [`ParentHashExtension`] from a byte slice.
     pub fn new(hash: &[u8]) -> Self {
         ParentHashExtension {
             parent_hash: hash.into(),

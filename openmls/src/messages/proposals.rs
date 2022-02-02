@@ -1,3 +1,5 @@
+//! # Proposal errors
+
 use crate::{
     ciphersuite::{
         hash_ref::{KeyPackageRef, ProposalRef},
@@ -38,6 +40,7 @@ use super::errors::*;
     PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize, Serialize, Deserialize,
 )]
 #[repr(u16)]
+#[allow(missing_docs)]
 pub enum ProposalType {
     Add = 1,
     Update = 2,
@@ -90,6 +93,7 @@ impl TryFrom<u16> for ProposalType {
     PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize, Serialize, Deserialize,
 )]
 #[repr(u8)]
+#[allow(missing_docs)]
 pub enum ProposalOrRefType {
     Proposal = 1,
     Reference = 2,
@@ -107,6 +111,7 @@ impl TryFrom<u8> for ProposalOrRefType {
 }
 /// Type of Proposal, either by value or by reference
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[allow(missing_docs)]
 pub enum ProposalOrRef {
     Proposal(Proposal),
     Reference(ProposalRef),
@@ -124,6 +129,7 @@ impl ProposalOrRef {
 /// Proposal
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[allow(missing_docs)]
 pub enum Proposal {
     Add(AddProposal),
     Update(UpdateProposal),
@@ -167,6 +173,9 @@ impl ProposalRef {
     }
 }
 
+/// Add Proposal.
+///
+/// An Add proposal requests that a client with a specified KeyPackage be added to the group.
 #[derive(
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
@@ -181,6 +190,10 @@ impl AddProposal {
     }
 }
 
+/// Update Proposal.
+///
+/// An Update proposal is a similar mechanism to Add with the distinction that it is the
+/// sender's leaf KeyPackage in the tree which would be updated with a new KeyPackage.
 #[derive(
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
@@ -195,6 +208,9 @@ impl UpdateProposal {
     }
 }
 
+/// Remove Proposal
+///
+/// A Remove proposal requests that the member with KeyPackageRef removed be removed from the group.
 #[derive(
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
