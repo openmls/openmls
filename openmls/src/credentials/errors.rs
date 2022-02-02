@@ -8,7 +8,7 @@ pub enum CredentialError {
     /// The type of credential is not supported.
     #[error("Unsupported credential type.")]
     UnsupportedCredentialType,
-    /// The signature that was verified with the credential was invalid.
+    /// Verifying the signature with this credential failed.
     #[error("Invalid signature.")]
     InvalidSignature,
     /// A library error occured.
