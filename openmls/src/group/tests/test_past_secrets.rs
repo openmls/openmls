@@ -198,24 +198,22 @@ fn test_past_secrets_in_group(
             );
         }
 
-        // FIXME: #702 It is impossible to decrypt this message now because the sender
-        //        does not exist any more.
         // The last messages should not fail
-        // for application_message in application_messages.iter().skip(max_epochs / 2) {
-        //     let unverified_message = bob_group
-        //         .parse_message(application_message.clone().into(), backend)
-        //         .expect("An unexpected error occurred.");
+        for application_message in application_messages.iter().skip(max_epochs / 2) {
+            let unverified_message = bob_group
+                .parse_message(application_message.clone().into(), backend)
+                .expect("An unexpected error occurred.");
 
-        //     let bob_processed_message = bob_group
-        //         .process_unverified_message(unverified_message, None, backend)
-        //         .expect("An unexpected error occurred.");
+            let bob_processed_message = bob_group
+                .process_unverified_message(unverified_message, None, backend)
+                .expect("An unexpected error occurred.");
 
-        //     if let ProcessedMessage::ApplicationMessage(application_message) = bob_processed_message
-        //     {
-        //         assert_eq!(application_message.message(), &[1, 2, 3]);
-        //     } else {
-        //         unreachable!("Expected an ApplicationMessage.");
-        //     }
-        // }
+            if let ProcessedMessage::ApplicationMessage(application_message) = bob_processed_message
+            {
+                assert_eq!(application_message.message(), &[1, 2, 3]);
+            } else {
+                unreachable!("Expected an ApplicationMessage.");
+            }
+        }
     }
 }

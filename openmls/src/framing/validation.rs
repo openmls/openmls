@@ -38,7 +38,10 @@ use crate::{schedule::MessageSecrets, tree::index::SecretTreeLeafIndex, treesync
 use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 use openmls_traits::OpenMlsCryptoProvider;
 
-use crate::{ciphersuite::signable::Verifiable, tree::sender_ratchet::SenderRatchetConfiguration};
+use crate::{
+    ciphersuite::{hash_ref::KeyPackageRef, signable::Verifiable},
+    tree::sender_ratchet::SenderRatchetConfiguration,
+};
 
 use super::*;
 
@@ -75,13 +78,27 @@ impl DecryptedMessage {
         // This will be refactored with #265.
         if let MlsMessage::Ciphertext(ciphertext) = inbound_message.mls_message {
             let ciphersuite = group.ciphersuite();
-            let message_secrets = group
-                .message_secrets_mut(ciphertext.epoch())
+            let (message_secrets, old_leaves) = group
+                .message_secrets_and_leaves_mut(ciphertext.epoch())
                 .map_err(|_| MlsCiphertextError::DecryptionError)?;
             let sender_data = ciphertext.sender_data(message_secrets, backend, ciphersuite)?;
-            let sender_index = group
-                .sender_index(&sender_data.sender)
-                .map_err(|_| MlsCiphertextError::SenderError(SenderError::UnknownSender))?;
+            let sender_index = match group.sender_index(&sender_data.sender) {
+                Ok(i) => i,
+                Err(_) => {
+                    // If the message is old, the tree might have changed.
+                    // Let's look for the sender in the old leaves.
+                    old_leaves
+                        .into_iter()
+                        .find_map(|(index, kpr)| {
+                            if kpr == sender_data.sender {
+                                Some(index)
+                            } else {
+                                None
+                            }
+                        })
+                        .ok_or(MlsCiphertextError::SenderError(SenderError::UnknownSender))?
+                }
+            };
             let sender_index = SecretTreeLeafIndex(sender_index);
             let message_secrets = group
                 .message_secrets_mut(ciphertext.epoch())
@@ -134,17 +151,38 @@ impl DecryptedMessage {
     ///  - ValSem246
     ///  - Prepares ValSem247 by setting the right credential. The remainder
     ///    of ValSem247 is validated as part of ValSem010.
-    pub fn credential(&self, treesync: &TreeSync) -> Result<Credential, ValidationError> {
+    pub fn credential(
+        &self,
+        treesync: &TreeSync,
+        old_leaves: &[(u32, KeyPackageRef)],
+    ) -> Result<Credential, ValidationError> {
         let sender = self.sender();
         match sender.sender_type {
             SenderType::Member => {
                 let sender = sender
                     .as_key_package_ref()
                     .map_err(|_| ValidationError::UnknownSender)?;
-                if let Some(sender_leaf) = treesync
+                let sender_leaf = match treesync
                     .leaf_from_id(sender)
-                    .map_err(|_| ValidationError::UnknownSender)?
+                    .map_err(|_| ValidationError::UnknownSender)
                 {
+                    Ok(l) => l,
+                    Err(_) => {
+                        // This might not actually be an error but the sender's
+                        // key package changed. Let's check old leaves we still
+                        // have around.
+                        if let Some((sender_index, _)) =
+                            old_leaves.iter().find(|(_, kpr)| kpr == sender)
+                        {
+                            treesync
+                                .leaf(*sender_index)
+                                .map_err(|_| ValidationError::UnknownSender)?
+                        } else {
+                            None
+                        }
+                    }
+                };
+                if let Some(sender_leaf) = sender_leaf {
                     Ok(sender_leaf.key_package().credential().clone())
                 } else {
                     Err(ValidationError::UnknownSender)

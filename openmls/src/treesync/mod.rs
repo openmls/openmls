@@ -363,6 +363,18 @@ impl TreeSync {
         Ok(leaves)
     }
 
+    /// Return the [`KeyPackageRef`] of the node with the given `leaf_index`.
+    pub(crate) fn leaf_id(&self, leaf_index: u32) -> Option<KeyPackageRef> {
+        let tsn = self.tree.leaf(leaf_index).ok()?;
+        match tsn.node() {
+            Some(node) => {
+                let leaf = node.as_leaf_node().ok()?;
+                leaf.key_package_ref().cloned()
+            }
+            None => None,
+        }
+    }
+
     /// Returns the nodes in the tree ordered according to the
     /// array-representation of the underlying binary tree.
     pub fn export_nodes(&self) -> Vec<Option<Node>> {
