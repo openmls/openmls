@@ -753,6 +753,8 @@
 <span id="752">752</span>
 <span id="753">753</span>
 <span id="754">754</span>
+<span id="755">755</span>
+<span id="756">756</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Functions in this module should never panic. However, if there is a bug in</span>
@@ -1435,7 +1437,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">message_secrets_and_leaves_mut</span><span class="op">&lt;</span><span class="lifetime">&#39;secret</span>, <span class="lifetime">&#39;group</span>: <span class="lifetime">&#39;secret</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="lifetime">&#39;group</span> <span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;secret</span> <span class="kw-2">mut</span> <span class="ident">MessageSecrets</span>, <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">u32</span>, <span class="ident">KeyPackageRef</span>)<span class="op">&gt;</span>), <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;secret</span> <span class="kw-2">mut</span> <span class="ident">MessageSecrets</span>, <span class="ident">IndexedKeyPackageRefs</span>), <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">epoch</span> <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">context</span>().<span class="ident">epoch</span>() {
             <span class="self">self</span>.<span class="ident">message_secrets_store</span>
                 .<span class="ident">secrets_and_leaves_for_epoch_mut</span>(<span class="ident">epoch</span>)
@@ -1507,6 +1509,8 @@
     <span class="doccomment">/// Defaults to false.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">add_ratchet_tree_extension</span>: <span class="ident">bool</span>,
 }
+
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type</span> <span class="ident">IndexedKeyPackageRefs</span> <span class="op">=</span> <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">u32</span>, <span class="ident">KeyPackageRef</span>)<span class="op">&gt;</span>;
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-search-index-js="../../../../search-index.js" data-search-js="../../../../search.js"></div>
 </body></html>
