@@ -2,7 +2,7 @@
 
 ## Immediate operation
 
-Members can be removed from the group atomically with the `.remove_members()` function.
+Members can be removed from the group atomically with the `.remove_members()` function, which takes the `KeyPackageRef` of group member as input. References to the `KeyPackage`s of group members can be obtained using the `.members()` function, from which one can in turn compute the `KeyPackageRef` using their `.hash_ref()` function.
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:charlie_removes_bob}}

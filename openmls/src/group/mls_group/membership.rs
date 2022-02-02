@@ -248,14 +248,14 @@ impl MlsGroup {
         self.plaintext_to_mls_message(remove_proposal, backend)
     }
 
-    /// Gets the current list of members
-    pub fn members(&self) -> Result<Vec<&Credential>, MlsGroupError> {
+    /// Gets a list of [`KeyPackage`]s of the current group members.
+    pub fn members(&self) -> Result<Vec<&KeyPackage>, MlsGroupError> {
         Ok(self
             .group
             .treesync()
             .full_leaves()?
             .iter()
-            .map(|(_, kp)| kp.credential())
+            .map(|(_, &kp)| kp)
             .collect())
     }
 
