@@ -2,6 +2,7 @@
 use std::collections::BTreeMap;
 
 use core_group::create_commit_params::CreateCommitParams;
+use tls_codec::Serialize;
 
 use crate::ciphersuite::hash_ref::KeyPackageRef;
 
@@ -44,11 +45,11 @@ impl MlsGroup {
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
-            .read(credential.signature_key())
+            .read(&credential.signature_key().tls_serialize_detached()?)
             .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
         // Create Commit over all proposals
-        // TODO #141
+        // TODO #751
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
             .credential_bundle(&credential_bundle)
@@ -108,11 +109,11 @@ impl MlsGroup {
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
-            .read(credential.signature_key())
+            .read(&credential.signature_key().tls_serialize_detached()?)
             .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
         // Create Commit over all proposals
-        // TODO #141
+        // TODO #751
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
             .credential_bundle(&credential_bundle)
@@ -151,7 +152,7 @@ impl MlsGroup {
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
-            .read(credential.signature_key())
+            .read(&credential.signature_key().tls_serialize_detached()?)
             .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
         let add_proposal = self.group.create_add_proposal(
@@ -188,7 +189,7 @@ impl MlsGroup {
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
-            .read(credential.signature_key())
+            .read(&credential.signature_key().tls_serialize_detached()?)
             .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
         let remove_proposal = self.group.create_remove_proposal(
@@ -224,7 +225,7 @@ impl MlsGroup {
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
-            .read(credential.signature_key())
+            .read(&credential.signature_key().tls_serialize_detached()?)
             .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
         let removed = self

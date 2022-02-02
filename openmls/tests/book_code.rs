@@ -24,7 +24,13 @@ fn generate_credential_bundle(
     let credential = credential_bundle.credential().clone();
     backend
         .key_store()
-        .store(credential.signature_key(), &credential_bundle)
+        .store(
+            &credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("Error serializing signature key."),
+            &credential_bundle,
+        )
         .expect("An unexpected error occurred.");
     // ANCHOR_END: store_credential_bundle
     Ok(credential)
@@ -44,7 +50,12 @@ fn generate_key_package_bundle(
     // Fetch the credential bundle from the key store
     let credential_bundle = backend
         .key_store()
-        .read(credential.signature_key())
+        .read(
+            &credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("Error serializing signature key."),
+        )
         .expect("An unexpected error occurred.");
 
     // Create the key package bundle

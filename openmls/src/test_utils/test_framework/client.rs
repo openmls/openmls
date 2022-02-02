@@ -5,6 +5,7 @@ use std::{collections::HashMap, sync::RwLock};
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
+use tls_codec::Serialize;
 
 use crate::{
     ciphersuite::*, credentials::*, extensions::*, framing::MlsMessageIn, framing::*, group::*,
@@ -48,7 +49,12 @@ impl Client {
         let credential_bundle: CredentialBundle = self
             .crypto
             .key_store()
-            .read(credential.signature_key())
+            .read(
+                &credential
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .expect("Error serializing signature key."),
+            )
             .ok_or(ClientError::NoMatchingCredential)?;
         let kpb = KeyPackageBundle::new(
             ciphersuites,
@@ -83,7 +89,12 @@ impl Client {
         let credential_bundle: CredentialBundle = self
             .crypto
             .key_store()
-            .read(credential.signature_key())
+            .read(
+                &credential
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .expect("Error serializing signature key."),
+            )
             .ok_or(ClientError::NoMatchingCredential)?;
         let kpb = KeyPackageBundle::new(
             &[ciphersuite.name()],

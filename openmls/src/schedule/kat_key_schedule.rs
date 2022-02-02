@@ -34,7 +34,7 @@ struct Epoch {
     // Chosen by the generator
     tree_hash: String,
     commit_secret: String,
-    // XXX: PSK is not supported in OpenMLS yet #141
+    // XXX: PSK is not supported in OpenMLS yet #751
     psks: Vec<PskValue>,
     confirmed_transcript_hash: String,
 
@@ -110,7 +110,12 @@ fn generate(
         let psk_bundle = PskBundle::new(psk.secret().clone()).expect("Could not create PskBundle.");
         crypto
             .key_store()
-            .store(&psk_id, &psk_bundle)
+            .store(
+                &psk_id
+                    .tls_serialize_detached()
+                    .expect("Error serializing signature key."),
+                &psk_bundle,
+            )
             .expect("Could not store PskBundle in key store.");
     }
     let psk_secret =
@@ -351,7 +356,12 @@ pub fn run_test_vector(
             let psk_bundle = PskBundle::new(secret).expect("Could not create PskBundle.");
             backend
                 .key_store()
-                .store(&psk_id, &psk_bundle)
+                .store(
+                    &psk_id
+                        .tls_serialize_detached()
+                        .expect("Error serializing signature key."),
+                    &psk_bundle,
+                )
                 .expect("Could not store PskBundle in key store.");
         }
 

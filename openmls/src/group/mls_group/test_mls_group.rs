@@ -26,7 +26,13 @@ fn generate_credential_bundle(
     let credential = cb.credential().clone();
     key_store
         .key_store()
-        .store(credential.signature_key(), &cb)
+        .store(
+            &credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("Error serializing signature key."),
+            &cb,
+        )
         .expect("An unexpected error occurred.");
     Ok(credential)
 }
@@ -39,15 +45,21 @@ fn generate_key_package_bundle(
 ) -> Result<KeyPackage, KeyPackageError> {
     let credential_bundle = key_store
         .key_store()
-        .read(credential.signature_key())
+        .read(
+            &credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("Error serializing signature key."),
+        )
         .expect("An unexpected error occurred.");
     let kpb = KeyPackageBundle::new(ciphersuites, &credential_bundle, key_store, extensions)?;
     let kp = kpb.key_package().clone();
     key_store
         .key_store()
         .store(
-            &kp.hash_ref(key_store.crypto())
-                .expect("Could not hash KeyPackage."),
+            kp.hash_ref(key_store.crypto())
+                .expect("Could not hash KeyPackage.")
+                .as_slice(),
             &kpb,
         )
         .expect("An unexpected error occurred.");
