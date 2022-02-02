@@ -115,7 +115,6 @@ impl CoreGroup {
                     MlsPlaintextContentType::Application(application_message) => {
                         ProcessedMessage::ApplicationMessage(ApplicationMessage::new(
                             application_message.as_slice().to_vec(),
-                            verified_member_message.plaintext().sender(),
                         ))
                     }
                     MlsPlaintextContentType::Proposal(_proposal) => {
