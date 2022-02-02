@@ -19,6 +19,7 @@ use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 use crate::{
     ciphersuite::signable::Signable,
     credentials::Credential,
+    error::LibraryError,
     framing::*,
     group::*,
     key_packages::KeyPackageBundlePayload,

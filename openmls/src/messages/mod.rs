@@ -36,7 +36,7 @@ pub use public_group_state::*;
 mod tests;
 
 #[cfg(test)]
-use crate::credentials::{CredentialBundle, CredentialError};
+use crate::{credentials::CredentialBundle, error::LibraryError};
 
 #[cfg(any(feature = "test-utils", test))]
 use crate::schedule::{
@@ -278,7 +278,7 @@ impl GroupInfo {
         self,
         credential_bundle: &CredentialBundle,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Self, CredentialError> {
+    ) -> Result<Self, LibraryError> {
         self.payload.sign(backend, credential_bundle)
     }
 }

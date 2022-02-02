@@ -6,6 +6,7 @@ use openmls_traits::OpenMlsCryptoProvider;
 use crate::{
     ciphersuite::Signature,
     credentials::{Credential, CredentialBundle, CredentialError},
+    error::LibraryError,
 };
 
 use super::SignaturePublicKey;
@@ -58,12 +59,16 @@ pub trait Signable: Sized {
         self,
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
-    ) -> Result<Self::SignedOutput, CredentialError>
+    ) -> Result<Self::SignedOutput, LibraryError>
     where
         Self::SignedOutput: SignedStruct<Self>,
     {
-        let payload = self.unsigned_payload()?;
-        let signature = credential_bundle.sign(backend, &payload)?;
+        let payload = self
+            .unsigned_payload()
+            .map_err(LibraryError::missing_bound_check)?;
+        let signature = credential_bundle
+            .sign(backend, &payload)
+            .map_err(LibraryError::unexpected_crypto_error)?;
         Ok(Self::SignedOutput::from_payload(self, signature))
     }
 }
@@ -98,7 +103,9 @@ pub trait Verifiable: Sized {
     where
         T: VerifiedStruct<Self>,
     {
-        let payload = self.unsigned_payload()?;
+        let payload = self
+            .unsigned_payload()
+            .map_err(LibraryError::missing_bound_check)?;
         credential.verify(backend, &payload, self.signature())?;
         Ok(T::from_verifiable(self, T::SealingType::default()))
     }
@@ -117,8 +124,12 @@ pub trait Verifiable: Sized {
     where
         T: VerifiedStruct<Self>,
     {
-        let payload = self.unsigned_payload()?;
-        signature_public_key.verify(backend, self.signature(), &payload)?;
+        let payload = self
+            .unsigned_payload()
+            .map_err(LibraryError::missing_bound_check)?;
+        signature_public_key
+            .verify(backend, self.signature(), &payload)
+            .map_err(|_| CredentialError::InvalidSignature)?;
         Ok(T::from_verifiable(self, T::SealingType::default()))
     }
 
@@ -133,7 +144,9 @@ pub trait Verifiable: Sized {
         backend: &impl OpenMlsCryptoProvider,
         credential: &Credential,
     ) -> Result<(), CredentialError> {
-        let payload = self.unsigned_payload()?;
+        let payload = self
+            .unsigned_payload()
+            .map_err(LibraryError::missing_bound_check)?;
         credential.verify(backend, &payload, self.signature())
     }
 }

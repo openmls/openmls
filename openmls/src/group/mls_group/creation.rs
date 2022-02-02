@@ -18,7 +18,7 @@ impl MlsGroup {
         group_id: GroupId,
         key_package_hash: &[u8],
     ) -> Result<Self, MlsGroupError> {
-        // TODO #141
+        // TODO #751
         let kph = key_package_hash.to_vec();
         let key_package_bundle: KeyPackageBundle = backend
             .key_store()
@@ -72,7 +72,7 @@ impl MlsGroup {
                     .read(&egs.new_member.as_slice().to_vec())
             })
             .ok_or(MlsGroupError::NoMatchingKeyPackageBundle)?;
-        // TODO #141
+        // TODO #751
         let mut group =
             CoreGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle, backend)?;
         group.set_max_past_epochs(mls_group_config.max_past_epochs);

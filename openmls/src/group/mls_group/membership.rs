@@ -2,6 +2,7 @@
 use std::collections::BTreeMap;
 
 use core_group::create_commit_params::CreateCommitParams;
+use tls_codec::Serialize;
 
 use crate::ciphersuite::hash_ref::KeyPackageRef;
 
@@ -44,11 +45,11 @@ impl MlsGroup {
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
-            .read(credential.signature_key())
+            .read(&credential.signature_key().tls_serialize_detached()?)
             .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
         // Create Commit over all proposals
-        // TODO #141
+        // TODO #751
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
             .credential_bundle(&credential_bundle)
@@ -60,9 +61,7 @@ impl MlsGroup {
         let welcome = match create_commit_result.welcome_option {
             Some(welcome) => welcome,
             None => {
-                return Err(MlsGroupError::LibraryError(
-                    "No secrets to generate commit message.".into(),
-                ))
+                return Err(LibraryError::custom("No secrets to generate commit message.").into())
             }
         };
 
@@ -110,11 +109,11 @@ impl MlsGroup {
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
-            .read(credential.signature_key())
+            .read(&credential.signature_key().tls_serialize_detached()?)
             .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
         // Create Commit over all proposals
-        // TODO #141
+        // TODO #751
         let params = CreateCommitParams::builder()
             .framing_parameters(self.framing_parameters())
             .credential_bundle(&credential_bundle)
@@ -153,7 +152,7 @@ impl MlsGroup {
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
-            .read(credential.signature_key())
+            .read(&credential.signature_key().tls_serialize_detached()?)
             .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
         let add_proposal = self.group.create_add_proposal(
@@ -190,7 +189,7 @@ impl MlsGroup {
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
-            .read(credential.signature_key())
+            .read(&credential.signature_key().tls_serialize_detached()?)
             .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
         let remove_proposal = self.group.create_remove_proposal(
@@ -226,12 +225,13 @@ impl MlsGroup {
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
-            .read(credential.signature_key())
+            .read(&credential.signature_key().tls_serialize_detached()?)
             .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
 
-        let removed = self.group.key_package_ref().ok_or_else(|| {
-            MlsGroupError::LibraryError("No key package reference for own key package.".into())
-        })?;
+        let removed = self
+            .group
+            .key_package_ref()
+            .ok_or_else(|| LibraryError::custom("No key package reference for own key package."))?;
         let remove_proposal = self.group.create_remove_proposal(
             self.framing_parameters(),
             &credential_bundle,

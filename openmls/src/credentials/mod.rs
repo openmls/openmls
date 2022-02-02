@@ -29,7 +29,7 @@ use std::convert::TryFrom;
 use tls_codec::Serialize as TlsSerializeTrait;
 use tls_codec::{TlsByteVecU16, TlsDeserialize, TlsSerialize, TlsSize};
 
-use crate::ciphersuite::*;
+use crate::{ciphersuite::*, error::LibraryError};
 
 /// Enum for Credential Types. We only need this for encoding/decoding.
 #[derive(
@@ -172,7 +172,7 @@ impl PartialEq for BasicCredential {
 
 /// This struct contains a credential and the corresponding private key.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
+#[cfg_attr(any(feature = "test-utils", test), derive(PartialEq))]
 pub struct CredentialBundle {
     credential: Credential,
     signature_private_key: SignaturePrivateKey,
@@ -188,8 +188,9 @@ impl CredentialBundle {
         signature_scheme: SignatureScheme,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, CredentialError> {
-        let (private_key, public_key) =
-            SignatureKeypair::new(signature_scheme, backend)?.into_tuple();
+        let (private_key, public_key) = SignatureKeypair::new(signature_scheme, backend)
+            .map_err(LibraryError::unexpected_crypto_error)?
+            .into_tuple();
         let mls_credential = match credential_type {
             CredentialType::Basic => BasicCredential {
                 identity: identity.into(),

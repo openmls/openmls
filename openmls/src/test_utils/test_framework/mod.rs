@@ -142,7 +142,13 @@ impl MlsGroupTestSetup {
                 let credential = cb.credential().clone();
                 crypto
                     .key_store()
-                    .store(cb.credential().signature_key(), &cb)
+                    .store(
+                        &cb.credential()
+                            .signature_key()
+                            .tls_serialize_detached()
+                            .expect("Error serializing signature key."),
+                        &cb,
+                    )
                     .expect("An unexpected error occurred.");
                 credentials.insert(*ciphersuite, credential);
             }
