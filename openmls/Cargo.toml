@@ -1,6 +1,6 @@
 [package]
 name = "openmls"
-version = "0.3.0"
+version = "0.4.0-pre.1"
 authors = ["OpenMLS Authors"]
 edition = "2021"
 description = "This is a WIP Rust implementation of the Messaging Layer Security (MLS) protocol based on draft 9+."
@@ -10,14 +10,14 @@ repository = "https://github.com/openmls/openmls/"
 readme = "README.md"
 
 [dependencies]
-openmls_traits = { version = "0.1", path = "../traits" }
+openmls_traits = { version = "0.1.0-pre.1", path = "../traits" }
 uuid = { version = "0.8", features = ["v4"] }
 lazy_static = "1.4"
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = "^1.0"
 log = { version = "0.4", features = ["std"] }
 typetag = "0.1"
-tls_codec = { version = "0.2.0-pre.2", features = ["derive", "serde_serialize"] }
+tls_codec = { version = "0.2.0-pre.4", features = ["derive", "serde_serialize"] }
 # Only required for tests.
 rand = { version = "0.8", optional = true }
 # The js feature is required for wasm.
@@ -25,8 +25,8 @@ rand = { version = "0.8", optional = true }
 getrandom = { version = "0.2", features = ["js"] }
 # Crypto backends required for KAT and testing - "test-utils" feature
 itertools = { version = "0.10", optional = true }
-openmls_rust_crypto = { version = "0.1", path = "../openmls_rust_crypto", optional = true }
-evercrypt_backend = { version = "0.1", path = "../evercrypt_backend", optional = true }
+openmls_rust_crypto = { version = "0.1.0-pre.1", path = "../openmls_rust_crypto", optional = true }
+evercrypt_backend = { version = "0.1.0-pre.1", path = "../evercrypt_backend", package = "openmls_evercrypt", optional = true }
 rstest = {version = "^0.12", optional = true}
 rstest_reuse = {version = "^0.1", optional = true}
 rayon = "^1.5.0"

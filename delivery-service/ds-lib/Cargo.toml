@@ -6,7 +6,7 @@ edition = "2018"
 description = "Types to interact with the OpenMLS DS."
 
 [dependencies]
-tls_codec = "0.2.0-pre.2"
+tls_codec = "0.2.0-pre.4"
 openmls = { path = "../../openmls", features = ["test-utils"] }
-openmls_traits = { version = "0.1", path = "../../traits" }
+openmls_traits = { path = "../../traits" }
 openmls_rust_crypto = { path = "../../openmls_rust_crypto" }
