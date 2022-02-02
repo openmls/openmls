@@ -169,6 +169,12 @@ impl CoreGroup {
             }
         };
 
+        // Keep a copy of the update path key package
+        let commit_update_key_package = path_processing_result
+            .encrypted_path
+            .as_ref()
+            .map(|update| update.leaf_key_package().clone());
+
         // Create commit message
         let commit = Commit {
             proposals: proposal_reference_list.into(),
@@ -333,6 +339,7 @@ impl CoreGroup {
         let staged_commit = StagedCommit::new(
             proposal_queue,
             StagedCommitState::GroupMember(staged_commit_state),
+            commit_update_key_package,
         );
 
         Ok(CreateCommitResult {
