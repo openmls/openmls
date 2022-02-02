@@ -124,6 +124,7 @@
 use crate::{
     ciphersuite::{AeadKey, AeadNonce, Ciphersuite, HpkePrivateKey, Mac, Secret},
     config::{Config, ProtocolVersion},
+    error::LibraryError,
     framing::{MembershipTag, MlsPlaintextTbmPayload},
     messages::{ConfirmationTag, PathSecret, PublicGroupState},
     tree::secret_tree::SecretTree,
@@ -855,12 +856,17 @@ impl MembershipKey {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         tbm_payload: MlsPlaintextTbmPayload,
-    ) -> Result<MembershipTag, MembershipKeyError> {
-        Ok(MembershipTag(Mac::new(
-            backend,
-            &self.secret,
-            &tbm_payload.into_bytes()?,
-        )?))
+    ) -> Result<MembershipTag, LibraryError> {
+        Ok(MembershipTag(
+            Mac::new(
+                backend,
+                &self.secret,
+                &tbm_payload
+                    .into_bytes()
+                    .map_err(LibraryError::missing_bound_check)?,
+            )
+            .map_err(LibraryError::unexpected_crypto_error)?,
+        ))
     }
 
     #[cfg(any(feature = "test-utils", test))]

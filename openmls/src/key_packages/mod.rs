@@ -6,16 +6,15 @@ use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsCryptoProvider;
 use tls_codec::{Serialize as TlsSerializeTrait, TlsSize, TlsVecU32};
 
-use crate::ciphersuite::signable::Signable;
-use crate::ciphersuite::signable::SignedStruct;
-use crate::ciphersuite::signable::Verifiable;
-use crate::ciphersuite::{hash_ref::KeyPackageRef, *};
-use crate::config::{Config, ProtocolVersion};
-use crate::credentials::*;
-use crate::extensions::RequiredCapabilitiesExtension;
-use crate::extensions::{
-    CapabilitiesExtension, Extension, ExtensionError, ExtensionType, LifetimeExtension,
-    ParentHashExtension,
+use crate::{
+    ciphersuite::{hash_ref::KeyPackageRef, signable::*, *},
+    config::{Config, ProtocolVersion},
+    credentials::*,
+    error::LibraryError,
+    extensions::{
+        CapabilitiesExtension, Extension, ExtensionError, ExtensionType, LifetimeExtension,
+        ParentHashExtension, RequiredCapabilitiesExtension,
+    },
 };
 
 use serde::{
@@ -164,10 +163,12 @@ impl KeyPackage {
                             return Err(KeyPackageError::InvalidLifetimeExtension);
                         }
                     }
-                    Err(e) => {
+                    Err(_) => {
                         log::error!("as_lifetime_extension failed while verifying a key package.");
-                        error!("Library error: {:?}", e);
-                        return Err(KeyPackageError::LibraryError);
+                        return Err(LibraryError::custom(
+                            "verify(): Expected a lifetime extension",
+                        )
+                        .into());
                     }
                 }
             }
