@@ -416,6 +416,14 @@
 <span id="415">415</span>
 <span id="416">416</span>
 <span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync</span>::{<span class="ident">diff::StagedTreeSyncDiff</span>, <span class="ident">treekem::DecryptPathParams</span>};
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::proposals</span>::{
@@ -558,9 +566,10 @@
 
         <span class="comment">// Check if we were removed from the group</span>
         <span class="kw">if</span> <span class="ident">apply_proposals_values</span>.<span class="ident">self_removed</span> {
+            <span class="kw">let</span> <span class="ident">staged_diff</span> <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">into_staged_diff</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)<span class="question-mark">?</span>;
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">StagedCommit</span> {
                 <span class="ident">staged_proposal_queue</span>: <span class="ident">proposal_queue</span>,
-                <span class="ident">state</span>: <span class="prelude-val">None</span>,
+                <span class="ident">state</span>: <span class="ident">StagedCommitState::SelfRemoved</span>(<span class="ident">staged_diff</span>),
             });
         }
 
@@ -719,7 +728,7 @@
 
         <span class="prelude-val">Ok</span>(<span class="ident">StagedCommit</span> {
             <span class="ident">staged_proposal_queue</span>: <span class="ident">proposal_queue</span>,
-            <span class="ident">state</span>: <span class="prelude-val">Some</span>(<span class="ident">StagedCommitState</span> {
+            <span class="ident">state</span>: <span class="ident">StagedCommitState::GroupMember</span>(<span class="ident">MemberStagedCommitState</span> {
                 <span class="ident">group_context</span>: <span class="ident">provisional_group_context</span>,
                 <span class="ident">group_epoch_secrets</span>: <span class="ident">provisional_group_epoch_secrets</span>,
                 <span class="ident">message_secrets</span>: <span class="ident">provisional_message_secrets</span>,
@@ -738,41 +747,48 @@
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">staged_commit</span>: <span class="ident">StagedCommit</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MessageSecrets</span><span class="op">&gt;</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">state</span>) <span class="op">=</span> <span class="ident">staged_commit</span>.<span class="ident">state</span> {
-            <span class="self">self</span>.<span class="ident">group_context</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">group_context</span>;
-            <span class="self">self</span>.<span class="ident">group_epoch_secrets</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">group_epoch_secrets</span>;
+        <span class="kw">match</span> <span class="ident">staged_commit</span>.<span class="ident">state</span> {
+            <span class="ident">StagedCommitState::SelfRemoved</span>(<span class="ident">staged_diff</span>) =&gt; {
+                <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">merge_diff</span>(<span class="ident">staged_diff</span>)<span class="question-mark">?</span>;
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
+            }
+            <span class="ident">StagedCommitState::GroupMember</span>(<span class="ident">state</span>) =&gt; {
+                <span class="self">self</span>.<span class="ident">group_context</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">group_context</span>;
+                <span class="self">self</span>.<span class="ident">group_epoch_secrets</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">group_epoch_secrets</span>;
 
-            <span class="comment">// Replace the previous message secrets with the new ones and return the previous message secrets</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">message_secrets</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">message_secrets</span>;
-            <span class="ident">mem::swap</span>(
-                <span class="kw-2">&amp;mut</span> <span class="ident">message_secrets</span>,
-                <span class="self">self</span>.<span class="ident">message_secrets_store</span>.<span class="ident">message_secrets_mut</span>(),
-            );
+                <span class="comment">// Replace the previous message secrets with the new ones and return the previous message secrets</span>
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">message_secrets</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">message_secrets</span>;
+                <span class="ident">mem::swap</span>(
+                    <span class="kw-2">&amp;mut</span> <span class="ident">message_secrets</span>,
+                    <span class="self">self</span>.<span class="ident">message_secrets_store</span>.<span class="ident">message_secrets_mut</span>(),
+                );
 
-            <span class="self">self</span>.<span class="ident">interim_transcript_hash</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">interim_transcript_hash</span>;
+                <span class="self">self</span>.<span class="ident">interim_transcript_hash</span> <span class="op">=</span> <span class="ident">state</span>.<span class="ident">interim_transcript_hash</span>;
 
-            <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">merge_diff</span>(<span class="ident">state</span>.<span class="ident">staged_diff</span>)<span class="question-mark">?</span>;
-            <span class="prelude-val">Some</span>(<span class="ident">message_secrets</span>)
-        } <span class="kw">else</span> {
-            <span class="prelude-val">None</span>
-        })
+                <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">merge_diff</span>(<span class="ident">state</span>.<span class="ident">staged_diff</span>)<span class="question-mark">?</span>;
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">message_secrets</span>))
+            }
+        }
     }
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">StagedCommitState</span> {
+    <span class="ident">SelfRemoved</span>(<span class="ident">StagedTreeSyncDiff</span>),
+    <span class="ident">GroupMember</span>(<span class="ident">MemberStagedCommitState</span>),
 }
 
 <span class="doccomment">/// Contains the changes from a commit to the group state.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">StagedCommit</span> {
     <span class="ident">staged_proposal_queue</span>: <span class="ident">ProposalQueue</span>,
-    <span class="ident">state</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">StagedCommitState</span><span class="op">&gt;</span>,
+    <span class="ident">state</span>: <span class="ident">StagedCommitState</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">StagedCommit</span> {
     <span class="doccomment">/// Create a new [`StagedCommit`] from the provisional group state created</span>
     <span class="doccomment">/// during the commit process.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">staged_proposal_queue</span>: <span class="ident">ProposalQueue</span>,
-        <span class="ident">state</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">StagedCommitState</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">staged_proposal_queue</span>: <span class="ident">ProposalQueue</span>, <span class="ident">state</span>: <span class="ident">StagedCommitState</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">StagedCommit</span> {
             <span class="ident">staged_proposal_queue</span>,
             <span class="ident">state</span>,
@@ -802,13 +818,13 @@
     <span class="doccomment">/// Returns `true` if the member was removed through a proposal covered by this Commit message</span>
     <span class="doccomment">/// and `false` otherwise.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">self_removed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">state</span>.<span class="ident">is_none</span>()
+        <span class="macro">matches!</span>(<span class="self">self</span>.<span class="ident">state</span>, <span class="ident">StagedCommitState::SelfRemoved</span>(<span class="kw">_</span>))
     }
 }
 
 <span class="doccomment">/// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">StagedCommitState</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">MemberStagedCommitState</span> {
     <span class="ident">group_context</span>: <span class="ident">GroupContext</span>,
     <span class="ident">group_epoch_secrets</span>: <span class="ident">GroupEpochSecrets</span>,
     <span class="ident">message_secrets</span>: <span class="ident">MessageSecrets</span>,
@@ -816,7 +832,7 @@
     <span class="ident">staged_diff</span>: <span class="ident">StagedTreeSyncDiff</span>,
 }
 
-<span class="kw">impl</span> <span class="ident">StagedCommitState</span> {
+<span class="kw">impl</span> <span class="ident">MemberStagedCommitState</span> {
     <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">group_context</span>: <span class="ident">GroupContext</span>,
         <span class="ident">group_epoch_secrets</span>: <span class="ident">GroupEpochSecrets</span>,
