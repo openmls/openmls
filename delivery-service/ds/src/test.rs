@@ -377,7 +377,7 @@ async fn test_group() {
         .process_unverified_message(unverified_message, None, crypto)
         .expect("Could not process unverified message.");
     if let ProcessedMessage::ApplicationMessage(application_message) = processed_message {
-        assert_eq!(client2_message, application_message.message());
+        assert_eq!(client2_message, &application_message.into_bytes()[..]);
     } else {
         panic!("Expected application message");
     }

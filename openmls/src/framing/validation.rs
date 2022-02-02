@@ -428,17 +428,17 @@ pub enum ProcessedMessage {
 /// Application message received through a [ProcessedMessage].
 #[derive(Debug, PartialEq)]
 pub struct ApplicationMessage {
-    message: Vec<u8>,
+    bytes: Vec<u8>,
 }
 
 impl ApplicationMessage {
     /// Create a new [ApplicationMessage].
-    pub(crate) fn new(message: Vec<u8>) -> Self {
-        Self { message }
+    pub(crate) fn new(bytes: Vec<u8>) -> Self {
+        Self { bytes }
     }
 
-    /// Get the inner message.
-    pub fn message(self) -> Vec<u8> {
-        self.message
+    /// Returns the inner bytes and consumes the [`ApplicationMessage`].
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.bytes
     }
 }

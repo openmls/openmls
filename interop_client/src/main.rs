@@ -639,7 +639,7 @@ impl MlsClient for MlsClientImpl {
             .map_err(into_status)?;
         let application_data = match processed_message {
             ProcessedMessage::ApplicationMessage(application_message) => {
-                application_message.message().to_vec()
+                application_message.into_bytes()
             }
             ProcessedMessage::ProposalMessage(_) => unreachable!(),
             ProcessedMessage::StagedCommitMessage(_) => unreachable!(),

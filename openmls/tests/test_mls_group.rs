@@ -231,7 +231,7 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
         // Check that we received the correct message
         if let ProcessedMessage::ApplicationMessage(application_message) = processed_message {
             // Check the message
-            assert_eq!(application_message.message(), message_alice);
+            assert_eq!(application_message.into_bytes(), message_alice);
             // Check that Alice sent the message
             // TODO #575: Replace this with the adequate API call
             assert_eq!(
@@ -830,7 +830,7 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
         // Check that we received the correct message
         if let ProcessedMessage::ApplicationMessage(application_message) = bob_processed_message {
             // Check the message
-            assert_eq!(application_message.message(), message_alice);
+            assert_eq!(application_message.into_bytes(), message_alice);
             // Check that Alice sent the message
             // TODO #575: Replace this with the adequate API call
             assert_eq!(
