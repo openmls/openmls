@@ -680,7 +680,7 @@ impl CoreGroup {
     pub(crate) fn message_secrets_and_leaves_mut<'secret, 'group: 'secret>(
         &'group mut self,
         epoch: GroupEpoch,
-    ) -> Result<(&'secret mut MessageSecrets, Vec<(u32, KeyPackageRef)>), CoreGroupError> {
+    ) -> Result<(&'secret mut MessageSecrets, IndexedKeyPackageRefs), CoreGroupError> {
         if epoch < self.context().epoch() {
             self.message_secrets_store
                 .secrets_and_leaves_for_epoch_mut(epoch)
@@ -752,3 +752,5 @@ pub(crate) struct CoreGroupConfig {
     /// Defaults to false.
     pub(crate) add_ratchet_tree_extension: bool,
 }
+
+pub(crate) type IndexedKeyPackageRefs = Vec<(u32, KeyPackageRef)>;
