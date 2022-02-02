@@ -126,16 +126,9 @@ impl MessageSecretsStore {
         group_epoch: GroupEpoch,
         key_package_ref: &KeyPackageRef,
     ) -> bool {
-        self.past_epoch_trees
-            .iter()
-            .find(|t| {
-                t.epoch == group_epoch.0
-                    && t.leaves
-                        .iter()
-                        .find(|(_, kpr)| kpr == key_package_ref)
-                        .is_some()
-            })
-            .is_some()
+        self.past_epoch_trees.iter().any(|t| {
+            t.epoch == group_epoch.0 && t.leaves.iter().any(|(_, kpr)| kpr == key_package_ref)
+        })
     }
 
     /// Get a mutable reference to the message secrets of the current epoch.
