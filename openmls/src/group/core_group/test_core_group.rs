@@ -731,7 +731,7 @@ fn test_proposal_application_after_self_was_removed(
     backend: &impl OpenMlsCryptoProvider,
 ) {
     // We're going to test if proposals are still applied, even after a client
-    // notices that they were removed from a group.  We do so by having Alice
+    // notices that it was removed from a group.  We do so by having Alice
     // create a group, add Bob and then create a commit where Bob is removed and
     // Charlie is added in a single commit (by Alice). We then check if
     // everyone's membership list is as expected.
