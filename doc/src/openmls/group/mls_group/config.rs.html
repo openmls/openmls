@@ -258,7 +258,18 @@
 <span id="257">257</span>
 <span id="258">258</span>
 <span id="259">259</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Configuration module for [`MlsGroup`] configurations.</span>
+
+<span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree::sender_ratchet::SenderRatchetConfiguration</span>;
 <span class="kw">use</span> <span class="ident">lazy_static::lazy_static</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -266,10 +277,8 @@
 <span class="doccomment">/// Specifies the configuration parameters for a [`MlsGroup`]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Default</span>, <span class="ident">PartialEq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MlsGroupConfig</span> {
-    <span class="doccomment">/// Defines whether handshake messages (Proposals &amp; Commits) are encrypted.</span>
-    <span class="doccomment">/// Application are always encrypted regardless. `Plaintext`: Handshake messages</span>
-    <span class="doccomment">/// are returned as MlsPlaintext messages `Ciphertext`: Handshake messages are</span>
-    <span class="doccomment">/// returned as MlsCiphertext messages</span>
+    <span class="doccomment">/// Defines the wire format policy for outgoing and incoming handshake messages.</span>
+    <span class="doccomment">/// Application are always encrypted regardless.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">wire_format_policy</span>: <span class="ident">WireFormatPolicy</span>,
     <span class="doccomment">/// Size of padding in bytes</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">padding_size</span>: <span class="ident">usize</span>,
@@ -333,11 +342,13 @@
     }
 }
 
+<span class="doccomment">/// Builder for an [`MlsGroupConfig`].</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Default</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MlsGroupConfigBuilder</span> {
     <span class="ident">config</span>: <span class="ident">MlsGroupConfig</span>,
 }
 <span class="kw">impl</span> <span class="ident">MlsGroupConfigBuilder</span> {
+    <span class="doccomment">/// Creates a new builder with default values.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="ident">MlsGroupConfigBuilder</span> {
             <span class="ident">config</span>: <span class="ident">MlsGroupConfig::default</span>(),
@@ -393,6 +404,7 @@
         <span class="self">self</span>
     }
 
+    <span class="doccomment">/// Finalizes the builder and retursn an `[MlsGroupConfig`].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(<span class="self">self</span>) -&gt; <span class="ident">MlsGroupConfig</span> {
         <span class="self">self</span>.<span class="ident">config</span>
     }
@@ -441,6 +453,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">WireFormatPolicy</span> {
+    <span class="doccomment">/// Creates a new wire format policy from an [`OutgoingWireFormatPolicy`] and an [`IncomingWireFormatPolicy`].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">outgoing</span>: <span class="ident">OutgoingWireFormatPolicy</span>, <span class="ident">incoming</span>: <span class="ident">IncomingWireFormatPolicy</span>) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> { <span class="ident">outgoing</span>, <span class="ident">incoming</span> }
     }
@@ -482,6 +495,7 @@
 }
 
 <span class="macro">lazy_static!</span> {
+    <span class="doccomment">/// All valid wire format policy combinations</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">ALL_VALID_WIRE_FORMAT_POLICIES</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WireFormatPolicy</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[
         <span class="kw-2">*</span><span class="ident">PURE_PLAINTEXT_WIRE_FORMAT_POLICY</span>,
         <span class="kw-2">*</span><span class="ident">PURE_CIPHERTEXT_WIRE_FORMAT_POLICY</span>,
@@ -491,6 +505,7 @@
 }
 
 <span class="macro">lazy_static!</span> {
+    <span class="doccomment">/// Pure plaintext wire format policy.</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PURE_PLAINTEXT_WIRE_FORMAT_POLICY</span>: <span class="ident">WireFormatPolicy</span> <span class="op">=</span> <span class="ident">WireFormatPolicy::new</span>(
         <span class="ident">OutgoingWireFormatPolicy::AlwaysPlaintext</span>,
         <span class="ident">IncomingWireFormatPolicy::AlwaysPlaintext</span>,
@@ -498,6 +513,7 @@
 }
 
 <span class="macro">lazy_static!</span> {
+    <span class="doccomment">/// Pure ciphertext wire format policy.</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PURE_CIPHERTEXT_WIRE_FORMAT_POLICY</span>: <span class="ident">WireFormatPolicy</span> <span class="op">=</span> <span class="ident">WireFormatPolicy::new</span>(
         <span class="ident">OutgoingWireFormatPolicy::AlwaysCiphertext</span>,
         <span class="ident">IncomingWireFormatPolicy::AlwaysCiphertext</span>,
@@ -505,6 +521,7 @@
 }
 
 <span class="macro">lazy_static!</span> {
+    <span class="doccomment">/// Mixed plaintext wire format policy combination.</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">MIXED_PLAINTEXT_WIRE_FORMAT_POLICY</span>: <span class="ident">WireFormatPolicy</span> <span class="op">=</span> <span class="ident">WireFormatPolicy::new</span>(
         <span class="ident">OutgoingWireFormatPolicy::AlwaysPlaintext</span>,
         <span class="ident">IncomingWireFormatPolicy::Mixed</span>,
@@ -512,6 +529,7 @@
 }
 
 <span class="macro">lazy_static!</span> {
+    <span class="doccomment">/// Mixed ciphertext wire format policy combination.</span>
     <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY</span>: <span class="ident">WireFormatPolicy</span> <span class="op">=</span> <span class="ident">WireFormatPolicy::new</span>(
         <span class="ident">OutgoingWireFormatPolicy::AlwaysCiphertext</span>,
         <span class="ident">IncomingWireFormatPolicy::Mixed</span>,

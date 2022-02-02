@@ -138,7 +138,7 @@
 <p>The group configuration can be specified by building a <code>MlsGroupConfig</code> object or choosing the default value. The default velaue contains safe values for all parameters and is suitable for scenarios whithout particular requirements.</p>
 <p>The following parameters can be set:</p>
 <table><thead><tr><th>Name</th><th>Type</th><th>Explanation</th></tr></thead><tbody>
-<tr><td><code>wire_format</code></td><td><code>WireFormat</code></td><td>Defines whether handshake messages are encrypted. The default <code>Ciphertext</code>.</td></tr>
+<tr><td><code>wire_format_policy</code></td><td><code>WireFormatPolicy</code></td><td>Defines the wire format policy for outgoing and incoming handshake messages.</td></tr>
 <tr><td><code>padding_size</code></td><td><code>usize</code></td><td>Size of padding in bytes. The default is 0.</td></tr>
 <tr><td><code>max_past_epochs</code></td><td><code>usize</code></td><td>Maximum number of past epochs for which application messages can be decrypted. The default is 0.</td></tr>
 <tr><td><code>number_of_resumption_secrets</code></td><td><code>usize</code></td><td>Number of resumtion secrets to keep. The default is 0.</td></tr>

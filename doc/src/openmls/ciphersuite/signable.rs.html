@@ -147,7 +147,14 @@
 <span id="146">146</span>
 <span id="147">147</span>
 <span id="148">148</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+</pre><pre class="rust"><code><span class="doccomment">//! This module defines traits used for signing and verifying</span>
+<span class="doccomment">//! structs from the MLS protocol spec.</span>
+
+<span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite::Signature</span>,
@@ -192,6 +199,7 @@
 <span class="doccomment">/// The `Signable` trait is implemented by all struct that are being signed.</span>
 <span class="doccomment">/// The implementation has to provide the `unsigned_payload` function.</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">Signable</span>: <span class="ident">Sized</span> {
+    <span class="doccomment">/// The type of the object once it&#39;s signed.</span>
     <span class="kw">type</span> <span class="ident">SignedOutput</span>;
 
     <span class="doccomment">/// Return the unsigned, serialized payload that should be signed.</span>

@@ -179,6 +179,7 @@
 <span id="178">178</span>
 <span id="179">179</span>
 <span id="180">180</span>
+<span id="181">181</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Ciphersuite and algorithm definitions and conversions.</span>
 
 <span class="kw">use</span> <span class="ident">openmls_traits::types</span>::{<span class="ident">HpkeAeadType</span>, <span class="ident">HpkeKdfType</span>, <span class="ident">HpkeKemType</span>};
@@ -204,6 +205,7 @@
     <span class="ident">TlsSize</span>,
 )]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u16</span>)]</span>
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CiphersuiteName</span> {
     <span class="ident">MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519</span> <span class="op">=</span> <span class="number">0x0001</span>,
     <span class="ident">MLS10_128_DHKEMP256_AES128GCM_SHA256_P256</span> <span class="op">=</span> <span class="number">0x0002</span>,

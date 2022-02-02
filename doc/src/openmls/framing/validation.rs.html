@@ -452,6 +452,11 @@
 <span id="451">451</span>
 <span id="452">452</span>
 <span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ```text</span>
@@ -734,7 +739,9 @@
 <span class="doccomment">/// verified message by verifying the signature, either with the credential or</span>
 <span class="doccomment">/// an external signature key.</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">UnverifiedContextMessage</span> {
+    <span class="doccomment">/// Unverified message from a group member</span>
     <span class="ident">Group</span>(<span class="ident">UnverifiedGroupMessage</span>),
+    <span class="doccomment">/// Unverfied message from a preconfigured sender</span>
     <span class="ident">Preconfigured</span>(<span class="ident">UnverifiedPreconfiguredMessage</span>),
 }
 
@@ -869,8 +876,11 @@
 <span class="doccomment">/// [StagedCommit] and [QueuedProposal] can be inspected for authorization purposes.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProcessedMessage</span> {
+    <span class="doccomment">/// Application message</span>
     <span class="ident">ApplicationMessage</span>(<span class="ident">ApplicationMessage</span>),
+    <span class="doccomment">/// Standalone proposal</span>
     <span class="ident">ProposalMessage</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">QueuedProposal</span><span class="op">&gt;</span>),
+    <span class="doccomment">/// Staged Commit</span>
     <span class="ident">StagedCommitMessage</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">StagedCommit</span><span class="op">&gt;</span>),
 }
 

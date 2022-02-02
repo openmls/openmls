@@ -108,6 +108,7 @@
 <span id="107">107</span>
 <span id="108">108</span>
 <span id="109">109</span>
+<span id="110">110</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains types and methods around the [`Node`] enum. The</span>
 <span class="doccomment">//! variants of the enum are [`LeafNode`] and [`ParentNode`], both of which are</span>
 <span class="doccomment">//! defined in the respective [`leaf_node`] and [`parent_node`] submodules.</span>
@@ -127,6 +128,7 @@
 
 <span class="doccomment">/// Container enum for leaf and parent nodes.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Node</span> {
     <span class="ident">LeafNode</span>(<span class="ident">LeafNode</span>),
     <span class="ident">ParentNode</span>(<span class="ident">ParentNode</span>),

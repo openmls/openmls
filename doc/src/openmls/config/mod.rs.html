@@ -259,6 +259,7 @@
 <span id="258">258</span>
 <span id="259">259</span>
 <span id="260">260</span>
+<span id="261">261</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This config contains all structs, enums and functions to configure MLS.</span>
 
 <span class="kw">use</span> <span class="ident">lazy_static::lazy_static</span>;
@@ -318,7 +319,7 @@
             <span class="kw">let</span> <span class="ident">config</span> <span class="op">=</span> <span class="ident">PersistentConfig</span> {
                 <span class="ident">protocol_versions</span>: <span class="macro">vec!</span>[<span class="ident">ProtocolVersion::Mls10</span>, <span class="ident">ProtocolVersion::Mls10Draft11</span>],
                 <span class="ident">ciphersuites</span>,
-                <span class="ident">extensions</span>: <span class="macro">vec!</span>[<span class="ident">ExtensionType::Capabilities</span>, <span class="ident">ExtensionType::Lifetime</span>, <span class="ident">ExtensionType::KeyId</span>],
+                <span class="ident">extensions</span>: <span class="macro">vec!</span>[<span class="ident">ExtensionType::Capabilities</span>, <span class="ident">ExtensionType::Lifetime</span>, <span class="ident">ExtensionType::ExternalKeyId</span>],
                 <span class="ident">proposals</span>: <span class="macro">vec!</span>[
                     <span class="ident">ProposalType::Add</span>,
                     <span class="ident">ProposalType::Update</span>,
@@ -452,6 +453,7 @@
     <span class="ident">TlsSize</span>,
 )]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u8</span>)]</span>
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProtocolVersion</span> {
     <span class="ident">Reserved</span> <span class="op">=</span> <span class="number">0</span>,
     <span class="ident">Mls10</span> <span class="op">=</span> <span class="number">1</span>,

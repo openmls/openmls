@@ -397,6 +397,15 @@
 <span id="396">396</span>
 <span id="397">397</span>
 <span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">application</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
 <span class="kw">mod</span> <span class="ident">creation</span>;
@@ -439,9 +448,13 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::proposals</span>::{<span class="ident">ProposalStore</span>, <span class="ident">QueuedProposal</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::staged_commit::StagedCommit</span>;
 
+<span class="doccomment">/// Pending Commit state. Differentiates between Commits issued by group members</span>
+<span class="doccomment">/// and External Commits.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PendingCommitState</span> {
+    <span class="doccomment">/// Commit from a group member</span>
     <span class="ident">Member</span>(<span class="ident">StagedCommit</span>),
+    <span class="doccomment">/// Commit from an external joiner</span>
     <span class="ident">External</span>(<span class="ident">StagedCommit</span>),
 }
 
@@ -512,8 +525,11 @@
 <span class="doccomment">///   Section 11.2.1 of the MLS specification.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsGroupState</span> {
+    <span class="doccomment">/// There is currently a pending Commit that hasn&#39;t been merged yet.</span>
     <span class="ident">PendingCommit</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">PendingCommitState</span><span class="op">&gt;</span>),
+    <span class="doccomment">/// The group state is in an opertaional state, where new messages and Commits can be created.</span>
     <span class="ident">Operational</span>,
+    <span class="doccomment">/// The group is inactive because the member has been removed.</span>
     <span class="ident">Inactive</span>,
 }
 
@@ -792,7 +808,9 @@
 <span class="doccomment">/// `InnerState::Persisted` indicates that the state has not been modified and therefore doesn&#39;t need to be persisted.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">InnerState</span> {
+    <span class="doccomment">/// The inner group state has changed and needs to be persisted.</span>
     <span class="ident">Changed</span>,
+    <span class="doccomment">/// The inner group state hasn&#39;t changed and doesn&#39;t need to be persisted.</span>
     <span class="ident">Persisted</span>,
 }
 </code></pre></div>

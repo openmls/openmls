@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["ConfigError",""]]});
+initSidebarItems({"enum":[["ConfigError","See the error’s module for more information."]]});

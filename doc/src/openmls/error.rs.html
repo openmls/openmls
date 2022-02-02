@@ -241,6 +241,7 @@
 <span id="240">240</span>
 <span id="241">241</span>
 <span id="242">242</span>
+<span id="243">243</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # OpenMLS Errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Each module has their own errors it is returning. This module will defines</span>
@@ -394,6 +395,7 @@
     ) =&gt; {
         <span class="macro">as_item!</span>{
             <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+            <span class="doccomment">/// See the error&#39;s module for more information.</span>
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">visibility</span> <span class="kw">enum</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">src_name</span> {
                 $(
                     <span class="attribute">#[<span class="ident">doc</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">description</span>]</span>

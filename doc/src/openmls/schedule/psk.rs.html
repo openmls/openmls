@@ -355,6 +355,8 @@
 <span id="354">354</span>
 <span id="355">355</span>
 <span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Pre shared keys.</span>
 <span class="doccomment">//! ```text</span>
 <span class="doccomment">//! enum {</span>
@@ -417,6 +419,7 @@
     <span class="ident">TlsSize</span>,
 )]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u8</span>)]</span>
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PskType</span> {
     <span class="ident">External</span> <span class="op">=</span> <span class="number">1</span>,
     <span class="ident">Reinit</span> <span class="op">=</span> <span class="number">2</span>,
@@ -526,6 +529,7 @@
 
 <span class="doccomment">/// PSK enum that can contain the different PSK types</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Psk</span> {
     <span class="ident">External</span>(<span class="ident">ExternalPsk</span>),
     <span class="ident">Reinit</span>(<span class="ident">ReinitPsk</span>),

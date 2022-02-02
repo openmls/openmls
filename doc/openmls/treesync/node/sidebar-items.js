@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["Node","Container enum for leaf and parent nodes."],["NodeError",""]]});
+initSidebarItems({"enum":[["Node","Container enum for leaf and parent nodes."],["NodeError","See the error’s module for more information."]]});

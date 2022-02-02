@@ -189,6 +189,8 @@
 <span id="188">188</span>
 <span id="189">189</span>
 <span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Ciphersuites for MLS</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This file contains the API to interact with ciphersuites.</span>
@@ -246,6 +248,8 @@
 <span class="doccomment">/// Re-use guard size.</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const</span> <span class="ident">REUSE_GUARD_BYTES</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">4</span>;
 
+<span class="doccomment">/// The `Ciphersuite` object encapsulates all the necessary crypto primitives for</span>
+<span class="doccomment">/// a given [`CiphersuiteName`].</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Ciphersuite</span> {
     <span class="ident">name</span>: <span class="ident">CiphersuiteName</span>,

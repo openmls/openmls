@@ -357,6 +357,8 @@
 <span id="356">356</span>
 <span id="357">357</span>
 <span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Extensions</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ## Extension struct</span>
@@ -387,7 +389,7 @@
 
 <span class="kw">mod</span> <span class="ident">capabilities_extension</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">errors</span>;
-<span class="kw">mod</span> <span class="ident">key_package_id_extension</span>;
+<span class="kw">mod</span> <span class="ident">external_key_id_extension</span>;
 <span class="kw">mod</span> <span class="ident">life_time_extension</span>;
 <span class="kw">mod</span> <span class="ident">parent_hash_extension</span>;
 <span class="kw">mod</span> <span class="ident">ratchet_tree_extension</span>;
@@ -396,7 +398,7 @@
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">capabilities_extension::CapabilitiesExtension</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">key_package_id_extension::KeyIdExtension</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">external_key_id_extension::ExternalKeyIdExtension</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">life_time_extension::LifetimeExtension</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">parent_hash_extension::ParentHashExtension</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">ratchet_tree_extension::RatchetTreeExtension</span>;
@@ -426,11 +428,12 @@
     <span class="ident">TlsSize</span>,
 )]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u16</span>)]</span>
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExtensionType</span> {
     <span class="ident">Reserved</span> <span class="op">=</span> <span class="number">0</span>,
     <span class="ident">Capabilities</span> <span class="op">=</span> <span class="number">1</span>,
     <span class="ident">Lifetime</span> <span class="op">=</span> <span class="number">2</span>,
-    <span class="ident">KeyId</span> <span class="op">=</span> <span class="number">3</span>,
+    <span class="ident">ExternalKeyId</span> <span class="op">=</span> <span class="number">3</span>,
     <span class="ident">ParentHash</span> <span class="op">=</span> <span class="number">4</span>,
     <span class="ident">RatchetTree</span> <span class="op">=</span> <span class="number">5</span>,
     <span class="ident">RequiredCapabilities</span> <span class="op">=</span> <span class="number">6</span>,
@@ -447,7 +450,7 @@
             <span class="number">0</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ExtensionType::Reserved</span>),
             <span class="number">1</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ExtensionType::Capabilities</span>),
             <span class="number">2</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ExtensionType::Lifetime</span>),
-            <span class="number">3</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ExtensionType::KeyId</span>),
+            <span class="number">3</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ExtensionType::ExternalKeyId</span>),
             <span class="number">4</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ExtensionType::ParentHash</span>),
             <span class="number">5</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ExtensionType::RatchetTree</span>),
             <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">tls_codec::Error::DecodingError</span>(<span class="macro">format!</span>(
@@ -465,7 +468,7 @@
             <span class="ident">ExtensionType::Reserved</span>
             <span class="op">|</span> <span class="ident">ExtensionType::Capabilities</span>
             <span class="op">|</span> <span class="ident">ExtensionType::Lifetime</span>
-            <span class="op">|</span> <span class="ident">ExtensionType::KeyId</span>
+            <span class="op">|</span> <span class="ident">ExtensionType::ExternalKeyId</span>
             <span class="op">|</span> <span class="ident">ExtensionType::ParentHash</span>
             <span class="op">|</span> <span class="ident">ExtensionType::RatchetTree</span>
             <span class="op">|</span> <span class="ident">ExtensionType::RequiredCapabilities</span> =&gt; <span class="bool-val">true</span>,
@@ -480,7 +483,7 @@
     <span class="ident">Capabilities</span>(<span class="ident">CapabilitiesExtension</span>),
 
     <span class="doccomment">/// A [`KeyIdExtension`]</span>
-    <span class="ident">KeyPackageId</span>(<span class="ident">KeyIdExtension</span>),
+    <span class="ident">ExternalKeyId</span>(<span class="ident">ExternalKeyIdExtension</span>),
 
     <span class="doccomment">/// A [`LifetimeExtension`]</span>
     <span class="ident">LifeTime</span>(<span class="ident">LifetimeExtension</span>),
@@ -502,7 +505,7 @@
         <span class="op">+</span> <span class="number">4</span> <span class="comment">/* u32 len */</span> <span class="op">+</span>
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">Extension::Capabilities</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">tls_serialized_len</span>(),
-            <span class="ident">Extension::KeyPackageId</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">tls_serialized_len</span>(),
+            <span class="ident">Extension::ExternalKeyId</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">tls_serialized_len</span>(),
             <span class="ident">Extension::LifeTime</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">tls_serialized_len</span>(),
             <span class="ident">Extension::ParentHash</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">tls_serialized_len</span>(),
             <span class="ident">Extension::RatchetTree</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">tls_serialized_len</span>(),
@@ -522,7 +525,7 @@
 
         <span class="kw">let</span> <span class="ident">extension_data_written</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">Extension::Capabilities</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">tls_serialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">extension_data</span>),
-            <span class="ident">Extension::KeyPackageId</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">tls_serialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">extension_data</span>),
+            <span class="ident">Extension::ExternalKeyId</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">tls_serialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">extension_data</span>),
             <span class="ident">Extension::LifeTime</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">tls_serialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">extension_data</span>),
             <span class="ident">Extension::ParentHash</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">tls_serialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">extension_data</span>),
             <span class="ident">Extension::RatchetTree</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">tls_serialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">extension_data</span>),
@@ -550,9 +553,9 @@
             <span class="ident">ExtensionType::Capabilities</span> =&gt; <span class="ident">Extension::Capabilities</span>(
                 <span class="ident">CapabilitiesExtension::tls_deserialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">extension_data</span>)<span class="question-mark">?</span>,
             ),
-            <span class="ident">ExtensionType::KeyId</span> =&gt; {
-                <span class="ident">Extension::KeyPackageId</span>(<span class="ident">KeyIdExtension::tls_deserialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">extension_data</span>)<span class="question-mark">?</span>)
-            }
+            <span class="ident">ExtensionType::ExternalKeyId</span> =&gt; <span class="ident">Extension::ExternalKeyId</span>(
+                <span class="ident">ExternalKeyIdExtension::tls_deserialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">extension_data</span>)<span class="question-mark">?</span>,
+            ),
             <span class="ident">ExtensionType::Lifetime</span> =&gt; {
                 <span class="ident">Extension::LifeTime</span>(<span class="ident">LifetimeExtension::tls_deserialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">extension_data</span>)<span class="question-mark">?</span>)
             }
@@ -603,9 +606,9 @@
     <span class="doccomment">/// Get a reference to the `KeyIDExtension`.</span>
     <span class="doccomment">/// Returns an `InvalidExtensionType` error if called on an `Extension`</span>
     <span class="doccomment">/// that&#39;s not a `KeyIDExtension`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_key_id_extension</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">KeyIdExtension</span>, <span class="ident">ExtensionError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_external_key_id_extension</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">ExternalKeyIdExtension</span>, <span class="ident">ExtensionError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident"><span class="self">Self</span>::KeyPackageId</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">e</span>),
+            <span class="ident"><span class="self">Self</span>::ExternalKeyId</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">e</span>),
             <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">ExtensionError::InvalidExtensionType</span>(
                 <span class="string">&quot;This is not a KeyIDExtension&quot;</span>.<span class="ident">into</span>(),
             )),
@@ -650,11 +653,12 @@
         }
     }
 
+    <span class="doccomment">/// Returns the [`ExtensionType`]</span>
     <span class="attribute">#[<span class="ident">inline</span>]</span>
     <span class="kw">pub</span> <span class="kw">const</span> <span class="kw">fn</span> <span class="ident">extension_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ExtensionType</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">Extension::Capabilities</span>(<span class="kw">_</span>) =&gt; <span class="ident">ExtensionType::Capabilities</span>,
-            <span class="ident">Extension::KeyPackageId</span>(<span class="kw">_</span>) =&gt; <span class="ident">ExtensionType::KeyId</span>,
+            <span class="ident">Extension::ExternalKeyId</span>(<span class="kw">_</span>) =&gt; <span class="ident">ExtensionType::ExternalKeyId</span>,
             <span class="ident">Extension::LifeTime</span>(<span class="kw">_</span>) =&gt; <span class="ident">ExtensionType::Lifetime</span>,
             <span class="ident">Extension::ParentHash</span>(<span class="kw">_</span>) =&gt; <span class="ident">ExtensionType::ParentHash</span>,
             <span class="ident">Extension::RatchetTree</span>(<span class="kw">_</span>) =&gt; <span class="ident">ExtensionType::RatchetTree</span>,

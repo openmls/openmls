@@ -638,7 +638,43 @@
 <span id="637">637</span>
 <span id="638">638</span>
 <span id="639">639</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">log::error</span>;
+<span id="640">640</span>
+<span id="641">641</span>
+<span id="642">642</span>
+<span id="643">643</span>
+<span id="644">644</span>
+<span id="645">645</span>
+<span id="646">646</span>
+<span id="647">647</span>
+<span id="648">648</span>
+<span id="649">649</span>
+<span id="650">650</span>
+<span id="651">651</span>
+<span id="652">652</span>
+<span id="653">653</span>
+<span id="654">654</span>
+<span id="655">655</span>
+<span id="656">656</span>
+<span id="657">657</span>
+<span id="658">658</span>
+<span id="659">659</span>
+<span id="660">660</span>
+<span id="661">661</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Key Packages.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! In order to facilitate asynchronous addition of clients to a group,</span>
+<span class="doccomment">//! it is necessary to pre-publish key packages that provide some public</span>
+<span class="doccomment">//! information about a user. KeyPackage structures provide information</span>
+<span class="doccomment">//! about a client that any existing member can use to add this client</span>
+<span class="doccomment">//! to the group asynchronously. A KeyPackage object specifies a ciphersuite</span>
+<span class="doccomment">//! that the client supports, as well as providing a public key that others</span>
+<span class="doccomment">//! can use for key agreement. The identity arising from the credential,</span>
+<span class="doccomment">//! together with the endpoint_id in the KeyPackage serve to uniquely identify</span>
+<span class="doccomment">//! a client in a group. When used as InitKeys, KeyPackages are intended to be</span>
+<span class="doccomment">//! used only once and SHOULD NOT be reused except in case of last</span>
+<span class="doccomment">//! resort. (See Section 15.4). Clients MAY generate and publish multiple InitKeys</span>
+<span class="doccomment">//! to support multiple ciphersuites.</span>
+<span class="kw">use</span> <span class="ident">log::error</span>;
 <span class="kw">use</span> <span class="ident">openmls_traits::crypto::OpenMlsCrypto</span>;
 <span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
 <span class="kw">use</span> <span class="ident">openmls_traits::types::HpkeKeyPair</span>;
@@ -743,6 +779,11 @@
     }
 }
 
+<span class="doccomment">/// A Key Package.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// In order to facilitate asynchronous addition of clients to a group,</span>
+<span class="doccomment">/// it is possible to pre-publish key packages that provide some public</span>
+<span class="doccomment">/// information about a user.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">KeyPackage</span> {
     <span class="ident">payload</span>: <span class="ident">KeyPackagePayload</span>,
@@ -830,8 +871,8 @@
     <span class="doccomment">/// Get the ID of this key package as byte slice.</span>
     <span class="doccomment">/// Returns an error if no Key ID extension is present.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">key_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">key_id_ext</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">extension_with_type</span>(<span class="ident">ExtensionType::KeyId</span>) {
-            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">key_id_ext</span>.<span class="ident">as_key_id_extension</span>()<span class="question-mark">?</span>.<span class="ident">as_slice</span>());
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">key_id_ext</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">extension_with_type</span>(<span class="ident">ExtensionType::ExternalKeyId</span>) {
+            <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">key_id_ext</span>.<span class="ident">as_external_key_id_extension</span>()<span class="question-mark">?</span>.<span class="ident">as_slice</span>());
         }
         <span class="prelude-val">Err</span>(<span class="ident">KeyPackageError::ExtensionError</span>(
             <span class="ident">ExtensionError::InvalidExtensionType</span>(<span class="string">&quot;Tried to get a key ID extension&quot;</span>.<span class="ident">into</span>()),
@@ -954,6 +995,7 @@
     }
 }
 
+<span class="doccomment">/// Payload of the [`KeyPackageBundle`].</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">KeyPackageBundlePayload</span> {
     <span class="ident">key_package_payload</span>: <span class="ident">KeyPackagePayload</span>,
     <span class="ident">private_key</span>: <span class="ident">HpkePrivateKey</span>,
@@ -1036,6 +1078,7 @@
     }
 }
 
+<span class="doccomment">/// Contains a [`KeyPackage`], the correponding `HpkePrivateKey` and a leaf secret.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">KeyPackageBundle</span> {
@@ -1212,6 +1255,7 @@
     }
 
     <span class="doccomment">/// Get the unsigned payload version of this key package bundle for modificaiton.</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">unsigned</span>(<span class="self">self</span>) -&gt; <span class="ident">KeyPackageBundlePayload</span> {
         <span class="self">self</span>.<span class="ident">into</span>()
     }

@@ -25,6 +25,7 @@
 <span id="24">24</span>
 <span id="25">25</span>
 <span id="26">26</span>
+<span id="27">27</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module defines the binary tree implementation used by OpenMLS.</span>
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">array_representation</span>;
@@ -47,6 +48,7 @@
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">MlsBinaryTreeError</span> <span class="op">=</span> <span class="ident">ABinaryTreeError</span>;
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">MlsBinaryTreeDiffError</span> <span class="op">=</span> <span class="ident">ABinaryTreeDiffError</span>;
 
+<span class="doccomment">/// Index type to index the leaves in the binary tree</span>
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">LeafIndex</span> <span class="op">=</span> <span class="ident">u32</span>;
 
 <span class="doccomment">/// A tree can be at most `2^32 - 1` nodes big.</span>
