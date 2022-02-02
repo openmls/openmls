@@ -78,8 +78,10 @@ impl User {
             .members()
             .expect("Failed to retrieve membership in group!")
         {
-            if self.identity.borrow().credential.credential().identity() != member.identity() {
-                let contact = match self.contacts.get(member.identity()) {
+            if self.identity.borrow().credential.credential().identity()
+                != member.credential().identity()
+            {
+                let contact = match self.contacts.get(member.credential().identity()) {
                     Some(c) => c.id.clone(),
                     None => panic!("There's a member in the group we don't know."),
                 };

@@ -5,7 +5,9 @@
 
 use memory_keystore::MemoryKeyStore;
 use openmls_traits::OpenMlsCryptoProvider;
-use rust_crypto::RustCrypto;
+
+mod provider;
+pub use provider::*;
 
 #[derive(Default, Debug)]
 pub struct OpenMlsRustCrypto {

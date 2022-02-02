@@ -1,5 +1,5 @@
 use openmls_traits::types::CryptoError;
-use tls_codec::{Error as TlsCodecError, Serialize, TlsSerialize, TlsSize};
+use tls_codec::{Error as TlsCodecError, TlsSerialize, TlsSize};
 
 use crate::ciphersuite::*;
 use crate::framing::*;
@@ -47,27 +47,24 @@ impl From<&MlsPlaintext> for SecretType {
     }
 }
 
-/// Derives secrets for inner nodes of a SecretTree
+/// Derives secrets for inner nodes of a SecretTree. This function corresponds
+/// to the `DeriveTreeSecret` defined in Section 10.1 of the MLS specification.
+#[inline]
 pub(crate) fn derive_tree_secret(
     secret: &Secret,
     label: &str,
-    node: u32,
     generation: u32,
     length: usize,
     backend: &impl OpenMlsCryptoProvider,
 ) -> Result<Secret, SecretTreeError> {
     log::debug!(
-        "Derive tree secret with label \"{}\" for node {} in generation {} of length {}",
+        "Derive tree secret with label \"{}\" in generation {} of length {}",
         label,
-        node,
         generation,
         length
     );
-    let tree_context = TreeContext { node, generation };
     log_crypto!(trace, "Input secret {:x?}", secret.as_slice());
-    log_crypto!(trace, "Tree context {:?}", tree_context);
-    let serialized_tree_context = tree_context.tls_serialize_detached()?;
-    Ok(secret.kdf_expand_label(backend, label, &serialized_tree_context, length)?)
+    Ok(secret.kdf_expand_label(backend, label, &generation.to_be_bytes(), length)?)
 }
 
 #[derive(Debug, TlsSerialize, TlsSize)]
@@ -183,20 +180,13 @@ impl SecretTree {
             None => return Err(SecretTreeError::LibraryError),
         };
 
-        let handshake_ratchet_secret = derive_tree_secret(
-            node_secret,
-            "handshake",
-            index_in_tree.as_u32(),
-            0,
-            ciphersuite.hash_length(),
-            backend,
-        )?;
+        let handshake_ratchet_secret =
+            node_secret.kdf_expand_label(backend, "handshake", b"", ciphersuite.hash_length())?;
         let handshake_sender_ratchet = SenderRatchet::new(index, &handshake_ratchet_secret);
         self.handshake_sender_ratchets[index.as_usize()] = Some(handshake_sender_ratchet);
         let application_ratchet_secret = derive_tree_secret(
             node_secret,
             "application",
-            index_in_tree.as_u32(),
             0,
             ciphersuite.hash_length(),
             backend,
@@ -313,22 +303,8 @@ impl SecretTree {
             left(index_in_tree).expect("derive_down: Error while computing left child.");
         let right_index = right(index_in_tree, self.size)
             .expect("derive_down: Error while computing right child.");
-        let left_secret = derive_tree_secret(
-            node_secret,
-            "tree",
-            left_index.as_u32(),
-            0,
-            hash_len,
-            backend,
-        )?;
-        let right_secret = derive_tree_secret(
-            node_secret,
-            "tree",
-            right_index.as_u32(),
-            0,
-            hash_len,
-            backend,
-        )?;
+        let left_secret = node_secret.kdf_expand_label(backend, "tree", b"left", hash_len)?;
+        let right_secret = node_secret.kdf_expand_label(backend, "tree", b"right", hash_len)?;
         log_crypto!(
             trace,
             "Left node ({}) secret: {:x?}",
