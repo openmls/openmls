@@ -10,6 +10,9 @@ OpenMLS.
 
 The key store is probably one of the most interesting traits because applications
 that use OpenMLS will interact with it.
+See the [OpenMlsKeyStore trait](./traits.md#openmlskeystore) description for details
+but note that the key used to store, read, and delete values in the key store has
+to be provided as a byte slice.
 
 In the following examples we have a `ciphersuite` and a `backend` (`OpenMlsCryptoProvider`).
 
