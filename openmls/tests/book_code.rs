@@ -211,8 +211,8 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     let members = alice_group
         .members()
         .expect("error getting members from group");
-    assert_eq!(members[0].identity(), b"Alice");
-    assert_eq!(members[1].identity(), b"Bob");
+    assert_eq!(members[0].credential().identity(), b"Alice");
+    assert_eq!(members[1].credential().identity(), b"Bob");
 
     // ANCHOR: bob_joins_with_welcome
     let mut bob_group = MlsGroup::new_from_welcome(
@@ -510,9 +510,9 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 
     // Check that Alice, Bob & Charlie are the members of the group
     let members = alice_group.members().expect("error getting member");
-    assert_eq!(members[0].identity(), b"Alice");
-    assert_eq!(members[1].identity(), b"Bob");
-    assert_eq!(members[2].identity(), b"Charlie");
+    assert_eq!(members[0].credential().identity(), b"Alice");
+    assert_eq!(members[1].credential().identity(), b"Bob");
+    assert_eq!(members[2].credential().identity(), b"Charlie");
 
     // === Charlie sends a message to the group ===
     let message_charlie = b"Hi, I'm Charlie!";
@@ -596,15 +596,31 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         charlie_group.export_ratchet_tree()
     );
 
+    // ANCHOR: retrieve_members
+    let charlie_members = charlie_group
+        .members()
+        .expect("Error retrieving list of group members.");
+    // ANCHOR_END: retrieve_members
+
+    let bob_kp_ref = charlie_members
+        .iter()
+        .find(|&kp| kp.credential().identity() == b"Bob")
+        .expect("Couldn't find Bob in the list of group members.")
+        .hash_ref(backend.crypto())
+        .expect("Error computing hash reference.");
+
+    // Make sure that this is Bob's actual KP reference.
+    assert_eq!(
+        &bob_kp_ref,
+        bob_group
+            .key_package_ref()
+            .expect("An unexpected error occurred.")
+    );
+
     // === Charlie removes Bob ===
     // ANCHOR: charlie_removes_bob
     let (mls_message_out, welcome_option) = charlie_group
-        .remove_members(
-            backend,
-            &[*bob_group
-                .key_package_ref()
-                .expect("An unexpected error occurred.")],
-        )
+        .remove_members(backend, &[bob_kp_ref])
         .expect("Could not remove Bob from group.");
     // ANCHOR_END: charlie_removes_bob
 
@@ -614,6 +630,23 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     let unverified_message = alice_group
         .parse_message(mls_message_out.clone().into(), backend)
         .expect("Could not parse message.");
+
+    // Check that alice can use the member list to check if the message is
+    // actually from Charlie.
+    let alice_members = alice_group
+        .members()
+        .expect("Error getting list of members");
+    let sender_credential = unverified_message
+        .credential()
+        .expect("Couldn't retrieve credential from unverified message.");
+
+    assert!(alice_members
+        .iter()
+        .find(|&kp| kp.credential() == sender_credential)
+        .is_some());
+
+    assert_eq!(sender_credential, &charlie_credential);
+
     let alice_processed_message = alice_group
         .process_unverified_message(unverified_message, None, backend)
         .expect("Could not process unverified message.");
@@ -716,8 +749,8 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 
     // Check that Alice & Charlie are the members of the group
     let members = alice_group.members().expect("error getting members");
-    assert_eq!(members[0].identity(), b"Alice");
-    assert_eq!(members[1].identity(), b"Charlie");
+    assert_eq!(members[0].credential().identity(), b"Alice");
+    assert_eq!(members[1].credential().identity(), b"Charlie");
 
     // Check that Bob can no longer send messages
     assert!(bob_group
@@ -860,8 +893,8 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 
     // Check that Alice & Bob are the members of the group
     let members = alice_group.members().expect("error getting members");
-    assert_eq!(members[0].identity(), b"Alice");
-    assert_eq!(members[1].identity(), b"Bob");
+    assert_eq!(members[0].credential().identity(), b"Alice");
+    assert_eq!(members[1].credential().identity(), b"Bob");
 
     // Bob creates a new group
     let mut bob_group = MlsGroup::new_from_welcome(
@@ -880,16 +913,16 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 
     // Check that Alice & Bob are the members of the group
     let members = alice_group.members().expect("error getting members");
-    assert_eq!(members[0].identity(), b"Alice");
-    assert_eq!(members[1].identity(), b"Bob");
+    assert_eq!(members[0].credential().identity(), b"Alice");
+    assert_eq!(members[1].credential().identity(), b"Bob");
 
     // Make sure the group contains two members
     assert_eq!(bob_group.members().expect("error getting members").len(), 2);
 
     // Check that Alice & Bob are the members of the group
     let members = bob_group.members().expect("error getting members");
-    assert_eq!(members[0].identity(), b"Alice");
-    assert_eq!(members[1].identity(), b"Bob");
+    assert_eq!(members[0].credential().identity(), b"Alice");
+    assert_eq!(members[1].credential().identity(), b"Bob");
 
     // === Alice sends a message to the group ===
     let message_alice = b"Hi, I'm Alice!";
@@ -1042,7 +1075,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 
     // Check that Alice is the only member of the group
     let members = alice_group.members().expect("error getting members");
-    assert_eq!(members[0].identity(), b"Alice");
+    assert_eq!(members[0].credential().identity(), b"Alice");
 
     // === Save the group state ===
 
