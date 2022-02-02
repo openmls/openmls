@@ -279,7 +279,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     // ANCHOR: inspect_application_message
     if let ProcessedMessage::ApplicationMessage(application_message) = processed_message {
         // Check the message
-        assert_eq!(application_message.message(), b"Hi, I'm Alice!");
+        assert_eq!(application_message.into_bytes(), b"Hi, I'm Alice!");
     }
     // ANCHOR_END: inspect_application_message
     else {
@@ -932,6 +932,10 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     let unverified_message = bob_group
         .parse_message(queued_message.into(), backend)
         .expect("Could not parse message.");
+    let sender = unverified_message
+        .credential()
+        .expect("Expected a credential.")
+        .clone();
     let bob_processed_message = bob_group
         .process_unverified_message(unverified_message, None, backend)
         .expect("Could not process unverified message.");
@@ -939,17 +943,12 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     // Check that we received the correct message
     if let ProcessedMessage::ApplicationMessage(application_message) = bob_processed_message {
         // Check the message
-        assert_eq!(application_message.message(), message_alice);
+        assert_eq!(application_message.into_bytes(), message_alice);
         // Check that Alice sent the message
         // TODO #575: Replace this with the adequate API call
         assert_eq!(
-            application_message
-                .sender()
-                .as_key_package_ref()
-                .expect("An unexpected error occurred."),
-            alice_group
-                .key_package_ref()
-                .expect("An unexpected error occurred.")
+            &sender,
+            alice_group.credential().expect("Expected a credential.")
         );
     } else {
         unreachable!("Expected an ApplicationMessage.");

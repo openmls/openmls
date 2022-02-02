@@ -181,7 +181,7 @@ impl User {
                     match processed_message {
                         ProcessedMessage::ApplicationMessage(application_message) => {
                             let application_message =
-                                String::from_utf8(application_message.message().into()).unwrap();
+                                String::from_utf8(application_message.into_bytes()).unwrap();
                             if group_name.is_none()
                                 || group_name.clone().unwrap() == group.group_name
                             {

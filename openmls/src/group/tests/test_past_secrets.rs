@@ -210,7 +210,7 @@ fn test_past_secrets_in_group(
 
             if let ProcessedMessage::ApplicationMessage(application_message) = bob_processed_message
             {
-                assert_eq!(application_message.message(), &[1, 2, 3]);
+                assert_eq!(application_message.into_bytes(), &[1, 2, 3]);
             } else {
                 unreachable!("Expected an ApplicationMessage.");
             }
