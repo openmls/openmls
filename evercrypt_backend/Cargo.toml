@@ -10,7 +10,7 @@ evercrypt = { version = "0.0.10", features = ["serialization"] }
 memory_keystore = { version = "0.1", path = "../memory_keystore" }
 rand = "0.8"
 rand_chacha = { version = "0.3" }
-hpke = { version = "0.1.0-pre.1", package = "hpke-rs", features = ["hazmat", "serialization"] }
+hpke = { version = "0.1.0-pre.2", package = "hpke-rs", features = ["hazmat", "serialization"] }
 log = { version = "0.4", features = ["std"] }
-hpke-rs-crypto = { version = "0.1.1-pre.1" }
-hpke-rs-evercrypt = { version = "0.1.1-pre.1" }
+hpke-rs-crypto = { version = "0.1.1-pre.2" }
+hpke-rs-evercrypt = { version = "0.1.1-pre.2" }
