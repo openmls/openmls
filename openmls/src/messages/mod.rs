@@ -1,3 +1,5 @@
+//! MLS messages and message framing.
+
 use crate::{
     ciphersuite::hash_ref::KeyPackageRef,
     ciphersuite::{signable::*, *},
@@ -74,7 +76,9 @@ pub struct Welcome {
 /// ```
 #[derive(Clone, Debug, PartialEq, TlsDeserialize, TlsSerialize, TlsSize)]
 pub struct EncryptedGroupSecrets {
+    /// Key package refrence of the new member
     pub new_member: KeyPackageRef,
+    /// Ciphertext of the encrypted group secret
     pub encrypted_group_secrets: HpkeCiphertext,
 }
 
@@ -122,6 +126,13 @@ impl Welcome {
     }
 }
 
+/// Commit.
+///
+/// A Commit message initiates a new epoch for the group,
+/// based on a collection of Proposals. It instructs group
+/// members to update their representation of the state of
+/// the group by applying the proposals and advancing the
+/// key schedule.
 #[derive(
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
@@ -136,6 +147,7 @@ impl Commit {
         self.path.is_some()
     }
 
+    /// Returns the update path of the Commit if it has one.
     pub fn path(&self) -> &Option<UpdatePath> {
         &self.path
     }

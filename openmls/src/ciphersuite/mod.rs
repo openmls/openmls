@@ -55,6 +55,8 @@ pub(crate) const NONCE_BYTES: usize = 12;
 /// Re-use guard size.
 pub(crate) const REUSE_GUARD_BYTES: usize = 4;
 
+/// The `Ciphersuite` object encapsulates all the necessary crypto primitives for
+/// a given [`CiphersuiteName`].
 #[derive(Debug)]
 pub struct Ciphersuite {
     name: CiphersuiteName,
