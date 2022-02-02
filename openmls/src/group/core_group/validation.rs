@@ -58,10 +58,16 @@ impl CoreGroup {
         // ValSem004
         let sender = plaintext.sender();
         if sender.is_member()
+            // If the sender is a member, it has to be in the tree ...
             && self
                 .treesync()
-                .leaf_from_id(sender.as_key_package_ref()?)?
+                .leaf_from_id(sender.as_key_package_ref()?)
+                .ok()
                 .is_none()
+            // ... or in a tree from a past epoch we still have around.
+            && !self
+                .message_secrets_store
+                .epoch_has_leaf(plaintext.epoch(), sender.as_key_package_ref()?)
         {
             return Err(FramingValidationError::UnknownMember.into());
         }
