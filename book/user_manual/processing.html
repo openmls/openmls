@@ -150,7 +150,7 @@
 </code></pre>
 <p>Parsing can fail, if e.g. dercrypting the message fails. The exact reason for failure is returned in the error.</p>
 <h2 id="processing-messages"><a class="header" href="#processing-messages">Processing messages</a></h2>
-<p>In the next step the unverified message needs to be processed. This step performs all remeining validity checks and also verifies the message's signature. Optionally, a signature key can be provided to verify the message's signature. This can be used when processing external messages. By default, the sender's credential is used to verify the signature.</p>
+<p>In the next step the unverified message needs to be processed. This step performs all remaining validity checks and also verifies the message's signature. Optionally, a signature key can be provided to verify the message's signature. This can be used when processing external messages. By default, the sender's credential is used to verify the signature.</p>
 <pre><code class="language-rust no_run noplayground">    let processed_message = bob_group
         .process_unverified_message(
             unverified_message,

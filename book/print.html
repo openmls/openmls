@@ -295,14 +295,9 @@ If the group configuration does not use the ratchet tree extension, the ratchet 
 <p>In this case the the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="removing-members-from-a-group"><a class="header" href="#removing-members-from-a-group">Removing members from a group</a></h1>
 <h2 id="immediate-operation-1"><a class="header" href="#immediate-operation-1">Immediate operation</a></h2>
-<p>Members can be removed from the group atomically with the <code>.remove_members()</code> function.</p>
+<p>Members can be removed from the group atomically with the <code>.remove_members()</code> function, which takes the <code>KeyPackageRef</code> of group member as input. References to the <code>KeyPackage</code>s of group members can be obtained using the <code>.members()</code> function, from which one can in turn compute the <code>KeyPackageRef</code> using their <code>.hash_ref()</code> function.</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option) = charlie_group
-        .remove_members(
-            backend,
-            &amp;[*bob_group
-                .key_package_ref()
-                .expect(&quot;An unexpected error occurred.&quot;)],
-        )
+        .remove_members(backend, &amp;[bob_kp_ref])
         .expect(&quot;Could not remove Bob from group.&quot;);
 </code></pre>
 <p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing members of the group.
@@ -380,7 +375,7 @@ In case the Commit message also covers Add Proposals that were previously receiv
 </code></pre>
 <p>Parsing can fail, if e.g. dercrypting the message fails. The exact reason for failure is returned in the error.</p>
 <h2 id="processing-messages"><a class="header" href="#processing-messages">Processing messages</a></h2>
-<p>In the next step the unverified message needs to be processed. This step performs all remeining validity checks and also verifies the message's signature. Optionally, a signature key can be provided to verify the message's signature. This can be used when processing external messages. By default, the sender's credential is used to verify the signature.</p>
+<p>In the next step the unverified message needs to be processed. This step performs all remaining validity checks and also verifies the message's signature. Optionally, a signature key can be provided to verify the message's signature. This can be used when processing external messages. By default, the sender's credential is used to verify the signature.</p>
 <pre><code class="language-rust no_run noplayground">    let processed_message = bob_group
         .process_unverified_message(
             unverified_message,
