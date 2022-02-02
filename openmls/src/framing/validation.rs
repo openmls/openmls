@@ -428,31 +428,17 @@ pub enum ProcessedMessage {
 /// Application message received through a [ProcessedMessage].
 #[derive(Debug, PartialEq)]
 pub struct ApplicationMessage {
-    message: Vec<u8>,
-    sender: Sender,
+    bytes: Vec<u8>,
 }
 
 impl ApplicationMessage {
     /// Create a new [ApplicationMessage].
-    pub(crate) fn new(message: Vec<u8>, sender: &Sender) -> Self {
-        Self {
-            message,
-            sender: sender.clone(),
-        }
+    pub(crate) fn new(bytes: Vec<u8>) -> Self {
+        Self { bytes }
     }
 
-    /// Get a reference to the message.
-    pub fn message(&self) -> &[u8] {
-        &self.message
-    }
-
-    /// Get a reference to the sender.
-    pub fn sender(&self) -> &Sender {
-        &self.sender
-    }
-
-    /// Get the message and the sender and consume the [ApplicationMessage].
-    pub fn into_parts(self) -> (Vec<u8>, Sender) {
-        (self.message, self.sender)
+    /// Returns the inner bytes and consumes the [`ApplicationMessage`].
+    pub fn into_bytes(self) -> Vec<u8> {
+        self.bytes
     }
 }

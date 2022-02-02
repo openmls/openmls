@@ -220,6 +220,10 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
         let unverified_message = bob_group
             .parse_message(queued_message.clone().into(), backend)
             .expect("Could not parse message.");
+        let sender = unverified_message
+            .credential()
+            .expect("Expected a credential.")
+            .clone();
         let processed_message = bob_group
             .process_unverified_message(unverified_message, None, backend)
             .expect("Could not process unverified message.");
@@ -227,16 +231,13 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
         // Check that we received the correct message
         if let ProcessedMessage::ApplicationMessage(application_message) = processed_message {
             // Check the message
-            assert_eq!(application_message.message(), message_alice);
+            assert_eq!(application_message.into_bytes(), message_alice);
             // Check that Alice sent the message
             // TODO #575: Replace this with the adequate API call
             assert_eq!(
-                application_message
-                    .sender()
-                    .as_key_package_ref()
-                    .expect("An unexpected error occurred."),
+                &sender,
                 alice_group
-                    .key_package_ref()
+                    .credential()
                     .expect("An unexpected error occurred.")
             );
         } else {
@@ -818,25 +819,23 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
         let unverified_message = bob_group
             .parse_message(queued_message.clone().into(), backend)
             .expect("Could not parse message.");
+        let sender = unverified_message
+            .credential()
+            .expect("Expected a credential.")
+            .clone();
         let bob_processed_message = bob_group
             .process_unverified_message(unverified_message, None, backend)
             .expect("Could not process unverified message.");
 
         // Check that we received the correct message
-        let alice_kpr = *alice_group
-            .key_package_ref()
-            .expect("An unexpected error occurred.");
         if let ProcessedMessage::ApplicationMessage(application_message) = bob_processed_message {
             // Check the message
-            assert_eq!(application_message.message(), message_alice);
+            assert_eq!(application_message.into_bytes(), message_alice);
             // Check that Alice sent the message
             // TODO #575: Replace this with the adequate API call
             assert_eq!(
-                application_message
-                    .sender()
-                    .as_key_package_ref()
-                    .expect("An unexpected error occurred."),
-                &alice_kpr
+                &sender,
+                alice_group.credential().expect("Expected a credential")
             );
         } else {
             unreachable!("Expected an ApplicationMessage.");
