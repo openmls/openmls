@@ -702,3 +702,199 @@ fn test_own_commit_processing(
         ))
     );
 }
+
+fn setup_client(
+    id: &str,
+    ciphersuite: &Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+) -> (CredentialBundle, KeyPackageBundle) {
+    let credential_bundle = CredentialBundle::new(
+        id.into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
+    let key_package_bundle = KeyPackageBundle::new(
+        &[ciphersuite.name()],
+        &credential_bundle,
+        backend,
+        Vec::new(),
+    )
+    .expect("An unexpected error occurred.");
+    (credential_bundle, key_package_bundle)
+}
+
+#[apply(ciphersuites_and_backends)]
+fn test_proposal_application_after_self_was_removed(
+    ciphersuite: &'static Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+) {
+    // We're going to test if proposals are still applied, even after a client
+    // notices that they were removed from a group.  We do so by having Alice
+    // create a group, add Bob and then create a commit where Bob is removed and
+    // Charlie is added in a single commit (by Alice). We then check if
+    // everyone's membership list is as expected.
+
+    // Basic group setup.
+    let group_aad = b"Alice's test group";
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
+
+    let (alice_credential_bundle, alice_kpb) = setup_client("Alice", ciphersuite, backend);
+    let (_, bob_kpb) = setup_client("Bob", ciphersuite, backend);
+    let (_, charlie_kpb) = setup_client("Charlie", ciphersuite, backend);
+
+    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_kpb)
+        .build(backend)
+        .expect("Error creating CoreGroup.");
+
+    // Adding Bob
+    let bob_add_proposal = alice_group
+        .create_add_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            bob_kpb.key_package().clone(),
+            backend,
+        )
+        .expect("Could not create proposal");
+
+    let bob_add_proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_add_proposal)
+            .expect("Could not create QueuedProposal."),
+    );
+
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&bob_add_proposal_store)
+        .force_self_update(false)
+        .build();
+    let add_commit_result = alice_group
+        .create_commit(params, backend)
+        .expect("Error creating commit");
+
+    alice_group
+        .merge_commit(add_commit_result.staged_commit)
+        .expect("error merging pending commit");
+
+    let ratchet_tree = alice_group.treesync().export_nodes();
+
+    let mut bob_group = CoreGroup::new_from_welcome(
+        add_commit_result
+            .welcome_option
+            .expect("An unexpected error occurred."),
+        Some(ratchet_tree),
+        bob_kpb,
+        backend,
+    )
+    .expect("Error joining group.");
+
+    // Alice adds Charlie and removes Bob in the same commit.
+    let bob_kp_ref = alice_group
+        .treesync()
+        .leaves()
+        .expect("error getting leaves")
+        .values()
+        .find(|&kp| kp.credential().identity() == b"Bob")
+        .expect("Couldn't find Bob in tree.")
+        .hash_ref(backend.crypto())
+        .expect("error computing hash ref");
+    let bob_remove_proposal = alice_group
+        .create_remove_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            &bob_kp_ref,
+            backend,
+        )
+        .expect("Could not create proposal");
+
+    let charlie_add_proposal = alice_group
+        .create_add_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            charlie_kpb.key_package().clone(),
+            backend,
+        )
+        .expect("Could not create proposal");
+
+    let mut remove_add_proposal_store = ProposalStore::from_queued_proposal(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, bob_remove_proposal)
+            .expect("Could not create QueuedProposal."),
+    );
+
+    remove_add_proposal_store.add(
+        QueuedProposal::from_mls_plaintext(ciphersuite, backend, charlie_add_proposal)
+            .expect("Could not create QueuedProposal."),
+    );
+
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&remove_add_proposal_store)
+        .build();
+    let remove_add_commit_result = alice_group
+        .create_commit(params, backend)
+        .expect("Error creating commit");
+
+    let staged_commit = bob_group
+        .stage_commit(
+            &remove_add_commit_result.commit,
+            &remove_add_proposal_store,
+            &[],
+            backend,
+        )
+        .expect("error staging commit");
+    bob_group
+        .merge_commit(staged_commit)
+        .expect("error merging commit");
+
+    alice_group
+        .merge_commit(remove_add_commit_result.staged_commit)
+        .expect("error merging pending commit");
+
+    let ratchet_tree = alice_group.treesync().export_nodes();
+
+    let charlie_group = CoreGroup::new_from_welcome(
+        remove_add_commit_result
+            .welcome_option
+            .expect("An unexpected error occurred."),
+        Some(ratchet_tree),
+        charlie_kpb,
+        backend,
+    )
+    .expect("Error joining group.");
+
+    // We can now check that Bob correctly processed his and applied the changes
+    // to his tree after he was removed by comparing membership lists. In
+    // particular, Bob's list should show that he was removed and Charlie was
+    // added.
+    let alice_members: Vec<&Credential> = alice_group
+        .treesync()
+        .full_leaves()
+        .expect("Error getting leaves")
+        .iter()
+        .map(|(_, kp)| kp.credential())
+        .collect();
+
+    let bob_members: Vec<&Credential> = bob_group
+        .treesync()
+        .full_leaves()
+        .expect("Error getting leaves")
+        .iter()
+        .map(|(_, kp)| kp.credential())
+        .collect();
+
+    let charlie_members: Vec<&Credential> = charlie_group
+        .treesync()
+        .full_leaves()
+        .expect("Error getting leaves")
+        .iter()
+        .map(|(_, kp)| kp.credential())
+        .collect();
+
+    assert_eq!(alice_members, bob_members,);
+    assert_eq!(bob_members, charlie_members);
+
+    assert_eq!(bob_members[0].identity(), b"Alice");
+    assert_eq!(bob_members[1].identity(), b"Charlie");
+}
