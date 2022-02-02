@@ -140,9 +140,10 @@ impl CoreGroup {
 
         // Check if we were removed from the group
         if apply_proposals_values.self_removed {
+            let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
             return Ok(StagedCommit {
                 staged_proposal_queue: proposal_queue,
-                state: None,
+                state: StagedCommitState::SelfRemoved(staged_diff),
             });
         }
 
@@ -301,7 +302,7 @@ impl CoreGroup {
 
         Ok(StagedCommit {
             staged_proposal_queue: proposal_queue,
-            state: Some(StagedCommitState {
+            state: StagedCommitState::GroupMember(MemberStagedCommitState {
                 group_context: provisional_group_context,
                 group_epoch_secrets: provisional_group_epoch_secrets,
                 message_secrets: provisional_message_secrets,
@@ -320,41 +321,48 @@ impl CoreGroup {
         &mut self,
         staged_commit: StagedCommit,
     ) -> Result<Option<MessageSecrets>, CoreGroupError> {
-        Ok(if let Some(state) = staged_commit.state {
-            self.group_context = state.group_context;
-            self.group_epoch_secrets = state.group_epoch_secrets;
+        match staged_commit.state {
+            StagedCommitState::SelfRemoved(staged_diff) => {
+                self.tree.merge_diff(staged_diff)?;
+                Ok(None)
+            }
+            StagedCommitState::GroupMember(state) => {
+                self.group_context = state.group_context;
+                self.group_epoch_secrets = state.group_epoch_secrets;
 
-            // Replace the previous message secrets with the new ones and return the previous message secrets
-            let mut message_secrets = state.message_secrets;
-            mem::swap(
-                &mut message_secrets,
-                self.message_secrets_store.message_secrets_mut(),
-            );
+                // Replace the previous message secrets with the new ones and return the previous message secrets
+                let mut message_secrets = state.message_secrets;
+                mem::swap(
+                    &mut message_secrets,
+                    self.message_secrets_store.message_secrets_mut(),
+                );
 
-            self.interim_transcript_hash = state.interim_transcript_hash;
+                self.interim_transcript_hash = state.interim_transcript_hash;
 
-            self.tree.merge_diff(state.staged_diff)?;
-            Some(message_secrets)
-        } else {
-            None
-        })
+                self.tree.merge_diff(state.staged_diff)?;
+                Ok(Some(message_secrets))
+            }
+        }
     }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub(crate) enum StagedCommitState {
+    SelfRemoved(StagedTreeSyncDiff),
+    GroupMember(MemberStagedCommitState),
 }
 
 /// Contains the changes from a commit to the group state.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StagedCommit {
     staged_proposal_queue: ProposalQueue,
-    state: Option<StagedCommitState>,
+    state: StagedCommitState,
 }
 
 impl StagedCommit {
     /// Create a new [`StagedCommit`] from the provisional group state created
     /// during the commit process.
-    pub(crate) fn new(
-        staged_proposal_queue: ProposalQueue,
-        state: Option<StagedCommitState>,
-    ) -> Self {
+    pub(crate) fn new(staged_proposal_queue: ProposalQueue, state: StagedCommitState) -> Self {
         StagedCommit {
             staged_proposal_queue,
             state,
@@ -384,13 +392,13 @@ impl StagedCommit {
     /// Returns `true` if the member was removed through a proposal covered by this Commit message
     /// and `false` otherwise.
     pub fn self_removed(&self) -> bool {
-        self.state.is_none()
+        matches!(self.state, StagedCommitState::SelfRemoved(_))
     }
 }
 
 /// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.
 #[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct StagedCommitState {
+pub(crate) struct MemberStagedCommitState {
     group_context: GroupContext,
     group_epoch_secrets: GroupEpochSecrets,
     message_secrets: MessageSecrets,
@@ -398,7 +406,7 @@ pub(crate) struct StagedCommitState {
     staged_diff: StagedTreeSyncDiff,
 }
 
-impl StagedCommitState {
+impl MemberStagedCommitState {
     pub(super) fn new(
         group_context: GroupContext,
         group_epoch_secrets: GroupEpochSecrets,
