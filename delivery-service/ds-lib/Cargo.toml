@@ -7,6 +7,11 @@ description = "Types to interact with the OpenMLS DS."
 
 [dependencies]
 tls_codec = "0.2.0-pre.4"
-openmls = { path = "../../openmls", features = ["test-utils"], version = "0.4.0-pre.1" }
-openmls_traits = { path = "../../traits", version = "0.1.0-pre.1" }
-openmls_rust_crypto = { path = "../../openmls_rust_crypto", version = "0.1.0-pre.1" }
+openmls = {features = ["test-utils"], version = "0.4.0-pre.1" }
+openmls_traits = "0.1.0-pre.1" 
+openmls_rust_crypto = "0.1.0-pre.1"
+
+[patch.crates-io]
+openmls = { path = "../../openmls" }
+openmls_traits = { path = "../../traits" }
+openmls_rust_crypto = { path = "../../openmls_rust_crypto" }
