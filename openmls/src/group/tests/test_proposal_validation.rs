@@ -179,74 +179,6 @@ fn test_valsem100(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     // TODO #525: Add test for incoming proposals.
 }
 
-/// ValSem103:
-/// Add Proposal:
-/// Identity in proposals must be unique among existing group members
-#[apply(ciphersuites_and_backends)]
-fn test_valsem103(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    for (alice_id, bob_id) in [
-        ("42", "42"), // Negative Case: Alice and Bob have same identity
-        ("42", "24"), // Positive Case: Alice and Bob have different identity
-    ] {
-        // 0. Initialize Alice and Bob
-        let (alice_credential_bundle, alice_key_package_bundle) =
-            generate_credential_bundle_and_key_package_bundle(
-                alice_id.into(),
-                ciphersuite,
-                backend,
-            );
-        let (_bob_credential_bundle, bob_key_package_bundle) =
-            generate_credential_bundle_and_key_package_bundle(bob_id.into(), ciphersuite, backend);
-        let bob_key_package = bob_key_package_bundle.key_package().clone();
-
-        // 1. Alice creates a group
-        let group_aad = b"Alice's Friends";
-        let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsCiphertext);
-        let alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-            .build(backend)
-            .expect("Error creating group.");
-
-        // 2. Alice creates a proposal to add Bob
-        let bob_add_proposal = alice_group
-            .create_add_proposal(
-                framing_parameters,
-                &alice_credential_bundle,
-                bob_key_package,
-                backend,
-            )
-            .expect("Could not create proposal to add Bob.");
-
-        // 4. Alice queues the proposal
-        let proposal_store = generate_proposal_store(&[bob_add_proposal], ciphersuite, backend);
-
-        // 5. Alice tries to generate a commit message
-        let params = CreateCommitParams::builder()
-            .framing_parameters(framing_parameters)
-            .credential_bundle(&alice_credential_bundle)
-            .proposal_store(&proposal_store)
-            .build();
-        let res = alice_group.create_commit(params, backend);
-
-        if alice_id == bob_id {
-            // Negative Case: we should output an error
-            let err = res.expect_err(
-                "Created commit when the proposal has the same identity as a group member!",
-            );
-            assert_eq!(
-                err,
-                CoreGroupError::ProposalValidationError(
-                    ProposalValidationError::ExistingIdentityAddProposal
-                )
-            );
-        } else {
-            // Positive Case: we should succeed
-            let _ = res.expect("Failed to create commit with different identities!");
-        }
-    }
-
-    // TODO #525: Add test for incoming proposals.
-}
-
 /// ValSem101:
 /// Add Proposal:
 /// Signature public key in proposals must be unique among proposals
@@ -403,6 +335,74 @@ fn test_valsem102(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         } else {
             // Positive Case: we should succeed
             let _ = res.expect("Failed to create commit with different signature keypairs!");
+        }
+    }
+
+    // TODO #525: Add test for incoming proposals.
+}
+
+/// ValSem103:
+/// Add Proposal:
+/// Identity in proposals must be unique among existing group members
+#[apply(ciphersuites_and_backends)]
+fn test_valsem103(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    for (alice_id, bob_id) in [
+        ("42", "42"), // Negative Case: Alice and Bob have same identity
+        ("42", "24"), // Positive Case: Alice and Bob have different identity
+    ] {
+        // 0. Initialize Alice and Bob
+        let (alice_credential_bundle, alice_key_package_bundle) =
+            generate_credential_bundle_and_key_package_bundle(
+                alice_id.into(),
+                ciphersuite,
+                backend,
+            );
+        let (_bob_credential_bundle, bob_key_package_bundle) =
+            generate_credential_bundle_and_key_package_bundle(bob_id.into(), ciphersuite, backend);
+        let bob_key_package = bob_key_package_bundle.key_package().clone();
+
+        // 1. Alice creates a group
+        let group_aad = b"Alice's Friends";
+        let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsCiphertext);
+        let alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+            .build(backend)
+            .expect("Error creating group.");
+
+        // 2. Alice creates a proposal to add Bob
+        let bob_add_proposal = alice_group
+            .create_add_proposal(
+                framing_parameters,
+                &alice_credential_bundle,
+                bob_key_package,
+                backend,
+            )
+            .expect("Could not create proposal to add Bob.");
+
+        // 4. Alice queues the proposal
+        let proposal_store = generate_proposal_store(&[bob_add_proposal], ciphersuite, backend);
+
+        // 5. Alice tries to generate a commit message
+        let params = CreateCommitParams::builder()
+            .framing_parameters(framing_parameters)
+            .credential_bundle(&alice_credential_bundle)
+            .proposal_store(&proposal_store)
+            .build();
+        let res = alice_group.create_commit(params, backend);
+
+        if alice_id == bob_id {
+            // Negative Case: we should output an error
+            let err = res.expect_err(
+                "Created commit when the proposal has the same identity as a group member!",
+            );
+            assert_eq!(
+                err,
+                CoreGroupError::ProposalValidationError(
+                    ProposalValidationError::ExistingIdentityAddProposal
+                )
+            );
+        } else {
+            // Positive Case: we should succeed
+            let _ = res.expect("Failed to create commit with different identities!");
         }
     }
 
