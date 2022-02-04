@@ -2,7 +2,7 @@
 
 [![Tests & Checks](https://github.com/openmls/openmls/actions/workflows/tests.yml/badge.svg)](https://github.com/openmls/openmls/actions/workflows/tests.yml)
 [![ARM64 Build Status](https://cloud.drone.io/api/badges/openmls/openmls/status.svg?ref=refs/heads/main)](https://cloud.drone.io/openmls/openmls)
-[![Deploy Docs](https://github.com/openmls/openmls/workflows/Deploy%20Docs/badge.svg)](https://openmls.github.io/openmls/openmls/index.html)
+[![Deploy Docs](https://github.com/openmls/openmls/workflows/Deploy%20Docs/badge.svg)][docs-main-link]
 [![codecov](https://codecov.io/gh/openmls/openmls/branch/main/graph/badge.svg?token=5SDRDRTZI0)](https://codecov.io/gh/openmls/openmls)
 [![OpenMLS List][list-image]][list-link]
 [![Docs][docs-main-badge]][docs-main-link]
@@ -109,4 +109,4 @@ OpenMLS adheres to the [Contributor Covenant](https://www.contributor-covenant.o
 [list-link]: https://groups.google.com/u/0/g/openmls-dev
 [rustc-image]: https://img.shields.io/badge/rustc-1.56+-blue.svg
 [docs-main-badge]: https://img.shields.io/badge/docs-main-blue.svg
-[docs-main-link]: https://openmls.tech/openmls/openmls/index.html
+[docs-main-link]: https://openmls.tech/openmls/doc/openmls/index.html

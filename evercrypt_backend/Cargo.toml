@@ -1,16 +1,25 @@
 [package]
 name = "openmls_evercrypt"
 authors = ["OpenMLS Authors"]
-version = "0.1.0-pre.1"
+version = "0.1.0-pre.2"
 edition = "2018"
+description = "A crypto backend for OpenMLS implementing openmls_traits using HACL/Evercrypt."
+license = "MIT"
+documentation = "https://docs.rs/openmls_evercrypt"
+repository = "https://github.com/openmls/openmls/tree/main/evercrypt_backend"
+readme = "README.md"
 
 [dependencies]
-openmls_traits = { version = "0.1.0-pre.1", path = "../traits" }
+openmls_traits = { version = "0.1.0-pre.2" }
 evercrypt = { version = "0.0.10", features = ["serialization"] }
-memory_keystore = { version = "0.1.0-pre.1", path = "../memory_keystore" }
+openmls_memory_keystore = { version = "0.1.0-pre.2" }
 rand = "0.8"
 rand_chacha = { version = "0.3" }
 hpke = { version = "0.1.0-pre.2", package = "hpke-rs", features = ["hazmat", "serialization"] }
 log = { version = "0.4", features = ["std"] }
 hpke-rs-crypto = { version = "0.1.1-pre.2" }
 hpke-rs-evercrypt = { version = "0.1.1-pre.2" }
+
+[patch.crates-io]
+openmls_traits = { path = "../traits" }
+openmls_memory_keystore = { path = "../memory_keystore" }

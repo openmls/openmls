@@ -1,7 +1,16 @@
 [package]
-name = "memory_keystore"
-version = "0.1.0-pre.1"
+name = "openmls_memory_keystore"
+authors = ["OpenMLS Authors"]
+version = "0.1.0-pre.2"
 edition = "2018"
+description = "A very basic key store for OpenMLS implementing openmls_traits."
+license = "MIT"
+documentation = "https://docs.rs/openmls_memory_keystore"
+repository = "https://github.com/openmls/openmls/tree/main/memory_keystore"
+readme = "README.md"
 
 [dependencies]
-openmls_traits = { version = "0.1.0-pre.1", path = "../traits" }
+openmls_traits = { version = "0.1.0-pre.2" }
+
+[patch.crates-io]
+openmls_traits = { path = "../traits" }

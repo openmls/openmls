@@ -1,4 +1,4 @@
-use memory_keystore::MemoryKeyStore;
+use openmls_memory_keystore::MemoryKeyStore;
 use openmls_traits::OpenMlsCryptoProvider;
 
 mod provider;
