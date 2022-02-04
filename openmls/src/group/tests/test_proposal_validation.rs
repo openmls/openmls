@@ -73,6 +73,58 @@ fn generate_proposal_store(
     proposal_store
 }
 
+fn create_commit_to_add_bob_and_charlie(
+    alice_credential_bundle: CredentialBundle,
+    alice_key_package_bundle: KeyPackageBundle,
+    bob_key_package: KeyPackage,
+    charlie_key_package: KeyPackage,
+    ciphersuite: &Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+) -> Result<CreateCommitResult, CoreGroupError> {
+    // 1. Alice creates a group
+    let group_aad = b"Alice's Friends";
+    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsCiphertext);
+    let alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+        .build(backend)
+        .expect("Error creating group.");
+
+    // 2. Alice creates a proposal to add Bob
+    let bob_add_proposal = alice_group
+        .create_add_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            bob_key_package,
+            backend,
+        )
+        .expect("Could not create proposal to add Bob.");
+
+    // 3. Alice creates a proposal to add Charlie
+    let charlie_add_proposal = alice_group
+        .create_add_proposal(
+            framing_parameters,
+            &alice_credential_bundle,
+            charlie_key_package,
+            backend,
+        )
+        .expect("Could not create proposal to add Charlie.");
+
+    // 4. Alice queues these proposals
+    let proposal_store = generate_proposal_store(
+        &[bob_add_proposal, charlie_add_proposal],
+        ciphersuite,
+        backend,
+    );
+
+    // 5. Alice tries to generate a commit message
+    let params = CreateCommitParams::builder()
+        .framing_parameters(framing_parameters)
+        .credential_bundle(&alice_credential_bundle)
+        .proposal_store(&proposal_store)
+        .build();
+
+    return alice_group.create_commit(params, backend);
+}
+
 /// ValSem100:
 /// Add Proposal:
 /// Identity in proposals must be unique among proposals
@@ -98,47 +150,15 @@ fn test_valsem100(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
             );
         let charlie_key_package = charlie_key_package_bundle.key_package().clone();
 
-        // 1. Alice creates a group
-        let group_aad = b"Alice's Friends";
-        let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsCiphertext);
-        let alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-            .build(backend)
-            .expect("Error creating group.");
-
-        // 2. Alice creates a proposal to add Bob
-        let bob_add_proposal = alice_group
-            .create_add_proposal(
-                framing_parameters,
-                &alice_credential_bundle,
-                bob_key_package,
-                backend,
-            )
-            .expect("Could not create proposal to add Bob.");
-
-        // 3. Alice creates a proposal to add Charlie
-        let charlie_add_proposal = alice_group
-            .create_add_proposal(
-                framing_parameters,
-                &alice_credential_bundle,
-                charlie_key_package,
-                backend,
-            )
-            .expect("Could not create proposal to add Charlie.");
-
-        // 4. Alice queues these proposals
-        let proposal_store = generate_proposal_store(
-            &[bob_add_proposal, charlie_add_proposal],
+        // 1. Create a group and try to create a commit to add Bob and Charlie
+        let res = create_commit_to_add_bob_and_charlie(
+            alice_credential_bundle,
+            alice_key_package_bundle,
+            bob_key_package,
+            charlie_key_package,
             ciphersuite,
             backend,
         );
-
-        // 5. Alice tries to generate a commit message
-        let params = CreateCommitParams::builder()
-            .framing_parameters(framing_parameters)
-            .credential_bundle(&alice_credential_bundle)
-            .proposal_store(&proposal_store)
-            .build();
-        let res = alice_group.create_commit(params, backend);
 
         if bob_id == charlie_id {
             // Negative Case: we should output an error
@@ -240,6 +260,7 @@ fn test_valsem101(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         let (alice_credential_bundle, alice_key_package_bundle) =
             generate_credential_bundle_and_key_package_bundle("Alice".into(), ciphersuite, backend);
 
+        // 1. Initialize Bob and Charlie
         let bob_signature_keypair: SignatureKeypair;
         let charlie_signature_keypair: SignatureKeypair;
 
@@ -280,47 +301,15 @@ fn test_valsem101(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .expect("failed to generate key package");
         let charlie_key_package = charlie_key_package_bundle.key_package().clone();
 
-        // 1. Alice creates a group
-        let group_aad = b"Alice's Friends";
-        let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsCiphertext);
-        let alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-            .build(backend)
-            .expect("Error creating group.");
-
-        // 2. Alice creates a proposal to add Bob
-        let bob_add_proposal = alice_group
-            .create_add_proposal(
-                framing_parameters,
-                &alice_credential_bundle,
-                bob_key_package,
-                backend,
-            )
-            .expect("Could not create proposal to add Bob.");
-
-        // 3. Alice creates a proposal to add Charlie
-        let charlie_add_proposal = alice_group
-            .create_add_proposal(
-                framing_parameters,
-                &alice_credential_bundle,
-                charlie_key_package,
-                backend,
-            )
-            .expect("Could not create proposal to add Charlie.");
-
-        // 4. Alice queues these proposals
-        let proposal_store = generate_proposal_store(
-            &[bob_add_proposal, charlie_add_proposal],
+        // 2. Create a group and try to create a commit to add Bob and Charlie
+        let res = create_commit_to_add_bob_and_charlie(
+            alice_credential_bundle,
+            alice_key_package_bundle,
+            bob_key_package,
+            charlie_key_package,
             ciphersuite,
             backend,
         );
-
-        // 5. Alice tries to generate a commit message
-        let params = CreateCommitParams::builder()
-            .framing_parameters(framing_parameters)
-            .credential_bundle(&alice_credential_bundle)
-            .proposal_store(&proposal_store)
-            .build();
-        let res = alice_group.create_commit(params, backend);
 
         if bob_and_charlie_share_keys {
             // Negative Case: we should output an error
