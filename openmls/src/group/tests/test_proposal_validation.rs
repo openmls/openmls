@@ -329,3 +329,82 @@ fn test_valsem101(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     // TODO #525: Add test for incoming proposals.
 }
+
+/// ValSem102:
+/// Add Proposal:
+/// HPKE init key in proposals must be unique among proposals
+#[apply(ciphersuites_and_backends)]
+fn test_valsem102(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    for bob_and_charlie_share_hpke_init_keys in [
+        true,  // Negative Case: Bob and Charlie have same HPKE init key
+        false, // Positive Case: Bob and Charlie have different HPKE init keys
+    ] {
+        // 0. Initialize Alice, Bob, and Charlie
+        let (alice_credential_bundle, alice_key_package_bundle) =
+            generate_credential_bundle_and_key_package_bundle("Alice".into(), ciphersuite, backend);
+        let (bob_credential_bundle, mut bob_key_package_bundle) =
+            generate_credential_bundle_and_key_package_bundle("Bob".into(), ciphersuite, backend);
+        let (charlie_credential_bundle, mut charlie_key_package_bundle) =
+            generate_credential_bundle_and_key_package_bundle(
+                "Charlie".into(),
+                ciphersuite,
+                backend,
+            );
+
+        if bob_and_charlie_share_hpke_init_keys {
+            let shared_leaf_secret = Secret::random(
+                bob_key_package_bundle.key_package().ciphersuite(),
+                backend,
+                bob_key_package_bundle.key_package().protocol_version(),
+            )
+            .expect("failed to generate random leaf secret");
+
+            bob_key_package_bundle = KeyPackageBundle::new_from_leaf_secret(
+                &[ciphersuite.name()],
+                backend,
+                &bob_credential_bundle,
+                vec![],
+                shared_leaf_secret.clone(),
+            )
+            .expect("failed to generate key package");
+            charlie_key_package_bundle = KeyPackageBundle::new_from_leaf_secret(
+                &[ciphersuite.name()],
+                backend,
+                &charlie_credential_bundle,
+                vec![],
+                shared_leaf_secret.clone(),
+            )
+            .expect("failed to generate key package");
+        }
+
+        let bob_key_package = bob_key_package_bundle.key_package().clone();
+        let charlie_key_package = charlie_key_package_bundle.key_package().clone();
+
+        // 1. Create a group and try to create a commit to add Bob and Charlie
+        let res = create_commit_to_add_bob_and_charlie(
+            alice_credential_bundle,
+            alice_key_package_bundle,
+            bob_key_package,
+            charlie_key_package,
+            ciphersuite,
+            backend,
+        );
+
+        if bob_and_charlie_share_hpke_init_keys {
+            // Negative Case: we should output an error
+            let err =
+                res.expect_err("Created commit when the proposals have a same signature key!");
+            assert_eq!(
+                err,
+                CoreGroupError::ProposalValidationError(
+                    ProposalValidationError::DuplicatePublicKeyAddProposal
+                )
+            );
+        } else {
+            // Positive Case: we should succeed
+            let _ = res.expect("Failed to create commit with different signature keypairs!");
+        }
+    }
+
+    // TODO #525: Add test for incoming proposals.
+}
