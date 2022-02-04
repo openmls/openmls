@@ -226,3 +226,117 @@ fn test_valsem103(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     // TODO #525: Add test for incoming proposals.
 }
+
+/// ValSem101:
+/// Add Proposal:
+/// Signature public key in proposals must be unique among proposals
+#[apply(ciphersuites_and_backends)]
+fn test_valsem101(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    for bob_and_charlie_share_keys in [
+        true,  // Negative Case: Bob and Charlie have same signature keypair
+        false, // Positive Case: Bob and Charlie have different signature keypair
+    ] {
+        // 0. Initialize Alice
+        let (alice_credential_bundle, alice_key_package_bundle) =
+            generate_credential_bundle_and_key_package_bundle("Alice".into(), ciphersuite, backend);
+
+        let bob_signature_keypair: SignatureKeypair;
+        let charlie_signature_keypair: SignatureKeypair;
+
+        if bob_and_charlie_share_keys {
+            let shared_signature_keypair =
+                SignatureKeypair::new(ciphersuite.signature_scheme(), backend)
+                    .expect("failed to generate signature keypair");
+
+            bob_signature_keypair = shared_signature_keypair.clone();
+            charlie_signature_keypair = shared_signature_keypair.clone();
+        } else {
+            bob_signature_keypair = SignatureKeypair::new(ciphersuite.signature_scheme(), backend)
+                .expect("failed to generate signature keypair");
+            charlie_signature_keypair =
+                SignatureKeypair::new(ciphersuite.signature_scheme(), backend)
+                    .expect("failed to generate signature keypair");
+        }
+
+        let bob_credential_bundle =
+            CredentialBundle::from_parts("Bob".into(), bob_signature_keypair);
+        let charlie_credential_bundle =
+            CredentialBundle::from_parts("Charlie".into(), charlie_signature_keypair);
+
+        let bob_key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &bob_credential_bundle,
+            backend,
+            vec![],
+        )
+        .expect("failed to generate key package");
+        let bob_key_package = bob_key_package_bundle.key_package().clone();
+        let charlie_key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &charlie_credential_bundle,
+            backend,
+            vec![],
+        )
+        .expect("failed to generate key package");
+        let charlie_key_package = charlie_key_package_bundle.key_package().clone();
+
+        // 1. Alice creates a group
+        let group_aad = b"Alice's Friends";
+        let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsCiphertext);
+        let alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+            .build(backend)
+            .expect("Error creating group.");
+
+        // 2. Alice creates a proposal to add Bob
+        let bob_add_proposal = alice_group
+            .create_add_proposal(
+                framing_parameters,
+                &alice_credential_bundle,
+                bob_key_package,
+                backend,
+            )
+            .expect("Could not create proposal to add Bob.");
+
+        // 3. Alice creates a proposal to add Charlie
+        let charlie_add_proposal = alice_group
+            .create_add_proposal(
+                framing_parameters,
+                &alice_credential_bundle,
+                charlie_key_package,
+                backend,
+            )
+            .expect("Could not create proposal to add Charlie.");
+
+        // 4. Alice queues these proposals
+        let proposal_store = generate_proposal_store(
+            &[bob_add_proposal, charlie_add_proposal],
+            ciphersuite,
+            backend,
+        );
+
+        // 5. Alice tries to generate a commit message
+        let params = CreateCommitParams::builder()
+            .framing_parameters(framing_parameters)
+            .credential_bundle(&alice_credential_bundle)
+            .proposal_store(&proposal_store)
+            .build();
+        let res = alice_group.create_commit(params, backend);
+
+        if bob_and_charlie_share_keys {
+            // Negative Case: we should output an error
+            let err =
+                res.expect_err("Created commit when the proposals have a same signature key!");
+            assert_eq!(
+                err,
+                CoreGroupError::ProposalValidationError(
+                    ProposalValidationError::DuplicateSignatureKeyAddProposal
+                )
+            );
+        } else {
+            // Positive Case: we should succeed
+            let _ = res.expect("Failed to create commit with different signature keypairs!");
+        }
+    }
+
+    // TODO #525: Add test for incoming proposals.
+}
