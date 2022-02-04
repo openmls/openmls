@@ -20,9 +20,9 @@ clap = "2.33"
 base64 = "0.13"
 tls_codec = "0.2.0-pre.4"
 
-openmls = {features = ["test-utils"], version = "0.4.0-pre.1" }
-openmls_traits = "0.1.0-pre.1" 
-openmls_rust_crypto = "0.1.0-pre.1"
+openmls = {features = ["test-utils"], version = "0.4.0-pre.2" }
+openmls_traits = "0.1.0-pre.2" 
+openmls_rust_crypto = "0.1.0-pre.2"
 
 ds-lib = { path = "../ds-lib/" }
 
@@ -30,3 +30,4 @@ ds-lib = { path = "../ds-lib/" }
 openmls = { path = "../../openmls" }
 openmls_traits = { path = "../../traits" }
 openmls_rust_crypto = { path = "../../openmls_rust_crypto" }
+openmls_memory_keystore = { path = "../../memory_keystore" }

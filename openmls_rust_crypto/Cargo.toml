@@ -1,7 +1,7 @@
 [package]
 name = "openmls_rust_crypto"
 authors = ["OpenMLS Authors"]
-version = "0.1.0-pre.1"
+version = "0.1.0-pre.2"
 edition = "2018"
 description = "A crypto backend for OpenMLS implementing openmls_traits using RustCrypto primitives."
 license = "MIT"
@@ -10,8 +10,8 @@ repository = "https://github.com/openmls/openmls/tree/main/openmls_rust_crypto"
 readme = "README.md"
 
 [dependencies]
-openmls_traits = { version = "0.1.0-pre.1" }
-openmls_memory_keystore = { version = "0.1.0-pre.1" }
+openmls_traits = { version = "0.1.0-pre.2" }
+openmls_memory_keystore = { version = "0.1.0-pre.2" }
 # Rust Crypto dependencies
 sha2 = { version = "0.10" }
 aes-gcm = { version = "0.9" }
@@ -26,3 +26,7 @@ rand_chacha = { version = "0.3" }
 hpke = { version = "0.1.0-pre.2", package = "hpke-rs", default-features = false, features = ["hazmat", "serialization"] }
 hpke-rs-crypto = { version = "0.1.1-pre.2" }
 hpke-rs-rust-crypto = { version = "0.1.1-pre.2" }
+
+[patch.crates-io]
+openmls_traits = { path = "../traits" }
+openmls_memory_keystore = { path = "../memory_keystore" }
