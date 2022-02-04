@@ -73,6 +73,8 @@ fn generate_proposal_store(
     proposal_store
 }
 
+/// Helper function to create a group, create proposals to add bob and charlie,
+/// and return the result of committing those proposals.
 fn create_commit_to_add_bob_and_charlie(
     alice_credential_bundle: CredentialBundle,
     alice_key_package_bundle: KeyPackageBundle,
@@ -186,7 +188,7 @@ fn test_valsem100(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 fn test_valsem101(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     for bob_and_charlie_share_keys in [
         true,  // Negative Case: Bob and Charlie have same signature keypair
-        false, // Positive Case: Bob and Charlie have different signature keypair
+        false, // Positive Case: Bob and Charlie have different signature keypairs
     ] {
         // 0. Initialize Alice
         let (alice_credential_bundle, alice_key_package_bundle) =
