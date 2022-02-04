@@ -10,8 +10,8 @@ repository = "https://github.com/openmls/openmls/tree/main/openmls_rust_crypto"
 readme = "README.md"
 
 [dependencies]
-openmls_traits = { version = "0.1.0-pre.1", path = "../traits" }
-memory_keystore = { version = "0.1.0-pre.1", path = "../memory_keystore", package = "openmls_memory_keystore" }
+openmls_traits = { version = "0.1.0-pre.1" }
+openmls_memory_keystore = { version = "0.1.0-pre.1" }
 # Rust Crypto dependencies
 sha2 = { version = "0.10" }
 aes-gcm = { version = "0.9" }
