@@ -258,7 +258,8 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
         if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
             let update = staged_commit
                 .commit_update_key_package()
-                .expect("Expected a KeyPackage.");
+                .expect("Expected a KeyPackage.")
+                .clone();
             // Check that Bob updated
             assert_eq!(update.credential(), &bob_credential);
 
@@ -266,6 +267,12 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             alice_group
                 .merge_staged_commit(*staged_commit)
                 .expect("Could not merge Commit.");
+
+            // Check Bob's new key package
+            let members = alice_group
+                .members()
+                .expect("An unexepected error occurred.");
+            assert_eq!(members[1], &update);
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -349,13 +356,18 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
         if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
             let update = staged_commit
                 .commit_update_key_package()
-                .expect("Expected a KeyPackage.");
+                .expect("Expected a KeyPackage.")
+                .clone();
             // Check that Alice updated
             assert_eq!(update.credential(), &alice_credential);
 
             bob_group
                 .merge_staged_commit(*staged_commit)
                 .expect("Could not merge StagedCommit");
+
+            // Check Alice's new key package
+            let members = bob_group.members().expect("An unexepected error occurred.");
+            assert_eq!(members[0], &update);
         } else {
             unreachable!("Expected a StagedCommit.");
         }
