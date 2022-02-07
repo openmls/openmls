@@ -138,8 +138,11 @@ impl CoreGroup {
         key_schedule.add_context(backend, &serialized_group_context)?;
         let epoch_secrets = key_schedule.epoch_secrets(backend)?;
 
-        let (group_epoch_secrets, message_secrets) =
-            epoch_secrets.split_secrets(serialized_group_context, tree.leaf_count()?);
+        let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
+            serialized_group_context,
+            tree.leaf_count()?,
+            tree.own_leaf_index(),
+        );
 
         let confirmation_tag = message_secrets
             .confirmation_key()

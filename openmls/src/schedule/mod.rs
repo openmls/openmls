@@ -617,8 +617,12 @@ impl EncryptionSecret {
 
     /// Create a `SecretTree` from the `encryption_secret` contained in the
     /// `EpochSecrets`. The `encryption_secret` is consumed, allowing us to achieve FS.
-    pub(crate) fn create_secret_tree(self, treesize: LeafIndex) -> SecretTree {
-        SecretTree::new(self, treesize.into())
+    pub(crate) fn create_secret_tree(
+        self,
+        treesize: LeafIndex,
+        own_index: LeafIndex,
+    ) -> SecretTree {
+        SecretTree::new(self, treesize.into(), own_index.into())
     }
 
     pub(crate) fn consume_secret(self) -> Secret {
@@ -1185,8 +1189,11 @@ impl EpochSecrets {
         self,
         serialized_context: Vec<u8>,
         treesize: u32,
+        own_index: u32,
     ) -> (GroupEpochSecrets, MessageSecrets) {
-        let secret_tree = self.encryption_secret.create_secret_tree(treesize);
+        let secret_tree = self
+            .encryption_secret
+            .create_secret_tree(treesize, own_index);
         (
             GroupEpochSecrets {
                 init_secret: self.init_secret,

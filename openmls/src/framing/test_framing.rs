@@ -18,7 +18,10 @@ use crate::{
         proposals::{ProposalStore, QueuedProposal},
     },
     key_packages::KeyPackageBundle,
-    tree::{index::SecretTreeLeafIndex, sender_ratchet::SenderRatchetConfiguration},
+    tree::{
+        index::SecretTreeLeafIndex, secret_tree::SecretTree,
+        sender_ratchet::SenderRatchetConfiguration,
+    },
     utils::print_tree,
 };
 
@@ -134,7 +137,7 @@ fn codec_ciphertext(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         .add_context(backend, &serialized_group_context)
         .expect("Could not add context to key schedule");
 
-    let mut message_secrets = MessageSecrets::random(ciphersuite, backend);
+    let mut message_secrets = MessageSecrets::random(ciphersuite, backend, 0);
 
     let orig = MlsCiphertext::try_from_plaintext(
         &plaintext,
@@ -221,9 +224,26 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
         .add_context(backend, &serialized_group_context)
         .expect("Could not add context to key schedule");
 
-    let mut message_secrets = MessageSecrets::random(ciphersuite, backend);
+    let mut message_secrets = MessageSecrets::random(ciphersuite, backend, 0);
+    let encryption_secret_bytes = backend
+        .rand()
+        .random_vec(ciphersuite.hash_length())
+        .expect("An unexpected error occurred.");
+    let sender_encryption_secret = EncryptionSecret::from_slice(
+        &encryption_secret_bytes[..],
+        ProtocolVersion::default(),
+        ciphersuite,
+    );
+    let receiver_encryption_secret = EncryptionSecret::from_slice(
+        &encryption_secret_bytes[..],
+        ProtocolVersion::default(),
+        ciphersuite,
+    );
+    let sender_secret_tree = SecretTree::new(sender_encryption_secret, 2u32.into(), 0u32.into());
+    let receiver_secret_tree =
+        SecretTree::new(receiver_encryption_secret, 2u32.into(), 1u32.into());
 
-    let orig_secret_tree = message_secrets.secret_tree_mut().clone();
+    message_secrets.replace_secret_tree(sender_secret_tree);
 
     let sender_index = SecretTreeLeafIndex(0);
     let mut ciphertext = MlsCiphertext::try_from_plaintext(
@@ -242,7 +262,7 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
 
     // Decrypt the ciphertext and expect the correct wire format
 
-    message_secrets.replace_secret_tree(orig_secret_tree);
+    let sender_secret_tree = message_secrets.replace_secret_tree(receiver_secret_tree);
 
     let sender_data = ciphertext
         .sender_data(&mut message_secrets, backend, ciphersuite)
@@ -273,6 +293,8 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
             .expect_err("Could decrypt despite wrong wire format."),
         MlsCiphertextError::WrongWireFormat
     );
+
+    message_secrets.replace_secret_tree(sender_secret_tree);
 
     // Try to encrypt an MlsPlaintext with the wrong wire format
 
@@ -556,7 +578,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         MlsMessageHeader {
             group_id: group_alice.group_id().clone(),
             epoch: group_alice.context().epoch(),
-            sender: SecretTreeLeafIndex(1u32),
+            sender: SecretTreeLeafIndex(0u32),
         },
         group_alice.message_secrets_test_mut(),
         0,

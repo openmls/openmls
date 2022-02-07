@@ -1,15 +1,15 @@
 use super::*;
 
 /// AEAD keys holding the plain key value and the AEAD algorithm type.
-#[derive(Debug)]
-#[cfg_attr(test, derive(PartialEq))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(any(feature = "test-utils", test), derive(PartialEq))]
 pub struct AeadKey {
     aead_mode: AeadType,
     value: Vec<u8>,
 }
 
 /// AEAD Nonce
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub struct AeadNonce {
     // TODO: Use const generics here
     value: [u8; NONCE_BYTES],

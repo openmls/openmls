@@ -320,8 +320,11 @@ impl CoreGroup {
         )?;
 
         let (provisional_group_epoch_secrets, provisional_message_secrets) =
-            provisional_epoch_secrets
-                .split_secrets(serialized_provisional_group_context, diff.leaf_count());
+            provisional_epoch_secrets.split_secrets(
+                serialized_provisional_group_context,
+                diff.leaf_count(),
+                own_leaf_index,
+            );
 
         let staged_commit_state = StagedCommitState::new(
             provisional_group_context,

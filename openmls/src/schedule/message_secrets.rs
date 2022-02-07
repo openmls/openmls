@@ -66,7 +66,11 @@ impl MessageSecrets {
     }
 
     #[cfg(test)]
-    pub fn random(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) -> Self {
+    pub fn random(
+        ciphersuite: &'static Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
+        own_index: u32,
+    ) -> Self {
         use openmls_traits::random::OpenMlsRand;
 
         Self {
@@ -80,6 +84,7 @@ impl MessageSecrets {
             secret_tree: SecretTree::new(
                 EncryptionSecret::random(ciphersuite, backend),
                 SecretTreeLeafIndex(10),
+                own_index.into(),
             ),
         }
     }

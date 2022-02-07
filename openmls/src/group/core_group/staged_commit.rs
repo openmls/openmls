@@ -293,8 +293,12 @@ impl CoreGroup {
         }
 
         let (provisional_group_epoch_secrets, provisional_message_secrets) =
-            provisional_epoch_secrets
-                .split_secrets(serialized_provisional_group_context, diff.leaf_count());
+            provisional_epoch_secrets.split_secrets(
+                serialized_provisional_group_context,
+                diff.leaf_count(),
+                // The index should be the same on TreeSync and Diff.
+                self.treesync().own_leaf_index(),
+            );
 
         // Make the diff a staged diff. This finalizes the diff and no more changes can be applied to it.
         let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
