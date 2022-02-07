@@ -178,13 +178,13 @@ impl CoreGroup {
         for (&i, _) in leaves.iter() {
             my_leaves.push((
                 i,
-                self.treesync()
-                    .leaf_id(i)
-                    .ok_or(CoreGroupError::LibraryError(LibraryError::custom(
+                self.treesync().leaf_id(i).ok_or_else(|| {
+                    CoreGroupError::LibraryError(LibraryError::custom(
                         "Unable to get the key package reference for a leaf from \
                          tree. This indicates a bug in the library where the tree \
                          isn't built correctly.",
-                    )))?,
+                    ))
+                })?,
             ))
         }
         // Merge the staged commit into the group state and store the secret tree from the

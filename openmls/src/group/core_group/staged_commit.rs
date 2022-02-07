@@ -1,8 +1,8 @@
 use crate::treesync::{diff::StagedTreeSyncDiff, treekem::DecryptPathParams};
 
 use super::proposals::{
-    ProposalQueue, ProposalStore, QueuedAddProposal, QueuedProposal, QueuedPskProposal,
-    QueuedRemoveProposal, QueuedUpdateProposal,
+    ProposalQueue, ProposalStore, QueuedAddProposal, QueuedPskProposal, QueuedRemoveProposal,
+    QueuedUpdateProposal,
 };
 
 use super::super::errors::*;
@@ -75,7 +75,7 @@ impl CoreGroup {
 
         // Build a queue with all proposals from the Commit and check that we have all
         // of the proposals by reference locally
-        let mut proposal_queue = ProposalQueue::from_committed_proposals(
+        let proposal_queue = ProposalQueue::from_committed_proposals(
             ciphersuite,
             backend,
             commit.proposals.as_slice().to_vec(),
@@ -84,9 +84,7 @@ impl CoreGroup {
         )
         .map_err(|_| StageCommitError::MissingProposal)?;
 
-        // TODO #424: This won't be necessary anymore, we can just apply the proposals first
-        // and add a new fake Update proposal to the queue after that
-        let path_key_package = commit
+        let commit_update_key_package = commit
             .path()
             .as_ref()
             .map(|update_path| update_path.leaf_key_package().clone());
@@ -116,7 +114,7 @@ impl CoreGroup {
             // ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
             //            leaf are identical to the ones in the path KeyPackage.
             // ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
-            self.validate_external_commit(&proposal_queue, path_key_package.as_ref())?;
+            self.validate_external_commit(&proposal_queue, commit_update_key_package.as_ref())?;
         }
 
         // Create provisional tree and apply proposals
@@ -140,10 +138,12 @@ impl CoreGroup {
 
         // Check if we were removed from the group
         if apply_proposals_values.self_removed {
-            return Ok(StagedCommit {
-                staged_proposal_queue: proposal_queue,
-                state: None,
-            });
+            let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
+            return Ok(StagedCommit::new(
+                proposal_queue,
+                StagedCommitState::SelfRemoved(staged_diff),
+                commit_update_key_package,
+            ));
         }
 
         // Determine if Commit has a path
@@ -277,21 +277,6 @@ impl CoreGroup {
             return Err(StageCommitError::ConfirmationTagMismatch.into());
         }
 
-        // If there is a key package from the Commit's update path, add it to the proposal queue
-        // TODO #424: This won't be necessary anymore, we can just apply the proposals first
-        // and add a new fake Update proposal to the queue after that
-        if let Some(key_package) = path_key_package {
-            let proposal = Proposal::Update(UpdateProposal { key_package });
-            let staged_proposal = QueuedProposal::from_proposal_and_sender(
-                ciphersuite,
-                backend,
-                proposal,
-                mls_plaintext.sender(),
-            )
-            .map_err(|_| LibraryError::custom("s"))?;
-            proposal_queue.add(staged_proposal);
-        }
-
         let (provisional_group_epoch_secrets, provisional_message_secrets) =
             provisional_epoch_secrets.split_secrets(
                 serialized_provisional_group_context,
@@ -303,16 +288,19 @@ impl CoreGroup {
         // Make the diff a staged diff. This finalizes the diff and no more changes can be applied to it.
         let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
 
-        Ok(StagedCommit {
-            staged_proposal_queue: proposal_queue,
-            state: Some(StagedCommitState {
-                group_context: provisional_group_context,
-                group_epoch_secrets: provisional_group_epoch_secrets,
-                message_secrets: provisional_message_secrets,
-                interim_transcript_hash,
-                staged_diff,
-            }),
-        })
+        let staged_commit_state = StagedCommitState::GroupMember(MemberStagedCommitState {
+            group_context: provisional_group_context,
+            group_epoch_secrets: provisional_group_epoch_secrets,
+            message_secrets: provisional_message_secrets,
+            interim_transcript_hash,
+            staged_diff,
+        });
+
+        Ok(StagedCommit::new(
+            proposal_queue,
+            staged_commit_state,
+            commit_update_key_package,
+        ))
     }
 
     /// Merges a [StagedCommit] into the group state and optionally return a [`SecretTree`]
@@ -324,32 +312,43 @@ impl CoreGroup {
         &mut self,
         staged_commit: StagedCommit,
     ) -> Result<Option<MessageSecrets>, CoreGroupError> {
-        Ok(if let Some(state) = staged_commit.state {
-            self.group_context = state.group_context;
-            self.group_epoch_secrets = state.group_epoch_secrets;
+        match staged_commit.state {
+            StagedCommitState::SelfRemoved(staged_diff) => {
+                self.tree.merge_diff(staged_diff)?;
+                Ok(None)
+            }
+            StagedCommitState::GroupMember(state) => {
+                self.group_context = state.group_context;
+                self.group_epoch_secrets = state.group_epoch_secrets;
 
-            // Replace the previous message secrets with the new ones and return the previous message secrets
-            let mut message_secrets = state.message_secrets;
-            mem::swap(
-                &mut message_secrets,
-                self.message_secrets_store.message_secrets_mut(),
-            );
+                // Replace the previous message secrets with the new ones and return the previous message secrets
+                let mut message_secrets = state.message_secrets;
+                mem::swap(
+                    &mut message_secrets,
+                    self.message_secrets_store.message_secrets_mut(),
+                );
 
-            self.interim_transcript_hash = state.interim_transcript_hash;
+                self.interim_transcript_hash = state.interim_transcript_hash;
 
-            self.tree.merge_diff(state.staged_diff)?;
-            Some(message_secrets)
-        } else {
-            None
-        })
+                self.tree.merge_diff(state.staged_diff)?;
+                Ok(Some(message_secrets))
+            }
+        }
     }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub(crate) enum StagedCommitState {
+    SelfRemoved(StagedTreeSyncDiff),
+    GroupMember(MemberStagedCommitState),
 }
 
 /// Contains the changes from a commit to the group state.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StagedCommit {
     staged_proposal_queue: ProposalQueue,
-    state: Option<StagedCommitState>,
+    state: StagedCommitState,
+    commit_update_key_package: Option<KeyPackage>,
 }
 
 impl StagedCommit {
@@ -357,11 +356,13 @@ impl StagedCommit {
     /// during the commit process.
     pub(crate) fn new(
         staged_proposal_queue: ProposalQueue,
-        state: Option<StagedCommitState>,
+        state: StagedCommitState,
+        commit_update_key_package: Option<KeyPackage>,
     ) -> Self {
         StagedCommit {
             staged_proposal_queue,
             state,
+            commit_update_key_package,
         }
     }
 
@@ -385,16 +386,22 @@ impl StagedCommit {
         self.staged_proposal_queue.psk_proposals()
     }
 
+    /// Returns an optional key package from the Commit's update path.
+    /// A key package is returned for full and empty Commits, but not for partial Commits.
+    pub fn commit_update_key_package(&self) -> Option<&KeyPackage> {
+        self.commit_update_key_package.as_ref()
+    }
+
     /// Returns `true` if the member was removed through a proposal covered by this Commit message
     /// and `false` otherwise.
     pub fn self_removed(&self) -> bool {
-        self.state.is_none()
+        matches!(self.state, StagedCommitState::SelfRemoved(_))
     }
 }
 
 /// This struct is used internally by [StagedCommit] to encapsulate all the modified group state.
 #[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct StagedCommitState {
+pub(crate) struct MemberStagedCommitState {
     group_context: GroupContext,
     group_epoch_secrets: GroupEpochSecrets,
     message_secrets: MessageSecrets,
@@ -402,7 +409,7 @@ pub(crate) struct StagedCommitState {
     staged_diff: StagedTreeSyncDiff,
 }
 
-impl StagedCommitState {
+impl MemberStagedCommitState {
     pub(super) fn new(
         group_context: GroupContext,
         group_epoch_secrets: GroupEpochSecrets,

@@ -49,7 +49,7 @@ fn kp_bundle_rust_crypto(c: &mut Criterion) {
 
 #[cfg(feature = "evercrypt")]
 fn kp_bundle_evercrypt(c: &mut Criterion) {
-    use evercrypt_backend::OpenMlsEvercrypt;
+    use openmls_evercrypt::OpenMlsEvercrypt;
     let backend = &OpenMlsEvercrypt::default();
     println!("Backend: Evercrypt");
     criterion_kp_bundle(c, backend);

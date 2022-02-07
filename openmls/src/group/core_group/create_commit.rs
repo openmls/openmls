@@ -16,7 +16,7 @@ use crate::{
 use super::{
     create_commit_params::{CommitType, CreateCommitParams},
     proposals::ProposalQueue,
-    staged_commit::{StagedCommit, StagedCommitState},
+    staged_commit::{MemberStagedCommitState, StagedCommit, StagedCommitState},
 };
 
 /// A helper struct which contains the values resulting from the preparation of
@@ -168,6 +168,12 @@ impl CoreGroup {
                 })?)
             }
         };
+
+        // Keep a copy of the update path key package
+        let commit_update_key_package = path_processing_result
+            .encrypted_path
+            .as_ref()
+            .map(|update| update.leaf_key_package().clone());
 
         // Create commit message
         let commit = Commit {
@@ -326,14 +332,18 @@ impl CoreGroup {
                 own_leaf_index,
             );
 
-        let staged_commit_state = StagedCommitState::new(
+        let staged_commit_state = MemberStagedCommitState::new(
             provisional_group_context,
             provisional_group_epoch_secrets,
             provisional_message_secrets,
             provisional_interim_transcript_hash,
             diff.into_staged_diff(backend, ciphersuite)?,
         );
-        let staged_commit = StagedCommit::new(proposal_queue, Some(staged_commit_state));
+        let staged_commit = StagedCommit::new(
+            proposal_queue,
+            StagedCommitState::GroupMember(staged_commit_state),
+            commit_update_key_package,
+        );
 
         Ok(CreateCommitResult {
             commit: mls_plaintext,

@@ -243,7 +243,7 @@ impl User {
             &self.crypto,
             &group_config,
             GroupId::from_slice(group_id),
-            &kpb.key_package()
+            kpb.key_package()
                 .hash_ref(self.crypto.crypto())
                 .expect("Failed to hash KeyPackage.")
                 .as_slice(),
