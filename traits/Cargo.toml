@@ -14,4 +14,4 @@ path = "src/traits.rs"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
-tls_codec = { version = "0.2.0-pre.4", features = ["derive", "serde_serialize"] }
+tls_codec = { version = "0.2.0", features = ["derive", "serde_serialize"] }
