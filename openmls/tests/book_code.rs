@@ -303,28 +303,14 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         .process_unverified_message(unverified_message, None, backend)
         .expect("Could not process unverified message.");
 
-    // Check that we received the correct proposals
+    // Check that we received the correct message
     if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
         let update = staged_commit
-            .update_proposals()
-            .next()
-            .expect("Expected a proposal.");
+            .commit_update_key_package()
+            .expect("Expected a KeyPackage.");
         // Check that Bob updated
-        assert_eq!(
-            update.update_proposal().key_package().credential(),
-            &bob_credential
-        );
-        // Check that Bob sent the update
-        // TODO #575: Replace this with the adequate API call
-        assert_eq!(
-            update
-                .sender()
-                .as_key_package_ref()
-                .expect("An unexpected error occurred."),
-            bob_group
-                .key_package_ref()
-                .expect("An unexpected error occurred.")
-        );
+        assert_eq!(update.credential(), &bob_credential);
+
         // Merge staged Commit
         alice_group
             .merge_staged_commit(*staged_commit)
@@ -415,28 +401,13 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         .process_unverified_message(unverified_message, None, backend)
         .expect("Could not process unverified message.");
 
-    // Check that we received the correct proposals
+    // Check that we received the correct message
     if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
         let update = staged_commit
-            .update_proposals()
-            .next()
-            .expect("Expected a proposal.");
+            .commit_update_key_package()
+            .expect("Expected a KeyPackage.");
         // Check that Alice updated
-        assert_eq!(
-            update.update_proposal().key_package().credential(),
-            &alice_credential
-        );
-        // Check that Alice sent the update
-        // TODO #575: Replace this with the adequate API call
-        assert_eq!(
-            update
-                .sender()
-                .as_key_package_ref()
-                .expect("An unexpected error occurred."),
-            alice_group
-                .key_package_ref()
-                .expect("An unexpected error occurred.")
-        );
+        assert_eq!(update.credential(), &alice_credential);
 
         bob_group
             .merge_staged_commit(*staged_commit)
