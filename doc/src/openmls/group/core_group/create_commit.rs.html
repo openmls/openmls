@@ -406,6 +406,13 @@
 <span id="405">405</span>
 <span id="406">406</span>
 <span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -577,6 +584,12 @@
             }
         };
 
+        <span class="comment">// Keep a copy of the update path key package</span>
+        <span class="kw">let</span> <span class="ident">commit_update_key_package</span> <span class="op">=</span> <span class="ident">path_processing_result</span>
+            .<span class="ident">encrypted_path</span>
+            .<span class="ident">as_ref</span>()
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">update</span><span class="op">|</span> <span class="ident">update</span>.<span class="ident">leaf_key_package</span>().<span class="ident">clone</span>());
+
         <span class="comment">// Create commit message</span>
         <span class="kw">let</span> <span class="ident">commit</span> <span class="op">=</span> <span class="ident">Commit</span> {
             <span class="ident">proposals</span>: <span class="ident">proposal_reference_list</span>.<span class="ident">into</span>(),
@@ -741,6 +754,7 @@
         <span class="kw">let</span> <span class="ident">staged_commit</span> <span class="op">=</span> <span class="ident">StagedCommit::new</span>(
             <span class="ident">proposal_queue</span>,
             <span class="ident">StagedCommitState::GroupMember</span>(<span class="ident">staged_commit_state</span>),
+            <span class="ident">commit_update_key_package</span>,
         );
 
         <span class="prelude-val">Ok</span>(<span class="ident">CreateCommitResult</span> {
