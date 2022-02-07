@@ -613,8 +613,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 
     assert!(alice_members
         .iter()
-        .find(|&kp| kp.credential() == sender_credential)
-        .is_some());
+        .any(|kp| kp.credential() == sender_credential));
 
     assert_eq!(sender_credential, &charlie_credential);
 
@@ -669,29 +668,32 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         unreachable!("Expected a StagedCommit.");
     }
 
-    // Check that we receive the correct proposal for Alice
+    // Check that we receive the correct proposal for Bob
+    // ANCHOR: remove_operation
     if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
-        let remove = staged_commit
+        let remove_proposal = staged_commit
             .remove_proposals()
             .next()
-            .expect("Expected a proposal.");
-        // Check that Bob was removed
-        // TODO #575: Replace this with the adequate API call
-        assert_eq!(
-            remove.remove_proposal().removed(),
-            bob_group
-                .key_package_ref()
-                .expect("An unexpected error occurred.")
-        );
-        // Check that Charlie removed Bob
-        // TODO #575: Replace this with the adequate API call
-        assert_eq!(
-            remove
-                .sender()
-                .as_key_package_ref()
-                .expect("An unexpected error occurred."),
-            &charlies_old_kpr
-        );
+            .expect("An unexpected error occurred.");
+
+        // We construct a RemoveOperation enum to help us interpret the remove operation
+        let remove_operation = RemoveOperation::new(remove_proposal, &bob_group)
+            .expect("An unexpected Error occurred.");
+
+        match remove_operation {
+            RemoveOperation::WeLeft => unreachable!(),
+            // We expect this variant, since Bob was removed by Charlie
+            RemoveOperation::WeWereRemovedBy(member) => {
+                assert_eq!(
+                    member.sender_value(),
+                    &SenderValue::Member(charlies_old_kpr)
+                );
+            }
+            RemoveOperation::TheyLeft(_) => unreachable!(),
+            RemoveOperation::TheyWereRemovedBy(_) => unreachable!(),
+            RemoveOperation::WeRemovedThem(_) => unreachable!(),
+        }
+
         // Merge staged Commit
         bob_group
             .merge_staged_commit(*staged_commit)
@@ -699,6 +701,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     } else {
         unreachable!("Expected a StagedCommit.");
     }
+    // ANCHOR_END: remove_operation
 
     // Check we didn't receive a Welcome message
     assert!(welcome_option.is_none());
