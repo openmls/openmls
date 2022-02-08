@@ -359,24 +359,57 @@
 <span id="358">358</span>
 <span id="359">359</span>
 <span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Extensions</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! ## Extension struct</span>
+<span class="doccomment">//! In MLS, extensions appear in the following places:</span>
+<span class="doccomment">//! - In [`KeyPackages`](`crate::key_packages`), to describe client capabilities and aspects of their</span>
+<span class="doccomment">//!   participation in the group.</span>
+<span class="doccomment">//! - In the `GroupInfo`, to tell new members of a group what parameters are</span>
+<span class="doccomment">//!   being used by the group, and to provide any additional details required</span>
+<span class="doccomment">//!   to join the group.</span>
+<span class="doccomment">//! - In the `GroupContext` object, to ensure that all members of the group</span>
+<span class="doccomment">//!   have the same view of the parameters in use.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! An extension has an `ExtensionType` and an opaque payload (byte vector).</span>
-<span class="doccomment">//! This isn&#39;t used in OpenMLS at all but part of the (de)serialization process</span>
-<span class="doccomment">//! of each extension.</span>
+<span class="doccomment">//! Note that `GroupInfo` and `GroupContext` are not exposed in OpenMLS&#39; public</span>
+<span class="doccomment">//! API.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! See IANA registry for registered values</span>
+<span class="doccomment">//! OpenMLS supports the following extensions:</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! ```text</span>
-<span class="doccomment">//! uint16 ExtensionType;</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! struct {</span>
-<span class="doccomment">//!     ExtensionType extension_type;</span>
-<span class="doccomment">//!     opaque extension_data&lt;0..2^32-1&gt;;</span>
-<span class="doccomment">//! } Extension;</span>
-<span class="doccomment">//! ```</span>
+<span class="doccomment">//! - [`CapabilitiesExtension`] (KeyPackage extension)</span>
+<span class="doccomment">//! - [`ExternalKeyIdExtension`] (KeyPackage extension)</span>
+<span class="doccomment">//! - [`LifetimeExtension`] (KeyPackage extension)</span>
+<span class="doccomment">//! - [`ParentHashExtension`] (KeyPackage extension)</span>
+<span class="doccomment">//! - [`RatchetTreeExtension`] (GroupInfo extension)</span>
+<span class="doccomment">//! - [`RequiredCapabilitiesExtension`] (GroupContext extension)</span>
 
 <span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">convert::TryFrom</span>,
@@ -430,12 +463,32 @@
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u16</span>)]</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExtensionType</span> {
+    <span class="doccomment">/// Reserved. This must not be used.</span>
     <span class="ident">Reserved</span> <span class="op">=</span> <span class="number">0</span>,
+
+    <span class="doccomment">/// The capabilities extension indicates what protocol versions, ciphersuites,</span>
+    <span class="doccomment">/// protocol extensions, and non-default proposal types are supported by a</span>
+    <span class="doccomment">/// client.</span>
     <span class="ident">Capabilities</span> <span class="op">=</span> <span class="number">1</span>,
+
+    <span class="doccomment">/// The lifetime extension represents the times between which clients will</span>
+    <span class="doccomment">/// consider a KeyPackage valid.</span>
     <span class="ident">Lifetime</span> <span class="op">=</span> <span class="number">2</span>,
+
+    <span class="doccomment">/// The external key id extension allows applications to add an explicit,</span>
+    <span class="doccomment">/// application-defined identifier to a KeyPackage.</span>
     <span class="ident">ExternalKeyId</span> <span class="op">=</span> <span class="number">3</span>,
+
+    <span class="doccomment">/// The parent hash extension carries information to authenticate the</span>
+    <span class="doccomment">/// structure of the tree, as described below.</span>
     <span class="ident">ParentHash</span> <span class="op">=</span> <span class="number">4</span>,
+
+    <span class="doccomment">/// The ratchet tree extensions provides the whole public state of the ratchet</span>
+    <span class="doccomment">/// tree.</span>
     <span class="ident">RatchetTree</span> <span class="op">=</span> <span class="number">5</span>,
+
+    <span class="doccomment">/// The required capabilities extension defines the configuration of a group</span>
+    <span class="doccomment">/// that imposes certain requirements on clients in the group.</span>
     <span class="ident">RequiredCapabilities</span> <span class="op">=</span> <span class="number">6</span>,
 }
 
@@ -462,7 +515,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">ExtensionType</span> {
-    <span class="doccomment">/// Check whether an extension type is supported or not.</span>
+    <span class="doccomment">/// Check whether an [`ExtensionType`] is supported or not.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_supported</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">ExtensionType::Reserved</span>
@@ -477,12 +530,17 @@
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="doccomment">/// An extension can be one of the following elements.</span>
+<span class="doccomment">/// # Extension</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// An extension is one of the [`Extension`] enum values.</span>
+<span class="doccomment">/// The enum provides a set of common functionality for all extensions.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// See the individual extensions for more details on each extension.</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Extension</span> {
     <span class="doccomment">/// A [`CapabilitiesExtension`]</span>
     <span class="ident">Capabilities</span>(<span class="ident">CapabilitiesExtension</span>),
 
-    <span class="doccomment">/// A [`KeyIdExtension`]</span>
+    <span class="doccomment">/// An [`ExternalKeyIdExtension`]</span>
     <span class="ident">ExternalKeyId</span>(<span class="ident">ExternalKeyIdExtension</span>),
 
     <span class="doccomment">/// A [`LifetimeExtension`]</span>
@@ -579,9 +637,9 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Extension</span> {
-    <span class="doccomment">/// Get a reference to the `RatchetTreeExtension`.</span>
-    <span class="doccomment">/// Returns an `InvalidExtensionType` error if called on an `Extension`</span>
-    <span class="doccomment">/// that&#39;s not a `RatchetTreeExtension`.</span>
+    <span class="doccomment">/// Get a reference to this extension as [`RatchetTreeExtension`].</span>
+    <span class="doccomment">/// Returns an [`ExtensionError::InvalidExtensionType`] if called on</span>
+    <span class="doccomment">/// an [`Extension`] that&#39;s not a [`RatchetTreeExtension`].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_ratchet_tree_extension</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">RatchetTreeExtension</span>, <span class="ident">ExtensionError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident"><span class="self">Self</span>::RatchetTree</span>(<span class="ident">rte</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">rte</span>),
@@ -591,9 +649,9 @@
         }
     }
 
-    <span class="doccomment">/// Get a reference to the `LifetimeExtension`.</span>
-    <span class="doccomment">/// Returns an `InvalidExtensionType` error if called on an `Extension`</span>
-    <span class="doccomment">/// that&#39;s not a `LifetimeExtension`.</span>
+    <span class="doccomment">/// Get a reference to this extension as [`LifetimeExtension`].</span>
+    <span class="doccomment">/// Returns an [`ExtensionError::InvalidExtensionType`] if called on an</span>
+    <span class="doccomment">/// [`Extension`] that&#39;s not a [`LifetimeExtension`].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_lifetime_extension</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LifetimeExtension</span>, <span class="ident">ExtensionError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident"><span class="self">Self</span>::LifeTime</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">e</span>),
@@ -603,21 +661,21 @@
         }
     }
 
-    <span class="doccomment">/// Get a reference to the `KeyIDExtension`.</span>
-    <span class="doccomment">/// Returns an `InvalidExtensionType` error if called on an `Extension`</span>
-    <span class="doccomment">/// that&#39;s not a `KeyIDExtension`.</span>
+    <span class="doccomment">/// Get a reference to this extension as [`ExternalKeyIdExtension`].</span>
+    <span class="doccomment">/// Returns an [`ExtensionError::InvalidExtensionType`] if called on an</span>
+    <span class="doccomment">/// [`Extension`] that&#39;s not an [`ExternalKeyIdExtension`].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_external_key_id_extension</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">ExternalKeyIdExtension</span>, <span class="ident">ExtensionError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident"><span class="self">Self</span>::ExternalKeyId</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">e</span>),
             <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">ExtensionError::InvalidExtensionType</span>(
-                <span class="string">&quot;This is not a KeyIDExtension&quot;</span>.<span class="ident">into</span>(),
+                <span class="string">&quot;This is not an ExternalKeyIdExtension&quot;</span>.<span class="ident">into</span>(),
             )),
         }
     }
 
-    <span class="doccomment">/// Get a reference to the `CapabilitiesExtension`.</span>
-    <span class="doccomment">/// Returns an `InvalidExtensionType` error if called on an `Extension`</span>
-    <span class="doccomment">/// that&#39;s not a `CapabilitiesExtension`.</span>
+    <span class="doccomment">/// Get a reference to this extension as [`CapabilitiesExtension`].</span>
+    <span class="doccomment">/// Returns an [`ExtensionError::InvalidExtensionType`] error if called on an</span>
+    <span class="doccomment">/// [`Extension`] that&#39;s not a [`CapabilitiesExtension`].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_capabilities_extension</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CapabilitiesExtension</span>, <span class="ident">ExtensionError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident"><span class="self">Self</span>::Capabilities</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">e</span>),
@@ -627,9 +685,9 @@
         }
     }
 
-    <span class="doccomment">/// Get a reference to the `ParentHashExtension`.</span>
-    <span class="doccomment">/// Returns an `InvalidExtensionType` error if called on an `Extension`</span>
-    <span class="doccomment">/// that&#39;s not a `ParentHashExtension`.</span>
+    <span class="doccomment">/// Get a reference to this extension as [`ParentHashExtension`].</span>
+    <span class="doccomment">/// Returns an [`ExtensionError::InvalidExtensionType`] error if called on an</span>
+    <span class="doccomment">/// [`Extension`] that&#39;s not a [`ParentHashExtension`].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_parent_hash_extension</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">ParentHashExtension</span>, <span class="ident">ExtensionError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident"><span class="self">Self</span>::ParentHash</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">e</span>),
@@ -639,9 +697,9 @@
         }
     }
 
-    <span class="doccomment">/// Get a reference to the `RequiredCapabilitiesExtension`.</span>
-    <span class="doccomment">/// Returns an `InvalidExtensionType` error if called on an `Extension`</span>
-    <span class="doccomment">/// that&#39;s not a `RequiredCapabilitiesExtension`.</span>
+    <span class="doccomment">/// Get a reference to this extension as [`RequiredCapabilitiesExtension`].</span>
+    <span class="doccomment">/// Returns an [`ExtensionError::InvalidExtensionType`] error if called on an</span>
+    <span class="doccomment">/// [`Extension`] that&#39;s not a [`RequiredCapabilitiesExtension`].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_required_capabilities_extension</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">RequiredCapabilitiesExtension</span>, <span class="ident">ExtensionError</span><span class="op">&gt;</span> {

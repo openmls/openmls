@@ -81,38 +81,7 @@
 <span id="80">80</span>
 <span id="81">81</span>
 <span id="82">82</span>
-<span id="83">83</span>
-<span id="84">84</span>
-<span id="85">85</span>
-<span id="86">86</span>
-<span id="87">87</span>
-<span id="88">88</span>
-<span id="89">89</span>
-<span id="90">90</span>
-<span id="91">91</span>
-<span id="92">92</span>
-<span id="93">93</span>
-</pre><pre class="rust"><code><span class="doccomment">//! # Life time extension</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! &gt; KeyPackage Extension</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! 7.2. Lifetime</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The lifetime extension represents the times between which clients will</span>
-<span class="doccomment">//! consider a KeyPackage valid. This time is represented as an absolute time,</span>
-<span class="doccomment">//! measured in seconds since the Unix epoch (1970-01-01T00:00:00Z).</span>
-<span class="doccomment">//! A client MUST NOT use the data in a KeyPackage for any processing before</span>
-<span class="doccomment">//! the not_before date, or after the not_after date.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! Applications MUST define a maximum total lifetime that is acceptable for a</span>
-<span class="doccomment">//! KeyPackage, and reject any KeyPackage where the total lifetime is longer</span>
-<span class="doccomment">//! than this duration.This extension MUST always be present in a KeyPackage.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ``` text</span>
-<span class="doccomment">//! uint64 not_before;</span>
-<span class="doccomment">//! uint64 not_after;</span>
-<span class="doccomment">//! ```</span>
-<span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
 
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">Deserialize</span>, <span class="ident">LifetimeExtensionError</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config::Config</span>;
@@ -120,8 +89,17 @@
 <span class="kw">use</span> <span class="ident">std::io::Read</span>;
 <span class="kw">use</span> <span class="ident">std::time</span>::{<span class="ident">SystemTime</span>, <span class="ident">UNIX_EPOCH</span>};
 
-<span class="doccomment">/// The lifetime extension holds a not before and a not after time measured in</span>
-<span class="doccomment">/// seconds since the Unix epoch (1970-01-01T00:00:00Z).</span>
+<span class="doccomment">/// # Life time extension</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// The lifetime extension represents the times between which clients will</span>
+<span class="doccomment">/// consider a KeyPackage valid. This time is represented as an absolute time,</span>
+<span class="doccomment">/// measured in seconds since the Unix epoch (1970-01-01T00:00:00Z).</span>
+<span class="doccomment">/// A client MUST NOT use the data in a KeyPackage for any processing before</span>
+<span class="doccomment">/// the not_before date, or after the not_after date.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// Applications MUST define a maximum total lifetime that is acceptable for a</span>
+<span class="doccomment">/// KeyPackage, and reject any KeyPackage where the total lifetime is longer</span>
+<span class="doccomment">/// than this duration.This extension MUST always be present in a KeyPackage.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LifetimeExtension</span> {
     <span class="ident">not_before</span>: <span class="ident">u64</span>,
@@ -131,7 +109,7 @@
 <span class="kw">impl</span> <span class="ident">LifetimeExtension</span> {
     <span class="doccomment">/// Create a new lifetime extensions with lifetime `t` (in seconds).</span>
     <span class="doccomment">/// Note that the lifetime is extended 1h into the past to adapt to skewed</span>
-    <span class="doccomment">/// clocks.</span>
+    <span class="doccomment">/// clocks, i.e. `not_before` is set to now - 1h.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">t</span>: <span class="ident">u64</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">lifetime_margin</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">Config::key_package_lifetime_margin</span>();
         <span class="kw">let</span> <span class="ident">now</span> <span class="op">=</span> <span class="ident">SystemTime::now</span>()

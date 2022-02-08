@@ -33,42 +33,20 @@
 <span id="32">32</span>
 <span id="33">33</span>
 <span id="34">34</span>
-<span id="35">35</span>
-<span id="36">36</span>
-<span id="37">37</span>
-<span id="38">38</span>
-<span id="39">39</span>
-<span id="40">40</span>
-<span id="41">41</span>
-<span id="42">42</span>
-<span id="43">43</span>
-<span id="44">44</span>
-<span id="45">45</span>
-</pre><pre class="rust"><code><span class="doccomment">//! # Parent hash extension</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! &gt; KeyPackage Extension</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! 7.4. Parent Hash</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The parent_hash extension serves to bind a KeyPackage to all the nodes</span>
-<span class="doccomment">//! above it in the group&#39;s ratchet tree. This enforces the tree invariant,</span>
-<span class="doccomment">//! meaning that malicious members can&#39;t lie about the state of the ratchet</span>
-<span class="doccomment">//! tree when they send Welcome messages to new members.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ```text</span>
-<span class="doccomment">//! opaque parent_hash&lt;0..255&gt;;</span>
-<span class="doccomment">//! ```</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! This extension MUST be present in all Updates that are sent as part of a</span>
-<span class="doccomment">//! Commit message. If the extension is present, clients MUST verify that</span>
-<span class="doccomment">//! parent_hash matches the hash of the leaf&#39;s parent node when represented as a</span>
-<span class="doccomment">//! ParentNode struct.</span>
-
-<span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">TlsByteVecU8</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">TlsByteVecU8</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
 
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
-<span class="doccomment">/// Parent Hash Extension.</span>
+<span class="doccomment">/// # Parent hash extension</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// The parent_hash extension serves to bind a KeyPackage to all the nodes</span>
+<span class="doccomment">/// above it in the group&#39;s ratchet tree. This enforces the tree invariant,</span>
+<span class="doccomment">/// meaning that malicious members can&#39;t lie about the state of the ratchet</span>
+<span class="doccomment">/// tree when they send Welcome messages to new members.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// This extension is present in all updates that are sent as part of a</span>
+<span class="doccomment">/// commit message. If the extension is present, OpenMLS verifies that the</span>
+<span class="doccomment">/// parent hash matches the hash of the leaf&#39;s parent node.</span>
 <span class="attribute">#[<span class="ident">derive</span>(
     <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Default</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>,
 )]</span>
