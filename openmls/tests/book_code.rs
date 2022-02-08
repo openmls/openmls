@@ -181,7 +181,6 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
             &bob_credential
         );
         // Check that Alice added Bob
-        // TODO #575: Replace this with the adequate API call
         assert!(matches!(
             add.sender(),
             Sender::Member(member) if member == alice_group
@@ -368,7 +367,6 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         }
 
         // Check that Alice sent the proposal
-        // TODO #575: Replace this with the adequate API call
         assert!(matches!(
             staged_proposal.sender(),
             Sender::Member(member) if member == alice_group
@@ -637,7 +635,6 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
             .next()
             .expect("Expected a proposal.");
         // Check that Bob was removed
-        // TODO #575: Replace this with the adequate API call
         assert_eq!(
             remove.remove_proposal().removed(),
             bob_group
@@ -645,7 +642,6 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
                 .expect("An unexpected error occurred.")
         );
         // Check that Charlie removed Bob
-        // TODO #575: Replace this with the adequate API call
         assert!(matches!(
             remove.sender(),
             Sender::Member(member) if member == &charlies_old_kpr
@@ -750,7 +746,6 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     if let ProcessedMessage::ProposalMessage(staged_proposal) = charlie_processed_message {
         if let Proposal::Remove(ref remove_proposal) = staged_proposal.proposal() {
             // Check that Charlie was removed
-            // TODO #575: Replace this with the adequate API call
             assert_eq!(
                 remove_proposal.removed(),
                 charlie_group
@@ -764,7 +759,6 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         }
 
         // Check that Alice removed Charlie
-        // TODO #575: Replace this with the adequate API call
         assert!(matches!(
             staged_proposal.sender(),
             Sender::Member(member) if member == alice_group
@@ -801,7 +795,6 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         }
 
         // Check that Alice added Bob
-        // TODO #575: Replace this with the adequate API call
         assert!(matches!(
             staged_proposal.sender(),
             Sender::Member(member) if member == alice_group
@@ -902,7 +895,6 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         // Check the message
         assert_eq!(application_message.into_bytes(), message_alice);
         // Check that Alice sent the message
-        // TODO #575: Replace this with the adequate API call
         assert_eq!(
             &sender,
             alice_group.credential().expect("Expected a credential.")
@@ -961,7 +953,6 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
                 .expect("An unexpected error occurred.")
         );
         // Check that Bob removed himself
-        // TODO #575: Replace this with the adequate API call
         assert!(matches!(
             remove.sender(),
             Sender::Member(member) if member == bob_group
@@ -998,7 +989,6 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
                 .expect("An unexpected error occurred.")
         );
         // Check that Bob removed himself
-        // TODO #575: Replace this with the adequate API call
         assert!(matches!(
             remove.sender(),
             Sender::Member(member) if member == bob_group
