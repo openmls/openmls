@@ -115,9 +115,6 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
         let bob_key_package =
             generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, vec![], backend)
                 .expect("An unexpected error occurred.");
-        let bob_kpr = bob_key_package
-            .hash_ref(backend.crypto())
-            .expect("Couldn't get the key package reference for Bob.");
 
         // Define the MlsGroup configuration
 
@@ -257,30 +254,25 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             .process_unverified_message(unverified_message, None, backend)
             .expect("Could not process unverified message.");
 
-        // Check that we received the correct proposals
+        // Check that we received the correct message
         if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
             let update = staged_commit
-                .update_proposals()
-                .next()
-                .expect("Expected a proposal.");
+                .commit_update_key_package()
+                .expect("Expected a KeyPackage.")
+                .clone();
             // Check that Bob updated
-            assert_eq!(
-                update.update_proposal().key_package().credential(),
-                &bob_credential
-            );
-            // Check that Bob sent the update
-            // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                update
-                    .sender()
-                    .as_key_package_ref()
-                    .expect("An unexpected error occurred."),
-                &bob_kpr
-            );
+            assert_eq!(update.credential(), &bob_credential);
+
             // Merge staged Commit
             alice_group
                 .merge_staged_commit(*staged_commit)
                 .expect("Could not merge Commit.");
+
+            // Check Bob's new key package
+            let members = alice_group
+                .members()
+                .expect("An unexepected error occurred.");
+            assert_eq!(members[1], &update);
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -360,32 +352,22 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             .process_unverified_message(unverified_message, None, backend)
             .expect("Could not process unverified message.");
 
-        // Check that we received the correct proposals
+        // Check that we received the correct message
         if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
             let update = staged_commit
-                .update_proposals()
-                .next()
-                .expect("Expected a proposal.");
+                .commit_update_key_package()
+                .expect("Expected a KeyPackage.")
+                .clone();
             // Check that Alice updated
-            assert_eq!(
-                update.update_proposal().key_package().credential(),
-                &alice_credential
-            );
-            // Check that Alice sent the update
-            // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                update
-                    .sender()
-                    .as_key_package_ref()
-                    .expect("An unexpected error occurred."),
-                alice_group
-                    .key_package_ref()
-                    .expect("An unexpected error occurred.")
-            );
+            assert_eq!(update.credential(), &alice_credential);
 
             bob_group
                 .merge_staged_commit(*staged_commit)
                 .expect("Could not merge StagedCommit");
+
+            // Check Alice's new key package
+            let members = bob_group.members().expect("An unexepected error occurred.");
+            assert_eq!(members[0], &update);
         } else {
             unreachable!("Expected a StagedCommit.");
         }
