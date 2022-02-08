@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use core_group::create_commit_params::CreateCommitParams;
 use tls_codec::Serialize;
 
-use crate::ciphersuite::hash_ref::KeyPackageRef;
+use crate::{ciphersuite::hash_ref::HashReference, ciphersuite::hash_ref::KeyPackageRef};
 
 use super::*;
 
@@ -265,5 +265,82 @@ impl MlsGroup {
     #[cfg(any(feature = "test-utils", test))]
     pub fn indexed_members(&self) -> Result<BTreeMap<u32, &KeyPackage>, MlsGroupError> {
         Ok(self.group.treesync().full_leaves()?)
+    }
+}
+
+/// Helper `enum` that classifies the kind of remove operation. This can be used to
+/// better interpret the semantic value of a remove proposal that is covered in a
+/// Commit message.
+#[derive(Debug)]
+pub enum RemoveOperation {
+    /// We issued a remove proposal for ourselves in the previous epoch and
+    /// the proposal has now been committed.
+    WeLeft,
+    /// Someone else (indicated by the [`Sender`]) removed us from the group.
+    WeWereRemovedBy(Sender),
+    /// Another member (indicated by the [`HashReference`]) requested to leave
+    /// the group by issuing a remove proposal in the previous epoch and the
+    /// proposal has now been committed.
+    TheyLeft(HashReference),
+    /// Another member (indicated by the [`HashRefrence`]) was removed by the [`Sender`].
+    TheyWereRemovedBy((HashReference, Sender)),
+    /// We removed another member (indicated by the [`HashReference`]).
+    WeRemovedThem(HashReference),
+}
+
+impl RemoveOperation {
+    /// Construct a new [`RemoveOperation`] from a [`QueuedRemoveProposal`] and the
+    /// corresponding [`MlsGroup`].
+    pub fn new(
+        queued_remove_proposal: QueuedRemoveProposal,
+        group: &MlsGroup,
+    ) -> Result<Self, LibraryError> {
+        let own_hash_ref = match group.key_package_ref() {
+            Some(key_package_ref) => key_package_ref,
+            None => {
+                return Err(LibraryError::custom(
+                    "RemoveOperation::new(): Own KeyPackage was empty.",
+                ))
+            }
+        };
+        let sender = queued_remove_proposal.sender();
+        let removed = queued_remove_proposal.remove_proposal().removed();
+
+        // We start with the cases where the sender is a group member
+        if sender.is_member() {
+            // Extract the key package reference for the sender
+            let sender_ref = sender.as_key_package_ref().map_err(|_| {
+                LibraryError::custom(
+                    "RemoveOperation::new(): Sender is of type member but has no KeyPackageRef.",
+                )
+            })?;
+
+            // We authored the remove proposal
+            if sender_ref == own_hash_ref {
+                if removed == own_hash_ref {
+                    // We left
+                    return Ok(Self::WeLeft);
+                } else {
+                    // We removed another member
+                    return Ok(Self::WeRemovedThem(*removed));
+                }
+            }
+
+            // Another member left
+            if removed == sender_ref {
+                return Ok(Self::TheyLeft(*removed));
+            }
+        }
+
+        // The sender is not necessarily a group member. This covers all sender
+        // types (members, pre-configured senders and new members).
+
+        if removed == own_hash_ref {
+            // We were removed
+            Ok(Self::WeWereRemovedBy(sender.clone()))
+        } else {
+            // Another member was removed
+            Ok(Self::TheyWereRemovedBy((*removed, sender.clone())))
+        }
     }
 }
