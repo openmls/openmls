@@ -423,6 +423,7 @@
 <span id="422">422</span>
 <span id="423">423</span>
 <span id="424">424</span>
+<span id="425">425</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync</span>::{<span class="ident">diff::StagedTreeSyncDiff</span>, <span class="ident">treekem::DecryptPathParams</span>};
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::proposals</span>::{
@@ -566,7 +567,7 @@
             <span class="kw">let</span> <span class="ident">staged_diff</span> <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">into_staged_diff</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)<span class="question-mark">?</span>;
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">StagedCommit::new</span>(
                 <span class="ident">proposal_queue</span>,
-                <span class="ident">StagedCommitState::SelfRemoved</span>(<span class="ident">staged_diff</span>),
+                <span class="ident">StagedCommitState::SelfRemoved</span>(<span class="ident">Box::new</span>(<span class="ident">staged_diff</span>)),
                 <span class="ident">commit_update_key_package</span>,
             ));
         }
@@ -709,13 +710,14 @@
         <span class="comment">// Make the diff a staged diff. This finalizes the diff and no more changes can be applied to it.</span>
         <span class="kw">let</span> <span class="ident">staged_diff</span> <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">into_staged_diff</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">staged_commit_state</span> <span class="op">=</span> <span class="ident">StagedCommitState::GroupMember</span>(<span class="ident">MemberStagedCommitState</span> {
-            <span class="ident">group_context</span>: <span class="ident">provisional_group_context</span>,
-            <span class="ident">group_epoch_secrets</span>: <span class="ident">provisional_group_epoch_secrets</span>,
-            <span class="ident">message_secrets</span>: <span class="ident">provisional_message_secrets</span>,
-            <span class="ident">interim_transcript_hash</span>,
-            <span class="ident">staged_diff</span>,
-        });
+        <span class="kw">let</span> <span class="ident">staged_commit_state</span> <span class="op">=</span>
+            <span class="ident">StagedCommitState::GroupMember</span>(<span class="ident">Box::new</span>(<span class="ident">MemberStagedCommitState</span> {
+                <span class="ident">group_context</span>: <span class="ident">provisional_group_context</span>,
+                <span class="ident">group_epoch_secrets</span>: <span class="ident">provisional_group_epoch_secrets</span>,
+                <span class="ident">message_secrets</span>: <span class="ident">provisional_message_secrets</span>,
+                <span class="ident">interim_transcript_hash</span>,
+                <span class="ident">staged_diff</span>,
+            }));
 
         <span class="prelude-val">Ok</span>(<span class="ident">StagedCommit::new</span>(
             <span class="ident">proposal_queue</span>,
@@ -735,7 +737,7 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MessageSecrets</span><span class="op">&gt;</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">staged_commit</span>.<span class="ident">state</span> {
             <span class="ident">StagedCommitState::SelfRemoved</span>(<span class="ident">staged_diff</span>) =&gt; {
-                <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">merge_diff</span>(<span class="ident">staged_diff</span>)<span class="question-mark">?</span>;
+                <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">merge_diff</span>(<span class="kw-2">*</span><span class="ident">staged_diff</span>)<span class="question-mark">?</span>;
                 <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
             }
             <span class="ident">StagedCommitState::GroupMember</span>(<span class="ident">state</span>) =&gt; {
@@ -760,8 +762,8 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">StagedCommitState</span> {
-    <span class="ident">SelfRemoved</span>(<span class="ident">StagedTreeSyncDiff</span>),
-    <span class="ident">GroupMember</span>(<span class="ident">MemberStagedCommitState</span>),
+    <span class="ident">SelfRemoved</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">StagedTreeSyncDiff</span><span class="op">&gt;</span>),
+    <span class="ident">GroupMember</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">MemberStagedCommitState</span><span class="op">&gt;</span>),
 }
 
 <span class="doccomment">/// Contains the changes from a commit to the group state.</span>
