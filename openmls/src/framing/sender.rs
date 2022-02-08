@@ -38,7 +38,7 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 #[repr(u8)]
-pub enum SenderNew {
+pub enum Sender {
     /// The sender is a member of the group
     #[tls_codec(discriminant = 1)]
     Member(KeyPackageRef),
@@ -48,7 +48,7 @@ pub enum SenderNew {
     NewMember,
 }
 
-impl SenderNew {
+impl Sender {
     /// Build a [`Sender`] from [`MlsSenderData`].
     pub(crate) fn from_sender_data(sender_data: MlsSenderData) -> Self {
         Self::Member(sender_data.sender)
@@ -66,11 +66,11 @@ impl SenderNew {
 
     /// Returns true if this [`Sender`] has [`SenderType::Member`].
     pub fn is_member(&self) -> bool {
-        matches!(self, SenderNew::Member(_))
+        matches!(self, Sender::Member(_))
     }
 
     /// Returns true if this [`Sender`] has [`SenderType::NewMember`].
     pub fn is_new_member(&self) -> bool {
-        matches!(self, SenderNew::NewMember)
+        matches!(self, Sender::NewMember)
     }
 }

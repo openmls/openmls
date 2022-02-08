@@ -661,7 +661,7 @@ fn test_valsem245(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         ciphersuite,
         backend,
         second_ext_init_prop,
-        &SenderNew::Member(
+        &Sender::Member(
             *alice_group
                 .key_package_ref()
                 .expect("An unexpected error occurred."),

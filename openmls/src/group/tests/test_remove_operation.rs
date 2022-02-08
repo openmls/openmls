@@ -210,7 +210,7 @@ fn test_remove_operation_variants(
                                 // Check Bob was removed
                                 assert!(bob_staged_commit.self_removed());
                                 match sender {
-                                    SenderNew::Member(member) => {
+                                    Sender::Member(member) => {
                                         // Check that it was Alice who removed Bob
                                         assert_eq!(member, alice_kpr);
                                     }
@@ -264,7 +264,7 @@ fn test_remove_operation_variants(
                                 // Check that it was indeed Bob who was removed
                                 assert_eq!(removed, bob_kpr);
                                 match sender {
-                                    SenderNew::Member(member) => {
+                                    Sender::Member(member) => {
                                         // Check that it was Alice who removed Bob
                                         assert_eq!(member, alice_kpr);
                                     }

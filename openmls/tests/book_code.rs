@@ -184,7 +184,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         // TODO #575: Replace this with the adequate API call
         assert!(matches!(
             add.sender(),
-            SenderNew::Member(member) if member == alice_group
+            Sender::Member(member) if member == alice_group
             .key_package_ref()
             .expect("An unexpected error occurred.")
         ));
@@ -371,7 +371,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         // TODO #575: Replace this with the adequate API call
         assert!(matches!(
             staged_proposal.sender(),
-            SenderNew::Member(member) if member == alice_group
+            Sender::Member(member) if member == alice_group
             .key_package_ref()
             .expect("An unexpected error occurred.")
         ));
@@ -648,7 +648,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         // TODO #575: Replace this with the adequate API call
         assert!(matches!(
             remove.sender(),
-            SenderNew::Member(member) if member == &charlies_old_kpr
+            Sender::Member(member) if member == &charlies_old_kpr
         ));
         // Merge staged commit
         alice_group
@@ -676,7 +676,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
             RemoveOperation::WeLeft => unreachable!(),
             // We expect this variant, since Bob was removed by Charlie
             RemoveOperation::WeWereRemovedBy(member) => {
-                assert!(matches!(member, SenderNew::Member(member) if member == charlies_old_kpr));
+                assert!(matches!(member, Sender::Member(member) if member == charlies_old_kpr));
             }
             RemoveOperation::TheyLeft(_) => unreachable!(),
             RemoveOperation::TheyWereRemovedBy(_) => unreachable!(),
@@ -767,7 +767,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         // TODO #575: Replace this with the adequate API call
         assert!(matches!(
             staged_proposal.sender(),
-            SenderNew::Member(member) if member == alice_group
+            Sender::Member(member) if member == alice_group
             .key_package_ref()
             .expect("An unexpected error occurred.")
         ));
@@ -804,7 +804,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         // TODO #575: Replace this with the adequate API call
         assert!(matches!(
             staged_proposal.sender(),
-            SenderNew::Member(member) if member == alice_group
+            Sender::Member(member) if member == alice_group
             .key_package_ref()
             .expect("An unexpected error occurred.")
         ));
@@ -964,7 +964,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         // TODO #575: Replace this with the adequate API call
         assert!(matches!(
             remove.sender(),
-            SenderNew::Member(member) if member == bob_group
+            Sender::Member(member) if member == bob_group
             .key_package_ref()
             .expect("An unexpected error occurred.")
         ));
@@ -1001,7 +1001,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         // TODO #575: Replace this with the adequate API call
         assert!(matches!(
             remove.sender(),
-            SenderNew::Member(member) if member == bob_group
+            Sender::Member(member) if member == bob_group
             .key_package_ref()
             .expect("An unexpected error occurred.")
         ));

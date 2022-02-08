@@ -52,10 +52,10 @@ impl CoreGroup {
                 // group.
                 let leaf_index =
                     self.free_leaf_index(params.inline_proposals().iter().map(Some))?;
-                (SenderNew::build_new_member(), leaf_index)
+                (Sender::build_new_member(), leaf_index)
             }
             CommitType::Member => (
-                SenderNew::build_member(self.key_package_ref().ok_or_else(|| {
+                Sender::build_member(self.key_package_ref().ok_or_else(|| {
                     LibraryError::custom("CoreGroup::create_commit(): missing key package")
                 })?),
                 self.own_leaf_index(),
@@ -161,9 +161,9 @@ impl CoreGroup {
             };
 
         let sender = match params.commit_type() {
-            CommitType::External => SenderNew::build_new_member(),
+            CommitType::External => Sender::build_new_member(),
             CommitType::Member => {
-                SenderNew::build_member(self.key_package_ref().ok_or_else(|| {
+                Sender::build_member(self.key_package_ref().ok_or_else(|| {
                     LibraryError::custom("CoreGroup::create_commit(): missing key package")
                 })?)
             }

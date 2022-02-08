@@ -264,7 +264,7 @@ impl MlsCiphertext {
         let mls_ciphertext_content = self.decrypt(backend, ratchet_key, &ratchet_nonce)?;
 
         // Extract sender. The sender type is always of type Member for MlsCiphertext.
-        let sender = SenderNew::from_sender_data(sender_data);
+        let sender = Sender::from_sender_data(sender_data);
         log_content!(
             trace,
             "  Successfully decoded MlsPlaintext with: {:x?}",
@@ -390,12 +390,12 @@ pub(crate) struct MlsSenderData {
 impl MlsSenderData {
     /// Build new [`MlsSenderData`] for a [`Sender`].
     pub(crate) fn from_sender(
-        sender: &SenderNew,
+        sender: &Sender,
         generation: u32,
         reuse_guard: ReuseGuard,
     ) -> Result<Self, MlsCiphertextError> {
         match sender {
-            SenderNew::Member(member_sender) => Ok(MlsSenderData {
+            Sender::Member(member_sender) => Ok(MlsSenderData {
                 sender: *member_sender,
                 generation,
                 reuse_guard,

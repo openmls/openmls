@@ -4,7 +4,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    framing::{SenderError, SenderNew},
+    framing::{Sender, SenderError},
     group::errors::ExternalCommitValidationError,
     messages::{Proposal, ProposalOrRefType, ProposalType},
 };
@@ -57,7 +57,7 @@ impl CoreGroup {
     ) -> Result<(), CoreGroupError> {
         // ValSem004
         let sender = plaintext.sender();
-        if let SenderNew::Member(hash_ref) = sender {
+        if let Sender::Member(hash_ref) = sender {
             // If the sender is a member, it has to be in the tree ...
             if self
             .treesync()
@@ -223,7 +223,7 @@ impl CoreGroup {
 
         for update_proposal in update_proposals {
             let hash_ref = match update_proposal.sender() {
-                SenderNew::Member(hash_ref) => hash_ref,
+                Sender::Member(hash_ref) => hash_ref,
                 _ => return Err(CoreGroupError::SenderError(SenderError::NotAMember)),
             };
             if let Some(leaf_node) = tree.leaf_from_id(hash_ref)? {
@@ -263,7 +263,7 @@ impl CoreGroup {
         sender: u32,
         key_package: &KeyPackage,
         public_key_set: HashSet<Vec<u8>>,
-        proposal_sender: &SenderNew,
+        proposal_sender: &Sender,
     ) -> Result<(), CoreGroupError> {
         let indexed_key_packages = self.treesync().full_leaves()?;
         if let Some(existing_key_package) = indexed_key_packages.get(&sender) {

@@ -154,7 +154,7 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             );
             // Check that Alice added Bob
             // TODO #575: Replace this with the adequate API call
-            assert!(matches!(add.sender(), SenderNew::Member(member) if member == &alice_kpr));
+            assert!(matches!(add.sender(), Sender::Member(member) if member == &alice_kpr));
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -322,7 +322,7 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             // TODO #575: Replace this with the adequate API call
             assert!(matches!(
                 staged_proposal.sender(),
-                SenderNew::Member(member) if member == alice_group
+                Sender::Member(member) if member == alice_group
                                           .key_package_ref()
                                           .expect("An unexpected error occured.")
             ));
@@ -563,7 +563,7 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             assert_eq!(remove.remove_proposal().removed(), &bob_kpr);
             // Check that Charlie removed Bob
             // TODO #575: Replace this with the adequate API call
-            assert!(matches!(remove.sender(), SenderNew::Member(member) if member == &charlie_kpr));
+            assert!(matches!(remove.sender(), Sender::Member(member) if member == &charlie_kpr));
 
             // Merge staged Commit
             alice_group
@@ -584,7 +584,7 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             assert_eq!(remove.remove_proposal().removed(), &bob_kpr);
             // Check that Charlie removed Bob
             // TODO #575: Replace this with the adequate API call
-            assert!(matches!(remove.sender(), SenderNew::Member(member) if member == &charlie_kpr));
+            assert!(matches!(remove.sender(), Sender::Member(member) if member == &charlie_kpr));
 
             // Merge staged Commit
             bob_group
@@ -666,7 +666,7 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             // TODO #575: Replace this with the adequate API call
             assert!(matches!(
                 staged_proposal.sender(),
-                SenderNew::Member(member) if member == &alice_kpr
+                Sender::Member(member) if member == &alice_kpr
             ));
         } else {
             unreachable!("Expected a QueuedProposal.");
@@ -697,7 +697,7 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             // TODO #575: Replace this with the adequate API call
             assert!(matches!(
                 staged_proposal.sender(),
-                SenderNew::Member(member) if member == &alice_kpr
+                Sender::Member(member) if member == &alice_kpr
             ));
             // Store proposal
             charlie_group.store_pending_proposal(*staged_proposal);
@@ -846,7 +846,7 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             assert_eq!(remove.remove_proposal().removed(), &bob_kpr);
             // Check that Bob removed himself
             // TODO #575: Replace this with the adequate API call
-            assert!(matches!(remove.sender(), SenderNew::Member(member) if member == &bob_kpr));
+            assert!(matches!(remove.sender(), Sender::Member(member) if member == &bob_kpr));
 
             // Merge staged Commit
         } else {
@@ -874,7 +874,7 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             assert_eq!(remove.remove_proposal().removed(), &bob_kpr);
             // Check that Bob removed himself
             // TODO #575: Replace this with the adequate API call
-            assert!(matches!(remove.sender(), SenderNew::Member(member) if member == &bob_kpr));
+            assert!(matches!(remove.sender(), Sender::Member(member) if member == &bob_kpr));
 
             assert!(staged_commit.self_removed());
             // Merge staged Commit
