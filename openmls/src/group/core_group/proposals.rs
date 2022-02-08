@@ -56,7 +56,7 @@ impl ProposalStore {
 pub struct QueuedProposal {
     proposal: Proposal,
     proposal_reference: ProposalRef,
-    sender: Sender,
+    sender: SenderNew,
     proposal_or_ref_type: ProposalOrRefType,
 }
 
@@ -84,7 +84,7 @@ impl QueuedProposal {
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         proposal: Proposal,
-        sender: &Sender,
+        sender: &SenderNew,
     ) -> Result<Self, QueuedProposalError> {
         let proposal_reference = ProposalRef::from_proposal(ciphersuite, backend, &proposal)?;
         Ok(Self {
@@ -107,7 +107,7 @@ impl QueuedProposal {
         self.proposal_or_ref_type
     }
     /// Returns the `Sender` as a reference
-    pub fn sender(&self) -> &Sender {
+    pub fn sender(&self) -> &SenderNew {
         &self.sender
     }
 }
@@ -137,7 +137,7 @@ impl ProposalQueue {
         backend: &impl OpenMlsCryptoProvider,
         committed_proposals: Vec<ProposalOrRef>,
         proposal_store: &ProposalStore,
-        sender: &Sender,
+        sender: &SenderNew,
     ) -> Result<Self, ProposalQueueError> {
         // Feed the `proposals_by_reference` in a `HashMap` so that we can easily
         // extract then by reference later
@@ -157,10 +157,10 @@ impl ProposalQueue {
                 ProposalOrRef::Proposal(proposal) => {
                     // ValSem200
                     if let Proposal::Remove(ref remove_proposal) = proposal {
-                        if sender.is_member()
-                            && remove_proposal.removed() == sender.as_key_package_ref()?
-                        {
-                            return Err(ProposalQueueError::SelfRemoval);
+                        if let SenderNew::Member(hash_ref) = sender {
+                            if remove_proposal.removed() == hash_ref {
+                                return Err(ProposalQueueError::SelfRemoval);
+                            }
                         }
                     }
 
@@ -177,10 +177,10 @@ impl ProposalQueue {
                             // ValSem200
                             if let Proposal::Remove(ref remove_proposal) = queued_proposal.proposal
                             {
-                                if sender.is_member()
-                                    && remove_proposal.removed() == sender.as_key_package_ref()?
-                                {
-                                    return Err(ProposalQueueError::SelfRemoval);
+                                if let SenderNew::Member(hash_ref) = sender {
+                                    if remove_proposal.removed() == hash_ref {
+                                        return Err(ProposalQueueError::SelfRemoval);
+                                    }
                                 }
                             }
 
@@ -326,7 +326,7 @@ impl ProposalQueue {
     pub(crate) fn filter_proposals<'a>(
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        sender: Sender,
+        sender: SenderNew,
         proposal_store: &'a ProposalStore,
         inline_proposals: &'a [Proposal],
         own_kpr: impl Into<Option<&'a hash_ref::KeyPackageRef>>,
@@ -384,9 +384,12 @@ impl ProposalQueue {
                 }
                 Proposal::Update(_) => {
                     let own_kpr = own_kpr.ok_or(ProposalQueueError::LibraryError)?;
-                    let sender = queued_proposal.sender.as_key_package_ref()?;
-                    if sender != own_kpr {
-                        get_member(&mut members, sender)?
+                    let hash_ref = match queued_proposal.sender {
+                        SenderNew::Member(hash_ref) => hash_ref,
+                        _ => return Err(ProposalQueueError::SenderError(SenderError::NotAMember)),
+                    };
+                    if &hash_ref != own_kpr {
+                        get_member(&mut members, &hash_ref)?
                             .updates
                             .push(queued_proposal.clone());
                     } else {
@@ -487,7 +490,7 @@ impl ProposalQueue {
 #[derive(PartialEq, Debug)]
 pub struct QueuedAddProposal<'a> {
     add_proposal: &'a AddProposal,
-    sender: &'a Sender,
+    sender: &'a SenderNew,
 }
 
 impl<'a> QueuedAddProposal<'a> {
@@ -497,7 +500,7 @@ impl<'a> QueuedAddProposal<'a> {
     }
 
     /// Returns a reference to the sender
-    pub fn sender(&self) -> &Sender {
+    pub fn sender(&self) -> &SenderNew {
         self.sender
     }
 }
@@ -506,7 +509,7 @@ impl<'a> QueuedAddProposal<'a> {
 #[derive(PartialEq, Debug)]
 pub struct QueuedRemoveProposal<'a> {
     remove_proposal: &'a RemoveProposal,
-    sender: &'a Sender,
+    sender: &'a SenderNew,
 }
 
 impl<'a> QueuedRemoveProposal<'a> {
@@ -516,7 +519,7 @@ impl<'a> QueuedRemoveProposal<'a> {
     }
 
     /// Returns a reference to the sender
-    pub fn sender(&self) -> &Sender {
+    pub fn sender(&self) -> &SenderNew {
         self.sender
     }
 }
@@ -525,7 +528,7 @@ impl<'a> QueuedRemoveProposal<'a> {
 #[derive(PartialEq, Debug)]
 pub struct QueuedUpdateProposal<'a> {
     update_proposal: &'a UpdateProposal,
-    sender: &'a Sender,
+    sender: &'a SenderNew,
 }
 
 impl<'a> QueuedUpdateProposal<'a> {
@@ -535,7 +538,7 @@ impl<'a> QueuedUpdateProposal<'a> {
     }
 
     /// Returns a reference to the sender
-    pub fn sender(&self) -> &Sender {
+    pub fn sender(&self) -> &SenderNew {
         self.sender
     }
 }
@@ -544,7 +547,7 @@ impl<'a> QueuedUpdateProposal<'a> {
 #[derive(PartialEq, Debug)]
 pub struct QueuedPskProposal<'a> {
     psk_proposal: &'a PreSharedKeyProposal,
-    sender: &'a Sender,
+    sender: &'a SenderNew,
 }
 
 impl<'a> QueuedPskProposal<'a> {
@@ -554,7 +557,7 @@ impl<'a> QueuedPskProposal<'a> {
     }
 
     /// Returns a reference to the sender
-    pub fn sender(&self) -> &Sender {
+    pub fn sender(&self) -> &SenderNew {
         self.sender
     }
 }

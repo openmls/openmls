@@ -661,14 +661,11 @@ fn test_valsem245(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         ciphersuite,
         backend,
         second_ext_init_prop,
-        &Sender {
-            sender_type: SenderType::Member,
-            sender: SenderValue::Member(
-                *alice_group
-                    .key_package_ref()
-                    .expect("An unexpected error occurred."),
-            ),
-        },
+        &SenderNew::Member(
+            *alice_group
+                .key_package_ref()
+                .expect("An unexpected error occurred."),
+        ),
     )
     .expect("error creating queued proposal");
 

@@ -68,7 +68,7 @@ pub(crate) struct MlsPlaintext {
     wire_format: WireFormat,
     group_id: GroupId,
     epoch: GroupEpoch,
-    sender: Sender,
+    sender: SenderNew,
     authenticated_data: TlsByteVecU32,
     content_type: ContentType,
     content: MlsPlaintextContentType,
@@ -124,23 +124,22 @@ impl MlsPlaintext {
     #[inline]
     fn new(
         framing_parameters: FramingParameters,
-        sender: Sender,
+        sender: SenderNew,
         payload: Payload,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, LibraryError> {
-        let sender_type = sender.sender_type;
         let mut mls_plaintext = MlsPlaintextTbs::new(
             framing_parameters.wire_format(),
             context.group_id().clone(),
             context.epoch(),
-            sender,
+            sender.clone(),
             framing_parameters.aad().into(),
             payload,
         );
 
-        if sender_type == SenderType::Member {
+        if let SenderNew::Member(_) = sender {
             let serialized_context = context
                 .tls_serialize_detached()
                 .map_err(LibraryError::missing_bound_check)?;
@@ -161,7 +160,7 @@ impl MlsPlaintext {
         membership_key: &MembershipKey,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, LibraryError> {
-        let sender = Sender::build_member(sender_reference);
+        let sender = SenderNew::build_member(sender_reference);
         let mut mls_plaintext = Self::new(
             framing_parameters,
             sender,
@@ -212,7 +211,7 @@ impl MlsPlaintext {
     /// commit.
     pub(crate) fn commit(
         framing_parameters: FramingParameters,
-        sender: Sender,
+        sender: SenderNew,
         commit: Commit,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
@@ -269,7 +268,7 @@ impl MlsPlaintext {
     }
 
     /// Get the sender of this message.
-    pub(crate) fn sender(&self) -> &Sender {
+    pub(crate) fn sender(&self) -> &SenderNew {
         &self.sender
     }
 
@@ -450,7 +449,7 @@ pub(crate) struct MlsPlaintextTbs {
     pub(super) wire_format: WireFormat,
     pub(super) group_id: GroupId,
     pub(super) epoch: GroupEpoch,
-    pub(super) sender: Sender,
+    pub(super) sender: SenderNew,
     pub(super) authenticated_data: TlsByteVecU32,
     pub(super) content_type: ContentType,
     pub(super) payload: MlsPlaintextContentType,
@@ -557,13 +556,13 @@ impl VerifiableMlsPlaintext {
     }
 
     /// Get the [`Sender`].
-    pub fn sender(&self) -> &Sender {
+    pub fn sender(&self) -> &SenderNew {
         &self.tbs.sender
     }
 
     /// Set the sender.
     #[cfg(test)]
-    pub(crate) fn set_sender(&mut self, sender: Sender) {
+    pub(crate) fn set_sender(&mut self, sender: SenderNew) {
         self.tbs.sender = sender;
     }
 
@@ -697,7 +696,7 @@ impl MlsPlaintextTbs {
         wire_format: WireFormat,
         group_id: GroupId,
         epoch: GroupEpoch,
-        sender: Sender,
+        sender: SenderNew,
         authenticated_data: TlsByteVecU32,
         payload: Payload,
     ) -> Self {
@@ -798,7 +797,7 @@ pub(crate) struct MlsPlaintextCommitContent<'a> {
     pub(super) wire_format: WireFormat,
     pub(super) group_id: &'a GroupId,
     pub(super) epoch: GroupEpoch,
-    pub(super) sender: &'a Sender,
+    pub(super) sender: &'a SenderNew,
     pub(super) authenticated_data: &'a TlsByteVecU32,
     pub(super) content_type: ContentType,
     pub(super) commit: &'a Commit,
