@@ -1,23 +1,3 @@
-//! # Life time extension
-//!
-//! > KeyPackage Extension
-//!
-//! 7.2. Lifetime
-//!
-//! The lifetime extension represents the times between which clients will
-//! consider a KeyPackage valid. This time is represented as an absolute time,
-//! measured in seconds since the Unix epoch (1970-01-01T00:00:00Z).
-//! A client MUST NOT use the data in a KeyPackage for any processing before
-//! the not_before date, or after the not_after date.
-//!
-//! Applications MUST define a maximum total lifetime that is acceptable for a
-//! KeyPackage, and reject any KeyPackage where the total lifetime is longer
-//! than this duration.This extension MUST always be present in a KeyPackage.
-//!
-//! ``` text
-//! uint64 not_before;
-//! uint64 not_after;
-//! ```
 use tls_codec::{TlsSerialize, TlsSize};
 
 use super::{Deserialize, LifetimeExtensionError, Serialize};
@@ -26,8 +6,17 @@ use crate::config::Config;
 use std::io::Read;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-/// The lifetime extension holds a not before and a not after time measured in
-/// seconds since the Unix epoch (1970-01-01T00:00:00Z).
+/// # Life time extension
+///
+/// The lifetime extension represents the times between which clients will
+/// consider a KeyPackage valid. This time is represented as an absolute time,
+/// measured in seconds since the Unix epoch (1970-01-01T00:00:00Z).
+/// A client MUST NOT use the data in a KeyPackage for any processing before
+/// the not_before date, or after the not_after date.
+///
+/// Applications MUST define a maximum total lifetime that is acceptable for a
+/// KeyPackage, and reject any KeyPackage where the total lifetime is longer
+/// than this duration.This extension MUST always be present in a KeyPackage.
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub struct LifetimeExtension {
     not_before: u64,
@@ -37,7 +26,7 @@ pub struct LifetimeExtension {
 impl LifetimeExtension {
     /// Create a new lifetime extensions with lifetime `t` (in seconds).
     /// Note that the lifetime is extended 1h into the past to adapt to skewed
-    /// clocks.
+    /// clocks, i.e. `not_before` is set to now - 1h.
     pub fn new(t: u64) -> Self {
         let lifetime_margin: u64 = Config::key_package_lifetime_margin();
         let now = SystemTime::now()
