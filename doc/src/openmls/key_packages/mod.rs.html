@@ -657,9 +657,6 @@
 <span id="656">656</span>
 <span id="657">657</span>
 <span id="658">658</span>
-<span id="659">659</span>
-<span id="660">660</span>
-<span id="661">661</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Key Packages.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! In order to facilitate asynchronous addition of clients to a group,</span>
@@ -1261,9 +1258,9 @@
     }
 }
 
-<span class="doccomment">/// Private `KeyPackageBundle` functions.</span>
+<span class="doccomment">/// Crate visible `KeyPackageBundle` functions.</span>
 <span class="kw">impl</span> <span class="ident">KeyPackageBundle</span> {
-    <span class="kw">fn</span> <span class="ident">new_from_leaf_secret</span>(
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new_from_leaf_secret</span>(
         <span class="ident">ciphersuites</span>: <span class="kw-2">&amp;</span>[<span class="ident">CiphersuiteName</span>],
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
@@ -1293,10 +1290,7 @@
             <span class="ident">leaf_secret</span>,
         )
     }
-}
 
-<span class="doccomment">/// Crate visible `KeyPackageBundle` functions.</span>
-<span class="kw">impl</span> <span class="ident">KeyPackageBundle</span> {
     <span class="doccomment">/// Update the private key in the bundle.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">_set_private_key</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">private_key</span>: <span class="ident">HpkePrivateKey</span>) {
         <span class="self">self</span>.<span class="ident">private_key</span> <span class="op">=</span> <span class="ident">private_key</span>;
