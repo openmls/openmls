@@ -106,7 +106,7 @@ impl CoreGroup {
         // ValSem109
         // ValSem110
         let public_key_set = self.validate_update_proposals(&proposal_queue)?;
-        if matches!(sender, SenderNew::NewMember) {
+        if matches!(sender, Sender::NewMember) {
             // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
             // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
             // ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.
@@ -126,7 +126,7 @@ impl CoreGroup {
 
         // Now we can actually look at the public keys as they might have changed.
         let sender_index = match sender {
-            SenderNew::Member(hash_ref) => {
+            Sender::Member(hash_ref) => {
                 // Own commits have to be merged directly instead of staging them.
                 // We can't check for this explicitly. But if it's an own commit
                 // we won't be able to get the sender index because the kpr is our
@@ -134,7 +134,7 @@ impl CoreGroup {
                 self.sender_index(hash_ref)
                     .map_err(|_| StageCommitError::InconsistentSenderIndex)?
             }
-            SenderNew::NewMember => diff.free_leaf_index()?,
+            Sender::NewMember => diff.free_leaf_index()?,
             _ => {
                 return Err(CoreGroupError::SenderError(SenderError::NotAMember));
             }

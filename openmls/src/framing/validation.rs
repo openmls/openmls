@@ -158,7 +158,7 @@ impl DecryptedMessage {
     ) -> Result<Credential, ValidationError> {
         let sender = self.sender();
         match sender {
-            SenderNew::Member(hash_ref) => {
+            Sender::Member(hash_ref) => {
                 let sender_leaf = match treesync
                     .leaf_from_id(hash_ref)
                     .map_err(|_| ValidationError::UnknownSender)
@@ -186,8 +186,8 @@ impl DecryptedMessage {
                 }
             }
             // Preconfigured senders are not supported yet #106/#151.
-            SenderNew::Preconfigured(_) => unimplemented!(),
-            SenderNew::NewMember => {
+            Sender::Preconfigured(_) => unimplemented!(),
+            Sender::NewMember => {
                 if let MlsPlaintextContentType::Commit(commit) = self.plaintext().content() {
                     if let Some(path) = commit.path() {
                         Ok(path.leaf_key_package().credential().clone())
@@ -207,7 +207,7 @@ impl DecryptedMessage {
     }
 
     /// Returns the sender
-    pub fn sender(&self) -> &SenderNew {
+    pub fn sender(&self) -> &Sender {
         self.plaintext.sender()
     }
 
@@ -256,7 +256,7 @@ impl UnverifiedMessage {
     }
 
     /// Returns the sender.
-    pub fn sender(&self) -> &SenderNew {
+    pub fn sender(&self) -> &Sender {
         self.plaintext.sender()
     }
 
@@ -306,7 +306,7 @@ impl UnverifiedContextMessage {
             }
         }
         match plaintext.sender() {
-            SenderNew::Member(_) | SenderNew::NewMember => {
+            Sender::Member(_) | Sender::NewMember => {
                 Ok(UnverifiedContextMessage::Group(UnverifiedGroupMessage {
                     plaintext,
                     // If the message type is `Sender` or `NewMember`, the
@@ -315,7 +315,7 @@ impl UnverifiedContextMessage {
                 }))
             }
             // TODO #151/#106: We don't support preconfigured senders yet
-            SenderNew::Preconfigured(_) => unimplemented!(),
+            Sender::Preconfigured(_) => unimplemented!(),
         }
     }
 }

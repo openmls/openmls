@@ -277,13 +277,13 @@ pub enum RemoveOperation {
     /// the proposal has now been committed.
     WeLeft,
     /// Someone else (indicated by the [`Sender`]) removed us from the group.
-    WeWereRemovedBy(SenderNew),
+    WeWereRemovedBy(Sender),
     /// Another member (indicated by the [`HashReference`]) requested to leave
     /// the group by issuing a remove proposal in the previous epoch and the
     /// proposal has now been committed.
     TheyLeft(HashReference),
     /// Another member (indicated by the [`HashRefrence`]) was removed by the [`Sender`].
-    TheyWereRemovedBy((HashReference, SenderNew)),
+    TheyWereRemovedBy((HashReference, Sender)),
     /// We removed another member (indicated by the [`HashReference`]).
     WeRemovedThem(HashReference),
 }
@@ -307,7 +307,7 @@ impl RemoveOperation {
         let removed = queued_remove_proposal.remove_proposal().removed();
 
         // We start with the cases where the sender is a group member
-        if let SenderNew::Member(hash_ref) = sender {
+        if let Sender::Member(hash_ref) = sender {
             // We authored the remove proposal
             if hash_ref == own_hash_ref {
                 if removed == own_hash_ref {

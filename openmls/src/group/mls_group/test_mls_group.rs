@@ -272,7 +272,7 @@ fn remover(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvid
         // TODO #541: Replace this with the adequate API call
         assert!(matches!(
             staged_proposal.sender(),
-            SenderNew::Member(member) if member == alice_kpr
+            Sender::Member(member) if member == alice_kpr
         ));
     } else {
         unreachable!("Expected a QueuedProposal.");
@@ -294,7 +294,7 @@ fn remover(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvid
         assert_eq!(remove.remove_proposal().removed(), bob_kpr);
         // Check that Alice removed Bob
         // TODO #541: Replace this with the adequate API call
-        assert!(matches!(remove.sender(), SenderNew::Member(member) if member == alice_kpr));
+        assert!(matches!(remove.sender(), Sender::Member(member) if member == alice_kpr));
     } else {
         unreachable!("Expected a StagedCommit.");
     };
@@ -424,7 +424,7 @@ fn test_invalid_plaintext(ciphersuite: &'static Ciphersuite, backend: &impl Open
 
     // Tamper with the message such that sender lookup fails
     let mut msg_invalid_sender = mls_message;
-    let random_sender = SenderNew::build_member(&KeyPackageRef::from_slice(
+    let random_sender = Sender::build_member(&KeyPackageRef::from_slice(
         &backend
             .rand()
             .random_vec(16)

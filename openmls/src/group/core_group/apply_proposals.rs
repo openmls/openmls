@@ -4,7 +4,7 @@ use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
     binary_tree::LeafIndex,
-    framing::{SenderError, SenderNew},
+    framing::{Sender, SenderError},
     group::CoreGroupError,
     key_packages::KeyPackageBundle,
     messages::{
@@ -94,7 +94,7 @@ impl CoreGroup {
                 // Check if this is our own update.
                 let sender = queued_proposal.sender();
                 let hash_ref = match sender {
-                    SenderNew::Member(hash_ref) => hash_ref,
+                    Sender::Member(hash_ref) => hash_ref,
                     _ => return Err(CoreGroupError::SenderError(SenderError::NotAMember)),
                 };
                 let sender_index = self

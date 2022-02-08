@@ -8,7 +8,7 @@ impl tls_codec::Deserialize for VerifiableMlsPlaintext {
         let wire_format = WireFormat::tls_deserialize(bytes)?;
         let group_id = GroupId::tls_deserialize(bytes)?;
         let epoch = GroupEpoch::tls_deserialize(bytes)?;
-        let sender = SenderNew::tls_deserialize(bytes)?;
+        let sender = Sender::tls_deserialize(bytes)?;
         let authenticated_data = TlsByteVecU32::tls_deserialize(bytes)?;
         let content_type = ContentType::tls_deserialize(bytes)?;
         let payload = MlsPlaintextContentType::deserialize(content_type, bytes)?;
@@ -141,7 +141,7 @@ pub(super) fn serialize_plaintext_tbs<'a, W: Write>(
     wire_format: WireFormat,
     group_id: &GroupId,
     epoch: &GroupEpoch,
-    sender: &SenderNew,
+    sender: &Sender,
     authenticated_data: &TlsByteVecU32,
     content_type: &ContentType,
     payload: &MlsPlaintextContentType,
@@ -149,7 +149,7 @@ pub(super) fn serialize_plaintext_tbs<'a, W: Write>(
 ) -> Result<usize, tls_codec::Error> {
     let mut written = if let Some(serialized_context) = serialized_context.into() {
         // Only a member should have a context.
-        debug_assert!(matches!(sender, SenderNew::Member(_)));
+        debug_assert!(matches!(sender, Sender::Member(_)));
         buffer.write(serialized_context)?
     } else {
         0

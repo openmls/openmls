@@ -32,7 +32,7 @@ fn codec_plaintext(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         backend,
     )
     .expect("An unexpected error occurred.");
-    let sender = SenderNew::build_member(&KeyPackageRef::from_slice(
+    let sender = Sender::build_member(&KeyPackageRef::from_slice(
         &backend
             .rand()
             .random_vec(16)
@@ -84,7 +84,7 @@ fn codec_ciphertext(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         backend,
     )
     .expect("An unexpected error occurred.");
-    let sender = SenderNew::build_member(&KeyPackageRef::from_slice(
+    let sender = Sender::build_member(&KeyPackageRef::from_slice(
         &backend
             .rand()
             .random_vec(16)
@@ -171,7 +171,7 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
         backend,
     )
     .expect("An unexpected error occurred.");
-    let sender = SenderNew::build_member(&KeyPackageRef::from_slice(
+    let sender = Sender::build_member(&KeyPackageRef::from_slice(
         &backend
             .rand()
             .random_vec(16)

@@ -10,7 +10,7 @@ use crate::{
     config::{errors::ConfigError, Config},
     credentials::{CredentialBundle, CredentialType},
     extensions::{Extension, ExtensionType, ExternalKeyIdExtension, RequiredCapabilitiesExtension},
-    framing::sender::SenderNew,
+    framing::sender::Sender,
     framing::{FramingParameters, MlsPlaintext, WireFormat},
     group::{
         create_commit_params::CreateCommitParams,
@@ -177,7 +177,7 @@ fn proposal_queue_functions(
     let (proposal_queue, own_update) = ProposalQueue::filter_proposals(
         ciphersuite,
         backend,
-        SenderNew::build_member(&bob_kpr),
+        Sender::build_member(&bob_kpr),
         &proposal_store,
         &[],
         &alice_kpr,
@@ -307,7 +307,7 @@ fn proposal_queue_order(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
         ProposalOrRef::Reference(proposal_reference_add_alice1),
     ];
 
-    let sender = SenderNew::build_member(&alice_kpr);
+    let sender = Sender::build_member(&alice_kpr);
 
     // And the same should go for proposal queues built from committed
     // proposals. The order here should be dictated by the proposals passed
