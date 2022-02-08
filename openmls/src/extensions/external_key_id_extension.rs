@@ -1,18 +1,14 @@
-//! # KeyPackage Identifiers
-//!
-//! Within MLS, a KeyPackage is identified by its hash (see, e.g., Section
-//! 11.2.1). The key_id extension allows applications to add an explicit,
-//! application-defined identifier to a KeyPackage.
-//!
-//! ```text
-//! opaque external_key_id<0..2^16-1>;
-//! ```
-
 use tls_codec::{TlsByteVecU16, TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::{Deserialize, Serialize};
 
-/// External key ID extension.
+/// # External KeyPackage Identifiers
+///
+/// Within MLS, a KeyPackage is identified by its hash ([`KeyPackageRef`](`crate::ciphersuite::hash_ref::KeyPackageRef`)).
+/// The external key id extension allows applications to add an explicit,
+/// application-defined identifier to a KeyPackage.
+///
+/// A byte vector of length at most 2^16-1.
 #[derive(
     PartialEq, Clone, Debug, Default, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]

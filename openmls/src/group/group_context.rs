@@ -1,3 +1,7 @@
+//! # Group Context
+//!
+//! TODO: #779
+
 use super::*;
 
 #[derive(

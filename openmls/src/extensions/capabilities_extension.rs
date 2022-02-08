@@ -1,19 +1,3 @@
-//! # Capabilities Extension
-//!
-//! > Key Package Extension
-//!
-//! This extension MUST be always present in a KeyPackage. Extensions that
-//! appear in the extensions field of a KeyPackage MUST be included in the
-//! extensions field of the capabilities extension.
-//!
-//! ```text
-//! struct {
-//!     ProtocolVersion versions<0..255>;
-//!     CipherSuite ciphersuites<0..255>;
-//!     ExtensionType extensions<0..255>;
-//! } Capabilities;
-//! ```
-
 use std::io::Read;
 
 use tls_codec::{TlsSerialize, TlsSize, TlsVecU8};
@@ -23,24 +7,15 @@ use crate::ciphersuite::CiphersuiteName;
 use crate::config::{Config, ProtocolVersion};
 use crate::messages::proposals::ProposalType;
 
-/// A `Capabilities` extension as defined in the MLS protocol spec:
+/// # Capabilities Extension
 ///
-/// ```text
-/// struct {
-///     ProtocolVersion versions<0..255>;
-///     CipherSuite ciphersuites<0..255>;
-///     ExtensionType extensions<0..255>;
-///     ProposalType proposals<0..255>;
-/// } Capabilities;
-/// ```
+/// The capabilities extension indicates what protocol versions, ciphersuites,
+/// protocol extensions, and non-default proposal types are supported by a client.
 ///
-/// The capabilities extension indicates what protocol versions, ciphersuites, protocol extensions,
-/// and non-default proposal types are supported by a client. Proposal types defined in this
-/// document are considered "default" and thus need not be listed.
+/// Proposal types defined in the RFC are considered "default" and thus need not
+/// be listed.
 ///
-/// This extension MUST be always present in a KeyPackage. Extensions that appear in the
-/// extensions field of a KeyPackage MUST be included in the extensions field of the
-/// capabilities extension.
+/// This extension is always present in a KeyPackage.
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize, TlsSize, TlsSerialize)]
 pub struct CapabilitiesExtension {
     versions: TlsVecU8<ProtocolVersion>,
