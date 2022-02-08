@@ -386,6 +386,7 @@ impl ProposalQueue {
                     let own_kpr = own_kpr.ok_or(ProposalQueueError::LibraryError)?;
                     let hash_ref = match queued_proposal.sender {
                         Sender::Member(hash_ref) => hash_ref,
+                        // Only members can send update proposals
                         _ => return Err(ProposalQueueError::SenderError(SenderError::NotAMember)),
                     };
                     if &hash_ref != own_kpr {
