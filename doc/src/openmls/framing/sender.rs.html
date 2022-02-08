@@ -135,6 +135,11 @@
 <span id="134">134</span>
 <span id="135">135</span>
 <span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # The sender of a message</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Section  9. Message Framing</span>
@@ -249,6 +254,11 @@
     <span class="doccomment">/// Returns true if this [`Sender`] has [`SenderType::NewMember`].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_new_member</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">sender_type</span> <span class="op">==</span> <span class="ident">SenderType::NewMember</span>
+    }
+
+    <span class="doccomment">/// Returns the [`SenderValue`]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sender_value</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">SenderValue</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">sender</span>
     }
 
     <span class="doccomment">/// Get the sender a [`KeyPackageRef`].</span>

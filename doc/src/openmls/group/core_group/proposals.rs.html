@@ -555,6 +555,10 @@
 <span id="554">554</span>
 <span id="555">555</span>
 <span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::errors</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::proposals</span>::{
@@ -1041,6 +1045,7 @@
 }
 
 <span class="doccomment">/// A queued Add proposal</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">QueuedAddProposal</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="ident">add_proposal</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">AddProposal</span>,
     <span class="ident">sender</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Sender</span>,
@@ -1059,6 +1064,7 @@
 }
 
 <span class="doccomment">/// A queued Remove proposal</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">QueuedRemoveProposal</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="ident">remove_proposal</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">RemoveProposal</span>,
     <span class="ident">sender</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Sender</span>,
@@ -1077,6 +1083,7 @@
 }
 
 <span class="doccomment">/// A queued Update proposal</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">QueuedUpdateProposal</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="ident">update_proposal</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">UpdateProposal</span>,
     <span class="ident">sender</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Sender</span>,
@@ -1095,6 +1102,7 @@
 }
 
 <span class="doccomment">/// A queued PresharedKey proposal</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">QueuedPskProposal</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="ident">psk_proposal</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">PreSharedKeyProposal</span>,
     <span class="ident">sender</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Sender</span>,

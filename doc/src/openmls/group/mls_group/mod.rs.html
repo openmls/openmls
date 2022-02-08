@@ -406,6 +406,11 @@
 <span id="405">405</span>
 <span id="406">406</span>
 <span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">application</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
 <span class="kw">mod</span> <span class="ident">creation</span>;
@@ -424,6 +429,8 @@
 
 <span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">key_store::OpenMlsKeyStore</span>, <span class="ident">OpenMlsCryptoProvider</span>};
 
+<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::proposals</span>::{<span class="ident">ProposalStore</span>, <span class="ident">QueuedProposal</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::staged_commit::StagedCommit</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite::signable::Signable</span>,
     <span class="ident">credentials::Credential</span>,
@@ -435,18 +442,21 @@
     <span class="ident">messages</span>::{<span class="ident">proposals</span>::<span class="kw-2">*</span>, <span class="ident">Welcome</span>},
     <span class="ident">schedule::ResumptionSecret</span>,
 };
-
+<span class="kw">use</span> <span class="ident">ser</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std::io</span>::{<span class="ident">Error</span>, <span class="ident">Read</span>, <span class="ident">Write</span>};
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">config</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">errors</span>::{
-    <span class="ident">EmptyInputError</span>, <span class="ident">InvalidMessageError</span>, <span class="ident">MlsGroupError</span>, <span class="ident">PendingProposalsError</span>, <span class="ident">UseAfterEviction</span>,
-};
+<span class="comment">// Crate exports</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">resumption::ResumptionSecretStore</span>;
-<span class="kw">use</span> <span class="ident">ser</span>::<span class="kw-2">*</span>;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::proposals</span>::{<span class="ident">ProposalStore</span>, <span class="ident">QueuedProposal</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::staged_commit::StagedCommit</span>;
+<span class="comment">// Public exports</span>
+<span class="kw">pub</span> <span class="kw">use</span> {
+    <span class="ident">config</span>::<span class="kw-2">*</span>,
+    <span class="ident">errors</span>::{
+        <span class="ident">EmptyInputError</span>, <span class="ident">InvalidMessageError</span>, <span class="ident">MlsGroupError</span>, <span class="ident">PendingProposalsError</span>,
+        <span class="ident">UseAfterEviction</span>,
+    },
+    <span class="ident">membership::RemoveOperation</span>,
+};
 
 <span class="doccomment">/// Pending Commit state. Differentiates between Commits issued by group members</span>
 <span class="doccomment">/// and External Commits.</span>

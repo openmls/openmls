@@ -225,6 +225,48 @@
             .expect(&quot;Could not merge Commit.&quot;);
     }
 </code></pre>
+<h3 id="interpreting-remove-operations"><a class="header" href="#interpreting-remove-operations">Interpreting remove operations</a></h3>
+<p>Remove operations can have different meanings, such as:</p>
+<ul>
+<li>We left the group (by our own wish)</li>
+<li>We were removed from the group (by another member or a pre-configured sender)</li>
+<li>We removed another member from the group</li>
+<li>Another member left the group (by its own wish)</li>
+<li>Another member was removed from the group (by a member or a pre-configured sender, but not by us)</li>
+</ul>
+<p>Since all remove operations only appear as a <code>QueuedRemoveProposal</code>, the <code>RemoveOperation</code> enum can be constructed from the remove proposal and the current group state to refelect the different scenarios listed above.</p>
+<pre><code class="language-rust no_run noplayground">    if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
+        let remove_proposal = staged_commit
+            .remove_proposals()
+            .next()
+            .expect(&quot;An unexpected error occurred.&quot;);
+
+        // We construct a RemoveOperation enum to help us interpret the remove operation
+        let remove_operation = RemoveOperation::new(remove_proposal, &amp;bob_group)
+            .expect(&quot;An unexpected Error occurred.&quot;);
+
+        match remove_operation {
+            RemoveOperation::WeLeft =&gt; unreachable!(),
+            // We expect this variant, since Bob was removed by Charlie
+            RemoveOperation::WeWereRemovedBy(member) =&gt; {
+                assert_eq!(
+                    member.sender_value(),
+                    &amp;SenderValue::Member(charlies_old_kpr)
+                );
+            }
+            RemoveOperation::TheyLeft(_) =&gt; unreachable!(),
+            RemoveOperation::TheyWereRemovedBy(_) =&gt; unreachable!(),
+            RemoveOperation::WeRemovedThem(_) =&gt; unreachable!(),
+        }
+
+        // Merge staged Commit
+        bob_group
+            .merge_staged_commit(*staged_commit)
+            .expect(&quot;Could not merge Commit.&quot;);
+    } else {
+        unreachable!(&quot;Expected a StagedCommit.&quot;);
+    }
+</code></pre>
 
                     </main>
 
