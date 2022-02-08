@@ -599,9 +599,9 @@ impl KeyPackageBundle {
     }
 }
 
-/// Private `KeyPackageBundle` functions.
+/// Crate visible `KeyPackageBundle` functions.
 impl KeyPackageBundle {
-    fn new_from_leaf_secret(
+    pub(crate) fn new_from_leaf_secret(
         ciphersuites: &[CiphersuiteName],
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
@@ -631,10 +631,7 @@ impl KeyPackageBundle {
             leaf_secret,
         )
     }
-}
 
-/// Crate visible `KeyPackageBundle` functions.
-impl KeyPackageBundle {
     /// Update the private key in the bundle.
     pub(crate) fn _set_private_key(&mut self, private_key: HpkePrivateKey) {
         self.private_key = private_key;
