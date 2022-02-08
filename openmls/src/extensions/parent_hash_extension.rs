@@ -1,28 +1,17 @@
-//! # Parent hash extension
-//!
-//! > KeyPackage Extension
-//!
-//! 7.4. Parent Hash
-//!
-//! The parent_hash extension serves to bind a KeyPackage to all the nodes
-//! above it in the group's ratchet tree. This enforces the tree invariant,
-//! meaning that malicious members can't lie about the state of the ratchet
-//! tree when they send Welcome messages to new members.
-//!
-//! ```text
-//! opaque parent_hash<0..255>;
-//! ```
-//!
-//! This extension MUST be present in all Updates that are sent as part of a
-//! Commit message. If the extension is present, clients MUST verify that
-//! parent_hash matches the hash of the leaf's parent node when represented as a
-//! ParentNode struct.
-
 use tls_codec::{TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::{Deserialize, Serialize};
 
-/// Parent Hash Extension.
+/// # Parent hash extension
+///
+/// The parent_hash extension serves to bind a KeyPackage to all the nodes
+/// above it in the group's ratchet tree. This enforces the tree invariant,
+/// meaning that malicious members can't lie about the state of the ratchet
+/// tree when they send Welcome messages to new members.
+///
+/// This extension is present in all updates that are sent as part of a
+/// commit message. If the extension is present, OpenMLS verifies that the
+/// parent hash matches the hash of the leaf's parent node.
 #[derive(
     PartialEq, Clone, Debug, Default, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
