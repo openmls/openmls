@@ -12,7 +12,9 @@ use crate::tree::secret_tree::*;
 
 use super::*;
 
-/// Stores the configuration parameters for sender ratchets.
+/// The generation of a given [`SenderRatchet`].
+pub(crate) type Generation = u32;
+/// Stores the configuration parameters for [`DecryptionRatchet`]s.
 ///
 /// **Parameters**
 ///
@@ -26,25 +28,25 @@ use super::*;
 /// drops application messages. The default value is 1000.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SenderRatchetConfiguration {
-    out_of_order_tolerance: u32,
-    maximum_forward_distance: u32,
+    out_of_order_tolerance: Generation,
+    maximum_forward_distance: Generation,
 }
 
 impl SenderRatchetConfiguration {
     /// Create a new configuration
-    pub fn new(out_of_order_tolerance: u32, maximum_forward_distance: u32) -> Self {
+    pub fn new(out_of_order_tolerance: Generation, maximum_forward_distance: Generation) -> Self {
         Self {
             out_of_order_tolerance,
             maximum_forward_distance,
         }
     }
     /// Get a reference to the sender ratchet configuration's out of order tolerance.
-    pub fn out_of_order_tolerance(&self) -> u32 {
+    pub fn out_of_order_tolerance(&self) -> Generation {
         self.out_of_order_tolerance
     }
 
     /// Get a reference to the sender ratchet configuration's maximum forward distance.
-    pub fn maximum_forward_distance(&self) -> u32 {
+    pub fn maximum_forward_distance(&self) -> Generation {
         self.maximum_forward_distance
     }
 }
@@ -55,10 +57,13 @@ impl Default for SenderRatchetConfiguration {
     }
 }
 
-pub type RatchetSecrets = (AeadKey, AeadNonce);
+/// The key material derived from a [`RatchetSecret`] meant for use with a
+/// nonce-based symmetric encryption scheme.
+pub(crate) type RatchetKeyMaterial = (AeadKey, AeadNonce);
 
-/// Type that determines if a given Ratchet is an encryption or a decryption
-/// ratchet. A [`DecryptionRatchet`] can be configured with an
+/// A ratchet that can output key material either for encryption
+/// ([`EncryptionRatchet`](SenderRatchet)) or decryption
+/// ([`DecryptionRatchet`]). A [`DecryptionRatchet`] can be configured with an
 /// `out_of_order_tolerance` and a `maximum_forward_distance` (see
 /// [`SenderRatchetConfiguration`]) while an Encryption Ratchet never keeps past
 /// secrets around.
@@ -71,7 +76,7 @@ pub(crate) enum SenderRatchet {
 
 impl SenderRatchet {
     #[cfg(test)]
-    pub(crate) fn generation(&self) -> u32 {
+    pub(crate) fn generation(&self) -> Generation {
         match self {
             SenderRatchet::EncryptionRatchet(enc_ratchet) => enc_ratchet.generation(),
             SenderRatchet::DecryptionRatchet(dec_ratchet) => dec_ratchet.generation(),
@@ -79,11 +84,15 @@ impl SenderRatchet {
     }
 }
 
+/// The core of both types of [`SenderRatchet`]. It contains the current head of
+/// the ratchet chain, as well as its current [`Generation`]. It can be
+/// initialized with a given secret and then ratcheted forward, outputting
+/// [`RatchetKeyMaterial`] and increasing its [`Generation`] each time.
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 #[cfg_attr(any(feature = "test-utils", test), derive(PartialEq))]
 pub(crate) struct RatchetSecret {
     secret: Secret,
-    generation: u32,
+    generation: Generation,
 }
 
 impl RatchetSecret {
@@ -97,7 +106,7 @@ impl RatchetSecret {
     }
 
     /// Return the generation of this [`RatchetSecret`].
-    pub(crate) fn generation(&self) -> u32 {
+    pub(crate) fn generation(&self) -> Generation {
         self.generation
     }
 
@@ -107,7 +116,7 @@ impl RatchetSecret {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
-    ) -> Result<(u32, RatchetSecrets), SecretTreeError> {
+    ) -> Result<(Generation, RatchetKeyMaterial), SecretTreeError> {
         let nonce = derive_tree_secret(
             &self.secret,
             "nonce",
@@ -138,10 +147,14 @@ impl RatchetSecret {
     }
 }
 
+/// [`SenderRatchet`] used to derive key material for decryption. It keeps the
+/// [`RatchetKeyMaterial`] of epochs around until they are retrieved. This
+/// behaviour can be configured via the `out_of_order_tolerance` and
+/// `maximum_forward_distance` of the given [`SenderRatchetConfiguration`].
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(any(feature = "test-utils", test), derive(PartialEq))]
 pub struct DecryptionRatchet {
-    past_secrets: VecDeque<Option<RatchetSecrets>>,
+    past_secrets: VecDeque<Option<RatchetKeyMaterial>>,
     ratchet_head: RatchetSecret,
 }
 
@@ -165,7 +178,7 @@ impl DecryptionRatchet {
     }
 
     /// Get the generation of the ratchet head.
-    pub(crate) fn generation(&self) -> u32 {
+    pub(crate) fn generation(&self) -> Generation {
         self.ratchet_head.generation()
     }
 
@@ -175,9 +188,9 @@ impl DecryptionRatchet {
         &mut self,
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        generation: u32,
+        generation: Generation,
         configuration: &SenderRatchetConfiguration,
-    ) -> Result<RatchetSecrets, SecretTreeError> {
+    ) -> Result<RatchetKeyMaterial, SecretTreeError> {
         // If generation is too distant in the future
         if generation > (self.generation() + configuration.maximum_forward_distance()) {
             return Err(SecretTreeError::TooDistantInTheFuture);
@@ -192,17 +205,19 @@ impl DecryptionRatchet {
         if generation >= self.generation() {
             // Ratchet the chain forward as far as necessary
             for _ in 0..(generation - self.generation()) {
+                // Derive the key material
                 let ratchet_secrets = {
                     self.ratchet_head
                         .ratchet_forward(backend, ciphersuite)
-                        .map(|(_, key_nonce_tuple)| key_nonce_tuple)
+                        .map(|(_, key_material)| key_material)
                 }?;
+                // Add it to the front of the queue
                 self.past_secrets.push_front(Some(ratchet_secrets));
             }
             let ratchet_secrets = {
                 self.ratchet_head
                     .ratchet_forward(backend, ciphersuite)
-                    .map(|(_, key_nonce_tuple)| key_nonce_tuple)
+                    .map(|(_, key_material)| key_material)
             }?;
             // Add an entry to the past secrets queue to keep indexing consistent.
             self.past_secrets.push_front(None);
@@ -222,13 +237,13 @@ impl DecryptionRatchet {
             // Get the relevant secrets from the past secrets queue.
             self.past_secrets
                 .get_mut(index)
-                // This should not happen except in cases where the past_secrets queue is
-                .ok_or(SecretTreeError::TooDistantInThePast)?
+                .ok_or(SecretTreeError::IndexOutOfBounds)?
                 // We use take here to replace the entry in the `past_secrets`
                 // with `None`, thus achieving FS for that secret as soon as the
                 // caller of this function drops it.
                 .take()
-                // If the requested generation was used to encrypt or decrypt a message earlier, throw an error.
+                // If the requested generation was used to decrypt a message
+                // earlier, throw an error.
                 .ok_or(SecretTreeError::SecretReuseError)
         }
     }

@@ -233,7 +233,7 @@ impl SecretTree {
         secret_type: SecretType,
         generation: u32,
         configuration: &SenderRatchetConfiguration,
-    ) -> Result<RatchetSecrets, SecretTreeError> {
+    ) -> Result<RatchetKeyMaterial, SecretTreeError> {
         log::debug!(
             "Generating {:?} decryption secret for {:?} in generation {} with {}",
             secret_type,
@@ -264,7 +264,7 @@ impl SecretTree {
         backend: &impl OpenMlsCryptoProvider,
         index: SecretTreeLeafIndex,
         secret_type: SecretType,
-    ) -> Result<(u32, RatchetSecrets), SecretTreeError> {
+    ) -> Result<(u32, RatchetKeyMaterial), SecretTreeError> {
         if self.ratchet_opt(index, secret_type)?.is_none() {
             self.initialize_sender_ratchets(ciphersuite, backend, index)
                 .expect("Index out of bounds");
