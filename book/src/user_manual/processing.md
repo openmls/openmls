@@ -57,3 +57,19 @@ Commit messages are returned as `StagedCommit` objects. The proposals they cover
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:inspect_staged_commit}}
 ```
+
+### Interpreting remove operations
+
+Remove operations can have different meanings, such as:
+
+- We left the group (by our own wish)
+- We were removed from the group (by another member or a pre-configured sender)
+- We removed another member from the group
+- Another member left the group (by its own wish)
+- Another member was removed from the group (by a member or a pre-configured sender, but not by us)
+
+Since all remove operations only appear as a `QueuedRemoveProposal`, the `RemoveOperation` enum can be constructed from the remove proposal and the current group state to refelect the different scenarios listed above.
+
+```rust,no_run,noplayground
+{{#include ../../../openmls/tests/book_code.rs:remove_operation}}
+```
