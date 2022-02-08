@@ -21,6 +21,8 @@ mod test_past_secrets;
 #[cfg(test)]
 mod test_proposal_validation;
 #[cfg(test)]
+mod test_remove_operation;
+#[cfg(test)]
 mod test_wire_format_policy;
 #[cfg(test)]
 pub(crate) mod utils;

@@ -114,6 +114,11 @@ impl Sender {
         self.sender_type == SenderType::NewMember
     }
 
+    /// Returns the [`SenderValue`]
+    pub fn sender_value(&self) -> &SenderValue {
+        &self.sender
+    }
+
     /// Get the sender a [`KeyPackageRef`].
     ///
     /// Returns a [`SenderError`] if this [`Sender`] is not a [`SenderType::Member`].
