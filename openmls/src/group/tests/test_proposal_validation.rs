@@ -127,6 +127,13 @@ fn create_commit_to_add_bob_and_charlie(
     return alice_group.create_commit(params, backend);
 }
 
+enum KeyUniqueness {
+    /// Positive Case: the proposals have different keys.
+    PositiveDifferentKey,
+    /// Negative Case: the proposals have the same key.
+    NegativeSameKey,
+}
+
 /// ValSem100:
 /// Add Proposal:
 /// Identity in proposals must be unique among proposals
@@ -187,8 +194,8 @@ fn test_valsem100(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 #[apply(ciphersuites_and_backends)]
 fn test_valsem101(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     for bob_and_charlie_share_keys in [
-        true,  // Negative Case: Bob and Charlie have same signature keypair
-        false, // Positive Case: Bob and Charlie have different signature keypairs
+        KeyUniqueness::NegativeSameKey,
+        KeyUniqueness::PositiveDifferentKey,
     ] {
         // 0. Initialize Alice
         let (alice_credential_bundle, alice_key_package_bundle) =
@@ -198,19 +205,23 @@ fn test_valsem101(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         let bob_signature_keypair: SignatureKeypair;
         let charlie_signature_keypair: SignatureKeypair;
 
-        if bob_and_charlie_share_keys {
-            let shared_signature_keypair =
-                SignatureKeypair::new(ciphersuite.signature_scheme(), backend)
-                    .expect("failed to generate signature keypair");
+        match bob_and_charlie_share_keys {
+            KeyUniqueness::NegativeSameKey => {
+                let shared_signature_keypair =
+                    SignatureKeypair::new(ciphersuite.signature_scheme(), backend)
+                        .expect("failed to generate signature keypair");
 
-            bob_signature_keypair = shared_signature_keypair.clone();
-            charlie_signature_keypair = shared_signature_keypair.clone();
-        } else {
-            bob_signature_keypair = SignatureKeypair::new(ciphersuite.signature_scheme(), backend)
-                .expect("failed to generate signature keypair");
-            charlie_signature_keypair =
-                SignatureKeypair::new(ciphersuite.signature_scheme(), backend)
-                    .expect("failed to generate signature keypair");
+                bob_signature_keypair = shared_signature_keypair.clone();
+                charlie_signature_keypair = shared_signature_keypair.clone();
+            }
+            KeyUniqueness::PositiveDifferentKey => {
+                bob_signature_keypair =
+                    SignatureKeypair::new(ciphersuite.signature_scheme(), backend)
+                        .expect("failed to generate signature keypair");
+                charlie_signature_keypair =
+                    SignatureKeypair::new(ciphersuite.signature_scheme(), backend)
+                        .expect("failed to generate signature keypair");
+            }
         }
 
         let bob_credential_bundle =
@@ -245,19 +256,20 @@ fn test_valsem101(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
             backend,
         );
 
-        if bob_and_charlie_share_keys {
-            // Negative Case: we should output an error
-            let err =
-                res.expect_err("Created commit when the proposals have a same signature key!");
-            assert_eq!(
-                err,
-                CoreGroupError::ProposalValidationError(
-                    ProposalValidationError::DuplicateSignatureKeyAddProposal
-                )
-            );
-        } else {
-            // Positive Case: we should succeed
-            let _ = res.expect("Failed to create commit with different signature keypairs!");
+        match bob_and_charlie_share_keys {
+            KeyUniqueness::NegativeSameKey => {
+                let err = res
+                    .expect_err("Created commit when the proposals have the same signature key!");
+                assert_eq!(
+                    err,
+                    CoreGroupError::ProposalValidationError(
+                        ProposalValidationError::DuplicateSignatureKeyAddProposal
+                    )
+                );
+            }
+            KeyUniqueness::PositiveDifferentKey => {
+                let _ = res.expect("Failed to create commit with different signature keypairs!");
+            }
         }
     }
 
@@ -269,9 +281,9 @@ fn test_valsem101(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 /// HPKE init key in proposals must be unique among proposals
 #[apply(ciphersuites_and_backends)]
 fn test_valsem102(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    for bob_and_charlie_share_hpke_init_keys in [
-        true,  // Negative Case: Bob and Charlie have same HPKE init key
-        false, // Positive Case: Bob and Charlie have different HPKE init keys
+    for bob_and_charlie_share_keys in [
+        KeyUniqueness::NegativeSameKey,
+        KeyUniqueness::PositiveDifferentKey,
     ] {
         // 0. Initialize Alice, Bob, and Charlie
         let (alice_credential_bundle, alice_key_package_bundle) =
@@ -285,30 +297,36 @@ fn test_valsem102(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
                 backend,
             );
 
-        if bob_and_charlie_share_hpke_init_keys {
-            let shared_leaf_secret = Secret::random(
-                bob_key_package_bundle.key_package().ciphersuite(),
-                backend,
-                bob_key_package_bundle.key_package().protocol_version(),
-            )
-            .expect("failed to generate random leaf secret");
+        match bob_and_charlie_share_keys {
+            KeyUniqueness::NegativeSameKey => {
+                let shared_leaf_secret = Secret::random(
+                    bob_key_package_bundle.key_package().ciphersuite(),
+                    backend,
+                    bob_key_package_bundle.key_package().protocol_version(),
+                )
+                .expect("failed to generate random leaf secret");
 
-            bob_key_package_bundle = KeyPackageBundle::new_from_leaf_secret(
-                &[ciphersuite.name()],
-                backend,
-                &bob_credential_bundle,
-                vec![],
-                shared_leaf_secret.clone(),
-            )
-            .expect("failed to generate key package");
-            charlie_key_package_bundle = KeyPackageBundle::new_from_leaf_secret(
-                &[ciphersuite.name()],
-                backend,
-                &charlie_credential_bundle,
-                vec![],
-                shared_leaf_secret.clone(),
-            )
-            .expect("failed to generate key package");
+                bob_key_package_bundle = KeyPackageBundle::new_from_leaf_secret(
+                    &[ciphersuite.name()],
+                    backend,
+                    &bob_credential_bundle,
+                    vec![],
+                    shared_leaf_secret.clone(),
+                )
+                .expect("failed to generate key package");
+                charlie_key_package_bundle = KeyPackageBundle::new_from_leaf_secret(
+                    &[ciphersuite.name()],
+                    backend,
+                    &charlie_credential_bundle,
+                    vec![],
+                    shared_leaf_secret.clone(),
+                )
+                .expect("failed to generate key package");
+            }
+            KeyUniqueness::PositiveDifferentKey => {
+                // don't need to do anything since the keys are already
+                // different.
+            }
         }
 
         let bob_key_package = bob_key_package_bundle.key_package().clone();
@@ -324,19 +342,20 @@ fn test_valsem102(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
             backend,
         );
 
-        if bob_and_charlie_share_hpke_init_keys {
-            // Negative Case: we should output an error
-            let err =
-                res.expect_err("Created commit when the proposals have a same signature key!");
-            assert_eq!(
-                err,
-                CoreGroupError::ProposalValidationError(
-                    ProposalValidationError::DuplicatePublicKeyAddProposal
-                )
-            );
-        } else {
-            // Positive Case: we should succeed
-            let _ = res.expect("Failed to create commit with different signature keypairs!");
+        match bob_and_charlie_share_keys {
+            KeyUniqueness::NegativeSameKey => {
+                let err =
+                    res.expect_err("Created commit when the proposals have a same HPKE init key!");
+                assert_eq!(
+                    err,
+                    CoreGroupError::ProposalValidationError(
+                        ProposalValidationError::DuplicatePublicKeyAddProposal
+                    )
+                );
+            }
+            KeyUniqueness::PositiveDifferentKey => {
+                let _ = res.expect("Failed to create commit with different HPKE init keys!");
+            }
         }
     }
 
