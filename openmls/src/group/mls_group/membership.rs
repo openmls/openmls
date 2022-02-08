@@ -277,13 +277,13 @@ pub enum RemoveOperation {
     /// the proposal has now been committed.
     WeLeft,
     /// Someone else (indicated by the [`Sender`]) removed us from the group.
-    WeWereRemovedBy(Sender),
+    WeWereRemovedBy(SenderNew),
     /// Another member (indicated by the [`HashReference`]) requested to leave
     /// the group by issuing a remove proposal in the previous epoch and the
     /// proposal has now been committed.
     TheyLeft(HashReference),
     /// Another member (indicated by the [`HashRefrence`]) was removed by the [`Sender`].
-    TheyWereRemovedBy((HashReference, Sender)),
+    TheyWereRemovedBy((HashReference, SenderNew)),
     /// We removed another member (indicated by the [`HashReference`]).
     WeRemovedThem(HashReference),
 }
@@ -307,16 +307,9 @@ impl RemoveOperation {
         let removed = queued_remove_proposal.remove_proposal().removed();
 
         // We start with the cases where the sender is a group member
-        if sender.is_member() {
-            // Extract the key package reference for the sender
-            let sender_ref = sender.as_key_package_ref().map_err(|_| {
-                LibraryError::custom(
-                    "RemoveOperation::new(): Sender is of type member but has no KeyPackageRef.",
-                )
-            })?;
-
+        if let SenderNew::Member(hash_ref) = sender {
             // We authored the remove proposal
-            if sender_ref == own_hash_ref {
+            if hash_ref == own_hash_ref {
                 if removed == own_hash_ref {
                     // We left
                     return Ok(Self::WeLeft);
@@ -327,7 +320,7 @@ impl RemoveOperation {
             }
 
             // Another member left
-            if removed == sender_ref {
+            if removed == hash_ref {
                 return Ok(Self::TheyLeft(*removed));
             }
         }

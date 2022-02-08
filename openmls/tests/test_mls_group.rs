@@ -154,12 +154,7 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             );
             // Check that Alice added Bob
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                add.sender()
-                    .as_key_package_ref()
-                    .expect("An unexpected error occurred."),
-                &alice_kpr
-            );
+            assert!(matches!(add.sender(), SenderNew::Member(member) if member == &alice_kpr));
         } else {
             unreachable!("Expected a StagedCommit.");
         }
@@ -325,15 +320,13 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
 
             // Check that Alice sent the proposal.
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                staged_proposal
-                    .sender()
-                    .as_key_package_ref()
-                    .expect("An unexpected error occurred."),
-                alice_group
-                    .key_package_ref()
-                    .expect("An unexpected error occurred.")
-            );
+            assert!(matches!(
+                staged_proposal.sender(),
+                SenderNew::Member(member) if member == alice_group
+                                          .key_package_ref()
+                                          .expect("An unexpected error occured.")
+            ));
+
             bob_group.store_pending_proposal(*staged_proposal);
         } else {
             unreachable!("Expected a QueuedProposal.");
@@ -570,13 +563,8 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             assert_eq!(remove.remove_proposal().removed(), &bob_kpr);
             // Check that Charlie removed Bob
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                remove
-                    .sender()
-                    .as_key_package_ref()
-                    .expect("An unexpected error occurred."),
-                &charlie_kpr
-            );
+            assert!(matches!(remove.sender(), SenderNew::Member(member) if member == &charlie_kpr));
+
             // Merge staged Commit
             alice_group
                 .merge_staged_commit(*staged_commit)
@@ -596,13 +584,8 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             assert_eq!(remove.remove_proposal().removed(), &bob_kpr);
             // Check that Charlie removed Bob
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                remove
-                    .sender()
-                    .as_key_package_ref()
-                    .expect("An unexpected error occurred."),
-                &charlie_kpr
-            );
+            assert!(matches!(remove.sender(), SenderNew::Member(member) if member == &charlie_kpr));
+
             // Merge staged Commit
             bob_group
                 .merge_staged_commit(*staged_commit)
@@ -681,13 +664,10 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
 
             // Check that Alice removed Charlie
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                staged_proposal
-                    .sender()
-                    .as_key_package_ref()
-                    .expect("An unexpected error occurred."),
-                &alice_kpr
-            );
+            assert!(matches!(
+                staged_proposal.sender(),
+                SenderNew::Member(member) if member == &alice_kpr
+            ));
         } else {
             unreachable!("Expected a QueuedProposal.");
         }
@@ -715,13 +695,10 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
 
             // Check that Alice added Bob
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                staged_proposal
-                    .sender()
-                    .as_key_package_ref()
-                    .expect("An unexpected error occurred."),
-                &alice_kpr
-            );
+            assert!(matches!(
+                staged_proposal.sender(),
+                SenderNew::Member(member) if member == &alice_kpr
+            ));
             // Store proposal
             charlie_group.store_pending_proposal(*staged_proposal);
         } else {
@@ -869,13 +846,8 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             assert_eq!(remove.remove_proposal().removed(), &bob_kpr);
             // Check that Bob removed himself
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                remove
-                    .sender()
-                    .as_key_package_ref()
-                    .expect("An unexpected error occurred."),
-                &bob_kpr
-            );
+            assert!(matches!(remove.sender(), SenderNew::Member(member) if member == &bob_kpr));
+
             // Merge staged Commit
         } else {
             unreachable!("Expected a StagedCommit.");
@@ -902,13 +874,8 @@ fn mls_group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             assert_eq!(remove.remove_proposal().removed(), &bob_kpr);
             // Check that Bob removed himself
             // TODO #575: Replace this with the adequate API call
-            assert_eq!(
-                remove
-                    .sender()
-                    .as_key_package_ref()
-                    .expect("An unexpected error occurred."),
-                &bob_kpr
-            );
+            assert!(matches!(remove.sender(), SenderNew::Member(member) if member == &bob_kpr));
+
             assert!(staged_commit.self_removed());
             // Merge staged Commit
             bob_group

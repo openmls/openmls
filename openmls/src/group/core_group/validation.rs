@@ -4,7 +4,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    framing::Sender,
+    framing::{SenderError, SenderNew},
     group::errors::ExternalCommitValidationError,
     messages::{Proposal, ProposalOrRefType, ProposalType},
 };
@@ -57,19 +57,20 @@ impl CoreGroup {
     ) -> Result<(), CoreGroupError> {
         // ValSem004
         let sender = plaintext.sender();
-        if sender.is_member()
+        if let SenderNew::Member(hash_ref) = sender {
             // If the sender is a member, it has to be in the tree ...
-            && self
-                .treesync()
-                .leaf_from_id(sender.as_key_package_ref()?)
-                .ok()
-                .is_none()
-            // ... or in a tree from a past epoch we still have around.
-            && !self
-                .message_secrets_store
-                .epoch_has_leaf(plaintext.epoch(), sender.as_key_package_ref()?)
-        {
-            return Err(FramingValidationError::UnknownMember.into());
+            if self
+            .treesync()
+            .leaf_from_id(hash_ref)
+            .ok()
+            .is_none()
+        // ... or in a tree from a past epoch we still have around.
+        && !self
+            .message_secrets_store
+            .epoch_has_leaf(plaintext.epoch(), hash_ref)
+            {
+                return Err(FramingValidationError::UnknownMember.into());
+            }
         }
 
         // ValSem005
@@ -221,9 +222,11 @@ impl CoreGroup {
         let tree = self.treesync();
 
         for update_proposal in update_proposals {
-            if let Some(leaf_node) =
-                tree.leaf_from_id(update_proposal.sender().as_key_package_ref()?)?
-            {
+            let hash_ref = match update_proposal.sender() {
+                SenderNew::Member(hash_ref) => hash_ref,
+                _ => return Err(CoreGroupError::SenderError(SenderError::NotAMember)),
+            };
+            if let Some(leaf_node) = tree.leaf_from_id(hash_ref)? {
                 let existing_key_package = leaf_node.key_package();
                 // ValSem109
                 if update_proposal
@@ -260,7 +263,7 @@ impl CoreGroup {
         sender: u32,
         key_package: &KeyPackage,
         public_key_set: HashSet<Vec<u8>>,
-        proposal_sender: &Sender,
+        proposal_sender: &SenderNew,
     ) -> Result<(), CoreGroupError> {
         let indexed_key_packages = self.treesync().full_leaves()?;
         if let Some(existing_key_package) = indexed_key_packages.get(&sender) {
