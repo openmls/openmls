@@ -35,13 +35,17 @@ use core_group::create_commit_params::CommitType;
 use std::convert::TryFrom;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
+/// All possible sender types according to the MLS protocol spec.
 #[derive(
     PartialEq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 #[repr(u8)]
 pub enum SenderType {
+    /// The sender is a member of the group
     Member = 1,
+    /// The sender is not a member of the group and has a preconfigured value instead
     Preconfigured = 2,
+    /// The sender is a new member of the group that joins through an External Commit
     NewMember = 3,
 }
 
@@ -66,13 +70,18 @@ impl TryFrom<u8> for SenderType {
     }
 }
 
+/// Sender types with values for some variants.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub enum SenderValue {
+    /// The sender is a member of the group
     Member(KeyPackageRef),
+    /// The sender is not a member of the group and has a preconfigured value instead
     Preconfigured(TlsByteVecU8),
+    /// The sender is a new member of the group that joins through an External Commit
     NewMember,
 }
 
+/// The sender of an MLS message.
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub struct Sender {
     pub(crate) sender_type: SenderType,

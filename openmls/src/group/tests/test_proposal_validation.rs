@@ -124,7 +124,7 @@ fn create_commit_to_add_bob_and_charlie(
         .proposal_store(&proposal_store)
         .build();
 
-    return alice_group.create_commit(params, backend);
+    alice_group.create_commit(params, backend)
 }
 
 enum KeyUniqueness {
