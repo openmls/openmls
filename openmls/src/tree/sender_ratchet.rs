@@ -170,9 +170,7 @@ impl DecryptionRatchet {
     /// Remove elements from the `past_secrets` queue until it is within the
     /// bounds determined by the [`SenderRatchetConfiguration`].
     fn prune_past_secrets(&mut self, configuration: &SenderRatchetConfiguration) {
-        while self.past_secrets.len() > 0
-            && self.past_secrets.len() > configuration.out_of_order_tolerance() as usize
-        {
+        while self.past_secrets.len() > configuration.out_of_order_tolerance() as usize {
             self.past_secrets.pop_back();
         }
     }
