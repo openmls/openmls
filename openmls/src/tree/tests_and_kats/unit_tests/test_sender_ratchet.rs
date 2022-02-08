@@ -82,25 +82,48 @@ fn test_out_of_order_generations(
 }
 
 // Test forward secrecy
-//#[apply(ciphersuites_and_backends)]
-//fn test_forward_secrecy(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-//let configuration = &SenderRatchetConfiguration::default();
-//let leaf = 0u32.into();
-//let secret = Secret::random(ciphersuite, backend, Config::supported_versions()[0])
-//    .expect("Not enough randomness.");
-//let mut ratchet1 = SenderRatchet(leaf, &secret);
+#[apply(ciphersuites_and_backends)]
+fn test_forward_secrecy(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    // Encryption Ratchets are forward-secret by default, since they don't store
+    // any keys. Thus, we can only test FS on Decryption Ratchets.
+    let configuration = &SenderRatchetConfiguration::default();
+    let secret = Secret::random(ciphersuite, backend, Config::supported_versions()[0])
+        .expect("Not enough randomness.");
+    let mut ratchet = DecryptionRatchet::new(&secret);
 
-//// Generate an encryption secret
-//let (generation, _encryption_secret) = ratchet1
-//    .secret_for_encryption(ciphersuite, backend)
-//    .expect("An unexpected error occurred.");
+    // Let's ratchet once and see if the ratchet keeps any keys around.
+    let _ratchet_secrets = ratchet
+        .secret_for_decryption(ciphersuite, backend, 0, configuration)
+        .expect("Error ratcheting forward.");
 
-//// We expect this to fail, because we should no longer have the key material for this generation
-//let err = ratchet1
-//    .secret_for_decryption(ciphersuite, backend, generation, configuration)
-//    .expect_err("Expected error.");
+    // The generation should have increased.
+    assert_eq!(ratchet.generation(), 1);
 
-//assert_eq!(err, SecretTreeError::TooDistantInThePast);
+    // And we should get an error for generation 0.
+    let err = ratchet
+        .secret_for_decryption(ciphersuite, backend, 0, configuration)
+        .expect_err("No error when trying to retrieve key outside of tolerance window.");
+    assert_eq!(err, SecretTreeError::SecretReuseError);
 
-// TODO: Extend test to test for deletion of keys in past_keys
-//}
+    // Let's ratchet forward a few times, making the ratchet keep the secrets round for out-of-order decryption.
+    let _ratchet_secrets = ratchet
+        .secret_for_decryption(ciphersuite, backend, 10, configuration)
+        .expect("Error ratcheting forward.");
+
+    // First, let's make sure that the window works.
+    let err = ratchet
+        .secret_for_decryption(ciphersuite, backend, 5, configuration)
+        .expect_err("No error when trying to retrieve key outside of tolerance window.");
+    assert_eq!(err, SecretTreeError::TooDistantInThePast);
+
+    // Now let's get a few keys. The first time we're trying to get the key of a given generation, it should work. The second time, we should get a SecretReuseError.
+    for generation in 10 - configuration.out_of_order_tolerance() + 1..10 {
+        let keys = ratchet.secret_for_decryption(ciphersuite, backend, generation, configuration);
+        assert!(keys.is_ok());
+
+        let err = ratchet
+            .secret_for_decryption(ciphersuite, backend, generation, configuration)
+            .expect_err("No error when trying to retrieve deleted key.");
+        assert_eq!(err, SecretTreeError::SecretReuseError);
+    }
+}
