@@ -620,12 +620,14 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     let alice_processed_message = alice_group
         .process_unverified_message(unverified_message, None, backend)
         .expect("Could not process unverified message.");
+
     let unverified_message = bob_group
         .parse_message(mls_message_out.into(), backend)
         .expect("Could not parse message.");
     let bob_processed_message = bob_group
         .process_unverified_message(unverified_message, None, backend)
         .expect("Could not process unverified message.");
+
     let charlies_old_kpr = *charlie_group
         .key_package_ref()
         .expect("An unexpected error occurred.");
@@ -670,6 +672,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 
     // Check that we receive the correct proposal for Bob
     // ANCHOR: remove_operation
+    // ANCHOR: getting_removed
     if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
         let remove_proposal = staged_commit
             .remove_proposals()
@@ -708,6 +711,11 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 
     // Check that Bob's group is no longer active
     assert!(!bob_group.is_active());
+    let bob_members = bob_group.members().expect("Error getting list of members.");
+    assert_eq!(bob_members.len(), 2);
+    assert_eq!(bob_members[0].credential().identity(), b"Alice");
+    assert_eq!(bob_members[1].credential().identity(), b"Charlie");
+    // ANCHOR_END: getting_removed
 
     // Make sure that all groups have the same public tree
     assert_eq!(
@@ -930,9 +938,11 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 
     // === Bob leaves the group ===
 
+    // ANCHOR: leaving
     let queued_message = bob_group
         .leave_group(backend)
         .expect("Could not leave group");
+    // ANCHOR_END: leaving
 
     let unverified_message = alice_group
         .parse_message(queued_message.into(), backend)

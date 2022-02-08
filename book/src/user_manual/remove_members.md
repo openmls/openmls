@@ -20,3 +20,18 @@ Members can also be removed as a proposal (without the corresponding Commit mess
 ```
 
 In this case the the function returns an `MlsMessageOut` that needs to be fanned out to existing group members.
+
+## Getting removed from a group
+A member is removed from a group if another member commits to a remove proposal targeting the member's leaf. Once that commit is merged via `merge_staged_commit()`, the group will apply all other proposals in that commit and mark the group as inactive. The member can still use the group, e.g. to examine the membership list after the final commit was processed, but it won't be able to create or process new messages.
+
+```rust,no_run,noplayground
+{{#include ../../../openmls/tests/book_code.rs:getting_removed}}
+```
+
+### Remove self
+
+A member can remove itself from a group by making use of the `leave_group()` function, which creates a remove proposal targeting the leaf representing the member.
+
+```rust,no_run,noplayground
+{{#include ../../../openmls/tests/book_code.rs:leaving}}
+```
