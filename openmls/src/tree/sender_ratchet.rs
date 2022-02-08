@@ -188,6 +188,11 @@ impl DecryptionRatchet {
         self.ratchet_head.generation()
     }
 
+    #[cfg(test)]
+    pub(crate) fn ratchet_secret_mut(&mut self) -> &mut RatchetSecret {
+        &mut self.ratchet_head
+    }
+
     /// Gets a secret from the SenderRatchet. Returns an error if the generation
     /// is out of bound.
     pub(crate) fn secret_for_decryption(
@@ -198,7 +203,9 @@ impl DecryptionRatchet {
         configuration: &SenderRatchetConfiguration,
     ) -> Result<RatchetKeyMaterial, SecretTreeError> {
         // If generation is too distant in the future
-        if (generation - configuration.maximum_forward_distance()) > self.generation() {
+        if self.generation() < u32::MAX - configuration.maximum_forward_distance()
+            && generation > self.generation() + configuration.maximum_forward_distance()
+        {
             return Err(SecretTreeError::TooDistantInTheFuture);
         }
         // If generation id too distant in the past

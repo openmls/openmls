@@ -38,6 +38,12 @@ fn test_max_forward_distance(
         .expect_err("Expected error.");
 
     assert_eq!(err, SecretTreeError::TooDistantInTheFuture);
+
+    // Test if there's an overflow in the maximum forward distance check.
+    ratchet1.ratchet_secret_mut().set_generation(u32::MAX - 5);
+    ratchet1
+        .secret_for_decryption(ciphersuite, backend, u32::MAX - 1, configuration)
+        .expect("Error ratcheting to very high generation");
 }
 
 // Test out-of-order generations
