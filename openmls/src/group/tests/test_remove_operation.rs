@@ -133,7 +133,7 @@ fn test_remove_operation_variants(
             .key_package_ref()
             .expect("An unexpected error occurred.");
 
-        // We differentiate between th two test cases here
+        // We differentiate between the two test cases here
         let (message, _welcome) = match test_case {
             // Alice removes Bob
             TestCase::Remove => alice_group
