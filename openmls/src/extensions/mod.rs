@@ -1,21 +1,25 @@
 //! # Extensions
 //!
-//! ## Extension struct
+//! In MLS, extensions appear in the following places:
+//! - In [`KeyPackages`](`crate::key_packages`), to describe client capabilities and aspects of their
+//!   participation in the group.
+//! - In the `GroupInfo`, to tell new members of a group what parameters are
+//!   being used by the group, and to provide any additional details required
+//!   to join the group.
+//! - In the `GroupContext` object, to ensure that all members of the group
+//!   have the same view of the parameters in use.
 //!
-//! An extension has an `ExtensionType` and an opaque payload (byte vector).
-//! This isn't used in OpenMLS at all but part of the (de)serialization process
-//! of each extension.
+//! Note that `GroupInfo` and `GroupContext` are not exposed in OpenMLS' public
+//! API.
 //!
-//! See IANA registry for registered values
+//! OpenMLS supports the following extensions:
 //!
-//! ```text
-//! uint16 ExtensionType;
-//!
-//! struct {
-//!     ExtensionType extension_type;
-//!     opaque extension_data<0..2^32-1>;
-//! } Extension;
-//! ```
+//! - [`CapabilitiesExtension`] (KeyPackage extension)
+//! - [`ExternalKeyIdExtension`] (KeyPackage extension)
+//! - [`LifetimeExtension`] (KeyPackage extension)
+//! - [`ParentHashExtension`] (KeyPackage extension)
+//! - [`RatchetTreeExtension`] (GroupInfo extension)
+//! - [`RequiredCapabilitiesExtension`] (GroupContext extension)
 
 use std::{
     convert::TryFrom,
@@ -69,12 +73,32 @@ mod test_extensions;
 #[repr(u16)]
 #[allow(missing_docs)]
 pub enum ExtensionType {
+    /// Reserved. This must not be used.
     Reserved = 0,
+
+    /// The capabilities extension indicates what protocol versions, ciphersuites,
+    /// protocol extensions, and non-default proposal types are supported by a
+    /// client.
     Capabilities = 1,
+
+    /// The lifetime extension represents the times between which clients will
+    /// consider a KeyPackage valid.
     Lifetime = 2,
+
+    /// The external key id extension allows applications to add an explicit,
+    /// application-defined identifier to a KeyPackage.
     ExternalKeyId = 3,
+
+    /// The parent hash extension carries information to authenticate the
+    /// structure of the tree, as described below.
     ParentHash = 4,
+
+    /// The ratchet tree extensions provides the whole public state of the ratchet
+    /// tree.
     RatchetTree = 5,
+
+    /// The required capabilities extension defines the configuration of a group
+    /// that imposes certain requirements on clients in the group.
     RequiredCapabilities = 6,
 }
 
@@ -101,7 +125,7 @@ impl TryFrom<u16> for ExtensionType {
 }
 
 impl ExtensionType {
-    /// Check whether an extension type is supported or not.
+    /// Check whether an [`ExtensionType`] is supported or not.
     pub fn is_supported(&self) -> bool {
         match self {
             ExtensionType::Reserved
@@ -116,12 +140,17 @@ impl ExtensionType {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-/// An extension can be one of the following elements.
+/// # Extension
+///
+/// An extension is one of the [`Extension`] enum values.
+/// The enum provides a set of common functionality for all extensions.
+///
+/// See the individual extensions for more details on each extension.
 pub enum Extension {
     /// A [`CapabilitiesExtension`]
     Capabilities(CapabilitiesExtension),
 
-    /// A [`KeyIdExtension`]
+    /// An [`ExternalKeyIdExtension`]
     ExternalKeyId(ExternalKeyIdExtension),
 
     /// A [`LifetimeExtension`]
@@ -218,9 +247,9 @@ impl tls_codec::Deserialize for Extension {
 }
 
 impl Extension {
-    /// Get a reference to the `RatchetTreeExtension`.
-    /// Returns an `InvalidExtensionType` error if called on an `Extension`
-    /// that's not a `RatchetTreeExtension`.
+    /// Get a reference to this extension as [`RatchetTreeExtension`].
+    /// Returns an [`ExtensionError::InvalidExtensionType`] if called on
+    /// an [`Extension`] that's not a [`RatchetTreeExtension`].
     pub fn as_ratchet_tree_extension(&self) -> Result<&RatchetTreeExtension, ExtensionError> {
         match self {
             Self::RatchetTree(rte) => Ok(rte),
@@ -230,9 +259,9 @@ impl Extension {
         }
     }
 
-    /// Get a reference to the `LifetimeExtension`.
-    /// Returns an `InvalidExtensionType` error if called on an `Extension`
-    /// that's not a `LifetimeExtension`.
+    /// Get a reference to this extension as [`LifetimeExtension`].
+    /// Returns an [`ExtensionError::InvalidExtensionType`] if called on an
+    /// [`Extension`] that's not a [`LifetimeExtension`].
     pub fn as_lifetime_extension(&self) -> Result<&LifetimeExtension, ExtensionError> {
         match self {
             Self::LifeTime(e) => Ok(e),
@@ -242,21 +271,21 @@ impl Extension {
         }
     }
 
-    /// Get a reference to the `KeyIDExtension`.
-    /// Returns an `InvalidExtensionType` error if called on an `Extension`
-    /// that's not a `KeyIDExtension`.
+    /// Get a reference to this extension as [`ExternalKeyIdExtension`].
+    /// Returns an [`ExtensionError::InvalidExtensionType`] if called on an
+    /// [`Extension`] that's not an [`ExternalKeyIdExtension`].
     pub fn as_external_key_id_extension(&self) -> Result<&ExternalKeyIdExtension, ExtensionError> {
         match self {
             Self::ExternalKeyId(e) => Ok(e),
             _ => Err(ExtensionError::InvalidExtensionType(
-                "This is not a KeyIDExtension".into(),
+                "This is not an ExternalKeyIdExtension".into(),
             )),
         }
     }
 
-    /// Get a reference to the `CapabilitiesExtension`.
-    /// Returns an `InvalidExtensionType` error if called on an `Extension`
-    /// that's not a `CapabilitiesExtension`.
+    /// Get a reference to this extension as [`CapabilitiesExtension`].
+    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on an
+    /// [`Extension`] that's not a [`CapabilitiesExtension`].
     pub fn as_capabilities_extension(&self) -> Result<&CapabilitiesExtension, ExtensionError> {
         match self {
             Self::Capabilities(e) => Ok(e),
@@ -266,9 +295,9 @@ impl Extension {
         }
     }
 
-    /// Get a reference to the `ParentHashExtension`.
-    /// Returns an `InvalidExtensionType` error if called on an `Extension`
-    /// that's not a `ParentHashExtension`.
+    /// Get a reference to this extension as [`ParentHashExtension`].
+    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on an
+    /// [`Extension`] that's not a [`ParentHashExtension`].
     pub fn as_parent_hash_extension(&self) -> Result<&ParentHashExtension, ExtensionError> {
         match self {
             Self::ParentHash(e) => Ok(e),
@@ -278,9 +307,9 @@ impl Extension {
         }
     }
 
-    /// Get a reference to the `RequiredCapabilitiesExtension`.
-    /// Returns an `InvalidExtensionType` error if called on an `Extension`
-    /// that's not a `RequiredCapabilitiesExtension`.
+    /// Get a reference to this extension as [`RequiredCapabilitiesExtension`].
+    /// Returns an [`ExtensionError::InvalidExtensionType`] error if called on an
+    /// [`Extension`] that's not a [`RequiredCapabilitiesExtension`].
     pub fn as_required_capabilities_extension(
         &self,
     ) -> Result<&RequiredCapabilitiesExtension, ExtensionError> {

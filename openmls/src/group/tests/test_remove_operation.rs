@@ -77,9 +77,8 @@ fn test_remove_operation_variants(
 
         // === Alice adds Bob & Charlie ===
 
-        // The new members are added sequentially because that way we can use the same key store for them
         let (_message, welcome) = alice_group
-            .add_members(backend, &[bob_key_package])
+            .add_members(backend, &[bob_key_package, charlie_key_package])
             .expect("An unexpected error occurred.");
         alice_group
             .merge_pending_commit()
@@ -88,33 +87,10 @@ fn test_remove_operation_variants(
         let mut bob_group = MlsGroup::new_from_welcome(
             backend,
             &mls_group_config,
-            welcome,
+            welcome.clone(),
             Some(alice_group.export_ratchet_tree()),
         )
         .expect("Error creating group from Welcome");
-
-        let (message, welcome) = alice_group
-            .add_members(backend, &[charlie_key_package])
-            .expect("An unexpected error occurred.");
-        alice_group
-            .merge_pending_commit()
-            .expect("error merging pending commit");
-
-        let unverified_message = bob_group
-            .parse_message(message.into(), backend)
-            .expect("Could not parse message.");
-        let bob_processed_message = bob_group
-            .process_unverified_message(unverified_message, None, backend)
-            .expect("Could not process unverified message.");
-
-        match bob_processed_message {
-            ProcessedMessage::StagedCommitMessage(bob_staged_commit) => {
-                bob_group
-                    .merge_staged_commit(*bob_staged_commit)
-                    .expect("An unexpected error occurred.");
-            }
-            _ => unreachable!(),
-        }
 
         let mut charlie_group = MlsGroup::new_from_welcome(
             backend,

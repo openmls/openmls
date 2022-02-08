@@ -63,15 +63,23 @@ impl MlsGroup {
     ) -> Result<Self, MlsGroupError> {
         let resumption_secret_store =
             ResumptionSecretStore::new(mls_group_config.number_of_resumption_secrets);
-        let key_package_bundle = welcome
+        let (key_package_bundle, hash_ref) = welcome
             .secrets()
             .iter()
             .find_map(|egs| {
+                let hash_ref = egs.new_member.as_slice().to_vec();
                 backend
                     .key_store()
-                    .read(&egs.new_member.as_slice().to_vec())
+                    .read(&hash_ref)
+                    .map(|kpb: KeyPackageBundle| (kpb, hash_ref))
             })
             .ok_or(MlsGroupError::NoMatchingKeyPackageBundle)?;
+
+        // Delete the KeyPackageBundle from the key store
+        backend
+            .key_store()
+            .delete(&hash_ref)
+            .map_err(|_| MlsGroupError::KeyStoreError)?;
         // TODO #751
         let mut group =
             CoreGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle, backend)?;
