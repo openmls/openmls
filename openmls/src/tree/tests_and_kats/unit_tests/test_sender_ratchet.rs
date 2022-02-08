@@ -70,7 +70,7 @@ fn test_out_of_order_generations(
 
     assert_eq!(err, SecretTreeError::TooDistantInThePast);
 
-    // All secrets within the window should have been deleted for FS.
+    // All secrets within the window should have been deleted because of FS.
     for i in configuration.out_of_order_tolerance()..configuration.out_of_order_tolerance() * 2 {
         assert_eq!(
             ratchet1
