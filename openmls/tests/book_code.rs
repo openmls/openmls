@@ -620,14 +620,12 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     let alice_processed_message = alice_group
         .process_unverified_message(unverified_message, None, backend)
         .expect("Could not process unverified message.");
-
     let unverified_message = bob_group
         .parse_message(mls_message_out.into(), backend)
         .expect("Could not parse message.");
     let bob_processed_message = bob_group
         .process_unverified_message(unverified_message, None, backend)
         .expect("Could not process unverified message.");
-
     let charlies_old_kpr = *charlie_group
         .key_package_ref()
         .expect("An unexpected error occurred.");
