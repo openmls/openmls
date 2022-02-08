@@ -141,7 +141,7 @@ impl CoreGroup {
             let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
             return Ok(StagedCommit::new(
                 proposal_queue,
-                StagedCommitState::SelfRemoved(staged_diff),
+                StagedCommitState::SelfRemoved(Box::new(staged_diff)),
                 commit_update_key_package,
             ));
         }
@@ -288,13 +288,14 @@ impl CoreGroup {
         // Make the diff a staged diff. This finalizes the diff and no more changes can be applied to it.
         let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
 
-        let staged_commit_state = StagedCommitState::GroupMember(MemberStagedCommitState {
-            group_context: provisional_group_context,
-            group_epoch_secrets: provisional_group_epoch_secrets,
-            message_secrets: provisional_message_secrets,
-            interim_transcript_hash,
-            staged_diff,
-        });
+        let staged_commit_state =
+            StagedCommitState::GroupMember(Box::new(MemberStagedCommitState {
+                group_context: provisional_group_context,
+                group_epoch_secrets: provisional_group_epoch_secrets,
+                message_secrets: provisional_message_secrets,
+                interim_transcript_hash,
+                staged_diff,
+            }));
 
         Ok(StagedCommit::new(
             proposal_queue,
@@ -314,7 +315,7 @@ impl CoreGroup {
     ) -> Result<Option<MessageSecrets>, CoreGroupError> {
         match staged_commit.state {
             StagedCommitState::SelfRemoved(staged_diff) => {
-                self.tree.merge_diff(staged_diff)?;
+                self.tree.merge_diff(*staged_diff)?;
                 Ok(None)
             }
             StagedCommitState::GroupMember(state) => {
@@ -339,8 +340,8 @@ impl CoreGroup {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) enum StagedCommitState {
-    SelfRemoved(StagedTreeSyncDiff),
-    GroupMember(MemberStagedCommitState),
+    SelfRemoved(Box<StagedTreeSyncDiff>),
+    GroupMember(Box<MemberStagedCommitState>),
 }
 
 /// Contains the changes from a commit to the group state.

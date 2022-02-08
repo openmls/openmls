@@ -341,7 +341,7 @@ impl CoreGroup {
         );
         let staged_commit = StagedCommit::new(
             proposal_queue,
-            StagedCommitState::GroupMember(staged_commit_state),
+            StagedCommitState::GroupMember(Box::new(staged_commit_state)),
             commit_update_key_package,
         );
 
