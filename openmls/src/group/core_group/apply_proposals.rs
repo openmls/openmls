@@ -93,6 +93,7 @@ impl CoreGroup {
             if let Proposal::Update(update_proposal) = queued_proposal.proposal() {
                 // Check if this is our own update.
                 let sender = queued_proposal.sender();
+                // Only members can send update proposals
                 let hash_ref = match sender {
                     Sender::Member(hash_ref) => hash_ref,
                     _ => return Err(CoreGroupError::SenderError(SenderError::NotAMember)),

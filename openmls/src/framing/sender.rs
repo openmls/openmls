@@ -65,12 +65,7 @@ impl Sender {
     }
 
     /// Returns true if this [`Sender`] has [`SenderType::Member`].
-    pub fn is_member(&self) -> bool {
+    pub(crate) fn is_member(&self) -> bool {
         matches!(self, Sender::Member(_))
-    }
-
-    /// Returns true if this [`Sender`] has [`SenderType::NewMember`].
-    pub fn is_new_member(&self) -> bool {
-        matches!(self, Sender::NewMember)
     }
 }
