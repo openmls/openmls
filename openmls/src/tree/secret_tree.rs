@@ -16,6 +16,7 @@ implement_error! {
             IndexOutOfBounds = "Index out of bounds",
             SecretReuseError = "The requested secret was deleted to preserve forward secrecy.",
             RatchetTypeError = "Cannot create decryption secrets from own sender ratchet or encryption secrets from the sender ratchets of other members.",
+            RatchetTooLong = "Ratchet generation has reached `u32::MAX`.",
             LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
         }
         Complex {

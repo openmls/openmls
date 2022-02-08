@@ -127,3 +127,21 @@ fn test_forward_secrecy(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
         assert_eq!(err, SecretTreeError::SecretReuseError);
     }
 }
+
+// Test if a sender ratchet overflow is caught
+#[test]
+fn sender_ratchet_generation_overflow() {
+    let backend = OpenMlsRustCrypto::default();
+    let ciphersuite = Ciphersuite::default();
+    let secret = Secret::random(ciphersuite, &backend, Config::supported_versions()[0])
+        .expect("Not enough randomness.");
+    let mut ratchet = RatchetSecret::initial_ratchet_secret(secret);
+    ratchet.set_generation(u32::MAX - 1);
+    let _ = ratchet
+        .ratchet_forward(&backend, ciphersuite)
+        .expect("error ratcheting forward");
+    let err = ratchet
+        .ratchet_forward(&backend, ciphersuite)
+        .expect_err("no error exceeding generation u32::MAX");
+    assert_eq!(err, SecretTreeError::RatchetTooLong)
+}

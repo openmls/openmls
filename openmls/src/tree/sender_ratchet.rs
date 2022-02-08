@@ -117,6 +117,10 @@ impl RatchetSecret {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
     ) -> Result<(Generation, RatchetKeyMaterial), SecretTreeError> {
+        // Check if the generation is getting too large.
+        if self.generation == u32::MAX {
+            return Err(SecretTreeError::RatchetTooLong);
+        }
         let nonce = derive_tree_secret(
             &self.secret,
             "nonce",
@@ -144,6 +148,11 @@ impl RatchetSecret {
             generation,
             (AeadKey::from_secret(key), AeadNonce::from_secret(nonce)),
         ))
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_generation(&mut self, generation: Generation) {
+        self.generation = generation
     }
 }
 
@@ -189,7 +198,7 @@ impl DecryptionRatchet {
         configuration: &SenderRatchetConfiguration,
     ) -> Result<RatchetKeyMaterial, SecretTreeError> {
         // If generation is too distant in the future
-        if generation > (self.generation() + configuration.maximum_forward_distance()) {
+        if (generation - configuration.maximum_forward_distance()) > self.generation() {
             return Err(SecretTreeError::TooDistantInTheFuture);
         }
         // If generation id too distant in the past
