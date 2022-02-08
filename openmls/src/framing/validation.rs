@@ -151,7 +151,7 @@ impl DecryptedMessage {
     ///  - ValSem246
     ///  - Prepares ValSem247 by setting the right credential. The remainder
     ///    of ValSem247 is validated as part of ValSem010.
-    pub fn credential(
+    pub(crate) fn credential(
         &self,
         treesync: &TreeSync,
         old_leaves: &[(u32, KeyPackageRef)],

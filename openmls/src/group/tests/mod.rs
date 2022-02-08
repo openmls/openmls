@@ -24,3 +24,5 @@ mod test_proposal_validation;
 mod test_wire_format_policy;
 #[cfg(test)]
 pub(crate) mod utils;
+
+pub(crate) mod tree_printing;
