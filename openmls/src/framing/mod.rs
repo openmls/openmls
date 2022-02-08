@@ -28,6 +28,7 @@ pub(crate) use sender::*;
 
 // Public
 pub use message::*;
+pub use sender::*;
 pub use validation::*;
 
 // Tests

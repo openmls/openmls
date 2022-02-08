@@ -26,7 +26,7 @@ pub use crate::config::*;
 pub use crate::extensions::*;
 
 // Framing
-pub use crate::framing::{message::*, validation::*};
+pub use crate::framing::{message::*, sender::*, validation::*};
 
 // Key packages
 pub use crate::key_packages::*;

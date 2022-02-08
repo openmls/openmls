@@ -16,6 +16,8 @@ use crate::{ciphersuite::hash_ref::KeyPackageRef, credentials::CredentialBundle}
 
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
 
+use super::proposals::{ProposalStore, QueuedProposal};
+use super::staged_commit::StagedCommit;
 use crate::{
     ciphersuite::signable::Signable,
     credentials::Credential,
@@ -27,18 +29,21 @@ use crate::{
     messages::{proposals::*, Welcome},
     schedule::ResumptionSecret,
 };
-
+use ser::*;
 use std::io::{Error, Read, Write};
 
-pub use config::*;
-pub use errors::{
-    EmptyInputError, InvalidMessageError, MlsGroupError, PendingProposalsError, UseAfterEviction,
-};
+// Crate exports
 pub(crate) use resumption::ResumptionSecretStore;
-use ser::*;
 
-use super::proposals::{ProposalStore, QueuedProposal};
-use super::staged_commit::StagedCommit;
+// Public exports
+pub use {
+    config::*,
+    errors::{
+        EmptyInputError, InvalidMessageError, MlsGroupError, PendingProposalsError,
+        UseAfterEviction,
+    },
+    membership::RemoveOperation,
+};
 
 /// Pending Commit state. Differentiates between Commits issued by group members
 /// and External Commits.
