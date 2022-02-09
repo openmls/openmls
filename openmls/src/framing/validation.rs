@@ -51,7 +51,7 @@ use super::*;
 ///  - ValSem005
 ///  - ValSem007
 ///  - ValSem009
-pub struct DecryptedMessage {
+pub(crate) struct DecryptedMessage {
     plaintext: VerifiableMlsPlaintext,
 }
 
@@ -204,19 +204,9 @@ impl DecryptedMessage {
         }
     }
 
-    /// Returns the wire format
-    pub fn wire_format(&self) -> WireFormat {
-        self.plaintext.wire_format()
-    }
-
     /// Returns the sender
     pub fn sender(&self) -> &Sender {
         self.plaintext.sender()
-    }
-
-    /// Returns the content type
-    pub fn content_type(&self) -> ContentType {
-        self.plaintext.content_type()
     }
 
     /// Returns the plaintext
