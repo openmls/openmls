@@ -314,6 +314,8 @@ implement_error! {
         ExistingPublicKeyUpdateProposal = "HPKE public key of the update proposal already existed in tree.",
         DuplicateMemberRemoval = "Duplicate remove proposals for the same member.",
         UnknownMemberRemoval = "The remove proposal referenced a non-existing member.",
+        UpdateFromNonMember = "Found an update from a non-member.",
+        CommitterIncludedOwnUpdate = "The Commit includes update proposals from the committer.",
     }
 }
 

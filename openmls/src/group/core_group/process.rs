@@ -84,6 +84,8 @@ impl CoreGroup {
     ///  - ValSem108
     ///  - ValSem109
     ///  - ValSem110
+    ///  - ValSem111
+    ///  - ValSem112
     pub(crate) fn process_unverified_message(
         &mut self,
         unverified_message: UnverifiedMessage,
@@ -138,6 +140,8 @@ impl CoreGroup {
                         //  - ValSem108
                         //  - ValSem109
                         //  - ValSem110
+                        //  - ValSem111
+                        //  - ValSem112
                         let staged_commit = self.stage_commit(
                             verified_member_message.plaintext(),
                             proposal_store,
