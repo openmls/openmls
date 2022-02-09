@@ -755,6 +755,10 @@
 <span id="754">754</span>
 <span id="755">755</span>
 <span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
+<span id="759">759</span>
+<span id="760">760</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Functions in this module should never panic. However, if there is a bug in</span>
@@ -1238,7 +1242,11 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="comment">// Verify the signature on the plaintext.</span>
         <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">treesync</span>();
-        <span class="kw">let</span> <span class="ident">sender_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sender_index</span>(<span class="ident">verifiable</span>.<span class="ident">sender</span>().<span class="ident">as_key_package_ref</span>()<span class="question-mark">?</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">hash_ref</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">verifiable</span>.<span class="ident">sender</span>() {
+            <span class="ident">Sender::Member</span>(<span class="ident">member_sender</span>) =&gt; <span class="ident">member_sender</span>,
+            <span class="kw">_</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CoreGroupError::SenderError</span>(<span class="ident">SenderError::NotAMember</span>)),
+        };
+        <span class="kw">let</span> <span class="ident">sender_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sender_index</span>(<span class="ident">hash_ref</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">leaf_node</span> <span class="op">=</span> <span class="ident">tree</span>
             .<span class="ident">leaf</span>(<span class="ident">sender_index</span>)

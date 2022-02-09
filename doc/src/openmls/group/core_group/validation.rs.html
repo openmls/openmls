@@ -350,13 +350,16 @@
 <span id="349">349</span>
 <span id="350">350</span>
 <span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages</span>
 <span class="doccomment">//! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;</span>
 
 <span class="kw">use</span> <span class="ident">std::collections::HashSet</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">framing::Sender</span>,
+    <span class="ident">framing</span>::{<span class="ident">Sender</span>, <span class="ident">SenderError</span>},
     <span class="ident">group::errors::ExternalCommitValidationError</span>,
     <span class="ident">messages</span>::{<span class="ident">Proposal</span>, <span class="ident">ProposalOrRefType</span>, <span class="ident">ProposalType</span>},
 };
@@ -409,19 +412,20 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="comment">// ValSem004</span>
         <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">plaintext</span>.<span class="ident">sender</span>();
-        <span class="kw">if</span> <span class="ident">sender</span>.<span class="ident">is_member</span>()
+        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Sender::Member</span>(<span class="ident">hash_ref</span>) <span class="op">=</span> <span class="ident">sender</span> {
             <span class="comment">// If the sender is a member, it has to be in the tree ...</span>
-            <span class="op">&amp;&amp;</span> <span class="self">self</span>
-                .<span class="ident">treesync</span>()
-                .<span class="ident">leaf_from_id</span>(<span class="ident">sender</span>.<span class="ident">as_key_package_ref</span>()<span class="question-mark">?</span>)
-                .<span class="ident">ok</span>()
-                .<span class="ident">is_none</span>()
-            <span class="comment">// ... or in a tree from a past epoch we still have around.</span>
-            <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="self">self</span>
-                .<span class="ident">message_secrets_store</span>
-                .<span class="ident">epoch_has_leaf</span>(<span class="ident">plaintext</span>.<span class="ident">epoch</span>(), <span class="ident">sender</span>.<span class="ident">as_key_package_ref</span>()<span class="question-mark">?</span>)
-        {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">FramingValidationError::UnknownMember</span>.<span class="ident">into</span>());
+            <span class="kw">if</span> <span class="self">self</span>
+            .<span class="ident">treesync</span>()
+            .<span class="ident">leaf_from_id</span>(<span class="ident">hash_ref</span>)
+            .<span class="ident">ok</span>()
+            .<span class="ident">is_none</span>()
+        <span class="comment">// ... or in a tree from a past epoch we still have around.</span>
+        <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="self">self</span>
+            .<span class="ident">message_secrets_store</span>
+            .<span class="ident">epoch_has_leaf</span>(<span class="ident">plaintext</span>.<span class="ident">epoch</span>(), <span class="ident">hash_ref</span>)
+            {
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">FramingValidationError::UnknownMember</span>.<span class="ident">into</span>());
+            }
         }
 
         <span class="comment">// ValSem005</span>
@@ -573,9 +577,11 @@
         <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">treesync</span>();
 
         <span class="kw">for</span> <span class="ident">update_proposal</span> <span class="kw">in</span> <span class="ident">update_proposals</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">leaf_node</span>) <span class="op">=</span>
-                <span class="ident">tree</span>.<span class="ident">leaf_from_id</span>(<span class="ident">update_proposal</span>.<span class="ident">sender</span>().<span class="ident">as_key_package_ref</span>()<span class="question-mark">?</span>)<span class="question-mark">?</span>
-            {
+            <span class="kw">let</span> <span class="ident">hash_ref</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">update_proposal</span>.<span class="ident">sender</span>() {
+                <span class="ident">Sender::Member</span>(<span class="ident">hash_ref</span>) =&gt; <span class="ident">hash_ref</span>,
+                <span class="kw">_</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CoreGroupError::SenderError</span>(<span class="ident">SenderError::NotAMember</span>)),
+            };
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">leaf_node</span>) <span class="op">=</span> <span class="ident">tree</span>.<span class="ident">leaf_from_id</span>(<span class="ident">hash_ref</span>)<span class="question-mark">?</span> {
                 <span class="kw">let</span> <span class="ident">existing_key_package</span> <span class="op">=</span> <span class="ident">leaf_node</span>.<span class="ident">key_package</span>();
                 <span class="comment">// ValSem109</span>
                 <span class="kw">if</span> <span class="ident">update_proposal</span>
