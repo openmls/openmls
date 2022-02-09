@@ -209,10 +209,10 @@ fn test_remove_operation_variants(
                                 assert!(sender.is_member());
                                 // Check Bob was removed
                                 assert!(bob_staged_commit.self_removed());
-                                match sender.sender_value() {
-                                    SenderValue::Member(member) => {
+                                match sender {
+                                    Sender::Member(member) => {
                                         // Check that it was Alice who removed Bob
-                                        assert_eq!(member, &alice_kpr);
+                                        assert_eq!(member, alice_kpr);
                                     }
                                     _ => unreachable!(),
                                 }
@@ -263,10 +263,10 @@ fn test_remove_operation_variants(
                                 assert!(sender.is_member());
                                 // Check that it was indeed Bob who was removed
                                 assert_eq!(removed, bob_kpr);
-                                match sender.sender_value() {
-                                    SenderValue::Member(member) => {
+                                match sender {
+                                    Sender::Member(member) => {
                                         // Check that it was Alice who removed Bob
-                                        assert_eq!(member, &alice_kpr);
+                                        assert_eq!(member, alice_kpr);
                                     }
                                     _ => unreachable!(),
                                 }

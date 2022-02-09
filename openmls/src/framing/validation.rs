@@ -157,13 +157,10 @@ impl DecryptedMessage {
         old_leaves: &[(u32, KeyPackageRef)],
     ) -> Result<Credential, ValidationError> {
         let sender = self.sender();
-        match sender.sender_type {
-            SenderType::Member => {
-                let sender = sender
-                    .as_key_package_ref()
-                    .map_err(|_| ValidationError::UnknownSender)?;
+        match sender {
+            Sender::Member(hash_ref) => {
                 let sender_leaf = match treesync
-                    .leaf_from_id(sender)
+                    .leaf_from_id(hash_ref)
                     .map_err(|_| ValidationError::UnknownSender)
                 {
                     Ok(l) => l,
@@ -172,7 +169,7 @@ impl DecryptedMessage {
                         // key package changed. Let's check old leaves we still
                         // have around.
                         if let Some((sender_index, _)) =
-                            old_leaves.iter().find(|(_, kpr)| kpr == sender)
+                            old_leaves.iter().find(|(_, kpr)| kpr == hash_ref)
                         {
                             treesync
                                 .leaf(*sender_index)
@@ -189,8 +186,8 @@ impl DecryptedMessage {
                 }
             }
             // Preconfigured senders are not supported yet #106/#151.
-            SenderType::Preconfigured => todo!(),
-            SenderType::NewMember => {
+            Sender::Preconfigured(_) => unimplemented!(),
+            Sender::NewMember => {
                 if let MlsPlaintextContentType::Commit(commit) = self.plaintext().content() {
                     if let Some(path) = commit.path() {
                         Ok(path.leaf_key_package().credential().clone())
@@ -308,8 +305,8 @@ impl UnverifiedContextMessage {
                 plaintext.verify_membership(backend, message_secrets.membership_key())?;
             }
         }
-        match plaintext.sender().sender_type {
-            SenderType::Member | SenderType::NewMember => {
+        match plaintext.sender() {
+            Sender::Member(_) | Sender::NewMember => {
                 Ok(UnverifiedContextMessage::Group(UnverifiedGroupMessage {
                     plaintext,
                     // If the message type is `Sender` or `NewMember`, the
@@ -318,7 +315,7 @@ impl UnverifiedContextMessage {
                 }))
             }
             // TODO #151/#106: We don't support preconfigured senders yet
-            SenderType::Preconfigured => todo!(),
+            Sender::Preconfigured(_) => unimplemented!(),
         }
     }
 }
