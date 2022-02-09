@@ -719,6 +719,13 @@ impl CoreGroup {
     pub(crate) fn context_mut(&mut self) -> &mut GroupContext {
         &mut self.group_context
     }
+
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn print_tree(&self, message: &str) {
+        use super::tests::tree_printing::print_tree;
+
+        print_tree(self, message);
+    }
 }
 
 // Helper functions
