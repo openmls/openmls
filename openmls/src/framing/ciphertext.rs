@@ -5,7 +5,7 @@ use tls_codec::{
 };
 
 use crate::{
-    ciphersuite::hash_ref::KeyPackageRef,
+    ciphersuite::hash_ref::{HashReference, KeyPackageRef},
     tree::{
         index::SecretTreeLeafIndex, secret_tree::SecretType,
         sender_ratchet::SenderRatchetConfiguration,
@@ -69,6 +69,11 @@ impl MlsCiphertext {
         if mls_plaintext.wire_format() != WireFormat::MlsCiphertext {
             return Err(MlsCiphertextError::WrongWireFormat);
         }
+        // Check that the plaintext has the right sender type
+        let hash_ref = match mls_plaintext.sender() {
+            Sender::Member(hash_ref) => hash_ref,
+            _ => return Err(MlsCiphertextError::SenderError(SenderError::NotAMember)),
+        };
         // Serialize the content AAD
         let mls_ciphertext_content_aad = MlsCiphertextContentAad {
             group_id: header.group_id.clone(),
@@ -123,8 +128,7 @@ impl MlsCiphertext {
         );
         // Serialize the sender data AAD
         let mls_sender_data_aad_bytes = mls_sender_data_aad.tls_serialize_detached()?;
-        let sender_data =
-            MlsSenderData::from_sender(mls_plaintext.sender(), generation, reuse_guard)?;
+        let sender_data = MlsSenderData::from_sender(hash_ref, generation, reuse_guard);
         // Encrypt the sender data
         let encrypted_sender_data = sender_data_key
             .aead_seal(
@@ -390,15 +394,15 @@ pub(crate) struct MlsSenderData {
 impl MlsSenderData {
     /// Build new [`MlsSenderData`] for a [`Sender`].
     pub(crate) fn from_sender(
-        sender: &Sender,
+        hash_ref: &HashReference,
         generation: u32,
         reuse_guard: ReuseGuard,
-    ) -> Result<Self, MlsCiphertextError> {
-        Ok(MlsSenderData {
-            sender: *sender.as_key_package_ref()?,
+    ) -> Self {
+        MlsSenderData {
+            sender: *hash_ref,
             generation,
             reuse_guard,
-        })
+        }
     }
 }
 

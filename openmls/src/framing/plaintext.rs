@@ -130,17 +130,16 @@ impl MlsPlaintext {
         context: &GroupContext,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, LibraryError> {
-        let sender_type = sender.sender_type;
         let mut mls_plaintext = MlsPlaintextTbs::new(
             framing_parameters.wire_format(),
             context.group_id().clone(),
             context.epoch(),
-            sender,
+            sender.clone(),
             framing_parameters.aad().into(),
             payload,
         );
 
-        if sender_type == SenderType::Member {
+        if let Sender::Member(_) = sender {
             let serialized_context = context
                 .tls_serialize_detached()
                 .map_err(LibraryError::missing_bound_check)?;
