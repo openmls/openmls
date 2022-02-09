@@ -553,7 +553,7 @@
 <span class="doccomment">/// merging a diff.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TreeSync</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">TreeSync</span> {
     <span class="ident">tree</span>: <span class="ident">MlsBinaryTree</span><span class="op">&lt;</span><span class="ident">TreeSyncNode</span><span class="op">&gt;</span>,
     <span class="ident">own_leaf_index</span>: <span class="ident">LeafIndex</span>,
     <span class="ident">tree_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,

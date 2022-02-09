@@ -335,13 +335,6 @@
 <span id="334">334</span>
 <span id="335">335</span>
 <span id="336">336</span>
-<span id="337">337</span>
-<span id="338">338</span>
-<span id="339">339</span>
-<span id="340">340</span>
-<span id="341">341</span>
-<span id="342">342</span>
-<span id="343">343</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS CoreGroup errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -358,7 +351,6 @@
     <span class="ident">key_packages::KeyPackageError</span>,
     <span class="ident">messages::errors::ProposalError</span>,
     <span class="ident">schedule</span>::{<span class="ident">KeyScheduleError</span>, <span class="ident">PskSecretError</span>},
-    <span class="ident">tree</span>::{<span class="ident">ParentHashError</span>, <span class="ident">TreeError</span>},
     <span class="ident">treesync</span>::{<span class="ident">diff::TreeSyncDiffError</span>, <span class="ident">treekem::TreeKemError</span>, <span class="ident">TreeSyncError</span>},
 };
 <span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
@@ -400,14 +392,12 @@
                 <span class="string">&quot;A PskSecret error occurred.&quot;</span>,
             <span class="ident">CredentialError</span>(<span class="ident">CredentialError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`CredentialError`](crate::credentials::CredentialError) for details.&quot;</span>,
-            <span class="ident">TreeError</span>(<span class="ident">TreeError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`TreeError`](crate::tree::TreeError) for details.&quot;</span>,
             <span class="ident">TreeSyncError</span>(<span class="ident">TreeSyncError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`TreeSyncError`](crate::treesync::TreeSyncError) for details.&quot;</span>,
+                <span class="string">&quot;An error occurred during an operation on the tree underlying the group.&quot;</span>,
             <span class="ident">TreeSyncDiffError</span>(<span class="ident">TreeSyncDiffError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`TreeSyncDiffError`](crate::treesync::diff::TreeSyncDiffError) for details.&quot;</span>,
+                <span class="string">&quot;An error occurred during an operation on the tree underlying the group.&quot;</span>,
             <span class="ident">TreeKemError</span>(<span class="ident">TreeKemError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`TreeKemError`](crate::treesync::treekem::TreeKemError) for details.&quot;</span>,
+                <span class="string">&quot;An error occurred during an operation on the tree underlying the group.&quot;</span>,
             <span class="ident">KeyPackageError</span>(<span class="ident">KeyPackageError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`KeyPackageError`] for details.&quot;</span>,
             <span class="ident">ExtensionError</span>(<span class="ident">ExtensionError</span>) <span class="op">=</span>
@@ -462,10 +452,6 @@
         <span class="ident">Complex</span> {
             <span class="ident">ConfigError</span>(<span class="ident">ConfigError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`ConfigError`](`crate::config::ConfigError`) for details.&quot;</span>,
-            <span class="ident">InvalidRatchetTree</span>(<span class="ident">TreeError</span>) <span class="op">=</span>
-                <span class="string">&quot;Invalid ratchet tree in Welcome message.&quot;</span>,
-            <span class="ident">ParentHashMismatch</span>(<span class="ident">ParentHashError</span>) <span class="op">=</span>
-                <span class="string">&quot;The parent hash verification failed.&quot;</span>,
             <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span>
                 <span class="string">&quot;Tls (de)serialization error occurred.&quot;</span>,
             <span class="ident">KeyScheduleError</span>(<span class="ident">KeyScheduleError</span>) <span class="op">=</span>
