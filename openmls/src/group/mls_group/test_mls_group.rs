@@ -260,7 +260,6 @@ fn remover(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvid
     if let ProcessedMessage::ProposalMessage(staged_proposal) = charlie_processed_message {
         if let Proposal::Remove(ref remove_proposal) = staged_proposal.proposal() {
             // Check that Bob was removed
-            // TODO #541: Replace this with the adequate API call
             assert_eq!(remove_proposal.removed(), bob_kpr);
             // Store proposal
             charlie_group.store_pending_proposal(*staged_proposal.clone());
@@ -269,14 +268,10 @@ fn remover(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvid
         }
 
         // Check that Alice removed Bob
-        // TODO #541: Replace this with the adequate API call
-        assert_eq!(
-            staged_proposal
-                .sender()
-                .as_key_package_ref()
-                .expect("An unexpected error occurred."),
-            alice_kpr
-        );
+        assert!(matches!(
+            staged_proposal.sender(),
+            Sender::Member(member) if member == alice_kpr
+        ));
     } else {
         unreachable!("Expected a QueuedProposal.");
     }
@@ -293,17 +288,9 @@ fn remover(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvid
             .next()
             .expect("Expected a proposal.");
         // Check that Bob was removed
-        // TODO #541: Replace this with the adequate API call
         assert_eq!(remove.remove_proposal().removed(), bob_kpr);
         // Check that Alice removed Bob
-        // TODO #541: Replace this with the adequate API call
-        assert_eq!(
-            remove
-                .sender()
-                .as_key_package_ref()
-                .expect("An unexpected error occurred."),
-            alice_kpr
-        );
+        assert!(matches!(remove.sender(), Sender::Member(member) if member == alice_kpr));
     } else {
         unreachable!("Expected a StagedCommit.");
     };

@@ -157,10 +157,10 @@ impl ProposalQueue {
                 ProposalOrRef::Proposal(proposal) => {
                     // ValSem200
                     if let Proposal::Remove(ref remove_proposal) = proposal {
-                        if sender.is_member()
-                            && remove_proposal.removed() == sender.as_key_package_ref()?
-                        {
-                            return Err(ProposalQueueError::SelfRemoval);
+                        if let Sender::Member(hash_ref) = sender {
+                            if remove_proposal.removed() == hash_ref {
+                                return Err(ProposalQueueError::SelfRemoval);
+                            }
                         }
                     }
 
@@ -177,10 +177,10 @@ impl ProposalQueue {
                             // ValSem200
                             if let Proposal::Remove(ref remove_proposal) = queued_proposal.proposal
                             {
-                                if sender.is_member()
-                                    && remove_proposal.removed() == sender.as_key_package_ref()?
-                                {
-                                    return Err(ProposalQueueError::SelfRemoval);
+                                if let Sender::Member(hash_ref) = sender {
+                                    if remove_proposal.removed() == hash_ref {
+                                        return Err(ProposalQueueError::SelfRemoval);
+                                    }
                                 }
                             }
 
@@ -384,9 +384,13 @@ impl ProposalQueue {
                 }
                 Proposal::Update(_) => {
                     let own_kpr = own_kpr.ok_or(ProposalQueueError::LibraryError)?;
-                    let sender = queued_proposal.sender.as_key_package_ref()?;
-                    if sender != own_kpr {
-                        get_member(&mut members, sender)?
+                    let hash_ref = match queued_proposal.sender {
+                        Sender::Member(hash_ref) => hash_ref,
+                        // Only members can send update proposals
+                        _ => return Err(ProposalQueueError::SenderError(SenderError::NotAMember)),
+                    };
+                    if &hash_ref != own_kpr {
+                        get_member(&mut members, &hash_ref)?
                             .updates
                             .push(queued_proposal.clone());
                     } else {

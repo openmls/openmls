@@ -340,16 +340,9 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         path: Some(broken_path),
     };
 
-    let sender = Sender::build_member(
-        create_commit_result
-            .commit
-            .sender()
-            .as_key_package_ref()
-            .expect("An unexpected error occurred."),
-    );
     let mut broken_plaintext = MlsPlaintext::commit(
         framing_parameters,
-        sender,
+        create_commit_result.commit.sender().clone(),
         broken_commit,
         &bob_credential_bundle,
         group_bob.context(),

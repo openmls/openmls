@@ -4,6 +4,7 @@ use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
     binary_tree::LeafIndex,
+    framing::{Sender, SenderError},
     group::CoreGroupError,
     key_packages::KeyPackageBundle,
     messages::{
@@ -92,8 +93,13 @@ impl CoreGroup {
             if let Proposal::Update(update_proposal) = queued_proposal.proposal() {
                 // Check if this is our own update.
                 let sender = queued_proposal.sender();
+                // Only members can send update proposals
+                let hash_ref = match sender {
+                    Sender::Member(hash_ref) => hash_ref,
+                    _ => return Err(CoreGroupError::SenderError(SenderError::NotAMember)),
+                };
                 let sender_index = self
-                    .sender_index(sender.as_key_package_ref()?)
+                    .sender_index(hash_ref)
                     .map_err(|_| TreeSyncError::KeyPackageRefNotInTree)?;
                 let leaf_node: LeafNode = if sender_index == self.tree.own_leaf_index() {
                     let own_kpb = match key_package_bundles
