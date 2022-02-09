@@ -342,7 +342,7 @@ impl MlsGroup {
 
     #[cfg(any(feature = "test-utils", test))]
     pub fn print_tree(&self, message: &str) {
-        print_tree(self.group.treesync(), message)
+        self.group.print_tree(message)
     }
 
     /// Get the underlying [CoreGroup].

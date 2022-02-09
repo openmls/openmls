@@ -121,7 +121,10 @@ fn key_package_id_extension(
     assert!(kpb.key_package().verify(backend).is_ok());
 
     // Check ID
-    assert_eq!(&id[..], kpb.key_package().key_id().expect("No key ID"));
+    assert_eq!(
+        &id[..],
+        kpb.key_package().external_key_id().expect("No key ID")
+    );
 }
 
 #[apply(backends)]
