@@ -167,6 +167,7 @@ impl KeyPackagePayload {
     }
 
     /// Add (or replace) an extension to the KeyPackage.
+    #[cfg(any(feature = "test-utils", test))]
     fn add_extension(&mut self, extension: Extension) {
         self.remove_extension(extension.extension_type());
         self.extensions.push(extension);
@@ -461,6 +462,7 @@ impl KeyPackageBundlePayload {
     }
 
     /// Add (or replace) an extension to the KeyPackage.
+    #[cfg(any(feature = "test-utils", test))]
     pub fn add_extension(&mut self, extension: Extension) {
         self.key_package_payload.add_extension(extension)
     }
