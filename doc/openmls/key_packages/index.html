@@ -1,26 +1,70 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Key Packages."><meta name="keywords" content="rust, rustlang, rust-lang, key_packages"><title>openmls::key_packages - Rust</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script>
-    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../rust-logo.png' alt='logo'></div></a><h2 class="location">Module key_packages</h2><div class="sidebar-elems"><div class="block items"><ul><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li></ul></div><div id="sidebar-vars" data-name="key_packages" data-ty="mod" data-relpath="./"></div><script defer src="./sidebar-items.js"></script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main" class="content"><h1 class="fqn"><span class="in-band">Module <a href="../index.html">openmls</a>::<wbr><a class="mod" href="#">key_packages</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span><span class="out-of-band"><span id="render-detail"><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span><a class="srclink" href="../../src/openmls/key_packages/mod.rs.html#1-658" title="goto source code">[src]</a></span></h1><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Key Packages.</p>
-<p>In order to facilitate asynchronous addition of clients to a group,
-it is necessary to pre-publish key packages that provide some public
-information about a user. KeyPackage structures provide information
-about a client that any existing member can use to add this client
-to the group asynchronously. A KeyPackage object specifies a ciphersuite
-that the client supports, as well as providing a public key that others
-can use for key agreement. The identity arising from the credential,
-together with the endpoint_id in the KeyPackage serve to uniquely identify
-a client in a group. When used as InitKeys, KeyPackages are intended to be
-used only once and SHOULD NOT be reused except in case of last
-resort. (See Section 15.4). Clients MAY generate and publish multiple InitKeys
-to support multiple ciphersuites.</p>
+    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../openmls/index.html'><div class='logo-container rust-logo'><img src='../../rust-logo.png' alt='logo'></div></a><h2 class="location">Module key_packages</h2><div class="sidebar-elems"><div class="block items"><ul><li><a href="#modules">Modules</a></li><li><a href="#structs">Structs</a></li></ul></div><div id="sidebar-vars" data-name="key_packages" data-ty="mod" data-relpath="./"></div><script defer src="./sidebar-items.js"></script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main" class="content"><h1 class="fqn"><span class="in-band">Module <a href="../index.html">openmls</a>::<wbr><a class="mod" href="#">key_packages</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span><span class="out-of-band"><span id="render-detail"><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span><a class="srclink" href="../../src/openmls/key_packages/mod.rs.html#1-740" title="goto source code">[src]</a></span></h1><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="key-packages" class="section-header"><a href="#key-packages">Key Packages.</a></h2>
+<p>Key packages are pre-published public keys that provide some information
+about a user in order to facilitate the asynchronous addition of clients to
+a group.</p>
+<p>A key package object specifies:</p>
+<ul>
+<li>A <strong>protocol version</strong> and ciphersuite that the client supports</li>
+<li>A <strong>public key</strong> that others can use for key agreement</li>
+<li>A <strong>credential</strong> authenticating the client’s application-layer identity</li>
+<li>A list of <strong>extensions</strong> for the key package (see <a href="../extensions/index.html">Extensions</a> for details)</li>
+</ul>
+<p>Key packages are intended to be used only once and SHOULD NOT be reused
+except in case of last resort, i.e. if there’s no other key package available.
+Clients MAY generate and publish multiple KeyPackages to support multiple
+cipher suites.</p>
+<p>The value for HPKE init key MUST be a public key for the asymmetric
+encryption scheme defined by cipher suite, and it MUST be unique among the
+set of key packages created by this client.
+The whole structure is signed using the client’s signature key.
+A key package object with an invalid signature field is considered malformed.</p>
+<h3 id="creating-key-package-bundles" class="section-header"><a href="#creating-key-package-bundles">Creating key package bundles</a></h3>
+<p>Key package bundles are key packages including their private key.
+A key package bundle can be created as follows:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">openmls::prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">openmls_rust_crypto::OpenMlsRustCrypto</span>;
+
+<span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519</span>;
+<span class="kw">let</span> <span class="ident">backend</span> <span class="op">=</span> <span class="ident">OpenMlsRustCrypto::default</span>();
+
+<span class="kw">let</span> <span class="ident">credential_bundle</span> <span class="op">=</span> <span class="ident">CredentialBundle::new</span>(
+    <span class="string">b&quot;Sasha&quot;</span>.<span class="ident">to_vec</span>(),
+    <span class="ident">CredentialType::Basic</span>,
+    <span class="ident">SignatureScheme::from</span>(<span class="ident">ciphersuite</span>),
+    <span class="kw-2">&amp;</span><span class="ident">backend</span>,
+)
+.<span class="ident">expect</span>(<span class="string">&quot;Error creating credential.&quot;</span>);
+<span class="kw">let</span> <span class="ident">key_package_bundle</span> <span class="op">=</span>
+    <span class="ident">KeyPackageBundle::new</span>(<span class="kw-2">&amp;</span>[<span class="ident">ciphersuite</span>], <span class="kw-2">&amp;</span><span class="ident">credential_bundle</span>, <span class="kw-2">&amp;</span><span class="ident">backend</span>, <span class="macro">vec!</span>[])
+        .<span class="ident">expect</span>(<span class="string">&quot;Error creating key package bundle.&quot;</span>);</code></pre></div>
+<p>See <a href="struct.KeyPackageBundle.html" title="KeyPackageBundle"><code>KeyPackageBundle</code></a> for more details and other ways to create key
+package bundles.</p>
+<h3 id="loading-key-packages" class="section-header"><a href="#loading-key-packages">Loading key packages</a></h3>
+<p>When getting key packages from another user the serialized bytes are parsed
+as follows;</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">openmls::prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">openmls::test_utils::hex_to_bytes</span>;
+<span class="kw">use</span> <span class="ident">openmls_rust_crypto::OpenMlsRustCrypto</span>;
+
+<span class="kw">let</span> <span class="ident">key_package_bytes</span> <span class="op">=</span> <span class="ident">hex_to_bytes</span>(
+        <span class="string">&quot;0100010020687A9693D4FADC951B999E6EDD80B80F11747DE30620C75ED0A5F41E32\
+         CB064C00010008000000000000000208070020AEF756C7D75DE1BEACA7D2DD17FA7A\
+         C36F56B9BA1F7DF019BCB49A4138CEBCCB000000360002000000100000000061A0B6\
+         2D000000006B086B9D00010000001A0201C8020001060001000200030C0001000200\
+         030004000500080040961F9EC3D3F1BFCE673FEF39AB8BE6A8FF4D0BA40B3AA8A0DC\
+         50CDE22482DC30A594EDDEC398F0966C3AFD67135007A6875F9873F4B521DF28827F\
+         6A4EFF1704&quot;</span>);
+<span class="kw">let</span> <span class="ident">key_package</span> <span class="op">=</span> <span class="ident">KeyPackage::try_from</span>(<span class="ident">key_package_bytes</span>.<span class="ident">as_slice</span>());</code></pre></div>
+<p>See <a href="struct.KeyPackage.html" title="KeyPackage"><code>KeyPackage</code></a> for more details on how to use key packages.</p>
 </div></details><h2 id="reexports" class="small-section-header"><a href="#reexports">Re-exports</a></h2>
 <div class="item-table"><div class="item-row"><div class="item-left import-item"><code>pub use <a class="mod" href="errors/index.html" title="mod openmls::key_packages::errors">errors</a>::*;</code></div><div class="item-right docblock-short"></div></div></div><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2>
 <div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="mod" href="errors/index.html" title="openmls::key_packages::errors mod">errors</a></div><div class="item-right docblock-short"><p>Key Package errors</p>
 </div></div></div><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2>
-<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.KeyPackage.html" title="openmls::key_packages::KeyPackage struct">KeyPackage</a></div><div class="item-right docblock-short"><p>A Key Package.</p>
-</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.KeyPackageBundle.html" title="openmls::key_packages::KeyPackageBundle struct">KeyPackageBundle</a></div><div class="item-right docblock-short"><p>Contains a <a href="struct.KeyPackage.html" title="KeyPackage"><code>KeyPackage</code></a>, the correponding <code>HpkePrivateKey</code> and a leaf secret.</p>
-</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.KeyPackageBundlePayload.html" title="openmls::key_packages::KeyPackageBundlePayload struct">KeyPackageBundlePayload</a></div><div class="item-right docblock-short"><p>Payload of the <a href="struct.KeyPackageBundle.html" title="KeyPackageBundle"><code>KeyPackageBundle</code></a>.</p>
-</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.KeyPackagePayload.html" title="openmls::key_packages::KeyPackagePayload struct">KeyPackagePayload</a></div><div class="item-right docblock-short"><p>The unsigned payload of a key package.
-Any modification must happen on this unsigned struct. Use <code>sign</code> to get a
-signed key package.</p>
+<div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.KeyPackage.html" title="openmls::key_packages::KeyPackage struct">KeyPackage</a></div><div class="item-right docblock-short"><p>The key package struct.</p>
+</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.KeyPackageBundle.html" title="openmls::key_packages::KeyPackageBundle struct">KeyPackageBundle</a></div><div class="item-right docblock-short"><p>A <a href="struct.KeyPackageBundle.html" title="KeyPackageBundle"><code>KeyPackageBundle</code></a> contains a <a href="struct.KeyPackage.html" title="KeyPackage"><code>KeyPackage</code></a>, the corresponding private
+key, and a leaf secret.</p>
 </div></div></div></section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="openmls" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div>
 </body></html>
