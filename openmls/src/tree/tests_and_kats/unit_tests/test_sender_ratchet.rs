@@ -14,8 +14,8 @@ fn test_max_forward_distance(
     let configuration = &SenderRatchetConfiguration::default();
     let secret = Secret::random(ciphersuite, backend, Config::supported_versions()[0])
         .expect("Not enough randomness.");
-    let mut ratchet1 = DecryptionRatchet::new(&secret);
-    let mut ratchet2 = DecryptionRatchet::new(&secret);
+    let mut ratchet1 = DecryptionRatchet::new(secret.clone());
+    let mut ratchet2 = DecryptionRatchet::new(secret);
 
     // We expect this to still work
     let _secret = ratchet1
@@ -55,7 +55,7 @@ fn test_out_of_order_generations(
     let configuration = &SenderRatchetConfiguration::default();
     let secret = Secret::random(ciphersuite, backend, Config::supported_versions()[0])
         .expect("Not enough randomness.");
-    let mut ratchet1 = DecryptionRatchet::new(&secret);
+    let mut ratchet1 = DecryptionRatchet::new(secret);
 
     // Ratchet forward twice the size of the window
     for i in 0..configuration.out_of_order_tolerance() * 2 {
@@ -95,7 +95,7 @@ fn test_forward_secrecy(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
     let configuration = &SenderRatchetConfiguration::default();
     let secret = Secret::random(ciphersuite, backend, Config::supported_versions()[0])
         .expect("Not enough randomness.");
-    let mut ratchet = DecryptionRatchet::new(&secret);
+    let mut ratchet = DecryptionRatchet::new(secret);
 
     // Let's ratchet once and see if the ratchet keeps any keys around.
     let _ratchet_secrets = ratchet

@@ -282,7 +282,7 @@ impl CoreGroup {
                 serialized_provisional_group_context,
                 diff.leaf_count(),
                 // The index should be the same on TreeSync and Diff.
-                self.treesync().own_leaf_index(),
+                diff.own_leaf_index(),
             );
 
         // Make the diff a staged diff. This finalizes the diff and no more changes can be applied to it.

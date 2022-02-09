@@ -209,9 +209,9 @@ impl SecretTree {
             (handshake_sender_ratchet, application_sender_ratchet)
         } else {
             let handshake_sender_ratchet =
-                SenderRatchet::DecryptionRatchet(DecryptionRatchet::new(&handshake_ratchet_secret));
+                SenderRatchet::DecryptionRatchet(DecryptionRatchet::new(handshake_ratchet_secret));
             let application_sender_ratchet = SenderRatchet::DecryptionRatchet(
-                DecryptionRatchet::new(&application_ratchet_secret),
+                DecryptionRatchet::new(application_ratchet_secret),
             );
 
             (handshake_sender_ratchet, application_sender_ratchet)

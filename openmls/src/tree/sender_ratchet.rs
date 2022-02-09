@@ -169,7 +169,7 @@ pub struct DecryptionRatchet {
 
 impl DecryptionRatchet {
     /// Creates e new SenderRatchet
-    pub fn new(secret: &Secret) -> Self {
+    pub fn new(secret: Secret) -> Self {
         Self {
             past_secrets: VecDeque::new(),
             ratchet_head: RatchetSecret::initial_ratchet_secret(secret.clone()),
