@@ -71,7 +71,7 @@ pub mod tests_and_kats;
 /// merging a diff.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct TreeSync {
+pub(crate) struct TreeSync {
     tree: MlsBinaryTree<TreeSyncNode>,
     own_leaf_index: LeafIndex,
     tree_hash: Vec<u8>,
