@@ -27,11 +27,3 @@ A member is removed from a group if another member commits to a remove proposal 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:getting_removed}}
 ```
-
-### Remove self
-
-A member can remove itself from a group by making use of the `leave_group()` function, which creates a remove proposal targeting the leaf representing the member.
-
-```rust,no_run,noplayground
-{{#include ../../../openmls/tests/book_code.rs:leaving}}
-```
