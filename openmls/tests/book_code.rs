@@ -94,7 +94,7 @@ fn generate_key_package_bundle(
 ///  - Alice removes Charlie and adds Bob
 ///  - Bob leaves
 ///  - Test saving the group state
-#[apply(ciphersuites_and_backends)]
+//#[apply(ciphersuites_and_backends)]
 fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // ANCHOR: set_group_id
     let group_id = GroupId::from_slice(b"Test Group");
@@ -882,10 +882,27 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     let unverified_message = bob_group
         .parse_message(queued_message.into(), backend)
         .expect("Could not parse message.");
+
+    // Get sender information
+    // As provided by the `unverified_message`
     let sender = unverified_message
         .credential()
         .expect("Expected a credential.")
         .clone();
+
+    // As provided by looking up the sender manually via the `member()` function
+    // ANCHOR: member_lookup
+    let sender_kp = if let Sender::Member(hash_ref) = unverified_message.sender() {
+        bob_group
+            .member(hash_ref)
+            .expect("Error getting key package based on sender information.")
+            .expect("Could not find sender in group.")
+            .clone()
+    } else {
+        unreachable!("Expected sender type to be `Member`.")
+    };
+    // ANCHOR_END: member_lookup
+
     let bob_processed_message = bob_group
         .process_unverified_message(unverified_message, None, backend)
         .expect("Could not process unverified message.");
@@ -895,9 +912,10 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         // Check the message
         assert_eq!(application_message.into_bytes(), message_alice);
         // Check that Alice sent the message
+        assert_eq!(&sender, sender_kp.credential());
         assert_eq!(
             &sender,
-            alice_group.credential().expect("Expected a credential.")
+            alice_group.credential().expect("Expeced a credential.")
         );
     } else {
         unreachable!("Expected an ApplicationMessage.");

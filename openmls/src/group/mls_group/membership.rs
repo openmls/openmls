@@ -259,6 +259,20 @@ impl MlsGroup {
             .collect())
     }
 
+    /// Get the [`KeyPackage`] of a member corresponding to the given
+    /// [`KeyPackageRef`]. Returns `None` if no matching [`KeyPackage`] can be
+    /// found in this group.
+    pub fn member(
+        &self,
+        key_package_ref: &KeyPackageRef,
+    ) -> Result<Option<&KeyPackage>, MlsGroupError> {
+        Ok(self
+            .group
+            .treesync()
+            .leaf_from_id(key_package_ref)?
+            .map(|leaf| leaf.key_package()))
+    }
+
     /// Gets the current list of members, indexed with the leaf index.
     /// This should go away in future when all tests are rewritten to use key
     /// package references instead of leaf indices.
