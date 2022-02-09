@@ -481,7 +481,11 @@ impl CoreGroup {
     ) -> Result<MlsPlaintext, CoreGroupError> {
         // Verify the signature on the plaintext.
         let tree = self.treesync();
-        let sender_index = self.sender_index(verifiable.sender().as_key_package_ref()?)?;
+        let hash_ref = match verifiable.sender() {
+            Sender::Member(member_sender) => member_sender,
+            _ => return Err(CoreGroupError::SenderError(SenderError::NotAMember)),
+        };
+        let sender_index = self.sender_index(hash_ref)?;
 
         let leaf_node = tree
             .leaf(sender_index)
