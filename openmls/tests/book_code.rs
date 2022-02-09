@@ -694,10 +694,10 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 
     // Check that Bob's group is no longer active
     assert!(!bob_group.is_active());
-    let bob_members = bob_group.members().expect("Error getting list of members.");
-    assert_eq!(bob_members.len(), 2);
-    assert_eq!(bob_members[0].credential().identity(), b"Alice");
-    assert_eq!(bob_members[1].credential().identity(), b"Charlie");
+    let members = bob_group.members().expect("Error getting list of members.");
+    assert_eq!(members.len(), 2);
+    assert_eq!(members[0].credential().identity(), b"Alice");
+    assert_eq!(members[1].credential().identity(), b"Charlie");
     // ANCHOR_END: getting_removed
 
     // Make sure that all groups have the same public tree
