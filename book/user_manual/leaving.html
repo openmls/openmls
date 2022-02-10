@@ -135,8 +135,16 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="leaving-a-group"><a class="header" href="#leaving-a-group">Leaving a group</a></h1>
-<p>Members can indicate to the other members of the group that they wish to leave the group by creating and sending a Remove Proposal for their own identifier. It is not possible for the member to create a Commit message that covers this proposal, as that would violate the Post-compromise Security guarantees of MLS because the member would know the epoch secrets of the next epoch.</p>
-<p>After successfully sending the proposal to the DS for fanout, it is safe for the member to tear down the local group state and ignore all subsequent messages for that group.</p>
+<p>Members can indicate to the other members of the group that they wish to leave the group by using the <code>leave_group()</code> function, which creates a remove proposal targeting the member's own leaf. It is not possible for the member to create a Commit message that covers this proposal, as that would violate the Post-compromise Security guarantees of MLS because the member would know the epoch secrets of the next epoch.</p>
+<pre><code class="language-rust no_run noplayground">    let queued_message = bob_group
+        .leave_group(backend)
+        .expect(&quot;Could not leave group&quot;);
+</code></pre>
+<p>After successfully sending the proposal to the DS for fanout, there is still the possibility that the remove proposal is not covered in the following commit. The member leaving the group thus has two options:</p>
+<ul>
+<li>tear down the local group state and ignore all subsequent messages for that group, or</li>
+<li>wait for the commit to come through and process it (see also <a href="remove_members.html#getting-removed-from-a-group">Getting Removed</a>).</li>
+</ul>
 <p>For details on how to create Remove Proposals, see <a href="remove_members.html">Removing members from a group</a>.</p>
 
                     </main>

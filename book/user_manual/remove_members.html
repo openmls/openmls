@@ -155,6 +155,47 @@ Despite the fact that members were only removed in this operation, the Commit me
         .expect(&quot;Could not create proposal to remove Charlie.&quot;);
 </code></pre>
 <p>In this case the the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
+<h2 id="getting-removed-from-a-group"><a class="header" href="#getting-removed-from-a-group">Getting removed from a group</a></h2>
+<p>A member is removed from a group if another member commits to a remove proposal targeting the member's leaf. Once the to-be-removed member merges that commit via <code>merge_staged_commit()</code>, all other proposals in that commit will still be applied but the group will be marked as inactive afterward. The group remains usable, e.g. to examine the membership list after the final commit was processed, but it won't be possible to create or process new messages.</p>
+<pre><code class="language-rust no_run noplayground">    if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
+        let remove_proposal = staged_commit
+            .remove_proposals()
+            .next()
+            .expect(&quot;An unexpected error occurred.&quot;);
+
+        // We construct a RemoveOperation enum to help us interpret the remove operation
+        let remove_operation = RemoveOperation::new(remove_proposal, &amp;bob_group)
+            .expect(&quot;An unexpected Error occurred.&quot;);
+
+        match remove_operation {
+            RemoveOperation::WeLeft =&gt; unreachable!(),
+            // We expect this variant, since Bob was removed by Charlie
+            RemoveOperation::WeWereRemovedBy(member) =&gt; {
+                assert!(matches!(member, Sender::Member(member) if member == charlies_old_kpr));
+            }
+            RemoveOperation::TheyLeft(_) =&gt; unreachable!(),
+            RemoveOperation::TheyWereRemovedBy(_) =&gt; unreachable!(),
+            RemoveOperation::WeRemovedThem(_) =&gt; unreachable!(),
+        }
+
+        // Merge staged Commit
+        bob_group
+            .merge_staged_commit(*staged_commit)
+            .expect(&quot;Could not merge Commit.&quot;);
+    } else {
+        unreachable!(&quot;Expected a StagedCommit.&quot;);
+    }
+
+    // Check we didn't receive a Welcome message
+    assert!(welcome_option.is_none());
+
+    // Check that Bob's group is no longer active
+    assert!(!bob_group.is_active());
+    let members = bob_group.members().expect(&quot;Error getting list of members.&quot;);
+    assert_eq!(members.len(), 2);
+    assert_eq!(members[0].credential().identity(), b&quot;Alice&quot;);
+    assert_eq!(members[1].credential().identity(), b&quot;Charlie&quot;);
+</code></pre>
 
                     </main>
 

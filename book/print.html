@@ -314,6 +314,47 @@ Despite the fact that members were only removed in this operation, the Commit me
         .expect(&quot;Could not create proposal to remove Charlie.&quot;);
 </code></pre>
 <p>In this case the the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
+<h2 id="getting-removed-from-a-group"><a class="header" href="#getting-removed-from-a-group">Getting removed from a group</a></h2>
+<p>A member is removed from a group if another member commits to a remove proposal targeting the member's leaf. Once the to-be-removed member merges that commit via <code>merge_staged_commit()</code>, all other proposals in that commit will still be applied but the group will be marked as inactive afterward. The group remains usable, e.g. to examine the membership list after the final commit was processed, but it won't be possible to create or process new messages.</p>
+<pre><code class="language-rust no_run noplayground">    if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
+        let remove_proposal = staged_commit
+            .remove_proposals()
+            .next()
+            .expect(&quot;An unexpected error occurred.&quot;);
+
+        // We construct a RemoveOperation enum to help us interpret the remove operation
+        let remove_operation = RemoveOperation::new(remove_proposal, &amp;bob_group)
+            .expect(&quot;An unexpected Error occurred.&quot;);
+
+        match remove_operation {
+            RemoveOperation::WeLeft =&gt; unreachable!(),
+            // We expect this variant, since Bob was removed by Charlie
+            RemoveOperation::WeWereRemovedBy(member) =&gt; {
+                assert!(matches!(member, Sender::Member(member) if member == charlies_old_kpr));
+            }
+            RemoveOperation::TheyLeft(_) =&gt; unreachable!(),
+            RemoveOperation::TheyWereRemovedBy(_) =&gt; unreachable!(),
+            RemoveOperation::WeRemovedThem(_) =&gt; unreachable!(),
+        }
+
+        // Merge staged Commit
+        bob_group
+            .merge_staged_commit(*staged_commit)
+            .expect(&quot;Could not merge Commit.&quot;);
+    } else {
+        unreachable!(&quot;Expected a StagedCommit.&quot;);
+    }
+
+    // Check we didn't receive a Welcome message
+    assert!(welcome_option.is_none());
+
+    // Check that Bob's group is no longer active
+    assert!(!bob_group.is_active());
+    let members = bob_group.members().expect(&quot;Error getting list of members.&quot;);
+    assert_eq!(members.len(), 2);
+    assert_eq!(members[0].credential().identity(), b&quot;Alice&quot;);
+    assert_eq!(members[1].credential().identity(), b&quot;Charlie&quot;);
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="updating-own-key-package"><a class="header" href="#updating-own-key-package">Updating own key package</a></h1>
 <h2 id="immediate-operation-2"><a class="header" href="#immediate-operation-2">Immediate operation</a></h2>
 <p>Members can update their own leaf key package atomically with the <code>.self_update()</code> function.
@@ -338,8 +379,16 @@ Despite the fact that the member only updates its own key package in this operat
 </code></pre>
 <p>In this case the the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="leaving-a-group"><a class="header" href="#leaving-a-group">Leaving a group</a></h1>
-<p>Members can indicate to the other members of the group that they wish to leave the group by creating and sending a Remove Proposal for their own identifier. It is not possible for the member to create a Commit message that covers this proposal, as that would violate the Post-compromise Security guarantees of MLS because the member would know the epoch secrets of the next epoch.</p>
-<p>After successfully sending the proposal to the DS for fanout, it is safe for the member to tear down the local group state and ignore all subsequent messages for that group.</p>
+<p>Members can indicate to the other members of the group that they wish to leave the group by using the <code>leave_group()</code> function, which creates a remove proposal targeting the member's own leaf. It is not possible for the member to create a Commit message that covers this proposal, as that would violate the Post-compromise Security guarantees of MLS because the member would know the epoch secrets of the next epoch.</p>
+<pre><code class="language-rust no_run noplayground">    let queued_message = bob_group
+        .leave_group(backend)
+        .expect(&quot;Could not leave group&quot;);
+</code></pre>
+<p>After successfully sending the proposal to the DS for fanout, there is still the possibility that the remove proposal is not covered in the following commit. The member leaving the group thus has two options:</p>
+<ul>
+<li>tear down the local group state and ignore all subsequent messages for that group, or</li>
+<li>wait for the commit to come through and process it (see also <a href="user_manual/remove_members.html#getting-removed-from-a-group">Getting Removed</a>).</li>
+</ul>
 <p>For details on how to create Remove Proposals, see <a href="user_manual/remove_members.html">Removing members from a group</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="creating-application-messages"><a class="header" href="#creating-application-messages">Creating application messages</a></h1>
 <p>Application messages are created from byte slices with the <code>.create_message()</code> function:</p>
