@@ -1,24 +1,85 @@
-//! Key Packages.
+//! # Key Packages.
 //!
-//! In order to facilitate asynchronous addition of clients to a group,
-//! it is necessary to pre-publish key packages that provide some public
-//! information about a user. KeyPackage structures provide information
-//! about a client that any existing member can use to add this client
-//! to the group asynchronously. A KeyPackage object specifies a ciphersuite
-//! that the client supports, as well as providing a public key that others
-//! can use for key agreement. The identity arising from the credential,
-//! together with the endpoint_id in the KeyPackage serve to uniquely identify
-//! a client in a group. When used as InitKeys, KeyPackages are intended to be
-//! used only once and SHOULD NOT be reused except in case of last
-//! resort. (See Section 15.4). Clients MAY generate and publish multiple InitKeys
-//! to support multiple ciphersuites.
+//! Key packages are pre-published public keys that provide some information
+//! about a user in order to facilitate the asynchronous addition of clients to
+//! a group.
+//!
+//! A key package object specifies:
+//!
+//! - A **protocol version** and ciphersuite that the client supports
+//! - A **public key** that others can use for key agreement
+//! - A **credential** authenticating the client's application-layer identity
+//! - A list of **extensions** for the key package (see [Extensions](`mod@crate::extensions`) for details)
+//!
+//! Key packages are intended to be used only once and SHOULD NOT be reused
+//! except in case of last resort, i.e. if there's no other key package available.
+//! Clients MAY generate and publish multiple KeyPackages to support multiple
+//! cipher suites.
+//!
+//! The value for HPKE init key MUST be a public key for the asymmetric
+//! encryption scheme defined by cipher suite, and it MUST be unique among the
+//! set of key packages created by this client.
+//! The whole structure is signed using the client's signature key.
+//! A key package object with an invalid signature field is considered malformed.
+//!
+//! ## Creating key package bundles
+//!
+//! Key package bundles are key packages including their private key.
+//! A key package bundle can be created as follows:
+//!
+//! ```
+//! use openmls::prelude::*;
+//! use openmls_rust_crypto::OpenMlsRustCrypto;
+//!
+//! let ciphersuite = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+//! let backend = OpenMlsRustCrypto::default();
+//!
+//! let credential_bundle = CredentialBundle::new(
+//!     b"Sasha".to_vec(),
+//!     CredentialType::Basic,
+//!     SignatureScheme::from(ciphersuite),
+//!     &backend,
+//! )
+//! .expect("Error creating credential.");
+//! let key_package_bundle =
+//!     KeyPackageBundle::new(&[ciphersuite], &credential_bundle, &backend, vec![])
+//!         .expect("Error creating key package bundle.");
+//! ```
+//!
+//! See [`KeyPackageBundle`] for more details and other ways to create key
+//! package bundles.
+//!
+//! ## Loading key packages
+//!
+//! When getting key packages from another user the serialized bytes are parsed
+//! as follows;
+//!
+//! ```
+//! use openmls::prelude::*;
+//! use openmls::test_utils::hex_to_bytes;
+//! use openmls_rust_crypto::OpenMlsRustCrypto;
+//!
+//! let key_package_bytes = hex_to_bytes(
+//!         "0100010020687A9693D4FADC951B999E6EDD80B80F11747DE30620C75ED0A5F41E32\
+//!          CB064C00010008000000000000000208070020AEF756C7D75DE1BEACA7D2DD17FA7A\
+//!          C36F56B9BA1F7DF019BCB49A4138CEBCCB000000360002000000100000000061A0B6\
+//!          2D000000006B086B9D00010000001A0201C8020001060001000200030C0001000200\
+//!          030004000500080040961F9EC3D3F1BFCE673FEF39AB8BE6A8FF4D0BA40B3AA8A0DC\
+//!          50CDE22482DC30A594EDDEC398F0966C3AFD67135007A6875F9873F4B521DF28827F\
+//!          6A4EFF1704");
+//! let key_package = KeyPackage::try_from(key_package_bytes.as_slice());
+//! ```
+//!
+//! See [`KeyPackage`] for more details on how to use key packages.
 use log::error;
 use openmls_traits::crypto::OpenMlsCrypto;
 use openmls_traits::types::CryptoError;
 use openmls_traits::types::HpkeKeyPair;
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsCryptoProvider;
-use tls_codec::{Serialize as TlsSerializeTrait, TlsSize, TlsVecU32};
+use tls_codec::{
+    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsSize, TlsVecU32,
+};
 
 use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, signable::*, *},
@@ -48,7 +109,7 @@ mod test_key_packages;
 /// Any modification must happen on this unsigned struct. Use `sign` to get a
 /// signed key package.
 #[derive(Debug, Clone, PartialEq, TlsSize)]
-pub struct KeyPackagePayload {
+struct KeyPackagePayload {
     protocol_version: ProtocolVersion,
     ciphersuite: &'static Ciphersuite,
     hpke_init_key: HpkePublicKey,
@@ -106,26 +167,26 @@ impl KeyPackagePayload {
     }
 
     /// Add (or replace) an extension to the KeyPackage.
-    pub fn add_extension(&mut self, extension: Extension) {
+    #[cfg(any(feature = "test-utils", test))]
+    fn add_extension(&mut self, extension: Extension) {
         self.remove_extension(extension.extension_type());
         self.extensions.push(extension);
     }
-
-    /// Get extensions of the KeyPackage.
-    pub fn extensions(&self) -> &[Extension] {
-        self.extensions.as_slice()
-    }
 }
 
-/// A Key Package.
-///
-/// In order to facilitate asynchronous addition of clients to a group,
-/// it is possible to pre-publish key packages that provide some public
-/// information about a user.
+/// The key package struct.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KeyPackage {
     payload: KeyPackagePayload,
     signature: Signature,
+}
+
+impl TryFrom<&[u8]> for KeyPackage {
+    type Error = tls_codec::Error;
+
+    fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
+        Self::tls_deserialize(&mut &*bytes)
+    }
 }
 
 impl PartialEq for KeyPackage {
@@ -156,7 +217,7 @@ impl Verifiable for KeyPackage {
 const MANDATORY_EXTENSIONS: [ExtensionType; 2] =
     [ExtensionType::Capabilities, ExtensionType::Lifetime];
 
-/// Public `KeyPackage` functions.
+// Public `KeyPackage` functions.
 impl KeyPackage {
     /// Verify that this key package is valid:
     /// * verify that the signature on this key package is valid
@@ -206,9 +267,13 @@ impl KeyPackage {
         })
     }
 
-    /// Get the ID of this key package as byte slice.
-    /// Returns an error if no Key ID extension is present.
-    pub fn key_id(&self) -> Result<&[u8], KeyPackageError> {
+    /// Get the external ID of this key package as byte slice.
+    /// See [`ExternalKeyIdExtension`](`crate::extensions::ExternalKeyIdExtension`)
+    /// for more details on the external key ID extension.
+    ///
+    ///
+    /// Returns a [`KeyPackageError`] if no external key ID extension is present.
+    pub fn external_key_id(&self) -> Result<&[u8], KeyPackageError> {
         if let Some(key_id_ext) = self.extension_with_type(ExtensionType::ExternalKeyId) {
             return Ok(key_id_ext.as_external_key_id_extension()?.as_slice());
         }
@@ -237,7 +302,7 @@ impl KeyPackage {
         Ok(())
     }
 
-    /// Get a reference to the credential.
+    /// Get a reference to the [`Credential`].
     pub fn credential(&self) -> &Credential {
         &self.payload.credential
     }
@@ -260,12 +325,19 @@ impl KeyPackage {
     }
 
     /// Compute the [`KeyPackageRef`] of this [`KeyPackage`].
+    /// The [`KeyPackageRef`] is used to identify a member in a group (leaf in
+    /// the tree) within MLS.
     pub fn hash_ref(&self, backend: &impl OpenMlsCrypto) -> Result<KeyPackageRef, KeyPackageError> {
         Ok(KeyPackageRef::new(
             &self.tls_serialize_detached()?,
             self.payload.ciphersuite,
             backend,
         )?)
+    }
+
+    /// Get the [`CiphersuiteName`].
+    pub fn ciphersuite_name(&self) -> CiphersuiteName {
+        self.payload.ciphersuite.name()
     }
 }
 
@@ -326,15 +398,18 @@ impl KeyPackage {
     pub(crate) fn protocol_version(&self) -> ProtocolVersion {
         self.payload.protocol_version
     }
-
-    /// Get the `CiphersuiteName`.
-    pub fn ciphersuite_name(&self) -> CiphersuiteName {
-        self.payload.ciphersuite.name()
-    }
 }
 
 /// Payload of the [`KeyPackageBundle`].
+#[cfg(any(feature = "test-utils", test))]
 pub struct KeyPackageBundlePayload {
+    key_package_payload: KeyPackagePayload,
+    private_key: HpkePrivateKey,
+    leaf_secret: Secret,
+}
+
+#[cfg(not(any(feature = "test-utils", test)))]
+pub(crate) struct KeyPackageBundlePayload {
     key_package_payload: KeyPackagePayload,
     private_key: HpkePrivateKey,
     leaf_secret: Secret,
@@ -387,6 +462,7 @@ impl KeyPackageBundlePayload {
     }
 
     /// Add (or replace) an extension to the KeyPackage.
+    #[cfg(any(feature = "test-utils", test))]
     pub fn add_extension(&mut self, extension: Extension) {
         self.key_package_payload.add_extension(extension)
     }
@@ -416,7 +492,8 @@ impl SignedStruct<KeyPackageBundlePayload> for KeyPackageBundle {
     }
 }
 
-/// Contains a [`KeyPackage`], the correponding `HpkePrivateKey` and a leaf secret.
+/// A [`KeyPackageBundle`] contains a [`KeyPackage`], the corresponding private
+/// key, and a leaf secret.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct KeyPackageBundle {
@@ -435,14 +512,17 @@ impl From<KeyPackageBundle> for KeyPackageBundlePayload {
     }
 }
 
-/// Public `KeyPackageBundle` functions.
+// Public `KeyPackageBundle` functions.
 impl KeyPackageBundle {
-    /// Create a new `KeyPackageBundle` with a fresh `HpkeKeyPair`.
-    /// See `new_with_keypair` and `new_with_version` for details.
-    /// This key package will have the default MLS version. Use `new_with_version`
+    /// Create a new [`KeyPackageBundle`] with a fresh key pair.
+    /// This key package will have the default MLS version.
+    /// Use [`KeyPackageBundle::new_with_version`]
     /// to get a key package bundle for a specific MLS version.
     ///
-    /// Returns a new `KeyPackageBundle` or a `KeyPackageError`.
+    /// Note that the capabilities extension gets added automatically, based on
+    /// the configuration.
+    ///
+    /// Returns a new [`KeyPackageBundle`] or a [`KeyPackageError`].
     pub fn new(
         ciphersuites: &[CiphersuiteName],
         credential_bundle: &CredentialBundle,
@@ -458,14 +538,16 @@ impl KeyPackageBundle {
         )
     }
 
-    /// Create a new `KeyPackageBundle` with
-    /// * a fresh `HpkeKeyPair`
+    /// Create a new [`KeyPackageBundle`] with
+    /// * a fresh key pair
     /// * the provided MLS version
     /// * the first cipher suite in the `ciphersuites` slice
     /// * the provided `extensions`
-    /// See `new_with_keypair` for details.
     ///
-    /// Returns a new `KeyPackageBundle` or a `KeyPackageError`.
+    /// Note that the capabilities extension gets added automatically, based on
+    /// the configuration.
+    ///
+    /// Returns a new [`KeyPackageBundle`] or a [`KeyPackageError`].
     pub fn new_with_version(
         version: ProtocolVersion,
         ciphersuites: &[CiphersuiteName],
@@ -490,8 +572,8 @@ impl KeyPackageBundle {
         )
     }
 
-    /// Create a new `KeyPackageBundle` for the given `ciphersuite`, `identity`,
-    /// and `extensions`, using the given HPKE `key_pair`.
+    /// Create a new [`KeyPackageBundle`] for the given `ciphersuite`, `identity`,
+    /// and `extensions`, using the given [`HpkeKeyPair`].
     ///
     /// Note that the capabilities extension gets added automatically, based on
     /// the configuration. The ciphersuite for this key package bundle is the
@@ -499,10 +581,10 @@ impl KeyPackageBundle {
     /// included in the extensions, its supported ciphersuites have to match the
     /// `ciphersuites` list.
     ///
-    /// Returns an `DuplicateExtension` error if `extensions` contains multiple
-    /// extensions of the same type.
+    /// Returns an [`KeyPackageError::DuplicateExtension`] error if [`extensions`]
+    /// contains multiple extensions of the same type.
     ///
-    /// Returns a new `KeyPackageBundle`.
+    /// Returns a new [`KeyPackageBundle`].
     pub fn new_with_keypair(
         ciphersuites: &[CiphersuiteName],
         backend: &impl OpenMlsCryptoProvider,
@@ -587,7 +669,7 @@ impl KeyPackageBundle {
         })
     }
 
-    /// Get a reference to the `KeyPackage`.
+    /// Get a reference to the public part of this bundle, i.e. the [`KeyPackage`].
     pub fn key_package(&self) -> &KeyPackage {
         &self.key_package
     }
@@ -642,8 +724,8 @@ impl KeyPackageBundle {
         &self.private_key
     }
 
-    /// Get a reference to the `leaf_secret`.
-    pub fn leaf_secret(&self) -> &Secret {
+    /// Get a reference to the leaf secret associated with this bundle.
+    pub(crate) fn leaf_secret(&self) -> &Secret {
         &self.leaf_secret
     }
 }
