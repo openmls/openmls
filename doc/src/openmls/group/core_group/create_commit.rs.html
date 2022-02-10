@@ -418,6 +418,9 @@
 <span id="417">417</span>
 <span id="418">418</span>
 <span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -751,8 +754,11 @@
         )<span class="question-mark">?</span>;
 
         <span class="kw">let</span> (<span class="ident">provisional_group_epoch_secrets</span>, <span class="ident">provisional_message_secrets</span>) <span class="op">=</span>
-            <span class="ident">provisional_epoch_secrets</span>
-                .<span class="ident">split_secrets</span>(<span class="ident">serialized_provisional_group_context</span>, <span class="ident">diff</span>.<span class="ident">leaf_count</span>());
+            <span class="ident">provisional_epoch_secrets</span>.<span class="ident">split_secrets</span>(
+                <span class="ident">serialized_provisional_group_context</span>,
+                <span class="ident">diff</span>.<span class="ident">leaf_count</span>(),
+                <span class="ident">own_leaf_index</span>,
+            );
 
         <span class="kw">let</span> <span class="ident">staged_commit_state</span> <span class="op">=</span> <span class="ident">MemberStagedCommitState::new</span>(
             <span class="ident">provisional_group_context</span>,

@@ -444,6 +444,10 @@
 <span id="443">443</span>
 <span id="444">444</span>
 <span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync</span>::{<span class="ident">diff::StagedTreeSyncDiff</span>, <span class="ident">treekem::DecryptPathParams</span>};
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::proposals</span>::{
@@ -744,8 +748,12 @@
         }
 
         <span class="kw">let</span> (<span class="ident">provisional_group_epoch_secrets</span>, <span class="ident">provisional_message_secrets</span>) <span class="op">=</span>
-            <span class="ident">provisional_epoch_secrets</span>
-                .<span class="ident">split_secrets</span>(<span class="ident">serialized_provisional_group_context</span>, <span class="ident">diff</span>.<span class="ident">leaf_count</span>());
+            <span class="ident">provisional_epoch_secrets</span>.<span class="ident">split_secrets</span>(
+                <span class="ident">serialized_provisional_group_context</span>,
+                <span class="ident">diff</span>.<span class="ident">leaf_count</span>(),
+                <span class="comment">// The index should be the same on TreeSync and Diff.</span>
+                <span class="ident">diff</span>.<span class="ident">own_leaf_index</span>(),
+            );
 
         <span class="comment">// Make the diff a staged diff. This finalizes the diff and no more changes can be applied to it.</span>
         <span class="kw">let</span> <span class="ident">staged_diff</span> <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">into_staged_diff</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)<span class="question-mark">?</span>;

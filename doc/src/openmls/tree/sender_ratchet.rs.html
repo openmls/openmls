@@ -203,6 +203,65 @@
 <span id="202">202</span>
 <span id="203">203</span>
 <span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Functions in this module should never panic. However, if there is a bug in</span>
@@ -210,12 +269,16 @@
 <span class="doccomment">//! This means that some functions that are not expected to fail and throw an</span>
 <span class="doccomment">//! error, will still return a `Result` since they may throw a `LibraryError`.</span>
 
+<span class="kw">use</span> <span class="ident">std::collections::VecDeque</span>;
+
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite</span>::{<span class="ident">AeadNonce</span>, <span class="kw-2">*</span>};
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree</span>::{<span class="ident">index::SecretTreeLeafIndex</span>, <span class="ident">secret_tree</span>::<span class="kw-2">*</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree::secret_tree</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
-<span class="doccomment">/// Stores the configuration parameters for sender ratchets.</span>
+<span class="doccomment">/// The generation of a given [`SenderRatchet`].</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type</span> <span class="ident">Generation</span> <span class="op">=</span> <span class="ident">u32</span>;
+<span class="doccomment">/// Stores the configuration parameters for [`DecryptionRatchet`]s.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// **Parameters**</span>
 <span class="doccomment">///</span>
@@ -229,25 +292,25 @@
 <span class="doccomment">/// drops application messages. The default value is 1000.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SenderRatchetConfiguration</span> {
-    <span class="ident">out_of_order_tolerance</span>: <span class="ident">u32</span>,
-    <span class="ident">maximum_forward_distance</span>: <span class="ident">u32</span>,
+    <span class="ident">out_of_order_tolerance</span>: <span class="ident">Generation</span>,
+    <span class="ident">maximum_forward_distance</span>: <span class="ident">Generation</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">SenderRatchetConfiguration</span> {
     <span class="doccomment">/// Create a new configuration</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">out_of_order_tolerance</span>: <span class="ident">u32</span>, <span class="ident">maximum_forward_distance</span>: <span class="ident">u32</span>) -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">out_of_order_tolerance</span>: <span class="ident">Generation</span>, <span class="ident">maximum_forward_distance</span>: <span class="ident">Generation</span>) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">out_of_order_tolerance</span>,
             <span class="ident">maximum_forward_distance</span>,
         }
     }
     <span class="doccomment">/// Get a reference to the sender ratchet configuration&#39;s out of order tolerance.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">out_of_order_tolerance</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u32</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">out_of_order_tolerance</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Generation</span> {
         <span class="self">self</span>.<span class="ident">out_of_order_tolerance</span>
     }
 
     <span class="doccomment">/// Get a reference to the sender ratchet configuration&#39;s maximum forward distance.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">maximum_forward_distance</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u32</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">maximum_forward_distance</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Generation</span> {
         <span class="self">self</span>.<span class="ident">maximum_forward_distance</span>
     }
 }
@@ -258,153 +321,208 @@
     }
 }
 
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">RatchetSecrets</span> <span class="op">=</span> (<span class="ident">AeadKey</span>, <span class="ident">AeadNonce</span>);
+<span class="doccomment">/// The key material derived from a [`RatchetSecret`] meant for use with a</span>
+<span class="doccomment">/// nonce-based symmetric encryption scheme.</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type</span> <span class="ident">RatchetKeyMaterial</span> <span class="op">=</span> (<span class="ident">AeadKey</span>, <span class="ident">AeadNonce</span>);
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>), <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SenderRatchet</span> {
-    <span class="ident">index</span>: <span class="ident">SecretTreeLeafIndex</span>,
-    <span class="ident">generation</span>: <span class="ident">u32</span>,
-    <span class="ident">past_secrets</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Secret</span><span class="op">&gt;</span>,
+<span class="doccomment">/// A ratchet that can output key material either for encryption</span>
+<span class="doccomment">/// ([`EncryptionRatchet`](SenderRatchet)) or decryption</span>
+<span class="doccomment">/// ([`DecryptionRatchet`]). A [`DecryptionRatchet`] can be configured with an</span>
+<span class="doccomment">/// `out_of_order_tolerance` and a `maximum_forward_distance` (see</span>
+<span class="doccomment">/// [`SenderRatchetConfiguration`]) while an Encryption Ratchet never keeps past</span>
+<span class="doccomment">/// secrets around.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>), <span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Clone</span>))]</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">SenderRatchet</span> {
+    <span class="ident">EncryptionRatchet</span>(<span class="ident">RatchetSecret</span>),
+    <span class="ident">DecryptionRatchet</span>(<span class="ident">DecryptionRatchet</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">SenderRatchet</span> {
-    <span class="doccomment">/// Creates e new SenderRatchet</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">index</span>: <span class="ident">SecretTreeLeafIndex</span>, <span class="ident">secret</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">Self</span> {
-            <span class="ident">index</span>,
-            <span class="ident">generation</span>: <span class="number">0</span>,
-            <span class="ident">past_secrets</span>: <span class="macro">vec!</span>[<span class="ident">secret</span>.<span class="ident">clone</span>()],
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">generation</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Generation</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">SenderRatchet::EncryptionRatchet</span>(<span class="ident">enc_ratchet</span>) =&gt; <span class="ident">enc_ratchet</span>.<span class="ident">generation</span>(),
+            <span class="ident">SenderRatchet::DecryptionRatchet</span>(<span class="ident">dec_ratchet</span>) =&gt; <span class="ident">dec_ratchet</span>.<span class="ident">generation</span>(),
         }
     }
+}
+
+<span class="doccomment">/// The core of both types of [`SenderRatchet`]. It contains the current head of</span>
+<span class="doccomment">/// the ratchet chain, as well as its current [`Generation`]. It can be</span>
+<span class="doccomment">/// initialized with a given secret and then ratcheted forward, outputting</span>
+<span class="doccomment">/// [`RatchetKeyMaterial`] and increasing its [`Generation`] each time.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Default</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>), <span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Clone</span>))]</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">RatchetSecret</span> {
+    <span class="ident">secret</span>: <span class="ident">Secret</span>,
+    <span class="ident">generation</span>: <span class="ident">Generation</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">RatchetSecret</span> {
+    <span class="doccomment">/// Create an initial [`RatchetSecret`] with `generation = 0` from the given</span>
+    <span class="doccomment">/// [`Secret`].</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">initial_ratchet_secret</span>(<span class="ident">secret</span>: <span class="ident">Secret</span>) -&gt; <span class="self">Self</span> {
+        <span class="self">Self</span> {
+            <span class="ident">secret</span>,
+            <span class="ident">generation</span>: <span class="number">0</span>,
+        }
+    }
+
+    <span class="doccomment">/// Return the generation of this [`RatchetSecret`].</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">generation</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Generation</span> {
+        <span class="self">self</span>.<span class="ident">generation</span>
+    }
+
+    <span class="doccomment">/// Consume this [`RatchetSecret`] to derive a pair of [`RatchetSecrets`],</span>
+    <span class="doccomment">/// as well as the [`RatchetSecret`] of the next generation and return both.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ratchet_forward</span>(
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Generation</span>, <span class="ident">RatchetKeyMaterial</span>), <span class="ident">SecretTreeError</span><span class="op">&gt;</span> {
+        <span class="comment">// Check if the generation is getting too large.</span>
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">generation</span> <span class="op">==</span> <span class="ident">u32::MAX</span> {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SecretTreeError::RatchetTooLong</span>);
+        }
+        <span class="kw">let</span> <span class="ident">nonce</span> <span class="op">=</span> <span class="ident">derive_tree_secret</span>(
+            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>,
+            <span class="string">&quot;nonce&quot;</span>,
+            <span class="self">self</span>.<span class="ident">generation</span>,
+            <span class="ident">ciphersuite</span>.<span class="ident">aead_nonce_length</span>(),
+            <span class="ident">backend</span>,
+        )<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">derive_tree_secret</span>(
+            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>,
+            <span class="string">&quot;key&quot;</span>,
+            <span class="self">self</span>.<span class="ident">generation</span>,
+            <span class="ident">ciphersuite</span>.<span class="ident">aead_key_length</span>(),
+            <span class="ident">backend</span>,
+        )<span class="question-mark">?</span>;
+        <span class="self">self</span>.<span class="ident">secret</span> <span class="op">=</span> <span class="ident">derive_tree_secret</span>(
+            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">secret</span>,
+            <span class="string">&quot;secret&quot;</span>,
+            <span class="self">self</span>.<span class="ident">generation</span>,
+            <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>(),
+            <span class="ident">backend</span>,
+        )<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">generation</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">generation</span>;
+        <span class="self">self</span>.<span class="ident">generation</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
+        <span class="prelude-val">Ok</span>((
+            <span class="ident">generation</span>,
+            (<span class="ident">AeadKey::from_secret</span>(<span class="ident">key</span>), <span class="ident">AeadNonce::from_secret</span>(<span class="ident">nonce</span>)),
+        ))
+    }
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">set_generation</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">generation</span>: <span class="ident">Generation</span>) {
+        <span class="self">self</span>.<span class="ident">generation</span> <span class="op">=</span> <span class="ident">generation</span>
+    }
+}
+
+<span class="doccomment">/// [`SenderRatchet`] used to derive key material for decryption. It keeps the</span>
+<span class="doccomment">/// [`RatchetKeyMaterial`] of epochs around until they are retrieved. This</span>
+<span class="doccomment">/// behaviour can be configured via the `out_of_order_tolerance` and</span>
+<span class="doccomment">/// `maximum_forward_distance` of the given [`SenderRatchetConfiguration`].</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>), <span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Clone</span>))]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DecryptionRatchet</span> {
+    <span class="ident">past_secrets</span>: <span class="ident">VecDeque</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">RatchetKeyMaterial</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">ratchet_head</span>: <span class="ident">RatchetSecret</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">DecryptionRatchet</span> {
+    <span class="doccomment">/// Creates e new SenderRatchet</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">secret</span>: <span class="ident">Secret</span>) -&gt; <span class="self">Self</span> {
+        <span class="self">Self</span> {
+            <span class="ident">past_secrets</span>: <span class="ident">VecDeque::new</span>(),
+            <span class="ident">ratchet_head</span>: <span class="ident">RatchetSecret::initial_ratchet_secret</span>(<span class="ident">secret</span>.<span class="ident">clone</span>()),
+        }
+    }
+
+    <span class="doccomment">/// Remove elements from the `past_secrets` queue until it is within the</span>
+    <span class="doccomment">/// bounds determined by the [`SenderRatchetConfiguration`].</span>
+    <span class="kw">fn</span> <span class="ident">prune_past_secrets</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">configuration</span>: <span class="kw-2">&amp;</span><span class="ident">SenderRatchetConfiguration</span>) {
+        <span class="self">self</span>.<span class="ident">past_secrets</span>
+            .<span class="ident">truncate</span>(<span class="ident">configuration</span>.<span class="ident">out_of_order_tolerance</span>() <span class="kw">as</span> <span class="ident">usize</span>)
+    }
+
+    <span class="doccomment">/// Get the generation of the ratchet head.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">generation</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Generation</span> {
+        <span class="self">self</span>.<span class="ident">ratchet_head</span>.<span class="ident">generation</span>()
+    }
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ratchet_secret_mut</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut</span> <span class="ident">RatchetSecret</span> {
+        <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">ratchet_head</span>
+    }
+
     <span class="doccomment">/// Gets a secret from the SenderRatchet. Returns an error if the generation</span>
     <span class="doccomment">/// is out of bound.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">secret_for_decryption</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">generation</span>: <span class="ident">u32</span>,
+        <span class="ident">generation</span>: <span class="ident">Generation</span>,
         <span class="ident">configuration</span>: <span class="kw-2">&amp;</span><span class="ident">SenderRatchetConfiguration</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RatchetSecrets</span>, <span class="ident">SecretTreeError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RatchetKeyMaterial</span>, <span class="ident">SecretTreeError</span><span class="op">&gt;</span> {
         <span class="comment">// If generation is too distant in the future</span>
-        <span class="kw">if</span> <span class="ident">generation</span> <span class="op">&gt;</span> (<span class="self">self</span>.<span class="ident">generation</span> <span class="op">+</span> <span class="ident">configuration</span>.<span class="ident">maximum_forward_distance</span>()) {
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">generation</span>() <span class="op">&lt;</span> <span class="ident">u32::MAX</span> <span class="op">-</span> <span class="ident">configuration</span>.<span class="ident">maximum_forward_distance</span>()
+            <span class="op">&amp;&amp;</span> <span class="ident">generation</span> <span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">generation</span>() <span class="op">+</span> <span class="ident">configuration</span>.<span class="ident">maximum_forward_distance</span>()
+        {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SecretTreeError::TooDistantInTheFuture</span>);
         }
         <span class="comment">// If generation id too distant in the past</span>
-        <span class="kw">if</span> <span class="ident">generation</span> <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">generation</span>
-            <span class="op">&amp;&amp;</span> (<span class="self">self</span>.<span class="ident">generation</span> <span class="op">-</span> <span class="ident">generation</span>) <span class="op">&gt;</span><span class="op">=</span> <span class="ident">configuration</span>.<span class="ident">out_of_order_tolerance</span>()
+        <span class="kw">if</span> <span class="ident">generation</span> <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">generation</span>()
+            <span class="op">&amp;&amp;</span> (<span class="self">self</span>.<span class="ident">generation</span>() <span class="op">-</span> <span class="ident">generation</span>) <span class="op">&gt;</span> <span class="ident">configuration</span>.<span class="ident">out_of_order_tolerance</span>()
         {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SecretTreeError::TooDistantInThePast</span>);
         }
-        <span class="comment">// If generation is potentially within the window</span>
-        <span class="kw">if</span> <span class="ident">generation</span> <span class="op">&lt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">generation</span> {
-            <span class="comment">// If the requested generation is within the window of past secrets, we should get a positive index</span>
-            <span class="kw">let</span> <span class="ident">window_index</span> <span class="op">=</span>
-                <span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">len</span>() <span class="kw">as</span> <span class="ident">i32</span> <span class="op">-</span> ((<span class="self">self</span>.<span class="ident">generation</span> <span class="op">-</span> <span class="ident">generation</span>) <span class="kw">as</span> <span class="ident">i32</span>) <span class="op">-</span> <span class="number">1</span>;
-            <span class="comment">// We might not have the key material (e.g. we might have discarded it when generating an encryption secret)</span>
+        <span class="comment">// If generation is the one the ratchet is currently at or in the future</span>
+        <span class="kw">if</span> <span class="ident">generation</span> <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">generation</span>() {
+            <span class="comment">// Ratchet the chain forward as far as necessary</span>
+            <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..(<span class="ident">generation</span> <span class="op">-</span> <span class="self">self</span>.<span class="ident">generation</span>()) {
+                <span class="comment">// Derive the key material</span>
+                <span class="kw">let</span> <span class="ident">ratchet_secrets</span> <span class="op">=</span> {
+                    <span class="self">self</span>.<span class="ident">ratchet_head</span>
+                        .<span class="ident">ratchet_forward</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)
+                        .<span class="ident">map</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">key_material</span>)<span class="op">|</span> <span class="ident">key_material</span>)
+                }<span class="question-mark">?</span>;
+                <span class="comment">// Add it to the front of the queue</span>
+                <span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">push_front</span>(<span class="prelude-val">Some</span>(<span class="ident">ratchet_secrets</span>));
+            }
+            <span class="kw">let</span> <span class="ident">ratchet_secrets</span> <span class="op">=</span> {
+                <span class="self">self</span>.<span class="ident">ratchet_head</span>
+                    .<span class="ident">ratchet_forward</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)
+                    .<span class="ident">map</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">key_material</span>)<span class="op">|</span> <span class="ident">key_material</span>)
+            }<span class="question-mark">?</span>;
+            <span class="comment">// Add an entry to the past secrets queue to keep indexing consistent.</span>
+            <span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">push_front</span>(<span class="prelude-val">None</span>);
+            <span class="self">self</span>.<span class="ident">prune_past_secrets</span>(<span class="ident">configuration</span>);
+            <span class="prelude-val">Ok</span>(<span class="ident">ratchet_secrets</span>)
+        } <span class="kw">else</span> {
+            <span class="comment">// If the requested generation is within the window of past secrets,</span>
+            <span class="comment">// we should get a positive index.</span>
+            <span class="kw">let</span> <span class="ident">window_index</span> <span class="op">=</span> ((<span class="self">self</span>.<span class="ident">generation</span>() <span class="op">-</span> <span class="ident">generation</span>) <span class="kw">as</span> <span class="ident">i32</span>) <span class="op">-</span> <span class="number">1</span>;
+            <span class="comment">// We might not have the key material (e.g. we might have discarded</span>
+            <span class="comment">// it when generating an encryption secret).</span>
             <span class="kw">let</span> <span class="ident">index</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">window_index</span> <span class="op">&gt;</span><span class="op">=</span> <span class="number">0</span> {
                 <span class="ident">window_index</span> <span class="kw">as</span> <span class="ident">usize</span>
             } <span class="kw">else</span> {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SecretTreeError::TooDistantInThePast</span>);
             };
-            <span class="comment">// We can return a library error here, because there must be a mistake in the implementation</span>
-            <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">past_secrets</span>
-                .<span class="ident">get</span>(<span class="ident">index</span>)
-                .<span class="ident">ok_or</span>(<span class="ident">SecretTreeError::LibraryError</span>)<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">ratchet_secrets</span> <span class="op">=</span>
-                <span class="self">self</span>.<span class="ident">derive_key_nonce</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">secret</span>, <span class="ident">generation</span>)<span class="question-mark">?</span>;
-            <span class="prelude-val">Ok</span>(<span class="ident">ratchet_secrets</span>)
-        <span class="comment">// If generation is in the future</span>
-        } <span class="kw">else</span> {
-            <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..(<span class="ident">generation</span> <span class="op">-</span> <span class="self">self</span>.<span class="ident">generation</span>) {
-                <span class="kw">if</span> <span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="ident">configuration</span>.<span class="ident">out_of_order_tolerance</span>() <span class="kw">as</span> <span class="ident">usize</span> {
-                    <span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">remove</span>(<span class="number">0</span>);
-                }
-                <span class="comment">// We can return a library error here, because there must be a mistake in the implementation</span>
-                <span class="kw">let</span> <span class="ident">last_secret</span> <span class="op">=</span> <span class="self">self</span>
-                    .<span class="ident">past_secrets</span>
-                    .<span class="ident">last</span>()
-                    .<span class="ident">ok_or</span>(<span class="ident">SecretTreeError::LibraryError</span>)<span class="question-mark">?</span>;
-                <span class="kw">let</span> <span class="ident">new_secret</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ratchet_secret</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">last_secret</span>)<span class="question-mark">?</span>;
-                <span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">push</span>(<span class="ident">new_secret</span>);
-                <span class="self">self</span>.<span class="ident">generation</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-            }
-            <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">last</span>() {
-                <span class="prelude-val">Some</span>(<span class="ident">secret</span>) =&gt; <span class="ident">secret</span>,
-                <span class="comment">// We return a library error because there must be a mistake in the implementation</span>
-                <span class="prelude-val">None</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SecretTreeError::LibraryError</span>),
-            };
-            <span class="kw">let</span> <span class="ident">ratchet_secrets</span> <span class="op">=</span>
-                <span class="self">self</span>.<span class="ident">derive_key_nonce</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">secret</span>, <span class="ident">generation</span>)<span class="question-mark">?</span>;
-            <span class="prelude-val">Ok</span>(<span class="ident">ratchet_secrets</span>)
+            <span class="comment">// Get the relevant secrets from the past secrets queue.</span>
+            <span class="self">self</span>.<span class="ident">past_secrets</span>
+                .<span class="ident">get_mut</span>(<span class="ident">index</span>)
+                .<span class="ident">ok_or</span>(<span class="ident">SecretTreeError::IndexOutOfBounds</span>)<span class="question-mark">?</span>
+                <span class="comment">// We use take here to replace the entry in the `past_secrets`</span>
+                <span class="comment">// with `None`, thus achieving FS for that secret as soon as the</span>
+                <span class="comment">// caller of this function drops it.</span>
+                .<span class="ident">take</span>()
+                <span class="comment">// If the requested generation was used to decrypt a message</span>
+                <span class="comment">// earlier, throw an error.</span>
+                .<span class="ident">ok_or</span>(<span class="ident">SecretTreeError::SecretReuseError</span>)
         }
-    }
-    <span class="doccomment">/// Gets a secret from the SenderRatchet and ratchets forward</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">secret_for_encryption</span>(
-        <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">u32</span>, <span class="ident">RatchetSecrets</span>), <span class="ident">SecretTreeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">current_path_secret</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">past_secrets</span>.<span class="ident">last</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">secret</span>) =&gt; <span class="ident">secret</span>.<span class="ident">clone</span>(),
-            <span class="prelude-val">None</span> =&gt; {
-                <span class="macro">panic!</span>(<span class="string">&quot;Library error. PastSecrets should never be depleted in SenderRatchet.&quot;</span>)
-            }
-        };
-        <span class="kw">let</span> <span class="ident">next_path_secret</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ratchet_secret</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">current_path_secret</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">generation</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">generation</span>;
-        <span class="comment">// We remove all past_secrets when encrypting so that we get immediate FS</span>
-        <span class="self">self</span>.<span class="ident">past_secrets</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">next_path_secret</span>];
-        <span class="self">self</span>.<span class="ident">generation</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
-        <span class="prelude-val">Ok</span>((
-            <span class="ident">generation</span>,
-            <span class="self">self</span>.<span class="ident">derive_key_nonce</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">current_path_secret</span>, <span class="ident">generation</span>)<span class="question-mark">?</span>,
-        ))
-    }
-    <span class="doccomment">/// Computes the new secret</span>
-    <span class="kw">fn</span> <span class="ident">ratchet_secret</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">secret</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Secret</span>, <span class="ident">SecretTreeError</span><span class="op">&gt;</span> {
-        <span class="ident">derive_tree_secret</span>(
-            <span class="ident">secret</span>,
-            <span class="string">&quot;secret&quot;</span>,
-            <span class="self">self</span>.<span class="ident">generation</span>,
-            <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>(),
-            <span class="ident">backend</span>,
-        )
-    }
-    <span class="doccomment">/// Derives a key &amp; nonce from a secret</span>
-    <span class="kw">fn</span> <span class="ident">derive_key_nonce</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">secret</span>: <span class="kw-2">&amp;</span><span class="ident">Secret</span>,
-        <span class="ident">generation</span>: <span class="ident">u32</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RatchetSecrets</span>, <span class="ident">SecretTreeError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">nonce</span> <span class="op">=</span> <span class="ident">derive_tree_secret</span>(
-            <span class="ident">secret</span>,
-            <span class="string">&quot;nonce&quot;</span>,
-            <span class="ident">generation</span>,
-            <span class="ident">ciphersuite</span>.<span class="ident">aead_nonce_length</span>(),
-            <span class="ident">backend</span>,
-        )<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="ident">derive_tree_secret</span>(
-            <span class="ident">secret</span>,
-            <span class="string">&quot;key&quot;</span>,
-            <span class="ident">generation</span>,
-            <span class="ident">ciphersuite</span>.<span class="ident">aead_key_length</span>(),
-            <span class="ident">backend</span>,
-        )<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>((<span class="ident">AeadKey::from_secret</span>(<span class="ident">key</span>), <span class="ident">AeadNonce::from_secret</span>(<span class="ident">nonce</span>)))
-    }
-    <span class="doccomment">/// Gets the current generation</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">generation</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u32</span> {
-        <span class="self">self</span>.<span class="ident">generation</span>
     }
 }
 </code></pre></div>

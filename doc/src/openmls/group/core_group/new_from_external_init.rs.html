@@ -139,6 +139,10 @@
 <span id="138">138</span>
 <span id="139">139</span>
 <span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite::signable::Verifiable</span>,
     <span class="ident">group::errors::ExternalCommitError</span>,
@@ -230,6 +234,10 @@
         <span class="kw">let</span> (<span class="ident">group_epoch_secrets</span>, <span class="ident">message_secrets</span>) <span class="op">=</span> <span class="ident">epoch_secrets</span>.<span class="ident">split_secrets</span>(
             <span class="ident">group_context</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>,
             <span class="ident">treesync</span>.<span class="ident">leaf_count</span>()<span class="question-mark">?</span>,
+            <span class="comment">// We use a fake own index of 0 here, as we&#39;re not going to use the</span>
+            <span class="comment">// tree for encryption until after the first commit. This issue is</span>
+            <span class="comment">// tracked in #767.</span>
+            <span class="number">0u32</span>,
         );
         <span class="kw">let</span> <span class="ident">message_secrets_store</span> <span class="op">=</span> <span class="ident">MessageSecretsStore::new_with_secret</span>(<span class="number">0</span>, <span class="ident">message_secrets</span>);
 

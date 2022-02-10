@@ -1266,6 +1266,13 @@
 <span id="1265">1265</span>
 <span id="1266">1266</span>
 <span id="1267">1267</span>
+<span id="1268">1268</span>
+<span id="1269">1269</span>
+<span id="1270">1270</span>
+<span id="1271">1271</span>
+<span id="1272">1272</span>
+<span id="1273">1273</span>
+<span id="1274">1274</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module represents the key schedule as introduced in Section 8 of the</span>
 <span class="doccomment">//! MLS specification. The key schedule evolves in epochs, where in each epoch</span>
 <span class="doccomment">//! new key material is injected.</span>
@@ -1885,8 +1892,12 @@
 
     <span class="doccomment">/// Create a `SecretTree` from the `encryption_secret` contained in the</span>
     <span class="doccomment">/// `EpochSecrets`. The `encryption_secret` is consumed, allowing us to achieve FS.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">create_secret_tree</span>(<span class="self">self</span>, <span class="ident">treesize</span>: <span class="ident">LeafIndex</span>) -&gt; <span class="ident">SecretTree</span> {
-        <span class="ident">SecretTree::new</span>(<span class="self">self</span>, <span class="ident">treesize</span>.<span class="ident">into</span>())
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">create_secret_tree</span>(
+        <span class="self">self</span>,
+        <span class="ident">treesize</span>: <span class="ident">LeafIndex</span>,
+        <span class="ident">own_index</span>: <span class="ident">LeafIndex</span>,
+    ) -&gt; <span class="ident">SecretTree</span> {
+        <span class="ident">SecretTree::new</span>(<span class="self">self</span>, <span class="ident">treesize</span>.<span class="ident">into</span>(), <span class="ident">own_index</span>.<span class="ident">into</span>())
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">consume_secret</span>(<span class="self">self</span>) -&gt; <span class="ident">Secret</span> {
@@ -2453,8 +2464,11 @@
         <span class="self">self</span>,
         <span class="ident">serialized_context</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
         <span class="ident">treesize</span>: <span class="ident">u32</span>,
+        <span class="ident">own_index</span>: <span class="ident">u32</span>,
     ) -&gt; (<span class="ident">GroupEpochSecrets</span>, <span class="ident">MessageSecrets</span>) {
-        <span class="kw">let</span> <span class="ident">secret_tree</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">encryption_secret</span>.<span class="ident">create_secret_tree</span>(<span class="ident">treesize</span>);
+        <span class="kw">let</span> <span class="ident">secret_tree</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">encryption_secret</span>
+            .<span class="ident">create_secret_tree</span>(<span class="ident">treesize</span>, <span class="ident">own_index</span>);
         (
             <span class="ident">GroupEpochSecrets</span> {
                 <span class="ident">init_secret</span>: <span class="self">self</span>.<span class="ident">init_secret</span>,
