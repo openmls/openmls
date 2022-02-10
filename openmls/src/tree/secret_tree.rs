@@ -76,8 +76,8 @@ pub struct TreeContext {
     pub(crate) generation: u32,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsSize)]
-#[cfg_attr(any(feature = "test-utils", test), derive(PartialEq))]
+#[derive(Debug, Serialize, Deserialize, TlsSerialize, TlsSize)]
+#[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
 pub(crate) struct SecretTreeNode {
     pub(crate) secret: Secret,
 }
@@ -104,16 +104,28 @@ impl SecretTree {
     ) -> Self {
         let root = root(size);
         let num_indices = SecretTreeNodeIndex::from(size).as_usize() - 1;
-        let mut nodes = vec![None; num_indices];
+
+        let mut nodes: Vec<Option<SecretTreeNode>> =
+            std::iter::repeat_with(|| Option::<SecretTreeNode>::None)
+                .take(num_indices)
+                .collect();
+
         nodes[root.as_usize()] = Some(SecretTreeNode {
             secret: encryption_secret.consume_secret(),
         });
+        let handshake_sender_ratchets = std::iter::repeat_with(|| Option::<SenderRatchet>::None)
+            .take(size.as_usize())
+            .collect();
+
+        let application_sender_ratchets = std::iter::repeat_with(|| Option::<SenderRatchet>::None)
+            .take(size.as_usize())
+            .collect();
 
         SecretTree {
             own_index,
             nodes,
-            handshake_sender_ratchets: vec![None; size.as_usize()],
-            application_sender_ratchets: vec![None; size.as_usize()],
+            handshake_sender_ratchets,
+            application_sender_ratchets,
             size,
         }
     }

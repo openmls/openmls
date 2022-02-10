@@ -1,8 +1,8 @@
 use super::*;
 
 /// AEAD keys holding the plain key value and the AEAD algorithm type.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(any(feature = "test-utils", test), derive(PartialEq))]
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(feature = "test-utils", test), derive(Clone, PartialEq))]
 pub struct AeadKey {
     aead_mode: AeadType,
     value: Vec<u8>,
