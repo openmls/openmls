@@ -109,9 +109,14 @@ impl CoreGroup {
         // ValSem107
         // ValSem108
         self.validate_remove_proposals(&proposal_queue)?;
-        // ValSem109
-        // ValSem110
-        self.validate_update_proposals(&proposal_queue)?;
+        // Validate update proposals for member commits
+        if let Some(hash_ref) = own_kpr {
+            // ValSem109
+            // ValSem110
+            // ValSem111
+            // ValSem112
+            self.validate_update_proposals(&proposal_queue, hash_ref)?;
+        }
 
         // Apply proposals to tree
         let apply_proposals_values =

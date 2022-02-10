@@ -51,7 +51,7 @@ use super::*;
 ///  - ValSem005
 ///  - ValSem007
 ///  - ValSem009
-pub struct DecryptedMessage {
+pub(crate) struct DecryptedMessage {
     plaintext: VerifiableMlsPlaintext,
 }
 
@@ -151,7 +151,7 @@ impl DecryptedMessage {
     ///  - ValSem246
     ///  - Prepares ValSem247 by setting the right credential. The remainder
     ///    of ValSem247 is validated as part of ValSem010.
-    pub fn credential(
+    pub(crate) fn credential(
         &self,
         treesync: &TreeSync,
         old_leaves: &[(u32, KeyPackageRef)],
@@ -201,19 +201,9 @@ impl DecryptedMessage {
         }
     }
 
-    /// Returns the wire format
-    pub fn wire_format(&self) -> WireFormat {
-        self.plaintext.wire_format()
-    }
-
     /// Returns the sender
     pub fn sender(&self) -> &Sender {
         self.plaintext.sender()
-    }
-
-    /// Returns the content type
-    pub fn content_type(&self) -> ContentType {
-        self.plaintext.content_type()
     }
 
     /// Returns the plaintext
