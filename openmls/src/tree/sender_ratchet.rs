@@ -5,12 +5,16 @@
 //! This means that some functions that are not expected to fail and throw an
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
+use std::collections::VecDeque;
+
 use crate::ciphersuite::{AeadNonce, *};
-use crate::tree::{index::SecretTreeLeafIndex, secret_tree::*};
+use crate::tree::secret_tree::*;
 
 use super::*;
 
-/// Stores the configuration parameters for sender ratchets.
+/// The generation of a given [`SenderRatchet`].
+pub(crate) type Generation = u32;
+/// Stores the configuration parameters for [`DecryptionRatchet`]s.
 ///
 /// **Parameters**
 ///
@@ -24,25 +28,25 @@ use super::*;
 /// drops application messages. The default value is 1000.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SenderRatchetConfiguration {
-    out_of_order_tolerance: u32,
-    maximum_forward_distance: u32,
+    out_of_order_tolerance: Generation,
+    maximum_forward_distance: Generation,
 }
 
 impl SenderRatchetConfiguration {
     /// Create a new configuration
-    pub fn new(out_of_order_tolerance: u32, maximum_forward_distance: u32) -> Self {
+    pub fn new(out_of_order_tolerance: Generation, maximum_forward_distance: Generation) -> Self {
         Self {
             out_of_order_tolerance,
             maximum_forward_distance,
         }
     }
     /// Get a reference to the sender ratchet configuration's out of order tolerance.
-    pub fn out_of_order_tolerance(&self) -> u32 {
+    pub fn out_of_order_tolerance(&self) -> Generation {
         self.out_of_order_tolerance
     }
 
     /// Get a reference to the sender ratchet configuration's maximum forward distance.
-    pub fn maximum_forward_distance(&self) -> u32 {
+    pub fn maximum_forward_distance(&self) -> Generation {
         self.maximum_forward_distance
     }
 }
@@ -53,152 +57,207 @@ impl Default for SenderRatchetConfiguration {
     }
 }
 
-pub type RatchetSecrets = (AeadKey, AeadNonce);
+/// The key material derived from a [`RatchetSecret`] meant for use with a
+/// nonce-based symmetric encryption scheme.
+pub(crate) type RatchetKeyMaterial = (AeadKey, AeadNonce);
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[cfg_attr(any(feature = "test-utils", test), derive(PartialEq))]
-pub struct SenderRatchet {
-    index: SecretTreeLeafIndex,
-    generation: u32,
-    past_secrets: Vec<Secret>,
+/// A ratchet that can output key material either for encryption
+/// ([`EncryptionRatchet`](SenderRatchet)) or decryption
+/// ([`DecryptionRatchet`]). A [`DecryptionRatchet`] can be configured with an
+/// `out_of_order_tolerance` and a `maximum_forward_distance` (see
+/// [`SenderRatchetConfiguration`]) while an Encryption Ratchet never keeps past
+/// secrets around.
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
+pub(crate) enum SenderRatchet {
+    EncryptionRatchet(RatchetSecret),
+    DecryptionRatchet(DecryptionRatchet),
 }
 
 impl SenderRatchet {
-    /// Creates e new SenderRatchet
-    pub fn new(index: SecretTreeLeafIndex, secret: &Secret) -> Self {
-        Self {
-            index,
-            generation: 0,
-            past_secrets: vec![secret.clone()],
+    #[cfg(test)]
+    pub(crate) fn generation(&self) -> Generation {
+        match self {
+            SenderRatchet::EncryptionRatchet(enc_ratchet) => enc_ratchet.generation(),
+            SenderRatchet::DecryptionRatchet(dec_ratchet) => dec_ratchet.generation(),
         }
     }
+}
+
+/// The core of both types of [`SenderRatchet`]. It contains the current head of
+/// the ratchet chain, as well as its current [`Generation`]. It can be
+/// initialized with a given secret and then ratcheted forward, outputting
+/// [`RatchetKeyMaterial`] and increasing its [`Generation`] each time.
+#[derive(Debug, Serialize, Deserialize, Default)]
+#[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
+pub(crate) struct RatchetSecret {
+    secret: Secret,
+    generation: Generation,
+}
+
+impl RatchetSecret {
+    /// Create an initial [`RatchetSecret`] with `generation = 0` from the given
+    /// [`Secret`].
+    pub(crate) fn initial_ratchet_secret(secret: Secret) -> Self {
+        Self {
+            secret,
+            generation: 0,
+        }
+    }
+
+    /// Return the generation of this [`RatchetSecret`].
+    pub(crate) fn generation(&self) -> Generation {
+        self.generation
+    }
+
+    /// Consume this [`RatchetSecret`] to derive a pair of [`RatchetSecrets`],
+    /// as well as the [`RatchetSecret`] of the next generation and return both.
+    pub(crate) fn ratchet_forward(
+        &mut self,
+        backend: &impl OpenMlsCryptoProvider,
+        ciphersuite: &Ciphersuite,
+    ) -> Result<(Generation, RatchetKeyMaterial), SecretTreeError> {
+        // Check if the generation is getting too large.
+        if self.generation == u32::MAX {
+            return Err(SecretTreeError::RatchetTooLong);
+        }
+        let nonce = derive_tree_secret(
+            &self.secret,
+            "nonce",
+            self.generation,
+            ciphersuite.aead_nonce_length(),
+            backend,
+        )?;
+        let key = derive_tree_secret(
+            &self.secret,
+            "key",
+            self.generation,
+            ciphersuite.aead_key_length(),
+            backend,
+        )?;
+        self.secret = derive_tree_secret(
+            &self.secret,
+            "secret",
+            self.generation,
+            ciphersuite.hash_length(),
+            backend,
+        )?;
+        let generation = self.generation;
+        self.generation += 1;
+        Ok((
+            generation,
+            (AeadKey::from_secret(key), AeadNonce::from_secret(nonce)),
+        ))
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_generation(&mut self, generation: Generation) {
+        self.generation = generation
+    }
+}
+
+/// [`SenderRatchet`] used to derive key material for decryption. It keeps the
+/// [`RatchetKeyMaterial`] of epochs around until they are retrieved. This
+/// behaviour can be configured via the `out_of_order_tolerance` and
+/// `maximum_forward_distance` of the given [`SenderRatchetConfiguration`].
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
+pub struct DecryptionRatchet {
+    past_secrets: VecDeque<Option<RatchetKeyMaterial>>,
+    ratchet_head: RatchetSecret,
+}
+
+impl DecryptionRatchet {
+    /// Creates e new SenderRatchet
+    pub fn new(secret: Secret) -> Self {
+        Self {
+            past_secrets: VecDeque::new(),
+            ratchet_head: RatchetSecret::initial_ratchet_secret(secret.clone()),
+        }
+    }
+
+    /// Remove elements from the `past_secrets` queue until it is within the
+    /// bounds determined by the [`SenderRatchetConfiguration`].
+    fn prune_past_secrets(&mut self, configuration: &SenderRatchetConfiguration) {
+        self.past_secrets
+            .truncate(configuration.out_of_order_tolerance() as usize)
+    }
+
+    /// Get the generation of the ratchet head.
+    pub(crate) fn generation(&self) -> Generation {
+        self.ratchet_head.generation()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn ratchet_secret_mut(&mut self) -> &mut RatchetSecret {
+        &mut self.ratchet_head
+    }
+
     /// Gets a secret from the SenderRatchet. Returns an error if the generation
     /// is out of bound.
     pub(crate) fn secret_for_decryption(
         &mut self,
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-        generation: u32,
+        generation: Generation,
         configuration: &SenderRatchetConfiguration,
-    ) -> Result<RatchetSecrets, SecretTreeError> {
+    ) -> Result<RatchetKeyMaterial, SecretTreeError> {
         // If generation is too distant in the future
-        if generation > (self.generation + configuration.maximum_forward_distance()) {
+        if self.generation() < u32::MAX - configuration.maximum_forward_distance()
+            && generation > self.generation() + configuration.maximum_forward_distance()
+        {
             return Err(SecretTreeError::TooDistantInTheFuture);
         }
         // If generation id too distant in the past
-        if generation < self.generation
-            && (self.generation - generation) >= configuration.out_of_order_tolerance()
+        if generation < self.generation()
+            && (self.generation() - generation) > configuration.out_of_order_tolerance()
         {
             return Err(SecretTreeError::TooDistantInThePast);
         }
-        // If generation is potentially within the window
-        if generation <= self.generation {
-            // If the requested generation is within the window of past secrets, we should get a positive index
-            let window_index =
-                self.past_secrets.len() as i32 - ((self.generation - generation) as i32) - 1;
-            // We might not have the key material (e.g. we might have discarded it when generating an encryption secret)
+        // If generation is the one the ratchet is currently at or in the future
+        if generation >= self.generation() {
+            // Ratchet the chain forward as far as necessary
+            for _ in 0..(generation - self.generation()) {
+                // Derive the key material
+                let ratchet_secrets = {
+                    self.ratchet_head
+                        .ratchet_forward(backend, ciphersuite)
+                        .map(|(_, key_material)| key_material)
+                }?;
+                // Add it to the front of the queue
+                self.past_secrets.push_front(Some(ratchet_secrets));
+            }
+            let ratchet_secrets = {
+                self.ratchet_head
+                    .ratchet_forward(backend, ciphersuite)
+                    .map(|(_, key_material)| key_material)
+            }?;
+            // Add an entry to the past secrets queue to keep indexing consistent.
+            self.past_secrets.push_front(None);
+            self.prune_past_secrets(configuration);
+            Ok(ratchet_secrets)
+        } else {
+            // If the requested generation is within the window of past secrets,
+            // we should get a positive index.
+            let window_index = ((self.generation() - generation) as i32) - 1;
+            // We might not have the key material (e.g. we might have discarded
+            // it when generating an encryption secret).
             let index = if window_index >= 0 {
                 window_index as usize
             } else {
                 return Err(SecretTreeError::TooDistantInThePast);
             };
-            // We can return a library error here, because there must be a mistake in the implementation
-            let secret = self
-                .past_secrets
-                .get(index)
-                .ok_or(SecretTreeError::LibraryError)?;
-            let ratchet_secrets =
-                self.derive_key_nonce(ciphersuite, backend, secret, generation)?;
-            Ok(ratchet_secrets)
-        // If generation is in the future
-        } else {
-            for _ in 0..(generation - self.generation) {
-                if self.past_secrets.len() == configuration.out_of_order_tolerance() as usize {
-                    self.past_secrets.remove(0);
-                }
-                // We can return a library error here, because there must be a mistake in the implementation
-                let last_secret = self
-                    .past_secrets
-                    .last()
-                    .ok_or(SecretTreeError::LibraryError)?;
-                let new_secret = self.ratchet_secret(ciphersuite, backend, last_secret)?;
-                self.past_secrets.push(new_secret);
-                self.generation += 1;
-            }
-            let secret = match self.past_secrets.last() {
-                Some(secret) => secret,
-                // We return a library error because there must be a mistake in the implementation
-                None => return Err(SecretTreeError::LibraryError),
-            };
-            let ratchet_secrets =
-                self.derive_key_nonce(ciphersuite, backend, secret, generation)?;
-            Ok(ratchet_secrets)
+            // Get the relevant secrets from the past secrets queue.
+            self.past_secrets
+                .get_mut(index)
+                .ok_or(SecretTreeError::IndexOutOfBounds)?
+                // We use take here to replace the entry in the `past_secrets`
+                // with `None`, thus achieving FS for that secret as soon as the
+                // caller of this function drops it.
+                .take()
+                // If the requested generation was used to decrypt a message
+                // earlier, throw an error.
+                .ok_or(SecretTreeError::SecretReuseError)
         }
-    }
-    /// Gets a secret from the SenderRatchet and ratchets forward
-    pub fn secret_for_encryption(
-        &mut self,
-        ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<(u32, RatchetSecrets), SecretTreeError> {
-        let current_path_secret = match self.past_secrets.last() {
-            Some(secret) => secret.clone(),
-            None => {
-                panic!("Library error. PastSecrets should never be depleted in SenderRatchet.")
-            }
-        };
-        let next_path_secret = self.ratchet_secret(ciphersuite, backend, &current_path_secret)?;
-        let generation = self.generation;
-        // We remove all past_secrets when encrypting so that we get immediate FS
-        self.past_secrets = vec![next_path_secret];
-        self.generation += 1;
-        Ok((
-            generation,
-            self.derive_key_nonce(ciphersuite, backend, &current_path_secret, generation)?,
-        ))
-    }
-    /// Computes the new secret
-    fn ratchet_secret(
-        &self,
-        ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
-        secret: &Secret,
-    ) -> Result<Secret, SecretTreeError> {
-        derive_tree_secret(
-            secret,
-            "secret",
-            self.generation,
-            ciphersuite.hash_length(),
-            backend,
-        )
-    }
-    /// Derives a key & nonce from a secret
-    fn derive_key_nonce(
-        &self,
-        ciphersuite: &Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
-        secret: &Secret,
-        generation: u32,
-    ) -> Result<RatchetSecrets, SecretTreeError> {
-        let nonce = derive_tree_secret(
-            secret,
-            "nonce",
-            generation,
-            ciphersuite.aead_nonce_length(),
-            backend,
-        )?;
-        let key = derive_tree_secret(
-            secret,
-            "key",
-            generation,
-            ciphersuite.aead_key_length(),
-            backend,
-        )?;
-        Ok((AeadKey::from_secret(key), AeadNonce::from_secret(nonce)))
-    }
-    /// Gets the current generation
-    #[cfg(test)]
-    pub(crate) fn generation(&self) -> u32 {
-        self.generation
     }
 }
