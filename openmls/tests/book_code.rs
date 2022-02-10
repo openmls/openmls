@@ -478,6 +478,21 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     assert_eq!(members[1].credential().identity(), b"Bob");
     assert_eq!(members[2].credential().identity(), b"Charlie");
 
+    // Check that the `member` and the `members` function are consistent
+    for member in members {
+        assert_eq!(
+            alice_group
+                .member(
+                    &member
+                        .hash_ref(backend.crypto())
+                        .expect("Error creating KeyPackage ref"),
+                )
+                .expect("Error while getting member from group.")
+                .expect("Couldn't find member KeyPackage via the `member` function."),
+            member
+        )
+    }
+
     // === Charlie sends a message to the group ===
     let message_charlie = b"Hi, I'm Charlie!";
     let queued_message = charlie_group
