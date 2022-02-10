@@ -335,6 +335,8 @@
 <span id="334">334</span>
 <span id="335">335</span>
 <span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS CoreGroup errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -644,6 +646,8 @@
         <span class="ident">ExistingPublicKeyUpdateProposal</span> <span class="op">=</span> <span class="string">&quot;HPKE public key of the update proposal already existed in tree.&quot;</span>,
         <span class="ident">DuplicateMemberRemoval</span> <span class="op">=</span> <span class="string">&quot;Duplicate remove proposals for the same member.&quot;</span>,
         <span class="ident">UnknownMemberRemoval</span> <span class="op">=</span> <span class="string">&quot;The remove proposal referenced a non-existing member.&quot;</span>,
+        <span class="ident">UpdateFromNonMember</span> <span class="op">=</span> <span class="string">&quot;Found an update from a non-member.&quot;</span>,
+        <span class="ident">CommitterIncludedOwnUpdate</span> <span class="op">=</span> <span class="string">&quot;The Commit includes update proposals from the committer.&quot;</span>,
     }
 }
 

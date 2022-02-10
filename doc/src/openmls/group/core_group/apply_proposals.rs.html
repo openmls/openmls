@@ -181,6 +181,7 @@
 <span id="180">180</span>
 <span id="181">181</span>
 <span id="182">182</span>
+<span id="183">183</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::HashSet</span>;
 
 <span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
@@ -277,6 +278,7 @@
                 <span class="comment">// Check if this is our own update.</span>
                 <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">queued_proposal</span>.<span class="ident">sender</span>();
                 <span class="comment">// Only members can send update proposals</span>
+                <span class="comment">// ValSem112</span>
                 <span class="kw">let</span> <span class="ident">hash_ref</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">sender</span> {
                     <span class="ident">Sender::Member</span>(<span class="ident">hash_ref</span>) =&gt; <span class="ident">hash_ref</span>,
                     <span class="kw">_</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CoreGroupError::SenderError</span>(<span class="ident">SenderError::NotAMember</span>)),

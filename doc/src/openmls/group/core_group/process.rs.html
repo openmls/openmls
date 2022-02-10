@@ -199,6 +199,10 @@
 <span id="198">198</span>
 <span id="199">199</span>
 <span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">core_group</span>::{<span class="ident">proposals::QueuedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
 
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">proposals::ProposalStore</span>, <span class="kw-2">*</span>};
@@ -285,6 +289,8 @@
     <span class="doccomment">///  - ValSem108</span>
     <span class="doccomment">///  - ValSem109</span>
     <span class="doccomment">///  - ValSem110</span>
+    <span class="doccomment">///  - ValSem111</span>
+    <span class="doccomment">///  - ValSem112</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">process_unverified_message</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">unverified_message</span>: <span class="ident">UnverifiedMessage</span>,
@@ -339,6 +345,8 @@
                         <span class="comment">//  - ValSem108</span>
                         <span class="comment">//  - ValSem109</span>
                         <span class="comment">//  - ValSem110</span>
+                        <span class="comment">//  - ValSem111</span>
+                        <span class="comment">//  - ValSem112</span>
                         <span class="kw">let</span> <span class="ident">staged_commit</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">stage_commit</span>(
                             <span class="ident">verified_member_message</span>.<span class="ident">plaintext</span>(),
                             <span class="ident">proposal_store</span>,
