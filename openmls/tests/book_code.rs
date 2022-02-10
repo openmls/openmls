@@ -94,7 +94,7 @@ fn generate_key_package_bundle(
 ///  - Alice removes Charlie and adds Bob
 ///  - Bob leaves
 ///  - Test saving the group state
-//#[apply(ciphersuites_and_backends)]
+#[apply(ciphersuites_and_backends)]
 fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // ANCHOR: set_group_id
     let group_id = GroupId::from_slice(b"Test Group");
@@ -915,7 +915,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         assert_eq!(&sender, sender_kp.credential());
         assert_eq!(
             &sender,
-            alice_group.credential().expect("Expeced a credential.")
+            alice_group.credential().expect("Expected a credential.")
         );
     } else {
         unreachable!("Expected an ApplicationMessage.");
