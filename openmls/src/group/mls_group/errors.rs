@@ -47,7 +47,7 @@ implement_error! {
                 "Empty input. Additional detail is provided.",
             InvalidMessage(InvalidMessageError) = "The message could not be processed.",
             CredentialError(CredentialError) = "See [`CredentialError`](`crate::credentials::CredentialError`) for details",
-            TreeSyncError(TreeSyncError) = "See [`TreeSyncError`](`crate::treesync::TreeSyncError`) for details",
+            TreeSyncError(TreeSyncError) = "An error occurred during an operation on the tree underlying the group.",
             ValidationError(ValidationError) = "See [`ValidationError`](`crate::framing::ValidationError`) for details",
             TlsCodecError(TlsCodecError) = "An error occured during TLS encoding/decoding.",
             CryptoError(CryptoError) =

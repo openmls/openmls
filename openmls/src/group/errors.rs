@@ -14,7 +14,6 @@ use crate::{
     key_packages::KeyPackageError,
     messages::errors::ProposalError,
     schedule::{KeyScheduleError, PskSecretError},
-    tree::{ParentHashError, TreeError},
     treesync::{diff::TreeSyncDiffError, treekem::TreeKemError, TreeSyncError},
 };
 use openmls_traits::types::CryptoError;
@@ -56,14 +55,12 @@ implement_error! {
                 "A PskSecret error occurred.",
             CredentialError(CredentialError) =
                 "See [`CredentialError`](crate::credentials::CredentialError) for details.",
-            TreeError(TreeError) =
-                "See [`TreeError`](crate::tree::TreeError) for details.",
             TreeSyncError(TreeSyncError) =
-                "See [`TreeSyncError`](crate::treesync::TreeSyncError) for details.",
+                "An error occurred during an operation on the tree underlying the group.",
             TreeSyncDiffError(TreeSyncDiffError) =
-                "See [`TreeSyncDiffError`](crate::treesync::diff::TreeSyncDiffError) for details.",
+                "An error occurred during an operation on the tree underlying the group.",
             TreeKemError(TreeKemError) =
-                "See [`TreeKemError`](crate::treesync::treekem::TreeKemError) for details.",
+                "An error occurred during an operation on the tree underlying the group.",
             KeyPackageError(KeyPackageError) =
                 "See [`KeyPackageError`] for details.",
             ExtensionError(ExtensionError) =
@@ -118,10 +115,6 @@ implement_error! {
         Complex {
             ConfigError(ConfigError) =
                 "See [`ConfigError`](`crate::config::ConfigError`) for details.",
-            InvalidRatchetTree(TreeError) =
-                "Invalid ratchet tree in Welcome message.",
-            ParentHashMismatch(ParentHashError) =
-                "The parent hash verification failed.",
             CodecError(TlsCodecError) =
                 "Tls (de)serialization error occurred.",
             KeyScheduleError(KeyScheduleError) =

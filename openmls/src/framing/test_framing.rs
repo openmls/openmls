@@ -13,16 +13,18 @@ use crate::{
     },
     config::*,
     framing::*,
-    group::core_group::{
-        create_commit_params::CreateCommitParams,
-        proposals::{ProposalStore, QueuedProposal},
+    group::{
+        core_group::{
+            create_commit_params::CreateCommitParams,
+            proposals::{ProposalStore, QueuedProposal},
+        },
+        tests::tree_printing::print_tree,
     },
     key_packages::KeyPackageBundle,
     tree::{
         index::SecretTreeLeafIndex, secret_tree::SecretTree,
         sender_ratchet::SenderRatchetConfiguration,
     },
-    utils::print_tree,
 };
 
 /// This tests serializing/deserializing MlsPlaintext
@@ -548,8 +550,8 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .merge_commit(create_commit_result.staged_commit)
         .expect("error merging pending commit");
 
-    print_tree(group_alice.treesync(), "Alice tree");
-    print_tree(group_charlie.treesync(), "Charlie tree");
+    print_tree(&group_alice, "Alice tree");
+    print_tree(&group_charlie, "Charlie tree");
 
     // Alice sends a message with a sender that is outside of the group
     // Expected result: SenderError::UnknownSender
