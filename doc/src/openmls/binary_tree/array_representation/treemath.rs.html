@@ -186,19 +186,27 @@
 <span id="185">185</span>
 <span id="186">186</span>
 <span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::cmp::Ordering</span>;
+
+<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::tree::NodeIndex</span>;
 
-<span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TreeMathError</span> {
-        <span class="ident">LeafHasNoChildren</span> <span class="op">=</span> <span class="string">&quot;Leaf nodes don&#39;t have children.&quot;</span>,
-        <span class="ident">RootHasNoParent</span> <span class="op">=</span> <span class="string">&quot;Root nodes don&#39;t have parents.&quot;</span>,
-        <span class="ident">NotAParentNode</span> <span class="op">=</span> <span class="string">&quot;Node index was not a parent node.&quot;</span>,
-        <span class="ident">LeafNotInTree</span> <span class="op">=</span> <span class="string">&quot;The leaf index is larger than the tree size.&quot;</span>,
-        <span class="ident">NodeNotInTree</span> <span class="op">=</span> <span class="string">&quot;The node index is larger than the tree size.&quot;</span>,
-        <span class="ident">InvalidInput</span> <span class="op">=</span> <span class="string">&quot;The provided input is invalid for tree math.&quot;</span>,
-    }
+<span class="doccomment">/// Tree math error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TreeMathError</span> {
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Leaf nodes don&#39;t have children.&quot;</span>)]</span>
+    <span class="ident">LeafHasNoChildren</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Root nodes don&#39;t have parents.&quot;</span>)]</span>
+    <span class="ident">RootHasNoParent</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The node index is larger than the tree size.&quot;</span>)]</span>
+    <span class="ident">NodeNotInTree</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The provided input is invalid for tree math.&quot;</span>)]</span>
+    <span class="ident">InvalidInput</span>,
 }
 
 <span class="kw">fn</span> <span class="ident">log2</span>(<span class="ident">x</span>: <span class="ident">NodeIndex</span>) -&gt; <span class="ident">usize</span> {

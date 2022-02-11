@@ -348,6 +348,7 @@
     <span class="ident">binary_tree::LeafIndex</span>,
     <span class="ident">ciphersuite</span>::{<span class="ident">hash_ref::KeyPackageRef</span>, <span class="ident">Ciphersuite</span>, <span class="ident">HpkePublicKey</span>},
     <span class="ident">config::ProtocolVersion</span>,
+    <span class="ident">error::LibraryError</span>,
     <span class="ident">key_packages</span>::{<span class="ident">KeyPackage</span>, <span class="ident">KeyPackageError</span>},
     <span class="ident">messages</span>::{
         <span class="ident">proposals::AddProposal</span>, <span class="ident">EncryptedGroupSecrets</span>, <span class="ident">GroupSecrets</span>, <span class="ident">PathSecret</span>, <span class="ident">PathSecretError</span>,
@@ -357,7 +358,7 @@
 
 <span class="kw">use</span> <span class="kw">super</span>::{
     <span class="ident">diff::TreeSyncDiff</span>,
-    <span class="ident">node::parent_node</span>::{<span class="ident">ParentNode</span>, <span class="ident">ParentNodeError</span>, <span class="ident">PlainUpdatePathNode</span>},
+    <span class="ident">node::parent_node</span>::{<span class="ident">ParentNode</span>, <span class="ident">PlainUpdatePathNode</span>},
     <span class="ident">TreeSyncDiffError</span>, <span class="ident">TreeSyncError</span>,
 };
 
@@ -646,7 +647,6 @@
 <span class="macro">implement_error!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TreeKemError</span> {
         <span class="ident">Simple</span> {
-            <span class="ident">LibraryError</span> <span class="op">=</span> <span class="string">&quot;An inconsistency in the internal state of the tree was detected.&quot;</span>,
             <span class="ident">PathLengthError</span> <span class="op">=</span> <span class="string">&quot;The given path to encrypt does not have the same length as the direct path.&quot;</span>,
             <span class="ident">PathMismatch</span> <span class="op">=</span> <span class="string">&quot;The received update path and the derived nodes are inconsistent.&quot;</span>,
             <span class="ident">UpdatePathNodeNotFound</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t find our UpdatePathNode in the given UpdatePath.&quot;</span>,
@@ -654,10 +654,10 @@
             <span class="ident">PathSecretNotFound</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t find the path secret to encrypt for one of the new members.&quot;</span>,
         }
         <span class="ident">Complex</span> {
+            <span class="ident">LibraryError</span>(<span class="ident">LibraryError</span>) <span class="op">=</span> <span class="string">&quot;LibraryError&quot;</span>,
             <span class="ident">TreeSyncError</span>(<span class="ident">TreeSyncError</span>) <span class="op">=</span> <span class="string">&quot;Error while creating treesync diff.&quot;</span>,
             <span class="ident">TreeSyncDiffError</span>(<span class="ident">TreeSyncDiffError</span>) <span class="op">=</span> <span class="string">&quot;Error while retrieving public keys from the tree.&quot;</span>,
             <span class="ident">PathSecretError</span>(<span class="ident">PathSecretError</span>) <span class="op">=</span> <span class="string">&quot;Error decrypting PathSecret.&quot;</span>,
-            <span class="ident">PathDerivationError</span>(<span class="ident">ParentNodeError</span>) <span class="op">=</span> <span class="string">&quot;Error deriving path from PathSecret.&quot;</span>,
             <span class="ident">EncodingError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span> <span class="string">&quot;Error while encoding GroupSecrets.&quot;</span>,
             <span class="ident">KeyPackageError</span>(<span class="ident">KeyPackageError</span>) <span class="op">=</span> <span class="string">&quot;Error while hashing KeyPackage.&quot;</span>,
         }

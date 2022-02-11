@@ -334,9 +334,6 @@
 <span id="333">333</span>
 <span id="334">334</span>
 <span id="335">335</span>
-<span id="336">336</span>
-<span id="337">337</span>
-<span id="338">338</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS CoreGroup errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -351,12 +348,13 @@
         <span class="ident">MlsCiphertextError</span>, <span class="ident">MlsPlaintextError</span>, <span class="ident">SenderError</span>, <span class="ident">ValidationError</span>, <span class="ident">VerificationError</span>,
     },
     <span class="ident">key_packages::KeyPackageError</span>,
-    <span class="ident">messages::errors::ProposalError</span>,
     <span class="ident">schedule</span>::{<span class="ident">KeyScheduleError</span>, <span class="ident">PskSecretError</span>},
     <span class="ident">treesync</span>::{<span class="ident">diff::TreeSyncDiffError</span>, <span class="ident">treekem::TreeKemError</span>, <span class="ident">TreeSyncError</span>},
 };
 <span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
 <span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
+
+<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
 <span class="macro">implement_error!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CoreGroupError</span> {
@@ -416,8 +414,6 @@
                 <span class="string">&quot;See [`CryptoError`](openmls_traits::types::CryptoError) for details.&quot;</span>,
             <span class="ident">InterimTranscriptHashError</span>(<span class="ident">InterimTranscriptHashError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`InterimTranscriptHashError`](crate::group::InterimTranscriptHashError) for details.&quot;</span>,
-            <span class="ident">QueuedProposalError</span>(<span class="ident">QueuedProposalError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`QueuedProposalError`](crate::group::QueuedProposalError) for details.&quot;</span>,
             <span class="ident">SenderError</span>(<span class="ident">SenderError</span>) <span class="op">=</span>
                 <span class="string">&quot;Sender error&quot;</span>,
         }
@@ -470,8 +466,6 @@
                 <span class="string">&quot;See [`InterimTranscriptHashError`] for details.&quot;</span>,
             <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`CryptoError`](openmls_traits::types::CryptoError) for details.&quot;</span>,
-            <span class="ident">ProposalError</span>(<span class="ident">QueuedProposalError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`QueuedProposalError`] for details.&quot;</span>,
         }
     }
 }
@@ -512,8 +506,6 @@
                 <span class="string">&quot;See [`KeyPackageError`] for details.&quot;</span>,
             <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span>
                 <span class="string">&quot;See [`CryptoError`](openmls_traits::types::CryptoError) for details.&quot;</span>,
-            <span class="ident">ProposalError</span>(<span class="ident">QueuedProposalError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`QueuedProposalError`] for details.&quot;</span>,
         }
     }
 }
@@ -578,29 +570,15 @@
 }
 
 <span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">QueuedProposalError</span> {
-        <span class="ident">Simple</span> {
-            <span class="ident">WrongContentType</span> <span class="op">=</span> <span class="string">&quot;API misuse. Only proposals can end up in the proposal queue&quot;</span>,
-        }
-        <span class="ident">Complex</span> {
-            <span class="ident">LibraryError</span>(<span class="ident">LibraryError</span>) <span class="op">=</span> <span class="string">&quot;A LibraryError occurred.&quot;</span>,
-            <span class="ident">ProposalError</span>(<span class="ident">ProposalError</span>) <span class="op">=</span> <span class="string">&quot;A ProposalError occurred.&quot;</span>,
-            <span class="ident">TlsCodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span> <span class="string">&quot;Error serializing&quot;</span>,
-        }
-    }
-}
-
-<span class="macro">implement_error!</span> {
     <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProposalQueueError</span> {
         <span class="ident">Simple</span> {
             <span class="ident">ProposalNotFound</span> <span class="op">=</span> <span class="string">&quot;Not all proposals in the Commit were found locally.&quot;</span>,
             <span class="ident">SelfRemoval</span> <span class="op">=</span> <span class="string">&quot;The sender of a Commit tried to remove themselves.&quot;</span>,
             <span class="ident">ArchitectureError</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t fit a `u32` into a `usize`.&quot;</span>,
             <span class="ident">RemovedNotFound</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t find the member to remove.&quot;</span>,
-            <span class="ident">LibraryError</span> <span class="op">=</span> <span class="string">&quot;An unrecoverable error has occurred due to a bug in the implementation.&quot;</span>,
         }
         <span class="ident">Complex</span> {
-            <span class="ident">NotAProposal</span>(<span class="ident">QueuedProposalError</span>) <span class="op">=</span> <span class="string">&quot;The given MLS Plaintext was not a Proposal.&quot;</span>,
+            <span class="ident">LibraryError</span>(<span class="ident">LibraryError</span>) <span class="op">=</span> <span class="string">&quot;Library error&quot;</span>,
             <span class="ident">SenderError</span>(<span class="ident">SenderError</span>) <span class="op">=</span> <span class="string">&quot;Sender error&quot;</span>,
         }
     }
@@ -614,7 +592,6 @@
         }
         <span class="ident">Complex</span> {
             <span class="ident">LibraryError</span>(<span class="ident">LibraryError</span>) <span class="op">=</span> <span class="string">&quot;A LibraryError occurred.&quot;</span>,
-            <span class="ident">NotAProposal</span>(<span class="ident">QueuedProposalError</span>) <span class="op">=</span> <span class="string">&quot;The given MLS Plaintext was not a Proposal.&quot;</span>,
             <span class="ident">SenderError</span>(<span class="ident">SenderError</span>) <span class="op">=</span> <span class="string">&quot;Sender error&quot;</span>,
         }
     }
@@ -632,23 +609,39 @@
     }
 }
 
-<span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProposalValidationError</span> {
-        <span class="ident">UnknownMember</span> <span class="op">=</span> <span class="string">&quot;The sender could not be matched to a member of the group.&quot;</span>,
-        <span class="ident">DuplicateIdentityAddProposal</span> <span class="op">=</span> <span class="string">&quot;Found two add proposals with the same identity.&quot;</span>,
-        <span class="ident">DuplicateSignatureKeyAddProposal</span> <span class="op">=</span> <span class="string">&quot;Found two add proposals with the same signature key.&quot;</span>,
-        <span class="ident">DuplicatePublicKeyAddProposal</span> <span class="op">=</span> <span class="string">&quot;Found two add proposals with the same HPKE public key.&quot;</span>,
-        <span class="ident">ExistingIdentityAddProposal</span> <span class="op">=</span> <span class="string">&quot;Identity of the add proposal already existed in tree.&quot;</span>,
-        <span class="ident">ExistingSignatureKeyAddProposal</span> <span class="op">=</span> <span class="string">&quot;Signature key of the add proposal already existed in tree.&quot;</span>,
-        <span class="ident">ExistingPublicKeyAddProposal</span> <span class="op">=</span> <span class="string">&quot;HPKE public key of the add proposal already existed in tree.&quot;</span>,
-        <span class="ident">UpdateProposalIdentityMismatch</span> <span class="op">=</span> <span class="string">&quot;The identity of the update proposal did not match the existing identity.&quot;</span>,
-        <span class="ident">ExistingSignatureKeyUpdateProposal</span> <span class="op">=</span> <span class="string">&quot;Signature key of the update proposal already existed in tree.&quot;</span>,
-        <span class="ident">ExistingPublicKeyUpdateProposal</span> <span class="op">=</span> <span class="string">&quot;HPKE public key of the update proposal already existed in tree.&quot;</span>,
-        <span class="ident">DuplicateMemberRemoval</span> <span class="op">=</span> <span class="string">&quot;Duplicate remove proposals for the same member.&quot;</span>,
-        <span class="ident">UnknownMemberRemoval</span> <span class="op">=</span> <span class="string">&quot;The remove proposal referenced a non-existing member.&quot;</span>,
-        <span class="ident">UpdateFromNonMember</span> <span class="op">=</span> <span class="string">&quot;Found an update from a non-member.&quot;</span>,
-        <span class="ident">CommitterIncludedOwnUpdate</span> <span class="op">=</span> <span class="string">&quot;The Commit includes update proposals from the committer.&quot;</span>,
-    }
+<span class="doccomment">/// Proposal validation error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProposalValidationError</span> {
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The sender could not be matched to a member of the group.&quot;</span>)]</span>
+    <span class="ident">UnknownMember</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Found two add proposals with the same identity.&quot;</span>)]</span>
+    <span class="ident">DuplicateIdentityAddProposal</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Found two add proposals with the same signature key.&quot;</span>)]</span>
+    <span class="ident">DuplicateSignatureKeyAddProposal</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Found two add proposals with the same HPKE public key.&quot;</span>)]</span>
+    <span class="ident">DuplicatePublicKeyAddProposal</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Identity of the add proposal already existed in tree.&quot;</span>)]</span>
+    <span class="ident">ExistingIdentityAddProposal</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Signature key of the add proposal already existed in tree.&quot;</span>)]</span>
+    <span class="ident">ExistingSignatureKeyAddProposal</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;HPKE public key of the add proposal already existed in tree.&quot;</span>)]</span>
+    <span class="ident">ExistingPublicKeyAddProposal</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The identity of the update proposal did not match the existing identity.&quot;</span>)]</span>
+    <span class="ident">UpdateProposalIdentityMismatch</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Signature key of the update proposal already existed in tree.&quot;</span>)]</span>
+    <span class="ident">ExistingSignatureKeyUpdateProposal</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;HPKE public key of the update proposal already existed in tree.&quot;</span>)]</span>
+    <span class="ident">ExistingPublicKeyUpdateProposal</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Duplicate remove proposals for the same member.&quot;</span>)]</span>
+    <span class="ident">DuplicateMemberRemoval</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The remove proposal referenced a non-existing member.&quot;</span>)]</span>
+    <span class="ident">UnknownMemberRemoval</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Found an update from a non-member.&quot;</span>)]</span>
+    <span class="ident">UpdateFromNonMember</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The Commit includes update proposals from the committer.&quot;</span>)]</span>
+    <span class="ident">CommitterIncludedOwnUpdate</span>,
 }
 
 <span class="macro">implement_error!</span> {
@@ -661,6 +654,7 @@
         <span class="ident">ReferencedExternalInitProposal</span> <span class="op">=</span> <span class="string">&quot;Found an ExternalInit proposal among the referenced proposals.&quot;</span>,
         <span class="ident">NoPath</span> <span class="op">=</span> <span class="string">&quot;External Commit has to contain a path.&quot;</span>,
         <span class="ident">NoCommit</span> <span class="op">=</span> <span class="string">&quot;A Message sent by a sender with type NewMember can only be a Commit.&quot;</span>,
+        <span class="ident">UnknownMemberRemoval</span> <span class="op">=</span> <span class="string">&quot;The remove proposal referenced a non-existing member.&quot;</span>,
     }
 }
 

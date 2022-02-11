@@ -369,23 +369,6 @@
 <span id="368">368</span>
 <span id="369">369</span>
 <span id="370">370</span>
-<span id="371">371</span>
-<span id="372">372</span>
-<span id="373">373</span>
-<span id="374">374</span>
-<span id="375">375</span>
-<span id="376">376</span>
-<span id="377">377</span>
-<span id="378">378</span>
-<span id="379">379</span>
-<span id="380">380</span>
-<span id="381">381</span>
-<span id="382">382</span>
-<span id="383">383</span>
-<span id="384">384</span>
-<span id="385">385</span>
-<span id="386">386</span>
-<span id="387">387</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Proposal errors</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -408,8 +391,6 @@
     <span class="ident">Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>, <span class="ident">TlsByteVecU16</span>, <span class="ident">TlsByteVecU8</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>,
     <span class="ident">TlsSize</span>, <span class="ident">TlsVecU32</span>,
 };
-
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::errors</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// ## MLS Proposal Types</span>
 <span class="doccomment">///</span>
@@ -482,36 +463,21 @@
 )]</span>
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u8</span>)]</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">missing_docs</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProposalOrRefType</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">ProposalOrRefType</span> {
     <span class="ident">Proposal</span> <span class="op">=</span> <span class="number">1</span>,
     <span class="ident">Reference</span> <span class="op">=</span> <span class="number">2</span>,
 }
 
-<span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ProposalOrRefType</span> {
-    <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">ProposalOrRefTypeError</span>;
-    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">value</span>: <span class="ident">u8</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="ident">value</span> {
-            <span class="number">1</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ProposalOrRefType::Proposal</span>),
-            <span class="number">2</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ProposalOrRefType::Reference</span>),
-            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">ProposalOrRefTypeError::UnknownValue</span>),
-        }
-    }
-}
 <span class="doccomment">/// Type of Proposal, either by value or by reference</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(
+    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>,
+)]</span>
+<span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u8</span>)]</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProposalOrRef</span> {
+    <span class="attribute">#[<span class="ident">tls_codec</span>(<span class="ident">discriminant</span> <span class="op">=</span> <span class="number">1</span>)]</span>
     <span class="ident">Proposal</span>(<span class="ident">Proposal</span>),
     <span class="ident">Reference</span>(<span class="ident">ProposalRef</span>),
-}
-
-<span class="kw">impl</span> <span class="ident">ProposalOrRef</span> {
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">proposal_or_ref_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ProposalOrRefType</span> {
-        <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">ProposalOrRef::Proposal</span>(<span class="kw-2">ref</span> <span class="ident">_p</span>) =&gt; <span class="ident">ProposalOrRefType::Proposal</span>,
-            <span class="ident">ProposalOrRef::Reference</span>(<span class="kw-2">ref</span> <span class="ident">_r</span>) =&gt; <span class="ident">ProposalOrRefType::Reference</span>,
-        }
-    }
 }
 
 <span class="doccomment">/// Proposal</span>

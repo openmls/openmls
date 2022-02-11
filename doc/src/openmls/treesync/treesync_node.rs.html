@@ -158,18 +158,18 @@
 <span id="157">157</span>
 <span id="158">158</span>
 <span id="159">159</span>
-<span id="160">160</span>
-<span id="161">161</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`TreeSyncNode`] struct and its implementation.</span>
 
-<span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">types::CryptoError</span>, <span class="ident">OpenMlsCryptoProvider</span>};
+<span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 <span class="kw">use</span> <span class="ident">tls_codec::TlsSliceU8</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">binary_tree</span>::{<span class="ident">LeafIndex</span>, <span class="ident">MlsBinaryTreeDiffError</span>},
     <span class="ident">ciphersuite::Ciphersuite</span>,
-    <span class="ident">treesync::hashes</span>::{<span class="ident">LeafNodeHashInput</span>, <span class="ident">ParentHashError</span>, <span class="ident">ParentNodeTreeHashInput</span>},
+    <span class="ident">error::LibraryError</span>,
+    <span class="ident">treesync::hashes</span>::{<span class="ident">LeafNodeHashInput</span>, <span class="ident">ParentNodeTreeHashInput</span>},
 };
 
 <span class="kw">use</span> <span class="kw">super</span>::{
@@ -303,17 +303,13 @@
     }
 }
 
-<span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TreeSyncNodeError</span> {
-        <span class="ident">Simple</span>{
-            <span class="ident">LibraryError</span> <span class="op">=</span> <span class="string">&quot;An unrecoverable error has occurred during a TreeSySyncNode operation.&quot;</span>,
-        }
-        <span class="ident">Complex</span> {
-            <span class="ident">ParentHashError</span>(<span class="ident">ParentHashError</span>) <span class="op">=</span> <span class="string">&quot;Error while computing parent hash.&quot;</span>,
-            <span class="ident">NodeType</span>(<span class="ident">NodeError</span>) <span class="op">=</span> <span class="string">&quot;We found a node with an unexpected type.&quot;</span>,
-            <span class="ident">HashError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span> <span class="string">&quot;Error while hashing payload.&quot;</span>,
-        }
-    }
+<span class="doccomment">/// Binary Tree error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TreeSyncNodeError</span> {
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">NodeType</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">NodeError</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">TreeSyncNodeError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">MlsBinaryTreeDiffError</span> {

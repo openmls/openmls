@@ -1693,7 +1693,7 @@
         <span class="kw">let</span> <span class="ident">intermediate_secret</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">intermediate_secret</span>
             .<span class="ident">as_ref</span>()
-            .<span class="ident">ok_or</span>(<span class="ident">KeyScheduleError::LibraryError</span>)<span class="question-mark">?</span>;
+            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;state machine error&quot;</span>))<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="ident">WelcomeSecret::new</span>(<span class="ident">backend</span>, <span class="ident">intermediate_secret</span>)<span class="question-mark">?</span>)
     }
@@ -1720,7 +1720,7 @@
         <span class="kw">let</span> <span class="ident">intermediate_secret</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">intermediate_secret</span>
             .<span class="ident">take</span>()
-            .<span class="ident">ok_or</span>(<span class="ident">KeyScheduleError::LibraryError</span>)<span class="question-mark">?</span>;
+            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;state machine error&quot;</span>))<span class="question-mark">?</span>;
 
         <span class="macro">log_crypto!</span>(
             <span class="ident">trace</span>,
@@ -1754,7 +1754,7 @@
         <span class="kw">let</span> <span class="ident">epoch_secret</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">epoch_secret</span>.<span class="ident">take</span>() {
             <span class="prelude-val">Some</span>(<span class="ident">epoch_secret</span>) =&gt; <span class="ident">epoch_secret</span>,
             <span class="comment">// We can return a library error here, because there must be a mistake in the state machine</span>
-            <span class="prelude-val">None</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">KeyScheduleError::LibraryError</span>),
+            <span class="prelude-val">None</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">LibraryError::custom</span>(<span class="string">&quot;state machine error&quot;</span>).<span class="ident">into</span>()),
         };
 
         <span class="prelude-val">Ok</span>(<span class="ident">EpochSecrets::new</span>(<span class="ident">backend</span>, <span class="ident">epoch_secret</span>)<span class="question-mark">?</span>)

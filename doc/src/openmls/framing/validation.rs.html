@@ -426,10 +426,6 @@
 <span id="425">425</span>
 <span id="426">426</span>
 <span id="427">427</span>
-<span id="428">428</span>
-<span id="429">429</span>
-<span id="430">430</span>
-<span id="431">431</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ```text</span>
@@ -591,30 +587,26 @@
         <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sender</span>();
         <span class="kw">match</span> <span class="ident">sender</span> {
             <span class="ident">Sender::Member</span>(<span class="ident">hash_ref</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">sender_leaf</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">treesync</span>
-                    .<span class="ident">leaf_from_id</span>(<span class="ident">hash_ref</span>)
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ValidationError::UnknownSender</span>)
-                {
-                    <span class="prelude-val">Ok</span>(<span class="ident">l</span>) =&gt; <span class="ident">l</span>,
-                    <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
+                <span class="kw">match</span> <span class="ident">treesync</span>.<span class="ident">leaf_from_id</span>(<span class="ident">hash_ref</span>) {
+                    <span class="prelude-val">Some</span>(<span class="ident">sender_leaf</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">sender_leaf</span>.<span class="ident">key_package</span>().<span class="ident">credential</span>().<span class="ident">clone</span>()),
+                    <span class="prelude-val">None</span> =&gt; {
                         <span class="comment">// This might not actually be an error but the sender&#39;s</span>
                         <span class="comment">// key package changed. Let&#39;s check old leaves we still</span>
                         <span class="comment">// have around.</span>
                         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">sender_index</span>, <span class="kw">_</span>)) <span class="op">=</span>
                             <span class="ident">old_leaves</span>.<span class="ident">iter</span>().<span class="ident">find</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">kpr</span>)<span class="op">|</span> <span class="ident">kpr</span> <span class="op">==</span> <span class="ident">hash_ref</span>)
                         {
-                            <span class="ident">treesync</span>
+                            <span class="kw">match</span> <span class="ident">treesync</span>
                                 .<span class="ident">leaf</span>(<span class="kw-2">*</span><span class="ident">sender_index</span>)
                                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ValidationError::UnknownSender</span>)<span class="question-mark">?</span>
+                            {
+                                <span class="prelude-val">Some</span>(<span class="ident">node</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">node</span>.<span class="ident">key_package</span>().<span class="ident">credential</span>().<span class="ident">clone</span>()),
+                                <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">ValidationError::UnknownSender</span>),
+                            }
                         } <span class="kw">else</span> {
-                            <span class="prelude-val">None</span>
+                            <span class="prelude-val">Err</span>(<span class="ident">ValidationError::UnknownSender</span>)
                         }
                     }
-                };
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">sender_leaf</span>) <span class="op">=</span> <span class="ident">sender_leaf</span> {
-                    <span class="prelude-val">Ok</span>(<span class="ident">sender_leaf</span>.<span class="ident">key_package</span>().<span class="ident">credential</span>().<span class="ident">clone</span>())
-                } <span class="kw">else</span> {
-                    <span class="prelude-val">Err</span>(<span class="ident">ValidationError::UnknownSender</span>)
                 }
             }
             <span class="comment">// Preconfigured senders are not supported yet #106/#151.</span>

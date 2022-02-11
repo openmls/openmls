@@ -480,6 +480,18 @@
 <span id="479">479</span>
 <span id="480">480</span>
 <span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -511,11 +523,13 @@
 
 <span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">types::CryptoError</span>, <span class="ident">OpenMlsCryptoProvider</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">binary_tree</span>::{<span class="ident">MlsBinaryTree</span>, <span class="ident">MlsBinaryTreeError</span>},
     <span class="ident">ciphersuite::hash_ref::KeyPackageRef</span>,
     <span class="ident">ciphersuite::Ciphersuite</span>,
+    <span class="ident">error::LibraryError</span>,
     <span class="ident">framing::SenderError</span>,
     <span class="ident">key_packages</span>::{<span class="ident">KeyPackage</span>, <span class="ident">KeyPackageBundle</span>, <span class="ident">KeyPackageError</span>},
     <span class="ident">messages</span>::{<span class="ident">PathSecret</span>, <span class="ident">PathSecretError</span>},
@@ -574,9 +588,9 @@
         <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Node::LeafNode</span>(
             <span class="ident">LeafNode::new</span>(<span class="ident">key_package</span>.<span class="ident">clone</span>(), <span class="ident">backend</span>.<span class="ident">crypto</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="ident">KeyPackageError::CryptoError</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">e</span> {
-                    <span class="ident">TreeSyncError::CryptoError</span>(<span class="ident">e</span>)
+                    <span class="ident">TreeSyncError::from</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>(<span class="ident">e</span>))
                 } <span class="kw">else</span> {
-                    <span class="ident">TreeSyncError::LibraryError</span>
+                    <span class="ident">TreeSyncError::from</span>(<span class="ident">LibraryError::custom</span>(<span class="string">&quot;Unexpected error in KeyPackage&quot;</span>))
                 }
             })<span class="question-mark">?</span>,
         );
@@ -609,11 +623,11 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">merge_diff</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">tree_sync_diff</span>: <span class="ident">StagedTreeSyncDiff</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TreeSyncError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> (<span class="ident">own_leaf_index</span>, <span class="ident">diff</span>, <span class="ident">new_tree_hash</span>) <span class="op">=</span> <span class="ident">tree_sync_diff</span>.<span class="ident">into_parts</span>();
         <span class="self">self</span>.<span class="ident">own_leaf_index</span> <span class="op">=</span> <span class="ident">own_leaf_index</span>;
         <span class="self">self</span>.<span class="ident">tree_hash</span> <span class="op">=</span> <span class="ident">new_tree_hash</span>;
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">merge_diff</span>(<span class="ident">diff</span>)<span class="question-mark">?</span>)
+        <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">merge_diff</span>(<span class="ident">diff</span>)
     }
 
     <span class="doccomment">/// Create an empty diff based on this [`TreeSync`] instance all operations</span>
@@ -688,10 +702,12 @@
                         <span class="kw">if</span> <span class="ident">leaf_node</span>.<span class="ident">public_key</span>() <span class="op">==</span> <span class="ident">own_key_package</span>.<span class="ident">hpke_init_key</span>() {
                             <span class="comment">// Check if there&#39;s a duplicate</span>
                             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">private_key</span>) <span class="op">=</span> <span class="ident">private_key</span>.<span class="ident">take</span>() {
-                                <span class="ident">own_index_option</span> <span class="op">=</span> <span class="prelude-val">Some</span>(
-                                    <span class="ident">u32::try_from</span>(<span class="ident">node_index</span> <span class="op">/</span> <span class="number">2</span>)
-                                        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">TreeSyncError::LibraryError</span>)<span class="question-mark">?</span>,
-                                );
+                                <span class="ident">own_index_option</span> <span class="op">=</span>
+                                    <span class="prelude-val">Some</span>(<span class="ident">u32::try_from</span>(<span class="ident">node_index</span> <span class="op">/</span> <span class="number">2</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                                        <span class="ident">TreeSyncError::from</span>(<span class="ident">LibraryError::custom</span>(
+                                            <span class="string">&quot;Own leaf is outside of the tree&quot;</span>,
+                                        ))
+                                    })<span class="question-mark">?</span>);
                                 <span class="ident">leaf_node</span>.<span class="ident">set_private_key</span>(<span class="ident">private_key</span>);
                             } <span class="kw">else</span> {
                                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TreeSyncError::DuplicateKeyPackage</span>);
@@ -766,7 +782,7 @@
         <span class="comment">// tree hashes and poulates the tree hash caches.</span>
         <span class="kw">let</span> <span class="ident">staged_diff</span> <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">into_staged_diff</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)<span class="question-mark">?</span>;
         <span class="comment">// Merge the diff.</span>
-        <span class="self">self</span>.<span class="ident">merge_diff</span>(<span class="ident">staged_diff</span>)
+        <span class="self">self</span>.<span class="ident">merge_diff</span>(<span class="ident">staged_diff</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">into</span>())
     }
 
     <span class="doccomment">/// Verify the parent hashes of all parent nodes in the tree.</span>
@@ -810,7 +826,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// This function should not fail and only returns a [`Result`], because it</span>
     <span class="doccomment">/// might throw a [LibraryError](TreeSyncError::LibraryError).</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">full_leaves</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">LeafIndex</span>, <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span><span class="op">&gt;</span>, <span class="ident">TreeSyncError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">full_leaves</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">LeafIndex</span>, <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span><span class="op">&gt;</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">tsn_leaves</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">usize</span>, <span class="kw-2">&amp;</span><span class="ident">TreeSyncNode</span>)<span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">tree</span>
             .<span class="ident">leaves</span>()<span class="question-mark">?</span>
@@ -820,9 +836,12 @@
             .<span class="ident">collect</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">leaves</span> <span class="op">=</span> <span class="ident">BTreeMap::new</span>();
         <span class="kw">for</span> (<span class="ident">index</span>, <span class="ident">tsn_leaf</span>) <span class="kw">in</span> <span class="ident">tsn_leaves</span> {
-            <span class="kw">let</span> <span class="ident">index</span> <span class="op">=</span> <span class="ident">u32::try_from</span>(<span class="ident">index</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">TreeSyncError::LibraryError</span>)<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">index</span> <span class="op">=</span> <span class="ident">u32::try_from</span>(<span class="ident">index</span>)
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Index outside of the tree&quot;</span>))<span class="question-mark">?</span>;
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">node</span>) <span class="op">=</span> <span class="ident">tsn_leaf</span>.<span class="ident">node</span>() {
-                <span class="kw">let</span> <span class="ident">leaf</span> <span class="op">=</span> <span class="ident">node</span>.<span class="ident">as_leaf_node</span>()<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">leaf</span> <span class="op">=</span> <span class="ident">node</span>
+                    .<span class="ident">as_leaf_node</span>()
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected a leaf node&quot;</span>))<span class="question-mark">?</span>;
                 <span class="ident">leaves</span>.<span class="ident">insert</span>(<span class="ident">index</span>, <span class="ident">leaf</span>.<span class="ident">key_package</span>());
             }
         }
@@ -832,9 +851,7 @@
     <span class="doccomment">/// Returns a [`BTreeMap`] mapping [`KeyPackageRef`]s to the corresponding</span>
     <span class="doccomment">/// [`KeyPackage`] instances in the leaves. The map only contains full</span>
     <span class="doccomment">/// nodes.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">leaves</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KeyPackageRef</span><span class="op">&gt;</span>, <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span><span class="op">&gt;</span>, <span class="ident">TreeSyncError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">leaves</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">KeyPackageRef</span><span class="op">&gt;</span>, <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">tsn_leaves</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">nodes</span>().<span class="ident">iter</span>().<span class="ident">filter</span>(<span class="op">|</span><span class="ident">tsn</span><span class="op">|</span> <span class="ident">tsn</span>.<span class="ident">node</span>().<span class="ident">is_some</span>());
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">leaves</span> <span class="op">=</span> <span class="ident">BTreeMap::new</span>();
         <span class="kw">for</span> <span class="ident">tsn_leaf</span> <span class="kw">in</span> <span class="ident">tsn_leaves</span> {
@@ -842,7 +859,7 @@
                 <span class="ident">leaves</span>.<span class="ident">insert</span>(<span class="ident">leaf</span>.<span class="ident">key_package_ref</span>().<span class="ident">cloned</span>(), <span class="ident">leaf</span>.<span class="ident">key_package</span>());
             }
         }
-        <span class="prelude-val">Ok</span>(<span class="ident">leaves</span>)
+        <span class="ident">leaves</span>
     }
 
     <span class="doccomment">/// Return the [`KeyPackageRef`] of the node with the given `leaf_index`.</span>
@@ -879,7 +896,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">own_leaf_node</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LeafNode</span>, <span class="ident">TreeSyncError</span><span class="op">&gt;</span> {
         <span class="comment">// Our own leaf should be inside of the tree and never blank.</span>
         <span class="self">self</span>.<span class="ident">leaf</span>(<span class="self">self</span>.<span class="ident">own_leaf_index</span>)<span class="question-mark">?</span>
-            .<span class="ident">ok_or</span>(<span class="ident">TreeSyncError::LibraryError</span>)
+            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Own leaf is outside of the tree&quot;</span>).<span class="ident">into</span>())
     }
 
     <span class="doccomment">/// Return a reference to the leaf at the given `LeafIndex` or `None` if the</span>
@@ -895,18 +912,19 @@
     }
 
     <span class="doccomment">/// Return a reference to the leaf at the given `key_package_ref` or `None`</span>
-    <span class="doccomment">/// if the leaf is blank.</span>
-    <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if the leaf is outside of the tree.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">leaf_from_id</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">key_package_ref</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPackageRef</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LeafNode</span><span class="op">&gt;</span>, <span class="ident">TreeSyncError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">tsn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">leaf</span>(<span class="self">self</span>.<span class="ident">leaf_index</span>(<span class="ident">key_package_ref</span>)<span class="question-mark">?</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="kw">match</span> <span class="ident">tsn</span>.<span class="ident">node</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">node</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">node</span>.<span class="ident">as_leaf_node</span>()<span class="question-mark">?</span>),
-            <span class="prelude-val">None</span> =&gt; <span class="prelude-val">None</span>,
-        })
+    <span class="doccomment">/// if the leaf is blank or outside the tree.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">leaf_from_id</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key_package_ref</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPackageRef</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LeafNode</span><span class="op">&gt;</span> {
+        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">leaf_index</span>(<span class="ident">key_package_ref</span>) {
+            <span class="prelude-val">Ok</span>(<span class="ident">leaf_index</span>) =&gt; <span class="kw">match</span> <span class="self">self</span>.<span class="ident">tree</span>.<span class="ident">leaf</span>(<span class="ident">leaf_index</span>) {
+                <span class="prelude-val">Ok</span>(<span class="ident">leaf</span>) =&gt; <span class="ident">leaf</span>
+                    .<span class="ident">node</span>()
+                    .<span class="ident">as_ref</span>()
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">node</span><span class="op">|</span> <span class="ident">node</span>.<span class="ident">as_leaf_node</span>().<span class="ident">ok</span>())
+                    .<span class="ident">flatten</span>(),
+                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
+            },
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
+        }
     }
 
     <span class="doccomment">/// Get the [`LeafIndex`] for a given [`KeyPackageRef`].</span>
@@ -941,25 +959,31 @@
     }
 }
 
-<span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TreeSyncError</span> {
-        <span class="ident">Simple</span> {
-            <span class="ident">LibraryError</span> <span class="op">=</span> <span class="string">&quot;An inconsistency in the internal state of the tree was detected.&quot;</span>,
-            <span class="ident">MissingKeyPackage</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t find our own key package in this tree.&quot;</span>,
-            <span class="ident">DuplicateKeyPackage</span> <span class="op">=</span> <span class="string">&quot;Found two KeyPackages with the same public key.&quot;</span>,
-            <span class="ident">OutOfBounds</span> <span class="op">=</span> <span class="string">&quot;The given `LeafIndex` is outside of the tree.&quot;</span>,
-            <span class="ident">KeyPackageRefNotInTree</span> <span class="op">=</span> <span class="string">&quot;The given `KeyPackageRef` is not in the tree.&quot;</span>,
-        }
-        <span class="ident">Complex</span> {
-            <span class="ident">BinaryTreeError</span>(<span class="ident">MlsBinaryTreeError</span>) <span class="op">=</span> <span class="string">&quot;An error occurred during an operation on the underlying binary tree.&quot;</span>,
-            <span class="ident">TreeSyncNodeError</span>(<span class="ident">TreeSyncNodeError</span>) <span class="op">=</span> <span class="string">&quot;An error occurred during an operation on the underlying binary tree.&quot;</span>,
-            <span class="ident">NodeTypeError</span>(<span class="ident">NodeError</span>) <span class="op">=</span> <span class="string">&quot;We found a node with an unexpected type.&quot;</span>,
-            <span class="ident">TreeSyncDiffError</span>(<span class="ident">TreeSyncDiffError</span>) <span class="op">=</span> <span class="string">&quot;An error while trying to apply a diff.&quot;</span>,
-            <span class="ident">DerivationError</span>(<span class="ident">PathSecretError</span>) <span class="op">=</span> <span class="string">&quot;Error while deriving commit secret for new tree.&quot;</span>,
-            <span class="ident">SenderError</span>(<span class="ident">SenderError</span>) <span class="op">=</span> <span class="string">&quot;Sender error&quot;</span>,
-            <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span> <span class="string">&quot;See [`CryptoError`] for details.&quot;</span>,
-        }
-    }
+<span class="doccomment">/// TreeSync error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TreeSyncError</span> {
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Couldn&#39;t find our own key package in this tree.&quot;</span>)]</span>
+    <span class="ident">MissingKeyPackage</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Found two KeyPackages with the same public key.&quot;</span>)]</span>
+    <span class="ident">DuplicateKeyPackage</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The given `KeyPackageRef` is not in the tree.&quot;</span>)]</span>
+    <span class="ident">KeyPackageRefNotInTree</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">BinaryTreeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsBinaryTreeError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">TreeSyncNodeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TreeSyncNodeError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">NodeTypeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">NodeError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">TreeSyncDiffError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TreeSyncDiffError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">DerivationError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">PathSecretError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">SenderError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">SenderError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">CryptoError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CryptoError</span>),
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div>

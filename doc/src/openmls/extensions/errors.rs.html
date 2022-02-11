@@ -87,6 +87,8 @@
 <span id="86">86</span>
 <span id="87">87</span>
 <span id="88">88</span>
+<span id="89">89</span>
+<span id="90">90</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Extension errors.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! An `ExtensionError` is thrown when an extension is invalid (for example when</span>
@@ -99,8 +101,10 @@
 <span class="doccomment">//! * `ParentHashError`</span>
 <span class="doccomment">//! * `RatchetTreeError`</span>
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config::ConfigError</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::ErrorString</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="ident">config::ConfigError</span>,
+    <span class="ident">error</span>::{<span class="ident">ErrorString</span>, <span class="ident">LibraryError</span>},
+};
 
 <span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
 <span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
@@ -110,9 +114,9 @@
         <span class="ident">Simple</span> {
             <span class="ident">DuplicateRatchetTreeExtension</span> <span class="op">=</span>
                 <span class="string">&quot;Found a duplicate ratchet tree extension.&quot;</span>,
-            <span class="ident">LibraryError</span> <span class="op">=</span> <span class="string">&quot;An unrecoverable error has occurred due to a bug in the implementation.&quot;</span>,
         }
         <span class="ident">Complex</span> {
+            <span class="ident">LibraryError</span>(<span class="ident">LibraryError</span>) <span class="op">=</span> <span class="string">&quot;Library error&quot;</span>,
             <span class="ident">InvalidExtensionType</span>(<span class="ident">ErrorString</span>) <span class="op">=</span>
                 <span class="string">&quot;Invalid extension type error.&quot;</span>,
             <span class="ident">Capabilities</span>(<span class="ident">CapabilitiesExtensionError</span>) <span class="op">=</span>

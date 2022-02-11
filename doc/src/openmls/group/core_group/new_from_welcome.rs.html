@@ -309,7 +309,7 @@
         )<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">signer_key_package</span> <span class="op">=</span> <span class="ident">tree</span>
-            .<span class="ident">leaf_from_id</span>(<span class="ident">group_info</span>.<span class="ident">signer</span>())<span class="question-mark">?</span>
+            .<span class="ident">leaf_from_id</span>(<span class="ident">group_info</span>.<span class="ident">signer</span>())
             .<span class="ident">ok_or</span>(<span class="ident">WelcomeError::UnknownSender</span>)<span class="question-mark">?</span>
             .<span class="ident">key_package</span>();
 

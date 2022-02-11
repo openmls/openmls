@@ -242,12 +242,16 @@
 <span id="241">241</span>
 <span id="242">242</span>
 <span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # OpenMLS Errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Each module has their own errors it is returning. This module will defines</span>
 <span class="doccomment">//! helper macros and functions to define OpenMLS errors.</span>
 <span class="kw">use</span> <span class="ident">std::fmt::Display</span>;
 
+<span class="kw">use</span> <span class="ident">backtrace::Backtrace</span>;
 <span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 <span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
@@ -286,8 +290,10 @@
 <span class="kw">impl</span> <span class="ident">LibraryError</span> {
     <span class="doccomment">/// A custom error (typically to avoid an unwrap())</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">custom</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>) -&gt; <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="ident">bt</span> <span class="op">=</span> <span class="ident">Backtrace::new</span>();
+        <span class="kw">let</span> <span class="ident">display_string</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;Error description: {}\n Backtrace:\n{:?}&quot;</span>, <span class="ident">s</span>, <span class="ident">bt</span>);
         <span class="self">Self</span> {
-            <span class="ident">internal</span>: <span class="ident">InternalLibraryError::Custom</span>(<span class="ident">s</span>),
+            <span class="ident">internal</span>: <span class="ident">InternalLibraryError::Custom</span>(<span class="ident">display_string</span>),
         }
     }
 
@@ -320,7 +326,7 @@
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">CryptoError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CryptoError</span>),
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Custom library error: {0}&quot;</span>)]</span>
-    <span class="ident">Custom</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>),
+    <span class="ident">Custom</span>(<span class="ident">String</span>),
 }
 
 <span class="comment">// Macro helpers</span>

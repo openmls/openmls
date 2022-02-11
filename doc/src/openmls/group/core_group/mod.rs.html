@@ -760,12 +760,6 @@
 <span id="759">759</span>
 <span id="760">760</span>
 <span id="761">761</span>
-<span id="762">762</span>
-<span id="763">763</span>
-<span id="764">764</span>
-<span id="765">765</span>
-<span id="766">766</span>
-<span id="767">767</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Functions in this module should never panic. However, if there is a bug in</span>
@@ -1025,9 +1019,8 @@
         <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="ident">Proposal::Add</span>(<span class="ident">add_proposal</span>);
         <span class="ident">MlsPlaintext::member_proposal</span>(
             <span class="ident">framing_parameters</span>,
-            <span class="self">self</span>.<span class="ident">key_package_ref</span>().<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">LibraryError::custom</span>(<span class="string">&quot;CoreGroup::create_commit(): missing key package&quot;</span>)
-            })<span class="question-mark">?</span>,
+            <span class="self">self</span>.<span class="ident">key_package_ref</span>()
+                .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;missing key package&quot;</span>))<span class="question-mark">?</span>,
             <span class="ident">proposal</span>,
             <span class="ident">credential_bundle</span>,
             <span class="self">self</span>.<span class="ident">context</span>(),
@@ -1052,9 +1045,8 @@
         <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="ident">Proposal::Update</span>(<span class="ident">update_proposal</span>);
         <span class="ident">MlsPlaintext::member_proposal</span>(
             <span class="ident">framing_parameters</span>,
-            <span class="self">self</span>.<span class="ident">key_package_ref</span>().<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">LibraryError::custom</span>(<span class="string">&quot;CoreGroup::create_commit(): missing key package&quot;</span>)
-            })<span class="question-mark">?</span>,
+            <span class="self">self</span>.<span class="ident">key_package_ref</span>()
+                .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;missing key package&quot;</span>))<span class="question-mark">?</span>,
             <span class="ident">proposal</span>,
             <span class="ident">credential_bundle</span>,
             <span class="self">self</span>.<span class="ident">context</span>(),
@@ -1079,9 +1071,8 @@
         <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="ident">Proposal::Remove</span>(<span class="ident">remove_proposal</span>);
         <span class="ident">MlsPlaintext::member_proposal</span>(
             <span class="ident">framing_parameters</span>,
-            <span class="self">self</span>.<span class="ident">key_package_ref</span>().<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">LibraryError::custom</span>(<span class="string">&quot;CoreGroup::create_commit(): missing key package&quot;</span>)
-            })<span class="question-mark">?</span>,
+            <span class="self">self</span>.<span class="ident">key_package_ref</span>()
+                .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;missing key package&quot;</span>))<span class="question-mark">?</span>,
             <span class="ident">proposal</span>,
             <span class="ident">credential_bundle</span>,
             <span class="self">self</span>.<span class="ident">context</span>(),
@@ -1108,9 +1099,8 @@
         <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="ident">Proposal::PreSharedKey</span>(<span class="ident">presharedkey_proposal</span>);
         <span class="ident">MlsPlaintext::member_proposal</span>(
             <span class="ident">framing_parameters</span>,
-            <span class="self">self</span>.<span class="ident">key_package_ref</span>().<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">LibraryError::custom</span>(<span class="string">&quot;CoreGroup::create_commit(): missing key package&quot;</span>)
-            })<span class="question-mark">?</span>,
+            <span class="self">self</span>.<span class="ident">key_package_ref</span>()
+                .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;missing key package&quot;</span>))<span class="question-mark">?</span>,
             <span class="ident">proposal</span>,
             <span class="ident">credential_bundle</span>,
             <span class="self">self</span>.<span class="ident">context</span>(),
@@ -1151,9 +1141,8 @@
         <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="ident">Proposal::GroupContextExtensions</span>(<span class="ident">proposal</span>);
         <span class="ident">MlsPlaintext::member_proposal</span>(
             <span class="ident">framing_parameters</span>,
-            <span class="self">self</span>.<span class="ident">key_package_ref</span>().<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">LibraryError::custom</span>(<span class="string">&quot;CoreGroup::create_commit(): missing key package&quot;</span>)
-            })<span class="question-mark">?</span>,
+            <span class="self">self</span>.<span class="ident">key_package_ref</span>()
+                .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;missing key package&quot;</span>))<span class="question-mark">?</span>,
             <span class="ident">proposal</span>,
             <span class="ident">credential_bundle</span>,
             <span class="self">self</span>.<span class="ident">context</span>(),
@@ -1173,9 +1162,8 @@
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsCiphertext</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">mls_plaintext</span> <span class="op">=</span> <span class="ident">MlsPlaintext::new_application</span>(
-            <span class="self">self</span>.<span class="ident">key_package_ref</span>().<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">LibraryError::custom</span>(<span class="string">&quot;CoreGroup::create_commit(): missing key package&quot;</span>)
-            })<span class="question-mark">?</span>,
+            <span class="self">self</span>.<span class="ident">key_package_ref</span>()
+                .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;missing key package&quot;</span>))<span class="question-mark">?</span>,
             <span class="ident">aad</span>,
             <span class="ident">msg</span>,
             <span class="ident">credential_bundle</span>,

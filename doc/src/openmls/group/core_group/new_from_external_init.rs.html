@@ -209,7 +209,7 @@
         }
 
         <span class="comment">// FIXME #680: Validation of external commits</span>
-        <span class="kw">let</span> <span class="ident">pgs_signer_leaf</span> <span class="op">=</span> <span class="ident">treesync</span>.<span class="ident">leaf_from_id</span>(<span class="ident">verifiable_public_group_state</span>.<span class="ident">signer</span>())<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">pgs_signer_leaf</span> <span class="op">=</span> <span class="ident">treesync</span>.<span class="ident">leaf_from_id</span>(<span class="ident">verifiable_public_group_state</span>.<span class="ident">signer</span>());
         <span class="kw">let</span> <span class="ident">pgs_signer_credential</span> <span class="op">=</span> <span class="ident">pgs_signer_leaf</span>
             .<span class="ident">ok_or</span>(<span class="ident">ExternalCommitError::UnknownSender</span>)<span class="question-mark">?</span>
             .<span class="ident">key_package</span>()

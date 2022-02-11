@@ -445,9 +445,9 @@
             <span class="ident">other_extensions</span>,
             <span class="ident">external_pub</span>: <span class="ident">external_pub</span>.<span class="ident">into</span>(),
             <span class="ident">ciphersuite</span>: <span class="ident">ciphersuite</span>.<span class="ident">name</span>(),
-            <span class="ident">signer</span>: <span class="kw-2">*</span><span class="ident">core_group</span>.<span class="ident">key_package_ref</span>().<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">LibraryError::custom</span>(<span class="string">&quot;PublicGroupStateTbs::new(): missing key package ref&quot;</span>)
-            })<span class="question-mark">?</span>,
+            <span class="ident">signer</span>: <span class="kw-2">*</span><span class="ident">core_group</span>
+                .<span class="ident">key_package_ref</span>()
+                .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;missing key package ref&quot;</span>))<span class="question-mark">?</span>,
         })
     }
 }

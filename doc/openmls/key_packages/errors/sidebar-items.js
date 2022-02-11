@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["KeyPackageError","See the error’s module for more information."]]});
+initSidebarItems({"enum":[["KeyPackageError","KeyPackage error"]]});
