@@ -8,7 +8,7 @@
 [![Docs][docs-main-badge]][docs-main-link]
 ![Rust Version][rustc-image]
 
-A WIP Rust implementation of [Messaging Layer Security](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md) based on draft 9+.
+A WIP Rust implementation of [Messaging Layer Security](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md) based on draft 12+.
 
 ### Supported ciphersuites
 
