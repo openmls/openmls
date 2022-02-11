@@ -4,6 +4,7 @@
 use std::collections::HashSet;
 
 use crate::{
+    ciphersuite::hash_ref::HashReference,
     framing::{Sender, SenderError},
     group::errors::ExternalCommitValidationError,
     messages::{Proposal, ProposalOrRefType, ProposalType},
@@ -207,9 +208,12 @@ impl CoreGroup {
     /// Validate Update proposals. This function implements the following checks:
     ///  - ValSem109
     ///  - ValSem110
+    ///  - ValSem111
+    ///  - ValSem112
     pub(crate) fn validate_update_proposals(
         &self,
         proposal_queue: &ProposalQueue,
+        committer: &HashReference,
     ) -> Result<HashSet<Vec<u8>>, CoreGroupError> {
         let mut public_key_set = HashSet::new();
         for (_index, key_package) in self.treesync().full_leaves()? {
@@ -226,9 +230,22 @@ impl CoreGroup {
                 Sender::Member(hash_ref) => hash_ref,
                 _ => return Err(CoreGroupError::SenderError(SenderError::NotAMember)),
             };
+            // ValSem112
+            // The sender of a standalone update proposal must be of type member
+            if let Sender::Member(hash_ref) = update_proposal.sender() {
+                // ValSem111
+                // The sender of a full Commit must not include own update proposals
+                if committer == hash_ref {
+                    return Err(ProposalValidationError::CommitterIncludedOwnUpdate.into());
+                }
+            } else {
+                return Err(ProposalValidationError::UpdateFromNonMember.into());
+            }
+
             if let Some(leaf_node) = tree.leaf_from_id(hash_ref)? {
                 let existing_key_package = leaf_node.key_package();
                 // ValSem109
+                // Identity must be unchanged between existing member and new proposal
                 if update_proposal
                     .update_proposal()
                     .key_package()
@@ -244,6 +261,7 @@ impl CoreGroup {
                     .hpke_init_key()
                     .as_slice();
                 // ValSem110
+                // HPKE init key must be unique among existing members
                 if public_key_set.contains(public_key) {
                     return Err(ProposalValidationError::ExistingPublicKeyUpdateProposal.into());
                 }
@@ -257,7 +275,7 @@ impl CoreGroup {
     /// Validate the new key package in a path
     /// TODO: #730 - There's nothing testing this function.
     /// - ValSem109
-    /// - ValSem109
+    /// - ValSem110
     pub(super) fn validate_path_key_package(
         &self,
         sender: u32,

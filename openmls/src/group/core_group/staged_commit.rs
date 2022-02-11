@@ -8,6 +8,7 @@ use super::proposals::{
 use super::super::errors::*;
 use super::*;
 use core::fmt::Debug;
+use std::collections::HashSet;
 use std::mem;
 
 impl CoreGroup {
@@ -32,6 +33,8 @@ impl CoreGroup {
     ///  - ValSem108
     ///  - ValSem109
     ///  - ValSem110
+    ///  - ValSem111
+    ///  - ValSem112
     ///  - ValSem201
     ///  - ValSem205
     ///  - ValSem240
@@ -103,19 +106,32 @@ impl CoreGroup {
         // ValSem107
         // ValSem108
         self.validate_remove_proposals(&proposal_queue)?;
-        // ValSem109
-        // ValSem110
-        let public_key_set = self.validate_update_proposals(&proposal_queue)?;
-        if matches!(sender, Sender::NewMember) {
-            // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
-            // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
-            // ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.
-            // ValSem243: External Commit, inline Proposals: There MUST NOT be any Update proposals.
-            // ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
-            //            leaf are identical to the ones in the path KeyPackage.
-            // ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
-            self.validate_external_commit(&proposal_queue, commit_update_key_package.as_ref())?;
-        }
+
+        let public_key_set = match sender {
+            Sender::Member(hash_ref) => {
+                // ValSem109
+                // ValSem110
+                // ValSem111
+                // ValSem112
+                self.validate_update_proposals(&proposal_queue, hash_ref)?
+            }
+            Sender::Preconfigured(_) => {
+                // A commit cannot be issued by a pre-configured sender.
+                return Err(CoreGroupError::SenderError(SenderError::NotAMember));
+            }
+            Sender::NewMember => {
+                // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
+                // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
+                // ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.
+                // ValSem243: External Commit, inline Proposals: There MUST NOT be any Update proposals.
+                // ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed
+                //            leaf are identical to the ones in the path KeyPackage.
+                // ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
+                self.validate_external_commit(&proposal_queue, commit_update_key_package.as_ref())?;
+                // Since there are no update proposals in an External Commit we have no public keys to return
+                HashSet::new()
+            }
+        };
 
         // Create provisional tree and apply proposals
         let mut diff = self.treesync().empty_diff()?;
@@ -282,8 +298,12 @@ impl CoreGroup {
         }
 
         let (provisional_group_epoch_secrets, provisional_message_secrets) =
-            provisional_epoch_secrets
-                .split_secrets(serialized_provisional_group_context, diff.leaf_count());
+            provisional_epoch_secrets.split_secrets(
+                serialized_provisional_group_context,
+                diff.leaf_count(),
+                // The index should be the same on TreeSync and Diff.
+                diff.own_leaf_index(),
+            );
 
         // Make the diff a staged diff. This finalizes the diff and no more changes can be applied to it.
         let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;

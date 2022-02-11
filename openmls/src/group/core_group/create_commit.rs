@@ -109,9 +109,14 @@ impl CoreGroup {
         // ValSem107
         // ValSem108
         self.validate_remove_proposals(&proposal_queue)?;
-        // ValSem109
-        // ValSem110
-        self.validate_update_proposals(&proposal_queue)?;
+        // Validate update proposals for member commits
+        if let Some(hash_ref) = own_kpr {
+            // ValSem109
+            // ValSem110
+            // ValSem111
+            // ValSem112
+            self.validate_update_proposals(&proposal_queue, hash_ref)?;
+        }
 
         // Apply proposals to tree
         let apply_proposals_values =
@@ -326,8 +331,11 @@ impl CoreGroup {
         )?;
 
         let (provisional_group_epoch_secrets, provisional_message_secrets) =
-            provisional_epoch_secrets
-                .split_secrets(serialized_provisional_group_context, diff.leaf_count());
+            provisional_epoch_secrets.split_secrets(
+                serialized_provisional_group_context,
+                diff.leaf_count(),
+                own_leaf_index,
+            );
 
         let staged_commit_state = MemberStagedCommitState::new(
             provisional_group_context,

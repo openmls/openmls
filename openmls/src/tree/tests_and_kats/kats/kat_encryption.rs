@@ -311,19 +311,12 @@ pub fn generate_test_vector(
 
     let ciphersuite_name = ciphersuite.name();
     let crypto = OpenMlsRustCrypto::default();
-    let epoch_secret = crypto
+    let encryption_secret_bytes = crypto
         .rand()
         .random_vec(ciphersuite.hash_length())
         .expect("An unexpected error occurred.");
-    let encryption_secret =
-        EncryptionSecret::from_slice(&epoch_secret[..], ProtocolVersion::default(), ciphersuite);
-    let encryption_secret_group =
-        EncryptionSecret::from_slice(&epoch_secret[..], ProtocolVersion::default(), ciphersuite);
-    let encryption_secret_bytes = encryption_secret.as_slice().to_vec();
     let sender_data_secret = SenderDataSecret::random(ciphersuite, &crypto);
     let sender_data_secret_bytes = sender_data_secret.as_slice();
-    let mut secret_tree = SecretTree::new(encryption_secret, n_leaves.into());
-    let group_secret_tree = SecretTree::new(encryption_secret_group, n_leaves.into());
 
     // Create sender_data_key/secret
     let ciphertext = crypto
@@ -349,15 +342,35 @@ pub fn generate_test_vector(
         ProtocolVersion::default(),
         ciphersuite,
     );
-    *group.message_secrets_test_mut().secret_tree_mut() = group_secret_tree;
 
     let mut leaves = Vec::new();
     for leaf in 0..n_leaves {
+        let sender_leaf = leaf;
+        // It doesn't matter who the receiver is, as long as it's not the same
+        // as the sender, so we don't get into trouble with the secret tree.
+        let receiver_leaf = if leaf == 0 { 1u32 } else { 0u32 };
+        let encryption_secret = EncryptionSecret::from_slice(
+            &encryption_secret_bytes[..],
+            ProtocolVersion::default(),
+            ciphersuite,
+        );
+        let encryption_secret_tree =
+            SecretTree::new(encryption_secret, n_leaves.into(), sender_leaf.into());
+        let decryption_secret = EncryptionSecret::from_slice(
+            &encryption_secret_bytes[..],
+            ProtocolVersion::default(),
+            ciphersuite,
+        );
+        let mut decryption_secret_tree =
+            SecretTree::new(decryption_secret, n_leaves.into(), receiver_leaf.into());
+
+        *group.message_secrets_test_mut().secret_tree_mut() = encryption_secret_tree;
+
         let mut handshake = Vec::new();
         let mut application = Vec::new();
         for generation in 0..n_generations {
             // Application
-            let (application_secret_key, application_secret_nonce) = secret_tree
+            let (application_secret_key, application_secret_nonce) = decryption_secret_tree
                 .secret_for_decryption(
                     ciphersuite,
                     &crypto,
@@ -388,7 +401,7 @@ pub fn generate_test_vector(
             });
 
             // Handshake
-            let (handshake_secret_key, handshake_secret_nonce) = secret_tree
+            let (handshake_secret_key, handshake_secret_nonce) = decryption_secret_tree
                 .secret_for_decryption(
                     ciphersuite,
                     &crypto,
@@ -477,15 +490,6 @@ pub fn run_test_vector(
     };
     log::debug!("Running test vector with {:?}", ciphersuite.name());
 
-    let mut secret_tree = SecretTree::new(
-        EncryptionSecret::from_slice(
-            hex_to_bytes(&test_vector.encryption_secret).as_slice(),
-            ProtocolVersion::default(),
-            ciphersuite,
-        ),
-        n_leaves.into(),
-    );
-    log::debug!("Secret tree: {:?}", secret_tree);
     let sender_data_secret = SenderDataSecret::from_slice(
         hex_to_bytes(&test_vector.sender_data_secret).as_slice(),
         ProtocolVersion::default(),
@@ -519,6 +523,21 @@ pub fn run_test_vector(
     }
 
     for (leaf_index, leaf) in test_vector.leaves.iter().enumerate() {
+        // It doesn't matter who the receiver is, as long as it's not the same
+        // as the sender, so we don't get into trouble with the secret tree.
+        let receiver_leaf = if leaf_index == 0 { 1u32 } else { 0u32 };
+
+        let mut secret_tree = SecretTree::new(
+            EncryptionSecret::from_slice(
+                hex_to_bytes(&test_vector.encryption_secret).as_slice(),
+                ProtocolVersion::default(),
+                ciphersuite,
+            ),
+            n_leaves.into(),
+            receiver_leaf.into(),
+        );
+
+        log::debug!("Encryption secret tree: {:?}", secret_tree);
         log::trace!("Running test vector for leaf {:?}", leaf_index);
         if leaf.generations != leaf.application.len() as u32 {
             if cfg!(test) {
@@ -533,6 +552,9 @@ pub fn run_test_vector(
             return Err(EncTestVectorError::InvalidLeafSequenceHandshake);
         }
         let leaf_index = leaf_index as u32;
+
+        // We keep a fresh copy of the secret tree so we don't lose any secrets.
+        let fresh_secret_tree = secret_tree.clone();
 
         for (generation, application, handshake) in
             izip!((0..leaf.generations), &leaf.application, &leaf.handshake,)
@@ -592,9 +614,9 @@ pub fn run_test_vector(
             // and compare it to the plaintext in the test vector instead.
 
             // Swap secret tree
-            let temp_secret_tree = group
+            let _ = group
                 .message_secrets_test_mut()
-                .replace_secret_tree(secret_tree);
+                .replace_secret_tree(fresh_secret_tree.clone());
 
             // Decrypt and check application message
             let sender_data = mls_ciphertext_application
@@ -622,12 +644,13 @@ pub fn run_test_vector(
             }
 
             // Swap secret tree back
-            secret_tree = group
+            let _ = group
                 .message_secrets_test_mut()
-                .replace_secret_tree(temp_secret_tree);
+                .replace_secret_tree(fresh_secret_tree.clone());
 
             // Check handshake keys
-            let (handshake_secret_key, handshake_secret_nonce) = secret_tree
+            let (handshake_secret_key, handshake_secret_nonce) = fresh_secret_tree
+                .clone()
                 .secret_for_decryption(
                     ciphersuite,
                     backend,
@@ -663,9 +686,9 @@ pub fn run_test_vector(
                 );
 
             // Swap secret tree
-            let temp_secret_tree = group
+            let _ = group
                 .message_secrets_test_mut()
-                .replace_secret_tree(secret_tree);
+                .replace_secret_tree(fresh_secret_tree.clone());
 
             // Decrypt and check message
             let sender_data = mls_ciphertext_handshake
@@ -693,12 +716,13 @@ pub fn run_test_vector(
             }
 
             // Swap secret tree back
-            secret_tree = group
+            let _ = group
                 .message_secrets_test_mut()
-                .replace_secret_tree(temp_secret_tree);
+                .replace_secret_tree(fresh_secret_tree.clone());
 
             // Check handshake keys
-            let (handshake_secret_key, handshake_secret_nonce) = secret_tree
+            let (handshake_secret_key, handshake_secret_nonce) = fresh_secret_tree
+                .clone()
                 .secret_for_decryption(
                     ciphersuite,
                     backend,
@@ -730,9 +754,9 @@ pub fn run_test_vector(
                 );
 
             // Swap secret tree
-            let temp_secret_tree = group
+            let _ = group
                 .message_secrets_test_mut()
-                .replace_secret_tree(secret_tree);
+                .replace_secret_tree(fresh_secret_tree.clone());
 
             // Decrypt and check message
             let sender_data = mls_ciphertext_handshake
@@ -757,9 +781,9 @@ pub fn run_test_vector(
             }
 
             // Swap secret tree back
-            secret_tree = group
+            let _ = group
                 .message_secrets_test_mut()
-                .replace_secret_tree(temp_secret_tree);
+                .replace_secret_tree(fresh_secret_tree.clone());
         }
         log::trace!("Finished test vector for leaf {:?}", leaf_index);
     }

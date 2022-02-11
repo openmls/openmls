@@ -485,7 +485,9 @@ fn test_valsem243(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::SenderError(SenderError::NotAMember))
+        MlsGroupError::Group(CoreGroupError::ExternalCommitValidationError(
+            ExternalCommitValidationError::InvalidInlineProposals
+        ))
     );
 
     // Positive case

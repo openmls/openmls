@@ -207,7 +207,7 @@ impl CoreGroupBuilder {
         let epoch_secrets = key_schedule.epoch_secrets(backend)?;
 
         let (group_epoch_secrets, message_secrets) =
-            epoch_secrets.split_secrets(serialized_group_context, 1u32);
+            epoch_secrets.split_secrets(serialized_group_context, 1u32, 0u32);
         let message_secrets_store =
             MessageSecretsStore::new_with_secret(self.max_past_epochs, message_secrets);
 
