@@ -1,13 +1,15 @@
 //! This module contains the [`TreeSyncNode`] struct and its implementation.
 
-use openmls_traits::{types::CryptoError, OpenMlsCryptoProvider};
+use openmls_traits::OpenMlsCryptoProvider;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 use tls_codec::TlsSliceU8;
 
 use crate::{
     binary_tree::{LeafIndex, MlsBinaryTreeDiffError},
     ciphersuite::Ciphersuite,
-    treesync::hashes::{LeafNodeHashInput, ParentHashError, ParentNodeTreeHashInput},
+    error::LibraryError,
+    treesync::hashes::{LeafNodeHashInput, ParentNodeTreeHashInput},
 };
 
 use super::{
@@ -141,17 +143,13 @@ impl TreeSyncNode {
     }
 }
 
-implement_error! {
-    pub enum TreeSyncNodeError {
-        Simple{
-            LibraryError = "An unrecoverable error has occurred during a TreeSySyncNode operation.",
-        }
-        Complex {
-            ParentHashError(ParentHashError) = "Error while computing parent hash.",
-            NodeType(NodeError) = "We found a node with an unexpected type.",
-            HashError(CryptoError) = "Error while hashing payload.",
-        }
-    }
+/// Binary Tree error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum TreeSyncNodeError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error(transparent)]
+    NodeType(#[from] NodeError),
 }
 
 impl From<TreeSyncNodeError> for MlsBinaryTreeDiffError {

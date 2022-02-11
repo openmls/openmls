@@ -12,12 +12,13 @@ use crate::{
         MlsCiphertextError, MlsPlaintextError, SenderError, ValidationError, VerificationError,
     },
     key_packages::KeyPackageError,
-    messages::errors::ProposalError,
     schedule::{KeyScheduleError, PskSecretError},
     treesync::{diff::TreeSyncDiffError, treekem::TreeKemError, TreeSyncError},
 };
 use openmls_traits::types::CryptoError;
 use tls_codec::Error as TlsCodecError;
+
+use thiserror::Error;
 
 implement_error! {
     pub enum CoreGroupError {
@@ -77,8 +78,6 @@ implement_error! {
                 "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
             InterimTranscriptHashError(InterimTranscriptHashError) =
                 "See [`InterimTranscriptHashError`](crate::group::InterimTranscriptHashError) for details.",
-            QueuedProposalError(QueuedProposalError) =
-                "See [`QueuedProposalError`](crate::group::QueuedProposalError) for details.",
             SenderError(SenderError) =
                 "Sender error",
         }
@@ -131,8 +130,6 @@ implement_error! {
                 "See [`InterimTranscriptHashError`] for details.",
             CryptoError(CryptoError) =
                 "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
-            ProposalError(QueuedProposalError) =
-                "See [`QueuedProposalError`] for details.",
         }
     }
 }
@@ -173,8 +170,6 @@ implement_error! {
                 "See [`KeyPackageError`] for details.",
             CryptoError(CryptoError) =
                 "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
-            ProposalError(QueuedProposalError) =
-                "See [`QueuedProposalError`] for details.",
         }
     }
 }
@@ -239,29 +234,15 @@ implement_error! {
 }
 
 implement_error! {
-    pub enum QueuedProposalError {
-        Simple {
-            WrongContentType = "API misuse. Only proposals can end up in the proposal queue",
-        }
-        Complex {
-            LibraryError(LibraryError) = "A LibraryError occurred.",
-            ProposalError(ProposalError) = "A ProposalError occurred.",
-            TlsCodecError(TlsCodecError) = "Error serializing",
-        }
-    }
-}
-
-implement_error! {
     pub enum ProposalQueueError {
         Simple {
             ProposalNotFound = "Not all proposals in the Commit were found locally.",
             SelfRemoval = "The sender of a Commit tried to remove themselves.",
             ArchitectureError = "Couldn't fit a `u32` into a `usize`.",
             RemovedNotFound = "Couldn't find the member to remove.",
-            LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
         }
         Complex {
-            NotAProposal(QueuedProposalError) = "The given MLS Plaintext was not a Proposal.",
+            LibraryError(LibraryError) = "Library error",
             SenderError(SenderError) = "Sender error",
         }
     }
@@ -275,7 +256,6 @@ implement_error! {
         }
         Complex {
             LibraryError(LibraryError) = "A LibraryError occurred.",
-            NotAProposal(QueuedProposalError) = "The given MLS Plaintext was not a Proposal.",
             SenderError(SenderError) = "Sender error",
         }
     }
@@ -293,23 +273,39 @@ implement_error! {
     }
 }
 
-implement_error! {
-    pub enum ProposalValidationError {
-        UnknownMember = "The sender could not be matched to a member of the group.",
-        DuplicateIdentityAddProposal = "Found two add proposals with the same identity.",
-        DuplicateSignatureKeyAddProposal = "Found two add proposals with the same signature key.",
-        DuplicatePublicKeyAddProposal = "Found two add proposals with the same HPKE public key.",
-        ExistingIdentityAddProposal = "Identity of the add proposal already existed in tree.",
-        ExistingSignatureKeyAddProposal = "Signature key of the add proposal already existed in tree.",
-        ExistingPublicKeyAddProposal = "HPKE public key of the add proposal already existed in tree.",
-        UpdateProposalIdentityMismatch = "The identity of the update proposal did not match the existing identity.",
-        ExistingSignatureKeyUpdateProposal = "Signature key of the update proposal already existed in tree.",
-        ExistingPublicKeyUpdateProposal = "HPKE public key of the update proposal already existed in tree.",
-        DuplicateMemberRemoval = "Duplicate remove proposals for the same member.",
-        UnknownMemberRemoval = "The remove proposal referenced a non-existing member.",
-        UpdateFromNonMember = "Found an update from a non-member.",
-        CommitterIncludedOwnUpdate = "The Commit includes update proposals from the committer.",
-    }
+/// Proposal validation error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ProposalValidationError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The sender could not be matched to a member of the group.")]
+    UnknownMember,
+    #[error("Found two add proposals with the same identity.")]
+    DuplicateIdentityAddProposal,
+    #[error("Found two add proposals with the same signature key.")]
+    DuplicateSignatureKeyAddProposal,
+    #[error("Found two add proposals with the same HPKE public key.")]
+    DuplicatePublicKeyAddProposal,
+    #[error("Identity of the add proposal already existed in tree.")]
+    ExistingIdentityAddProposal,
+    #[error("Signature key of the add proposal already existed in tree.")]
+    ExistingSignatureKeyAddProposal,
+    #[error("HPKE public key of the add proposal already existed in tree.")]
+    ExistingPublicKeyAddProposal,
+    #[error("The identity of the update proposal did not match the existing identity.")]
+    UpdateProposalIdentityMismatch,
+    #[error("Signature key of the update proposal already existed in tree.")]
+    ExistingSignatureKeyUpdateProposal,
+    #[error("HPKE public key of the update proposal already existed in tree.")]
+    ExistingPublicKeyUpdateProposal,
+    #[error("Duplicate remove proposals for the same member.")]
+    DuplicateMemberRemoval,
+    #[error("The remove proposal referenced a non-existing member.")]
+    UnknownMemberRemoval,
+    #[error("Found an update from a non-member.")]
+    UpdateFromNonMember,
+    #[error("The Commit includes update proposals from the committer.")]
+    CommitterIncludedOwnUpdate,
 }
 
 implement_error! {
@@ -322,6 +318,7 @@ implement_error! {
         ReferencedExternalInitProposal = "Found an ExternalInit proposal among the referenced proposals.",
         NoPath = "External Commit has to contain a path.",
         NoCommit = "A Message sent by a sender with type NewMember can only be a Commit.",
+        UnknownMemberRemoval = "The remove proposal referenced a non-existing member.",
     }
 }
 

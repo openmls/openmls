@@ -1,16 +1,20 @@
 use std::cmp::Ordering;
 
+use thiserror::Error;
+
 use super::tree::NodeIndex;
 
-implement_error! {
-    pub enum TreeMathError {
-        LeafHasNoChildren = "Leaf nodes don't have children.",
-        RootHasNoParent = "Root nodes don't have parents.",
-        NotAParentNode = "Node index was not a parent node.",
-        LeafNotInTree = "The leaf index is larger than the tree size.",
-        NodeNotInTree = "The node index is larger than the tree size.",
-        InvalidInput = "The provided input is invalid for tree math.",
-    }
+/// Binary Tree error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum TreeMathError {
+    #[error("Leaf nodes don't have children.")]
+    LeafHasNoChildren,
+    #[error("Root nodes don't have parents.")]
+    RootHasNoParent,
+    #[error("The node index is larger than the tree size.")]
+    NodeNotInTree,
+    #[error("The provided input is invalid for tree math.")]
+    InvalidInput,
 }
 
 fn log2(x: NodeIndex) -> usize {

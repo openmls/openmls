@@ -21,8 +21,12 @@ use std::{collections::BTreeMap, convert::TryFrom};
 use std::fmt::Debug;
 
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
-use crate::binary_tree::{array_representation::treemath::sibling, LeafIndex, TreeSize};
+use crate::{
+    binary_tree::{array_representation::treemath::sibling, LeafIndex, TreeSize},
+    error::LibraryError,
+};
 
 use super::treemath::parent;
 use super::{
@@ -277,7 +281,10 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
             .iter()
             .position(|&direct_path_node_index| direct_path_node_index == subtree_root_node_index)
             // The shared subtree root has to be in the direct path of both nodes.
-            .ok_or(ABinaryTreeDiffError::LibraryError)
+            .ok_or_else(|| {
+                LibraryError::custom("ABDiff::node_by_index(): index should be in the direct path")
+                    .into()
+            })
     }
 
     /// Returns [`NodeReference`] to the copath node of the `leaf_index_1` that is
@@ -486,7 +493,9 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
                 .diff
                 .get_mut(&node_index)
                 // We just checked that this index exists, so this must be Some.
-                .ok_or(ABinaryTreeDiffError::LibraryError);
+                .ok_or_else(|| {
+                    LibraryError::custom("ABDiff::node_by_index(): index should exist").into()
+                });
             // If not, we take a copy from the original tree and put it in the
             // diff before returning a mutable reference to it.
         }
@@ -495,7 +504,9 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         self.diff
             .get_mut(&node_index)
             // We just inserted this into the diff, so this should be Some.
-            .ok_or(ABinaryTreeDiffError::LibraryError)
+            .ok_or_else(|| {
+                LibraryError::custom("ABDiff::node_by_index(): node should exist").into()
+            })
     }
 
     // Helper functions for node addition and removal
@@ -605,26 +616,25 @@ impl<'a, T: Clone + Debug> Iterator for DiffIterator<'a, T> {
     }
 }
 
-implement_error! {
-    pub enum ABinaryTreeDiffError {
-        Simple {
-            LibraryError = "An inconsistency in the internal state of the diff was detected.",
-            SameLeafError = "Can't compute the copath node of the subtree root of a single leaf.",
-            PathModificationError = "Error while trying to modify path.",
-            OutOfBounds = "The given leaf index is not within the tree.",
-            TreeTooLarge = "Maximum tree size reached.",
-            TreeTooSmall = "Minimum tree size reached.",
-            PathLengthMismatch = "The given path index is not the same length as the direct path.",
-            AddressCollision = "A node with the given address is already part of this diff.",
-            NodeNotFound = "Can't find the node with the given address in the diff.",
-            HasNoSibling = "Can't compure sibling resolution of the root node, as it has no sibling.",
-            ExtendingOutOfBounds = "Trying to write too far outside of the tree.",
-            FoldingError = "Error while executing folding function.",
-            EmptyDirectPath = "Can't compute subtree root position in an empty direct path.",
-        }
-        Complex {
-            ABinaryTreeError(ABinaryTreeError) = "An Error occurred while accessing the underlying binary tree.",
-            TreeError(TreeMathError) = "An error occurred while trying to compute related nodes in the tree.",
-        }
-    }
+/// Binary Tree Diff error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ABinaryTreeDiffError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("Can't compute the copath node of the subtree root of a single leaf.")]
+    SameLeafError,
+    #[error("The given leaf index is not within the tree.")]
+    OutOfBounds,
+    #[error("Maximum tree size reached.")]
+    TreeTooLarge,
+    #[error("Minimum tree size reached.")]
+    TreeTooSmall,
+    #[error("The given path index is not the same length as the direct path.")]
+    PathLengthMismatch,
+    #[error("Error while executing folding function.")]
+    FoldingError,
+    #[error(transparent)]
+    ABinaryTreeError(#[from] ABinaryTreeError),
+    #[error(transparent)]
+    TreeError(#[from] TreeMathError),
 }

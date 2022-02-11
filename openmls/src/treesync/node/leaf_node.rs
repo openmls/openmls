@@ -1,9 +1,10 @@
 //! This module contains the [`LeafNode`] struct and its implementation.
-use openmls_traits::{crypto::OpenMlsCrypto, types::CryptoError};
+use openmls_traits::crypto::OpenMlsCrypto;
 use serde::{Deserialize, Serialize};
 
 use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, HpkePrivateKey, HpkePublicKey},
+    error::LibraryError,
     key_packages::{KeyPackage, KeyPackageBundle, KeyPackageError},
 };
 
@@ -101,14 +102,8 @@ impl LeafNode {
     pub(crate) fn set_key_package_ref(
         &mut self,
         backend: &impl OpenMlsCrypto,
-    ) -> Result<(), CryptoError> {
-        self.key_package_ref = Some(self.key_package.hash_ref(backend).map_err(|e| {
-            if let KeyPackageError::CryptoError(e) = e {
-                e
-            } else {
-                CryptoError::CryptoLibraryError
-            }
-        })?);
+    ) -> Result<(), LibraryError> {
+        self.key_package_ref = Some(self.key_package.hash_ref(backend)?);
         Ok(())
     }
 }

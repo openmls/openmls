@@ -21,8 +21,6 @@ use tls_codec::{
     TlsSize, TlsVecU32,
 };
 
-use super::errors::*;
-
 /// ## MLS Proposal Types
 ///
 /// | Value            | Name                     | Recommended | Reference |
@@ -94,36 +92,21 @@ impl TryFrom<u16> for ProposalType {
 )]
 #[repr(u8)]
 #[allow(missing_docs)]
-pub enum ProposalOrRefType {
+pub(crate) enum ProposalOrRefType {
     Proposal = 1,
     Reference = 2,
 }
 
-impl TryFrom<u8> for ProposalOrRefType {
-    type Error = ProposalOrRefTypeError;
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        match value {
-            1 => Ok(ProposalOrRefType::Proposal),
-            2 => Ok(ProposalOrRefType::Reference),
-            _ => Err(ProposalOrRefTypeError::UnknownValue),
-        }
-    }
-}
 /// Type of Proposal, either by value or by reference
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
+#[repr(u8)]
 #[allow(missing_docs)]
 pub enum ProposalOrRef {
+    #[tls_codec(discriminant = 1)]
     Proposal(Proposal),
     Reference(ProposalRef),
-}
-
-impl ProposalOrRef {
-    pub(crate) fn proposal_or_ref_type(&self) -> ProposalOrRefType {
-        match self {
-            ProposalOrRef::Proposal(ref _p) => ProposalOrRefType::Proposal,
-            ProposalOrRef::Reference(ref _r) => ProposalOrRefType::Reference,
-        }
-    }
 }
 
 /// Proposal
