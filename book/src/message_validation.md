@@ -50,9 +50,9 @@
 | ValidationStep | Description                                                                            | Implemented | Tested | Test File |
 | -------------- | -------------------------------------------------------------------------------------- | ----------- | ------ | --------- |
 | `ValSem200`    | Commit must not cover inline self Remove proposal                                      | ✅          | ❌     | TBD       |
-| `ValSem201`    | Path must be present, if Commit contains Removes or Updates                            | ❌          | ❌     | TBD       |
-| `ValSem202`    | Path must be the right length                                                          | ❌          | ❌     | TBD       |
-| `ValSem203`    | Path secrets must decrypt correctly                                                    | ❌          | ❌     | TBD       |
+| `ValSem201`    | Path must be present, if Commit contains Removes or Updates                            | ✅          | ❌     | TBD       |
+| `ValSem202`    | Path must be the right length                                                          | ✅          | ❌     | TBD       |
+| `ValSem203`    | Path secrets must decrypt correctly                                                    | ✅          | ❌     | TBD       |
 | `ValSem204`    | Public keys from Path must be verified and match the private keys from the direct path | ✅          | ❌     | TBD       |
 | `ValSem205`    | Confirmation tag must be successfully verified                                         | ✅          | ❌     | TBD       |
 
