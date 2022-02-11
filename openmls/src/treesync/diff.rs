@@ -25,7 +25,7 @@ use std::{collections::HashSet, convert::TryFrom};
 use super::{
     node::{
         leaf_node::LeafNode,
-        parent_node::{ParentNode, ParentNodeError, PathDerivationResult, PlainUpdatePathNode},
+        parent_node::{ParentNode, PathDerivationResult, PlainUpdatePathNode},
         {Node, NodeError},
     },
     treesync_node::{TreeSyncNode, TreeSyncNodeError},
@@ -835,7 +835,6 @@ implement_error! {
             TreeDiffError(MlsBinaryTreeDiffError) = "An error occurred while operating on the diff.",
             CryptoError(CryptoError) = "An error occurred during key derivation.",
             DerivationError(PathSecretError) = "An error occurred during PathSecret derivation.",
-            ParentNodeError(ParentNodeError) = "An error occurred during path derivation.",
             CreationError(MlsBinaryTreeError) = "An error occurred while creating an empty diff.",
             KeyPackageError(KeyPackageError) = "An error occurred while building the leaf node from a key package bundle.",
         }

@@ -29,11 +29,13 @@ use std::collections::BTreeMap;
 
 use openmls_traits::{types::CryptoError, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 use crate::{
     binary_tree::{MlsBinaryTree, MlsBinaryTreeError},
     ciphersuite::hash_ref::KeyPackageRef,
     ciphersuite::Ciphersuite,
+    error::LibraryError,
     framing::SenderError,
     key_packages::{KeyPackage, KeyPackageBundle, KeyPackageError},
     messages::{PathSecret, PathSecretError},
@@ -92,9 +94,11 @@ impl TreeSync {
         let node = Node::LeafNode(
             LeafNode::new(key_package.clone(), backend.crypto()).map_err(|e| {
                 if let KeyPackageError::CryptoError(e) = e {
-                    TreeSyncError::CryptoError(e)
+                    TreeSyncError::from(LibraryError::unexpected_crypto_error(e))
                 } else {
-                    TreeSyncError::LibraryError
+                    TreeSyncError::from(LibraryError::custom(
+                        "TreeSync::new(): Unexpected error in KeyPackage",
+                    ))
                 }
             })?,
         );
@@ -127,11 +131,11 @@ impl TreeSync {
     pub(crate) fn merge_diff(
         &mut self,
         tree_sync_diff: StagedTreeSyncDiff,
-    ) -> Result<(), TreeSyncError> {
+    ) -> Result<(), LibraryError> {
         let (own_leaf_index, diff, new_tree_hash) = tree_sync_diff.into_parts();
         self.own_leaf_index = own_leaf_index;
         self.tree_hash = new_tree_hash;
-        Ok(self.tree.merge_diff(diff)?)
+        self.tree.merge_diff(diff)
     }
 
     /// Create an empty diff based on this [`TreeSync`] instance all operations
@@ -208,7 +212,8 @@ impl TreeSync {
                             if let Some(private_key) = private_key.take() {
                                 own_index_option = Some(
                                     u32::try_from(node_index / 2)
-                                        .map_err(|_| TreeSyncError::LibraryError)?,
+                                        .map_err(|_| TreeSyncError::from(LibraryError::custom("TreeSync::from_nodes(): Own leaf is outside of the tree")
+                                        ))?,
                                 );
                                 leaf_node.set_private_key(private_key);
                             } else {
@@ -284,7 +289,7 @@ impl TreeSync {
         // tree hashes and poulates the tree hash caches.
         let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
         // Merge the diff.
-        self.merge_diff(staged_diff)
+        self.merge_diff(staged_diff).map_err(|e| e.into())
     }
 
     /// Verify the parent hashes of all parent nodes in the tree.
@@ -328,7 +333,7 @@ impl TreeSync {
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    pub(crate) fn full_leaves(&self) -> Result<BTreeMap<LeafIndex, &KeyPackage>, TreeSyncError> {
+    pub(crate) fn full_leaves(&self) -> Result<BTreeMap<LeafIndex, &KeyPackage>, LibraryError> {
         let tsn_leaves: Vec<(usize, &TreeSyncNode)> = self
             .tree
             .leaves()?
@@ -338,9 +343,13 @@ impl TreeSync {
             .collect();
         let mut leaves = BTreeMap::new();
         for (index, tsn_leaf) in tsn_leaves {
-            let index = u32::try_from(index).map_err(|_| TreeSyncError::LibraryError)?;
+            let index = u32::try_from(index).map_err(|_| {
+                LibraryError::custom("TreeSync::full_leaves(): Index outside of the tree")
+            })?;
             if let Some(ref node) = tsn_leaf.node() {
-                let leaf = node.as_leaf_node()?;
+                let leaf = node.as_leaf_node().map_err(|_| {
+                    LibraryError::custom("TreeSync::full_leaves(): Expected a leaf node")
+                })?;
                 leaves.insert(index, leaf.key_package());
             }
         }
@@ -350,9 +359,7 @@ impl TreeSync {
     /// Returns a [`BTreeMap`] mapping [`KeyPackageRef`]s to the corresponding
     /// [`KeyPackage`] instances in the leaves. The map only contains full
     /// nodes.
-    pub(crate) fn leaves(
-        &self,
-    ) -> Result<BTreeMap<Option<KeyPackageRef>, &KeyPackage>, TreeSyncError> {
+    pub(crate) fn leaves(&self) -> BTreeMap<Option<KeyPackageRef>, &KeyPackage> {
         let tsn_leaves = self.tree.nodes().iter().filter(|tsn| tsn.node().is_some());
         let mut leaves = BTreeMap::new();
         for tsn_leaf in tsn_leaves {
@@ -360,7 +367,7 @@ impl TreeSync {
                 leaves.insert(leaf.key_package_ref().cloned(), leaf.key_package());
             }
         }
-        Ok(leaves)
+        leaves
     }
 
     /// Return the [`KeyPackageRef`] of the node with the given `leaf_index`.
@@ -396,8 +403,10 @@ impl TreeSync {
     /// might throw a [LibraryError](TreeSyncError::LibraryError).
     pub(crate) fn own_leaf_node(&self) -> Result<&LeafNode, TreeSyncError> {
         // Our own leaf should be inside of the tree and never blank.
-        self.leaf(self.own_leaf_index)?
-            .ok_or(TreeSyncError::LibraryError)
+        self.leaf(self.own_leaf_index)?.ok_or_else(|| {
+            LibraryError::custom("TreeSync::own_leaf_node(): Own leaf is outside of the tree")
+                .into()
+        })
     }
 
     /// Return a reference to the leaf at the given `LeafIndex` or `None` if the
@@ -413,18 +422,19 @@ impl TreeSync {
     }
 
     /// Return a reference to the leaf at the given `key_package_ref` or `None`
-    /// if the leaf is blank.
-    ///
-    /// Returns an error if the leaf is outside of the tree.
-    pub(crate) fn leaf_from_id(
-        &self,
-        key_package_ref: &KeyPackageRef,
-    ) -> Result<Option<&LeafNode>, TreeSyncError> {
-        let tsn = self.tree.leaf(self.leaf_index(key_package_ref)?)?;
-        Ok(match tsn.node() {
-            Some(node) => Some(node.as_leaf_node()?),
-            None => None,
-        })
+    /// if the leaf is blank or outside the tree.
+    pub(crate) fn leaf_from_id(&self, key_package_ref: &KeyPackageRef) -> Option<&LeafNode> {
+        match self.leaf_index(key_package_ref) {
+            Ok(leaf_index) => match self.tree.leaf(leaf_index) {
+                Ok(leaf) => leaf
+                    .node()
+                    .as_ref()
+                    .map(|node| node.as_leaf_node().ok())
+                    .flatten(),
+                Err(_) => None,
+            },
+            Err(_) => None,
+        }
     }
 
     /// Get the [`LeafIndex`] for a given [`KeyPackageRef`].
@@ -459,23 +469,29 @@ impl TreeSync {
     }
 }
 
-implement_error! {
-    pub enum TreeSyncError {
-        Simple {
-            LibraryError = "An inconsistency in the internal state of the tree was detected.",
-            MissingKeyPackage = "Couldn't find our own key package in this tree.",
-            DuplicateKeyPackage = "Found two KeyPackages with the same public key.",
-            OutOfBounds = "The given `LeafIndex` is outside of the tree.",
-            KeyPackageRefNotInTree = "The given `KeyPackageRef` is not in the tree.",
-        }
-        Complex {
-            BinaryTreeError(MlsBinaryTreeError) = "An error occurred during an operation on the underlying binary tree.",
-            TreeSyncNodeError(TreeSyncNodeError) = "An error occurred during an operation on the underlying binary tree.",
-            NodeTypeError(NodeError) = "We found a node with an unexpected type.",
-            TreeSyncDiffError(TreeSyncDiffError) = "An error while trying to apply a diff.",
-            DerivationError(PathSecretError) = "Error while deriving commit secret for new tree.",
-            SenderError(SenderError) = "Sender error",
-            CryptoError(CryptoError) = "See [`CryptoError`] for details.",
-        }
-    }
+/// TreeSync error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum TreeSyncError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("Couldn't find our own key package in this tree.")]
+    MissingKeyPackage,
+    #[error("Found two KeyPackages with the same public key.")]
+    DuplicateKeyPackage,
+    #[error("The given `KeyPackageRef` is not in the tree.")]
+    KeyPackageRefNotInTree,
+    #[error(transparent)]
+    BinaryTreeError(#[from] MlsBinaryTreeError),
+    #[error(transparent)]
+    TreeSyncNodeError(#[from] TreeSyncNodeError),
+    #[error(transparent)]
+    NodeTypeError(#[from] NodeError),
+    #[error(transparent)]
+    TreeSyncDiffError(#[from] TreeSyncDiffError),
+    #[error(transparent)]
+    DerivationError(#[from] PathSecretError),
+    #[error(transparent)]
+    SenderError(#[from] SenderError),
+    #[error(transparent)]
+    CryptoError(#[from] CryptoError),
 }

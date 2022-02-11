@@ -115,7 +115,7 @@ impl CoreGroup {
         )?;
 
         let signer_key_package = tree
-            .leaf_from_id(group_info.signer())?
+            .leaf_from_id(group_info.signer())
             .ok_or(WelcomeError::UnknownSender)?
             .key_package();
 

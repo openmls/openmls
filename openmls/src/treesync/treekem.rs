@@ -15,6 +15,7 @@ use crate::{
     binary_tree::LeafIndex,
     ciphersuite::{hash_ref::KeyPackageRef, Ciphersuite, HpkePublicKey},
     config::ProtocolVersion,
+    error::LibraryError,
     key_packages::{KeyPackage, KeyPackageError},
     messages::{
         proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret, PathSecretError,
@@ -24,7 +25,7 @@ use crate::{
 
 use super::{
     diff::TreeSyncDiff,
-    node::parent_node::{ParentNode, ParentNodeError, PlainUpdatePathNode},
+    node::parent_node::{ParentNode, PlainUpdatePathNode},
     TreeSyncDiffError, TreeSyncError,
 };
 
@@ -313,7 +314,6 @@ impl UpdatePath {
 implement_error! {
     pub enum TreeKemError {
         Simple {
-            LibraryError = "An inconsistency in the internal state of the tree was detected.",
             PathLengthError = "The given path to encrypt does not have the same length as the direct path.",
             PathMismatch = "The received update path and the derived nodes are inconsistent.",
             UpdatePathNodeNotFound = "Couldn't find our UpdatePathNode in the given UpdatePath.",
@@ -321,10 +321,10 @@ implement_error! {
             PathSecretNotFound = "Couldn't find the path secret to encrypt for one of the new members.",
         }
         Complex {
+            LibraryError(LibraryError) = "LibraryError",
             TreeSyncError(TreeSyncError) = "Error while creating treesync diff.",
             TreeSyncDiffError(TreeSyncDiffError) = "Error while retrieving public keys from the tree.",
             PathSecretError(PathSecretError) = "Error decrypting PathSecret.",
-            PathDerivationError(ParentNodeError) = "Error deriving path from PathSecret.",
             EncodingError(TlsCodecError) = "Error while encoding GroupSecrets.",
             KeyPackageError(KeyPackageError) = "Error while hashing KeyPackage.",
         }

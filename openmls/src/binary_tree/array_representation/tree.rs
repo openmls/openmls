@@ -20,9 +20,13 @@ use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
 
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 use super::diff::{AbDiff, StagedAbDiff};
-use crate::binary_tree::{LeafIndex, TreeSize};
+use crate::{
+    binary_tree::{LeafIndex, TreeSize},
+    error::LibraryError,
+};
 
 /// The [`NodeIndex`] is used to index nodes.
 pub(in crate::binary_tree) type NodeIndex = u32;
@@ -57,9 +61,10 @@ impl<T: Clone + Debug> ABinaryTree<T> {
     /// [`ABinaryTreeError::OutOfRange`] error if the number of given nodes exceeds the range of
     /// [`NodeIndex`].
     pub(crate) fn new(nodes: Vec<T>) -> Result<Self, ABinaryTreeError> {
-        if nodes.len()
-            > usize::try_from(NodeIndex::MAX).map_err(|_| ABinaryTreeError::ArchitectureError)?
-        {
+        let max_nodes = usize::try_from(NodeIndex::MAX).map_err(|_| {
+            LibraryError::custom("ABinaryTree::merge_diff(): Architecture not supported")
+        })?;
+        if nodes.len() > max_nodes {
             return Err(ABinaryTreeError::OutOfRange);
         }
         if nodes.len() % 2 != 1 {
@@ -77,19 +82,21 @@ impl<T: Clone + Debug> ABinaryTree<T> {
         node_index: NodeIndex,
     ) -> Result<&T, ABinaryTreeError> {
         self.nodes
-            .get(usize::try_from(node_index).map_err(|_| ABinaryTreeError::ArchitectureError)?)
+            .get(usize::try_from(node_index).map_err(|_| {
+                LibraryError::custom("ABinaryTree::merge_diff(): Architecture not supported")
+            })?)
             .ok_or(ABinaryTreeError::OutOfBounds)
     }
 
     /// Return the number of nodes in the tree.
-    pub(in crate::binary_tree) fn size(&self) -> Result<NodeIndex, ABinaryTreeError> {
-        let tree_size =
-            u32::try_from(self.nodes.len()).map_err(|_| ABinaryTreeError::LibraryError)?;
+    pub(in crate::binary_tree) fn size(&self) -> Result<NodeIndex, LibraryError> {
+        let tree_size = u32::try_from(self.nodes.len())
+            .map_err(|_| LibraryError::custom("ABinaryTree::new(): Tree is too big"))?;
         Ok(tree_size)
     }
 
     /// Return the number of leaves in the tree.
-    pub(crate) fn leaf_count(&self) -> Result<TreeSize, ABinaryTreeError> {
+    pub(crate) fn leaf_count(&self) -> Result<TreeSize, LibraryError> {
         // This works, because the tree always has at least one leaf.
         Ok(((self.size()? - 1) / 2) + 1)
     }
@@ -98,19 +105,19 @@ impl<T: Clone + Debug> ABinaryTree<T> {
     /// from left to right. This function should not fail and only returns a
     /// [`Result`], because it might throw a
     /// [`LibraryError`](ABinaryTreeError::LibraryError).
-    pub(crate) fn leaves(&self) -> Result<Vec<&T>, ABinaryTreeError> {
+    pub(crate) fn leaves(&self) -> Result<Vec<&T>, LibraryError> {
         let mut leaf_references = Vec::new();
         for leaf_index in 0..self.leaf_count()? {
             let node_index = usize::try_from(to_node_index(leaf_index))
                 // The tree size and thus the leaf count should fit into usize on 32
                 // bit architectures.
-                .map_err(|_| ABinaryTreeError::ArchitectureError)?;
+                .map_err(|_| LibraryError::custom("ABinaryTree::leaves(): Tree is too big"))?;
             let node_ref = self
                 .nodes
                 .get(node_index)
                 // Since the index is within the bounds of the tree, this should
                 // be Some.
-                .ok_or(ABinaryTreeError::LibraryError)?;
+                .ok_or_else(|| LibraryError::custom("ABinaryTree::new(): Node not found"))?;
             leaf_references.push(node_ref);
         }
         Ok(leaf_references)
@@ -129,10 +136,11 @@ impl<T: Clone + Debug> ABinaryTree<T> {
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a [LibraryError](ABinaryTreeError::LibraryError).
-    pub(crate) fn merge_diff(&mut self, diff: StagedAbDiff<T>) -> Result<(), ABinaryTreeError> {
+    pub(crate) fn merge_diff(&mut self, diff: StagedAbDiff<T>) -> Result<(), LibraryError> {
         // The diff size should fit into a 32 bit usize.
-        let diff_size =
-            usize::try_from(diff.tree_size()).map_err(|_| ABinaryTreeError::ArchitectureError)?;
+        let diff_size = usize::try_from(diff.tree_size()).map_err(|_| {
+            LibraryError::custom("ABinaryTree::merge_diff(): Architecture not supported")
+        })?;
         // If the size of the diff is smaller than the tree, truncate the tree
         // to the size of the diff.
         self.nodes.truncate(diff_size);
@@ -145,14 +153,19 @@ impl<T: Clone + Debug> ABinaryTree<T> {
                 // If the node index points too far outside of the tree,
                 // something has gone wrong.
                 node_index if node_index > self.size()? => {
-                    return Err(ABinaryTreeError::LibraryError)
+                    return Err(LibraryError::custom(
+                        "ABinaryTree::merge_diff(): Node is outside the tree",
+                    ))
                 }
                 // If the node_index points to somewhere within the size of the
                 // tree, do a swap-remove.
                 node_index => {
                     // Perform swap-remove.
-                    let node_index = usize::try_from(node_index)
-                        .map_err(|_| ABinaryTreeError::ArchitectureError)?;
+                    let node_index = usize::try_from(node_index).map_err(|_| {
+                        LibraryError::custom(
+                            "ABinaryTree::merge_diff(): Architecture not supported",
+                        )
+                    })?;
                     self.nodes[node_index] = diff_node;
                 }
             }
@@ -169,25 +182,26 @@ impl<T: Clone + Debug> ABinaryTree<T> {
     ///
     /// Returns an error if the leaf is outside of the tree.
     pub(crate) fn leaf(&self, leaf_index: LeafIndex) -> Result<&T, ABinaryTreeError> {
-        let node_index = usize::try_from(to_node_index(leaf_index))
-            .map_err(|_| ABinaryTreeError::ArchitectureError)?;
+        let node_index = usize::try_from(to_node_index(leaf_index)).map_err(|_| {
+            LibraryError::custom("ABinaryTree::merge_diff(): Architecture not supported")
+        })?;
         self.nodes
             .get(node_index)
             .ok_or(ABinaryTreeError::OutOfBounds)
     }
 }
 
-implement_error! {
-    pub enum ABinaryTreeError {
-        OutOfRange = "Adding nodes exceeds the maximum possible size of the tree.",
-        NotEnoughNodes = "Not enough nodes to remove.",
-        InvalidNumberOfNodes = "The given number of nodes does not allow the creation of a full, left-balanced binary tree.",
-        OutOfBounds = "The given index is outside of the tree.",
-        AddressCollision = "Found two nodes with the same address.",
-        InvalidNode = "Can't add the default node to the tree.",
-        NodeNotFound = "Can't find the node with the given address in the tree.",
-        LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
-        ArchitectureError = "Architectures below 32bit are not suppored by OpenMLS.",
-        ABinaryTreeDiffError = "An error occurred while handling a diff.",
-    }
+/// Binary Tree error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ABinaryTreeError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("Adding nodes exceeds the maximum possible size of the tree.")]
+    OutOfRange,
+    #[error("Not enough nodes to remove.")]
+    InvalidNumberOfNodes,
+    #[error("The given index is outside of the tree.")]
+    OutOfBounds,
+    #[error("An error occurred while handling a diff.")]
+    ABinaryTreeDiffError,
 }

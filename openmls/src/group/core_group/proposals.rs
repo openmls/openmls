@@ -9,6 +9,7 @@ use crate::{
         hash_ref::{KeyPackageRef, ProposalRef},
         *,
     },
+    error::LibraryError,
     framing::*,
 };
 
@@ -66,10 +67,14 @@ impl QueuedProposal {
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         mls_plaintext: MlsPlaintext,
-    ) -> Result<Self, QueuedProposalError> {
+    ) -> Result<Self, LibraryError> {
         let proposal = match mls_plaintext.content() {
             MlsPlaintextContentType::Proposal(p) => p,
-            _ => return Err(QueuedProposalError::WrongContentType),
+            _ => {
+                return Err(LibraryError::custom(
+                    "QueuedProposal::from_mls_plaintext(): Wrong content type",
+                ))
+            }
         };
         let proposal_reference = ProposalRef::from_proposal(ciphersuite, backend, proposal)?;
         Ok(Self {
@@ -85,7 +90,7 @@ impl QueuedProposal {
         backend: &impl OpenMlsCryptoProvider,
         proposal: Proposal,
         sender: &Sender,
-    ) -> Result<Self, QueuedProposalError> {
+    ) -> Result<Self, LibraryError> {
         let proposal_reference = ProposalRef::from_proposal(ciphersuite, backend, &proposal)?;
         Ok(Self {
             proposal,
@@ -337,17 +342,6 @@ impl ProposalQueue {
             removes: Vec<QueuedProposal>,
         }
         let mut members = HashMap::<KeyPackageRef, Member>::new();
-        /// Get or create a member in the `members` map.
-        fn get_member<'a>(
-            members: &'a mut HashMap<KeyPackageRef, Member>,
-            kpr: &KeyPackageRef,
-        ) -> Result<&'a mut Member, ProposalQueueError> {
-            if members.get(kpr).is_none() {
-                members.insert(*kpr, Member::default());
-            }
-            members.get_mut(kpr).ok_or(ProposalQueueError::LibraryError)
-        }
-
         let mut adds: HashSet<ProposalRef> = HashSet::new();
         let mut valid_proposals: HashSet<ProposalRef> = HashSet::new();
         let mut proposal_pool: HashMap<ProposalRef, QueuedProposal> = HashMap::new();
@@ -383,7 +377,7 @@ impl ProposalQueue {
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::Update(_) => {
-                    let own_kpr = own_kpr.ok_or(ProposalQueueError::LibraryError)?;
+                    let own_kpr = own_kpr.ok_or_else(|| LibraryError::custom("ProposalQueue::filter_proposals(): own_kpr has to be Some for Member Commits"))?;
                     // Only members can send update proposals
                     // ValSem112
                     let hash_ref = match queued_proposal.sender {
@@ -391,7 +385,9 @@ impl ProposalQueue {
                         _ => return Err(ProposalQueueError::SenderError(SenderError::NotAMember)),
                     };
                     if &hash_ref != own_kpr {
-                        get_member(&mut members, &hash_ref)?
+                        members
+                            .entry(hash_ref)
+                            .or_insert_with(Member::default)
                             .updates
                             .push(queued_proposal.clone());
                     } else {
@@ -402,7 +398,9 @@ impl ProposalQueue {
                 }
                 Proposal::Remove(ref remove_proposal) => {
                     let removed = remove_proposal.removed();
-                    get_member(&mut members, removed)?
+                    members
+                        .entry(*removed)
+                        .or_insert_with(Member::default)
                         .updates
                         .push(queued_proposal.clone());
                     let proposal_reference = queued_proposal.proposal_reference();

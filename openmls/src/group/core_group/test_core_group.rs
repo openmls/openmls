@@ -786,7 +786,6 @@ fn test_proposal_application_after_self_was_removed(
     let bob_kp_ref = alice_group
         .treesync()
         .leaves()
-        .expect("error getting leaves")
         .values()
         .find(|&kp| kp.credential().identity() == b"Bob")
         .expect("Couldn't find Bob in tree.")

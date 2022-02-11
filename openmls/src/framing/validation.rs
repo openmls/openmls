@@ -159,30 +159,26 @@ impl DecryptedMessage {
         let sender = self.sender();
         match sender {
             Sender::Member(hash_ref) => {
-                let sender_leaf = match treesync
-                    .leaf_from_id(hash_ref)
-                    .map_err(|_| ValidationError::UnknownSender)
-                {
-                    Ok(l) => l,
-                    Err(_) => {
+                match treesync.leaf_from_id(hash_ref) {
+                    Some(sender_leaf) => Ok(sender_leaf.key_package().credential().clone()),
+                    None => {
                         // This might not actually be an error but the sender's
                         // key package changed. Let's check old leaves we still
                         // have around.
                         if let Some((sender_index, _)) =
                             old_leaves.iter().find(|(_, kpr)| kpr == hash_ref)
                         {
-                            treesync
+                            match treesync
                                 .leaf(*sender_index)
                                 .map_err(|_| ValidationError::UnknownSender)?
+                            {
+                                Some(node) => Ok(node.key_package().credential().clone()),
+                                None => Err(ValidationError::UnknownSender),
+                            }
                         } else {
-                            None
+                            Err(ValidationError::UnknownSender)
                         }
                     }
-                };
-                if let Some(sender_leaf) = sender_leaf {
-                    Ok(sender_leaf.key_package().credential().clone())
-                } else {
-                    Err(ValidationError::UnknownSender)
                 }
             }
             // Preconfigured senders are not supported yet #106/#151.

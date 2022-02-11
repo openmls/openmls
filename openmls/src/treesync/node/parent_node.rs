@@ -1,10 +1,7 @@
 //! This module contains the [`ParentNode`] struct, its implementation, as well
 //! as the [`PlainUpdatePathNode`], a helper struct for the creation of
 //! [`UpdatePathNode`] instances.
-use openmls_traits::{
-    types::{CryptoError, HpkeCiphertext},
-    OpenMlsCryptoProvider,
-};
+use openmls_traits::{types::HpkeCiphertext, OpenMlsCryptoProvider};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsByteVecU8, TlsVecU32};
@@ -12,12 +9,10 @@ use tls_codec::{TlsByteVecU8, TlsVecU32};
 use crate::{
     binary_tree::LeafIndex,
     ciphersuite::{Ciphersuite, HpkePrivateKey, HpkePublicKey},
-    messages::{PathSecret, PathSecretError},
+    error::LibraryError,
+    messages::PathSecret,
     schedule::CommitSecret,
-    treesync::{
-        hashes::{ParentHashError, ParentHashInput},
-        treekem::UpdatePathNode,
-    },
+    treesync::{hashes::ParentHashInput, treekem::UpdatePathNode},
 };
 
 /// This struct implements the MLS parent node. It contains its public key,
@@ -117,7 +112,7 @@ impl ParentNode {
         ciphersuite: &Ciphersuite,
         path_secret: PathSecret,
         path_length: usize,
-    ) -> Result<PathDerivationResult, ParentNodeError> {
+    ) -> Result<PathDerivationResult, LibraryError> {
         let mut next_path_secret = path_secret;
         let mut path_secrets = Vec::new();
 
@@ -145,7 +140,7 @@ impl ParentNode {
                 };
                 Ok((parent_node, update_path_node))
             })
-            .collect::<Result<Vec<(ParentNode, PlainUpdatePathNode)>, ParentNodeError>>()?
+            .collect::<Result<Vec<(ParentNode, PlainUpdatePathNode)>, LibraryError>>()?
             .into_iter()
             .unzip();
 
@@ -185,10 +180,10 @@ impl ParentNode {
         ciphersuite: &Ciphersuite,
         parent_hash: &[u8],
         original_child_resolution: &[HpkePublicKey],
-    ) -> Result<Vec<u8>, ParentNodeError> {
+    ) -> Result<Vec<u8>, LibraryError> {
         let parent_hash_input =
             ParentHashInput::new(&self.public_key, parent_hash, original_child_resolution);
-        Ok(parent_hash_input.hash(backend, ciphersuite)?)
+        parent_hash_input.hash(backend, ciphersuite)
     }
 
     /// Set the `parent_hash` of this node.
@@ -209,19 +204,6 @@ impl ParentNode {
             parent_hash: self.parent_hash().to_vec().into(),
             unmerged_leaves: self.unmerged_leaves().to_vec().into(),
             private_key_option: None,
-        }
-    }
-}
-
-implement_error! {
-    pub enum ParentNodeError {
-        Simple {
-            LibraryError = "An unrecoverable error has occurred.",
-        }
-        Complex {
-            CryptoError(CryptoError) = "An error occurred during key derivation.",
-            Derivation(PathSecretError) = "An error occurred during key derivation.",
-            ParentHashError(ParentHashError) = "Error while computing parent hash.",
         }
     }
 }

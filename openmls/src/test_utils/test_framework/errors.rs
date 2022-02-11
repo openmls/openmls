@@ -1,34 +1,32 @@
-use crate::{group::*, key_packages::*};
+use thiserror::Error;
 
-#[derive(Debug)]
+use crate::{error::LibraryError, group::*, key_packages::*};
+
+/// Setup error
+#[derive(Error, Debug, PartialEq, Clone)]
 pub enum SetupError {
+    #[error("")]
     UnknownGroupId,
+    #[error("")]
     UnknownClientId,
+    #[error("")]
     NotEnoughClients,
+    #[error("")]
     ClientAlreadyInGroup,
+    #[error("")]
     ClientNotInGroup,
+    #[error("")]
     NoFreshKeyPackage,
-    ClientError(ClientError),
-    KeyPackageError(KeyPackageError),
+    #[error(transparent)]
+    ClientError(#[from] ClientError),
+    #[error(transparent)]
+    KeyPackageError(#[from] KeyPackageError),
+    #[error(transparent)]
+    MlsGroupError(#[from] MlsGroupError),
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("")]
     Unknown,
-}
-
-impl From<ClientError> for SetupError {
-    fn from(e: ClientError) -> Self {
-        SetupError::ClientError(e)
-    }
-}
-
-impl From<MlsGroupError> for SetupError {
-    fn from(e: MlsGroupError) -> Self {
-        SetupError::ClientError(ClientError::MlsGroupError(e))
-    }
-}
-
-impl From<KeyPackageError> for SetupError {
-    fn from(e: KeyPackageError) -> Self {
-        SetupError::KeyPackageError(e)
-    }
 }
 
 #[derive(Debug)]
@@ -37,48 +35,30 @@ pub enum SetupGroupError {
 }
 
 /// Errors that can occur when processing messages with the client.
-#[derive(Debug, PartialEq)]
+#[derive(Error, Debug, PartialEq, Clone)]
 pub enum ClientError {
+    #[error("")]
     NoMatchingKeyPackage,
+    #[error("")]
     NoMatchingCredential,
+    #[error("")]
     CiphersuiteNotSupported,
+    #[error("")]
     NoMatchingGroup,
+    #[error("")]
     NoCiphersuite,
-    FailedToJoinGroup(WelcomeError),
-    InvalidMessage(CoreGroupError),
-    MlsGroupError(MlsGroupError),
-    GroupError(CoreGroupError),
-    TlsCodecError(tls_codec::Error),
-    KeyPackageError(KeyPackageError),
+    #[error(transparent)]
+    FailedToJoinGroup(#[from] WelcomeError),
+    #[error(transparent)]
+    MlsGroupError(#[from] MlsGroupError),
+    #[error(transparent)]
+    GroupError(#[from] CoreGroupError),
+    #[error(transparent)]
+    TlsCodecError(#[from] tls_codec::Error),
+    #[error(transparent)]
+    KeyPackageError(#[from] KeyPackageError),
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("")]
     Unknown,
-}
-
-impl From<WelcomeError> for ClientError {
-    fn from(e: WelcomeError) -> Self {
-        ClientError::FailedToJoinGroup(e)
-    }
-}
-
-impl From<MlsGroupError> for ClientError {
-    fn from(e: MlsGroupError) -> Self {
-        ClientError::MlsGroupError(e)
-    }
-}
-
-impl From<CoreGroupError> for ClientError {
-    fn from(e: CoreGroupError) -> Self {
-        ClientError::GroupError(e)
-    }
-}
-
-impl From<tls_codec::Error> for ClientError {
-    fn from(e: tls_codec::Error) -> Self {
-        ClientError::TlsCodecError(e)
-    }
-}
-
-impl From<KeyPackageError> for ClientError {
-    fn from(e: KeyPackageError) -> Self {
-        ClientError::KeyPackageError(e)
-    }
 }

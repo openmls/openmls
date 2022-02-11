@@ -1,13 +1,12 @@
 //! This module contains helper structs and functions related to parent hashing
 //! and tree hashing.
-use openmls_traits::{types::CryptoError, OpenMlsCryptoProvider};
-use tls_codec::{
-    Error as TlsCodecError, Serialize, TlsSerialize, TlsSize, TlsSliceU32, TlsSliceU8,
-};
+use openmls_traits::OpenMlsCryptoProvider;
+use tls_codec::{Serialize, TlsSerialize, TlsSize, TlsSliceU32, TlsSliceU8};
 
 use crate::{
     binary_tree::LeafIndex,
     ciphersuite::{Ciphersuite, HpkePublicKey},
+    error::LibraryError,
 };
 
 use super::node::parent_node::ParentNode;
@@ -41,25 +40,13 @@ impl<'a> ParentHashInput<'a> {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
-    ) -> Result<Vec<u8>, ParentHashError> {
-        let payload = self.tls_serialize_detached()?;
-        Ok(ciphersuite.hash(backend, &payload)?)
-    }
-}
-
-implement_error! {
-    pub enum ParentHashError {
-        Simple {
-            EndedWithLeafNode = "The search for a valid child ended with a leaf node.",
-            AllChecksFailed = "All checks failed: Neither child has the right parent hash.",
-            InputNotParentNode = "The input node is not a parent node.",
-            NotAParentNode = "The node is not a parent node.",
-            EmptyParentNode = "The parent node was blank.",
-        }
-        Complex {
-            CodecError(TlsCodecError) = "Error while serializing payload for parent hash.",
-            HashError(CryptoError) = "Error while hashing payload.",
-        }
+    ) -> Result<Vec<u8>, LibraryError> {
+        let payload = self
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
+        ciphersuite
+            .hash(backend, &payload)
+            .map_err(LibraryError::unexpected_crypto_error)
     }
 }
 
@@ -84,11 +71,13 @@ impl<'a> LeafNodeHashInput<'a> {
         &self,
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Vec<u8>, ParentHashError> {
-        let payload = self.tls_serialize_detached()?;
+    ) -> Result<Vec<u8>, LibraryError> {
+        let payload = self
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
         ciphersuite
             .hash(backend, &payload)
-            .map_err(ParentHashError::HashError)
+            .map_err(LibraryError::unexpected_crypto_error)
     }
 }
 
@@ -122,10 +111,12 @@ impl<'a> ParentNodeTreeHashInput<'a> {
         &self,
         ciphersuite: &Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Vec<u8>, ParentHashError> {
-        let payload = self.tls_serialize_detached()?;
+    ) -> Result<Vec<u8>, LibraryError> {
+        let payload = self
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
         ciphersuite
             .hash(backend, &payload)
-            .map_err(ParentHashError::HashError)
+            .map_err(LibraryError::unexpected_crypto_error)
     }
 }
