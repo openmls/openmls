@@ -64,7 +64,7 @@ impl CoreGroup {
         }
 
         // FIXME #680: Validation of external commits
-        let pgs_signer_leaf = treesync.leaf_from_id(verifiable_public_group_state.signer())?;
+        let pgs_signer_leaf = treesync.leaf_from_id(verifiable_public_group_state.signer());
         let pgs_signer_credential = pgs_signer_leaf
             .ok_or(ExternalCommitError::UnknownSender)?
             .key_package()

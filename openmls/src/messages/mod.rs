@@ -4,6 +4,7 @@ use crate::{
     ciphersuite::hash_ref::KeyPackageRef,
     ciphersuite::{signable::*, *},
     config::ProtocolVersion,
+    error::LibraryError,
     extensions::*,
     group::*,
     schedule::{psk::PreSharedKeys, JoinerSecret},
@@ -12,22 +13,21 @@ use crate::{
 
 use openmls_traits::{
     crypto::OpenMlsCrypto,
-    types::{CryptoError as CryptoTraitError, HpkeCiphertext},
+    types::{CryptoError, HpkeCiphertext},
     OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 // Private
 mod codec;
 use tls_codec::{Serialize as TlsSerializeTrait, *};
 
 // Public
-pub mod errors;
 pub mod proposals;
 pub mod public_group_state;
 
 pub use codec::*;
-pub use errors::*;
 pub use proposals::*;
 pub use public_group_state::*;
 
@@ -36,7 +36,7 @@ pub use public_group_state::*;
 mod tests;
 
 #[cfg(test)]
-use crate::{credentials::CredentialBundle, error::LibraryError};
+use crate::credentials::CredentialBundle;
 
 #[cfg(any(feature = "test-utils", test))]
 use crate::schedule::{
@@ -326,10 +326,11 @@ impl PathSecret {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
-    ) -> Result<(HpkePublicKey, HpkePrivateKey), CryptoTraitError> {
-        let node_secret =
-            self.path_secret
-                .kdf_expand_label(backend, "node", &[], ciphersuite.hash_length())?;
+    ) -> Result<(HpkePublicKey, HpkePrivateKey), LibraryError> {
+        let node_secret = self
+            .path_secret
+            .kdf_expand_label(backend, "node", &[], ciphersuite.hash_length())
+            .map_err(LibraryError::unexpected_crypto_error)?;
         let key_pair = backend
             .crypto()
             .derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice());
@@ -345,10 +346,11 @@ impl PathSecret {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
-    ) -> Result<Self, PathSecretError> {
-        let path_secret =
-            self.path_secret
-                .kdf_expand_label(backend, "path", &[], ciphersuite.hash_length())?;
+    ) -> Result<Self, LibraryError> {
+        let path_secret = self
+            .path_secret
+            .kdf_expand_label(backend, "path", &[], ciphersuite.hash_length())
+            .map_err(LibraryError::unexpected_crypto_error)?;
         Ok(Self { path_secret })
     }
 
@@ -399,10 +401,11 @@ impl PathSecret {
     }
 }
 
-implement_error! {
-    pub enum PathSecretError {
-        DecryptionError(CryptoTraitError) = "Error decrypting PathSecret.",
-    }
+/// Path secret error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum PathSecretError {
+    #[error(transparent)]
+    DecryptionError(#[from] CryptoError),
 }
 
 /// GroupSecrets

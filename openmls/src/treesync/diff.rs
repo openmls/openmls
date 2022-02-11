@@ -25,7 +25,7 @@ use std::{collections::HashSet, convert::TryFrom};
 use super::{
     node::{
         leaf_node::LeafNode,
-        parent_node::{ParentNode, ParentNodeError, PathDerivationResult, PlainUpdatePathNode},
+        parent_node::{ParentNode, PathDerivationResult, PlainUpdatePathNode},
         {Node, NodeError},
     },
     treesync_node::{TreeSyncNode, TreeSyncNodeError},
@@ -149,7 +149,7 @@ impl<'a> TreeSyncDiff<'a> {
         let mut leaf_index_option = None;
         for (leaf_index, leaf_id) in leaf_ids.iter().enumerate() {
             let leaf_index: LeafIndex = u32::try_from(leaf_index)
-                .map_err(|_| LibraryError::custom("free_leaf_index(): Could not convert index"))?;
+                .map_err(|_| LibraryError::custom("Could not convert index"))?;
             if self.diff.node(*leaf_id)?.node().is_none() {
                 leaf_index_option = Some(leaf_index);
                 break;
@@ -176,9 +176,7 @@ impl<'a> TreeSyncDiff<'a> {
             if let KeyPackageError::CryptoError(e) = e {
                 TreeSyncDiffError::CryptoError(e)
             } else {
-                TreeSyncDiffError::LibraryError(LibraryError::custom(
-                    "TreeSyncDiff::add_leaf(): key package error",
-                ))
+                TreeSyncDiffError::LibraryError(LibraryError::custom("key package error"))
             }
         })?);
         // Find a free leaf and fill it with the new key package.
@@ -302,9 +300,7 @@ impl<'a> TreeSyncDiff<'a> {
             .ok_or(TreeSyncDiffError::MissingParentHash)?;
         let key_package_parent_hash = phe
             .as_parent_hash_extension()
-            .map_err(|_| {
-                LibraryError::custom("apply_received_update-path(): No parent hash etxension")
-            })?
+            .map_err(|_| LibraryError::custom("no parent hash extension"))?
             .parent_hash();
         if key_package_parent_hash != parent_hash {
             return Err(TreeSyncDiffError::ParentHashMismatch);
@@ -315,9 +311,7 @@ impl<'a> TreeSyncDiff<'a> {
             if let KeyPackageError::CryptoError(e) = e {
                 TreeSyncDiffError::CryptoError(e)
             } else {
-                TreeSyncDiffError::LibraryError(LibraryError::custom(
-                    "TreeSynDiff::apply_received_update_path(): key package error",
-                ))
+                TreeSyncDiffError::LibraryError(LibraryError::custom("key package error"))
             }
         })?);
         self.diff.replace_leaf(sender_leaf_index, node.into())?;
@@ -407,7 +401,7 @@ impl<'a> TreeSyncDiff<'a> {
             let leaf_node = leaf
                 .node()
                 .as_ref()
-                .ok_or_else(|| LibraryError::custom("filter_resolution(): Node was empty."))?;
+                .ok_or_else(|| LibraryError::custom("Node was empty."))?;
             let leaf = leaf_node.as_leaf_node()?;
             if let Some(position) = resolution
                 .iter()
@@ -712,7 +706,7 @@ impl<'a> TreeSyncDiff<'a> {
         let node = self.diff.node(leaf_id)?;
         match node.node() {
             Some(node) => Ok(node.as_leaf_node()?),
-            None => Err(LibraryError::custom("own_leaf(): Node was empty.").into()),
+            None => Err(LibraryError::custom("Node was empty.").into()),
         }
     }
 
@@ -805,13 +799,11 @@ impl<'a> TreeSyncDiff<'a> {
         let node = self.diff.node(self.diff.leaf(self.own_leaf_index)?)?;
         if let Some(Node::LeafNode(node)) = node.node() {
             node.key_package_ref().ok_or_else(|| {
-                TreeSyncDiffError::LibraryError(LibraryError::custom(
-                    "TreeSynDiff::hash_ref(): missing key package ref",
-                ))
+                TreeSyncDiffError::LibraryError(LibraryError::custom("missing key package ref"))
             })
         } else {
             Err(TreeSyncDiffError::LibraryError(LibraryError::custom(
-                "TreeSynDiff::hash_ref(): missing leaf node",
+                "missing leaf node",
             )))
         }
     }
@@ -835,7 +827,6 @@ implement_error! {
             TreeDiffError(MlsBinaryTreeDiffError) = "An error occurred while operating on the diff.",
             CryptoError(CryptoError) = "An error occurred during key derivation.",
             DerivationError(PathSecretError) = "An error occurred during PathSecret derivation.",
-            ParentNodeError(ParentNodeError) = "An error occurred during path derivation.",
             CreationError(MlsBinaryTreeError) = "An error occurred while creating an empty diff.",
             KeyPackageError(KeyPackageError) = "An error occurred while building the leaf node from a key package bundle.",
         }
