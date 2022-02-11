@@ -297,11 +297,7 @@ impl RemoveOperation {
     ) -> Result<Self, LibraryError> {
         let own_hash_ref = match group.key_package_ref() {
             Some(key_package_ref) => key_package_ref,
-            None => {
-                return Err(LibraryError::custom(
-                    "RemoveOperation::new(): Own KeyPackage was empty.",
-                ))
-            }
+            None => return Err(LibraryError::custom("Own KeyPackage was empty.")),
         };
         let sender = queued_remove_proposal.sender();
         let removed = queued_remove_proposal.remove_proposal().removed();

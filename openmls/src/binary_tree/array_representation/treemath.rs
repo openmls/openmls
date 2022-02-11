@@ -4,7 +4,7 @@ use thiserror::Error;
 
 use super::tree::NodeIndex;
 
-/// Binary Tree error
+/// Tree math error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum TreeMathError {
     #[error("Leaf nodes don't have children.")]

@@ -245,10 +245,7 @@ impl KeyPackage {
                     }
                     Err(_) => {
                         log::error!("as_lifetime_extension failed while verifying a key package.");
-                        return Err(LibraryError::custom(
-                            "verify(): Expected a lifetime extension",
-                        )
-                        .into());
+                        return Err(LibraryError::custom("Expected a lifetime extension").into());
                     }
                 }
             }

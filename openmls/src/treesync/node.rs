@@ -82,10 +82,9 @@ impl Node {
             Node::LeafNode(ln) => {
                 let kp = ln.key_package();
                 if let Some(extension) = kp.extension_with_type(ParentHash) {
-                    let parent_hash_extension =
-                        extension.as_parent_hash_extension().map_err(|_| {
-                            LibraryError::custom("Node::parent_hash(): Wrong extension type")
-                        })?;
+                    let parent_hash_extension = extension
+                        .as_parent_hash_extension()
+                        .map_err(|_| LibraryError::custom("Wrong extension type"))?;
                     parent_hash_extension.parent_hash()
                 } else {
                     return Ok(None);

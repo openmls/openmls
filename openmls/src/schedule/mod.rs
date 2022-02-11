@@ -418,7 +418,7 @@ impl KeySchedule {
         let intermediate_secret = self
             .intermediate_secret
             .as_ref()
-            .ok_or_else(|| LibraryError::custom("KeySchedule::welcome(): state machine error"))?;
+            .ok_or_else(|| LibraryError::custom("state machine error"))?;
 
         Ok(WelcomeSecret::new(backend, intermediate_secret)?)
     }
@@ -442,9 +442,10 @@ impl KeySchedule {
         self.state = State::Context;
 
         // We can return a library error here, because there must be a mistake in the state machine
-        let intermediate_secret = self.intermediate_secret.take().ok_or_else(|| {
-            LibraryError::custom("KeySchedule::add_context(): state machine error")
-        })?;
+        let intermediate_secret = self
+            .intermediate_secret
+            .take()
+            .ok_or_else(|| LibraryError::custom("state machine error"))?;
 
         log_crypto!(
             trace,
@@ -478,12 +479,7 @@ impl KeySchedule {
         let epoch_secret = match self.epoch_secret.take() {
             Some(epoch_secret) => epoch_secret,
             // We can return a library error here, because there must be a mistake in the state machine
-            None => {
-                return Err(LibraryError::custom(
-                    "KeySchedule::epoch_secret(): state machine error",
-                )
-                .into())
-            }
+            None => return Err(LibraryError::custom("state machine error").into()),
         };
 
         Ok(EpochSecrets::new(backend, epoch_secret)?)
