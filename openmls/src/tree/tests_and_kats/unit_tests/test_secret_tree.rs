@@ -14,7 +14,11 @@ use std::collections::HashMap;
 fn test_boundaries(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let configuration = &SenderRatchetConfiguration::default();
     let encryption_secret = EncryptionSecret::random(ciphersuite, backend);
-    let mut secret_tree = SecretTree::new(encryption_secret, SecretTreeLeafIndex::from(2u32));
+    let mut secret_tree = SecretTree::new(
+        encryption_secret,
+        SecretTreeLeafIndex::from(3u32),
+        2u32.into(),
+    );
     let secret_type = SecretType::ApplicationSecret;
     assert!(secret_tree
         .secret_for_decryption(
@@ -62,7 +66,8 @@ fn test_boundaries(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
             backend,
             SecretTreeLeafIndex::from(1u32),
             secret_type,
-            1001,
+            // We're at generation 1, so 1001 is still ok.
+            1002,
             configuration,
         ),
         Err(SecretTreeError::TooDistantInTheFuture)
@@ -92,7 +97,7 @@ fn test_boundaries(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         secret_tree.secret_for_decryption(
             ciphersuite,
             backend,
-            SecretTreeLeafIndex::from(2u32),
+            SecretTreeLeafIndex::from(3u32),
             secret_type,
             0,
             configuration,
@@ -100,7 +105,11 @@ fn test_boundaries(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         Err(SecretTreeError::IndexOutOfBounds)
     );
     let encryption_secret = EncryptionSecret::random(ciphersuite, backend);
-    let mut largetree = SecretTree::new(encryption_secret, SecretTreeLeafIndex::from(100_000u32));
+    let mut largetree = SecretTree::new(
+        encryption_secret,
+        SecretTreeLeafIndex::from(100_000u32),
+        2u32.into(),
+    );
     assert!(largetree
         .secret_for_decryption(
             ciphersuite,
@@ -153,8 +162,11 @@ fn increment_generation(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
 
     let mut unique_values: HashMap<Vec<u8>, bool> = HashMap::new();
     let encryption_secret = EncryptionSecret::random(ciphersuite, backend);
-    let mut secret_tree =
-        SecretTree::new(encryption_secret, SecretTreeLeafIndex::from(SIZE as u32));
+    let mut secret_tree = SecretTree::new(
+        encryption_secret,
+        SecretTreeLeafIndex::from(SIZE as u32),
+        0u32.into(),
+    );
     for i in 0..SIZE {
         assert_eq!(
             secret_tree.generation(
@@ -172,13 +184,17 @@ fn increment_generation(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
         );
     }
     for i in 0..MAX_GENERATIONS {
-        for j in 0..SIZE {
-            let (next_gen, (handshake_key, handshake_nonce)) = secret_tree
-                .secret_for_encryption(
+        // We are index 0, so we can't get a decryption secret for that leaf.
+        for j in 1..SIZE {
+            let next_gen = secret_tree.generation((j as u32).into(), SecretType::HandshakeSecret);
+            let (handshake_key, handshake_nonce) = secret_tree
+                .secret_for_decryption(
                     ciphersuite,
                     backend,
                     SecretTreeLeafIndex::from(j as u32),
                     SecretType::HandshakeSecret,
+                    i as u32,
+                    &SenderRatchetConfiguration::default(),
                 )
                 .expect("Index out of bounds.");
             assert_eq!(next_gen, i as u32);
@@ -188,12 +204,15 @@ fn increment_generation(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
             assert!(unique_values
                 .insert(handshake_nonce.as_slice().to_vec(), true)
                 .is_none());
-            let (next_gen, (application_key, application_nonce)) = secret_tree
-                .secret_for_encryption(
+            let next_gen = secret_tree.generation((j as u32).into(), SecretType::ApplicationSecret);
+            let (application_key, application_nonce) = secret_tree
+                .secret_for_decryption(
                     ciphersuite,
                     backend,
                     SecretTreeLeafIndex::from(j as u32),
                     SecretType::ApplicationSecret,
+                    i as u32,
+                    &SenderRatchetConfiguration::default(),
                 )
                 .expect("Index out of bounds.");
             assert_eq!(next_gen, i as u32);
@@ -223,6 +242,7 @@ fn secret_tree(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoPr
             ciphersuite,
         ),
         SecretTreeLeafIndex::from(n_leaves),
+        1u32.into(),
     );
     println!("Secret tree: {:?}", secret_tree);
     let (application_secret_key, application_secret_nonce) = secret_tree

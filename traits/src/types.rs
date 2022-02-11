@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use tls_codec::{TlsByteVecU16, TlsDeserialize, TlsSerialize, TlsSize};
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 #[repr(u16)]
 /// AEAD types
 pub enum AeadType {

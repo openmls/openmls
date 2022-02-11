@@ -89,6 +89,10 @@ impl CoreGroup {
         let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
             group_context.tls_serialize_detached()?,
             treesync.leaf_count()?,
+            // We use a fake own index of 0 here, as we're not going to use the
+            // tree for encryption until after the first commit. This issue is
+            // tracked in #767.
+            0u32,
         );
         let message_secrets_store = MessageSecretsStore::new_with_secret(0, message_secrets);
 

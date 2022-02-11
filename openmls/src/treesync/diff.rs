@@ -702,7 +702,7 @@ impl<'a> TreeSyncDiff<'a> {
     }
 
     /// Return the own leaf index.
-    pub(in crate::treesync) fn own_leaf_index(&self) -> LeafIndex {
+    pub(crate) fn own_leaf_index(&self) -> LeafIndex {
         self.own_leaf_index
     }
 
