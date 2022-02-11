@@ -70,11 +70,7 @@ impl QueuedProposal {
     ) -> Result<Self, LibraryError> {
         let proposal = match mls_plaintext.content() {
             MlsPlaintextContentType::Proposal(p) => p,
-            _ => {
-                return Err(LibraryError::custom(
-                    "QueuedProposal::from_mls_plaintext(): Wrong content type",
-                ))
-            }
+            _ => return Err(LibraryError::custom("Wrong content type")),
         };
         let proposal_reference = ProposalRef::from_proposal(ciphersuite, backend, proposal)?;
         Ok(Self {
@@ -377,7 +373,9 @@ impl ProposalQueue {
                     proposal_pool.insert(queued_proposal.proposal_reference(), queued_proposal);
                 }
                 Proposal::Update(_) => {
-                    let own_kpr = own_kpr.ok_or_else(|| LibraryError::custom("ProposalQueue::filter_proposals(): own_kpr has to be Some for Member Commits"))?;
+                    let own_kpr = own_kpr.ok_or_else(|| {
+                        LibraryError::custom("own_kpr has to be Some for Member Commits")
+                    })?;
                     // Only members can send update proposals
                     // ValSem112
                     let hash_ref = match queued_proposal.sender {

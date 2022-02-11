@@ -281,10 +281,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
             .iter()
             .position(|&direct_path_node_index| direct_path_node_index == subtree_root_node_index)
             // The shared subtree root has to be in the direct path of both nodes.
-            .ok_or_else(|| {
-                LibraryError::custom("ABDiff::node_by_index(): index should be in the direct path")
-                    .into()
-            })
+            .ok_or_else(|| LibraryError::custom("index should be in the direct path").into())
     }
 
     /// Returns [`NodeReference`] to the copath node of the `leaf_index_1` that is
@@ -493,9 +490,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
                 .diff
                 .get_mut(&node_index)
                 // We just checked that this index exists, so this must be Some.
-                .ok_or_else(|| {
-                    LibraryError::custom("ABDiff::node_by_index(): index should exist").into()
-                });
+                .ok_or_else(|| LibraryError::custom("index should exist").into());
             // If not, we take a copy from the original tree and put it in the
             // diff before returning a mutable reference to it.
         }
@@ -504,9 +499,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
         self.diff
             .get_mut(&node_index)
             // We just inserted this into the diff, so this should be Some.
-            .ok_or_else(|| {
-                LibraryError::custom("ABDiff::node_by_index(): node should exist").into()
-            })
+            .ok_or_else(|| LibraryError::custom("node should exist").into())
     }
 
     // Helper functions for node addition and removal
