@@ -86,6 +86,16 @@ impl CoreGroup {
     ///  - ValSem110
     ///  - ValSem111
     ///  - ValSem112
+    ///  - ValSem201
+    ///  - ValSem202: Path must be the right length
+    ///  - ValSem203: Path secrets must decrypt correctly
+    ///  - ValSem205
+    ///  - ValSem240
+    ///  - ValSem241
+    ///  - ValSem242
+    ///  - ValSem243
+    ///  - ValSem244
+    ///  - ValSem245
     pub(crate) fn process_unverified_message(
         &mut self,
         unverified_message: UnverifiedMessage,
@@ -142,6 +152,16 @@ impl CoreGroup {
                         //  - ValSem110
                         //  - ValSem111
                         //  - ValSem112
+                        //  - ValSem201
+                        //  - ValSem202: Path must be the right length
+                        //  - ValSem203: Path secrets must decrypt correctly
+                        //  - ValSem205
+                        //  - ValSem240
+                        //  - ValSem241
+                        //  - ValSem242
+                        //  - ValSem243
+                        //  - ValSem244
+                        //  - ValSem245
                         let staged_commit = self.stage_commit(
                             verified_member_message.plaintext(),
                             proposal_store,

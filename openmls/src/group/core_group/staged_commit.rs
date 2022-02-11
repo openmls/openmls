@@ -36,6 +36,8 @@ impl CoreGroup {
     ///  - ValSem111
     ///  - ValSem112
     ///  - ValSem201
+    ///  - ValSem202: Path must be the right length
+    ///  - ValSem203: Path secrets must decrypt correctly
     ///  - ValSem205
     ///  - ValSem240
     ///  - ValSem241
@@ -204,9 +206,10 @@ impl CoreGroup {
                 exclusion_list: &apply_proposals_values.exclusion_list(),
                 group_context: &serialized_context,
             };
+            // ValSem203: Path secrets must decrypt correctly
             let (plain_path, commit_secret) =
                 diff.decrypt_path(backend, ciphersuite, decrypt_path_params)?;
-
+            // ValSem202: Path must be the right length
             diff.apply_received_update_path(
                 backend,
                 ciphersuite,

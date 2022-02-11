@@ -73,6 +73,8 @@ impl<'a> TreeSyncDiff<'a> {
     /// Returns a vector containing the decrypted [`ParentNode`] instances, as
     /// well as the [`CommitSecret`] resulting from their derivation. Returns an
     /// error if the `sender_leaf_index` is outside of the tree.
+    ///
+    /// ValSem203: Path secrets must decrypt correctly
     pub(crate) fn decrypt_path(
         &self,
         backend: &impl OpenMlsCryptoProvider,
@@ -92,6 +94,7 @@ impl<'a> TreeSyncDiff<'a> {
             .encrypted_path_secrets(resolution_position)
             .ok_or(TreeKemError::EncryptedCiphertextNotFound)?;
 
+        // ValSem203: Path secrets must decrypt correctly
         let path_secret = PathSecret::decrypt(
             backend,
             ciphersuite,
