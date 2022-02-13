@@ -305,7 +305,7 @@ impl PskSecret {
             if let Some(psk_bundle) = backend.key_store().read(
                 &psk_id
                     .tls_serialize_detached()
-                    .map_err(|_| PskSecretError::EncodingError)?,
+                    .map_err(LibraryError::missing_bound_check)?,
             ) {
                 psk_bundles.push(psk_bundle);
             } else {
@@ -317,18 +317,24 @@ impl PskSecret {
         let mut psk_secret = Secret::zero(ciphersuite, mls_version);
         for ((index, psk_bundle), psk_id) in psk_bundles.iter().enumerate().zip(psk_ids) {
             let zero_secret = Secret::zero(ciphersuite, mls_version);
-            let psk_extracted = zero_secret.hkdf_extract(backend, psk_bundle.secret())?;
+            let psk_extracted = zero_secret
+                .hkdf_extract(backend, psk_bundle.secret())
+                .map_err(LibraryError::unexpected_crypto_error)?;
             let psk_label = PskLabel::new(psk_id, index as u16, num_psks)
                 .tls_serialize_detached()
-                .map_err(|_| PskSecretError::EncodingError)?;
+                .map_err(LibraryError::missing_bound_check)?;
 
-            let psk_input = psk_extracted.kdf_expand_label(
-                backend,
-                "derived psk",
-                &psk_label,
-                ciphersuite.hash_length(),
-            )?;
-            psk_secret = psk_input.hkdf_extract(backend, &psk_secret)?;
+            let psk_input = psk_extracted
+                .kdf_expand_label(
+                    backend,
+                    "derived psk",
+                    &psk_label,
+                    ciphersuite.hash_length(),
+                )
+                .map_err(LibraryError::unexpected_crypto_error)?;
+            psk_secret = psk_input
+                .hkdf_extract(backend, &psk_secret)
+                .map_err(LibraryError::unexpected_crypto_error)?;
         }
         Ok(Self { secret: psk_secret })
     }

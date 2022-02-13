@@ -253,7 +253,7 @@ impl CoreGroup {
             diff.compute_tree_hashes(backend, ciphersuite)?,
             confirmed_transcript_hash.clone(),
             self.group_context.extensions(),
-        )?;
+        );
 
         // Prepare the PskSecret
         let psk_secret = PskSecret::new(

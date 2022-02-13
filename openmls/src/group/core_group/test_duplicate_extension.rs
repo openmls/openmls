@@ -103,7 +103,6 @@ fn duplicate_ratchet_tree_extension(
         welcome.secrets(),
         backend,
     )
-    .expect("Could not hash KeyPackage.")
     .expect("JoinerSecret not found");
 
     let group_secrets_bytes = backend
@@ -172,6 +171,6 @@ fn duplicate_ratchet_tree_extension(
     // We expect an error because the ratchet tree is duplicated
     assert_eq!(
         error.expect("We expected an error"),
-        WelcomeError::ExtensionError(ExtensionError::DuplicateRatchetTreeExtension)
+        WelcomeError::DuplicateRatchetTreeExtension
     );
 }

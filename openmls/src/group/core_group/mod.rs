@@ -186,7 +186,7 @@ impl CoreGroupBuilder {
             self.group_id,
             tree.tree_hash().to_vec(),
             required_capabilities,
-        )?;
+        );
         // Derive an initial joiner secret based on the commit secret.
         // Derive an epoch secret from the joiner secret.
         // We use a random `InitSecret` for initialization.
@@ -521,15 +521,16 @@ impl CoreGroup {
         label: &str,
         context: &[u8],
         key_length: usize,
-    ) -> Result<Vec<u8>, CoreGroupError> {
+    ) -> Result<Vec<u8>, ExporterError> {
         if key_length > u16::MAX.into() {
             log::error!("Got a key that is larger than u16::MAX");
-            return Err(ExporterError::KeyLengthTooLong.into());
+            return Err(ExporterError::KeyLengthTooLong);
         }
         Ok(self
             .group_epoch_secrets
             .exporter_secret()
-            .derive_exported_secret(self.ciphersuite(), backend, label, context, key_length)?)
+            .derive_exported_secret(self.ciphersuite(), backend, label, context, key_length)
+            .map_err(LibraryError::unexpected_crypto_error)?)
     }
 
     /// Returns the authentication secret
@@ -742,12 +743,16 @@ pub(crate) fn update_interim_transcript_hash(
     backend: &impl OpenMlsCryptoProvider,
     mls_plaintext_commit_auth_data: &MlsPlaintextCommitAuthData,
     confirmed_transcript_hash: &[u8],
-) -> Result<Vec<u8>, InterimTranscriptHashError> {
-    let commit_auth_data_bytes = mls_plaintext_commit_auth_data.tls_serialize_detached()?;
-    Ok(ciphersuite.hash(
-        backend,
-        &[confirmed_transcript_hash, &commit_auth_data_bytes].concat(),
-    )?)
+) -> Result<Vec<u8>, LibraryError> {
+    let commit_auth_data_bytes = mls_plaintext_commit_auth_data
+        .tls_serialize_detached()
+        .map_err(LibraryError::missing_bound_check)?;
+    ciphersuite
+        .hash(
+            backend,
+            &[confirmed_transcript_hash, &commit_auth_data_bytes].concat(),
+        )
+        .map_err(LibraryError::unexpected_crypto_error)
 }
 
 /// Configuration for core group.

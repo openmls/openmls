@@ -30,14 +30,12 @@ pub enum KeyScheduleError {
 /// PSK secret error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum PskSecretError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
     #[error("More than 2^16 PSKs were provided.")]
     TooManyKeys,
     #[error("The PSK could not be found in the key store.")]
     KeyNotFound,
-    #[error("Error serializing the PSK label.")]
-    EncodingError,
-    #[error(transparent)]
-    CryptoError(#[from] CryptoError),
 }
 
 #[cfg(any(feature = "test-utils", test))]
