@@ -382,7 +382,7 @@ impl KeySchedule {
         backend: &impl OpenMlsCryptoProvider,
         joiner_secret: JoinerSecret,
         psk: impl Into<Option<PskSecret>>,
-    ) -> Result<Self, KeyScheduleError> {
+    ) -> Result<Self, LibraryError> {
         log::debug!(
             "Initializing the key schedule with {:?} ...",
             ciphersuite.name()
@@ -394,7 +394,8 @@ impl KeySchedule {
         );
         let psk = psk.into();
         log_crypto!(trace, "  {}", if psk.is_some() { "with PSK" } else { "" });
-        let intermediate_secret = IntermediateSecret::new(backend, &joiner_secret, psk)?;
+        let intermediate_secret = IntermediateSecret::new(backend, &joiner_secret, psk)
+            .map_err(LibraryError::unexpected_crypto_error)?;
         Ok(Self {
             ciphersuite,
             intermediate_secret: Some(intermediate_secret),

@@ -17,7 +17,7 @@ use crate::{
     messages::*,
     schedule::psk::*,
     test_utils::*,
-    treesync::{diff::TreeSyncDiffError, treekem::TreeKemError},
+    treesync::{errors::TreeSyncDiffError, treekem::TreeKemError},
 };
 
 #[apply(ciphersuites_and_backends)]
@@ -182,10 +182,7 @@ fn test_failed_groupinfo_decryption(
         let error = CoreGroup::new_from_welcome(broken_welcome, None, key_package_bundle, backend)
             .expect_err("Creation of core group from a broken Welcome was successful.");
 
-        assert_eq!(
-            error,
-            WelcomeError::CryptoError(CryptoError::HpkeDecryptionError)
-        )
+        assert_eq!(error, WelcomeError::CouldNotDecrypt)
     }
 }
 

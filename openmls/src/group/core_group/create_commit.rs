@@ -222,7 +222,7 @@ impl CoreGroup {
             tree_hash.clone(),
             confirmed_transcript_hash.clone(),
             self.group_context.extensions(),
-        )?;
+        );
 
         let joiner_secret = JoinerSecret::new(
             backend,

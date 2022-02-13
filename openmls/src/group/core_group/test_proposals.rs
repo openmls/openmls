@@ -95,8 +95,7 @@ fn proposal_queue_functions(
     assert!(alice_update_key_package.verify(backend).is_ok());
 
     let group_context =
-        GroupContext::new(GroupId::random(backend), GroupEpoch(0), vec![], vec![], &[])
-            .expect("Could not create new GroupContext");
+        GroupContext::new(GroupId::random(backend), GroupEpoch(0), vec![], vec![], &[]);
 
     // Let's create some proposals
     let add_proposal_alice1 = AddProposal {
@@ -247,8 +246,7 @@ fn proposal_queue_order(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
     assert!(alice_update_key_package.verify(backend).is_ok());
 
     let group_context =
-        GroupContext::new(GroupId::random(backend), GroupEpoch(0), vec![], vec![], &[])
-            .expect("An unexpected error occurred.");
+        GroupContext::new(GroupId::random(backend), GroupEpoch(0), vec![], vec![], &[]);
 
     // Let's create some proposals
     let add_proposal_alice1 = AddProposal {

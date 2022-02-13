@@ -172,7 +172,7 @@ impl DecryptionRatchet {
     pub fn new(secret: Secret) -> Self {
         Self {
             past_secrets: VecDeque::new(),
-            ratchet_head: RatchetSecret::initial_ratchet_secret(secret.clone()),
+            ratchet_head: RatchetSecret::initial_ratchet_secret(secret),
         }
     }
 

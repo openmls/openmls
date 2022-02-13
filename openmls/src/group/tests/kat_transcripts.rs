@@ -75,8 +75,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
         tree_hash_before.clone(),
         confirmed_transcript_hash_before.clone(),
         &[], // extensions
-    )
-    .expect("Error creating group context");
+    );
     let aad = crypto
         .rand()
         .random_vec(48)
@@ -227,8 +226,7 @@ pub fn run_test_vector(
         tree_hash_before,
         confirmed_transcript_hash_before,
         &[], // extensions
-    )
-    .expect("Error creating group context");
+    );
     let expected_group_context = hex_to_bytes(&test_vector.group_context);
     if context
         .tls_serialize_detached()
