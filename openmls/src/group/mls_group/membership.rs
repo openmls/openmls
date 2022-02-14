@@ -270,8 +270,6 @@ impl MlsGroup {
             // sub-32 bit architecture. As a result, it should be safe to just
             // return `None` instead of propagating an error.
             .leaf_from_id(key_package_ref)
-            .ok()
-            .flatten()
             .map(|leaf| leaf.key_package())
     }
 
