@@ -128,6 +128,10 @@ pub(crate) struct ProposalQueue {
 }
 
 impl ProposalQueue {
+    /// Returns `true` if the [`ProposalQueue`] is empty. Otherwise returns `false`.
+    pub(crate) fn is_empty(&self) -> bool {
+        self.proposal_references.is_empty()
+    }
     /// Returns a new `QueuedProposalQueue` from proposals that were committed and
     /// don't need filtering.
     /// This functions does the following checks:

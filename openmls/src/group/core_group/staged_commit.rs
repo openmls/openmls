@@ -87,7 +87,14 @@ impl CoreGroup {
             proposal_store,
             sender,
         )
-        .map_err(|_| StageCommitError::MissingProposal)?;
+        .map_err(|e| {
+            match e {
+                ProposalQueueError::ProposalNotFound => StageCommitError::MissingProposal,
+                ProposalQueueError::SelfRemoval => StageCommitError::SelfRemoved,
+                // No other errors should occur.
+                _ => StageCommitError::LibraryError,
+            }
+        })?;
 
         let commit_update_key_package = commit
             .path()
@@ -138,6 +145,7 @@ impl CoreGroup {
         // Create provisional tree and apply proposals
         let mut diff = self.treesync().empty_diff()?;
 
+        println!("\nApplying proposals");
         let apply_proposals_values = self
             .apply_proposals(&mut diff, backend, &proposal_queue, own_key_packages)
             .map_err(|_| StageCommitError::OwnKeyNotFound)?;
@@ -167,6 +175,11 @@ impl CoreGroup {
                 commit_update_key_package,
             ));
         }
+
+        println!(
+            "Does commit have a path? Answer: {:?}",
+            commit.path.is_some()
+        );
 
         // Determine if Commit has a path
         let commit_secret = if let Some(path) = commit.path.clone() {

@@ -169,8 +169,19 @@ impl CoreGroup {
 
         let presharedkeys = PreSharedKeys { psks: psks.into() };
 
-        // Determine if Commit needs a path field
-        let path_required = has_updates || has_removes || external_init_secret_option.is_some();
+        // This flag determines if the commit requires a path. A path is
+        // required if the commit is empty, i.e. if it doesn't contain any
+        // proposals or if it is a "full" commit. A commit is full if it refers
+        // to proposal types other than Add, PreSharedKey and/or ReInit
+        // proposals.
+        println!("Checking if path is required:");
+        println!("has removes: {:?}", has_removes);
+        let path_required = has_updates
+            || has_removes
+            // The fact that this is some implies that there's an external init
+            // proposal.
+            || external_init_secret_option.is_some()
+            || proposal_queue.is_empty();
 
         Ok(ApplyProposalsValues {
             path_required,

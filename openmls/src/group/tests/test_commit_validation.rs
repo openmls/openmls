@@ -103,7 +103,7 @@ fn validation_test_setup(
 }
 
 // ValSem200: Commit must not cover inline self Remove proposal
-//#[apply(ciphersuites_and_backends)]
+#[apply(ciphersuites_and_backends)]
 fn test_valsem200(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test with MlsPlaintext
     let CommitValidationTestSetup {
@@ -130,12 +130,11 @@ fn test_valsem200(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         VerifiableMlsPlaintext::tls_deserialize(&mut serialized_proposal_message.as_slice())
             .expect("Could not deserialize message.");
 
-    let mut proposal =
-        if let MlsPlaintextContentType::Proposal(proposal) = proposal_message.content() {
-            proposal.clone()
-        } else {
-            panic!("Unexpected content type.");
-        };
+    let proposal = if let MlsPlaintextContentType::Proposal(proposal) = proposal_message.content() {
+        proposal.clone()
+    } else {
+        panic!("Unexpected content type.");
+    };
 
     // We have to clear the pending proposals so Alice doesn't try to commit to
     // her own remove.
@@ -144,11 +143,11 @@ fn test_valsem200(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     // Now let's stick it in the commit.
     let serialized_message = alice_group
         .self_update(backend, None)
-        .expect("Error committing to pending proposals")
+        .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
 
-    let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
+    let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
         .expect("Could not deserialize message.");
 
     // Keep the original plaintext for positive test later.
@@ -164,6 +163,8 @@ fn test_valsem200(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .proposals
         .push(ProposalOrRef::Proposal(proposal));
 
+    plaintext.set_content(MlsPlaintextContentType::Commit(commit_content));
+
     let alice_credential_bundle = backend
         .key_store()
         .read(
@@ -175,6 +176,12 @@ fn test_valsem200(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
                 .expect("error serializing credential"),
         )
         .expect("error retrieving credential bundle");
+
+    let serialized_context = alice_group
+        .export_group_context()
+        .tls_serialize_detached()
+        .expect("error serializing context");
+    plaintext.set_context(serialized_context.clone());
 
     // We have to re-sign, since we changed the content.
     let mut signed_plaintext: MlsPlaintext = plaintext
@@ -191,13 +198,10 @@ fn test_valsem200(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
             .clone(),
     );
 
-    let serialized_context = alice_group
-        .export_group_context()
-        .tls_serialize_detached()
-        .expect("error serializing context");
-    // TODO: Figure out how to get hold of the membership secret
+    let membership_key = alice_group.group().message_secrets().membership_key();
+
     signed_plaintext
-        .set_membership_tag(backend, &serialized_context, alice_group.membership_key)
+        .set_membership_tag(backend, &serialized_context, membership_key)
         .expect("error refreshing membership tag");
 
     let verifiable_plaintext: VerifiableMlsPlaintext =
@@ -212,12 +216,12 @@ fn test_valsem200(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     let err = bob_group
         .process_unverified_message(unverified_message, None, backend)
-        .expect_err("Could process unverified message despite missing external init proposal.");
+        .expect_err("Could process unverified message despite self remove.");
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::ExternalCommitValidationError(
-            ExternalCommitValidationError::NoExternalInitProposals
+        MlsGroupError::Group(CoreGroupError::StageCommitError(
+            StageCommitError::SelfRemoved
         ))
     );
 
@@ -228,64 +232,213 @@ fn test_valsem200(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     bob_group
         .process_unverified_message(unverified_message, None, backend)
         .expect("Unexpected error.");
+}
 
-    //// Remove the external init proposal in the commit.
-    //let proposal_position = content
-    //    .proposals
-    //    .iter()
-    //    .position(|proposal| match proposal {
-    //        crate::messages::ProposalOrRef::Proposal(proposal) => {
-    //            proposal.is_type(ProposalType::ExternalInit)
-    //        }
-    //        crate::messages::ProposalOrRef::Reference(_) => false,
-    //    })
-    //    .expect("Couldn't find external init proposal.");
+// ValSem201: Path must be present, if Commit contains Removes or Updates
+#[apply(ciphersuites_and_backends)]
+fn test_valsem201(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let wire_format_policy = *PURE_PLAINTEXT_WIRE_FORMAT_POLICY;
+    // Test with MlsPlaintext
+    let CommitValidationTestSetup {
+        mut alice_group,
+        mut bob_group,
+    } = validation_test_setup(wire_format_policy, ciphersuite, backend);
 
-    //content.proposals.remove(proposal_position);
+    // This case is simple: Have Alice generate a self-updating commit, clear
+    // the pending commit and then create a remove commit.
 
-    //plaintext.set_content(MlsPlaintextContentType::Commit(content));
+    // Start with the update
+    // Create the self-update
+    let serialized_update = alice_group
+        .self_update(backend, None)
+        .expect("Error creating self-update")
+        .tls_serialize_detached()
+        .expect("Could not serialize message.");
 
-    //// We have to re-sign, since we changed the content.
-    //let mut signed_plaintext: MlsPlaintext = plaintext
-    //    .payload()
-    //    .clone()
-    //    .sign(backend, &bob_credential_bundle)
-    //    .expect("Error signing modified payload.");
+    let update_message_in = erase_path(backend, &serialized_update, &alice_group);
 
-    //// Set old confirmation tag
-    //signed_plaintext.set_confirmation_tag(
-    //    original_plaintext
-    //        .confirmation_tag()
-    //        .expect("no confirmation tag on original message")
-    //        .clone(),
-    //);
+    let unverified_message = bob_group
+        .parse_message(update_message_in, backend)
+        .expect("Could not parse message.");
 
-    //let verifiable_plaintext: VerifiableMlsPlaintext =
-    //    VerifiableMlsPlaintext::from_plaintext(signed_plaintext, None);
+    let err = bob_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect_err("Could process unverified message despite missing path.");
 
-    //// Have alice process the commit resulting from external init.
-    //let message_in = MlsMessageIn::from(verifiable_plaintext);
+    assert_eq!(
+        err,
+        MlsGroupError::Group(CoreGroupError::StageCommitError(
+            StageCommitError::RequiredPathNotFound
+        ))
+    );
 
-    //let unverified_message = alice_group
-    //    .parse_message(message_in, backend)
-    //    .expect("Could not parse message.");
+    let original_update_plaintext =
+        VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+            .expect("Could not deserialize message.");
 
-    //let err = alice_group
-    //    .process_unverified_message(unverified_message, None, backend)
-    //    .expect_err("Could process unverified message despite missing external init proposal.");
+    // Positive case
+    let unverified_message = bob_group
+        .parse_message(MlsMessageIn::from(original_update_plaintext), backend)
+        .expect("Could not parse message.");
+    bob_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect("Unexpected error.");
 
-    //assert_eq!(
-    //    err,
-    //    MlsGroupError::Group(CoreGroupError::ExternalCommitValidationError(
-    //        ExternalCommitValidationError::NoExternalInitProposals
-    //    ))
-    //);
+    // Now do the remove
+    // Clear the pending commit.
+    alice_group
+        .clear_pending_commit()
+        .expect("Error clearing pending commit");
 
-    //// Positive case
-    //let unverified_message = alice_group
-    //    .parse_message(MlsMessageIn::from(original_plaintext), backend)
-    //    .expect("Could not parse message.");
-    //alice_group
-    //    .process_unverified_message(unverified_message, None, backend)
-    //    .expect("Unexpected error.");
+    // Before we can test the commit, we first have to add Charlie so we can
+    // actually remove someone and have someone else process the commit.
+    let charlie_credential = generate_credential_bundle(
+        "Charlie".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_scheme(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
+
+    // Generate KeyPackages
+    let charlie_key_package =
+        generate_key_package_bundle(&[ciphersuite.name()], &charlie_credential, vec![], backend)
+            .expect("An unexpected error occurred.");
+
+    let (_msg_out, welcome) = alice_group
+        .add_members(backend, &[charlie_key_package])
+        .expect("error adding charlie");
+
+    alice_group
+        .merge_pending_commit()
+        .expect("error merging pending commit");
+
+    let mls_group_config = MlsGroupConfig::builder()
+        .wire_format_policy(wire_format_policy)
+        .build();
+
+    let mut charlie_group = MlsGroup::new_from_welcome(
+        backend,
+        &mls_group_config,
+        welcome,
+        Some(alice_group.export_ratchet_tree()),
+    )
+    .expect("Error creating group.");
+
+    // Create the remove.
+    let serialized_remove = alice_group
+        .remove_members(
+            backend,
+            &[bob_group
+                .key_package_ref()
+                .expect("error retrieving kp ref")
+                .clone()],
+        )
+        .expect("Error creating remove")
+        .tls_serialize_detached()
+        .expect("Could not serialize message.");
+
+    let remove_message_in = erase_path(backend, &serialized_remove, &alice_group);
+
+    // Have Charlie process everything
+    let unverified_message = charlie_group
+        .parse_message(remove_message_in, backend)
+        .expect("Could not parse message.");
+
+    let err = charlie_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect_err("Could process unverified message despite missing path.");
+
+    assert_eq!(
+        err,
+        MlsGroupError::Group(CoreGroupError::StageCommitError(
+            StageCommitError::RequiredPathNotFound
+        ))
+    );
+
+    let original_remove_plaintext =
+        VerifiableMlsPlaintext::tls_deserialize(&mut serialized_remove.as_slice())
+            .expect("Could not deserialize message.");
+
+    // Positive case
+    let unverified_message = charlie_group
+        .parse_message(MlsMessageIn::from(original_remove_plaintext), backend)
+        .expect("Could not parse message.");
+    charlie_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect("Unexpected error.");
+}
+
+fn erase_path(
+    backend: &impl OpenMlsCryptoProvider,
+    mut pt: &[u8],
+    alice_group: &MlsGroup,
+) -> MlsMessageIn {
+    let mut plaintext =
+        VerifiableMlsPlaintext::tls_deserialize(&mut pt).expect("Could not deserialize message.");
+
+    // Keep the original plaintext for positive test later.
+    let original_plaintext = plaintext.clone();
+
+    let mut commit_content = if let MlsPlaintextContentType::Commit(commit) = plaintext.content() {
+        commit.clone()
+    } else {
+        panic!("Unexpected content type.");
+    };
+    commit_content.path = None;
+
+    plaintext.set_content(MlsPlaintextContentType::Commit(commit_content));
+
+    let alice_credential_bundle = backend
+        .key_store()
+        .read(
+            &alice_group
+                .credential()
+                .expect("error retrieving credential")
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("error serializing credential"),
+        )
+        .expect("error retrieving credential bundle");
+
+    let serialized_context = alice_group
+        .export_group_context()
+        .tls_serialize_detached()
+        .expect("error serializing context");
+    plaintext.set_context(serialized_context.clone());
+
+    // We have to re-sign, since we changed the content.
+    let mut signed_plaintext: MlsPlaintext = plaintext
+        .payload()
+        .clone()
+        .sign(backend, &alice_credential_bundle)
+        .expect("Error signing modified payload.");
+
+    // Set old confirmation tag
+    signed_plaintext.set_confirmation_tag(
+        original_plaintext
+            .confirmation_tag()
+            .expect("no confirmation tag on original message")
+            .clone(),
+    );
+
+    let membership_key = alice_group.group().message_secrets().membership_key();
+
+    signed_plaintext
+        .set_membership_tag(backend, &serialized_context, membership_key)
+        .expect("error refreshing membership tag");
+
+    let verifiable_plaintext: VerifiableMlsPlaintext =
+        VerifiableMlsPlaintext::from_plaintext(signed_plaintext, None);
+
+    let commit_content =
+        if let MlsPlaintextContentType::Commit(commit) = verifiable_plaintext.content() {
+            commit.clone()
+        } else {
+            panic!("Unexpected content type.");
+        };
+    println!("Path: {:?}", commit_content.path);
+
+    // Have Bob try to process the commit.
+    MlsMessageIn::from(verifiable_plaintext)
 }
