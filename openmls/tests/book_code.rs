@@ -477,6 +477,21 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     assert_eq!(members[0].credential().identity(), b"Alice");
     assert_eq!(members[1].credential().identity(), b"Bob");
     assert_eq!(members[2].credential().identity(), b"Charlie");
+    assert_eq!(members.len(), 3);
+
+    // Check that the `member` and the `members` function are consistent
+    for member in members {
+        assert_eq!(
+            alice_group
+                .member(
+                    &member
+                        .hash_ref(backend.crypto())
+                        .expect("Error creating KeyPackage ref"),
+                )
+                .expect("Couldn't find member KeyPackage via the `member` function."),
+            member
+        )
+    }
 
     // === Charlie sends a message to the group ===
     let message_charlie = b"Hi, I'm Charlie!";
@@ -888,10 +903,27 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     let unverified_message = bob_group
         .parse_message(queued_message.into(), backend)
         .expect("Could not parse message.");
-    let sender = unverified_message
+
+    // Get sender information
+    // As provided by the `unverified_message`
+    let sender_cred_from_msg = unverified_message
         .credential()
         .expect("Expected a credential.")
         .clone();
+
+    // As provided by looking up the sender manually via the `member()` function
+    // ANCHOR: member_lookup
+    let sender_cred_from_group = if let Sender::Member(hash_ref) = unverified_message.sender() {
+        bob_group
+            .member(hash_ref)
+            .expect("Could not find sender in group.")
+            .credential()
+            .clone()
+    } else {
+        unreachable!("Expected sender type to be `Member`.")
+    };
+    // ANCHOR_END: member_lookup
+
     let bob_processed_message = bob_group
         .process_unverified_message(unverified_message, None, backend)
         .expect("Could not process unverified message.");
@@ -901,8 +933,9 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         // Check the message
         assert_eq!(application_message.into_bytes(), message_alice);
         // Check that Alice sent the message
+        assert_eq!(sender_cred_from_msg, sender_cred_from_group);
         assert_eq!(
-            &sender,
+            &sender_cred_from_msg,
             alice_group.credential().expect("Expected a credential.")
         );
     } else {
