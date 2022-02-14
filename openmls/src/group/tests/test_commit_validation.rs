@@ -88,8 +88,13 @@ fn validation_test_setup(
         .merge_pending_commit()
         .expect("error merging pending commit");
 
-    let bob_group = MlsGroup::new_from_welcome(backend, &mls_group_config, welcome, None)
-        .expect("error creating group from welcome");
+    let bob_group = MlsGroup::new_from_welcome(
+        backend,
+        &mls_group_config,
+        welcome,
+        Some(alice_group.export_ratchet_tree()),
+    )
+    .expect("error creating group from welcome");
 
     CommitValidationTestSetup {
         alice_group,
@@ -131,6 +136,10 @@ fn test_valsem200(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         } else {
             panic!("Unexpected content type.");
         };
+
+    // We have to clear the pending proposals so Alice doesn't try to commit to
+    // her own remove.
+    alice_group.clear_pending_proposals();
 
     // Now let's stick it in the commit.
     let serialized_message = alice_group
@@ -182,11 +191,43 @@ fn test_valsem200(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
             .clone(),
     );
 
+    let serialized_context = alice_group
+        .export_group_context()
+        .tls_serialize_detached()
+        .expect("error serializing context");
+    // TODO: Figure out how to get hold of the membership secret
+    signed_plaintext
+        .set_membership_tag(backend, &serialized_context, alice_group.membership_key)
+        .expect("error refreshing membership tag");
+
     let verifiable_plaintext: VerifiableMlsPlaintext =
         VerifiableMlsPlaintext::from_plaintext(signed_plaintext, None);
 
     // Have Bob try to process the commit.
-    bob_group.
+    let message_in = MlsMessageIn::from(verifiable_plaintext);
+
+    let unverified_message = bob_group
+        .parse_message(message_in, backend)
+        .expect("Could not parse message.");
+
+    let err = bob_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect_err("Could process unverified message despite missing external init proposal.");
+
+    assert_eq!(
+        err,
+        MlsGroupError::Group(CoreGroupError::ExternalCommitValidationError(
+            ExternalCommitValidationError::NoExternalInitProposals
+        ))
+    );
+
+    // Positive case
+    let unverified_message = bob_group
+        .parse_message(MlsMessageIn::from(original_plaintext), backend)
+        .expect("Could not parse message.");
+    bob_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect("Unexpected error.");
 
     //// Remove the external init proposal in the commit.
     //let proposal_position = content
