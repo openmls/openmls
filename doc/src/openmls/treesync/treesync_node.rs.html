@@ -158,6 +158,12 @@
 <span id="157">157</span>
 <span id="158">158</span>
 <span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`TreeSyncNode`] struct and its implementation.</span>
 
 <span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
@@ -264,7 +270,7 @@
         <span class="ident">node_index</span>: <span class="ident">LeafIndex</span>,
         <span class="ident">left_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
         <span class="ident">right_hash</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">TreeSyncNodeError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="comment">// If there&#39;s a cached tree hash, use that one.</span>
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">hash</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">tree_hash</span>() {
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">hash</span>.<span class="ident">clone</span>());
@@ -273,7 +279,10 @@
         <span class="comment">// Check if I&#39;m a leaf node.</span>
         <span class="kw">let</span> <span class="ident">hash</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">leaf_index</span>) <span class="op">=</span> <span class="ident">leaf_index_option</span> {
             <span class="kw">let</span> <span class="ident">key_package_option</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">node</span>.<span class="ident">as_ref</span>() {
-                <span class="prelude-val">Some</span>(<span class="ident">node</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">node</span>.<span class="ident">as_leaf_node</span>()<span class="question-mark">?</span>),
+                <span class="prelude-val">Some</span>(<span class="ident">node</span>) =&gt; <span class="prelude-val">Some</span>(
+                    <span class="ident">node</span>.<span class="ident">as_leaf_node</span>()
+                        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected a leaf node&quot;</span>))<span class="question-mark">?</span>,
+                ),
                 <span class="prelude-val">None</span> =&gt; <span class="prelude-val">None</span>,
             }
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">leaf_node</span><span class="op">|</span> <span class="ident">leaf_node</span>.<span class="ident">key_package</span>());
@@ -284,7 +293,10 @@
             <span class="ident">hash_input</span>.<span class="ident">hash</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>
         } <span class="kw">else</span> {
             <span class="kw">let</span> <span class="ident">parent_node_option</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">node</span>.<span class="ident">as_ref</span>() {
-                <span class="prelude-val">Some</span>(<span class="ident">node</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">node</span>.<span class="ident">as_parent_node</span>()<span class="question-mark">?</span>),
+                <span class="prelude-val">Some</span>(<span class="ident">node</span>) =&gt; <span class="prelude-val">Some</span>(
+                    <span class="ident">node</span>.<span class="ident">as_parent_node</span>()
+                        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected a parent node&quot;</span>))<span class="question-mark">?</span>,
+                ),
                 <span class="prelude-val">None</span> =&gt; <span class="prelude-val">None</span>,
             };
             <span class="comment">// FIXME: After PR #507 of the spec is merged, this not include a</span>

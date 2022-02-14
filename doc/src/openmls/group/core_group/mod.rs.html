@@ -760,6 +760,11 @@
 <span id="759">759</span>
 <span id="760">760</span>
 <span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Functions in this module should never panic. However, if there is a bug in</span>
@@ -948,7 +953,7 @@
             <span class="self">self</span>.<span class="ident">group_id</span>,
             <span class="ident">tree</span>.<span class="ident">tree_hash</span>().<span class="ident">to_vec</span>(),
             <span class="ident">required_capabilities</span>,
-        )<span class="question-mark">?</span>;
+        );
         <span class="comment">// Derive an initial joiner secret based on the commit secret.</span>
         <span class="comment">// Derive an epoch secret from the joiner secret.</span>
         <span class="comment">// We use a random `InitSecret` for initialization.</span>
@@ -1283,15 +1288,16 @@
         <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">key_length</span>: <span class="ident">usize</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">ExporterError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">key_length</span> <span class="op">&gt;</span> <span class="ident">u16::MAX</span>.<span class="ident">into</span>() {
             <span class="macro">log::error!</span>(<span class="string">&quot;Got a key that is larger than u16::MAX&quot;</span>);
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ExporterError::KeyLengthTooLong</span>.<span class="ident">into</span>());
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ExporterError::KeyLengthTooLong</span>);
         }
         <span class="prelude-val">Ok</span>(<span class="self">self</span>
             .<span class="ident">group_epoch_secrets</span>
             .<span class="ident">exporter_secret</span>()
-            .<span class="ident">derive_exported_secret</span>(<span class="self">self</span>.<span class="ident">ciphersuite</span>(), <span class="ident">backend</span>, <span class="ident">label</span>, <span class="ident">context</span>, <span class="ident">key_length</span>)<span class="question-mark">?</span>)
+            .<span class="ident">derive_exported_secret</span>(<span class="self">self</span>.<span class="ident">ciphersuite</span>(), <span class="ident">backend</span>, <span class="ident">label</span>, <span class="ident">context</span>, <span class="ident">key_length</span>)
+            .<span class="ident">map_err</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>)<span class="question-mark">?</span>)
     }
 
     <span class="doccomment">/// Returns the authentication secret</span>
@@ -1504,12 +1510,16 @@
     <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
     <span class="ident">mls_plaintext_commit_auth_data</span>: <span class="kw-2">&amp;</span><span class="ident">MlsPlaintextCommitAuthData</span>,
     <span class="ident">confirmed_transcript_hash</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">InterimTranscriptHashError</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">commit_auth_data_bytes</span> <span class="op">=</span> <span class="ident">mls_plaintext_commit_auth_data</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
-    <span class="prelude-val">Ok</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash</span>(
-        <span class="ident">backend</span>,
-        <span class="kw-2">&amp;</span>[<span class="ident">confirmed_transcript_hash</span>, <span class="kw-2">&amp;</span><span class="ident">commit_auth_data_bytes</span>].<span class="ident">concat</span>(),
-    )<span class="question-mark">?</span>)
+) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
+    <span class="kw">let</span> <span class="ident">commit_auth_data_bytes</span> <span class="op">=</span> <span class="ident">mls_plaintext_commit_auth_data</span>
+        .<span class="ident">tls_serialize_detached</span>()
+        .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>;
+    <span class="ident">ciphersuite</span>
+        .<span class="ident">hash</span>(
+            <span class="ident">backend</span>,
+            <span class="kw-2">&amp;</span>[<span class="ident">confirmed_transcript_hash</span>, <span class="kw-2">&amp;</span><span class="ident">commit_auth_data_bytes</span>].<span class="ident">concat</span>(),
+        )
+        .<span class="ident">map_err</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>)
 }
 
 <span class="doccomment">/// Configuration for core group.</span>

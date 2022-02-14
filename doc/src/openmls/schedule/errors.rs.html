@@ -57,8 +57,6 @@
 <span id="56">56</span>
 <span id="57">57</span>
 <span id="58">58</span>
-<span id="59">59</span>
-<span id="60">60</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Key schedule errors.</span>
 
 <span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
@@ -91,14 +89,12 @@
 <span class="doccomment">/// PSK secret error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PskSecretError</span> {
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;More than 2^16 PSKs were provided.&quot;</span>)]</span>
     <span class="ident">TooManyKeys</span>,
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The PSK could not be found in the key store.&quot;</span>)]</span>
     <span class="ident">KeyNotFound</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Error serializing the PSK label.&quot;</span>)]</span>
-    <span class="ident">EncodingError</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">CryptoError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CryptoError</span>),
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>

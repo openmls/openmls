@@ -436,7 +436,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">secret</span>: <span class="ident">Secret</span>) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">past_secrets</span>: <span class="ident">VecDeque::new</span>(),
-            <span class="ident">ratchet_head</span>: <span class="ident">RatchetSecret::initial_ratchet_secret</span>(<span class="ident">secret</span>.<span class="ident">clone</span>()),
+            <span class="ident">ratchet_head</span>: <span class="ident">RatchetSecret::initial_ratchet_secret</span>(<span class="ident">secret</span>),
         }
     }
 

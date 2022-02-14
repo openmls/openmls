@@ -488,10 +488,6 @@
 <span id="487">487</span>
 <span id="488">488</span>
 <span id="489">489</span>
-<span id="490">490</span>
-<span id="491">491</span>
-<span id="492">492</span>
-<span id="493">493</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -523,7 +519,6 @@
 
 <span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">types::CryptoError</span>, <span class="ident">OpenMlsCryptoProvider</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">binary_tree</span>::{<span class="ident">MlsBinaryTree</span>, <span class="ident">MlsBinaryTreeError</span>},
@@ -537,18 +532,21 @@
 };
 
 <span class="kw">use</span> <span class="self">self</span>::{
-    <span class="ident">diff</span>::{<span class="ident">StagedTreeSyncDiff</span>, <span class="ident">TreeSyncDiff</span>, <span class="ident">TreeSyncDiffError</span>},
+    <span class="ident">diff</span>::{<span class="ident">StagedTreeSyncDiff</span>, <span class="ident">TreeSyncDiff</span>},
+    <span class="ident">errors::TreeSyncDiffError</span>,
     <span class="ident">node</span>::{<span class="ident">leaf_node::LeafNode</span>, <span class="ident">Node</span>, <span class="ident">NodeError</span>},
     <span class="ident">treesync_node</span>::{<span class="ident">TreeSyncNode</span>, <span class="ident">TreeSyncNodeError</span>},
 };
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">diff</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">errors</span>;
 <span class="kw">mod</span> <span class="ident">hashes</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">node</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">treekem</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">treesync_node</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::binary_tree::LeafIndex</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">tests_and_kats</span>;
@@ -581,16 +579,16 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">key_package_bundle</span>: <span class="ident">KeyPackageBundle</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">CommitSecret</span>), <span class="ident">TreeSyncError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">CommitSecret</span>), <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">key_package</span> <span class="op">=</span> <span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>();
         <span class="comment">// We generate our own leaf without a private key for now. The private</span>
         <span class="comment">// key is set in the `from_nodes` constructor below.</span>
         <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Node::LeafNode</span>(
             <span class="ident">LeafNode::new</span>(<span class="ident">key_package</span>.<span class="ident">clone</span>(), <span class="ident">backend</span>.<span class="ident">crypto</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="ident">KeyPackageError::CryptoError</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">e</span> {
-                    <span class="ident">TreeSyncError::from</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>(<span class="ident">e</span>))
+                    <span class="ident">LibraryError::unexpected_crypto_error</span>(<span class="ident">e</span>)
                 } <span class="kw">else</span> {
-                    <span class="ident">TreeSyncError::from</span>(<span class="ident">LibraryError::custom</span>(<span class="string">&quot;Unexpected error in KeyPackage&quot;</span>))
+                    <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Unexpected error in KeyPackage&quot;</span>)
                 }
             })<span class="question-mark">?</span>,
         );
@@ -605,7 +603,8 @@
                 <span class="ident">key_package</span>.<span class="ident">ciphersuite</span>(),
                 <span class="kw-2">&amp;</span><span class="ident">node_options</span>,
                 <span class="ident">key_package_bundle</span>,
-            )<span class="question-mark">?</span>,
+            )
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Malformed empty tree&quot;</span>))<span class="question-mark">?</span>,
             <span class="ident">commit_secret</span>,
         ))
     }
@@ -635,8 +634,9 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// This function should not fail and only returns a [`Result`], because it</span>
     <span class="doccomment">/// might throw a [LibraryError](TreeSyncError::LibraryError).</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">empty_diff</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TreeSyncDiff</span>, <span class="ident">TreeSyncError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">try_into</span>()<span class="question-mark">?</span>)
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">empty_diff</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TreeSyncDiff</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">try_into</span>()
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Could not create empty tree sync diff&quot;</span>))
     }
 
     <span class="doccomment">/// Create a new [`TreeSync`] instance from a given slice of `Option&lt;Node&gt;`,</span>
@@ -648,6 +648,9 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Returns the new [`TreeSync`] instance or an error if one of the</span>
     <span class="doccomment">/// invariants is not true (see [`TreeSync`]).</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Returns TreeSyncFromNodesError::LibraryError if the input parameters are</span>
+    <span class="doccomment">/// malformed.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_nodes_with_secrets</span>(
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
@@ -655,19 +658,27 @@
         <span class="ident">sender_kpr</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPackageRef</span>,
         <span class="ident">path_secret_option</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PathSecret</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">key_package_bundle</span>: <span class="ident">KeyPackageBundle</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CommitSecret</span><span class="op">&gt;</span>), <span class="ident">TreeSyncError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CommitSecret</span><span class="op">&gt;</span>), <span class="ident">TreeSyncFromNodesError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tree_sync</span> <span class="op">=</span>
             <span class="ident"><span class="self">Self</span>::from_nodes</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>, <span class="ident">node_options</span>, <span class="ident">key_package_bundle</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Get the leaf index of the sender.</span>
-        <span class="kw">let</span> <span class="ident">sender_index</span> <span class="op">=</span> <span class="ident">tree_sync</span>.<span class="ident">leaf_index</span>(<span class="ident">sender_kpr</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">sender_index</span> <span class="op">=</span> <span class="ident">tree_sync</span>
+            .<span class="ident">leaf_index</span>(<span class="ident">sender_kpr</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Sender not in tree&quot;</span>))<span class="question-mark">?</span>;
 
         <span class="comment">// Populate the tree with secrets and derive a commit secret if a path</span>
         <span class="comment">// secret is given.</span>
         <span class="kw">let</span> <span class="ident">commit_secret</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">path_secret</span>) <span class="op">=</span> <span class="ident">path_secret_option</span>.<span class="ident">into</span>() {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">diff</span> <span class="op">=</span> <span class="ident">tree_sync</span>.<span class="ident">empty_diff</span>()<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">commit_secret</span> <span class="op">=</span>
-                <span class="ident">diff</span>.<span class="ident">set_path_secrets</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>, <span class="ident">path_secret</span>, <span class="ident">sender_index</span>)<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">commit_secret</span> <span class="op">=</span> <span class="ident">diff</span>
+                .<span class="ident">set_path_secrets</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>, <span class="ident">path_secret</span>, <span class="ident">sender_index</span>)
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">e</span> {
+                    <span class="ident">TreeSyncSetPathError::LibraryError</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">into</span>(),
+                    <span class="ident">TreeSyncSetPathError::PublicKeyMismatch</span> =&gt; {
+                        <span class="ident">TreeSyncFromNodesError::from</span>(<span class="ident">PublicTreeError::PublicKeyMismatch</span>)
+                    }
+                })<span class="question-mark">?</span>;
             <span class="kw">let</span> <span class="ident">staged_diff</span> <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">into_staged_diff</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)<span class="question-mark">?</span>;
             <span class="ident">tree_sync</span>.<span class="ident">merge_diff</span>(<span class="ident">staged_diff</span>)<span class="question-mark">?</span>;
             <span class="prelude-val">Some</span>(<span class="ident">commit_secret</span>)
@@ -686,7 +697,8 @@
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">node_options</span>: <span class="kw-2">&amp;</span>[<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span>],
         <span class="ident">key_package_bundle</span>: <span class="ident">KeyPackageBundle</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">TreeSyncError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">TreeSyncFromNodesError</span><span class="op">&gt;</span> {
+        <span class="comment">// TODO #800: Unmerged leaves should be checked</span>
         <span class="comment">// Before we can instantiate the TreeSync instance, we have to figure</span>
         <span class="comment">// out what our leaf index is.</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ts_nodes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">TreeSyncNode</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">node_options</span>.<span class="ident">len</span>());
@@ -702,15 +714,13 @@
                         <span class="kw">if</span> <span class="ident">leaf_node</span>.<span class="ident">public_key</span>() <span class="op">==</span> <span class="ident">own_key_package</span>.<span class="ident">hpke_init_key</span>() {
                             <span class="comment">// Check if there&#39;s a duplicate</span>
                             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">private_key</span>) <span class="op">=</span> <span class="ident">private_key</span>.<span class="ident">take</span>() {
-                                <span class="ident">own_index_option</span> <span class="op">=</span>
-                                    <span class="prelude-val">Some</span>(<span class="ident">u32::try_from</span>(<span class="ident">node_index</span> <span class="op">/</span> <span class="number">2</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                                        <span class="ident">TreeSyncError::from</span>(<span class="ident">LibraryError::custom</span>(
-                                            <span class="string">&quot;Own leaf is outside of the tree&quot;</span>,
-                                        ))
-                                    })<span class="question-mark">?</span>);
+                                <span class="ident">own_index_option</span> <span class="op">=</span> <span class="prelude-val">Some</span>(
+                                    <span class="ident">u32::try_from</span>(<span class="ident">node_index</span> <span class="op">/</span> <span class="number">2</span>)
+                                        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Architecture error&quot;</span>))<span class="question-mark">?</span>,
+                                );
                                 <span class="ident">leaf_node</span>.<span class="ident">set_private_key</span>(<span class="ident">private_key</span>);
                             } <span class="kw">else</span> {
-                                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TreeSyncError::DuplicateKeyPackage</span>);
+                                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">PublicTreeError::DuplicateKeyPackage</span>.<span class="ident">into</span>());
                             }
                         }
                         <span class="ident">leaf_node</span>.<span class="ident">set_key_package_ref</span>(<span class="ident">backend</span>.<span class="ident">crypto</span>())<span class="question-mark">?</span>;
@@ -721,7 +731,7 @@
             };
             <span class="ident">ts_nodes</span>.<span class="ident">push</span>(<span class="ident">ts_node_option</span>);
         }
-        <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="ident">MlsBinaryTree::new</span>(<span class="ident">ts_nodes</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="ident">MlsBinaryTree::new</span>(<span class="ident">ts_nodes</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PublicTreeError::MalformedTree</span>)<span class="question-mark">?</span>;
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">leaf_index</span>) <span class="op">=</span> <span class="ident">own_index_option</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tree_sync</span> <span class="op">=</span> <span class="self">Self</span> {
                 <span class="ident">tree</span>,
@@ -729,12 +739,19 @@
                 <span class="ident">own_leaf_index</span>: <span class="ident">leaf_index</span>,
             };
             <span class="comment">// Verify all parent hashes.</span>
-            <span class="ident">tree_sync</span>.<span class="ident">verify_parent_hashes</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)<span class="question-mark">?</span>;
+            <span class="ident">tree_sync</span>
+                .<span class="ident">verify_parent_hashes</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">e</span> {
+                    <span class="ident">TreeSyncParentHashError::LibraryError</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">into</span>(),
+                    <span class="ident">TreeSyncParentHashError::InvalidParentHash</span> =&gt; {
+                        <span class="ident">TreeSyncFromNodesError::from</span>(<span class="ident">PublicTreeError::InvalidParentHash</span>)
+                    }
+                })<span class="question-mark">?</span>;
             <span class="comment">// Populate tree hash caches.</span>
             <span class="ident">tree_sync</span>.<span class="ident">populate_parent_hashes</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)<span class="question-mark">?</span>;
             <span class="prelude-val">Ok</span>(<span class="ident">tree_sync</span>)
         } <span class="kw">else</span> {
-            <span class="prelude-val">Err</span>(<span class="ident">TreeSyncError::MissingKeyPackage</span>)
+            <span class="prelude-val">Err</span>(<span class="ident">PublicTreeError::MissingKeyPackage</span>.<span class="ident">into</span>())
         }
     }
 
@@ -747,16 +764,18 @@
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="kw-2">mut</span> <span class="ident">nodes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">TreeSyncError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">TreeSyncFromNodesError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ts_nodes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">TreeSyncNode</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">nodes</span>.<span class="ident">drain</span>(..).<span class="ident">map</span>(<span class="op">|</span><span class="ident">node</span><span class="op">|</span> <span class="ident">node</span>.<span class="ident">into</span>()).<span class="ident">collect</span>();
-        <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="ident">MlsBinaryTree::new</span>(<span class="ident">ts_nodes</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="ident">MlsBinaryTree::new</span>(<span class="ident">ts_nodes</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PublicTreeError::MalformedTree</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tree_sync</span> <span class="op">=</span> <span class="self">Self</span> {
             <span class="ident">tree</span>,
             <span class="ident">tree_hash</span>: <span class="macro">vec!</span>[],
             <span class="ident">own_leaf_index</span>: <span class="number">0</span>,
         };
         <span class="comment">// Verify all parent hashes.</span>
-        <span class="ident">tree_sync</span>.<span class="ident">verify_parent_hashes</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)<span class="question-mark">?</span>;
+        <span class="ident">tree_sync</span>
+            .<span class="ident">verify_parent_hashes</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PublicTreeError::InvalidParentHash</span>)<span class="question-mark">?</span>;
         <span class="comment">// Populate tree hash caches.</span>
         <span class="ident">tree_sync</span>.<span class="ident">populate_parent_hashes</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">tree_sync</span>)
@@ -776,13 +795,13 @@
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TreeSyncError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">diff</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">empty_diff</span>()<span class="question-mark">?</span>;
         <span class="comment">// Make the diff into a staged diff. This implicitly computes the</span>
         <span class="comment">// tree hashes and poulates the tree hash caches.</span>
         <span class="kw">let</span> <span class="ident">staged_diff</span> <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">into_staged_diff</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)<span class="question-mark">?</span>;
         <span class="comment">// Merge the diff.</span>
-        <span class="self">self</span>.<span class="ident">merge_diff</span>(<span class="ident">staged_diff</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">into</span>())
+        <span class="self">self</span>.<span class="ident">merge_diff</span>(<span class="ident">staged_diff</span>)
     }
 
     <span class="doccomment">/// Verify the parent hashes of all parent nodes in the tree.</span>
@@ -793,7 +812,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TreeSyncError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TreeSyncParentHashError</span><span class="op">&gt;</span> {
         <span class="comment">// The ability to verify parent hashes is required both for diffs and</span>
         <span class="comment">// treesync instances. We choose the computationally slightly more</span>
         <span class="comment">// expensive solution of implementing parent hash verification for the</span>
@@ -809,7 +828,7 @@
         <span class="comment">// should reconsider and choose the alternative sketched above</span>
         <span class="kw">let</span> <span class="ident">diff</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">empty_diff</span>()<span class="question-mark">?</span>;
         <span class="comment">// No need to merge the diff, since we didn&#39;t actually modify any state.</span>
-        <span class="prelude-val">Ok</span>(<span class="ident">diff</span>.<span class="ident">verify_parent_hashes</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)<span class="question-mark">?</span>)
+        <span class="ident">diff</span>.<span class="ident">verify_parent_hashes</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)
     }
 
     <span class="doccomment">/// Returns the number of leaves in the tree.</span>
@@ -957,33 +976,6 @@
             .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">node_index</span>, <span class="kw">_</span>)<span class="op">|</span> (<span class="ident">node_index</span> <span class="op">/</span> <span class="number">2</span>) <span class="kw">as</span> <span class="ident">u32</span>)
             .<span class="ident">ok_or</span>(<span class="ident">TreeSyncError::KeyPackageRefNotInTree</span>)
     }
-}
-
-<span class="doccomment">/// TreeSync error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TreeSyncError</span> {
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Couldn&#39;t find our own key package in this tree.&quot;</span>)]</span>
-    <span class="ident">MissingKeyPackage</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Found two KeyPackages with the same public key.&quot;</span>)]</span>
-    <span class="ident">DuplicateKeyPackage</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The given `KeyPackageRef` is not in the tree.&quot;</span>)]</span>
-    <span class="ident">KeyPackageRefNotInTree</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">BinaryTreeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsBinaryTreeError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">TreeSyncNodeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TreeSyncNodeError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">NodeTypeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">NodeError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">TreeSyncDiffError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TreeSyncDiffError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">DerivationError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">PathSecretError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">SenderError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">SenderError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">CryptoError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CryptoError</span>),
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div>
