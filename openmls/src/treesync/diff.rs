@@ -350,6 +350,12 @@ impl<'a> TreeSyncDiff<'a> {
     ///
     /// Returns the `CommitSecret` derived from the path secret of the root
     /// node. Returns an error if the target leaf is outside of the tree.
+    ///
+    /// Returns TreeSyncSetPathError::PublicKeyMismatch if the derived keys don't
+    /// match with the existing ones.
+    ///
+    /// Returns TreeSyncSetPathError::LibraryError if the sender_index is not
+    /// in the tree.
     pub(super) fn set_path_secrets(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -357,7 +363,7 @@ impl<'a> TreeSyncDiff<'a> {
         mut path_secret: PathSecret,
         sender_index: LeafIndex,
     ) -> Result<CommitSecret, TreeSyncSetPathError> {
-        // We assume both nodes are in the tree
+        // We assume both nodes are in the tree, since the sender_index must be in the tree
         let subtree_path = self
             .diff
             .subtree_path(self.own_leaf_index, sender_index)

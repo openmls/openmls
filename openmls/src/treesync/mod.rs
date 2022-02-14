@@ -158,6 +158,9 @@ impl TreeSync {
     ///
     /// Returns the new [`TreeSync`] instance or an error if one of the
     /// invariants is not true (see [`TreeSync`]).
+    ///
+    /// Returns TreeSyncFromNodesError::LibraryError if the input parameters are
+    /// malformed.
     pub(crate) fn from_nodes_with_secrets(
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
@@ -221,10 +224,10 @@ impl TreeSync {
                         if leaf_node.public_key() == own_key_package.hpke_init_key() {
                             // Check if there's a duplicate
                             if let Some(private_key) = private_key.take() {
-                                own_index_option =
-                                    Some(u32::try_from(node_index / 2).map_err(|_| {
-                                        LibraryError::custom("Own leaf is outside of the tree")
-                                    })?);
+                                own_index_option = Some(
+                                    u32::try_from(node_index / 2)
+                                        .map_err(|_| LibraryError::custom("Architecture error"))?,
+                                );
                                 leaf_node.set_private_key(private_key);
                             } else {
                                 return Err(PublicTreeError::DuplicateKeyPackage.into());

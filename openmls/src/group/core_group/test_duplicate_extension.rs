@@ -99,9 +99,11 @@ fn duplicate_ratchet_tree_extension(
 
     // Find key_package in welcome secrets
     let egs = CoreGroup::find_key_package_from_welcome_secrets(
-        bob_key_package_bundle.key_package(),
+        bob_key_package_bundle
+            .key_package()
+            .hash_ref(backend.crypto())
+            .expect("An unexpected error occurred."),
         welcome.secrets(),
-        backend,
     )
     .expect("JoinerSecret not found");
 
