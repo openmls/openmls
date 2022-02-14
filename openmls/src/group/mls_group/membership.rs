@@ -259,6 +259,20 @@ impl MlsGroup {
             .collect())
     }
 
+    /// Get the [`KeyPackage`] of a member corresponding to the given
+    /// [`KeyPackageRef`]. Returns `None` if no matching [`KeyPackage`] can be
+    /// found in this group.
+    pub fn member(&self, key_package_ref: &KeyPackageRef) -> Option<&KeyPackage> {
+        self.group
+            .treesync()
+            // Besides from returning an error if the member can't be found,
+            // this will only return an error in case OpenMLS is compiled with a
+            // sub-32 bit architecture. As a result, it should be safe to just
+            // return `None` instead of propagating an error.
+            .leaf_from_id(key_package_ref)
+            .map(|leaf| leaf.key_package())
+    }
+
     /// Gets the current list of members, indexed with the leaf index.
     /// This should go away in future when all tests are rewritten to use key
     /// package references instead of leaf indices.
