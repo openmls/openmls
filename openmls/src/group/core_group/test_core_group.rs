@@ -182,7 +182,7 @@ fn test_failed_groupinfo_decryption(
         let error = CoreGroup::new_from_welcome(broken_welcome, None, key_package_bundle, backend)
             .expect_err("Creation of core group from a broken Welcome was successful.");
 
-        assert_eq!(error, WelcomeError::CouldNotDecrypt)
+        assert_eq!(error, WelcomeError::UnableToDecrypt)
     }
 }
 

@@ -2,13 +2,15 @@ use log::debug;
 use openmls_traits::crypto::OpenMlsCrypto;
 use tls_codec::Deserialize;
 
-use crate::ciphersuite::signable::Verifiable;
-use crate::extensions::ExtensionType;
-use crate::group::{core_group::*, *};
-use crate::key_packages::*;
-use crate::messages::*;
-use crate::schedule::*;
-use crate::treesync::node::Node;
+use crate::{
+    ciphersuite::{hash_ref::HashReference, signable::Verifiable},
+    extensions::ExtensionType,
+    group::{core_group::*, *},
+    key_packages::*,
+    messages::*,
+    schedule::*,
+    treesync::node::Node,
+};
 
 impl CoreGroup {
     // Join a group from a welcome message
@@ -30,9 +32,10 @@ impl CoreGroup {
 
         // Find key_package in welcome secrets
         let egs = if let Some(egs) = Self::find_key_package_from_welcome_secrets(
-            key_package_bundle.key_package(),
+            key_package_bundle
+                .key_package()
+                .hash_ref(backend.crypto())?,
             welcome.secrets(),
-            backend,
         ) {
             egs
         } else {
@@ -53,7 +56,7 @@ impl CoreGroup {
                 &[],
                 &[],
             )
-            .map_err(|_| WelcomeError::CouldNotDecrypt)?;
+            .map_err(|_| WelcomeError::UnableToDecrypt)?;
         let group_secrets = GroupSecrets::tls_deserialize(&mut group_secrets_bytes.as_slice())
             .map_err(|_| WelcomeError::MalformedWelcomeMessage)?
             .config(ciphersuite, mls_version);
@@ -214,15 +217,12 @@ impl CoreGroup {
     // Helper functions
 
     pub(crate) fn find_key_package_from_welcome_secrets(
-        key_package: &KeyPackage,
+        hash_ref: HashReference,
         welcome_secrets: &[EncryptedGroupSecrets],
-        backend: &impl OpenMlsCryptoProvider,
     ) -> Option<EncryptedGroupSecrets> {
         for egs in welcome_secrets {
-            if let Ok(hash_ref) = key_package.hash_ref(backend.crypto()) {
-                if hash_ref == egs.new_member {
-                    return Some(egs.clone());
-                }
+            if hash_ref == egs.new_member {
+                return Some(egs.clone());
             }
         }
         None

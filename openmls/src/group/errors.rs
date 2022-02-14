@@ -108,7 +108,7 @@ pub enum WelcomeError {
     #[error("Malformed Welcome message.")]
     MalformedWelcomeMessage,
     #[error("Could not decrypt the Welcome message.")]
-    CouldNotDecrypt,
+    UnableToDecrypt,
     #[error("Unsupported extensions found in the KeyPackage of another member.")]
     UnsupportedExtensions,
     #[error("A duplicate ratchet tree was found.")]
@@ -282,14 +282,14 @@ pub enum ExternalCommitValidationError {
     MultipleExternalInitProposals,
     #[error("Found inline Add or Update proposals.")]
     InvalidInlineProposals,
-    // FIXME: this seems unused
+    // TODO #803: this seems unused
     #[error("Found multiple inline Remove proposals.")]
     MultipleRemoveProposals,
     #[error("Remove proposal targets the wrong group member.")]
     InvalidRemoveProposal,
     #[error("Found an ExternalInit proposal among the referenced proposals.")]
     ReferencedExternalInitProposal,
-    // FIXME: this seems unused
+    // TODO #803: this seems unused
     #[error("External Commit has to contain a path.")]
     NoPath,
     #[error("The remove proposal referenced a non-existing member.")]
