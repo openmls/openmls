@@ -104,7 +104,7 @@ impl TreeSyncNode {
         node_index: LeafIndex,
         left_hash: Vec<u8>,
         right_hash: Vec<u8>,
-    ) -> Result<Vec<u8>, TreeSyncNodeError> {
+    ) -> Result<Vec<u8>, LibraryError> {
         // If there's a cached tree hash, use that one.
         if let Some(hash) = self.tree_hash() {
             return Ok(hash.clone());
@@ -113,7 +113,10 @@ impl TreeSyncNode {
         // Check if I'm a leaf node.
         let hash = if let Some(leaf_index) = leaf_index_option {
             let key_package_option = match self.node.as_ref() {
-                Some(node) => Some(node.as_leaf_node()?),
+                Some(node) => Some(
+                    node.as_leaf_node()
+                        .map_err(|_| LibraryError::custom("Expected a leaf node"))?,
+                ),
                 None => None,
             }
             .map(|leaf_node| leaf_node.key_package());
@@ -124,7 +127,10 @@ impl TreeSyncNode {
             hash_input.hash(ciphersuite, backend)?
         } else {
             let parent_node_option = match self.node.as_ref() {
-                Some(node) => Some(node.as_parent_node()?),
+                Some(node) => Some(
+                    node.as_parent_node()
+                        .map_err(|_| LibraryError::custom("Expected a parent node"))?,
+                ),
                 None => None,
             };
             // FIXME: After PR #507 of the spec is merged, this not include a

@@ -8,269 +8,232 @@ use crate::{
     credentials::CredentialError,
     error::LibraryError,
     extensions::errors::ExtensionError,
-    framing::errors::{
-        MlsCiphertextError, MlsPlaintextError, SenderError, ValidationError, VerificationError,
-    },
+    framing::errors::{MlsCiphertextError, MlsPlaintextError, SenderError, ValidationError},
     key_packages::KeyPackageError,
     schedule::{KeyScheduleError, PskSecretError},
-    treesync::{diff::TreeSyncDiffError, treekem::TreeKemError, TreeSyncError},
+    treesync::{errors::*, treekem::TreeKemError, TreeSyncError},
 };
 use openmls_traits::types::CryptoError;
+use thiserror::Error;
 use tls_codec::Error as TlsCodecError;
 
-use thiserror::Error;
+// === Public errors ===
 
-implement_error! {
-    pub enum CoreGroupError {
-        Simple {
-            MissingKeyPackageBundle =
-                "Couldn't find KeyPackageBundle corresponding to own update proposal.",
-            NoSignatureKey = "No signature key was found.",
-            OwnCommitError = "Can't process a commit created by the owner of the group. Please merge the [`StagedCommit`] returned by `create_commit` instead.",
-        }
-        Complex {
-            LibraryError(LibraryError) = "A LibraryError occurred.",
-            MlsCiphertextError(MlsCiphertextError) =
-                "See [`MlsCiphertextError`](`crate::framing::errors::MlsCiphertextError`) for details.",
-            MlsPlaintextError(MlsPlaintextError) =
-                "See [`MlsPlaintextError`](`crate::framing::errors::MlsPlaintextError`) for details.",
-            WelcomeError(WelcomeError) =
-                "See [`WelcomeError`](`WelcomeError`) for details.",
-            ExternalCommitError(ExternalCommitError) =
-                "See [`Externaallow(lint)`](`ExternalInitError`) for details.",
-            StageCommitError(StageCommitError) =
-                "See [`StageCommitError`](`StageCommitError`) for details.",
-            CreateCommitError(CreateCommitError) =
-                "See [`CreateCommitError`](`CreateCommitError`) for details.",
-            ConfigError(ConfigError) =
-                "See [`ConfigError`](`crate::config::ConfigError`) for details.",
-            ExporterError(ExporterError) =
-                "See [`ExporterError`](`ExporterError`) for details.",
-            ProposalQueueError(ProposalQueueError) =
-                "See [`ProposalQueueError`](`crate::messages::errors::ProposalQueueError`) for details.",
-            CodecError(TlsCodecError) =
-                "TLS (de)serialization error occurred.",
-            KeyScheduleError(KeyScheduleError) =
-                "An error occurred in the key schedule.",
-            PskSecretError(PskSecretError) =
-                "A PskSecret error occurred.",
-            CredentialError(CredentialError) =
-                "See [`CredentialError`](crate::credentials::CredentialError) for details.",
-            TreeSyncError(TreeSyncError) =
-                "An error occurred during an operation on the tree underlying the group.",
-            TreeSyncDiffError(TreeSyncDiffError) =
-                "An error occurred during an operation on the tree underlying the group.",
-            TreeKemError(TreeKemError) =
-                "An error occurred during an operation on the tree underlying the group.",
-            KeyPackageError(KeyPackageError) =
-                "See [`KeyPackageError`] for details.",
-            ExtensionError(ExtensionError) =
-                "See [`ExtensionError`] for details.",
-            ValidationError(ValidationError) =
-                "See [`ValidationError`](crate::framing::ValidationError) for details.",
-            FramingValidationError(FramingValidationError) =
-                "See [`FramingValidationError`](crate::group::FramingValidationError) for details.",
-            ProposalValidationError(ProposalValidationError) =
-                "See [`ProposalValidationError`](crate::group::ProposalValidationError) for details.",
-            ExternalCommitValidationError(ExternalCommitValidationError) =
-                "See [`ProposalValidationError`](crate::group::ProposalValidationError) for details.",
-            CryptoError(CryptoError) =
-                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
-            InterimTranscriptHashError(InterimTranscriptHashError) =
-                "See [`InterimTranscriptHashError`](crate::group::InterimTranscriptHashError) for details.",
-            SenderError(SenderError) =
-                "Sender error",
-        }
-    }
+/// CoreGroup error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum CoreGroupError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("Couldn't find KeyPackageBundle corresponding to own update proposal.")]
+    MissingKeyPackageBundle,
+    #[error("No signature key was found.")]
+    NoSignatureKey,
+    #[error(transparent)]
+    MlsCiphertextError(#[from] MlsCiphertextError),
+    #[error(transparent)]
+    MlsPlaintextError(#[from] MlsPlaintextError),
+    #[error(transparent)]
+    WelcomeError(#[from] WelcomeError),
+    #[error(transparent)]
+    ExternalCommitError(#[from] ExternalCommitError),
+    #[error(transparent)]
+    StageCommitError(#[from] StageCommitError),
+    #[error(transparent)]
+    CreateCommitError(#[from] CreateCommitError),
+    #[error(transparent)]
+    ConfigError(#[from] ConfigError),
+    #[error(transparent)]
+    ExporterError(#[from] ExporterError),
+    #[error(transparent)]
+    ProposalQueueError(#[from] ProposalQueueError),
+    #[error(transparent)]
+    CodecError(#[from] TlsCodecError),
+    #[error(transparent)]
+    KeyScheduleError(#[from] KeyScheduleError),
+    #[error(transparent)]
+    PskSecretError(#[from] PskSecretError),
+    #[error(transparent)]
+    CredentialError(#[from] CredentialError),
+    #[error(transparent)]
+    TreeSyncError(#[from] TreeSyncError),
+    #[error(transparent)]
+    TreeSyncDiffError(#[from] TreeSyncDiffError),
+    #[error(transparent)]
+    TreeKemError(#[from] TreeKemError),
+    #[error(transparent)]
+    KeyPackageError(#[from] KeyPackageError),
+    #[error(transparent)]
+    ExtensionError(#[from] ExtensionError),
+    #[error(transparent)]
+    ValidationError(#[from] ValidationError),
+    #[error(transparent)]
+    FramingValidationError(#[from] FramingValidationError),
+    #[error(transparent)]
+    ProposalValidationError(#[from] ProposalValidationError),
+    #[error(transparent)]
+    ExternalCommitValidationError(#[from] ExternalCommitValidationError),
+    #[error(transparent)]
+    CryptoError(#[from] CryptoError),
+    #[error(transparent)]
+    SenderError(#[from] SenderError),
 }
 
-implement_error! {
-    pub enum WelcomeError {
-        Simple {
-            CiphersuiteMismatch =
-                "Ciphersuites in the Welcome message and the corresponding key package bundle don't match.",
-            JoinerSecretNotFound =
-                "No joiner secret found in the Welcome message.",
-            MissingRatchetTree =
-                "No ratchet tree available to build initial tree after receiving a Welcome message.",
-            TreeHashMismatch =
-                "The computed tree hash does not match the one in the GroupInfo.",
-            ConfirmationTagMismatch =
-                "The computed confirmation tag does not match the expected one.",
-            InvalidGroupInfoSignature =
-                "The signature on the GroupInfo is not valid.",
-            GroupInfoDecryptionFailure =
-                "Unable to decrypt the GroupInfo.",
-            UnsupportedMlsVersion =
-                "The Welcome message uses an unsupported MLS version.",
-            MissingKeyPackage =
-                "The sender key package is missing.",
-            UnknownError =
-                "An unknown error occurred.",
-            UnknownSender =
-                "Sender not found in tree.",
-            LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
-            }
-        Complex {
-            ConfigError(ConfigError) =
-                "See [`ConfigError`](`crate::config::ConfigError`) for details.",
-            CodecError(TlsCodecError) =
-                "Tls (de)serialization error occurred.",
-            KeyScheduleError(KeyScheduleError) =
-                "An error occurred in the key schedule.",
-            PskSecretError(PskSecretError) =
-                "A PskSecret error occured.",
-            TreeSyncError(TreeSyncError) =
-                "An error occurred while importing the new tree.",
-            ExtensionError(ExtensionError) =
-                "See [`ExtensionError`] for details.",
-            KeyPackageError(KeyPackageError) =
-                "See [`KeyPackageError`] for details.",
-            InterimTranscriptHashError(InterimTranscriptHashError) =
-                "See [`InterimTranscriptHashError`] for details.",
-            CryptoError(CryptoError) =
-                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
-        }
-    }
+/// Welcome error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum WelcomeError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error(
+        "Ciphersuites in the Welcome message and the corresponding key package bundle don't match."
+    )]
+    CiphersuiteMismatch,
+    #[error("No joiner secret found in the Welcome message.")]
+    JoinerSecretNotFound,
+    #[error("No ratchet tree available to build initial tree after receiving a Welcome message.")]
+    MissingRatchetTree,
+    #[error("The computed confirmation tag does not match the expected one.")]
+    ConfirmationTagMismatch,
+    #[error("The signature on the GroupInfo is not valid.")]
+    InvalidGroupInfoSignature,
+    #[error("Unable to decrypt the GroupInfo.")]
+    GroupInfoDecryptionFailure,
+    #[error("We don't support the version of the group we are trying to join.")]
+    UnsupportedMlsVersion,
+    #[error("We don't support the ciphersuite of the group we are trying to join.")]
+    UnsupportedCiphersuite,
+    #[error("We don't support all capabilities of the group.")]
+    UnsupportedCapability,
+    #[error("Sender not found in tree.")]
+    UnknownSender,
+    #[error("Malformed Welcome message.")]
+    MalformedWelcomeMessage,
+    #[error("Could not decrypt the Welcome message.")]
+    UnableToDecrypt,
+    #[error("Unsupported extensions found in the KeyPackage of another member.")]
+    UnsupportedExtensions,
+    #[error("A duplicate ratchet tree was found.")]
+    DuplicateRatchetTreeExtension,
+    #[error("More than 2^16 PSKs were provided.")]
+    PskTooManyKeys,
+    #[error("The PSK could not be found in the key store.")]
+    PskNotFound,
+    /// This error indicates the public tree is invalid. See [`PublicTreeError`] for more details.
+    #[error(transparent)]
+    PublicTreeError(#[from] PublicTreeError),
 }
 
-implement_error! {
-    pub enum ExternalCommitError {
-        Simple {
-            MissingRatchetTree =
-                "No ratchet tree available to build initial tree.",
-            TreeHashMismatch =
-                "The computed tree hash does not match the one in the GroupInfo.",
-            UnsupportedMlsVersion =
-                "We don't support the version of the group we are trying to join.",
-            UnknownSender =
-                "Sender not found in tree.",
-            InvalidPublicGroupStateSignature =
-                "The signature over the given public group state is invalid.",
-            LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
-            CommitError =
-                "Error creating external commit.",
-            }
-        Complex {
-            VerificationError(CredentialError) =
-                "Error verifying `PublicGroupState`.",
-            ConfigError(ConfigError) =
-                "See [`ConfigError`](`crate::config::ConfigError`) for details.",
-            CodecError(TlsCodecError) =
-                "Tls (de)serialization error occurred.",
-            KeyScheduleError(KeyScheduleError) =
-                "An error occurred in the key schedule.",
-            TreeSyncError(TreeSyncError) =
-                "An error occurred while importing the new tree.",
-            TreeSyncDiffError(TreeSyncDiffError) =
-                "An error occurred while adding our own leaf to the new tree.",
-            ExtensionError(ExtensionError) =
-                "See [`ExtensionError`] for details.",
-            KeyPackageError(KeyPackageError) =
-                "See [`KeyPackageError`] for details.",
-            CryptoError(CryptoError) =
-                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
-        }
-    }
+/// External Commit error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ExternalCommitError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("No ratchet tree available to build initial tree.")]
+    MissingRatchetTree,
+    #[error("The computed tree hash does not match the one in the GroupInfo.")]
+    TreeHashMismatch,
+    #[error("We don't support the version of the group we are trying to join.")]
+    UnsupportedMlsVersion,
+    #[error("We don't support the ciphersuite of the group we are trying to join.")]
+    UnsupportedCiphersuite,
+    #[error("Sender not found in tree.")]
+    UnknownSender,
+    #[error("The signature over the given public group state is invalid.")]
+    InvalidPublicGroupStateSignature,
+    #[error("A duplicate ratchet tree was found.")]
+    DuplicateRatchetTreeExtension,
+    #[error("Error creating external commit.")]
+    CommitError,
+    /// This error indicates the public tree is invalid. See [`PublicTreeError`] for more details.
+    #[error(transparent)]
+    PublicTreeError(#[from] PublicTreeError),
 }
 
-implement_error! {
-    pub enum StageCommitError {
-        Simple {
-            EpochMismatch =
-                "Couldn't stage Commit. The epoch of the group context and MlsPlaintext didn't match.",
-            WrongPlaintextContentType =
-                "stage_commit was called with an MlsPlaintext that is not a Commit.",
-            SelfRemoved =
-                "Tried to stage a commit to a group we are not a part of.",
-            PathKeyPackageVerificationFailure =
-                "Unable to verify the key package signature.",
-            NoParentHashExtension =
-                "Parent hash extension is missing.",
-            ParentHashMismatch =
-                "Parent hash values don't match.",
-            RequiredPathNotFound =
-                "Unable to determine commit path.",
-            ConfirmationTagMissing =
-                "Confirmation Tag is missing.",
-            ConfirmationTagMismatch =
-                "Confirmation tag is invalid.",
-            MissingOwnKeyPackage =
-                "No key package provided to apply own commit.",
-            MissingProposal =
-                "The proposal queue is missing a proposal for the commit.",
-            OwnKeyNotFound =
-                "Missing own key to apply proposal.",
-            InconsistentSenderIndex =
-                "External Committer used the wrong index.",
-            LibraryError =
-                "An unrecoverable error has occurred due to a bug in the implementation.",
-        }
-        Complex {
-            PlaintextSignatureFailure(VerificationError) =
-                "MlsPlaintext signature is invalid.",
-            CodecError(TlsCodecError) =
-                "Tls (de)serialization error occurred.",
-            KeyScheduleError(KeyScheduleError) =
-                "An error occurred in the key schedule.",
-        }
-    }
+/// Stage Commit error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum StageCommitError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The epoch of the group context and MlsPlaintext didn't match.")]
+    EpochMismatch,
+    #[error("stage_commit was called with an MlsPlaintext that is not a Commit.")]
+    WrongPlaintextContentType,
+    #[error("Unable to verify the key package signature.")]
+    PathKeyPackageVerificationFailure,
+    #[error("Unable to determine commit path.")]
+    RequiredPathNotFound,
+    #[error("The confirmation Tag is missing.")]
+    ConfirmationTagMissing,
+    #[error("The confirmation tag is invalid.")]
+    ConfirmationTagMismatch,
+    #[error("The proposal queue is missing a proposal for the commit.")]
+    MissingProposal,
+    #[error("Missing own key to apply proposal.")]
+    OwnKeyNotFound,
+    #[error("External Committer used the wrong index.")]
+    InconsistentSenderIndex,
 }
 
-implement_error! {
-    pub enum CreateCommitError {
-        CannotRemoveSelf =
-            "The Commit tried to remove self from the group. This is not possible.",
-        OwnKeyNotFound =
-            "Couldn't create the commit because there's no key to apply the proposals.",
-    }
+// === Crate errors ===
+
+/// Create commit error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum CreateCommitError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The Commit tried to remove self from the group. This is not possible.")]
+    CannotRemoveSelf,
 }
 
-implement_error! {
-    pub enum ExporterError {
-        KeyLengthTooLong =
-            "The requested key length is not supported (too large).",
-    }
+/// Exporter error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ExporterError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The requested key length is not supported (too large).")]
+    KeyLengthTooLong,
 }
 
-implement_error! {
-    pub enum ProposalQueueError {
-        Simple {
-            ProposalNotFound = "Not all proposals in the Commit were found locally.",
-            SelfRemoval = "The sender of a Commit tried to remove themselves.",
-            ArchitectureError = "Couldn't fit a `u32` into a `usize`.",
-            RemovedNotFound = "Couldn't find the member to remove.",
-        }
-        Complex {
-            LibraryError(LibraryError) = "Library error",
-            SenderError(SenderError) = "Sender error",
-        }
-    }
+/// Proposal queue error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ProposalQueueError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("Not all proposals in the Commit were found locally.")]
+    ProposalNotFound,
+    #[error("The sender of a Commit tried to remove themselves.")]
+    SelfRemoval,
+    #[error(transparent)]
+    SenderError(#[from] SenderError),
 }
 
-implement_error! {
-    pub enum CreationProposalQueueError {
-        Simple {
-            ProposalNotFound = "Not all proposals in the Commit were found locally.",
-            ArchitectureError = "Couldn't fit a `u32` into a `usize`.",
-        }
-        Complex {
-            LibraryError(LibraryError) = "A LibraryError occurred.",
-            SenderError(SenderError) = "Sender error",
-        }
-    }
+/// Creation proposal queue error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub(crate) enum CreationProposalQueueError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error(transparent)]
+    SenderError(#[from] SenderError),
 }
 
-implement_error! {
-    pub enum FramingValidationError {
-        WrongGroupId = "Message group ID differs from the group's group ID.",
-        WrongEpoch = "Message epoch differs from the group's epoch.",
-        UnknownMember = "The sender could not be matched to a member of the group.",
-        UnencryptedApplicationMessage = "Application messages must always be encrypted.",
-        NonMemberApplicationMessage = "An application message was sent from an external sender.",
-        MissingMembershipTag = "Membership tag is missing.",
-        MissingConfirmationTag = "Confirmation tag is missing.",
-    }
+/// Framing validaton error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum FramingValidationError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("Message group ID differs from the group's group ID.")]
+    WrongGroupId,
+    #[error("Message epoch differs from the group's epoch.")]
+    WrongEpoch,
+    #[error("The sender could not be matched to a member of the group.")]
+    UnknownMember,
+    #[error("Application messages must always be encrypted.")]
+    UnencryptedApplicationMessage,
+    #[error("An application message was sent from an external sender.")]
+    NonMemberApplicationMessage,
+    #[error("Membership tag is missing.")]
+    MissingMembershipTag,
+    #[error("Confirmation tag is missing.")]
+    MissingConfirmationTag,
 }
 
 /// Proposal validation error
@@ -308,28 +271,27 @@ pub enum ProposalValidationError {
     CommitterIncludedOwnUpdate,
 }
 
-implement_error! {
-    pub enum ExternalCommitValidationError {
-        NoExternalInitProposals = "No ExternalInit proposal found.",
-        MultipleExternalInitProposals = "Multiple ExternalInit proposal found.",
-        InvalidInlineProposals = "Found inline Add or Update proposals.",
-        MultipleRemoveProposals = "Found multiple inline Remove proposals.",
-        InvalidRemoveProposal = "Remove proposal targets the wrong group member.",
-        ReferencedExternalInitProposal = "Found an ExternalInit proposal among the referenced proposals.",
-        NoPath = "External Commit has to contain a path.",
-        NoCommit = "A Message sent by a sender with type NewMember can only be a Commit.",
-        UnknownMemberRemoval = "The remove proposal referenced a non-existing member.",
-    }
-}
-
-implement_error! {
-    pub enum InterimTranscriptHashError {
-        Simple {}
-        Complex {
-            CodecError(TlsCodecError) =
-                "TLS (de)serialization error occurred.",
-            CryptoError(CryptoError) =
-                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
-        }
-    }
+/// External Commit validaton error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ExternalCommitValidationError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("No ExternalInit proposal found.")]
+    NoExternalInitProposals,
+    #[error("Multiple ExternalInit proposal found.")]
+    MultipleExternalInitProposals,
+    #[error("Found inline Add or Update proposals.")]
+    InvalidInlineProposals,
+    // TODO #803: this seems unused
+    #[error("Found multiple inline Remove proposals.")]
+    MultipleRemoveProposals,
+    #[error("Remove proposal targets the wrong group member.")]
+    InvalidRemoveProposal,
+    #[error("Found an ExternalInit proposal among the referenced proposals.")]
+    ReferencedExternalInitProposal,
+    // TODO #803: this seems unused
+    #[error("External Commit has to contain a path.")]
+    NoPath,
+    #[error("The remove proposal referenced a non-existing member.")]
+    UnknownMemberRemoval,
 }
