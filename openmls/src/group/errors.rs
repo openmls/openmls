@@ -161,9 +161,9 @@ pub enum StageCommitError {
     PathKeyPackageVerificationFailure,
     #[error("Unable to determine commit path.")]
     RequiredPathNotFound,
-    #[error("Confirmation Tag is missing.")]
+    #[error("The confirmation Tag is missing.")]
     ConfirmationTagMissing,
-    #[error("Confirmation tag is invalid.")]
+    #[error("The confirmation tag is invalid.")]
     ConfirmationTagMismatch,
     #[error("The proposal queue is missing a proposal for the commit.")]
     MissingProposal,
