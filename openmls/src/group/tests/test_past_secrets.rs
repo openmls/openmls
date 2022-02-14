@@ -193,7 +193,7 @@ fn test_past_secrets_in_group(
             assert_eq!(
                 err,
                 MlsGroupError::Group(CoreGroupError::ValidationError(
-                    ValidationError::MlsCiphertextError(MlsCiphertextError::DecryptionError),
+                    ValidationError::UnableToDecrypt(MlsCiphertextError::DecryptionError),
                 ))
             );
         }

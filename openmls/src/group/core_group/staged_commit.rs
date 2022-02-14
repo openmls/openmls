@@ -51,9 +51,8 @@ impl CoreGroup {
         proposal_store: &ProposalStore,
         own_key_packages: &[KeyPackageBundle],
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<StagedCommit, CoreGroupError> {
+    ) -> Result<StagedCommit, StageCommitError> {
         // Extract the sender of the Commit message
-        let sender = mls_plaintext.sender();
         let ciphersuite = self.ciphersuite();
 
         // Verify epoch
@@ -63,13 +62,26 @@ impl CoreGroup {
                 mls_plaintext.epoch(),
                 self.group_context.epoch()
             );
-            return Err(StageCommitError::EpochMismatch.into());
+            return Err(StageCommitError::EpochMismatch);
+        }
+
+        // Check that the sender is another member of the group
+        let sender = mls_plaintext.sender();
+
+        if let Sender::Member(member) = sender {
+            if member
+                == self
+                    .key_package_ref()
+                    .ok_or_else(|| LibraryError::custom("Expected own key package reference"))?
+            {
+                return Err(StageCommitError::OwnCommit);
+            }
         }
 
         // Extract Commit & Confirmation Tag from MlsPlaintext
         let commit = match mls_plaintext.content() {
             MlsPlaintextContentType::Commit(commit) => commit,
-            _ => return Err(StageCommitError::WrongPlaintextContentType.into()),
+            _ => return Err(StageCommitError::WrongPlaintextContentType),
         };
 
         let received_confirmation_tag = mls_plaintext
@@ -91,8 +103,6 @@ impl CoreGroup {
             .path()
             .as_ref()
             .map(|update_path| update_path.leaf_key_package().clone());
-
-        let sender = mls_plaintext.sender();
 
         // Validate the staged proposals by doing the following checks:
         // ValSem100
@@ -117,7 +127,7 @@ impl CoreGroup {
             }
             Sender::Preconfigured(_) => {
                 // A commit cannot be issued by a pre-configured sender.
-                return Err(CoreGroupError::SenderError(SenderError::NotAMember));
+                return Err(StageCommitError::SenderTypePreconfigured);
             }
             Sender::NewMember => {
                 // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
@@ -152,7 +162,7 @@ impl CoreGroup {
             }
             Sender::NewMember => diff.free_leaf_index()?,
             _ => {
-                return Err(CoreGroupError::SenderError(SenderError::NotAMember));
+                return Err(StageCommitError::SenderTypePreconfigured);
             }
         };
 
@@ -173,9 +183,12 @@ impl CoreGroup {
             // TODO #106: Support external members
             let kp = path.leaf_key_package();
             if kp.verify(backend).is_err() {
-                return Err(StageCommitError::PathKeyPackageVerificationFailure.into());
+                return Err(StageCommitError::PathKeyPackageVerificationFailure);
             }
-            let serialized_context = self.group_context.tls_serialize_detached()?;
+            let serialized_context = self
+                .group_context
+                .tls_serialize_detached()
+                .map_err(LibraryError::missing_bound_check)?;
 
             let (key_package, update_path_nodes) = path.into_parts();
 
@@ -189,10 +202,15 @@ impl CoreGroup {
             // there are no blanks and the new member extended the tree to
             // fit in.
             if apply_proposals_values.external_init_secret_option.is_some() {
-                let sender_leaf_index = diff.add_leaf(key_package.clone(), backend.crypto())?;
+                let sender_leaf_index = diff
+                    .add_leaf(key_package.clone(), backend.crypto())
+                    .map_err(|e| match e {
+                        TreeSyncAddLeaf::LibraryError(e) => e.into(),
+                        TreeSyncAddLeaf::TreeFull => StageCommitError::TooManyNewMembers,
+                    })?;
                 // The new member should have the same index as the claimed sender index.
                 if sender_leaf_index != sender_index {
-                    return Err(StageCommitError::InconsistentSenderIndex.into());
+                    return Err(StageCommitError::InconsistentSenderIndex);
                 }
             }
 
@@ -218,7 +236,7 @@ impl CoreGroup {
         } else {
             if apply_proposals_values.path_required {
                 // ValSem201
-                return Err(StageCommitError::RequiredPathNotFound.into());
+                return Err(StageCommitError::RequiredPathNotFound);
             }
             CommitSecret::zero_secret(ciphersuite, self.mls_version)
         };
@@ -232,7 +250,8 @@ impl CoreGroup {
                 self.group_epoch_secrets.init_secret()
             };
 
-        let joiner_secret = JoinerSecret::new(backend, commit_secret, init_secret)?;
+        let joiner_secret = JoinerSecret::new(backend, commit_secret, init_secret)
+            .map_err(LibraryError::unexpected_crypto_error)?;
 
         // Create provisional group state
         let mut provisional_epoch = self.group_context.epoch();
@@ -265,11 +284,16 @@ impl CoreGroup {
         // Create key schedule
         let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)?;
 
-        let serialized_provisional_group_context =
-            provisional_group_context.tls_serialize_detached()?;
+        let serialized_provisional_group_context = provisional_group_context
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
 
-        key_schedule.add_context(backend, &serialized_provisional_group_context)?;
-        let provisional_epoch_secrets = key_schedule.epoch_secrets(backend)?;
+        key_schedule
+            .add_context(backend, &serialized_provisional_group_context)
+            .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
+        let provisional_epoch_secrets = key_schedule
+            .epoch_secrets(backend)
+            .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
         let mls_plaintext_commit_auth_data = MlsPlaintextCommitAuthData::try_from(mls_plaintext)
             .map_err(|_| {
@@ -288,12 +312,13 @@ impl CoreGroup {
         // ValSem205
         let own_confirmation_tag = provisional_epoch_secrets
             .confirmation_key()
-            .tag(backend, &confirmed_transcript_hash)?;
+            .tag(backend, &confirmed_transcript_hash)
+            .map_err(LibraryError::unexpected_crypto_error)?;
         if &own_confirmation_tag != received_confirmation_tag {
             log::error!("Confirmation tag mismatch");
             log_crypto!(trace, "  Got:      {:x?}", received_confirmation_tag);
             log_crypto!(trace, "  Expected: {:x?}", own_confirmation_tag);
-            return Err(StageCommitError::ConfirmationTagMismatch.into());
+            return Err(StageCommitError::ConfirmationTagMismatch);
         }
 
         let (provisional_group_epoch_secrets, provisional_message_secrets) =

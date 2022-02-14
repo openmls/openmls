@@ -298,17 +298,6 @@ impl MlsPlaintext {
         self.membership_tag = None;
     }
 
-    /// Tries to extract an application messages from an `MlsPlaintext`. Returns
-    /// `MlsPlaintextError::NotAnApplicationMessage` if the `MlsPlaintext`
-    /// contained something other than an application message.
-    #[cfg(test)]
-    pub(crate) fn as_application_message(&self) -> Result<&[u8], MlsPlaintextError> {
-        match &self.content {
-            MlsPlaintextContentType::Application(message) => Ok(message.as_slice()),
-            _ => Err(MlsPlaintextError::NotAnApplicationMessage),
-        }
-    }
-
     /// Returns `true` if this is a handshake message and `false` otherwise.
     #[cfg(test)]
     pub(crate) fn is_handshake_message(&self) -> bool {
@@ -534,11 +523,14 @@ impl VerifiableMlsPlaintext {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         membership_key: &MembershipKey,
-    ) -> Result<(), MlsPlaintextError> {
+    ) -> Result<(), VerificationError> {
         log::debug!("Verifying membership tag.");
         log_crypto!(trace, "  Membership key: {:x?}", membership_key);
         log_crypto!(trace, "  Serialized context: {:x?}", serialized_context);
-        let tbs_payload = self.tbs.tls_serialize_detached()?;
+        let tbs_payload = self
+            .tbs
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
         let tbm_payload =
             MlsPlaintextTbmPayload::new(&tbs_payload, &self.signature, &self.confirmation_tag)?;
         let expected_membership_tag = &membership_key.tag(backend, tbm_payload)?;
@@ -547,10 +539,10 @@ impl VerifiableMlsPlaintext {
         if let Some(membership_tag) = &self.membership_tag {
             // TODO #133: make this a constant-time comparison
             if membership_tag != expected_membership_tag {
-                return Err(VerificationError::InvalidMembershipTag.into());
+                return Err(VerificationError::InvalidMembershipTag);
             }
         } else {
-            return Err(VerificationError::MissingMembershipTag.into());
+            return Err(VerificationError::MissingMembershipTag);
         }
         Ok(())
     }

@@ -38,10 +38,7 @@ pub(crate) use resumption::ResumptionSecretStore;
 // Public exports
 pub use {
     config::*,
-    errors::{
-        EmptyInputError, InvalidMessageError, MlsGroupError, PendingProposalsError,
-        UseAfterEviction,
-    },
+    errors::{EmptyInputError, MlsGroupError, MlsGroupStateError, UnverifiedMessageError},
     membership::RemoveOperation,
 };
 
@@ -236,7 +233,9 @@ impl MlsGroup {
     /// `UseAfterEviction` error.
     pub fn credential(&self) -> Result<&Credential, MlsGroupError> {
         if !self.is_active() {
-            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
+            return Err(MlsGroupError::GroupStateError(
+                MlsGroupStateError::UseAfterEviction,
+            ));
         }
         let tree = self.group.treesync();
         Ok(tree.own_leaf_node()?.key_package().credential())
@@ -392,9 +391,9 @@ impl MlsGroup {
     fn is_operational(&self) -> Result<(), MlsGroupError> {
         match self.group_state {
             MlsGroupState::PendingCommit(_) => Err(MlsGroupError::PendingCommitError),
-            MlsGroupState::Inactive => {
-                Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error))
-            }
+            MlsGroupState::Inactive => Err(MlsGroupError::GroupStateError(
+                MlsGroupStateError::UseAfterEviction,
+            )),
             MlsGroupState::Operational => Ok(()),
         }
     }

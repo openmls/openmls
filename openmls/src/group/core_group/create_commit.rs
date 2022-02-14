@@ -404,7 +404,8 @@ impl CoreGroup {
                 vec![],
             )?;
 
-            diff.add_leaf(key_package_bundle.key_package().clone(), backend.crypto())?;
+            diff.add_leaf(key_package_bundle.key_package().clone(), backend.crypto())
+                .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
             diff.own_leaf()?.key_package()
         } else {
             self.treesync().own_leaf_node()?.key_package()

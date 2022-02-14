@@ -1,4 +1,5 @@
 use crate::{
+    ciphersuite::signable::Verifiable,
     credentials::*,
     framing::*,
     group::{tests::tree_printing::print_tree, *},
@@ -8,6 +9,7 @@ use crate::{
     *,
 };
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use tls_codec::Serialize;
 
 #[apply(ciphersuites_and_backends)]
 fn create_commit_optional_path(
@@ -405,22 +407,35 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     let mls_ciphertext_alice = group_alice
         .create_application_message(&[], &message_alice, &alice_credential_bundle, 0, backend)
         .expect("An unexpected error occurred.");
-    let mls_plaintext_bob = match group_bob.decrypt(
-        &mls_ciphertext_alice,
-        backend,
-        &sender_ratchet_configuration,
-    ) {
-        Ok(mls_plaintext) => group_bob
-            .verify(mls_plaintext, backend)
-            .expect("Error verifying plaintext"),
-        Err(e) => panic!("Error decrypting MlsCiphertext: {:?}", e),
-    };
-    assert_eq!(
-        message_alice,
-        mls_plaintext_bob
-            .as_application_message()
-            .expect("An unexpected error occurred.")
+
+    let mut verifiable_plaintext = group_bob
+        .decrypt(
+            &mls_ciphertext_alice,
+            backend,
+            &sender_ratchet_configuration,
+        )
+        .expect("An unexpected error occurred.");
+
+    verifiable_plaintext.set_context(
+        group_bob
+            .context()
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred."),
     );
+
+    let credential = group_alice
+        .treesync()
+        .own_leaf_node()
+        .expect("An unexpected error occurred.")
+        .key_package()
+        .credential();
+    let mls_plaintext_bob: MlsPlaintext = verifiable_plaintext
+        .verify(backend, credential)
+        .expect("An unexpected error occurred.");
+
+    assert!(matches!(
+        mls_plaintext_bob.content(), 
+            MlsPlaintextContentType::Application(message) if message.as_slice() == &message_alice[..]));
 
     // === Bob updates and commits ===
     let bob_update_key_package_bundle = KeyPackageBundle::new(
@@ -701,38 +716,67 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
             backend,
         )
         .expect("An unexpected error occurred.");
-    let mls_plaintext_alice = match group_alice.decrypt(
-        &mls_ciphertext_charlie.clone(),
-        backend,
-        &sender_ratchet_configuration,
-    ) {
-        Ok(mls_plaintext) => group_alice
-            .verify(mls_plaintext, backend)
-            .expect("Error verifying plaintext"),
-        Err(e) => panic!("Error decrypting MlsCiphertext: {:?}", e),
-    };
-    let mls_plaintext_bob = match group_bob.decrypt(
-        &mls_ciphertext_charlie,
-        backend,
-        &sender_ratchet_configuration,
-    ) {
-        Ok(mls_plaintext) => group_bob
-            .verify(mls_plaintext, backend)
-            .expect("Error verifying plaintext"),
-        Err(e) => panic!("Error decrypting MlsCiphertext: {:?}", e),
-    };
-    assert_eq!(
-        message_charlie,
-        mls_plaintext_alice
-            .as_application_message()
-            .expect("An unexpected error occurred.")
+
+    // Alice decrypts and verifies
+    let mut verifiable_plaintext = group_alice
+        .decrypt(
+            &mls_ciphertext_charlie.clone(),
+            backend,
+            &sender_ratchet_configuration,
+        )
+        .expect("An unexpected error occurred.");
+
+    verifiable_plaintext.set_context(
+        group_alice
+            .context()
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred."),
     );
-    assert_eq!(
-        message_charlie,
-        mls_plaintext_bob
-            .as_application_message()
-            .expect("An unexpected error occurred.")
+
+    let credential = group_charlie
+        .treesync()
+        .own_leaf_node()
+        .expect("An unexpected error occurred.")
+        .key_package()
+        .credential();
+
+    let mls_plaintext_alice: MlsPlaintext = verifiable_plaintext
+        .verify(backend, credential)
+        .expect("An unexpected error occurred.");
+
+    assert!(matches!(
+        mls_plaintext_alice.content(), 
+            MlsPlaintextContentType::Application(message) if message.as_slice() == &message_charlie[..]));
+
+    // Bob decrypts and verifies
+    let mut verifiable_plaintext = group_bob
+        .decrypt(
+            &mls_ciphertext_charlie,
+            backend,
+            &sender_ratchet_configuration,
+        )
+        .expect("An unexpected error occurred.");
+
+    verifiable_plaintext.set_context(
+        group_bob
+            .context()
+            .tls_serialize_detached()
+            .expect("An unexpected error occurred."),
     );
+
+    let credential = group_charlie
+        .treesync()
+        .own_leaf_node()
+        .expect("An unexpected error occurred.")
+        .key_package()
+        .credential();
+    let mls_plaintext_bob: MlsPlaintext = verifiable_plaintext
+        .verify(backend, credential)
+        .expect("An unexpected error occurred.");
+
+    assert!(matches!(
+        mls_plaintext_bob.content(), 
+        MlsPlaintextContentType::Application(message) if message.as_slice() == &message_charlie[..]));
 
     // === Charlie updates and commits ===
     let charlie_update_key_package_bundle = KeyPackageBundle::new(

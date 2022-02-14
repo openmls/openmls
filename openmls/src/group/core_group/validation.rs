@@ -281,19 +281,19 @@ impl CoreGroup {
         key_package: &KeyPackage,
         public_key_set: HashSet<Vec<u8>>,
         proposal_sender: &Sender,
-    ) -> Result<(), CoreGroupError> {
+    ) -> Result<(), ProposalValidationError> {
         let indexed_key_packages = self.treesync().full_leaves()?;
         if let Some(existing_key_package) = indexed_key_packages.get(&sender) {
             // ValSem109
             if key_package.credential().identity() != existing_key_package.credential().identity() {
-                return Err(ProposalValidationError::UpdateProposalIdentityMismatch.into());
+                return Err(ProposalValidationError::UpdateProposalIdentityMismatch);
             }
             // ValSem110
             if public_key_set.contains(key_package.hpke_init_key().as_slice()) {
-                return Err(ProposalValidationError::ExistingPublicKeyUpdateProposal.into());
+                return Err(ProposalValidationError::ExistingPublicKeyUpdateProposal);
             }
         } else if proposal_sender.is_member() {
-            return Err(ProposalValidationError::UnknownMember.into());
+            return Err(ProposalValidationError::UnknownMember);
         }
         Ok(())
     }

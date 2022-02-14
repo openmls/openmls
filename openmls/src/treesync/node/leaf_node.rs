@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, HpkePrivateKey, HpkePublicKey},
     error::LibraryError,
-    key_packages::{KeyPackage, KeyPackageBundle, KeyPackageError},
+    key_packages::{KeyPackage, KeyPackageBundle},
 };
 
 /// This struct implements the MLS leaf node and contains a [`KeyPackage`] and
@@ -32,7 +32,7 @@ impl LeafNode {
     pub(crate) fn new(
         key_package: KeyPackage,
         backend: &impl OpenMlsCrypto,
-    ) -> Result<Self, KeyPackageError> {
+    ) -> Result<Self, LibraryError> {
         let key_package_ref = Some(key_package.hash_ref(backend)?);
         Ok(Self {
             key_package_ref,
@@ -58,7 +58,7 @@ impl LeafNode {
     pub(crate) fn new_from_bundle(
         key_package_bundle: KeyPackageBundle,
         backend: &impl OpenMlsCrypto,
-    ) -> Result<Self, KeyPackageError> {
+    ) -> Result<Self, LibraryError> {
         let key_package = key_package_bundle.key_package;
         let private_key_option = Some(key_package_bundle.private_key);
         let key_package_ref = Some(key_package.hash_ref(backend)?);

@@ -2,9 +2,7 @@ use std::collections::HashSet;
 
 use crate::binary_tree::{MlsBinaryTree, MlsBinaryTreeDiffError, MlsBinaryTreeError};
 
-use super::array_representation::tree::NodeIndex;
-
-use super::array_representation::treemath::TreeMathError;
+use super::array_representation::{tree::NodeIndex, treemath::TreeMathError};
 
 #[test]
 fn test_tree_basics() {

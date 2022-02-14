@@ -195,13 +195,26 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
         let add_encoded = add
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
-        let add_decoded = match VerifiableMlsPlaintext::tls_deserialize(&mut add_encoded.as_slice())
-        {
-            Ok(a) => group_state
-                .verify(a, backend)
-                .expect("Error verifying MlsPlaintext"),
-            Err(err) => panic!("Error decoding MPLSPlaintext Add: {:?}", err),
-        };
+        let mut verifiable_plaintext =
+            VerifiableMlsPlaintext::tls_deserialize(&mut add_encoded.as_slice())
+                .expect("An unexpected error occurred.");
+
+        verifiable_plaintext.set_context(
+            group_state
+                .context()
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        );
+
+        let credential = group_state
+            .treesync()
+            .own_leaf_node()
+            .expect("An unexpected error occurred.")
+            .key_package()
+            .credential();
+        let add_decoded = verifiable_plaintext
+            .verify(backend, credential)
+            .expect("An unexpected error occurred.");
 
         assert_eq!(add, add_decoded);
     }
@@ -243,13 +256,26 @@ fn test_remove_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
         let remove_encoded = remove
             .tls_serialize_detached()
             .expect("Could not encode proposal.");
-        let remove_decoded =
-            match VerifiableMlsPlaintext::tls_deserialize(&mut remove_encoded.as_slice()) {
-                Ok(a) => group_state
-                    .verify(a, backend)
-                    .expect("Error verifying MlsPlaintext"),
-                Err(err) => panic!("Error decoding MPLSPlaintext Remove: {:?}", err),
-            };
+        let mut verifiable_plaintext =
+            VerifiableMlsPlaintext::tls_deserialize(&mut remove_encoded.as_slice())
+                .expect("An unexpected error occurred.");
+
+        verifiable_plaintext.set_context(
+            group_state
+                .context()
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        );
+
+        let credential = group_state
+            .treesync()
+            .own_leaf_node()
+            .expect("An unexpected error occurred.")
+            .key_package()
+            .credential();
+        let remove_decoded = verifiable_plaintext
+            .verify(backend, credential)
+            .expect("An unexpected error occurred.");
 
         assert_eq!(remove, remove_decoded);
     }
@@ -340,13 +366,27 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
             .commit
             .tls_serialize_detached()
             .expect("An unexpected error occurred.");
-        let commit_decoded =
-            match VerifiableMlsPlaintext::tls_deserialize(&mut commit_encoded.as_slice()) {
-                Ok(a) => group_state
-                    .verify(a, backend)
-                    .expect("Error verifying MlsPlaintext"),
-                Err(err) => panic!("Error decoding MPLSPlaintext Commit: {:?}", err),
-            };
+
+        let mut verifiable_plaintext =
+            VerifiableMlsPlaintext::tls_deserialize(&mut commit_encoded.as_slice())
+                .expect("An unexpected error occurred.");
+
+        verifiable_plaintext.set_context(
+            group_state
+                .context()
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+        );
+
+        let credential = group_state
+            .treesync()
+            .own_leaf_node()
+            .expect("An unexpected error occurred.")
+            .key_package()
+            .credential();
+        let commit_decoded = verifiable_plaintext
+            .verify(backend, credential)
+            .expect("An unexpected error occurred.");
 
         assert_eq!(create_commit_result.commit, commit_decoded);
     }

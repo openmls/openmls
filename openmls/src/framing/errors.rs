@@ -6,94 +6,84 @@
 use crate::{
     credentials::CredentialError, error::LibraryError, tree::secret_tree::SecretTreeError,
 };
-use openmls_traits::types::CryptoError;
-use tls_codec::Error as TlsCodecError;
+use thiserror::Error;
 
-implement_error! {
-    pub enum MlsPlaintextError {
-        Simple {
-            NotAnApplicationMessage = "The MlsPlaintext message is not an application message.",
-            UnknownSender = "Sender is not part of the group",
-            InvalidSignature = "The MlsPlaintext signature is invalid",
-            InvalidMembershipTag = "The MlsPlaintext membership tag is invalid",
-        }
-        Complex {
-            LibraryError(LibraryError) = "A LibraryError occurred",
-            CodecError(TlsCodecError) = "TLS Codec error",
-            CredentialError(CredentialError) = "See [`CredentialError`](`crate::credentials::CredentialError`) for details.",
-            VerificationError(VerificationError) = "See [`VerificationError`](`VerificationError`) for details.",
-            CryptoError(CryptoError) = "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
-        }
-    }
+/// MlsCiphertext error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum MlsCiphertextError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("Couldn't find a ratcheting secret for the given sender and generation.")]
+    GenerationOutOfBound,
+    #[error("An error occurred while decrypting.")]
+    DecryptionError,
+    #[error("The WireFormat was MLSPlaintext.")]
+    WrongWireFormat,
+    #[error("The content is malformed.")]
+    MalformedContent,
+    #[error(transparent)]
+    SecretTreeError(#[from] SecretTreeError),
+    #[error(transparent)]
+    SenderError(#[from] SenderError),
 }
 
-implement_error! {
-    pub enum MlsCiphertextError {
-        Simple {
-            InvalidContentType = "The MlsCiphertext has an invalid content type.",
-            GenerationOutOfBound = "Couldn't find a ratcheting secret for the given sender and generation.",
-            EncryptionError = "An error occurred while encrypting.",
-            DecryptionError = "An error occurred while decrypting.",
-            WrongWireFormat = "The WireFormat was MLSPlaintext.",
-        }
-        Complex {
-            PlaintextError(MlsPlaintextError) = "MlsPlaintext error",
-            SecretTreeError(SecretTreeError) = "SecretTree error",
-            CodecError(TlsCodecError) = "TLS codec error",
-            CryptoError(CryptoError) = "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
-            SenderError(SenderError) = "See [`SenderError`] for details.",
-        }
-    }
+/// Sender error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum SenderError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The requested client is not a member of the group.")]
+    NotAMember,
+    #[error("Unknown sender")]
+    UnknownSender,
 }
 
-implement_error! {
-    pub enum SenderError {
-        NotAMember = "The requested client is not a member of the group.",
-        NotAPreConfigured = "The requested sender is not a preconfigured one.",
-        UnknownSender = "Unknown sender",
-    }
+/// Verification error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum VerificationError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The MlsPlaintext membership tag is missing")]
+    MissingMembershipTag,
+    #[error("The MlsPlaintext membership tag is invalid")]
+    InvalidMembershipTag,
+    #[error(transparent)]
+    CredentialError(#[from] CredentialError),
 }
 
-implement_error! {
-    pub enum VerificationError {
-        Simple {
-            MissingMembershipTag = "The MlsPlaintext membership tag is missing",
-            InvalidMembershipTag = "The MlsPlaintext membership tag is invalid",
-        }
-        Complex {
-            CredentialError(CredentialError) = "Credential error",
-        }
-    }
+/// Validation error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ValidationError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error(
+        "The MlsPlaintext message is not a Commit despite the sender begin of type NewMember."
+    )]
+    NotACommit,
+    #[error("The Commit doesn't have a path despite the sender being of type NewMember.")]
+    NoPath,
+    #[error("The MlsPlaintext contains an application message but was not encrypted.")]
+    UnencryptedApplicationMessage,
+    #[error("Sender is not part of the group.")]
+    UnknownSender,
+    #[error("The confirmation tag is missing.")]
+    MissingConfirmationTag,
+    #[error("Wrong wire format.")]
+    WrongWireFormat,
+    #[error("Verifying the signature failed.")]
+    InvalidSignature,
+    #[error(transparent)]
+    VerificationError(#[from] VerificationError),
+    /// Could not decrypt the message
+    #[error(transparent)]
+    UnableToDecrypt(#[from] MlsCiphertextError),
 }
 
-implement_error! {
-    pub enum ValidationError {
-        Simple {
-            NotAnApplicationMessage = "The MlsPlaintext message is not an application message.",
-            NotACommit = "The MlsPlaintext message is not a Commit despite the sender begin of type NewMember.",
-            NoPath = "The Commit doesn't have a path despite the sender being of type NewMember.",
-            UnencryptedApplicationMessage = "The MlsPlaintext contains an application message but was not encrypted.",
-            UnknownSender = "Sender is not part of the group",
-            MissingMembershipTag = "The membership tag is missing.",
-            MissingConfirmationTag = "The confirmation tag is missing.",
-            WrongWireFormat = "Wrong wire format.",
-            LibraryError = "A library error occured",
-        }
-        Complex {
-            CodecError(TlsCodecError) = "TLS Codec error",
-            CredentialError(CredentialError) = "See [`CredentialError`](`crate::credentials::CredentialError`) for details.",
-            MlsPlaintextError(MlsPlaintextError) = "See [`MlsPlaintextError`](`MlsPlaintextError`) for details.",
-            MlsCiphertextError(MlsCiphertextError) = "See [`MlsCiphertextError`](`MlsCiphertextError`) for details.",
-        }
-    }
-}
-
-implement_error! {
-    pub enum MlsMessageError {
-        DecodingError = "The message could not be decoded.",
-        EncodingError = "The message could not be encoded.",
-        NotAMember = "The requested client is not a member of the group.",
-        NotAPreConfigured = "The requested sender is not a preconfigured one.",
-        UnknownSender = "Unknown sender",
-    }
+/// MlsMessage error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum MlsMessageError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The message could not be decoded.")]
+    UnableToDecode,
 }

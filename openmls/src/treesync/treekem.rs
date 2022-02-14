@@ -6,7 +6,7 @@
 //! updates for a [`TreeSyncDiff`] instance.
 use rayon::prelude::*;
 use std::collections::HashSet;
-use tls_codec::{Error as TlsCodecError, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
@@ -16,17 +16,16 @@ use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, Ciphersuite, HpkePublicKey},
     config::ProtocolVersion,
     error::LibraryError,
-    key_packages::{KeyPackage, KeyPackageError},
-    messages::{
-        proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret, PathSecretError,
-    },
+    key_packages::KeyPackage,
+    messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
     schedule::{CommitSecret, JoinerSecret, PreSharedKeys},
 };
 
 use super::{
     diff::TreeSyncDiff,
+    errors::TreeKemError,
     node::parent_node::{ParentNode, PlainUpdatePathNode},
-    TreeSyncDiffError, TreeSyncError,
+    ApplyUpdatePathError,
 };
 
 impl<'a> TreeSyncDiff<'a> {
@@ -79,19 +78,24 @@ impl<'a> TreeSyncDiff<'a> {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &'static Ciphersuite,
         params: DecryptPathParams,
-    ) -> Result<(Vec<ParentNode>, CommitSecret), TreeKemError> {
-        let path_position =
-            self.subtree_root_position(params.sender_leaf_index, self.own_leaf_index())?;
+    ) -> Result<(Vec<ParentNode>, CommitSecret), ApplyUpdatePathError> {
+        let path_position = self
+            .subtree_root_position(params.sender_leaf_index, self.own_leaf_index())
+            // We know our own leaf is in the tree
+            .map_err(|_| LibraryError::custom("Expected own leaf to be in the tree"))?;
         let update_path_node = params
             .update_path
             .get(path_position)
-            .ok_or(TreeKemError::UpdatePathNodeNotFound)?;
+            // We know the update path has the right length through validation, therefore there must be an element at this position
+            .ok_or_else(|| LibraryError::custom("Expected to find ciphertext in update path"))?;
 
-        let (decryption_key, resolution_position) =
-            self.decryption_key(params.sender_leaf_index, params.exclusion_list)?;
+        let (decryption_key, resolution_position) = self
+            .decryption_key(params.sender_leaf_index, params.exclusion_list)
+            .map_err(|_| LibraryError::custom("Expected sender to be in the tree"))?;
         let ciphertext = update_path_node
             .encrypted_path_secrets(resolution_position)
-            .ok_or(TreeKemError::EncryptedCiphertextNotFound)?;
+            // We know the update path has the right length through validation, therefore there must be a ciphertext at this position
+            .ok_or_else(|| LibraryError::custom("Expected to find ciphertext in update path"))?;
 
         let path_secret = PathSecret::decrypt(
             backend,
@@ -100,7 +104,8 @@ impl<'a> TreeSyncDiff<'a> {
             ciphertext,
             decryption_key,
             params.group_context,
-        )?;
+        )
+        .map_err(|_| ApplyUpdatePathError::UnableToDecrypt)?;
 
         let remaining_path_length = params.update_path.len() - path_position;
         let (mut derived_path, _plain_update_path, commit_secret) =
@@ -114,7 +119,7 @@ impl<'a> TreeSyncDiff<'a> {
             .zip(derived_path.iter())
         {
             if update_parent_node.public_key() != derived_parent_node.public_key() {
-                return Err(TreeKemError::PathMismatch);
+                return Err(ApplyUpdatePathError::PathMismatch);
             }
         }
 
@@ -308,25 +313,5 @@ impl UpdatePath {
     /// Set the path key package.
     pub fn set_leaf_key_package(&mut self, key_package: KeyPackage) {
         self.leaf_key_package = key_package
-    }
-}
-
-implement_error! {
-    pub enum TreeKemError {
-        Simple {
-            PathLengthError = "The given path to encrypt does not have the same length as the direct path.",
-            PathMismatch = "The received update path and the derived nodes are inconsistent.",
-            UpdatePathNodeNotFound = "Couldn't find our UpdatePathNode in the given UpdatePath.",
-            EncryptedCiphertextNotFound = "Couldn't find a matching encrypted ciphertext in the given UpdatePathNode.",
-            PathSecretNotFound = "Couldn't find the path secret to encrypt for one of the new members.",
-        }
-        Complex {
-            LibraryError(LibraryError) = "LibraryError",
-            TreeSyncError(TreeSyncError) = "Error while creating treesync diff.",
-            TreeSyncDiffError(TreeSyncDiffError) = "Error while retrieving public keys from the tree.",
-            PathSecretError(PathSecretError) = "Error decrypting PathSecret.",
-            EncodingError(TlsCodecError) = "Error while encoding GroupSecrets.",
-            KeyPackageError(KeyPackageError) = "Error while hashing KeyPackage.",
-        }
     }
 }
