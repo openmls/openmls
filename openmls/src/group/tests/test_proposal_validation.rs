@@ -9,12 +9,8 @@ use rstest_reuse::{self, *};
 use tls_codec::Serialize;
 
 use crate::{
-    config::*,
-    credentials::*,
-    framing::{FramingParameters, MlsPlaintext, WireFormat},
-    group::errors::*,
-    group::*,
-    key_packages::*,
+    config::*, credentials::*, framing::MlsMessageOut, group::errors::*, group::*, key_packages::*,
+    messages::Welcome,
 };
 
 use super::utils::{generate_credential_bundle, generate_key_package_bundle};
@@ -58,73 +54,25 @@ fn generate_credential_bundle_and_key_package_bundle(
     (credential_bundle, key_package_bundle)
 }
 
-fn generate_proposal_store(
-    proposals: &[MlsPlaintext],
-    ciphersuite: &Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) -> ProposalStore {
-    let mut proposal_store = ProposalStore::new();
-    for proposal in proposals {
-        proposal_store.add(
-            QueuedProposal::from_mls_plaintext(ciphersuite, backend, proposal.to_owned())
-                .expect("Could not create QueuedProposal from MlsPlaintext"),
-        );
-    }
-    proposal_store
-}
-
-/// Helper function to create a group, create proposals to add bob and charlie,
-/// and return the result of committing those proposals.
-fn create_commit_to_add_bob_and_charlie(
-    alice_credential_bundle: CredentialBundle,
+/// Helper function to create a group and try to add `members` to it.
+fn create_group_with_members(
     alice_key_package_bundle: KeyPackageBundle,
-    bob_key_package: KeyPackage,
-    charlie_key_package: KeyPackage,
-    ciphersuite: &Ciphersuite,
+    member_key_packages: &[KeyPackage],
     backend: &impl OpenMlsCryptoProvider,
-) -> Result<CreateCommitResult, CoreGroupError> {
-    // 1. Alice creates a group
-    let group_aad = b"Alice's Friends";
-    let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsCiphertext);
-    let alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-        .build(backend)
-        .expect("Error creating group.");
-
-    // 2. Alice creates a proposal to add Bob
-    let bob_add_proposal = alice_group
-        .create_add_proposal(
-            framing_parameters,
-            &alice_credential_bundle,
-            bob_key_package,
-            backend,
-        )
-        .expect("Could not create proposal to add Bob.");
-
-    // 3. Alice creates a proposal to add Charlie
-    let charlie_add_proposal = alice_group
-        .create_add_proposal(
-            framing_parameters,
-            &alice_credential_bundle,
-            charlie_key_package,
-            backend,
-        )
-        .expect("Could not create proposal to add Charlie.");
-
-    // 4. Alice queues these proposals
-    let proposal_store = generate_proposal_store(
-        &[bob_add_proposal, charlie_add_proposal],
-        ciphersuite,
+) -> Result<(MlsMessageOut, Welcome), MlsGroupError> {
+    let mut alice_group = MlsGroup::new(
         backend,
-    );
+        &MlsGroupConfig::default(),
+        GroupId::from_slice(b"Alice's Friends"),
+        alice_key_package_bundle
+            .key_package()
+            .hash_ref(backend.crypto())
+            .expect("Could not hash KeyPackage.")
+            .as_slice(),
+    )
+    .expect("An unexpected error occurred.");
 
-    // 5. Alice tries to generate a commit message
-    let params = CreateCommitParams::builder()
-        .framing_parameters(framing_parameters)
-        .credential_bundle(&alice_credential_bundle)
-        .proposal_store(&proposal_store)
-        .build();
-
-    alice_group.create_commit(params, backend)
+    alice_group.add_members(backend, member_key_packages)
 }
 
 enum KeyUniqueness {
@@ -143,7 +91,7 @@ fn test_valsem100(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         ("42", "42"), // Negative Case: Bob and Charlie have same identity
         ("42", "24"), // Positive Case: Bob and Charlie have different identity
     ] {
-        let (alice_credential_bundle, alice_key_package_bundle) =
+        let (_alice_credential_bundle, alice_key_package_bundle) =
             generate_credential_bundle_and_key_package_bundle("Alice".into(), ciphersuite, backend);
 
         // 0. Initialize Bob and Charlie
@@ -159,29 +107,25 @@ fn test_valsem100(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
             );
         let charlie_key_package = charlie_key_package_bundle.key_package().clone();
 
-        // 1. Create a group and try to create a commit to add Bob and Charlie
-        let res = create_commit_to_add_bob_and_charlie(
-            alice_credential_bundle,
+        // 1. Alice creates a group and tries to add Bob and Charlie to it
+        let res = create_group_with_members(
             alice_key_package_bundle,
-            bob_key_package,
-            charlie_key_package,
-            ciphersuite,
+            &[bob_key_package, charlie_key_package],
             backend,
         );
 
         if bob_id == charlie_id {
             // Negative Case: we should output an error
-            let err =
-                res.expect_err("Created commit when the proposals have a duplicate identity!");
+            let err = res.expect_err("was able to add users with the same identity!");
             assert_eq!(
                 err,
-                CoreGroupError::ProposalValidationError(
+                MlsGroupError::Group(CoreGroupError::ProposalValidationError(
                     ProposalValidationError::DuplicateIdentityAddProposal
-                )
+                ))
             );
         } else {
             // Positive Case: we should succeed
-            let _ = res.expect("Failed to create commit with different identities!");
+            let _ = res.expect("failed to add users with different identities!");
         }
     }
 
@@ -198,7 +142,7 @@ fn test_valsem101(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         KeyUniqueness::PositiveDifferentKey,
     ] {
         // 0. Initialize Alice
-        let (alice_credential_bundle, alice_key_package_bundle) =
+        let (_alice_credential_bundle, alice_key_package_bundle) =
             generate_credential_bundle_and_key_package_bundle("Alice".into(), ciphersuite, backend);
 
         // 1. Initialize Bob and Charlie
@@ -246,29 +190,25 @@ fn test_valsem101(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .expect("failed to generate key package");
         let charlie_key_package = charlie_key_package_bundle.key_package().clone();
 
-        // 2. Create a group and try to create a commit to add Bob and Charlie
-        let res = create_commit_to_add_bob_and_charlie(
-            alice_credential_bundle,
+        // 1. Alice creates a group and tries to add Bob and Charlie to it
+        let res = create_group_with_members(
             alice_key_package_bundle,
-            bob_key_package,
-            charlie_key_package,
-            ciphersuite,
+            &[bob_key_package, charlie_key_package],
             backend,
         );
 
         match bob_and_charlie_share_keys {
             KeyUniqueness::NegativeSameKey => {
-                let err = res
-                    .expect_err("Created commit when the proposals have the same signature key!");
+                let err = res.expect_err("was able to add users with the same signature key!");
                 assert_eq!(
                     err,
-                    CoreGroupError::ProposalValidationError(
+                    MlsGroupError::Group(CoreGroupError::ProposalValidationError(
                         ProposalValidationError::DuplicateSignatureKeyAddProposal
-                    )
+                    ))
                 );
             }
             KeyUniqueness::PositiveDifferentKey => {
-                let _ = res.expect("Failed to create commit with different signature keypairs!");
+                let _ = res.expect("failed to add users with different signature keypairs!");
             }
         }
     }
@@ -286,7 +226,7 @@ fn test_valsem102(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         KeyUniqueness::PositiveDifferentKey,
     ] {
         // 0. Initialize Alice, Bob, and Charlie
-        let (alice_credential_bundle, alice_key_package_bundle) =
+        let (_alice_credential_bundle, alice_key_package_bundle) =
             generate_credential_bundle_and_key_package_bundle("Alice".into(), ciphersuite, backend);
         let (bob_credential_bundle, mut bob_key_package_bundle) =
             generate_credential_bundle_and_key_package_bundle("Bob".into(), ciphersuite, backend);
@@ -332,29 +272,25 @@ fn test_valsem102(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         let bob_key_package = bob_key_package_bundle.key_package().clone();
         let charlie_key_package = charlie_key_package_bundle.key_package().clone();
 
-        // 1. Create a group and try to create a commit to add Bob and Charlie
-        let res = create_commit_to_add_bob_and_charlie(
-            alice_credential_bundle,
+        // 1. Alice creates a group and tries to add Bob and Charlie to it
+        let res = create_group_with_members(
             alice_key_package_bundle,
-            bob_key_package,
-            charlie_key_package,
-            ciphersuite,
+            &[bob_key_package, charlie_key_package],
             backend,
         );
 
         match bob_and_charlie_share_keys {
             KeyUniqueness::NegativeSameKey => {
-                let err =
-                    res.expect_err("Created commit when the proposals have a same HPKE init key!");
+                let err = res.expect_err("was able to add users with the same HPKE init key!");
                 assert_eq!(
                     err,
-                    CoreGroupError::ProposalValidationError(
+                    MlsGroupError::Group(CoreGroupError::ProposalValidationError(
                         ProposalValidationError::DuplicatePublicKeyAddProposal
-                    )
+                    ))
                 );
             }
             KeyUniqueness::PositiveDifferentKey => {
-                let _ = res.expect("Failed to create commit with different HPKE init keys!");
+                let _ = res.expect("failed to add users with different HPKE init keys!");
             }
         }
     }
@@ -372,7 +308,7 @@ fn test_valsem103(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         ("42", "24"), // Positive Case: Alice and Bob have different identity
     ] {
         // 0. Initialize Alice and Bob
-        let (alice_credential_bundle, alice_key_package_bundle) =
+        let (_alice_credential_bundle, alice_key_package_bundle) =
             generate_credential_bundle_and_key_package_bundle(
                 alice_id.into(),
                 ciphersuite,
@@ -382,48 +318,24 @@ fn test_valsem103(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
             generate_credential_bundle_and_key_package_bundle(bob_id.into(), ciphersuite, backend);
         let bob_key_package = bob_key_package_bundle.key_package().clone();
 
-        // 1. Alice creates a group
-        let group_aad = b"Alice's Friends";
-        let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsCiphertext);
-        let alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
-            .build(backend)
-            .expect("Error creating group.");
-
-        // 2. Alice creates a proposal to add Bob
-        let bob_add_proposal = alice_group
-            .create_add_proposal(
-                framing_parameters,
-                &alice_credential_bundle,
-                bob_key_package,
-                backend,
-            )
-            .expect("Could not create proposal to add Bob.");
-
-        // 4. Alice queues the proposal
-        let proposal_store = generate_proposal_store(&[bob_add_proposal], ciphersuite, backend);
-
-        // 5. Alice tries to generate a commit message
-        let params = CreateCommitParams::builder()
-            .framing_parameters(framing_parameters)
-            .credential_bundle(&alice_credential_bundle)
-            .proposal_store(&proposal_store)
-            .build();
-        let res = alice_group.create_commit(params, backend);
+        // 1. Alice creates a group and tries to add Bob to it
+        let res = create_group_with_members(alice_key_package_bundle, &[bob_key_package], backend);
 
         if alice_id == bob_id {
             // Negative Case: we should output an error
             let err = res.expect_err(
-                "Created commit when the proposal has the same identity as a group member!",
+                "was able to add a user with the same identity as someone in the group!",
             );
             assert_eq!(
                 err,
-                CoreGroupError::ProposalValidationError(
+                MlsGroupError::Group(CoreGroupError::ProposalValidationError(
                     ProposalValidationError::ExistingIdentityAddProposal
-                )
+                ))
             );
         } else {
             // Positive Case: we should succeed
-            let _ = res.expect("Failed to create commit with different identities!");
+            let _ = res
+                .expect("failed to add a user with an identity distinct from anyone in the group!");
         }
     }
 
