@@ -29,7 +29,7 @@ pub enum KeyScheduleError {
 
 /// PSK secret error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum PskSecretError {
+pub enum PskError {
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     #[error("More than 2^16 PSKs were provided.")]

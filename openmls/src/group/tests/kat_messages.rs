@@ -5,9 +5,19 @@
 //! for more description on the test vectors.
 
 use crate::{
-    ciphersuite::signable::Signable, config::*, credentials::*, framing::*, group::*,
-    key_packages::*, messages::proposals::*, messages::public_group_state::*, messages::*,
-    prelude_test::hash_ref::KeyPackageRef, schedule::*, test_utils::*, tree::sender_ratchet::*,
+    ciphersuite::signable::Signable,
+    config::*,
+    credentials::*,
+    framing::*,
+    group::*,
+    key_packages::*,
+    messages::proposals::*,
+    messages::public_group_state::*,
+    messages::*,
+    prelude_test::{hash_ref::KeyPackageRef, signable::Verifiable},
+    schedule::*,
+    test_utils::*,
+    tree::sender_ratchet::*,
     treesync::node::Node,
 };
 
@@ -231,7 +241,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         )
         .expect("An unexpected error occurred.");
     // Replace the secret tree
-    let verifiable_mls_plaintext_application = receiver_group
+    let mut verifiable_mls_plaintext_application = receiver_group
         .decrypt(
             &mls_ciphertext_application,
             &crypto,
@@ -239,9 +249,23 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
         )
         .expect("An unexpected error occurred.");
     // Sets the context implicitly.
-    let mls_plaintext_application = group
-        .verify(verifiable_mls_plaintext_application, &crypto)
-        .expect("An unexpected error occurred.");
+    let credential = group
+        .treesync()
+        .own_leaf_node()
+        .expect("An unexpected error occurred.")
+        .key_package()
+        .credential();
+    if !verifiable_mls_plaintext_application.has_context() {
+        verifiable_mls_plaintext_application.set_context(
+            group
+                .context()
+                .tls_serialize_detached()
+                .expect("Anunexpected error occured."),
+        );
+    }
+    let mls_plaintext_application: MlsPlaintext = verifiable_mls_plaintext_application
+        .verify(&crypto, credential)
+        .expect("Could not verify MlsPlaintext.");
 
     let encryption_target = match random_u32() % 3 {
         0 => create_commit_result.commit.clone(),

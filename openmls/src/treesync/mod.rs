@@ -43,7 +43,6 @@ use crate::{
 
 use self::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
-    errors::TreeSyncDiffError,
     node::{leaf_node::LeafNode, Node, NodeError},
     treesync_node::{TreeSyncNode, TreeSyncNodeError},
 };
@@ -93,15 +92,7 @@ impl TreeSync {
         let key_package = key_package_bundle.key_package();
         // We generate our own leaf without a private key for now. The private
         // key is set in the `from_nodes` constructor below.
-        let node = Node::LeafNode(
-            LeafNode::new(key_package.clone(), backend.crypto()).map_err(|e| {
-                if let KeyPackageError::CryptoError(e) = e {
-                    LibraryError::unexpected_crypto_error(e)
-                } else {
-                    LibraryError::custom("Unexpected error in KeyPackage")
-                }
-            })?,
-        );
+        let node = Node::LeafNode(LeafNode::new(key_package.clone(), backend.crypto())?);
         let path_secret: PathSecret = key_package_bundle.leaf_secret().clone().into();
         let commit_secret: CommitSecret = path_secret
             .derive_path_secret(backend, key_package.ciphersuite())?

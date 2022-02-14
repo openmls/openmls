@@ -58,6 +58,8 @@ pub enum ClientError {
     #[error(transparent)]
     KeyPackageError(#[from] KeyPackageError),
     #[error(transparent)]
+    UnverifiedMessageError(#[from] UnverifiedMessageError),
+    #[error(transparent)]
     LibraryError(#[from] LibraryError),
     #[error("")]
     Unknown,

@@ -6,6 +6,7 @@ use tls_codec::{
 
 use crate::{
     ciphersuite::hash_ref::{HashReference, KeyPackageRef},
+    prelude::LibraryError,
     tree::{
         index::SecretTreeLeafIndex, secret_tree::SecretType,
         sender_ratchet::SenderRatchetConfiguration,
@@ -81,16 +82,17 @@ impl MlsCiphertext {
             content_type: mls_plaintext.content_type(),
             authenticated_data: TlsByteSliceU32(mls_plaintext.authenticated_data()),
         };
-        let mls_ciphertext_content_aad_bytes =
-            mls_ciphertext_content_aad.tls_serialize_detached()?;
+        let mls_ciphertext_content_aad_bytes = mls_ciphertext_content_aad
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
         // Extract generation and key material for encryption
-        let secret_type = SecretType::try_from(mls_plaintext)
-            .map_err(|_| MlsCiphertextError::InvalidContentType)?;
+        let secret_type = SecretType::from(&mls_plaintext.content_type());
         let (generation, (ratchet_key, mut ratchet_nonce)) = message_secrets
             .secret_tree_mut()
             .secret_for_encryption(ciphersuite, backend, header.sender, secret_type)?;
         // Sample reuse guard uniformly at random.
-        let reuse_guard: ReuseGuard = ReuseGuard::try_from_random(backend)?;
+        let reuse_guard: ReuseGuard =
+            ReuseGuard::try_from_random(backend).map_err(LibraryError::unexpected_crypto_error)?;
         // Prepare the nonce by xoring with the reuse guard.
         ratchet_nonce.xor_with_reuse_guard(&reuse_guard);
         // Encrypt the payload
@@ -101,24 +103,22 @@ impl MlsCiphertext {
                     mls_plaintext,
                     padding_size,
                     ciphersuite.mac_length(),
-                )?,
+                )
+                .map_err(LibraryError::missing_bound_check)?,
                 &mls_ciphertext_content_aad_bytes,
                 &ratchet_nonce,
             )
-            .map_err(|e| {
-                log::error!("MlsCiphertext::try_from_plaintext encryption error {:?}", e);
-                MlsCiphertextError::EncryptionError
-            })?;
+            .map_err(LibraryError::unexpected_crypto_error)?;
         // Derive the sender data key from the key schedule using the ciphertext.
         let sender_data_key = message_secrets
             .sender_data_secret()
-            .derive_aead_key(backend, &ciphertext)?;
+            .derive_aead_key(backend, &ciphertext)
+            .map_err(LibraryError::unexpected_crypto_error)?;
         // Derive initial nonce from the key schedule using the ciphertext.
-        let sender_data_nonce = message_secrets.sender_data_secret().derive_aead_nonce(
-            ciphersuite,
-            backend,
-            &ciphertext,
-        )?;
+        let sender_data_nonce = message_secrets
+            .sender_data_secret()
+            .derive_aead_nonce(ciphersuite, backend, &ciphertext)
+            .map_err(LibraryError::unexpected_crypto_error)?;
         // Compute sender data nonce by xoring reuse guard and key schedule
         // nonce as per spec.
         let mls_sender_data_aad = MlsSenderDataAad::new(
@@ -127,20 +127,21 @@ impl MlsCiphertext {
             mls_plaintext.content_type(),
         );
         // Serialize the sender data AAD
-        let mls_sender_data_aad_bytes = mls_sender_data_aad.tls_serialize_detached()?;
+        let mls_sender_data_aad_bytes = mls_sender_data_aad
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
         let sender_data = MlsSenderData::from_sender(hash_ref, generation, reuse_guard);
         // Encrypt the sender data
         let encrypted_sender_data = sender_data_key
             .aead_seal(
                 backend,
-                &sender_data.tls_serialize_detached()?,
+                &sender_data
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)?,
                 &mls_sender_data_aad_bytes,
                 &sender_data_nonce,
             )
-            .map_err(|e| {
-                log::error!("MlsCiphertext::try_from_plaintext encryption error {:?}", e);
-                MlsCiphertextError::EncryptionError
-            })?;
+            .map_err(LibraryError::unexpected_crypto_error)?;
         Ok(MlsCiphertext {
             wire_format: WireFormat::MlsCiphertext,
             group_id: header.group_id,
@@ -167,17 +168,19 @@ impl MlsCiphertext {
         // Derive key from the key schedule using the ciphertext.
         let sender_data_key = message_secrets
             .sender_data_secret()
-            .derive_aead_key(backend, self.ciphertext.as_slice())?;
+            .derive_aead_key(backend, self.ciphertext.as_slice())
+            .map_err(LibraryError::unexpected_crypto_error)?;
         // Derive initial nonce from the key schedule using the ciphertext.
-        let sender_data_nonce = message_secrets.sender_data_secret().derive_aead_nonce(
-            ciphersuite,
-            backend,
-            self.ciphertext.as_slice(),
-        )?;
+        let sender_data_nonce = message_secrets
+            .sender_data_secret()
+            .derive_aead_nonce(ciphersuite, backend, self.ciphertext.as_slice())
+            .map_err(LibraryError::unexpected_crypto_error)?;
         // Serialize sender data AAD
         let mls_sender_data_aad =
             MlsSenderDataAad::new(self.group_id.clone(), self.epoch, self.content_type);
-        let mls_sender_data_aad_bytes = mls_sender_data_aad.tls_serialize_detached()?;
+        let mls_sender_data_aad_bytes = mls_sender_data_aad
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
         // Decrypt sender data
         let sender_data_bytes = sender_data_key
             .aead_open(
@@ -191,9 +194,8 @@ impl MlsCiphertext {
                 MlsCiphertextError::DecryptionError
             })?;
         log::trace!("  Successfully decrypted sender data.");
-        Ok(MlsSenderData::tls_deserialize(
-            &mut sender_data_bytes.as_slice(),
-        )?)
+        MlsSenderData::tls_deserialize(&mut sender_data_bytes.as_slice())
+            .map_err(|_| MlsCiphertextError::MalformedContent)
     }
 
     /// Decrypt this [`MlsCiphertext`] and return the [`MlsCiphertextContent`].
@@ -211,7 +213,8 @@ impl MlsCiphertext {
             content_type: self.content_type,
             authenticated_data: TlsByteSliceU32(self.authenticated_data.as_slice()),
         }
-        .tls_serialize_detached()?;
+        .tls_serialize_detached()
+        .map_err(LibraryError::missing_bound_check)?;
         // Decrypt payload
         let mls_ciphertext_content_bytes = ratchet_key
             .aead_open(
@@ -229,10 +232,11 @@ impl MlsCiphertext {
             "  Successfully decrypted MlsPlaintext bytes: {:x?}",
             mls_ciphertext_content_bytes
         );
-        Ok(MlsCiphertextContent::deserialize(
+        MlsCiphertextContent::deserialize(
             self.content_type,
             &mut mls_ciphertext_content_bytes.as_slice(),
-        )?)
+        )
+        .map_err(|_| MlsCiphertextError::MalformedContent)
     }
 
     /// This function decrypts an [`MlsCiphertext`] into an [`VerifiableMlsPlaintext`].
@@ -246,8 +250,7 @@ impl MlsCiphertext {
         sender_ratchet_configuration: &SenderRatchetConfiguration,
         sender_data: MlsSenderData,
     ) -> Result<VerifiableMlsPlaintext, MlsCiphertextError> {
-        let secret_type = SecretType::try_from(&self.content_type)
-            .map_err(|_| MlsCiphertextError::InvalidContentType)?;
+        let secret_type = SecretType::from(&self.content_type);
         // Extract generation and key material for encryption
         let (ratchet_key, mut ratchet_nonce) = message_secrets
             .secret_tree_mut()

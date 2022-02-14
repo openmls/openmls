@@ -40,6 +40,7 @@ use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, signable::Verifiable},
+    error::LibraryError,
     tree::sender_ratchet::SenderRatchetConfiguration,
 };
 
@@ -96,7 +97,7 @@ impl DecryptedMessage {
                                 None
                             }
                         })
-                        .ok_or(MlsCiphertextError::SenderError(SenderError::UnknownSender))?
+                        .ok_or(ValidationError::UnknownSender)?
                 }
             };
             let sender_index = SecretTreeLeafIndex(sender_index);
@@ -127,7 +128,7 @@ impl DecryptedMessage {
             && plaintext.wire_format() != WireFormat::MlsCiphertext
             && plaintext.membership_tag().is_none()
         {
-            return Err(ValidationError::MissingMembershipTag);
+            return Err(VerificationError::MissingMembershipTag.into());
         }
         // ValSem009
         if plaintext.content_type() == ContentType::Commit && plaintext.confirmation_tag().is_none()
@@ -140,7 +141,7 @@ impl DecryptedMessage {
                 return Err(ValidationError::UnencryptedApplicationMessage);
             } else if !plaintext.sender().is_member() {
                 // This should not happen because the sender of an MlsCiphertext should always be a member
-                return Err(ValidationError::LibraryError);
+                return Err(LibraryError::custom("Expected sender to be member.").into());
             }
         }
         Ok(DecryptedMessage { plaintext })
@@ -297,7 +298,9 @@ impl UnverifiedContextMessage {
                     plaintext,
                     // If the message type is `Sender` or `NewMember`, the
                     // message always contains a credential.
-                    credential: credential_option.ok_or(ValidationError::LibraryError)?,
+                    credential: credential_option.ok_or({
+                        ValidationError::from(LibraryError::custom("Expected credential"))
+                    })?,
                 }))
             }
             // TODO #151/#106: We don't support preconfigured senders yet
@@ -332,7 +335,8 @@ impl UnverifiedGroupMessage {
             // ValSem010
             self.plaintext.verify(backend, &self.credential)
         }
-        .map(|plaintext| VerifiedMemberMessage { plaintext })?;
+        .map(|plaintext| VerifiedMemberMessage { plaintext })
+        .map_err(|_| ValidationError::InvalidSignature)?;
         Ok(verified_member_message)
     }
 }
@@ -354,10 +358,10 @@ impl UnverifiedPreconfiguredMessage {
         signature_key: &SignaturePublicKey,
     ) -> Result<VerifiedExternalMessage, ValidationError> {
         // ValSem010
-        match self.plaintext.verify_with_key(backend, signature_key) {
-            Ok(_plaintext) => Ok(VerifiedExternalMessage { _plaintext }),
-            Err(e) => Err(e.into()),
-        }
+        self.plaintext
+            .verify_with_key(backend, signature_key)
+            .map(|_plaintext| VerifiedExternalMessage { _plaintext })
+            .map_err(|_| ValidationError::InvalidSignature)
     }
 }
 

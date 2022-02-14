@@ -17,11 +17,13 @@ impl MlsGroup {
         message: &[u8],
     ) -> Result<MlsMessageOut, MlsGroupError> {
         if !self.is_active() {
-            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
+            return Err(MlsGroupError::GroupStateError(
+                MlsGroupStateError::UseAfterEviction,
+            ));
         }
         if !self.proposal_store.is_empty() {
-            return Err(MlsGroupError::PendingProposalsExist(
-                PendingProposalsError::Exists,
+            return Err(MlsGroupError::GroupStateError(
+                MlsGroupStateError::PendingProposal,
             ));
         }
 

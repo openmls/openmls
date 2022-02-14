@@ -8,10 +8,10 @@ use crate::{
     credentials::CredentialError,
     error::LibraryError,
     extensions::errors::ExtensionError,
-    framing::errors::{MlsCiphertextError, MlsPlaintextError, SenderError, ValidationError},
+    framing::errors::{MlsCiphertextError, SenderError, ValidationError},
     key_packages::KeyPackageError,
-    schedule::{KeyScheduleError, PskSecretError},
-    treesync::{errors::*, treekem::TreeKemError, TreeSyncError},
+    schedule::{KeyScheduleError, PskError},
+    treesync::errors::*,
 };
 use openmls_traits::types::CryptoError;
 use thiserror::Error;
@@ -31,8 +31,6 @@ pub enum CoreGroupError {
     #[error(transparent)]
     MlsCiphertextError(#[from] MlsCiphertextError),
     #[error(transparent)]
-    MlsPlaintextError(#[from] MlsPlaintextError),
-    #[error(transparent)]
     WelcomeError(#[from] WelcomeError),
     #[error(transparent)]
     ExternalCommitError(#[from] ExternalCommitError),
@@ -51,7 +49,7 @@ pub enum CoreGroupError {
     #[error(transparent)]
     KeyScheduleError(#[from] KeyScheduleError),
     #[error(transparent)]
-    PskSecretError(#[from] PskSecretError),
+    PskSecretError(#[from] PskError),
     #[error(transparent)]
     CredentialError(#[from] CredentialError),
     #[error(transparent)]
@@ -155,6 +153,8 @@ pub enum StageCommitError {
     LibraryError(#[from] LibraryError),
     #[error("The epoch of the group context and MlsPlaintext didn't match.")]
     EpochMismatch,
+    #[error("The Commit was created by this client.")]
+    OwnCommit,
     #[error("stage_commit was called with an MlsPlaintext that is not a Commit.")]
     WrongPlaintextContentType,
     #[error("Unable to verify the key package signature.")]
@@ -171,6 +171,18 @@ pub enum StageCommitError {
     OwnKeyNotFound,
     #[error("External Committer used the wrong index.")]
     InconsistentSenderIndex,
+    #[error("The sender is of type preconfigured, which is not valid.")]
+    SenderTypePreconfigured,
+    #[error("Too many new members: the tree is full.")]
+    TooManyNewMembers,
+    #[error(transparent)]
+    ProposalValidationError(#[from] ProposalValidationError),
+    #[error(transparent)]
+    PskError(#[from] PskError),
+    #[error(transparent)]
+    ExternalCommitValidation(#[from] ExternalCommitValidationError),
+    #[error(transparent)]
+    UpdatePathError(#[from] ApplyUpdatePathError),
 }
 
 // === Crate errors ===

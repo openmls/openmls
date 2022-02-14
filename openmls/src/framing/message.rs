@@ -13,6 +13,8 @@ use tls_codec::{Deserialize, Serialize};
 
 use super::*;
 
+use crate::error::LibraryError;
+
 /// Unified message type for MLS messages.
 /// /// This is only used internally, externally we use either [`MlsMessageIn`] or
 /// [`MlsMessageOut`], depending on the context.
@@ -67,13 +69,14 @@ impl MlsMessage {
 
     /// Tries to deserialize from a byte slice. Returns [`MlsMessageError::DecodingError`] on failure.
     fn try_from_bytes(mut bytes: &[u8]) -> Result<Self, MlsMessageError> {
-        MlsMessage::tls_deserialize(&mut bytes).map_err(|_| MlsMessageError::DecodingError)
+        MlsMessage::tls_deserialize(&mut bytes).map_err(|_| MlsMessageError::UnableToDecode)
     }
 
     /// Serializes the message to a byte vector. Returns [`MlsMessageError::EncodingError`] on failure.
     fn to_bytes(&self) -> Result<Vec<u8>, MlsMessageError> {
-        self.tls_serialize_detached()
-            .map_err(|_| MlsMessageError::EncodingError)
+        Ok(self
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?)
     }
 }
 

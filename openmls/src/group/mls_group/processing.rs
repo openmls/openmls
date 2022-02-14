@@ -8,7 +8,7 @@ use core_group::{
 };
 use tls_codec::Serialize;
 
-use super::*;
+use super::{errors::UnverifiedMessageError, *};
 
 impl MlsGroup {
     /// This function is used to parse messages from the DS.
@@ -23,7 +23,9 @@ impl MlsGroup {
     ) -> Result<UnverifiedMessage, MlsGroupError> {
         // Make sure we are still a member of the group
         if !self.is_active() {
-            return Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error));
+            return Err(MlsGroupError::GroupStateError(
+                MlsGroupStateError::UseAfterEviction,
+            ));
         }
 
         // Check that handshake messages are compatible with the incoming wire format policy
@@ -55,16 +57,14 @@ impl MlsGroup {
         unverified_message: UnverifiedMessage,
         signature_key: Option<&SignaturePublicKey>,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<ProcessedMessage, MlsGroupError> {
-        self.group
-            .process_unverified_message(
-                unverified_message,
-                signature_key,
-                &self.proposal_store,
-                &self.own_kpbs,
-                backend,
-            )
-            .map_err(|e| e.into())
+    ) -> Result<ProcessedMessage, UnverifiedMessageError> {
+        self.group.process_unverified_message(
+            unverified_message,
+            signature_key,
+            &self.proposal_store,
+            &self.own_kpbs,
+            backend,
+        )
     }
 
     /// Stores a standalone proposal in the internal [ProposalStore]
@@ -162,9 +162,9 @@ impl MlsGroup {
                 Ok(())
             }
             MlsGroupState::Operational => Err(MlsGroupError::NoPendingCommit),
-            MlsGroupState::Inactive => {
-                Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error))
-            }
+            MlsGroupState::Inactive => Err(MlsGroupError::GroupStateError(
+                MlsGroupStateError::UseAfterEviction,
+            )),
         }
     }
 }
