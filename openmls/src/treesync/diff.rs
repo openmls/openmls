@@ -44,7 +44,7 @@ use crate::{
     credentials::CredentialBundle,
     error::LibraryError,
     extensions::ExtensionType,
-    key_packages::{KeyPackage, KeyPackageBundlePayload, KeyPackageError},
+    key_packages::{KeyPackage, KeyPackageBundlePayload},
     messages::PathSecret,
     schedule::CommitSecret,
 };
@@ -143,14 +143,21 @@ impl<'a> TreeSyncDiff<'a> {
 
     /// Find and return the index of either the left-most blank leaf, or, if
     /// there are no blank leaves, the leaf count.
-    pub(crate) fn free_leaf_index(&self) -> Result<LeafIndex, TreeSyncDiffError> {
+    pub(crate) fn free_leaf_index(&self) -> Result<LeafIndex, LibraryError> {
         // Find a free leaf and fill it with the new key package.
         let leaf_ids = self.diff.leaves()?;
         let mut leaf_index_option = None;
         for (leaf_index, leaf_id) in leaf_ids.iter().enumerate() {
             let leaf_index: LeafIndex = u32::try_from(leaf_index)
                 .map_err(|_| LibraryError::custom("Could not convert index"))?;
-            if self.diff.node(*leaf_id)?.node().is_none() {
+            // The leaf ID must be valid, since it is one of the leaves of the tree
+            if self
+                .diff
+                .node(*leaf_id)
+                .map_err(|_| LibraryError::custom("Expected a valid leaf ID"))?
+                .node()
+                .is_none()
+            {
                 leaf_index_option = Some(leaf_index);
                 break;
             }
@@ -171,29 +178,40 @@ impl<'a> TreeSyncDiff<'a> {
         &mut self,
         leaf_node: KeyPackage,
         backend: &impl OpenMlsCrypto,
-    ) -> Result<LeafIndex, TreeSyncDiffError> {
-        let node = Node::LeafNode(LeafNode::new(leaf_node, backend).map_err(|e| {
-            if let KeyPackageError::CryptoError(e) = e {
-                TreeSyncDiffError::CryptoError(e)
-            } else {
-                TreeSyncDiffError::LibraryError(LibraryError::custom("key package error"))
-            }
-        })?);
+    ) -> Result<LeafIndex, TreeSyncAddLeaf> {
+        let node = Node::LeafNode(LeafNode::new(leaf_node, backend)?);
         // Find a free leaf and fill it with the new key package.
         let leaf_index = self.free_leaf_index()?;
         // If the free leaf index is within the tree, put the new leaf there,
         // otherwise extend the tree.
         if leaf_index < self.leaf_count() {
-            self.diff.replace_leaf(leaf_index, node.into())?;
+            self.diff
+                .replace_leaf(leaf_index, node.into())
+                // We know the leaf index is in the tree, so replacing it should not fail
+                .map_err(|_| LibraryError::custom("Could not replace the leaf"))?;
         } else {
-            self.diff.add_leaf(TreeSyncNode::blank(), node.into())?;
+            self.diff
+                .add_leaf(TreeSyncNode::blank(), node.into())
+                .map_err(|_| TreeSyncAddLeaf::TreeFull)?;
         }
         // Add new unmerged leaves entry to all nodes in direct path. Also, wipe
         // the cached tree hash.
-        for node_id in self.diff.direct_path(leaf_index)? {
-            let tsn = self.diff.node_mut(node_id)?;
+        for node_id in self
+            .diff
+            .direct_path(leaf_index)
+            // We checked the leaf index is in the tree
+            .map_err(|_| LibraryError::custom("Expected leaf index to be in tree"))?
+        {
+            // We know that the nodes from the direct path are in the tree
+            let tsn = self
+                .diff
+                .node_mut(node_id)
+                .map_err(|_| LibraryError::custom("Expected a node"))?;
             if let Some(ref mut node) = tsn.node_mut() {
-                let pn = node.as_parent_node_mut()?;
+                // We know that nodes in the direct path are always parent nodes
+                let pn = node
+                    .as_parent_node_mut()
+                    .map_err(|_| LibraryError::custom("Expected a parent node"))?;
                 pn.add_unmerged_leaf(leaf_index);
             }
             tsn.erase_tree_hash();
@@ -283,6 +301,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// secrets.
     ///
     /// Returns an error if the `sender_leaf_index` is outside of the tree.
+    /// TODO #804
     pub(crate) fn apply_received_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -290,31 +309,28 @@ impl<'a> TreeSyncDiff<'a> {
         sender_leaf_index: LeafIndex,
         key_package: KeyPackage,
         path: Vec<ParentNode>,
-    ) -> Result<(), TreeSyncDiffError> {
+    ) -> Result<(), ApplyUpdatePathError> {
         let parent_hash =
             self.process_update_path(backend, ciphersuite, sender_leaf_index, path)?;
 
         // Verify the parent hash.
         let phe = key_package
             .extension_with_type(ExtensionType::ParentHash)
-            .ok_or(TreeSyncDiffError::MissingParentHash)?;
+            .ok_or(ApplyUpdatePathError::MissingParentHash)?;
         let key_package_parent_hash = phe
             .as_parent_hash_extension()
             .map_err(|_| LibraryError::custom("no parent hash extension"))?
             .parent_hash();
         if key_package_parent_hash != parent_hash {
-            return Err(TreeSyncDiffError::ParentHashMismatch);
+            return Err(ApplyUpdatePathError::ParentHashMismatch);
         };
 
         // Replace the leaf.
-        let node = Node::LeafNode(LeafNode::new(key_package, backend.crypto()).map_err(|e| {
-            if let KeyPackageError::CryptoError(e) = e {
-                TreeSyncDiffError::CryptoError(e)
-            } else {
-                TreeSyncDiffError::LibraryError(LibraryError::custom("key package error"))
-            }
-        })?);
-        self.diff.replace_leaf(sender_leaf_index, node.into())?;
+        let node = Node::LeafNode(LeafNode::new(key_package, backend.crypto())?);
+        self.diff
+            .replace_leaf(sender_leaf_index, node.into())
+            // We assume the sender leaf is in the tree
+            .map_err(|_| LibraryError::custom("Expected sender leaf to be in the tree"))?;
         Ok(())
     }
 
@@ -324,13 +340,14 @@ impl<'a> TreeSyncDiff<'a> {
     ///
     /// Returns the parent hash of the leaf at `leaf_index`. Returns an error if
     /// the target leaf is outside of the tree.
+    /// TODO #804
     fn process_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
         leaf_index: LeafIndex,
         mut path: Vec<ParentNode>,
-    ) -> Result<Vec<u8>, TreeSyncDiffError> {
+    ) -> Result<Vec<u8>, LibraryError> {
         // Compute the parent hash.
         let parent_hash = self.set_parent_hashes(backend, ciphersuite, &mut path, leaf_index)?;
         let direct_path: Vec<TreeSyncNode> = path
@@ -339,8 +356,11 @@ impl<'a> TreeSyncDiff<'a> {
             .collect();
 
         // Set the direct path. Note, that the nodes here don't have a tree hash
+        // TODO #804
         // set.
-        self.diff.set_direct_path(leaf_index, direct_path)?;
+        self.diff
+            .set_direct_path(leaf_index, direct_path)
+            .map_err(|_| LibraryError::custom("Expected the leaf index to be in the tree"))?;
         Ok(parent_hash)
     }
 
@@ -452,7 +472,7 @@ impl<'a> TreeSyncDiff<'a> {
         ciphersuite: &Ciphersuite,
         path: &mut [ParentNode],
         leaf_index: LeafIndex,
-    ) -> Result<Vec<u8>, TreeSyncDiffError> {
+    ) -> Result<Vec<u8>, LibraryError> {
         // If the path is empty, return a zero-length string. This is the case
         // when the tree has only one leaf.
         if path.is_empty() {
@@ -464,9 +484,7 @@ impl<'a> TreeSyncDiff<'a> {
         let mut copath_resolutions = self.copath_resolutions(leaf_index, &HashSet::new())?;
         // There should be as many copath resolutions as nodes in the direct
         // path.
-        if path.len() != copath_resolutions.len() {
-            return Err(TreeSyncDiffError::PathLengthError);
-        }
+        debug_assert_eq!(path.len(), copath_resolutions.len());
         // We go through the nodes in the direct path in reverse order and get
         // the corresponding copath resolution for each node.
         let mut previous_parent_hash = vec![];
@@ -581,8 +599,11 @@ impl<'a> TreeSyncDiff<'a> {
         &self,
         leaf_index: LeafIndex,
         excluded_indices: &HashSet<&LeafIndex>,
-    ) -> Result<Vec<Vec<HpkePublicKey>>, TreeSyncDiffError> {
-        let leaf = self.diff.leaf(leaf_index)?;
+    ) -> Result<Vec<Vec<HpkePublicKey>>, LibraryError> {
+        let leaf = self
+            .diff
+            .leaf(leaf_index)
+            .map_err(|_| LibraryError::custom("Expected leaf to be in tree"))?;
 
         // If we're the only node in the tree, there's no copath.
         if leaf == self.diff.root() {
@@ -592,8 +613,13 @@ impl<'a> TreeSyncDiff<'a> {
         // We want the full path here, including the leaf itself, but not the
         // root.
         let mut full_path = vec![leaf];
-        let mut direct_path = self.diff.direct_path(leaf_index)?;
+        let mut direct_path = self
+            .diff
+            .direct_path(leaf_index)
+            // We know the leaf index is in the tree
+            .map_err(|_| LibraryError::custom("Expected leaf index to be in tree"))?;
         if !direct_path.is_empty() {
+            // Remove root
             direct_path.pop();
         }
         full_path.append(&mut direct_path);
@@ -601,7 +627,11 @@ impl<'a> TreeSyncDiff<'a> {
         let mut copath_resolutions = Vec::new();
         for node_id in &full_path {
             // If sibling is not a blank, return its HpkePublicKey.
-            let sibling_id = self.diff.sibling(*node_id)?;
+            let sibling_id = self
+                .diff
+                .sibling(*node_id)
+                // The root should not be there anymore, hence sibling cannot fail
+                .map_err(|_| LibraryError::custom("Expected root to be removed"))?;
             let resolution = self.resolution(sibling_id, excluded_indices)?;
             copath_resolutions.push(resolution);
         }

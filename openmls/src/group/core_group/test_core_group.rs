@@ -1,23 +1,19 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
-    crypto::OpenMlsCrypto,
-    key_store::OpenMlsKeyStore,
-    types::{CryptoError, HpkeCiphertext},
-    OpenMlsCryptoProvider,
+    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, types::HpkeCiphertext, OpenMlsCryptoProvider,
 };
 use tls_codec::Serialize;
 
 use crate::{
-    binary_tree::MlsBinaryTreeDiffError,
     ciphersuite::{hash_ref::KeyPackageRef, signable::Signable, AeadNonce},
     credentials::*,
     framing::*,
-    group::*,
+    group::{errors::StageCommitError, *},
     key_packages::*,
     messages::*,
     schedule::psk::*,
     test_utils::*,
-    treesync::{errors::TreeSyncDiffError, treekem::TreeKemError},
+    treesync::errors::ApplyUpdatePathError,
 };
 
 #[apply(ciphersuites_and_backends)]
@@ -377,9 +373,7 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         alice_group.stage_commit(&broken_plaintext, &proposal_store, &[], backend);
     assert_eq!(
         staged_commit_res.expect_err("Successful processing of a broken commit."),
-        CoreGroupError::TreeKemError(TreeKemError::PathSecretError(
-            PathSecretError::DecryptionError(CryptoError::HpkeDecryptionError)
-        ))
+        StageCommitError::UpdatePathError(ApplyUpdatePathError::UnableToDecrypt)
     );
 }
 
@@ -685,12 +679,7 @@ fn test_own_commit_processing(
     let error = alice_group
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect_err("no error while processing own commit");
-    assert_eq!(
-        error,
-        CoreGroupError::TreeKemError(TreeKemError::TreeSyncDiffError(
-            TreeSyncDiffError::TreeDiffError(MlsBinaryTreeDiffError::SameLeafError)
-        ))
-    );
+    assert_eq!(error, StageCommitError::OwnCommit);
 }
 
 fn setup_client(

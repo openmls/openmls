@@ -10,7 +10,7 @@ use openmls::{prelude::*, prelude_test::*};
 use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::OpenMlsCryptoProvider;
 use serde::{self, Serialize};
-use std::{collections::HashMap, convert::TryFrom, fs::File, io::Write, sync::Mutex};
+use std::{collections::HashMap, convert::TryFrom, fmt::Display, fs::File, io::Write, sync::Mutex};
 use tonic::{transport::Server, Request, Response, Status};
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -77,7 +77,7 @@ impl MlsClientImpl {
     }
 }
 
-fn into_status(e: MlsGroupError) -> Status {
+fn into_status<E: Display>(e: E) -> Status {
     let message = "mls group error ".to_string() + &e.to_string();
     tonic::Status::new(tonic::Code::Aborted, message)
 }

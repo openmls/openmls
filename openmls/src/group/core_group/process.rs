@@ -1,5 +1,7 @@
 use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 
+use crate::group::mls_group::errors::UnverifiedMessageError;
+
 use super::{proposals::ProposalStore, *};
 
 impl CoreGroup {
@@ -105,10 +107,15 @@ impl CoreGroup {
         proposal_store: &ProposalStore,
         own_kpbs: &[KeyPackageBundle],
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<ProcessedMessage, CoreGroupError> {
+    ) -> Result<ProcessedMessage, UnverifiedMessageError> {
         // Add the context to the message and verify the membership tag if necessary.
         // If the message is older than the current epoch, we need to fetch the correct secret tree first.
-        let message_secrets = self.message_secrets_mut(unverified_message.epoch())?;
+        let message_secrets = self
+            .message_secrets_mut(unverified_message.epoch())
+            .map_err(|e| match e {
+                SecretTreeError::TooDistantInThePast => UnverifiedMessageError::NoPastEpochData,
+                _ => LibraryError::custom("Unexpected return value").into(),
+            })?;
 
         // Checks the following semantic validation:
         //  - ValSem008
@@ -116,14 +123,16 @@ impl CoreGroup {
             unverified_message,
             message_secrets,
             backend,
-        )?;
+        )
+        .map_err(|_| UnverifiedMessageError::InvalidMembershipTag)?;
 
         match context_plaintext {
             UnverifiedContextMessage::Group(unverified_message) => {
                 // Checks the following semantic validation:
                 //  - ValSem010
-                let verified_member_message =
-                    unverified_message.into_verified(backend, signature_key)?;
+                let verified_member_message = unverified_message
+                    .into_verified(backend, signature_key)
+                    .map_err(|_| UnverifiedMessageError::InvalidSignature)?;
 
                 Ok(match verified_member_message.plaintext().content() {
                     MlsPlaintextContentType::Application(application_message) => {
@@ -180,10 +189,11 @@ impl CoreGroup {
             UnverifiedContextMessage::Preconfigured(external_message) => {
                 // Signature verification
                 if let Some(signature_public_key) = signature_key {
-                    let _verified_external_message =
-                        external_message.into_verified(backend, signature_public_key)?;
+                    let _verified_external_message = external_message
+                        .into_verified(backend, signature_public_key)
+                        .map_err(|_| UnverifiedMessageError::InvalidSignature)?;
                 } else {
-                    return Err(CoreGroupError::NoSignatureKey);
+                    return Err(UnverifiedMessageError::MissingSignatureKey);
                 }
 
                 // We don't support external messages from preconfigured senders yet

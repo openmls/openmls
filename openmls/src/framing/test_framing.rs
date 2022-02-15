@@ -18,6 +18,7 @@ use crate::{
             create_commit_params::CreateCommitParams,
             proposals::{ProposalStore, QueuedProposal},
         },
+        errors::StageCommitError,
         tests::tree_printing::print_tree,
     },
     key_packages::KeyPackageBundle,
@@ -700,10 +701,7 @@ fn confirmation_tag_presence(
         .stage_commit(&create_commit_result.commit, &proposal_store, &[], backend)
         .expect_err("No error despite missing confirmation tag.");
 
-    assert_eq!(
-        err,
-        CoreGroupError::StageCommitError(StageCommitError::ConfirmationTagMissing)
-    );
+    assert_eq!(err, StageCommitError::ConfirmationTagMissing);
 }
 
 #[apply(ciphersuites_and_backends)]

@@ -65,9 +65,9 @@ impl CoreGroup {
         // Prepare the PskSecret
         let psk_secret = PskSecret::new(ciphersuite, backend, group_secrets.psks.psks()).map_err(
             |e| match e {
-                PskSecretError::LibraryError(e) => e.into(),
-                PskSecretError::TooManyKeys => WelcomeError::PskTooManyKeys,
-                PskSecretError::KeyNotFound => WelcomeError::PskNotFound,
+                PskError::LibraryError(e) => e.into(),
+                PskError::TooManyKeys => WelcomeError::PskTooManyKeys,
+                PskError::KeyNotFound => WelcomeError::PskNotFound,
             },
         )?;
 

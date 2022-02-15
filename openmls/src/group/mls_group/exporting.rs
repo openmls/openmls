@@ -20,7 +20,9 @@ impl MlsGroup {
                 .group
                 .export_secret(backend, label, context, key_length)?)
         } else {
-            Err(MlsGroupError::UseAfterEviction(UseAfterEviction::Error))
+            Err(MlsGroupError::GroupStateError(
+                MlsGroupStateError::UseAfterEviction,
+            ))
         }
     }
 

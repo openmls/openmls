@@ -429,7 +429,8 @@ impl CoreGroup {
                 epoch: self.context().epoch(),
                 sender: crate::tree::index::SecretTreeLeafIndex(self.own_leaf_index()),
             },
-            self.message_secrets_mut(mls_plaintext.epoch())?,
+            self.message_secrets_mut(mls_plaintext.epoch())
+                .map_err(MlsCiphertextError::SecretTreeError)?,
             padding_size,
         )
         .map_err(CoreGroupError::MlsCiphertextError)
@@ -464,55 +465,6 @@ impl CoreGroup {
             sender_data,
         )?)
     }
-
-    /// Set the context of the [`VerifiableMlsPlaintext`] (if it has not been
-    /// set already), verify it and return the [`MlsPlaintext`].
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn verify(
-        &self,
-        mut verifiable: VerifiableMlsPlaintext,
-        backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsPlaintext, CoreGroupError> {
-        // Verify the signature on the plaintext.
-        let tree = self.treesync();
-        let hash_ref = match verifiable.sender() {
-            Sender::Member(member_sender) => member_sender,
-            _ => return Err(CoreGroupError::SenderError(SenderError::NotAMember)),
-        };
-        let sender_index = self.sender_index(hash_ref)?;
-
-        let leaf_node = tree
-            .leaf(sender_index)
-            // It's an unknown sender either if the index is outside of the tree
-            // ...
-            .map_err(|_| MlsPlaintextError::UnknownSender)?
-            // ... or if the leaf is blank.
-            .ok_or(MlsPlaintextError::UnknownSender)?;
-        let credential = leaf_node.key_package().credential();
-        // Set the context if it has not been set already.
-        if !verifiable.has_context() {
-            verifiable.set_context(self.context().tls_serialize_detached()?);
-        }
-
-        // TODO: what about the tags?
-        verifiable
-            .verify(backend, credential)
-            .map_err(|e| MlsPlaintextError::from(e).into())
-    }
-
-    // TODO: #727 - Remove if not needed.
-    // /// Set the context of the `UnverifiedMlsPlaintext` and verify its
-    // /// membership tag.
-    // #[cfg(test)]
-    // pub(crate) fn verify_membership_tag(
-    //     &self,
-    //     backend: &impl OpenMlsCryptoProvider,
-    //     verifiable_mls_plaintext: &mut VerifiableMlsPlaintext,
-    // ) -> Result<(), CoreGroupError> {
-    //     verifiable_mls_plaintext.set_context(self.context().tls_serialize_detached()?);
-    //     Ok(verifiable_mls_plaintext
-    //         .verify_membership(backend, self.message_secrets().membership_key())?)
-    // }
 
     /// Exporter
     pub(crate) fn export_secret(
@@ -657,15 +609,11 @@ impl CoreGroup {
     pub(crate) fn message_secrets_mut<'secret, 'group: 'secret>(
         &'group mut self,
         epoch: GroupEpoch,
-    ) -> Result<&'secret mut MessageSecrets, CoreGroupError> {
+    ) -> Result<&'secret mut MessageSecrets, SecretTreeError> {
         if epoch < self.context().epoch() {
             self.message_secrets_store
                 .secrets_for_epoch_mut(epoch)
-                .ok_or({
-                    CoreGroupError::MlsCiphertextError(MlsCiphertextError::SecretTreeError(
-                        SecretTreeError::TooDistantInThePast,
-                    ))
-                })
+                .ok_or(SecretTreeError::TooDistantInThePast)
         } else {
             Ok(self.message_secrets_store.message_secrets_mut())
         }
@@ -730,12 +678,16 @@ pub(crate) fn update_confirmed_transcript_hash(
     backend: &impl OpenMlsCryptoProvider,
     mls_plaintext_commit_content: &MlsPlaintextCommitContent,
     interim_transcript_hash: &[u8],
-) -> Result<Vec<u8>, CoreGroupError> {
-    let commit_content_bytes = mls_plaintext_commit_content.tls_serialize_detached()?;
-    Ok(ciphersuite.hash(
-        backend,
-        &[interim_transcript_hash, &commit_content_bytes].concat(),
-    )?)
+) -> Result<Vec<u8>, LibraryError> {
+    let commit_content_bytes = mls_plaintext_commit_content
+        .tls_serialize_detached()
+        .map_err(LibraryError::missing_bound_check)?;
+    ciphersuite
+        .hash(
+            backend,
+            &[interim_transcript_hash, &commit_content_bytes].concat(),
+        )
+        .map_err(LibraryError::unexpected_crypto_error)
 }
 
 pub(crate) fn update_interim_transcript_hash(

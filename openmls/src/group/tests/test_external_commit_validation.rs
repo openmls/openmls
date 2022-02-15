@@ -10,16 +10,16 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::{
+    ciphersuite::signable::{Signable, Verifiable},
     config::*,
     credentials::*,
     framing::*,
-    group::errors::ExternalCommitValidationError,
+    group::errors::{ExternalCommitValidationError, StageCommitError},
     group::*,
     messages::{
         public_group_state::VerifiablePublicGroupState, AddProposal, ExternalInitProposal,
         Proposal, ProposalOrRef, ProposalType, RemoveProposal, UpdateProposal,
     },
-    prelude_test::signable::{Signable, Verifiable},
 };
 
 use super::utils::{generate_credential_bundle, generate_key_package_bundle};
@@ -196,7 +196,7 @@ fn test_valsem240(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::ExternalCommitValidationError(
+        UnverifiedMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
             ExternalCommitValidationError::NoExternalInitProposals
         ))
     );
@@ -270,7 +270,7 @@ fn test_valsem241(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::ExternalCommitValidationError(
+        UnverifiedMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
             ExternalCommitValidationError::MultipleExternalInitProposals
         ))
     );
@@ -351,7 +351,7 @@ fn test_valsem242(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::ExternalCommitValidationError(
+        UnverifiedMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
             ExternalCommitValidationError::InvalidInlineProposals
         ))
     );
@@ -485,7 +485,7 @@ fn test_valsem243(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::ExternalCommitValidationError(
+        UnverifiedMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
             ExternalCommitValidationError::InvalidInlineProposals
         ))
     );
@@ -624,7 +624,7 @@ fn test_valsem244(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::ExternalCommitValidationError(
+        UnverifiedMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
             ExternalCommitValidationError::InvalidRemoveProposal
         ))
     );
@@ -711,7 +711,7 @@ fn test_valsem245(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::ExternalCommitValidationError(
+        UnverifiedMessageError::InvalidCommit(StageCommitError::ExternalCommitValidation(
             ExternalCommitValidationError::MultipleExternalInitProposals
         ))
     );
@@ -856,12 +856,7 @@ fn test_valsem247(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     // This shows that signature verification fails if the signature is not done
     // using the credential in the path.
-    assert_eq!(
-        err,
-        MlsGroupError::Group(CoreGroupError::ValidationError(
-            ValidationError::CredentialError(CredentialError::InvalidSignature)
-        ))
-    );
+    assert_eq!(err, UnverifiedMessageError::InvalidSignature);
 
     // This shows that the credential in the original path key package is actually bob's credential.
     let content = if let MlsPlaintextContentType::Commit(commit) = original_plaintext.content() {

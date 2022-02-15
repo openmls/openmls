@@ -2,6 +2,7 @@ use thiserror::Error;
 
 use super::*;
 use crate::{binary_tree::MlsBinaryTreeDiffError, error::LibraryError};
+use tls_codec::Error as TlsCodecError;
 
 // === Public errors ===
 
@@ -18,6 +19,21 @@ pub enum PublicTreeError {
     MalformedTree,
     #[error("A parent hash was invalid.")]
     InvalidParentHash,
+}
+
+/// Apply update path error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ApplyUpdatePathError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The received update path and the derived nodes are not identical.")]
+    PathMismatch,
+    #[error("The parent hash of the ney key package is invalid.")]
+    ParentHashMismatch,
+    #[error("The parent hash of the ney key package is missing.")]
+    MissingParentHash,
+    #[error("Unable to decrypt the path node.")]
+    UnableToDecrypt,
 }
 
 // === Crate errors ===
@@ -54,6 +70,15 @@ pub enum TreeSyncSetPathError {
     LibraryError(#[from] LibraryError),
     #[error("The derived public key doesn't match the one in the tree.")]
     PublicKeyMismatch,
+}
+
+/// TreeSync set path error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum TreeSyncAddLeaf {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The tree is full, we cannot add any more leaves.")]
+    TreeFull,
 }
 
 /// TreeSync from nodes error
@@ -105,6 +130,27 @@ pub enum TreeSyncDiffError {
     DerivationError(#[from] PathSecretError),
     #[error(transparent)]
     CreationError(#[from] MlsBinaryTreeError),
+    #[error(transparent)]
+    KeyPackageError(#[from] KeyPackageError),
+}
+
+/// TreeKem error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum TreeKemError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The given path to encrypt does not have the same length as the direct path.")]
+    PathLengthError,
+    #[error("Couldn't find the path secret to encrypt for one of the new members.")]
+    PathSecretNotFound,
+    #[error(transparent)]
+    TreeSyncError(#[from] TreeSyncError),
+    #[error(transparent)]
+    TreeSyncDiffError(#[from] TreeSyncDiffError),
+    #[error(transparent)]
+    PathSecretError(#[from] PathSecretError),
+    #[error(transparent)]
+    EncodingError(#[from] TlsCodecError),
     #[error(transparent)]
     KeyPackageError(#[from] KeyPackageError),
 }

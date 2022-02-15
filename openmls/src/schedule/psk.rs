@@ -291,11 +291,11 @@ impl PskSecret {
         ciphersuite: &'static Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         psk_ids: &[PreSharedKeyId],
-    ) -> Result<Self, PskSecretError> {
+    ) -> Result<Self, PskError> {
         // Check that we don't have too many PSKs
         let num_psks = psk_ids.len();
         if num_psks > u16::MAX as usize {
-            return Err(PskSecretError::TooManyKeys);
+            return Err(PskError::TooManyKeys);
         }
         let num_psks = num_psks as u16;
 
@@ -309,7 +309,7 @@ impl PskSecret {
             ) {
                 psk_bundles.push(psk_bundle);
             } else {
-                return Err(PskSecretError::KeyNotFound);
+                return Err(PskError::KeyNotFound);
             }
         }
 

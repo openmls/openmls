@@ -452,7 +452,7 @@ fn test_valsem006(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     assert_eq!(
         err,
         MlsGroupError::Group(CoreGroupError::ValidationError(
-            ValidationError::MlsCiphertextError(MlsCiphertextError::DecryptionError)
+            ValidationError::UnableToDecrypt(MlsCiphertextError::DecryptionError)
         ))
     );
 
@@ -497,7 +497,7 @@ fn test_valsem007(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     assert_eq!(
         err,
         MlsGroupError::Group(CoreGroupError::ValidationError(
-            ValidationError::MissingMembershipTag
+            ValidationError::VerificationError(VerificationError::MissingMembershipTag)
         ))
     );
 
@@ -568,14 +568,7 @@ fn test_valsem008(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .process_unverified_message(unverified_message, None, backend)
         .expect_err("Could process unverified message despite wrong membership tag.");
 
-    assert_eq!(
-        err,
-        MlsGroupError::Group(CoreGroupError::ValidationError(
-            ValidationError::MlsPlaintextError(MlsPlaintextError::VerificationError(
-                VerificationError::InvalidMembershipTag
-            ))
-        ))
-    );
+    assert_eq!(err, UnverifiedMessageError::InvalidMembershipTag);
 
     // Positive case
     let unverified_message = bob_group
@@ -727,12 +720,7 @@ fn test_valsem010(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .process_unverified_message(unverified_message, None, backend)
         .expect_err("Could process unverified message despite wrong signature.");
 
-    assert_eq!(
-        err,
-        MlsGroupError::Group(CoreGroupError::ValidationError(
-            ValidationError::CredentialError(CredentialError::InvalidSignature)
-        ))
-    );
+    assert_eq!(err, UnverifiedMessageError::InvalidSignature);
 
     // Positive case
     let unverified_message = bob_group

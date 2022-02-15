@@ -4,6 +4,7 @@ use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
     binary_tree::LeafIndex,
+    error::LibraryError,
     framing::{Sender, SenderError},
     group::CoreGroupError,
     key_packages::KeyPackageBundle,
@@ -151,7 +152,10 @@ impl CoreGroup {
         // Extract KeyPackages from proposals
         let mut invitation_list = Vec::new();
         for add_proposal in add_proposals {
-            let leaf_index = diff.add_leaf(add_proposal.key_package().clone(), backend.crypto())?;
+            let leaf_index = diff
+                .add_leaf(add_proposal.key_package().clone(), backend.crypto())
+                // TODO #810
+                .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
             invitation_list.push((leaf_index, add_proposal.clone()))
         }
 
