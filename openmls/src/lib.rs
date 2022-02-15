@@ -20,7 +20,7 @@
 //! [MLS RFC]: https://datatracker.ietf.org/doc/draft-ietf-mls-protocol/
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(not(test), forbid(unsafe_code))]
-#![cfg_attr(not(feature = "test-utils"), warn(missing_docs))]
+// #![cfg_attr(not(feature = "test-utils"), warn(missing_docs))]
 
 // === Testing ===
 

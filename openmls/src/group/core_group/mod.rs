@@ -51,11 +51,7 @@ use crate::{ciphersuite::signable::*, messages::public_group_state::*};
 
 use log::{debug, trace};
 use openmls_traits::crypto::OpenMlsCrypto;
-use serde::{
-    de::{self, MapAccess, SeqAccess, Visitor},
-    ser::{SerializeStruct, Serializer},
-    Deserialize, Deserializer, Serialize,
-};
+use serde::{Deserialize, Serialize};
 #[cfg(test)]
 use std::convert::TryFrom;
 #[cfg(test)]

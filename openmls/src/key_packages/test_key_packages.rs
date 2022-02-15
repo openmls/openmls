@@ -2,7 +2,6 @@ use crate::test_utils::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::Deserialize;
 
-use crate::config::*;
 use crate::{extensions::*, key_packages::*};
 
 #[apply(ciphersuites_and_backends)]

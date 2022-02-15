@@ -254,12 +254,25 @@ pub type KemOutput = Vec<u8>;
 #[repr(u16)]
 #[allow(missing_docs)]
 pub enum Ciphersuite {
+    /// DH KEM x25519 | AES-GCM 128 | SHA2-256 | Ed25519
     MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 = 0x0001,
+
+    /// DH KEM P256 | AES-GCM 128 | SHA2-256 | EcDSA P256
     MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 = 0x0002,
+
+    /// DH KEM x25519 | Chacha20Poly1305 | SHA2-256 | Ed25519
     MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 = 0x0003,
+
+    /// DH KEM x448 | AES-GCM 256 | SHA2-512 | Ed448
     MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448 = 0x0004,
+
+    /// DH KEM P521 | AES-GCM 256 | SHA2-512 | EcDSA P521
     MLS10_256_DHKEMP521_AES256GCM_SHA512_P521 = 0x0005,
+
+    /// DH KEM x448 | Chacha20Poly1305 | SHA2-512 | Ed448
     MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 = 0x0006,
+
+    /// DH KEM P384 | AES-GCM 256 | SHA2-384 | EcDSA P384
     MLS10_256_DHKEMP384_AES256GCM_SHA384_P384 = 0x0007,
 }
 
@@ -340,7 +353,7 @@ impl From<Ciphersuite> for HashType {
 }
 
 impl Ciphersuite {
-    /// Get the [`HashType`] of the [`CiphersuiteName`]
+    /// Get the [`HashType`] for this [`Ciphersuite`]
     #[inline]
     pub const fn hash_algorithm(&self) -> HashType {
         match self {
@@ -356,6 +369,7 @@ impl Ciphersuite {
         }
     }
 
+    /// Get the [`SignatureScheme`] for this [`Ciphersuite`].
     #[inline]
     pub const fn signature_algorithm(&self) -> SignatureScheme {
         match self {
@@ -379,6 +393,7 @@ impl Ciphersuite {
         }
     }
 
+    /// Get the [`AeadType`] for this [`Ciphersuite`].
     #[inline]
     pub const fn aead_algorithm(&self) -> AeadType {
         match self {
@@ -394,6 +409,7 @@ impl Ciphersuite {
         }
     }
 
+    /// Get the [`HpkeKdfType`] for this [`Ciphersuite`].
     #[inline]
     pub const fn hpke_kdf_algorithm(&self) -> HpkeKdfType {
         match self {
@@ -411,6 +427,7 @@ impl Ciphersuite {
         }
     }
 
+    /// Get the [`HpkeKemType`] for this [`Ciphersuite`].
     #[inline]
     pub const fn hpke_kem_algorithm(&self) -> HpkeKemType {
         match self {
@@ -428,6 +445,7 @@ impl Ciphersuite {
         }
     }
 
+    /// Get the [`HpkeAeadType`] for this [`Ciphersuite`].
     #[inline]
     pub const fn hpke_aead_algorithm(&self) -> HpkeAeadType {
         match self {
@@ -445,6 +463,7 @@ impl Ciphersuite {
         }
     }
 
+    /// Get the [`HpkeConfig`] for this [`Ciphersuite`].
     #[inline]
     pub const fn hpke_config(&self) -> HpkeConfig {
         HpkeConfig(
@@ -472,7 +491,7 @@ impl Ciphersuite {
         self.aead_algorithm().key_size()
     }
 
-    /// Returns the length of the nonce in the AEAD.
+    /// Returns the length of the nonce of the AEAD.
     #[inline]
     pub const fn aead_nonce_length(&self) -> usize {
         self.aead_algorithm().nonce_size()

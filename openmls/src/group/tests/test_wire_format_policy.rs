@@ -6,7 +6,7 @@ use openmls_traits::OpenMlsCryptoProvider;
 use rstest::*;
 use rstest_reuse::{self, *};
 
-use crate::{config::*, credentials::*, framing::*, group::*};
+use crate::{credentials::*, framing::*, group::*};
 
 use super::utils::{generate_credential_bundle, generate_key_package_bundle};
 

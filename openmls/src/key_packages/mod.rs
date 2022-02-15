@@ -92,11 +92,7 @@ use crate::{
     },
 };
 
-use serde::{
-    de::{self, MapAccess, SeqAccess, Visitor},
-    ser::{SerializeStruct, Serializer},
-    Deserialize, Deserializer, Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 mod codec;
 pub mod errors;

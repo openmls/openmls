@@ -71,109 +71,103 @@ fn test_failed_groupinfo_decryption(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
-    for version in &[ProtocolVersion::Mls10] {
-        let epoch = GroupEpoch(123);
-        let group_id = GroupId::random(backend);
-        let tree_hash = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
-        let confirmed_transcript_hash = vec![1, 1, 1];
-        let extensions = Vec::new();
-        let confirmation_tag = ConfirmationTag(Mac {
-            mac_value: vec![1, 2, 3, 4, 5, 6, 7, 8, 9].into(),
-        });
+    let version = ProtocolVersion::Mls10;
+    let epoch = GroupEpoch(123);
+    let group_id = GroupId::random(backend);
+    let tree_hash = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
+    let confirmed_transcript_hash = vec![1, 1, 1];
+    let extensions = Vec::new();
+    let confirmation_tag = ConfirmationTag(Mac {
+        mac_value: vec![1, 2, 3, 4, 5, 6, 7, 8, 9].into(),
+    });
 
-        let alice_credential_bundle = CredentialBundle::new(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_algorithm(),
+    let alice_credential_bundle = CredentialBundle::new(
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_algorithm(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
+
+    let key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite], &alice_credential_bundle, backend, vec![])
+            .expect("An unexpected error occurred.");
+
+    let group_info = GroupInfoPayload::new(
+        group_id,
+        epoch,
+        tree_hash,
+        confirmed_transcript_hash,
+        &Vec::new(),
+        &extensions,
+        confirmation_tag,
+        &KeyPackageRef::new(
+            &key_package_bundle
+                .key_package()
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+            ciphersuite,
+            backend.crypto(),
+        )
+        .expect("An unexpected error occurred."),
+    );
+
+    // Generate key and nonce for the symmetric cipher.
+    let welcome_key = AeadKey::random(ciphersuite, backend.rand());
+    let welcome_nonce = AeadNonce::random(backend);
+
+    // Generate receiver key pair.
+    let receiver_key_pair = backend.crypto().derive_hpke_keypair(
+        ciphersuite.hpke_config(),
+        Secret::random(ciphersuite, backend, None)
+            .expect("Not enough randomness.")
+            .as_slice(),
+    );
+    let hpke_info = b"group info welcome test info";
+    let hpke_aad = b"group info welcome test aad";
+    let hpke_input = b"these should be the group secrets";
+    let mut encrypted_group_secrets = backend.crypto().hpke_seal(
+        ciphersuite.hpke_config(),
+        receiver_key_pair.public.as_slice(),
+        hpke_info,
+        hpke_aad,
+        hpke_input,
+    );
+
+    let group_info = group_info
+        .sign(backend, &alice_credential_bundle)
+        .expect("Error signing group info");
+
+    // Mess with the ciphertext by flipping the last byte.
+    flip_last_byte(&mut encrypted_group_secrets);
+
+    let broken_secrets = vec![EncryptedGroupSecrets {
+        new_member: key_package_bundle
+            .key_package
+            .hash_ref(backend.crypto())
+            .expect("Could not hash KeyPackage."),
+        encrypted_group_secrets,
+    }];
+
+    // Encrypt the group info.
+    let encrypted_group_info = welcome_key
+        .aead_seal(
             backend,
+            &group_info
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+            &[],
+            &welcome_nonce,
         )
         .expect("An unexpected error occurred.");
 
-        let key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite], &alice_credential_bundle, backend, vec![])
-                .expect("An unexpected error occurred.");
+    // Now build the welcome message.
+    let broken_welcome = Welcome::new(version, ciphersuite, broken_secrets, encrypted_group_info);
 
-        let group_info = GroupInfoPayload::new(
-            group_id,
-            epoch,
-            tree_hash,
-            confirmed_transcript_hash,
-            &Vec::new(),
-            &extensions,
-            confirmation_tag,
-            &KeyPackageRef::new(
-                &key_package_bundle
-                    .key_package()
-                    .tls_serialize_detached()
-                    .expect("An unexpected error occurred."),
-                ciphersuite,
-                backend.crypto(),
-            )
-            .expect("An unexpected error occurred."),
-        );
+    let error = CoreGroup::new_from_welcome(broken_welcome, None, key_package_bundle, backend)
+        .expect_err("Creation of core group from a broken Welcome was successful.");
 
-        // Generate key and nonce for the symmetric cipher.
-        let welcome_key = AeadKey::random(ciphersuite, backend.rand());
-        let welcome_nonce = AeadNonce::random(backend);
-
-        // Generate receiver key pair.
-        let receiver_key_pair = backend.crypto().derive_hpke_keypair(
-            ciphersuite.hpke_config(),
-            Secret::random(ciphersuite, backend, None)
-                .expect("Not enough randomness.")
-                .as_slice(),
-        );
-        let hpke_info = b"group info welcome test info";
-        let hpke_aad = b"group info welcome test aad";
-        let hpke_input = b"these should be the group secrets";
-        let mut encrypted_group_secrets = backend.crypto().hpke_seal(
-            ciphersuite.hpke_config(),
-            receiver_key_pair.public.as_slice(),
-            hpke_info,
-            hpke_aad,
-            hpke_input,
-        );
-
-        let group_info = group_info
-            .sign(backend, &alice_credential_bundle)
-            .expect("Error signing group info");
-
-        // Mess with the ciphertext by flipping the last byte.
-        flip_last_byte(&mut encrypted_group_secrets);
-
-        let broken_secrets = vec![EncryptedGroupSecrets {
-            new_member: key_package_bundle
-                .key_package
-                .hash_ref(backend.crypto())
-                .expect("Could not hash KeyPackage."),
-            encrypted_group_secrets,
-        }];
-
-        // Encrypt the group info.
-        let encrypted_group_info = welcome_key
-            .aead_seal(
-                backend,
-                &group_info
-                    .tls_serialize_detached()
-                    .expect("An unexpected error occurred."),
-                &[],
-                &welcome_nonce,
-            )
-            .expect("An unexpected error occurred.");
-
-        // Now build the welcome message.
-        let broken_welcome = Welcome::new(
-            *version,
-            ciphersuite,
-            broken_secrets,
-            encrypted_group_info.clone(),
-        );
-
-        let error = CoreGroup::new_from_welcome(broken_welcome, None, key_package_bundle, backend)
-            .expect_err("Creation of core group from a broken Welcome was successful.");
-
-        assert_eq!(error, WelcomeError::UnableToDecrypt)
-    }
+    assert_eq!(error, WelcomeError::UnableToDecrypt)
 }
 
 /// Test what happens if the KEM ciphertext for the receiver in the UpdatePath

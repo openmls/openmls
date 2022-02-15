@@ -11,7 +11,6 @@ use rstest_reuse::{self, *};
 
 use crate::{
     ciphersuite::signable::{Signable, Verifiable},
-    config::*,
     credentials::*,
     framing::*,
     group::errors::{ExternalCommitValidationError, StageCommitError},

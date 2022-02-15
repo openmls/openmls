@@ -9,7 +9,7 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::{
-    ciphersuite::hash_ref::KeyPackageRef, config::*, credentials::*, framing::*,
+    ciphersuite::hash_ref::KeyPackageRef, credentials::*, framing::*,
     group::errors::FramingValidationError, group::*, key_packages::*,
 };
 

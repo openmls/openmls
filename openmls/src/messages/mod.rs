@@ -93,7 +93,7 @@ impl Welcome {
     ) -> Self {
         Self {
             version,
-            cipher_suite: cipher_suite,
+            cipher_suite,
             secrets: secrets.into(),
             encrypted_group_info: encrypted_group_info.into(),
         }

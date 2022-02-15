@@ -14,9 +14,7 @@ use crate::{
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{
-    crypto::OpenMlsCrypto, random::OpenMlsRand, types::SignatureScheme, OpenMlsCryptoProvider,
-};
+use openmls_traits::{random::OpenMlsRand, types::SignatureScheme, OpenMlsCryptoProvider};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerializeTrait};
 
@@ -163,6 +161,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
 
 #[test]
 fn write_test_vectors() {
+    use openmls_traits::crypto::OpenMlsCrypto;
     let mut tests = Vec::new();
     const NUM_TESTS: usize = 100;
 

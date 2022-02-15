@@ -906,7 +906,7 @@ impl ResumptionSecret {
 }
 
 // Get a ciphertext sample of `hash_length` from the ciphertext.
-fn ciphertext_sample<'a>(ciphersuite: Ciphersuite, ciphertext: &'a [u8]) -> &'a [u8] {
+fn ciphertext_sample(ciphersuite: Ciphersuite, ciphertext: &[u8]) -> &[u8] {
     let sample_length = ciphersuite.hash_length();
     log::debug!("Getting ciphertext sample of length {:?}", sample_length);
     if ciphertext.len() <= sample_length {

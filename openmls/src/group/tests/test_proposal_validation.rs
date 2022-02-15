@@ -9,7 +9,7 @@ use rstest_reuse::{self, *};
 use tls_codec::Serialize;
 
 use crate::{
-    config::*, credentials::*, framing::MlsMessageOut, group::errors::*, group::*, key_packages::*,
+    credentials::*, framing::MlsMessageOut, group::errors::*, group::*, key_packages::*,
     messages::Welcome,
 };
 

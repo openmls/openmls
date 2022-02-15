@@ -13,11 +13,7 @@ use openmls_traits::{
     types::{AeadType, SignatureScheme},
     OpenMlsCryptoProvider,
 };
-pub(crate) use serde::{
-    de::{self, MapAccess, SeqAccess, Visitor},
-    ser::{SerializeStruct, Serializer},
-    Deserialize, Deserializer, Serialize,
-};
+pub(crate) use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8};
 

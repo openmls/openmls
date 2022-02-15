@@ -23,7 +23,6 @@
 
 use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, *},
-    config::*,
     credentials::*,
     framing::*,
     group::*,
@@ -444,7 +443,7 @@ impl MlsGroupTestSetup {
         let group = Group {
             group_id: group_id.clone(),
             members: member_ids,
-            ciphersuite: ciphersuite.clone(),
+            ciphersuite,
             group_config: self.default_mgc.clone(),
             public_tree,
             exporter_secret,

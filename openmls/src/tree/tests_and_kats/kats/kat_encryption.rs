@@ -98,7 +98,7 @@ use crate::{messages::proposals::RemoveProposal, tree::index::SecretTreeLeafInde
 
 use crate::ciphersuite::Secret;
 
-use openmls_traits::{crypto::OpenMlsCrypto, types::SignatureScheme, OpenMlsCryptoProvider};
+use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};
 
 use itertools::izip;
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -443,6 +443,7 @@ pub fn generate_test_vector(
 
 #[test]
 fn write_test_vectors() {
+    use openmls_traits::crypto::OpenMlsCrypto;
     let mut tests = Vec::new();
     const NUM_LEAVES: u32 = 7;
     const NUM_GENERATIONS: u32 = 5;

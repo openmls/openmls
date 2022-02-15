@@ -1,11 +1,8 @@
 //! This config contains all structs, enums and functions to configure MLS.
 
-use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use std::{convert::TryFrom, env, fmt, fs::File, io::BufReader};
+use std::{convert::TryFrom, fmt};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
-
-use crate::ciphersuite::Ciphersuite;
 
 pub mod errors;
 pub use errors::ConfigError;
