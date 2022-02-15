@@ -311,6 +311,13 @@ impl UpdatePath {
     pub fn set_leaf_key_package(&mut self, key_package: KeyPackage) {
         self.leaf_key_package = key_package
     }
+
+    #[cfg(test)]
+    /// Remove and return the last node in the update path. Returns `None` if
+    /// the path is empty.
+    pub fn pop(&mut self) -> Option<UpdatePathNode> {
+        self.nodes.pop()
+    }
 }
 
 implement_error! {
