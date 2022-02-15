@@ -12,13 +12,12 @@ use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext, OpenMlsCrypto
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    binary_tree::LeafIndex,
+    binary_tree::{LeafIndex, OutOfBoundsError},
     ciphersuite::{hash_ref::KeyPackageRef, Ciphersuite, HpkePublicKey},
     config::ProtocolVersion,
     error::LibraryError,
     key_packages::KeyPackage,
     messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
-    prelude_test::OutOfBoundsError::*,
     schedule::{CommitSecret, JoinerSecret, PreSharedKeys},
 };
 
@@ -93,8 +92,8 @@ impl<'a> TreeSyncDiff<'a> {
         let direct_path_length =
             self.direct_path_len(params.sender_leaf_index)
                 .map_err(|e| match e {
-                    LibraryError(e) => ApplyUpdatePathError::LibraryError(e),
-                    IndexOutOfBounds => ApplyUpdatePathError::MissingSender,
+                    OutOfBoundsError::LibraryError(e) => ApplyUpdatePathError::LibraryError(e),
+                    OutOfBoundsError::IndexOutOfBounds => ApplyUpdatePathError::MissingSender,
                 })?;
         if direct_path_length != params.update_path.len() {
             return Err(ApplyUpdatePathError::PathLengthMismatch);
