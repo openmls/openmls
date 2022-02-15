@@ -5,7 +5,8 @@
 
 use crate::config::{Config, ConfigError, ProtocolVersion};
 use ::tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
-use openmls_traits::types::{CryptoError, HpkeAeadType, HpkeConfig, HpkeKdfType, HpkeKemType};
+pub use openmls_traits::types::CiphersuiteName;
+use openmls_traits::types::{CryptoError, HpkeConfig};
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     random::OpenMlsRand,
@@ -31,13 +32,11 @@ mod ser;
 mod signature;
 
 // Public
-pub mod ciphersuites;
 pub mod hash_ref;
 pub mod signable;
 
 // Crate
 pub(crate) use aead::*;
-pub(crate) use ciphersuites::*;
 pub(crate) use hpke::*;
 pub(crate) use mac::*;
 pub(crate) use reuse_guard::*;
@@ -60,12 +59,6 @@ pub(crate) const REUSE_GUARD_BYTES: usize = 4;
 #[derive(Debug)]
 pub struct Ciphersuite {
     name: CiphersuiteName,
-    signature_scheme: SignatureScheme,
-    hash: HashType,
-    aead: AeadType,
-    hpke_kem: HpkeKemType,
-    hpke_kdf: HpkeKdfType,
-    hpke_aead: HpkeAeadType,
 }
 
 impl std::fmt::Display for Ciphersuite {
@@ -81,12 +74,6 @@ impl Clone for Ciphersuite {
         let name = self.name;
         Ciphersuite {
             name,
-            signature_scheme: SignatureScheme::from(name),
-            hash: hash_from_suite(&name),
-            aead: aead_from_suite(&name),
-            hpke_kem: self.hpke_kem,
-            hpke_kdf: hpke_kdf_from_suite(&name),
-            hpke_aead: hpke_aead_from_suite(&name),
         }
     }
 }
@@ -115,12 +102,6 @@ impl Ciphersuite {
     pub(crate) fn new_from_supported(name: CiphersuiteName) -> Self {
         Ciphersuite {
             name,
-            signature_scheme: SignatureScheme::from(name),
-            hash: hash_from_suite(&name),
-            aead: aead_from_suite(&name),
-            hpke_kem: kem_from_suite(&name),
-            hpke_kdf: hpke_kdf_from_suite(&name),
-            hpke_aead: hpke_aead_from_suite(&name),
         }
     }
 
@@ -130,19 +111,27 @@ impl Ciphersuite {
     }
 
     /// Get the signature scheme of this ciphersuite.
+    #[inline]
     pub fn signature_scheme(&self) -> SignatureScheme {
-        self.signature_scheme
+        SignatureScheme::from(self.name)
     }
 
     /// Get the name of this ciphersuite.
+    #[inline]
     pub fn name(&self) -> CiphersuiteName {
         self.name
     }
 
-    /// Get the AEAD mode
-    #[cfg(any(test, feature = "test-utils"))]
+    /// Get the AEAD algorithm of the cipher suite
+    #[inline]
     pub fn aead(&self) -> AeadType {
-        self.aead
+        AeadType::from(self.name)
+    }
+
+    /// Get the AEAD algorithm of the cipher suite
+    #[inline]
+    pub fn hash_algorithm(&self) -> HashType {
+        HashType::from(self.name)
     }
 
     /// Hash `payload` and return the digest.
@@ -151,38 +140,38 @@ impl Ciphersuite {
         backend: &impl OpenMlsCryptoProvider,
         payload: &[u8],
     ) -> Result<Vec<u8>, CryptoError> {
-        backend.crypto().hash(self.hash, payload)
+        backend.crypto().hash(self.hash_algorithm(), payload)
     }
 
     /// Get the length of the used hash algorithm.
     pub(crate) fn hash_length(&self) -> usize {
-        self.hash.size()
+        self.hash_algorithm().size()
     }
 
     /// Get the length of the AEAD tag.
     pub(crate) fn mac_length(&self) -> usize {
-        self.aead.tag_size()
+        self.aead().tag_size()
     }
 
     /// Returns the key size of the used AEAD.
     pub(crate) fn aead_key_length(&self) -> usize {
-        self.aead.key_size()
+        self.aead().key_size()
     }
 
     /// Returns the length of the nonce in the AEAD.
     pub(crate) const fn aead_nonce_length(&self) -> usize {
-        self.aead.nonce_size()
+        self.name.aead_algorithm().nonce_size()
     }
 
     /// Build an [`HpkeConfi`] for this cipher suite.
     pub(crate) fn hpke_config(&self) -> HpkeConfig {
-        HpkeConfig(self.hpke_kem, self.hpke_kdf, self.hpke_aead)
+        HpkeConfig(self.name.into(), self.name.into(), self.name.into())
     }
 }
 
 /// Compare two byte slices in a way that's hopefully not optimised out by the
 /// compiler.
-#[inline(always)]
+#[inline(never)]
 fn equal_ct(a: &[u8], b: &[u8]) -> bool {
     let mut diff = 0u8;
     for (l, r) in a.iter().zip(b.iter()) {

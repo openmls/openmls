@@ -230,19 +230,6 @@ impl fmt::Display for ProtocolVersion {
     }
 }
 
-impl CiphersuiteName {
-    /// Returns `true` if the ciphersuite is supported in the current
-    /// configuration.
-    pub(crate) fn is_supported(&self) -> bool {
-        for suite in CONFIG.ciphersuites.iter() {
-            if self == &suite.name() {
-                return true;
-            }
-        }
-        false
-    }
-}
-
 /// Check if all extension and proposal types are supported.
 pub(crate) fn check_required_capabilities_support(
     required_capabilities: &RequiredCapabilitiesExtension,

@@ -128,7 +128,7 @@ impl Secret {
 
         Ok(Self {
             value: backend.crypto().hkdf_extract(
-                self.ciphersuite.hash,
+                self.ciphersuite.hash_algorithm(),
                 self.value.as_slice(),
                 ikm.value.as_slice(),
             )?,
@@ -146,7 +146,12 @@ impl Secret {
     ) -> Result<Self, CryptoError> {
         let key = backend
             .crypto()
-            .hkdf_expand(self.ciphersuite.hash, &self.value, info, okm_len)
+            .hkdf_expand(
+                self.ciphersuite.hash_algorithm(),
+                &self.value,
+                info,
+                okm_len,
+            )
             .map_err(|_| CryptoError::CryptoLibraryError)?;
         if key.is_empty() {
             return Err(CryptoError::InvalidLength);

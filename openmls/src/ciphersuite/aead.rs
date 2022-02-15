@@ -21,7 +21,7 @@ impl AeadKey {
     pub(crate) fn from_secret(secret: Secret) -> Self {
         log::trace!("AeadKey::from_secret with {}", secret.ciphersuite);
         AeadKey {
-            aead_mode: secret.ciphersuite.aead,
+            aead_mode: secret.ciphersuite.aead(),
             value: secret.value,
         }
     }

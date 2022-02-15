@@ -1,15 +1,11 @@
 //! Test utilities
 #![allow(dead_code)]
 
-pub use openmls_traits::OpenMlsCryptoProvider;
+pub use openmls_traits::{types::CiphersuiteName, OpenMlsCryptoProvider};
 pub use rstest::*;
 pub use rstest_reuse::{self, *};
 
-pub use crate::{
-    ciphersuite::{ciphersuites::CiphersuiteName, Ciphersuite},
-    config::Config,
-    utils::*,
-};
+pub use crate::{ciphersuite::Ciphersuite, config::Config, utils::*};
 
 use serde::{self, de::DeserializeOwned, Serialize};
 use std::{

@@ -66,8 +66,8 @@ impl HashReference {
         backend: &impl OpenMlsCrypto,
     ) -> Result<Self, CryptoError> {
         let okm = backend.hkdf_expand(
-            ciphersuite.hash,
-            &backend.hkdf_extract(ciphersuite.hash, &[], value)?,
+            ciphersuite.hash_algorithm(),
+            &backend.hkdf_extract(ciphersuite.hash_algorithm(), &[], value)?,
             LABEL,
             VALUE_LEN,
         )?;
