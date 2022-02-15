@@ -6,6 +6,9 @@ use tls_codec::Error as TlsCodecError;
 
 // === Public errors ===
 
+// Re-exporting OutOfBoundsError from the ABinaryTree
+pub use crate::binary_tree::OutOfBoundsError;
+
 /// Public tree error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum PublicTreeError {
@@ -26,6 +29,10 @@ pub enum PublicTreeError {
 pub enum ApplyUpdatePathError {
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    #[error(
+        "The length of the received update path and that of the sender's direct path do not match."
+    )]
+    PathLengthMismatch,
     #[error("The received update path and the derived nodes are not identical.")]
     PathMismatch,
     #[error("The parent hash of the ney key package is invalid.")]
@@ -34,6 +41,8 @@ pub enum ApplyUpdatePathError {
     MissingParentHash,
     #[error("Unable to decrypt the path node.")]
     UnableToDecrypt,
+    #[error("Unable to find sender in tree.")]
+    MissingSender,
 }
 
 // === Crate errors ===
@@ -132,6 +141,8 @@ pub enum TreeSyncDiffError {
     CreationError(#[from] MlsBinaryTreeError),
     #[error(transparent)]
     KeyPackageError(#[from] KeyPackageError),
+    #[error(transparent)]
+    UnknownMember(#[from] OutOfBoundsError),
 }
 
 /// TreeKem error

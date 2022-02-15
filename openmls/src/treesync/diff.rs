@@ -935,10 +935,7 @@ impl<'a> TreeSyncDiff<'a> {
     }
 
     /// Get the length of the direct path of the given [`LeafIndex`].
-    pub(super) fn direct_path_len(
-        &self,
-        leaf_index: LeafIndex,
-    ) -> Result<usize, TreeSyncDiffError> {
+    pub(super) fn direct_path_len(&self, leaf_index: LeafIndex) -> Result<usize, OutOfBoundsError> {
         Ok(self.diff.direct_path(leaf_index)?.len())
     }
 }

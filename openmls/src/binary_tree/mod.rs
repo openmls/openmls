@@ -14,6 +14,8 @@ use self::array_representation::diff::{AbDiff, StagedAbDiff};
 /// representation with a feature-flag.
 pub(crate) type MlsBinaryTree<Node> = ABinaryTree<Node>;
 
+pub use self::array_representation::diff::OutOfBoundsError;
+
 pub(crate) type MlsBinaryTreeDiff<'a, Node> = AbDiff<'a, Node>;
 pub(crate) type StagedMlsBinaryTreeDiff<Node> = StagedAbDiff<Node>;
 
