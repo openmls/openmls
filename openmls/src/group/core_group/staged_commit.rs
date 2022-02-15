@@ -102,10 +102,9 @@ impl CoreGroup {
             sender,
         )
         .map_err(|e| match e {
-            ProposalQueueError::ProposalNotFound => StageCommitError::MissingProposal,
-            ProposalQueueError::SelfRemoval => StageCommitError::AttemptedSelfRemoval,
-            ProposalQueueError::LibraryError(e) => StageCommitError::LibraryError(e),
-            ProposalQueueError::SenderError(_) => StageCommitError::InvalidSender,
+            FromCommittedProposalsError::LibraryError(e) => StageCommitError::LibraryError(e),
+            FromCommittedProposalsError::ProposalNotFound => StageCommitError::MissingProposal,
+            FromCommittedProposalsError::SelfRemoval => StageCommitError::AttemptedSelfRemoval,
         })?;
 
         let commit_update_key_package = commit

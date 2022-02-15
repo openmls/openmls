@@ -8,14 +8,16 @@ use tls_codec::{Deserialize, Serialize};
 use rstest::*;
 use rstest_reuse::{self, *};
 
+use crate::group::*;
 use crate::{
     config::*,
     credentials::*,
     framing::*,
-    group::*,
+    group::errors::StageCommitError,
+    group::mls_group::UnverifiedMessageError,
     messages::{PathSecretError, ProposalOrRef},
     prelude_test::signable::{Signable, Verifiable},
-    treesync::treekem::TreeKemError,
+    treesync::ApplyUpdatePathError,
 };
 
 use super::utils::{generate_credential_bundle, generate_key_package_bundle};
@@ -211,15 +213,13 @@ fn test_valsem200(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .parse_message(message_in, backend)
         .expect("Could not parse message.");
 
-    let err = bob_group
+    let err: UnverifiedMessageError = bob_group
         .process_unverified_message(unverified_message, None, backend)
         .expect_err("Could process unverified message despite self remove.");
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::StageCommitError(
-            StageCommitError::AttemptedSelfRemoval
-        ))
+        UnverifiedMessageError::InvalidCommit(StageCommitError::AttemptedSelfRemoval)
     );
 
     // Positive case
@@ -264,9 +264,7 @@ fn test_valsem201(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::StageCommitError(
-            StageCommitError::RequiredPathNotFound
-        ))
+        UnverifiedMessageError::InvalidCommit(StageCommitError::RequiredPathNotFound)
     );
 
     let original_update_plaintext =
@@ -348,9 +346,7 @@ fn test_valsem201(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::StageCommitError(
-            StageCommitError::RequiredPathNotFound
-        ))
+        UnverifiedMessageError::InvalidCommit(StageCommitError::RequiredPathNotFound)
     );
 
     let original_remove_plaintext =
@@ -521,7 +517,9 @@ fn test_valsem202(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::TreeKemError(TreeKemError::PathLengthError))
+        UnverifiedMessageError::InvalidCommit(StageCommitError::UpdatePathError(
+            ApplyUpdatePathError::PathLengthMismatch
+        ))
     );
 
     let original_update_plaintext =
@@ -629,9 +627,9 @@ fn test_valsem203(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::TreeKemError(TreeKemError::PathSecretError(
-            PathSecretError::DecryptionError(CryptoError::HpkeDecryptionError)
-        )))
+        UnverifiedMessageError::InvalidCommit(StageCommitError::UpdatePathError(
+            ApplyUpdatePathError::UnableToDecrypt
+        ))
     );
 
     let original_update_plaintext =
@@ -739,7 +737,9 @@ fn test_valsem204(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::TreeKemError(TreeKemError::PathMismatch))
+        UnverifiedMessageError::InvalidCommit(StageCommitError::UpdatePathError(
+            ApplyUpdatePathError::PathMismatch
+        ))
     );
 
     let original_update_plaintext =
@@ -828,9 +828,7 @@ fn test_valsem205(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::StageCommitError(
-            StageCommitError::ConfirmationTagMismatch
-        ))
+        UnverifiedMessageError::InvalidCommit(StageCommitError::ConfirmationTagMismatch)
     );
 
     // Positive case
