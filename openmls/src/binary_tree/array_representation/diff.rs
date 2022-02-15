@@ -235,8 +235,6 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// Returns an error if the given `leaf_index` does not correspond to a leaf
     /// in the diff or if the given `path` does not have the same length as the
     /// leaf's direct path.
-    ///
-    /// ValSem202: Path must be the right length
     pub(crate) fn set_direct_path(
         &mut self,
         leaf_index: LeafIndex,
