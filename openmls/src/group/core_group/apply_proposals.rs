@@ -174,8 +174,6 @@ impl CoreGroup {
         // proposals or if it is a "full" commit. A commit is full if it refers
         // to proposal types other than Add, PreSharedKey and/or ReInit
         // proposals.
-        println!("Checking if path is required:");
-        println!("has removes: {:?}", has_removes);
         let path_required = has_updates
             || has_removes
             // The fact that this is some implies that there's an external init

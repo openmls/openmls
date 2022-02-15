@@ -49,12 +49,13 @@
 
 | ValidationStep | Description                                                                            | Implemented | Tested | Test File |
 | -------------- | -------------------------------------------------------------------------------------- | ----------- | ------ | --------- |
-| `ValSem200`    | Commit must not cover inline self Remove proposal                                      | ✅          | ❌     | TBD       |
-| `ValSem201`    | Path must be present, if Commit is empty or contains proposals other than Add, PreSharedKey or ReInit                                       | ✅          | ❌     | TBD       |
-| `ValSem202`    | Path must be the right length                                                          | ✅          | ❌     | TBD       |
-| `ValSem203`    | Path secrets must decrypt correctly                                                    | ✅          | ❌     | TBD       |
-| `ValSem204`    | Public keys from Path must be verified and match the private keys from the direct path | ✅          | ❌     | TBD       |
-| `ValSem205`    | Confirmation tag must be successfully verified                                         | ✅          | ❌     | TBD       |
+| `ValSem200`    | Commit must not cover inline self Remove proposal                                      | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs`       |
+| `ValSem201`    | Path must be present, if Commit is empty or contains proposals other than Add, PreSharedKey or ReInit                                       | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs`       |
+| `ValSem202`    | Path must be the right length                                                          | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs`       |
+| `ValSem203`    | Path secrets must decrypt correctly                                                    | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs`       |
+
+| `ValSem204`    | Public keys from Path must be verified and match the private keys from the direct path | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs`       |
+| `ValSem205`    | Confirmation tag must be successfully verified                                         | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs`       |
 
 ### External Commit message validation
 

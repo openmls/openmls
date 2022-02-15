@@ -87,6 +87,7 @@ impl<'a> TreeSyncDiff<'a> {
         let path_position =
             self.subtree_root_position(params.sender_leaf_index, self.own_leaf_index())?;
 
+        // ValSem202: Path must be the right length
         if self.direct_path_len(params.sender_leaf_index)? != params.update_path.len() {
             return Err(TreeKemError::PathLengthError);
         }
