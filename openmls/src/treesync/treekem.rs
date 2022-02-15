@@ -75,7 +75,9 @@ impl<'a> TreeSyncDiff<'a> {
     /// well as the [`CommitSecret`] resulting from their derivation. Returns an
     /// error if the `sender_leaf_index` is outside of the tree.
     ///
+    /// ValSem202: Path must be the right length
     /// ValSem203: Path secrets must decrypt correctly
+    /// ValSem204: Public keys from Path must be verified and match the private keys from the direct path
     pub(crate) fn decrypt_path(
         &self,
         backend: &impl OpenMlsCryptoProvider,
@@ -84,6 +86,11 @@ impl<'a> TreeSyncDiff<'a> {
     ) -> Result<(Vec<ParentNode>, CommitSecret), TreeKemError> {
         let path_position =
             self.subtree_root_position(params.sender_leaf_index, self.own_leaf_index())?;
+
+        if self.direct_path_len(params.sender_leaf_index)? != params.update_path.len() {
+            return Err(TreeKemError::PathLengthError);
+        }
+
         let update_path_node = params
             .update_path
             .get(path_position)
@@ -110,6 +117,7 @@ impl<'a> TreeSyncDiff<'a> {
             ParentNode::derive_path(backend, ciphersuite, path_secret, remaining_path_length)?;
         // We now check that the public keys in the update path and in the
         // derived path match up.
+        // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
         for (update_parent_node, derived_parent_node) in params
             .update_path
             .iter()
@@ -189,6 +197,24 @@ impl UpdatePathNode {
             new_eps_vec.push(new_eps);
         }
         self.encrypted_path_secrets = new_eps_vec.into();
+    }
+
+    /// Flip the last byte of the public key in this node.
+    #[cfg(test)]
+    fn flip_last_pk_byte(&mut self) {
+        use tls_codec::{Deserialize, Serialize};
+
+        let mut new_pk_serialized = self
+            .public_key
+            .tls_serialize_detached()
+            .expect("error serializing public key");
+        let mut last_bits = new_pk_serialized
+            .pop()
+            .expect("An unexpected error occurred.");
+        last_bits ^= 0xff;
+        new_pk_serialized.push(last_bits);
+        self.public_key = HpkePublicKey::tls_deserialize(&mut new_pk_serialized.as_slice())
+            .expect("error deserializing pk");
     }
 }
 
@@ -319,12 +345,20 @@ impl UpdatePath {
     pub fn pop(&mut self) -> Option<UpdatePathNode> {
         self.nodes.pop()
     }
+
+    #[cfg(test)]
+    /// Flip the last bytes of the public key in the last node in the path.
+    pub fn flip_node_bytes(&mut self) {
+        let mut last_node = self.nodes.pop().expect("path empty");
+        last_node.flip_last_pk_byte();
+        self.nodes.push(last_node)
+    }
 }
 
 implement_error! {
     pub enum TreeKemError {
         Simple {
-            PathLengthError = "The given path to encrypt does not have the same length as the direct path.",
+            PathLengthError = "The given path to encrypt or decrypt does not have the same length as the direct path.",
             PathMismatch = "The received update path and the derived nodes are inconsistent.",
             UpdatePathNodeNotFound = "Couldn't find our UpdatePathNode in the given UpdatePath.",
             EncryptedCiphertextNotFound = "Couldn't find a matching encrypted ciphertext in the given UpdatePathNode.",

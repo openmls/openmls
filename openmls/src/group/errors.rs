@@ -165,12 +165,16 @@ pub enum StageCommitError {
     ConfirmationTagMissing,
     #[error("The confirmation tag is invalid.")]
     ConfirmationTagMismatch,
+    #[error("The committer can't remove themselves.")]
+    AttemptedSelfRemoval,
     #[error("The proposal queue is missing a proposal for the commit.")]
     MissingProposal,
     #[error("Missing own key to apply proposal.")]
     OwnKeyNotFound,
     #[error("External Committer used the wrong index.")]
     InconsistentSenderIndex,
+    #[error("Sender has an invalid type for the committed proposal.")]
+    InvalidSender,
 }
 
 // === Crate errors ===

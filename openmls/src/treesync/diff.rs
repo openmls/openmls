@@ -283,8 +283,6 @@ impl<'a> TreeSyncDiff<'a> {
     /// secrets.
     ///
     /// Returns an error if the `sender_leaf_index` is outside of the tree.
-    ///
-    /// ValSem202: Path must be the right length
     pub(crate) fn apply_received_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -293,7 +291,6 @@ impl<'a> TreeSyncDiff<'a> {
         key_package: KeyPackage,
         path: Vec<ParentNode>,
     ) -> Result<(), TreeSyncDiffError> {
-        // ValSem202: Path must be the right length
         let parent_hash =
             self.process_update_path(backend, ciphersuite, sender_leaf_index, path)?;
 
@@ -327,8 +324,6 @@ impl<'a> TreeSyncDiff<'a> {
     ///
     /// Returns the parent hash of the leaf at `leaf_index`. Returns an error if
     /// the target leaf is outside of the tree.
-    ///
-    /// ValSem202: Path must be the right length
     fn process_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -337,7 +332,6 @@ impl<'a> TreeSyncDiff<'a> {
         mut path: Vec<ParentNode>,
     ) -> Result<Vec<u8>, TreeSyncDiffError> {
         // Compute the parent hash.
-        // ValSem202: Path must be the right length
         let parent_hash = self.set_parent_hashes(backend, ciphersuite, &mut path, leaf_index)?;
         let direct_path: Vec<TreeSyncNode> = path
             .into_iter()
@@ -908,5 +902,13 @@ impl<'a> TreeSyncDiff<'a> {
                 "missing leaf node",
             )))
         }
+    }
+
+    /// Get the length of the direct path of the given [`LeafIndex`].
+    pub(super) fn direct_path_len(
+        &self,
+        leaf_index: LeafIndex,
+    ) -> Result<usize, TreeSyncDiffError> {
+        Ok(self.diff.direct_path(leaf_index)?.len())
     }
 }
