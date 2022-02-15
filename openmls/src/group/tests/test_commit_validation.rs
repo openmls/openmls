@@ -10,13 +10,13 @@ use rstest_reuse::{self, *};
 
 use crate::group::*;
 use crate::{
+    ciphersuite::signable::{Signable, Verifiable},
     config::*,
     credentials::*,
     framing::*,
     group::errors::StageCommitError,
     group::mls_group::UnverifiedMessageError,
     messages::ProposalOrRef,
-    ciphersuite::signable::{Signable, Verifiable},
     treesync::ApplyUpdatePathError,
 };
 

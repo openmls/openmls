@@ -50,7 +50,7 @@
 | ValidationStep | Description                                                                            | Implemented | Tested | Test File |
 | -------------- | -------------------------------------------------------------------------------------- | ----------- | ------ | --------- |
 | `ValSem200`    | Commit must not cover inline self Remove proposal                                      | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs`       |
-| `ValSem201`    | Path must be present, if Commit is empty or contains proposals other than Add, PreSharedKey or ReInit                                       | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs`       |
+| `ValSem201`    | Path must be present, if Commit contains Removes or Updates                            | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs`       |
 | `ValSem202`    | Path must be the right length                                                          | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs`       |
 | `ValSem203`    | Path secrets must decrypt correctly                                                    | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs`       |
 
