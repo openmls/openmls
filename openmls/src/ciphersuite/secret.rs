@@ -6,7 +6,7 @@ use super::*;
 /// representation.
 #[derive(Clone, Debug)]
 pub struct Secret {
-    pub(in crate::ciphersuite) ciphersuite: &'static Ciphersuite,
+    pub(in crate::ciphersuite) ciphersuite: Ciphersuite,
     pub(in crate::ciphersuite) value: Vec<u8>,
     pub(in crate::ciphersuite) mls_version: ProtocolVersion,
 }
@@ -16,7 +16,7 @@ implement_persistence!(Secret, value, mls_version);
 impl Default for Secret {
     fn default() -> Self {
         Self {
-            ciphersuite: Ciphersuite::default(),
+            ciphersuite: Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
             value: Vec::new(),
             mls_version: ProtocolVersion::default(),
         }
@@ -35,13 +35,13 @@ impl PartialEq for Secret {
             log::error!("Incompatible secrets");
             log::trace!(
                 "  {} {} {}",
-                self.ciphersuite.name,
+                self.ciphersuite,
                 self.mls_version,
                 self.value.len()
             );
             log::trace!(
                 "  {} {} {}",
-                other.ciphersuite.name,
+                other.ciphersuite,
                 other.mls_version,
                 other.value.len()
             );
@@ -56,14 +56,14 @@ impl Secret {
     /// This default random initialiser uses the default Secret length of `hash_length`.
     /// The function can return a [`CryptoError`] if there is insufficient randomness.
     pub(crate) fn random(
-        ciphersuite: &'static Ciphersuite,
+        ciphersuite: Ciphersuite,
         crypto: &impl OpenMlsCryptoProvider,
         version: impl Into<Option<ProtocolVersion>>,
     ) -> Result<Self, CryptoError> {
         let mls_version = version.into().unwrap_or_default();
         log::trace!(
             "Creating a new random secret for {:?} and {:?}",
-            ciphersuite.name,
+            ciphersuite,
             mls_version
         );
         Ok(Secret {
@@ -77,7 +77,7 @@ impl Secret {
     }
 
     /// Create an all zero secret.
-    pub(crate) fn zero(ciphersuite: &'static Ciphersuite, mls_version: ProtocolVersion) -> Self {
+    pub(crate) fn zero(ciphersuite: Ciphersuite, mls_version: ProtocolVersion) -> Self {
         Self {
             value: vec![0u8; ciphersuite.hash_length()],
             mls_version,
@@ -89,7 +89,7 @@ impl Secret {
     pub(crate) fn from_slice(
         bytes: &[u8],
         mls_version: ProtocolVersion,
-        ciphersuite: &'static Ciphersuite,
+        ciphersuite: Ciphersuite,
     ) -> Self {
         Secret {
             value: bytes.to_vec(),
@@ -104,7 +104,7 @@ impl Secret {
         backend: &impl OpenMlsCryptoProvider,
         ikm_option: impl Into<Option<&'a Secret>>,
     ) -> Result<Self, CryptoError> {
-        log::trace!("HKDF extract with {:?}", self.ciphersuite.name);
+        log::trace!("HKDF extract with {:?}", self.ciphersuite);
         log_crypto!(trace, "  salt: {:x?}", self.value);
         let zero_secret = Self::zero(self.ciphersuite, self.mls_version);
         let ikm = ikm_option.into().unwrap_or(&zero_secret);
@@ -176,7 +176,7 @@ impl Secret {
         log::trace!(
             "KDF expand with label \"{}\" and {:?} with context {:x?}",
             &full_label,
-            self.ciphersuite.name(),
+            self.ciphersuite,
             context
         );
         let info = KdfLabel::serialized_label(context, full_label, length)?;
@@ -197,7 +197,7 @@ impl Secret {
             "derive secret from {:x?} with label {} and {:?}",
             self.value,
             label,
-            self.ciphersuite.name()
+            self.ciphersuite
         );
         self.kdf_expand_label(backend, label, &[], self.ciphersuite.hash_length())
     }
@@ -205,11 +205,7 @@ impl Secret {
     /// Update the ciphersuite and MLS version of this secret.
     /// Ideally we wouldn't need this function but the way decoding works right
     /// now this is the easiest for now.
-    pub(crate) fn config(
-        &mut self,
-        ciphersuite: &'static Ciphersuite,
-        mls_version: ProtocolVersion,
-    ) {
+    pub(crate) fn config(&mut self, ciphersuite: Ciphersuite, mls_version: ProtocolVersion) {
         self.ciphersuite = ciphersuite;
         self.mls_version = mls_version;
     }
@@ -220,7 +216,7 @@ impl Secret {
     }
 
     /// Returns the ciphersuite of the secret
-    pub(crate) fn ciphersuite(&self) -> &'static Ciphersuite {
+    pub(crate) fn ciphersuite(&self) -> Ciphersuite {
         self.ciphersuite
     }
 
@@ -238,7 +234,7 @@ impl From<&[u8]> for Secret {
         Secret {
             value: bytes.to_vec(),
             mls_version: ProtocolVersion::default(),
-            ciphersuite: Ciphersuite::default(),
+            ciphersuite: Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         }
     }
 }

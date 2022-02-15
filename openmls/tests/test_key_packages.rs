@@ -3,24 +3,19 @@
 use openmls::{prelude::*, test_utils::*, *};
 
 #[apply(ciphersuites_and_backends)]
-fn key_package_generation(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    println!("Testing ciphersuite {:?}", ciphersuite.name());
+fn key_package_generation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    println!("Testing ciphersuite {:?}", ciphersuite);
 
     let id = vec![1, 2, 3];
     let credential_bundle = CredentialBundle::new(
         id,
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
-    let kpb = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let kpb = KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, Vec::new())
+        .expect("An unexpected error occurred.");
 
     // After creation, the signature should be ok.
     assert!(kpb.key_package().verify(backend).is_ok());
@@ -40,7 +35,7 @@ fn key_package_generation(ciphersuite: &'static Ciphersuite, backend: &impl Open
 
         // Only the single ciphersuite is set.
         assert_eq!(1, capabilities_extension.ciphersuites().len());
-        assert_eq!(ciphersuite.name(), capabilities_extension.ciphersuites()[0]);
+        assert_eq!(ciphersuite, capabilities_extension.ciphersuites()[0]);
 
         // Check supported versions.
         assert_eq!(

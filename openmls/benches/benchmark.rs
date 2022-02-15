@@ -13,7 +13,7 @@ fn criterion_kp_bundle(c: &mut Criterion, backend: &impl OpenMlsCryptoProvider) 
         c.bench_function(
             &format!(
                 "KeyPackage create bundle with ciphersuite: {:?}",
-                ciphersuite.name()
+                ciphersuite
             ),
             move |b| {
                 b.iter_with_setup(
@@ -21,14 +21,14 @@ fn criterion_kp_bundle(c: &mut Criterion, backend: &impl OpenMlsCryptoProvider) 
                         CredentialBundle::new(
                             vec![1, 2, 3],
                             CredentialType::Basic,
-                            ciphersuite.signature_scheme(),
+                            ciphersuite.signature_algorithm(),
                             backend,
                         )
                         .expect("An unexpected error occurred.")
                     },
                     |credential_bundle: CredentialBundle| {
                         KeyPackageBundle::new(
-                            &[ciphersuite.name()],
+                            &[ciphersuite],
                             &credential_bundle,
                             backend,
                             Vec::new(),

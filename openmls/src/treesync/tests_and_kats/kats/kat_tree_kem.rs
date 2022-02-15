@@ -90,7 +90,7 @@ pub fn run_test_vector(
     let credential_bundle = CredentialBundle::new(
         "username".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");

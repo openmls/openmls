@@ -6,10 +6,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 
 // Tests the differen variants of the RemoveOperation enum.
 #[apply(ciphersuites_and_backends)]
-fn test_remove_operation_variants(
-    ciphersuite: &'static Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
+fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // We define two test cases, one where the member is removed by another member
     // and one where the member leaves the group on its own
     enum TestCase {
@@ -24,7 +21,7 @@ fn test_remove_operation_variants(
         let alice_credential = generate_credential_bundle(
             "Alice".into(),
             CredentialType::Basic,
-            ciphersuite.signature_scheme(),
+            ciphersuite.signature_algorithm(),
             backend,
         )
         .expect("An unexpected error occurred.");
@@ -32,7 +29,7 @@ fn test_remove_operation_variants(
         let bob_credential = generate_credential_bundle(
             "Bob".into(),
             CredentialType::Basic,
-            ciphersuite.signature_scheme(),
+            ciphersuite.signature_algorithm(),
             backend,
         )
         .expect("An unexpected error occurred.");
@@ -40,25 +37,21 @@ fn test_remove_operation_variants(
         let charlie_credential = generate_credential_bundle(
             "Charlie".into(),
             CredentialType::Basic,
-            ciphersuite.signature_scheme(),
+            ciphersuite.signature_algorithm(),
             backend,
         )
         .expect("An unexpected error occurred.");
 
         // Generate KeyPackages
         let alice_key_package =
-            generate_key_package_bundle(&[ciphersuite.name()], &alice_credential, vec![], backend)
+            generate_key_package_bundle(&[ciphersuite], &alice_credential, vec![], backend)
                 .expect("An unexpected error occurred.");
         let bob_key_package =
-            generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, vec![], backend)
+            generate_key_package_bundle(&[ciphersuite], &bob_credential, vec![], backend)
                 .expect("An unexpected error occurred.");
-        let charlie_key_package = generate_key_package_bundle(
-            &[ciphersuite.name()],
-            &charlie_credential,
-            vec![],
-            backend,
-        )
-        .expect("An unexpected error occurred.");
+        let charlie_key_package =
+            generate_key_package_bundle(&[ciphersuite], &charlie_credential, vec![], backend)
+                .expect("An unexpected error occurred.");
 
         // Define the MlsGroup configuration
         let mls_group_config = MlsGroupConfig::default();

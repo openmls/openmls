@@ -72,7 +72,7 @@ macro_rules! count {
     ( $x:tt $($xs:tt)* ) => (1usize + count!($($xs)*));
 }
 
-/// The struct must contain a field `ciphersuite: &'static Ciphersuite`, which
+/// The struct must contain a field `ciphersuite: Ciphersuite`, which
 /// is not added to the macro invocation.
 
 macro_rules! implement_persistence {
@@ -198,7 +198,7 @@ macro_rules! implement_persistence {
                 $(
                     state.serialize_field(stringify!($fields), &self.$fields)?;
                 )*
-                state.serialize_field("ciphersuite", &self.ciphersuite.name())?;
+                state.serialize_field("ciphersuite", &self.ciphersuite)?;
                 state.end()
             }
         }

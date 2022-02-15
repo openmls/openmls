@@ -144,7 +144,7 @@ impl Proposal {
 
 impl ProposalRef {
     pub(crate) fn from_proposal(
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         proposal: &Proposal,
     ) -> Result<Self, LibraryError> {
@@ -252,7 +252,7 @@ impl PreSharedKeyProposal {
 pub struct ReInitProposal {
     pub(crate) group_id: GroupId,
     pub(crate) version: ProtocolVersion,
-    pub(crate) ciphersuite: CiphersuiteName,
+    pub(crate) ciphersuite: Ciphersuite,
     pub(crate) extensions: TlsVecU32<Extension>,
 }
 

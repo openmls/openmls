@@ -7,18 +7,6 @@ use std::io::{Read, Write};
 
 use tls_codec::{TlsSliceU16, TlsSliceU8, TlsVecU8};
 
-impl tls_codec::Size for &Ciphersuite {
-    fn tls_serialized_len(&self) -> usize {
-        CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256.tls_serialized_len()
-    }
-}
-
-impl tls_codec::Serialize for &Ciphersuite {
-    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, ::tls_codec::Error> {
-        self.name.tls_serialize(writer)
-    }
-}
-
 impl tls_codec::Serialize for SignaturePublicKey {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         TlsSliceU16(&self.value).tls_serialize(writer)
@@ -49,7 +37,7 @@ impl tls_codec::Deserialize for Secret {
         Ok(Secret {
             value,
             mls_version: ProtocolVersion::default(),
-            ciphersuite: Ciphersuite::default(),
+            ciphersuite: Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         })
     }
 }

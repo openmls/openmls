@@ -22,10 +22,10 @@ fn test_protocol_version() {
 
 #[apply(ciphersuites_and_backends)]
 fn test_credential_bundle_from_parts(
-    ciphersuite: &'static Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
-    let signature_scheme = ciphersuite.signature_scheme();
+    let signature_scheme = ciphersuite.signature_algorithm();
     let keypair = SignatureKeypair::new(signature_scheme, backend)
         .expect("Could not create signature keypair.");
 

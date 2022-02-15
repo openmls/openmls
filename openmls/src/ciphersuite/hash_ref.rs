@@ -62,7 +62,7 @@ impl HashReference {
     /// Compute a new [`HashReference`] value for a `value`.
     pub fn new(
         value: &[u8],
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCrypto,
     ) -> Result<Self, CryptoError> {
         let okm = backend.hkdf_expand(

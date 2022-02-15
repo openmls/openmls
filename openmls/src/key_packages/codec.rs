@@ -35,7 +35,7 @@ impl tls_codec::Serialize for KeyPackage {
 impl tls_codec::Deserialize for KeyPackage {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
         let protocol_version = ProtocolVersion::tls_deserialize(bytes)?;
-        let cipher_suite_name = CiphersuiteName::tls_deserialize(bytes)?;
+        let cipher_suite_name = Ciphersuite::tls_deserialize(bytes)?;
         let hpke_init_key = HpkePublicKey::tls_deserialize(bytes)?;
         let credential = Credential::tls_deserialize(bytes)?;
         let extensions = TlsVecU32::tls_deserialize(bytes)?;

@@ -61,7 +61,7 @@ fn test_application_message_encoding(backend: &impl OpenMlsCryptoProvider) {
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let credential_bundle = alice
             .credential_bundles
-            .get(&group_state.ciphersuite().name())
+            .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
         for _ in 0..100 {
             // Test encoding/decoding of Application messages.
@@ -98,12 +98,12 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let credential_bundle = alice
             .credential_bundles
-            .get(&group_state.ciphersuite().name())
+            .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
         let capabilities_extension = Extension::Capabilities(CapabilitiesExtension::new(
             None,
-            Some(&[group_state.ciphersuite().name()]),
+            Some(&[group_state.ciphersuite()]),
             None,
             None,
         ));
@@ -111,7 +111,7 @@ fn test_update_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
         let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
 
         let key_package_bundle = KeyPackageBundle::new(
-            &[group_state.ciphersuite().name()],
+            &[group_state.ciphersuite()],
             credential_bundle,
             backend,
             mandatory_extensions,
@@ -163,12 +163,12 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let credential_bundle = alice
             .credential_bundles
-            .get(&group_state.ciphersuite().name())
+            .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
         let capabilities_extension = Extension::Capabilities(CapabilitiesExtension::new(
             None,
-            Some(&[group_state.ciphersuite().name()]),
+            Some(&[group_state.ciphersuite()]),
             None,
             None,
         ));
@@ -176,7 +176,7 @@ fn test_add_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
         let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
 
         let key_package_bundle = KeyPackageBundle::new(
-            &[group_state.ciphersuite().name()],
+            &[group_state.ciphersuite()],
             credential_bundle,
             backend,
             mandatory_extensions,
@@ -237,7 +237,7 @@ fn test_remove_proposal_encoding(backend: &impl OpenMlsCryptoProvider) {
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let credential_bundle = alice
             .credential_bundles
-            .get(&group_state.ciphersuite().name())
+            .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
         let remove = group_state
@@ -296,12 +296,12 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let alice_credential_bundle = alice
             .credential_bundles
-            .get(&group_state.ciphersuite().name())
+            .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
         let capabilities_extension = Extension::Capabilities(CapabilitiesExtension::new(
             None,
-            Some(&[group_state.ciphersuite().name()]),
+            Some(&[group_state.ciphersuite()]),
             None,
             None,
         ));
@@ -309,7 +309,7 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
         let mandatory_extensions: Vec<Extension> = vec![capabilities_extension, lifetime_extension];
 
         let alice_key_package_bundle = KeyPackageBundle::new(
-            &[group_state.ciphersuite().name()],
+            &[group_state.ciphersuite()],
             alice_credential_bundle,
             backend,
             mandatory_extensions.clone(),
@@ -332,7 +332,7 @@ fn test_commit_encoding(backend: &impl OpenMlsCryptoProvider) {
         let charlie_key_package = test_setup
             ._key_store
             .borrow_mut()
-            .get_mut(&("charlie", group_state.ciphersuite().name()))
+            .get_mut(&("charlie", group_state.ciphersuite()))
             .expect("An unexpected error occurred.")
             .pop()
             .expect("An unexpected error occurred.");
@@ -406,7 +406,7 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
     for group_state in alice.group_states.borrow_mut().values_mut() {
         let credential_bundle = alice
             .credential_bundles
-            .get(&group_state.ciphersuite().name())
+            .get(&group_state.ciphersuite())
             .expect("An unexpected error occurred.");
 
         // Create a few proposals to put into the commit
@@ -415,7 +415,7 @@ fn test_welcome_message_encoding(backend: &impl OpenMlsCryptoProvider) {
         let charlie_key_package = test_setup
             ._key_store
             .borrow_mut()
-            .get_mut(&("charlie", group_state.ciphersuite().name()))
+            .get_mut(&("charlie", group_state.ciphersuite()))
             .expect("An unexpected error occurred.")
             .pop()
             .expect("An unexpected error occurred.");

@@ -139,23 +139,19 @@ pub struct EncryptionTestVector {
 
 #[cfg(any(feature = "test-utils", test))]
 fn group(
-    ciphersuite: &Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) -> (CoreGroup, CredentialBundle) {
     let credential_bundle = CredentialBundle::new(
         "Kreator".into(),
         CredentialType::Basic,
-        SignatureScheme::from(ciphersuite.name()),
+        SignatureScheme::from(ciphersuite),
         backend,
     )
     .expect("An unexpected error occurred.");
-    let key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, Vec::new())
+            .expect("An unexpected error occurred.");
     (
         CoreGroup::builder(GroupId::random(backend), key_package_bundle)
             .build(backend)
@@ -166,24 +162,20 @@ fn group(
 
 #[cfg(any(feature = "test-utils", test))]
 fn receiver_group(
-    ciphersuite: &Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     group_id: &GroupId,
 ) -> CoreGroup {
     let credential_bundle = CredentialBundle::new(
         "Receiver".into(),
         CredentialType::Basic,
-        SignatureScheme::from(ciphersuite.name()),
+        SignatureScheme::from(ciphersuite),
         backend,
     )
     .expect("An unexpected error occurred.");
-    let key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, Vec::new())
+            .expect("An unexpected error occurred.");
     CoreGroup::builder(group_id.clone(), key_package_bundle)
         .build(backend)
         .expect("Error creating CoreGroup")
@@ -305,11 +297,11 @@ fn build_application_messages(
 pub fn generate_test_vector(
     n_generations: u32,
     n_leaves: u32,
-    ciphersuite: &'static Ciphersuite,
+    ciphersuite: Ciphersuite,
 ) -> EncryptionTestVector {
     use openmls_traits::random::OpenMlsRand;
 
-    let ciphersuite_name = ciphersuite.name();
+    let ciphersuite_name = ciphersuite;
     let crypto = OpenMlsRustCrypto::default();
     let encryption_secret_bytes = crypto
         .rand()
@@ -455,7 +447,7 @@ fn write_test_vectors() {
     const NUM_LEAVES: u32 = 7;
     const NUM_GENERATIONS: u32 = 5;
 
-    for ciphersuite in Config::supported_ciphersuites() {
+    for &ciphersuite in Config::supported_ciphersuites() {
         for n_leaves in 1u32..NUM_LEAVES {
             let test = generate_test_vector(NUM_GENERATIONS, n_leaves, ciphersuite);
             tests.push(test);
@@ -476,8 +468,7 @@ pub fn run_test_vector(
     if n_leaves != test_vector.leaves.len() as u32 {
         return Err(EncTestVectorError::LeafNumberMismatch);
     }
-    let ciphersuite =
-        CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
+    let ciphersuite = Ciphersuite::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
     let ciphersuite = match Config::ciphersuite(ciphersuite) {
         Ok(cs) => cs,
         Err(_) => {
@@ -488,7 +479,7 @@ pub fn run_test_vector(
             return Ok(());
         }
     };
-    log::debug!("Running test vector with {:?}", ciphersuite.name());
+    log::debug!("Running test vector with {:?}", ciphersuite);
 
     let sender_data_secret = SenderDataSecret::from_slice(
         hex_to_bytes(&test_vector.sender_data_secret).as_slice(),

@@ -35,7 +35,7 @@ pub struct TranscriptTestVector {
     interim_transcript_hash_after: String,
 }
 
-pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTestVector {
+pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
     let crypto = OpenMlsRustCrypto::default();
     // Generate random values.
     let group_id = GroupId::random(&crypto);
@@ -65,7 +65,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
     let credential_bundle = CredentialBundle::new(
         b"client".to_vec(),
         CredentialType::Basic,
-        SignatureScheme::from(ciphersuite.name()),
+        SignatureScheme::from(ciphersuite),
         &crypto,
     )
     .expect("An unexpected error occurred.");
@@ -134,7 +134,7 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> TranscriptTest
         .expect("An unexpected error occurred.");
 
     TranscriptTestVector {
-        cipher_suite: ciphersuite.name() as u16,
+        cipher_suite: ciphersuite as u16,
         group_id: bytes_to_hex(group_id.as_slice()),
         epoch,
         tree_hash_before: bytes_to_hex(&tree_hash_before),
@@ -164,7 +164,7 @@ fn write_test_vectors() {
     let mut tests = Vec::new();
     const NUM_TESTS: usize = 100;
 
-    for ciphersuite in Config::supported_ciphersuites() {
+    for &ciphersuite in Config::supported_ciphersuites() {
         for _ in 0..NUM_TESTS {
             let test = generate_test_vector(ciphersuite);
             tests.push(test);
@@ -178,8 +178,7 @@ pub fn run_test_vector(
     test_vector: TranscriptTestVector,
     backend: &impl OpenMlsCryptoProvider,
 ) -> Result<(), TranscriptTestVectorError> {
-    let ciphersuite =
-        CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
+    let ciphersuite = Ciphersuite::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
     let ciphersuite = match Config::ciphersuite(ciphersuite) {
         Ok(cs) => cs,
         Err(_) => {

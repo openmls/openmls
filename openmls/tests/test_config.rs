@@ -58,9 +58,9 @@ fn default_ciphersuites() {
     let supported_ciphersuites = Config::supported_ciphersuite_names();
     assert_eq!(
         vec![
-            CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-            CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256,
-            CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+            Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+            Ciphersuite::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256,
+            Ciphersuite::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
         ],
         supported_ciphersuites
     );

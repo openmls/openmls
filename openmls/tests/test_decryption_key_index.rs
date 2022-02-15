@@ -9,8 +9,8 @@ use openmls::{
 };
 
 #[apply(ciphersuites)]
-fn decryption_key_index_computation(ciphersuite: &'static Ciphersuite) {
-    println!("Testing ciphersuite {:?}", ciphersuite.name());
+fn decryption_key_index_computation(ciphersuite: Ciphersuite) {
+    println!("Testing ciphersuite {:?}", ciphersuite);
 
     // Some basic setup functions for the MlsGroup.
     let mls_group_config = MlsGroupConfig::test_default();

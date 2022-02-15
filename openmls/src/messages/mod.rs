@@ -59,7 +59,7 @@ use crate::schedule::{
 #[derive(Clone, Debug, PartialEq, TlsDeserialize, TlsSerialize, TlsSize)]
 pub struct Welcome {
     version: ProtocolVersion,
-    cipher_suite: CiphersuiteName,
+    cipher_suite: Ciphersuite,
     pub(crate) secrets: TlsVecU32<EncryptedGroupSecrets>,
     pub(crate) encrypted_group_info: TlsByteVecU32,
 }
@@ -87,20 +87,20 @@ impl Welcome {
     /// Note that secrets and the encrypted group info are consumed.
     pub(crate) fn new(
         version: ProtocolVersion,
-        cipher_suite: &'static Ciphersuite,
+        cipher_suite: Ciphersuite,
         secrets: Vec<EncryptedGroupSecrets>,
         encrypted_group_info: Vec<u8>,
     ) -> Self {
         Self {
             version,
-            cipher_suite: cipher_suite.name(),
+            cipher_suite: cipher_suite,
             secrets: secrets.into(),
             encrypted_group_info: encrypted_group_info.into(),
         }
     }
 
     /// Get a reference to the ciphersuite in this Welcome message.
-    pub(crate) fn ciphersuite(&self) -> CiphersuiteName {
+    pub(crate) fn ciphersuite(&self) -> Ciphersuite {
         self.cipher_suite
     }
 
@@ -325,7 +325,7 @@ impl PathSecret {
     pub(crate) fn derive_key_pair(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
     ) -> Result<(HpkePublicKey, HpkePrivateKey), LibraryError> {
         let node_secret = self
             .path_secret
@@ -345,7 +345,7 @@ impl PathSecret {
     pub(crate) fn derive_path_secret(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
     ) -> Result<Self, LibraryError> {
         let path_secret = self
             .path_secret
@@ -359,7 +359,7 @@ impl PathSecret {
     pub(crate) fn encrypt(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         public_key: &HpkePublicKey,
         group_context: &[u8],
     ) -> HpkeCiphertext {
@@ -383,7 +383,7 @@ impl PathSecret {
     /// was unsuccessful.
     pub(crate) fn decrypt(
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &'static Ciphersuite,
+        ciphersuite: Ciphersuite,
         version: ProtocolVersion,
         ciphertext: &HpkeCiphertext,
         private_key: &HpkePrivateKey,
@@ -451,7 +451,7 @@ impl GroupSecrets {
     /// Set the config for the secrets, i.e. cipher suite and MLS version.
     pub(crate) fn config(
         mut self,
-        ciphersuite: &'static Ciphersuite,
+        ciphersuite: Ciphersuite,
         mls_version: ProtocolVersion,
     ) -> GroupSecrets {
         self.joiner_secret.config(ciphersuite, mls_version);
@@ -463,7 +463,7 @@ impl GroupSecrets {
 
     #[cfg(any(feature = "test-utils", test))]
     pub fn random_encoded(
-        ciphersuite: &'static Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         version: ProtocolVersion,
     ) -> Result<Vec<u8>, tls_codec::Error> {

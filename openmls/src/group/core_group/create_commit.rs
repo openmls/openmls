@@ -398,7 +398,7 @@ impl CoreGroup {
             // Generate a KeyPackageBundle to generate a payload from for later
             // path generation.
             let key_package_bundle = KeyPackageBundle::new(
-                &[self.ciphersuite().name()],
+                &[self.ciphersuite()],
                 params.credential_bundle(),
                 backend,
                 vec![],

@@ -252,7 +252,7 @@ pub type KemOutput = Vec<u8>;
 )]
 #[repr(u16)]
 #[allow(missing_docs)]
-pub enum CiphersuiteName {
+pub enum Ciphersuite {
     MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 = 0x0001,
     MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 = 0x0002,
     MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 = 0x0003,
@@ -262,31 +262,31 @@ pub enum CiphersuiteName {
     MLS10_256_DHKEMP384_AES256GCM_SHA384_P384 = 0x0007,
 }
 
-impl core::fmt::Display for CiphersuiteName {
+impl core::fmt::Display for Ciphersuite {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:?}", self)
     }
 }
 
-impl From<&CiphersuiteName> for u16 {
+impl From<&Ciphersuite> for u16 {
     #[inline(always)]
-    fn from(s: &CiphersuiteName) -> u16 {
+    fn from(s: &Ciphersuite) -> u16 {
         *s as u16
     }
 }
 
-impl TryFrom<u16> for CiphersuiteName {
+impl TryFrom<u16> for Ciphersuite {
     type Error = tls_codec::Error;
 
     #[inline(always)]
     fn try_from(v: u16) -> Result<Self, Self::Error> {
         match v {
-            0x0001 => Ok(CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519),
-            0x0002 => Ok(CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256),
-            0x0003 => Ok(CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519),
-            0x0004 => Ok(CiphersuiteName::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448),
-            0x0005 => Ok(CiphersuiteName::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521),
-            0x0006 => Ok(CiphersuiteName::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448),
+            0x0001 => Ok(Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519),
+            0x0002 => Ok(Ciphersuite::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256),
+            0x0003 => Ok(Ciphersuite::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519),
+            0x0004 => Ok(Ciphersuite::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448),
+            0x0005 => Ok(Ciphersuite::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521),
+            0x0006 => Ok(Ciphersuite::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448),
             _ => Err(Self::Error::DecodingError(format!(
                 "{} is not a valid cipher suite value",
                 v
@@ -295,147 +295,186 @@ impl TryFrom<u16> for CiphersuiteName {
     }
 }
 
-impl From<CiphersuiteName> for SignatureScheme {
+impl From<Ciphersuite> for SignatureScheme {
     #[inline(always)]
-    fn from(ciphersuite_name: CiphersuiteName) -> Self {
+    fn from(ciphersuite_name: Ciphersuite) -> Self {
         ciphersuite_name.signature_algorithm()
     }
 }
 
-impl From<CiphersuiteName> for AeadType {
+impl From<Ciphersuite> for AeadType {
     #[inline(always)]
-    fn from(ciphersuite_name: CiphersuiteName) -> Self {
+    fn from(ciphersuite_name: Ciphersuite) -> Self {
         ciphersuite_name.aead_algorithm()
     }
 }
 
-impl From<CiphersuiteName> for HpkeKemType {
+impl From<Ciphersuite> for HpkeKemType {
     #[inline(always)]
-    fn from(ciphersuite_name: CiphersuiteName) -> Self {
+    fn from(ciphersuite_name: Ciphersuite) -> Self {
         ciphersuite_name.hpke_kem_algorithm()
     }
 }
 
-impl From<CiphersuiteName> for HpkeAeadType {
+impl From<Ciphersuite> for HpkeAeadType {
     #[inline(always)]
-    fn from(ciphersuite_name: CiphersuiteName) -> Self {
+    fn from(ciphersuite_name: Ciphersuite) -> Self {
         ciphersuite_name.hpke_aead_algorithm()
     }
 }
 
-impl From<CiphersuiteName> for HpkeKdfType {
+impl From<Ciphersuite> for HpkeKdfType {
     #[inline(always)]
-    fn from(ciphersuite_name: CiphersuiteName) -> Self {
+    fn from(ciphersuite_name: Ciphersuite) -> Self {
         ciphersuite_name.hpke_kdf_algorithm()
     }
 }
 
-impl From<CiphersuiteName> for HashType {
+impl From<Ciphersuite> for HashType {
     #[inline(always)]
-    fn from(ciphersuite_name: CiphersuiteName) -> Self {
+    fn from(ciphersuite_name: Ciphersuite) -> Self {
         ciphersuite_name.hash_algorithm()
     }
 }
 
-impl CiphersuiteName {
+impl Ciphersuite {
     /// Get the [`HashType`] of the [`CiphersuiteName`]
+    #[inline]
     pub const fn hash_algorithm(&self) -> HashType {
         match self {
-            CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
-            | CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256
-            | CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
+            Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
+            | Ciphersuite::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256
+            | Ciphersuite::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
                 HashType::Sha2_256
             }
-            CiphersuiteName::MLS10_256_DHKEMP384_AES256GCM_SHA384_P384 => HashType::Sha2_384,
-            CiphersuiteName::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448
-            | CiphersuiteName::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521
-            | CiphersuiteName::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
+            Ciphersuite::MLS10_256_DHKEMP384_AES256GCM_SHA384_P384 => HashType::Sha2_384,
+            Ciphersuite::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448
+            | Ciphersuite::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521
+            | Ciphersuite::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
                 HashType::Sha2_512
             }
         }
     }
 
+    #[inline]
     pub const fn signature_algorithm(&self) -> SignatureScheme {
         match self {
-            CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
-            | CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
+            Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
+            | Ciphersuite::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
                 SignatureScheme::ED25519
             }
-            CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 => {
+            Ciphersuite::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 => {
                 SignatureScheme::ECDSA_SECP256R1_SHA256
             }
-            CiphersuiteName::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521 => {
+            Ciphersuite::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521 => {
                 SignatureScheme::ECDSA_SECP521R1_SHA512
             }
-            CiphersuiteName::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448
-            | CiphersuiteName::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
+            Ciphersuite::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448
+            | Ciphersuite::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
                 SignatureScheme::ED448
             }
-            CiphersuiteName::MLS10_256_DHKEMP384_AES256GCM_SHA384_P384 => {
+            Ciphersuite::MLS10_256_DHKEMP384_AES256GCM_SHA384_P384 => {
                 SignatureScheme::ECDSA_SECP384R1_SHA384
             }
         }
     }
 
+    #[inline]
     pub const fn aead_algorithm(&self) -> AeadType {
         match self {
-            CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
-            | CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 => AeadType::Aes128Gcm,
-            CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
-            | CiphersuiteName::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
+            Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
+            | Ciphersuite::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 => AeadType::Aes128Gcm,
+            Ciphersuite::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
+            | Ciphersuite::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
                 AeadType::ChaCha20Poly1305
             }
-            CiphersuiteName::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448
-            | CiphersuiteName::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521
-            | CiphersuiteName::MLS10_256_DHKEMP384_AES256GCM_SHA384_P384 => AeadType::Aes256Gcm,
+            Ciphersuite::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448
+            | Ciphersuite::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521
+            | Ciphersuite::MLS10_256_DHKEMP384_AES256GCM_SHA384_P384 => AeadType::Aes256Gcm,
         }
     }
 
+    #[inline]
     pub const fn hpke_kdf_algorithm(&self) -> HpkeKdfType {
         match self {
-            CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
-            | CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256
-            | CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
+            Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
+            | Ciphersuite::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256
+            | Ciphersuite::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
                 HpkeKdfType::HkdfSha256
             }
-            CiphersuiteName::MLS10_256_DHKEMP384_AES256GCM_SHA384_P384 => HpkeKdfType::HkdfSha384,
-            CiphersuiteName::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448
-            | CiphersuiteName::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521
-            | CiphersuiteName::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
+            Ciphersuite::MLS10_256_DHKEMP384_AES256GCM_SHA384_P384 => HpkeKdfType::HkdfSha384,
+            Ciphersuite::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448
+            | Ciphersuite::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521
+            | Ciphersuite::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
                 HpkeKdfType::HkdfSha512
             }
         }
     }
 
+    #[inline]
     pub const fn hpke_kem_algorithm(&self) -> HpkeKemType {
         match self {
-            CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
-            | CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
+            Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
+            | Ciphersuite::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
                 HpkeKemType::DhKem25519
             }
-            CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 => HpkeKemType::DhKemP256,
-            CiphersuiteName::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448
-            | CiphersuiteName::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
+            Ciphersuite::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 => HpkeKemType::DhKemP256,
+            Ciphersuite::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448
+            | Ciphersuite::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
                 HpkeKemType::DhKem448
             }
-            CiphersuiteName::MLS10_256_DHKEMP384_AES256GCM_SHA384_P384 => HpkeKemType::DhKemP384,
-            CiphersuiteName::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521 => HpkeKemType::DhKemP521,
+            Ciphersuite::MLS10_256_DHKEMP384_AES256GCM_SHA384_P384 => HpkeKemType::DhKemP384,
+            Ciphersuite::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521 => HpkeKemType::DhKemP521,
         }
     }
 
+    #[inline]
     pub const fn hpke_aead_algorithm(&self) -> HpkeAeadType {
         match self {
-            CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
-            | CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 => HpkeAeadType::AesGcm128,
-            CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
+            Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
+            | Ciphersuite::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 => HpkeAeadType::AesGcm128,
+            Ciphersuite::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519 => {
                 HpkeAeadType::ChaCha20Poly1305
             }
-            CiphersuiteName::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448
-            | CiphersuiteName::MLS10_256_DHKEMP384_AES256GCM_SHA384_P384
-            | CiphersuiteName::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521 => HpkeAeadType::AesGcm256,
-            CiphersuiteName::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
+            Ciphersuite::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448
+            | Ciphersuite::MLS10_256_DHKEMP384_AES256GCM_SHA384_P384
+            | Ciphersuite::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521 => HpkeAeadType::AesGcm256,
+            Ciphersuite::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
                 HpkeAeadType::ChaCha20Poly1305
             }
         }
+    }
+
+    #[inline]
+    pub const fn hpke_config(&self) -> HpkeConfig {
+        HpkeConfig(
+            self.hpke_kem_algorithm(),
+            self.hpke_kdf_algorithm(),
+            self.hpke_aead_algorithm(),
+        )
+    }
+
+    /// Get the length of the used hash algorithm.
+    #[inline]
+    pub const fn hash_length(&self) -> usize {
+        self.hash_algorithm().size()
+    }
+
+    /// Get the length of the AEAD tag.
+    #[inline]
+    pub const fn mac_length(&self) -> usize {
+        self.aead_algorithm().tag_size()
+    }
+
+    /// Returns the key size of the used AEAD.
+    #[inline]
+    pub const fn aead_key_length(&self) -> usize {
+        self.aead_algorithm().key_size()
+    }
+
+    /// Returns the length of the nonce in the AEAD.
+    #[inline]
+    pub const fn aead_nonce_length(&self) -> usize {
+        self.aead_algorithm().nonce_size()
     }
 }

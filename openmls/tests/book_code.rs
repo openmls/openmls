@@ -13,12 +13,12 @@ lazy_static! {
 fn generate_credential_bundle(
     identity: Vec<u8>,
     credential_type: CredentialType,
-    signature_scheme: SignatureScheme,
+    signature_algorithm: SignatureScheme,
     backend: &impl OpenMlsCryptoProvider,
 ) -> Result<Credential, CredentialError> {
     // ANCHOR: create_credential_bundle
     let credential_bundle =
-        CredentialBundle::new(identity, credential_type, signature_scheme, backend)?;
+        CredentialBundle::new(identity, credential_type, signature_algorithm, backend)?;
     // ANCHOR_END: create_credential_bundle
     // ANCHOR: store_credential_bundle
     let credential = credential_bundle.credential().clone();
@@ -37,7 +37,7 @@ fn generate_credential_bundle(
 }
 
 fn generate_key_package_bundle(
-    ciphersuites: &[CiphersuiteName],
+    ciphersuites: &[Ciphersuite],
     credential: &Credential,
     backend: &impl OpenMlsCryptoProvider,
 ) -> Result<KeyPackage, KeyPackageError> {
@@ -95,7 +95,7 @@ fn generate_key_package_bundle(
 ///  - Bob leaves
 ///  - Test saving the group state
 #[apply(ciphersuites_and_backends)]
-fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // ANCHOR: set_group_id
     let group_id = GroupId::from_slice(b"Test Group");
     // ANCHOR_END: set_group_id
@@ -104,7 +104,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     let alice_credential = generate_credential_bundle(
         "Alice".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
@@ -112,7 +112,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     let bob_credential = generate_credential_bundle(
         "Bob".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
@@ -120,19 +120,17 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     let charlie_credential = generate_credential_bundle(
         "Charlie".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package =
-        generate_key_package_bundle(&[ciphersuite.name()], &alice_credential, backend)
-            .expect("An unexpected error occurred.");
+    let alice_key_package = generate_key_package_bundle(&[ciphersuite], &alice_credential, backend)
+        .expect("An unexpected error occurred.");
 
-    let bob_key_package =
-        generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, backend)
-            .expect("An unexpected error occurred.");
+    let bob_key_package = generate_key_package_bundle(&[ciphersuite], &bob_credential, backend)
+        .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
     // ANCHOR: mls_group_config_example
@@ -427,7 +425,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 
     // === Bob adds Charlie ===
     let charlie_key_package =
-        generate_key_package_bundle(&[ciphersuite.name()], &charlie_credential, backend)
+        generate_key_package_bundle(&[ciphersuite], &charlie_credential, backend)
             .expect("An unexpected error occurred.");
 
     let (queued_message, welcome) = match bob_group.add_members(backend, &[charlie_key_package]) {
@@ -740,9 +738,8 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     // === Alice removes Charlie and re-adds Bob ===
 
     // Create a new KeyPackageBundle for Bob
-    let bob_key_package =
-        generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, backend)
-            .expect("An unexpected error occurred.");
+    let bob_key_package = generate_key_package_bundle(&[ciphersuite], &bob_credential, backend)
+        .expect("An unexpected error occurred.");
 
     // Create RemoveProposal and process it
     // ANCHOR: propose_remove
@@ -1061,9 +1058,8 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     // === Save the group state ===
 
     // Create a new KeyPackageBundle for Bob
-    let bob_key_package =
-        generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, backend)
-            .expect("An unexpected error occurred.");
+    let bob_key_package = generate_key_package_bundle(&[ciphersuite], &bob_credential, backend)
+        .expect("An unexpected error occurred.");
 
     // Add Bob to the group
     let (_queued_message, welcome) = alice_group
@@ -1122,25 +1118,21 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 }
 
 #[apply(ciphersuites_and_backends)]
-fn test_empty_input_errors(
-    ciphersuite: &'static Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
+fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credential bundles
     let alice_credential = generate_credential_bundle(
         "Alice".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package =
-        generate_key_package_bundle(&[ciphersuite.name()], &alice_credential, backend)
-            .expect("An unexpected error occurred.");
+    let alice_key_package = generate_key_package_bundle(&[ciphersuite], &alice_credential, backend)
+        .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::test_default();

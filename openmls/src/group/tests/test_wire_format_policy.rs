@@ -12,7 +12,7 @@ use super::utils::{generate_credential_bundle, generate_key_package_bundle};
 
 // Creates a group with one member
 fn create_group(
-    ciphersuite: &'static Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     wire_format_policy: WireFormatPolicy,
 ) -> MlsGroup {
@@ -22,15 +22,14 @@ fn create_group(
     let credential = generate_credential_bundle(
         "Alice".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let key_package =
-        generate_key_package_bundle(&[ciphersuite.name()], &credential, vec![], backend)
-            .expect("An unexpected error occurred.");
+    let key_package = generate_key_package_bundle(&[ciphersuite], &credential, vec![], backend)
+        .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::builder()
@@ -52,7 +51,7 @@ fn create_group(
 
 // Takes an existing group, adds a new member and sends a message from the second member to the first one, returns that message
 fn receive_message(
-    ciphersuite: &'static Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     alice_group: &mut MlsGroup,
 ) -> MlsMessageOut {
@@ -60,14 +59,14 @@ fn receive_message(
     let bob_credential = generate_credential_bundle(
         "Bob".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
     let bob_key_package =
-        generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, vec![], backend)
+        generate_key_package_bundle(&[ciphersuite], &bob_credential, vec![], backend)
             .expect("An unexpected error occurred.");
 
     let (_message, welcome) = alice_group
@@ -93,10 +92,7 @@ fn receive_message(
 
 // Test positive cases with all valid (pure & mixed) policies
 #[apply(ciphersuites_and_backends)]
-fn test_wire_policy_positive(
-    ciphersuite: &'static Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
+fn test_wire_policy_positive(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     for wire_format_policy in ALL_VALID_WIRE_FORMAT_POLICIES.iter() {
         let mut alice_group = create_group(ciphersuite, backend, *wire_format_policy);
         let message = receive_message(ciphersuite, backend, &mut alice_group);
@@ -108,10 +104,7 @@ fn test_wire_policy_positive(
 
 // Test negative cases with only icompatible policies
 #[apply(ciphersuites_and_backends)]
-fn test_wire_policy_negative(
-    ciphersuite: &'static Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
+fn test_wire_policy_negative(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // All combinations that are not part of ALL_VALID_WIRE_FORMAT_POLICIES
     let incompatible_policies = vec![
         WireFormatPolicy::new(

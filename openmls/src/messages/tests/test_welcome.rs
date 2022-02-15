@@ -2,9 +2,7 @@
 
 use crate::{
     ciphersuite::hash_ref::KeyPackageRef,
-    ciphersuite::{
-        signable::Signable, AeadKey, AeadNonce, Ciphersuite, CiphersuiteName, Mac, Secret,
-    },
+    ciphersuite::{signable::Signable, AeadKey, AeadNonce, Ciphersuite, Mac, Secret},
     config::{Config, ProtocolVersion},
     credentials::{CredentialBundle, CredentialType},
     group::{GroupEpoch, GroupId},
@@ -19,12 +17,12 @@ use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, OpenMlsCryptoPr
 use tls_codec::{Deserialize, Serialize};
 
 #[apply(ciphersuites_and_backends)]
-fn test_welcome_msg(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_welcome_msg(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     test_welcome_message_with_version(ciphersuite, backend, Config::supported_versions()[0]);
 }
 
 fn test_welcome_message_with_version(
-    ciphersuite: &'static Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     version: ProtocolVersion,
 ) {
@@ -51,7 +49,7 @@ fn test_welcome_message_with_version(
     let credential_bundle = CredentialBundle::new(
         "XXX".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
@@ -110,7 +108,7 @@ fn test_welcome_message_with_version(
 
     // Check that the welcome message is the same
     assert_eq!(msg_decoded.version, version);
-    assert_eq!(msg_decoded.cipher_suite, ciphersuite.name());
+    assert_eq!(msg_decoded.cipher_suite, ciphersuite);
     for secret in msg_decoded.secrets.iter() {
         assert_eq!(new_member.as_slice(), secret.new_member.as_slice());
         let ptxt = backend

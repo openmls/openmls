@@ -7,7 +7,7 @@ use crate::{
 };
 
 #[apply(ciphersuites_and_backends)]
-fn secret_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn secret_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // These two secrets must be incompatible
     let default_secret =
         Secret::random(ciphersuite, backend, None).expect("Not enough randomness.");
@@ -21,7 +21,7 @@ fn secret_init(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoPr
 
 #[should_panic]
 #[apply(ciphersuites_and_backends)]
-fn secret_incompatible(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn secret_incompatible(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // These two secrets must be incompatible
     let default_secret =
         Secret::random(ciphersuite, backend, None).expect("Not enough randomness.");

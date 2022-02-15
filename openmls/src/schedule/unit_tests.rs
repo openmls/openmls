@@ -11,7 +11,7 @@ use crate::{ciphersuite::Secret, config::Config, schedule::psk::PskBundle, sched
 use super::PskSecret;
 
 #[apply(ciphersuites_and_backends)]
-fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Create a new PSK secret from multiple PSKs.
     let prng = backend.rand();
 

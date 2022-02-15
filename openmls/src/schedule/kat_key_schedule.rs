@@ -5,8 +5,6 @@
 //!
 //! If values are not present, they are encoded as empty strings.
 
-use std::convert::TryFrom;
-
 use crate::{ciphersuite::*, config::*, group::*, schedule::*, test_utils::*};
 
 #[cfg(test)]
@@ -66,7 +64,7 @@ pub struct KeyScheduleTestVector {
 // Ignore clippy warning since this just used for testing
 #[allow(clippy::type_complexity)]
 fn generate(
-    ciphersuite: &'static Ciphersuite,
+    ciphersuite: Ciphersuite,
     init_secret: &InitSecret,
     group_id: &[u8],
     epoch: u64,
@@ -177,10 +175,7 @@ fn generate(
 }
 
 #[cfg(any(feature = "test-utils", test))]
-pub fn generate_test_vector(
-    n_epochs: u64,
-    ciphersuite: &'static Ciphersuite,
-) -> KeyScheduleTestVector {
+pub fn generate_test_vector(n_epochs: u64, ciphersuite: Ciphersuite) -> KeyScheduleTestVector {
     use tls_codec::Serialize;
 
     let crypto = OpenMlsRustCrypto::default();
@@ -255,7 +250,7 @@ pub fn generate_test_vector(
     }
 
     KeyScheduleTestVector {
-        cipher_suite: ciphersuite.name() as u16,
+        cipher_suite: ciphersuite as u16,
         group_id: bytes_to_hex(&group_id),
         initial_init_secret: bytes_to_hex(initial_init_secret.as_slice()),
         epochs,
@@ -266,7 +261,7 @@ pub fn generate_test_vector(
 fn write_test_vectors() {
     const NUM_EPOCHS: u64 = 200;
     let mut tests = Vec::new();
-    for ciphersuite in Config::supported_ciphersuites() {
+    for &ciphersuite in Config::supported_ciphersuites() {
         tests.push(generate_test_vector(NUM_EPOCHS, ciphersuite));
     }
     write("test_vectors/kat_key_schedule_openmls-new.json", &tests);
@@ -302,8 +297,7 @@ pub fn run_test_vector(
 ) -> Result<(), KsTestVectorError> {
     use tls_codec::{Deserialize, Serialize};
 
-    let ciphersuite =
-        CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
+    let ciphersuite = Ciphersuite::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
     let ciphersuite = match Config::ciphersuite(ciphersuite) {
         Ok(cs) => cs,
         Err(_) => {

@@ -64,7 +64,7 @@ pub struct QueuedProposal {
 impl QueuedProposal {
     /// Creates a new [QueuedProposal] from an [MlsPlaintext]
     pub(crate) fn from_mls_plaintext(
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         mls_plaintext: MlsPlaintext,
     ) -> Result<Self, LibraryError> {
@@ -82,7 +82,7 @@ impl QueuedProposal {
     }
     /// Creates a new [QueuedProposal] from a [Proposal] and [Sender]
     pub(crate) fn from_proposal_and_sender(
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         proposal: Proposal,
         sender: &Sender,
@@ -134,7 +134,7 @@ impl ProposalQueue {
     /// This functions does the following checks:
     ///  - ValSem200
     pub(crate) fn from_committed_proposals(
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         committed_proposals: Vec<ProposalOrRef>,
         proposal_store: &ProposalStore,
@@ -325,7 +325,7 @@ impl ProposalQueue {
     /// Return a [`ProposalQueue`] and a bool that indicates whether Updates for the
     /// own node were included
     pub(crate) fn filter_proposals<'a>(
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         sender: Sender,
         proposal_store: &'a ProposalStore,

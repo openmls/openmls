@@ -1,9 +1,9 @@
 use std::io::Read;
 
+use openmls_traits::types::Ciphersuite;
 use tls_codec::{TlsSerialize, TlsSize, TlsVecU8};
 
 use super::{CapabilitiesExtensionError, Deserialize, ExtensionType, Serialize};
-use crate::ciphersuite::CiphersuiteName;
 use crate::config::{Config, ProtocolVersion};
 use crate::messages::proposals::ProposalType;
 
@@ -19,7 +19,7 @@ use crate::messages::proposals::ProposalType;
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize, TlsSize, TlsSerialize)]
 pub struct CapabilitiesExtension {
     versions: TlsVecU8<ProtocolVersion>,
-    ciphersuites: TlsVecU8<CiphersuiteName>,
+    ciphersuites: TlsVecU8<Ciphersuite>,
     extensions: TlsVecU8<ExtensionType>,
     proposals: TlsVecU8<ProposalType>,
 }
@@ -41,7 +41,7 @@ impl CapabilitiesExtension {
     /// global configuration.
     pub fn new(
         versions: Option<&[ProtocolVersion]>,
-        ciphersuites: Option<&[CiphersuiteName]>,
+        ciphersuites: Option<&[Ciphersuite]>,
         extensions: Option<&[ExtensionType]>,
         proposals: Option<&[ProposalType]>,
     ) -> Self {
@@ -69,7 +69,7 @@ impl CapabilitiesExtension {
         self.versions.as_slice()
     }
     /// Get a reference to the list of cipher suites in this extension.
-    pub fn ciphersuites(&self) -> &[CiphersuiteName] {
+    pub fn ciphersuites(&self) -> &[Ciphersuite] {
         self.ciphersuites.as_slice()
     }
     /// Get a reference to the list of supported extensions.
@@ -92,7 +92,7 @@ impl tls_codec::Deserialize for CapabilitiesExtension {
             return Err(e);
         }
 
-        let ciphersuites = TlsVecU8::<CiphersuiteName>::tls_deserialize(bytes)?;
+        let ciphersuites = TlsVecU8::<Ciphersuite>::tls_deserialize(bytes)?;
         // // There must be at least one ciphersuite we support.
         // let mut supported_suite = false;
         // for suite in ciphersuites.iter() {

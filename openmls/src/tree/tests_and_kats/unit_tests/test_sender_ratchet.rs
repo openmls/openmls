@@ -7,10 +7,7 @@ use crate::{
 
 // Test the maximum forward ratcheting
 #[apply(ciphersuites_and_backends)]
-fn test_max_forward_distance(
-    ciphersuite: &'static Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
+fn test_max_forward_distance(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let configuration = &SenderRatchetConfiguration::default();
     let secret = Secret::random(ciphersuite, backend, Config::supported_versions()[0])
         .expect("Not enough randomness.");
@@ -48,10 +45,7 @@ fn test_max_forward_distance(
 
 // Test out-of-order generations
 #[apply(ciphersuites_and_backends)]
-fn test_out_of_order_generations(
-    ciphersuite: &'static Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
+fn test_out_of_order_generations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let configuration = &SenderRatchetConfiguration::default();
     let secret = Secret::random(ciphersuite, backend, Config::supported_versions()[0])
         .expect("Not enough randomness.");
@@ -89,7 +83,7 @@ fn test_out_of_order_generations(
 
 // Test forward secrecy
 #[apply(ciphersuites_and_backends)]
-fn test_forward_secrecy(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_forward_secrecy(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Encryption Ratchets are forward-secret by default, since they don't store
     // any keys. Thus, we can only test FS on Decryption Ratchets.
     let configuration = &SenderRatchetConfiguration::default();
@@ -138,7 +132,7 @@ fn test_forward_secrecy(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
 #[test]
 fn sender_ratchet_generation_overflow() {
     let backend = OpenMlsRustCrypto::default();
-    let ciphersuite = Ciphersuite::default();
+    let ciphersuite = Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let secret = Secret::random(ciphersuite, &backend, Config::supported_versions()[0])
         .expect("Not enough randomness.");
     let mut ratchet = RatchetSecret::initial_ratchet_secret(secret);

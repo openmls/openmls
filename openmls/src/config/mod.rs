@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, env, fmt, fs::File, io::BufReader};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
-use crate::ciphersuite::{Ciphersuite, CiphersuiteName};
+use crate::ciphersuite::Ciphersuite;
 use crate::extensions::{ExtensionType, RequiredCapabilitiesExtension};
 use crate::messages::proposals::ProposalType;
 
@@ -23,10 +23,10 @@ const DEFAULT_KEY_PACKAGE_LIFETIME_MARGIN: u64 = 60 * 60; // in Seconds
 
 /// Supported ciphersuites
 /// TODO #13: This should come from the crypto provider
-pub(crate) const SUPPORTED_CIPHERSUITE_NAMES: &[CiphersuiteName] = &[
-    CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-    CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256,
-    CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+pub(crate) const SUPPORTED_CIPHERSUITE_NAMES: &[Ciphersuite] = &[
+    Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+    Ciphersuite::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256,
+    Ciphersuite::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
 ];
 
 lazy_static! {
@@ -50,13 +50,9 @@ lazy_static! {
                 default_key_package_lifetime: DEFAULT_KEY_PACKAGE_LIFETIME,
                 key_package_lifetime_margin: DEFAULT_KEY_PACKAGE_LIFETIME_MARGIN,
             };
-            let ciphersuites = SUPPORTED_CIPHERSUITE_NAMES
-                .iter()
-                .map(|ciphersuite_name| Ciphersuite::new_from_supported(*ciphersuite_name))
-                .collect::<Vec<Ciphersuite>>();
             let config = PersistentConfig {
                 protocol_versions: vec![ProtocolVersion::Mls10, ProtocolVersion::Mls10Draft11],
-                ciphersuites,
+                ciphersuites: SUPPORTED_CIPHERSUITE_NAMES.to_vec(),
                 extensions: vec![ExtensionType::Capabilities, ExtensionType::Lifetime, ExtensionType::ExternalKeyId],
                 proposals: vec![
                     ProposalType::Add,
@@ -136,7 +132,7 @@ impl Config {
     }
 
     /// Get a list of the supported cipher suites names.
-    pub fn supported_ciphersuite_names() -> &'static [CiphersuiteName] {
+    pub fn supported_ciphersuite_names() -> &'static [Ciphersuite] {
         SUPPORTED_CIPHERSUITE_NAMES
     }
 
@@ -146,9 +142,9 @@ impl Config {
     }
 
     /// Get the ciphersuite of the given name.
-    pub fn ciphersuite(ciphersuite: CiphersuiteName) -> Result<&'static Ciphersuite, ConfigError> {
-        match CONFIG.ciphersuites.iter().find(|s| s.name() == ciphersuite) {
-            Some(c) => Ok(c),
+    pub fn ciphersuite(ciphersuite: Ciphersuite) -> Result<Ciphersuite, ConfigError> {
+        match CONFIG.ciphersuites.iter().find(|&&s| s == ciphersuite) {
+            Some(c) => Ok(*c),
             None => Err(ConfigError::UnsupportedCiphersuite),
         }
     }

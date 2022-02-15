@@ -37,13 +37,13 @@ fn test_dir_path() {
 }
 
 #[apply(ciphersuites_and_backends)]
-fn test_tree_hash(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_tree_hash(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     fn create_identity(
         id: &[u8],
-        ciphersuite: &'static Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
     ) -> KeyPackageBundle {
-        let signature_scheme = SignatureScheme::from(ciphersuite.name());
+        let signature_scheme = SignatureScheme::from(ciphersuite);
         let credential_bundle = CredentialBundle::new(
             id.to_vec(),
             CredentialType::Basic,
@@ -52,7 +52,7 @@ fn test_tree_hash(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         )
         .expect("An unexpected error occurred.");
         KeyPackageBundle::new(
-            &[ciphersuite.name()],
+            &[ciphersuite],
             &credential_bundle,
             backend,
             Vec::new(),

@@ -50,6 +50,7 @@ use crate::{
 use crate::{ciphersuite::signable::*, messages::public_group_state::*};
 
 use log::{debug, trace};
+use openmls_traits::crypto::OpenMlsCrypto;
 use serde::{
     de::{self, MapAccess, SeqAccess, Visitor},
     ser::{SerializeStruct, Serializer},
@@ -79,7 +80,7 @@ pub(crate) struct CreateCommitResult {
 #[derive(Debug)]
 #[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct CoreGroup {
-    ciphersuite: &'static Ciphersuite,
+    ciphersuite: Ciphersuite,
     group_context: GroupContext,
     group_epoch_secrets: GroupEpochSecrets,
     tree: TreeSync,
@@ -509,7 +510,7 @@ impl CoreGroup {
     }
 
     /// Get the ciphersuite implementation used in this group.
-    pub(crate) fn ciphersuite(&self) -> &'static Ciphersuite {
+    pub(crate) fn ciphersuite(&self) -> Ciphersuite {
         self.ciphersuite
     }
 
@@ -674,7 +675,7 @@ impl CoreGroup {
 // Helper functions
 
 pub(crate) fn update_confirmed_transcript_hash(
-    ciphersuite: &Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     mls_plaintext_commit_content: &MlsPlaintextCommitContent,
     interim_transcript_hash: &[u8],
@@ -682,16 +683,17 @@ pub(crate) fn update_confirmed_transcript_hash(
     let commit_content_bytes = mls_plaintext_commit_content
         .tls_serialize_detached()
         .map_err(LibraryError::missing_bound_check)?;
-    ciphersuite
+    backend
+        .crypto()
         .hash(
-            backend,
+            ciphersuite.hash_algorithm(),
             &[interim_transcript_hash, &commit_content_bytes].concat(),
         )
         .map_err(LibraryError::unexpected_crypto_error)
 }
 
 pub(crate) fn update_interim_transcript_hash(
-    ciphersuite: &Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     mls_plaintext_commit_auth_data: &MlsPlaintextCommitAuthData,
     confirmed_transcript_hash: &[u8],
@@ -699,9 +701,10 @@ pub(crate) fn update_interim_transcript_hash(
     let commit_auth_data_bytes = mls_plaintext_commit_auth_data
         .tls_serialize_detached()
         .map_err(LibraryError::missing_bound_check)?;
-    ciphersuite
+    backend
+        .crypto()
         .hash(
-            backend,
+            ciphersuite.hash_algorithm(),
             &[confirmed_transcript_hash, &commit_auth_data_bytes].concat(),
         )
         .map_err(LibraryError::unexpected_crypto_error)

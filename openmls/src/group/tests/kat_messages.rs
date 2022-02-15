@@ -55,9 +55,9 @@ pub struct MessagesTestVector {
     mls_ciphertext: String,            /* serialized MLSCiphertext */
 }
 
-pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVector {
+pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     let crypto = OpenMlsRustCrypto::default();
-    let ciphersuite_name = ciphersuite.name();
+    let ciphersuite_name = ciphersuite;
     let credential_bundle = CredentialBundle::new(
         b"OpenMLS rocks".to_vec(),
         CredentialType::Basic,
@@ -389,7 +389,7 @@ fn write_test_vectors_msg() {
     let mut tests = Vec::new();
     const NUM_TESTS: usize = 100;
 
-    for ciphersuite in Config::supported_ciphersuites() {
+    for &ciphersuite in Config::supported_ciphersuites() {
         for _ in 0..NUM_TESTS {
             let test = generate_test_vector(ciphersuite);
             tests.push(test);

@@ -98,7 +98,7 @@ impl TreeSyncNode {
     pub(in crate::treesync) fn compute_tree_hash(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         leaf_index_option: Option<LeafIndex>,
         // This is temporary. See below.
         node_index: LeafIndex,

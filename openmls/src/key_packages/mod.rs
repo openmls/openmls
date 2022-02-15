@@ -31,7 +31,7 @@
 //! use openmls::prelude::*;
 //! use openmls_rust_crypto::OpenMlsRustCrypto;
 //!
-//! let ciphersuite = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+//! let ciphersuite = Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 //! let backend = OpenMlsRustCrypto::default();
 //!
 //! let credential_bundle = CredentialBundle::new(
@@ -111,7 +111,7 @@ mod test_key_packages;
 #[derive(Debug, Clone, PartialEq, TlsSize)]
 struct KeyPackagePayload {
     protocol_version: ProtocolVersion,
-    ciphersuite: &'static Ciphersuite,
+    ciphersuite: Ciphersuite,
     hpke_init_key: HpkePublicKey,
     credential: Credential,
     extensions: TlsVecU32<Extension>,
@@ -335,9 +335,9 @@ impl KeyPackage {
         .map_err(LibraryError::unexpected_crypto_error)
     }
 
-    /// Get the [`CiphersuiteName`].
-    pub fn ciphersuite_name(&self) -> CiphersuiteName {
-        self.payload.ciphersuite.name()
+    /// Get the [`Ciphersuite`].
+    pub fn ciphersuite_name(&self) -> Ciphersuite {
+        self.payload.ciphersuite
     }
 }
 
@@ -347,7 +347,7 @@ impl KeyPackage {
     /// given `ciphersuite` and `identity`, and the initial HPKE key pair
     /// `init_key`.
     fn new(
-        ciphersuite_name: CiphersuiteName,
+        ciphersuite_name: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         hpke_init_key: HpkePublicKey,
         credential_bundle: &CredentialBundle,
@@ -390,7 +390,7 @@ impl KeyPackage {
     }
 
     /// Get the `Ciphersuite`.
-    pub(crate) fn ciphersuite(&self) -> &'static Ciphersuite {
+    pub(crate) fn ciphersuite(&self) -> Ciphersuite {
         self.payload.ciphersuite
     }
 
@@ -524,7 +524,7 @@ impl KeyPackageBundle {
     ///
     /// Returns a new [`KeyPackageBundle`] or a [`KeyPackageError`].
     pub fn new(
-        ciphersuites: &[CiphersuiteName],
+        ciphersuites: &[Ciphersuite],
         credential_bundle: &CredentialBundle,
         backend: &impl OpenMlsCryptoProvider,
         extensions: Vec<Extension>,
@@ -550,7 +550,7 @@ impl KeyPackageBundle {
     /// Returns a new [`KeyPackageBundle`] or a [`KeyPackageError`].
     pub fn new_with_version(
         version: ProtocolVersion,
-        ciphersuites: &[CiphersuiteName],
+        ciphersuites: &[Ciphersuite],
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
         extensions: Vec<Extension>,
@@ -586,7 +586,7 @@ impl KeyPackageBundle {
     ///
     /// Returns a new [`KeyPackageBundle`].
     pub fn new_with_keypair(
-        ciphersuites: &[CiphersuiteName],
+        ciphersuites: &[Ciphersuite],
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
         mut extensions: Vec<Extension>,
@@ -684,7 +684,7 @@ impl KeyPackageBundle {
 /// Crate visible `KeyPackageBundle` functions.
 impl KeyPackageBundle {
     pub(crate) fn new_from_leaf_secret(
-        ciphersuites: &[CiphersuiteName],
+        ciphersuites: &[Ciphersuite],
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
         extensions: Vec<Extension>,
