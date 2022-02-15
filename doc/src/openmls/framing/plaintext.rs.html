@@ -843,14 +843,6 @@
 <span id="842">842</span>
 <span id="843">843</span>
 <span id="844">844</span>
-<span id="845">845</span>
-<span id="846">846</span>
-<span id="847">847</span>
-<span id="848">848</span>
-<span id="849">849</span>
-<span id="850">850</span>
-<span id="851">851</span>
-<span id="852">852</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MlsPlaintext</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! An MlsPlaintext is a framing structure for MLS messages. It can contain</span>
@@ -1151,17 +1143,6 @@
         <span class="self">self</span>.<span class="ident">membership_tag</span> <span class="op">=</span> <span class="prelude-val">None</span>;
     }
 
-    <span class="doccomment">/// Tries to extract an application messages from an `MlsPlaintext`. Returns</span>
-    <span class="doccomment">/// `MlsPlaintextError::NotAnApplicationMessage` if the `MlsPlaintext`</span>
-    <span class="doccomment">/// contained something other than an application message.</span>
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_application_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">u8</span>], <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">content</span> {
-            <span class="ident">MlsPlaintextContentType::Application</span>(<span class="ident">message</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">message</span>.<span class="ident">as_slice</span>()),
-            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">MlsPlaintextError::NotAnApplicationMessage</span>),
-        }
-    }
-
     <span class="doccomment">/// Returns `true` if this is a handshake message and `false` otherwise.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">is_handshake_message</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
@@ -1387,11 +1368,14 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">membership_key</span>: <span class="kw-2">&amp;</span><span class="ident">MembershipKey</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MlsPlaintextError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">VerificationError</span><span class="op">&gt;</span> {
         <span class="macro">log::debug!</span>(<span class="string">&quot;Verifying membership tag.&quot;</span>);
         <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;  Membership key: {:x?}&quot;</span>, <span class="ident">membership_key</span>);
         <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;  Serialized context: {:x?}&quot;</span>, <span class="ident">serialized_context</span>);
-        <span class="kw">let</span> <span class="ident">tbs_payload</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">tbs</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">tbs_payload</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">tbs</span>
+            .<span class="ident">tls_serialize_detached</span>()
+            .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">tbm_payload</span> <span class="op">=</span>
             <span class="ident">MlsPlaintextTbmPayload::new</span>(<span class="kw-2">&amp;</span><span class="ident">tbs_payload</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">signature</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">confirmation_tag</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">expected_membership_tag</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">membership_key</span>.<span class="ident">tag</span>(<span class="ident">backend</span>, <span class="ident">tbm_payload</span>)<span class="question-mark">?</span>;
@@ -1400,10 +1384,10 @@
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">membership_tag</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">membership_tag</span> {
             <span class="comment">// TODO #133: make this a constant-time comparison</span>
             <span class="kw">if</span> <span class="ident">membership_tag</span> <span class="op">!</span><span class="op">=</span> <span class="ident">expected_membership_tag</span> {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">VerificationError::InvalidMembershipTag</span>.<span class="ident">into</span>());
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">VerificationError::InvalidMembershipTag</span>);
             }
         } <span class="kw">else</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">VerificationError::MissingMembershipTag</span>.<span class="ident">into</span>());
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">VerificationError::MissingMembershipTag</span>);
         }
         <span class="prelude-val">Ok</span>(())
     }

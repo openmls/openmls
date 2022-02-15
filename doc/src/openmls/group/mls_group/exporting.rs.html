@@ -57,6 +57,8 @@
 <span id="56">56</span>
 <span id="57">57</span>
 <span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">tls_codec::Serialize</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::PublicGroupState</span>;
@@ -79,7 +81,9 @@
                 .<span class="ident">group</span>
                 .<span class="ident">export_secret</span>(<span class="ident">backend</span>, <span class="ident">label</span>, <span class="ident">context</span>, <span class="ident">key_length</span>)<span class="question-mark">?</span>)
         } <span class="kw">else</span> {
-            <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::UseAfterEviction</span>(<span class="ident">UseAfterEviction::Error</span>))
+            <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::GroupStateError</span>(
+                <span class="ident">MlsGroupStateError::UseAfterEviction</span>,
+            ))
         }
     }
 

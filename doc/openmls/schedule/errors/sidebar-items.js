@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["ErrorState","Key schedule state error"],["KeyScheduleError","Key schedule error"],["PskSecretError","PSK secret error"]]});
+initSidebarItems({"enum":[["ErrorState","Key schedule state error"],["KeyScheduleError","Key schedule error"],["PskError","PSK secret error"]]});

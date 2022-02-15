@@ -479,15 +479,6 @@
 <span id="478">478</span>
 <span id="479">479</span>
 <span id="480">480</span>
-<span id="481">481</span>
-<span id="482">482</span>
-<span id="483">483</span>
-<span id="484">484</span>
-<span id="485">485</span>
-<span id="486">486</span>
-<span id="487">487</span>
-<span id="488">488</span>
-<span id="489">489</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -533,7 +524,6 @@
 
 <span class="kw">use</span> <span class="self">self</span>::{
     <span class="ident">diff</span>::{<span class="ident">StagedTreeSyncDiff</span>, <span class="ident">TreeSyncDiff</span>},
-    <span class="ident">errors::TreeSyncDiffError</span>,
     <span class="ident">node</span>::{<span class="ident">leaf_node::LeafNode</span>, <span class="ident">Node</span>, <span class="ident">NodeError</span>},
     <span class="ident">treesync_node</span>::{<span class="ident">TreeSyncNode</span>, <span class="ident">TreeSyncNodeError</span>},
 };
@@ -583,15 +573,7 @@
         <span class="kw">let</span> <span class="ident">key_package</span> <span class="op">=</span> <span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>();
         <span class="comment">// We generate our own leaf without a private key for now. The private</span>
         <span class="comment">// key is set in the `from_nodes` constructor below.</span>
-        <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Node::LeafNode</span>(
-            <span class="ident">LeafNode::new</span>(<span class="ident">key_package</span>.<span class="ident">clone</span>(), <span class="ident">backend</span>.<span class="ident">crypto</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">KeyPackageError::CryptoError</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">e</span> {
-                    <span class="ident">LibraryError::unexpected_crypto_error</span>(<span class="ident">e</span>)
-                } <span class="kw">else</span> {
-                    <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Unexpected error in KeyPackage&quot;</span>)
-                }
-            })<span class="question-mark">?</span>,
-        );
+        <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Node::LeafNode</span>(<span class="ident">LeafNode::new</span>(<span class="ident">key_package</span>.<span class="ident">clone</span>(), <span class="ident">backend</span>.<span class="ident">crypto</span>())<span class="question-mark">?</span>);
         <span class="kw">let</span> <span class="ident">path_secret</span>: <span class="ident">PathSecret</span> <span class="op">=</span> <span class="ident">key_package_bundle</span>.<span class="ident">leaf_secret</span>().<span class="ident">clone</span>().<span class="ident">into</span>();
         <span class="kw">let</span> <span class="ident">commit_secret</span>: <span class="ident">CommitSecret</span> <span class="op">=</span> <span class="ident">path_secret</span>
             .<span class="ident">derive_path_secret</span>(<span class="ident">backend</span>, <span class="ident">key_package</span>.<span class="ident">ciphersuite</span>())<span class="question-mark">?</span>

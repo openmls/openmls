@@ -296,6 +296,18 @@
 <span id="295">295</span>
 <span id="296">296</span>
 <span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS CoreGroup errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -306,10 +318,10 @@
     <span class="ident">credentials::CredentialError</span>,
     <span class="ident">error::LibraryError</span>,
     <span class="ident">extensions::errors::ExtensionError</span>,
-    <span class="ident">framing::errors</span>::{<span class="ident">MlsCiphertextError</span>, <span class="ident">MlsPlaintextError</span>, <span class="ident">SenderError</span>, <span class="ident">ValidationError</span>},
+    <span class="ident">framing::errors</span>::{<span class="ident">MlsCiphertextError</span>, <span class="ident">SenderError</span>, <span class="ident">ValidationError</span>},
     <span class="ident">key_packages::KeyPackageError</span>,
-    <span class="ident">schedule</span>::{<span class="ident">KeyScheduleError</span>, <span class="ident">PskSecretError</span>},
-    <span class="ident">treesync</span>::{<span class="ident">errors</span>::<span class="kw-2">*</span>, <span class="ident">treekem::TreeKemError</span>, <span class="ident">TreeSyncError</span>},
+    <span class="ident">schedule</span>::{<span class="ident">KeyScheduleError</span>, <span class="ident">PskError</span>},
+    <span class="ident">treesync::errors</span>::<span class="kw-2">*</span>,
 };
 <span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
@@ -329,8 +341,6 @@
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">MlsCiphertextError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsCiphertextError</span>),
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">MlsPlaintextError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsPlaintextError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">WelcomeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">WelcomeError</span>),
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">ExternalCommitError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ExternalCommitError</span>),
@@ -349,7 +359,7 @@
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">KeyScheduleError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">KeyScheduleError</span>),
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">PskSecretError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">PskSecretError</span>),
+    <span class="ident">PskSecretError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">PskError</span>),
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">CredentialError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CredentialError</span>),
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
@@ -453,6 +463,8 @@
     <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The epoch of the group context and MlsPlaintext didn&#39;t match.&quot;</span>)]</span>
     <span class="ident">EpochMismatch</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The Commit was created by this client.&quot;</span>)]</span>
+    <span class="ident">OwnCommit</span>,
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;stage_commit was called with an MlsPlaintext that is not a Commit.&quot;</span>)]</span>
     <span class="ident">WrongPlaintextContentType</span>,
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Unable to verify the key package signature.&quot;</span>)]</span>
@@ -469,6 +481,18 @@
     <span class="ident">OwnKeyNotFound</span>,
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;External Committer used the wrong index.&quot;</span>)]</span>
     <span class="ident">InconsistentSenderIndex</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The sender is of type preconfigured, which is not valid.&quot;</span>)]</span>
+    <span class="ident">SenderTypePreconfigured</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Too many new members: the tree is full.&quot;</span>)]</span>
+    <span class="ident">TooManyNewMembers</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">ProposalValidationError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ProposalValidationError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">PskError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">PskError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">ExternalCommitValidation</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ExternalCommitValidationError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">UpdatePathError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ApplyUpdatePathError</span>),
 }
 
 <span class="comment">// === Crate errors ===</span>

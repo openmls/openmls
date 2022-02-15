@@ -88,16 +88,6 @@
 <span id="87">87</span>
 <span id="88">88</span>
 <span id="89">89</span>
-<span id="90">90</span>
-<span id="91">91</span>
-<span id="92">92</span>
-<span id="93">93</span>
-<span id="94">94</span>
-<span id="95">95</span>
-<span id="96">96</span>
-<span id="97">97</span>
-<span id="98">98</span>
-<span id="99">99</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Framing errors.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `MlsPlaintextError` and `MlsCiphertextError` are thrown on errors</span>
@@ -106,96 +96,86 @@
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">credentials::CredentialError</span>, <span class="ident">error::LibraryError</span>, <span class="ident">tree::secret_tree::SecretTreeError</span>,
 };
-<span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
-<span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
+<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
-<span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsPlaintextError</span> {
-        <span class="ident">Simple</span> {
-            <span class="ident">NotAnApplicationMessage</span> <span class="op">=</span> <span class="string">&quot;The MlsPlaintext message is not an application message.&quot;</span>,
-            <span class="ident">UnknownSender</span> <span class="op">=</span> <span class="string">&quot;Sender is not part of the group&quot;</span>,
-            <span class="ident">InvalidSignature</span> <span class="op">=</span> <span class="string">&quot;The MlsPlaintext signature is invalid&quot;</span>,
-            <span class="ident">InvalidMembershipTag</span> <span class="op">=</span> <span class="string">&quot;The MlsPlaintext membership tag is invalid&quot;</span>,
-        }
-        <span class="ident">Complex</span> {
-            <span class="ident">LibraryError</span>(<span class="ident">LibraryError</span>) <span class="op">=</span> <span class="string">&quot;A LibraryError occurred&quot;</span>,
-            <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span> <span class="string">&quot;TLS Codec error&quot;</span>,
-            <span class="ident">CredentialError</span>(<span class="ident">CredentialError</span>) <span class="op">=</span> <span class="string">&quot;See [`CredentialError`](`crate::credentials::CredentialError`) for details.&quot;</span>,
-            <span class="ident">VerificationError</span>(<span class="ident">VerificationError</span>) <span class="op">=</span> <span class="string">&quot;See [`VerificationError`](`VerificationError`) for details.&quot;</span>,
-            <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span> <span class="string">&quot;See [`CryptoError`](openmls_traits::types::CryptoError) for details.&quot;</span>,
-        }
-    }
+<span class="doccomment">/// MlsCiphertext error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsCiphertextError</span> {
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Couldn&#39;t find a ratcheting secret for the given sender and generation.&quot;</span>)]</span>
+    <span class="ident">GenerationOutOfBound</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;An error occurred while decrypting.&quot;</span>)]</span>
+    <span class="ident">DecryptionError</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The WireFormat was MLSPlaintext.&quot;</span>)]</span>
+    <span class="ident">WrongWireFormat</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The content is malformed.&quot;</span>)]</span>
+    <span class="ident">MalformedContent</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">SecretTreeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">SecretTreeError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">SenderError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">SenderError</span>),
 }
 
-<span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsCiphertextError</span> {
-        <span class="ident">Simple</span> {
-            <span class="ident">InvalidContentType</span> <span class="op">=</span> <span class="string">&quot;The MlsCiphertext has an invalid content type.&quot;</span>,
-            <span class="ident">GenerationOutOfBound</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t find a ratcheting secret for the given sender and generation.&quot;</span>,
-            <span class="ident">EncryptionError</span> <span class="op">=</span> <span class="string">&quot;An error occurred while encrypting.&quot;</span>,
-            <span class="ident">DecryptionError</span> <span class="op">=</span> <span class="string">&quot;An error occurred while decrypting.&quot;</span>,
-            <span class="ident">WrongWireFormat</span> <span class="op">=</span> <span class="string">&quot;The WireFormat was MLSPlaintext.&quot;</span>,
-        }
-        <span class="ident">Complex</span> {
-            <span class="ident">PlaintextError</span>(<span class="ident">MlsPlaintextError</span>) <span class="op">=</span> <span class="string">&quot;MlsPlaintext error&quot;</span>,
-            <span class="ident">SecretTreeError</span>(<span class="ident">SecretTreeError</span>) <span class="op">=</span> <span class="string">&quot;SecretTree error&quot;</span>,
-            <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span> <span class="string">&quot;TLS codec error&quot;</span>,
-            <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span> <span class="string">&quot;See [`CryptoError`](openmls_traits::types::CryptoError) for details.&quot;</span>,
-            <span class="ident">SenderError</span>(<span class="ident">SenderError</span>) <span class="op">=</span> <span class="string">&quot;See [`SenderError`] for details.&quot;</span>,
-        }
-    }
+<span class="doccomment">/// Sender error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SenderError</span> {
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The requested client is not a member of the group.&quot;</span>)]</span>
+    <span class="ident">NotAMember</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Unknown sender&quot;</span>)]</span>
+    <span class="ident">UnknownSender</span>,
 }
 
-<span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SenderError</span> {
-        <span class="ident">NotAMember</span> <span class="op">=</span> <span class="string">&quot;The requested client is not a member of the group.&quot;</span>,
-        <span class="ident">NotAPreConfigured</span> <span class="op">=</span> <span class="string">&quot;The requested sender is not a preconfigured one.&quot;</span>,
-        <span class="ident">UnknownSender</span> <span class="op">=</span> <span class="string">&quot;Unknown sender&quot;</span>,
-    }
+<span class="doccomment">/// Verification error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">VerificationError</span> {
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The MlsPlaintext membership tag is missing&quot;</span>)]</span>
+    <span class="ident">MissingMembershipTag</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The MlsPlaintext membership tag is invalid&quot;</span>)]</span>
+    <span class="ident">InvalidMembershipTag</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">CredentialError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CredentialError</span>),
 }
 
-<span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">VerificationError</span> {
-        <span class="ident">Simple</span> {
-            <span class="ident">MissingMembershipTag</span> <span class="op">=</span> <span class="string">&quot;The MlsPlaintext membership tag is missing&quot;</span>,
-            <span class="ident">InvalidMembershipTag</span> <span class="op">=</span> <span class="string">&quot;The MlsPlaintext membership tag is invalid&quot;</span>,
-        }
-        <span class="ident">Complex</span> {
-            <span class="ident">CredentialError</span>(<span class="ident">CredentialError</span>) <span class="op">=</span> <span class="string">&quot;Credential error&quot;</span>,
-        }
-    }
+<span class="doccomment">/// Validation error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ValidationError</span> {
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(
+        <span class="string">&quot;The MlsPlaintext message is not a Commit despite the sender begin of type NewMember.&quot;</span>
+    )]</span>
+    <span class="ident">NotACommit</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The Commit doesn&#39;t have a path despite the sender being of type NewMember.&quot;</span>)]</span>
+    <span class="ident">NoPath</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The MlsPlaintext contains an application message but was not encrypted.&quot;</span>)]</span>
+    <span class="ident">UnencryptedApplicationMessage</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Sender is not part of the group.&quot;</span>)]</span>
+    <span class="ident">UnknownSender</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The confirmation tag is missing.&quot;</span>)]</span>
+    <span class="ident">MissingConfirmationTag</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Wrong wire format.&quot;</span>)]</span>
+    <span class="ident">WrongWireFormat</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Verifying the signature failed.&quot;</span>)]</span>
+    <span class="ident">InvalidSignature</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">VerificationError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">VerificationError</span>),
+    <span class="doccomment">/// Could not decrypt the message</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">UnableToDecrypt</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsCiphertextError</span>),
 }
 
-<span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ValidationError</span> {
-        <span class="ident">Simple</span> {
-            <span class="ident">NotAnApplicationMessage</span> <span class="op">=</span> <span class="string">&quot;The MlsPlaintext message is not an application message.&quot;</span>,
-            <span class="ident">NotACommit</span> <span class="op">=</span> <span class="string">&quot;The MlsPlaintext message is not a Commit despite the sender begin of type NewMember.&quot;</span>,
-            <span class="ident">NoPath</span> <span class="op">=</span> <span class="string">&quot;The Commit doesn&#39;t have a path despite the sender being of type NewMember.&quot;</span>,
-            <span class="ident">UnencryptedApplicationMessage</span> <span class="op">=</span> <span class="string">&quot;The MlsPlaintext contains an application message but was not encrypted.&quot;</span>,
-            <span class="ident">UnknownSender</span> <span class="op">=</span> <span class="string">&quot;Sender is not part of the group&quot;</span>,
-            <span class="ident">MissingMembershipTag</span> <span class="op">=</span> <span class="string">&quot;The membership tag is missing.&quot;</span>,
-            <span class="ident">MissingConfirmationTag</span> <span class="op">=</span> <span class="string">&quot;The confirmation tag is missing.&quot;</span>,
-            <span class="ident">WrongWireFormat</span> <span class="op">=</span> <span class="string">&quot;Wrong wire format.&quot;</span>,
-            <span class="ident">LibraryError</span> <span class="op">=</span> <span class="string">&quot;A library error occured&quot;</span>,
-        }
-        <span class="ident">Complex</span> {
-            <span class="ident">CodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span> <span class="string">&quot;TLS Codec error&quot;</span>,
-            <span class="ident">CredentialError</span>(<span class="ident">CredentialError</span>) <span class="op">=</span> <span class="string">&quot;See [`CredentialError`](`crate::credentials::CredentialError`) for details.&quot;</span>,
-            <span class="ident">MlsPlaintextError</span>(<span class="ident">MlsPlaintextError</span>) <span class="op">=</span> <span class="string">&quot;See [`MlsPlaintextError`](`MlsPlaintextError`) for details.&quot;</span>,
-            <span class="ident">MlsCiphertextError</span>(<span class="ident">MlsCiphertextError</span>) <span class="op">=</span> <span class="string">&quot;See [`MlsCiphertextError`](`MlsCiphertextError`) for details.&quot;</span>,
-        }
-    }
-}
-
-<span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsMessageError</span> {
-        <span class="ident">DecodingError</span> <span class="op">=</span> <span class="string">&quot;The message could not be decoded.&quot;</span>,
-        <span class="ident">EncodingError</span> <span class="op">=</span> <span class="string">&quot;The message could not be encoded.&quot;</span>,
-        <span class="ident">NotAMember</span> <span class="op">=</span> <span class="string">&quot;The requested client is not a member of the group.&quot;</span>,
-        <span class="ident">NotAPreConfigured</span> <span class="op">=</span> <span class="string">&quot;The requested sender is not a preconfigured one.&quot;</span>,
-        <span class="ident">UnknownSender</span> <span class="op">=</span> <span class="string">&quot;Unknown sender&quot;</span>,
-    }
+<span class="doccomment">/// MlsMessage error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsMessageError</span> {
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The message could not be decoded.&quot;</span>)]</span>
+    <span class="ident">UnableToDecode</span>,
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div>

@@ -632,6 +632,8 @@
 <span id="631">631</span>
 <span id="632">632</span>
 <span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
 </pre><pre class="rust"><code><span class="doccomment">//! An implementation of a diff functionality for the [`ABinaryTree`] struct.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -816,12 +818,14 @@
 
     <span class="doccomment">/// Returns references to the leaves of the diff in order from left to</span>
     <span class="doccomment">/// right. This function should not throw an error. However, it might throw</span>
-    <span class="doccomment">/// an [`ABinaryTreeDiffError::OutOfBounds`] error if there is a bug in the implementation.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">leaves</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// a [`LibraryError`] error if there is a bug in the implementation.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">leaves</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">leaf_references</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
         <span class="kw">for</span> <span class="ident">leaf_index</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">leaf_count</span>() {
             <span class="kw">let</span> <span class="ident">node_index</span> <span class="op">=</span> <span class="ident">to_node_index</span>(<span class="ident">leaf_index</span>);
-            <span class="kw">let</span> <span class="ident">node_ref</span> <span class="op">=</span> <span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">node_index</span>)<span class="question-mark">?</span>;
+            <span class="comment">// The node reference must be valid, since it is a valid leaf</span>
+            <span class="kw">let</span> <span class="ident">node_ref</span> <span class="op">=</span> <span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">node_index</span>)
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected a valid node reference&quot;</span>))<span class="question-mark">?</span>;
             <span class="ident">leaf_references</span>.<span class="ident">push</span>(<span class="ident">node_ref</span>);
         }
         <span class="prelude-val">Ok</span>(<span class="ident">leaf_references</span>)

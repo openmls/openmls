@@ -182,12 +182,17 @@
 <span id="181">181</span>
 <span id="182">182</span>
 <span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::HashSet</span>;
 
 <span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">binary_tree::LeafIndex</span>,
+    <span class="ident">error::LibraryError</span>,
     <span class="ident">framing</span>::{<span class="ident">Sender</span>, <span class="ident">SenderError</span>},
     <span class="ident">group::CoreGroupError</span>,
     <span class="ident">key_packages::KeyPackageBundle</span>,
@@ -335,7 +340,10 @@
         <span class="comment">// Extract KeyPackages from proposals</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">invitation_list</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
         <span class="kw">for</span> <span class="ident">add_proposal</span> <span class="kw">in</span> <span class="ident">add_proposals</span> {
-            <span class="kw">let</span> <span class="ident">leaf_index</span> <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">add_leaf</span>(<span class="ident">add_proposal</span>.<span class="ident">key_package</span>().<span class="ident">clone</span>(), <span class="ident">backend</span>.<span class="ident">crypto</span>())<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">leaf_index</span> <span class="op">=</span> <span class="ident">diff</span>
+                .<span class="ident">add_leaf</span>(<span class="ident">add_proposal</span>.<span class="ident">key_package</span>().<span class="ident">clone</span>(), <span class="ident">backend</span>.<span class="ident">crypto</span>())
+                <span class="comment">// TODO #810</span>
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Tree full: cannot add more members&quot;</span>))<span class="question-mark">?</span>;
             <span class="ident">invitation_list</span>.<span class="ident">push</span>((<span class="ident">leaf_index</span>, <span class="ident">add_proposal</span>.<span class="ident">clone</span>()))
         }
 

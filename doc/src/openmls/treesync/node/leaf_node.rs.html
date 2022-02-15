@@ -125,7 +125,7 @@
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite</span>::{<span class="ident">hash_ref::KeyPackageRef</span>, <span class="ident">HpkePrivateKey</span>, <span class="ident">HpkePublicKey</span>},
     <span class="ident">error::LibraryError</span>,
-    <span class="ident">key_packages</span>::{<span class="ident">KeyPackage</span>, <span class="ident">KeyPackageBundle</span>, <span class="ident">KeyPackageError</span>},
+    <span class="ident">key_packages</span>::{<span class="ident">KeyPackage</span>, <span class="ident">KeyPackageBundle</span>},
 };
 
 <span class="doccomment">/// This struct implements the MLS leaf node and contains a [`KeyPackage`] and</span>
@@ -152,7 +152,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">key_package</span>: <span class="ident">KeyPackage</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCrypto</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">key_package_ref</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">key_package</span>.<span class="ident">hash_ref</span>(<span class="ident">backend</span>)<span class="question-mark">?</span>);
         <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
             <span class="ident">key_package_ref</span>,
@@ -178,7 +178,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new_from_bundle</span>(
         <span class="ident">key_package_bundle</span>: <span class="ident">KeyPackageBundle</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCrypto</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">KeyPackageError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">key_package</span> <span class="op">=</span> <span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>;
         <span class="kw">let</span> <span class="ident">private_key_option</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">key_package_bundle</span>.<span class="ident">private_key</span>);
         <span class="kw">let</span> <span class="ident">key_package_ref</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">key_package</span>.<span class="ident">hash_ref</span>(<span class="ident">backend</span>)<span class="question-mark">?</span>);

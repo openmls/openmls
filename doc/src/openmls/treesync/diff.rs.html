@@ -905,6 +905,36 @@
 <span id="904">904</span>
 <span id="905">905</span>
 <span id="906">906</span>
+<span id="907">907</span>
+<span id="908">908</span>
+<span id="909">909</span>
+<span id="910">910</span>
+<span id="911">911</span>
+<span id="912">912</span>
+<span id="913">913</span>
+<span id="914">914</span>
+<span id="915">915</span>
+<span id="916">916</span>
+<span id="917">917</span>
+<span id="918">918</span>
+<span id="919">919</span>
+<span id="920">920</span>
+<span id="921">921</span>
+<span id="922">922</span>
+<span id="923">923</span>
+<span id="924">924</span>
+<span id="925">925</span>
+<span id="926">926</span>
+<span id="927">927</span>
+<span id="928">928</span>
+<span id="929">929</span>
+<span id="930">930</span>
+<span id="931">931</span>
+<span id="932">932</span>
+<span id="933">933</span>
+<span id="934">934</span>
+<span id="935">935</span>
+<span id="936">936</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -951,7 +981,7 @@
     <span class="ident">credentials::CredentialBundle</span>,
     <span class="ident">error::LibraryError</span>,
     <span class="ident">extensions::ExtensionType</span>,
-    <span class="ident">key_packages</span>::{<span class="ident">KeyPackage</span>, <span class="ident">KeyPackageBundlePayload</span>, <span class="ident">KeyPackageError</span>},
+    <span class="ident">key_packages</span>::{<span class="ident">KeyPackage</span>, <span class="ident">KeyPackageBundlePayload</span>},
     <span class="ident">messages::PathSecret</span>,
     <span class="ident">schedule::CommitSecret</span>,
 };
@@ -1050,14 +1080,21 @@
 
     <span class="doccomment">/// Find and return the index of either the left-most blank leaf, or, if</span>
     <span class="doccomment">/// there are no blank leaves, the leaf count.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">free_leaf_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LeafIndex</span>, <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">free_leaf_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LeafIndex</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="comment">// Find a free leaf and fill it with the new key package.</span>
         <span class="kw">let</span> <span class="ident">leaf_ids</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">leaves</span>()<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">leaf_index_option</span> <span class="op">=</span> <span class="prelude-val">None</span>;
         <span class="kw">for</span> (<span class="ident">leaf_index</span>, <span class="ident">leaf_id</span>) <span class="kw">in</span> <span class="ident">leaf_ids</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
             <span class="kw">let</span> <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span> <span class="op">=</span> <span class="ident">u32::try_from</span>(<span class="ident">leaf_index</span>)
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Could not convert index&quot;</span>))<span class="question-mark">?</span>;
-            <span class="kw">if</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">node</span>(<span class="kw-2">*</span><span class="ident">leaf_id</span>)<span class="question-mark">?</span>.<span class="ident">node</span>().<span class="ident">is_none</span>() {
+            <span class="comment">// The leaf ID must be valid, since it is one of the leaves of the tree</span>
+            <span class="kw">if</span> <span class="self">self</span>
+                .<span class="ident">diff</span>
+                .<span class="ident">node</span>(<span class="kw-2">*</span><span class="ident">leaf_id</span>)
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected a valid leaf ID&quot;</span>))<span class="question-mark">?</span>
+                .<span class="ident">node</span>()
+                .<span class="ident">is_none</span>()
+            {
                 <span class="ident">leaf_index_option</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">leaf_index</span>);
                 <span class="kw">break</span>;
             }
@@ -1078,29 +1115,40 @@
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">leaf_node</span>: <span class="ident">KeyPackage</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCrypto</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LeafIndex</span>, <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Node::LeafNode</span>(<span class="ident">LeafNode::new</span>(<span class="ident">leaf_node</span>, <span class="ident">backend</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">KeyPackageError::CryptoError</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">e</span> {
-                <span class="ident">TreeSyncDiffError::CryptoError</span>(<span class="ident">e</span>)
-            } <span class="kw">else</span> {
-                <span class="ident">TreeSyncDiffError::LibraryError</span>(<span class="ident">LibraryError::custom</span>(<span class="string">&quot;key package error&quot;</span>))
-            }
-        })<span class="question-mark">?</span>);
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LeafIndex</span>, <span class="ident">TreeSyncAddLeaf</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Node::LeafNode</span>(<span class="ident">LeafNode::new</span>(<span class="ident">leaf_node</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>);
         <span class="comment">// Find a free leaf and fill it with the new key package.</span>
         <span class="kw">let</span> <span class="ident">leaf_index</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">free_leaf_index</span>()<span class="question-mark">?</span>;
         <span class="comment">// If the free leaf index is within the tree, put the new leaf there,</span>
         <span class="comment">// otherwise extend the tree.</span>
         <span class="kw">if</span> <span class="ident">leaf_index</span> <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">leaf_count</span>() {
-            <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">replace_leaf</span>(<span class="ident">leaf_index</span>, <span class="ident">node</span>.<span class="ident">into</span>())<span class="question-mark">?</span>;
+            <span class="self">self</span>.<span class="ident">diff</span>
+                .<span class="ident">replace_leaf</span>(<span class="ident">leaf_index</span>, <span class="ident">node</span>.<span class="ident">into</span>())
+                <span class="comment">// We know the leaf index is in the tree, so replacing it should not fail</span>
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Could not replace the leaf&quot;</span>))<span class="question-mark">?</span>;
         } <span class="kw">else</span> {
-            <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">add_leaf</span>(<span class="ident">TreeSyncNode::blank</span>(), <span class="ident">node</span>.<span class="ident">into</span>())<span class="question-mark">?</span>;
+            <span class="self">self</span>.<span class="ident">diff</span>
+                .<span class="ident">add_leaf</span>(<span class="ident">TreeSyncNode::blank</span>(), <span class="ident">node</span>.<span class="ident">into</span>())
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">TreeSyncAddLeaf::TreeFull</span>)<span class="question-mark">?</span>;
         }
         <span class="comment">// Add new unmerged leaves entry to all nodes in direct path. Also, wipe</span>
         <span class="comment">// the cached tree hash.</span>
-        <span class="kw">for</span> <span class="ident">node_id</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">direct_path</span>(<span class="ident">leaf_index</span>)<span class="question-mark">?</span> {
-            <span class="kw">let</span> <span class="ident">tsn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">node_mut</span>(<span class="ident">node_id</span>)<span class="question-mark">?</span>;
+        <span class="kw">for</span> <span class="ident">node_id</span> <span class="kw">in</span> <span class="self">self</span>
+            .<span class="ident">diff</span>
+            .<span class="ident">direct_path</span>(<span class="ident">leaf_index</span>)
+            <span class="comment">// We checked the leaf index is in the tree</span>
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected leaf index to be in tree&quot;</span>))<span class="question-mark">?</span>
+        {
+            <span class="comment">// We know that the nodes from the direct path are in the tree</span>
+            <span class="kw">let</span> <span class="ident">tsn</span> <span class="op">=</span> <span class="self">self</span>
+                .<span class="ident">diff</span>
+                .<span class="ident">node_mut</span>(<span class="ident">node_id</span>)
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected a node&quot;</span>))<span class="question-mark">?</span>;
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">node</span>) <span class="op">=</span> <span class="ident">tsn</span>.<span class="ident">node_mut</span>() {
-                <span class="kw">let</span> <span class="ident">pn</span> <span class="op">=</span> <span class="ident">node</span>.<span class="ident">as_parent_node_mut</span>()<span class="question-mark">?</span>;
+                <span class="comment">// We know that nodes in the direct path are always parent nodes</span>
+                <span class="kw">let</span> <span class="ident">pn</span> <span class="op">=</span> <span class="ident">node</span>
+                    .<span class="ident">as_parent_node_mut</span>()
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected a parent node&quot;</span>))<span class="question-mark">?</span>;
                 <span class="ident">pn</span>.<span class="ident">add_unmerged_leaf</span>(<span class="ident">leaf_index</span>);
             }
             <span class="ident">tsn</span>.<span class="ident">erase_tree_hash</span>();
@@ -1190,6 +1238,7 @@
     <span class="doccomment">/// secrets.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Returns an error if the `sender_leaf_index` is outside of the tree.</span>
+    <span class="doccomment">/// TODO #804</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">apply_received_update_path</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
@@ -1197,31 +1246,28 @@
         <span class="ident">sender_leaf_index</span>: <span class="ident">LeafIndex</span>,
         <span class="ident">key_package</span>: <span class="ident">KeyPackage</span>,
         <span class="ident">path</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ParentNode</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ApplyUpdatePathError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">parent_hash</span> <span class="op">=</span>
             <span class="self">self</span>.<span class="ident">process_update_path</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>, <span class="ident">sender_leaf_index</span>, <span class="ident">path</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Verify the parent hash.</span>
         <span class="kw">let</span> <span class="ident">phe</span> <span class="op">=</span> <span class="ident">key_package</span>
             .<span class="ident">extension_with_type</span>(<span class="ident">ExtensionType::ParentHash</span>)
-            .<span class="ident">ok_or</span>(<span class="ident">TreeSyncDiffError::MissingParentHash</span>)<span class="question-mark">?</span>;
+            .<span class="ident">ok_or</span>(<span class="ident">ApplyUpdatePathError::MissingParentHash</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">key_package_parent_hash</span> <span class="op">=</span> <span class="ident">phe</span>
             .<span class="ident">as_parent_hash_extension</span>()
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;no parent hash extension&quot;</span>))<span class="question-mark">?</span>
             .<span class="ident">parent_hash</span>();
         <span class="kw">if</span> <span class="ident">key_package_parent_hash</span> <span class="op">!</span><span class="op">=</span> <span class="ident">parent_hash</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TreeSyncDiffError::ParentHashMismatch</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ApplyUpdatePathError::ParentHashMismatch</span>);
         };
 
         <span class="comment">// Replace the leaf.</span>
-        <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Node::LeafNode</span>(<span class="ident">LeafNode::new</span>(<span class="ident">key_package</span>, <span class="ident">backend</span>.<span class="ident">crypto</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">KeyPackageError::CryptoError</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">e</span> {
-                <span class="ident">TreeSyncDiffError::CryptoError</span>(<span class="ident">e</span>)
-            } <span class="kw">else</span> {
-                <span class="ident">TreeSyncDiffError::LibraryError</span>(<span class="ident">LibraryError::custom</span>(<span class="string">&quot;key package error&quot;</span>))
-            }
-        })<span class="question-mark">?</span>);
-        <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">replace_leaf</span>(<span class="ident">sender_leaf_index</span>, <span class="ident">node</span>.<span class="ident">into</span>())<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="ident">Node::LeafNode</span>(<span class="ident">LeafNode::new</span>(<span class="ident">key_package</span>, <span class="ident">backend</span>.<span class="ident">crypto</span>())<span class="question-mark">?</span>);
+        <span class="self">self</span>.<span class="ident">diff</span>
+            .<span class="ident">replace_leaf</span>(<span class="ident">sender_leaf_index</span>, <span class="ident">node</span>.<span class="ident">into</span>())
+            <span class="comment">// We assume the sender leaf is in the tree</span>
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected sender leaf to be in the tree&quot;</span>))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -1231,13 +1277,14 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Returns the parent hash of the leaf at `leaf_index`. Returns an error if</span>
     <span class="doccomment">/// the target leaf is outside of the tree.</span>
+    <span class="doccomment">/// TODO #804</span>
     <span class="kw">fn</span> <span class="ident">process_update_path</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>,
         <span class="kw-2">mut</span> <span class="ident">path</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ParentNode</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="comment">// Compute the parent hash.</span>
         <span class="kw">let</span> <span class="ident">parent_hash</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">set_parent_hashes</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>, <span class="kw-2">&amp;mut</span> <span class="ident">path</span>, <span class="ident">leaf_index</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">direct_path</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">TreeSyncNode</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">path</span>
@@ -1246,8 +1293,11 @@
             .<span class="ident">collect</span>();
 
         <span class="comment">// Set the direct path. Note, that the nodes here don&#39;t have a tree hash</span>
+        <span class="comment">// TODO #804</span>
         <span class="comment">// set.</span>
-        <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">set_direct_path</span>(<span class="ident">leaf_index</span>, <span class="ident">direct_path</span>)<span class="question-mark">?</span>;
+        <span class="self">self</span>.<span class="ident">diff</span>
+            .<span class="ident">set_direct_path</span>(<span class="ident">leaf_index</span>, <span class="ident">direct_path</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected the leaf index to be in the tree&quot;</span>))<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">parent_hash</span>)
     }
 
@@ -1359,7 +1409,7 @@
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
         <span class="ident">path</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">ParentNode</span>],
         <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="comment">// If the path is empty, return a zero-length string. This is the case</span>
         <span class="comment">// when the tree has only one leaf.</span>
         <span class="kw">if</span> <span class="ident">path</span>.<span class="ident">is_empty</span>() {
@@ -1371,9 +1421,7 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">copath_resolutions</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">copath_resolutions</span>(<span class="ident">leaf_index</span>, <span class="kw-2">&amp;</span><span class="ident">HashSet::new</span>())<span class="question-mark">?</span>;
         <span class="comment">// There should be as many copath resolutions as nodes in the direct</span>
         <span class="comment">// path.</span>
-        <span class="kw">if</span> <span class="ident">path</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">copath_resolutions</span>.<span class="ident">len</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TreeSyncDiffError::PathLengthError</span>);
-        }
+        <span class="macro">debug_assert_eq!</span>(<span class="ident">path</span>.<span class="ident">len</span>(), <span class="ident">copath_resolutions</span>.<span class="ident">len</span>());
         <span class="comment">// We go through the nodes in the direct path in reverse order and get</span>
         <span class="comment">// the corresponding copath resolution for each node.</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">previous_parent_hash</span> <span class="op">=</span> <span class="macro">vec!</span>[];
@@ -1488,8 +1536,11 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>,
         <span class="ident">excluded_indices</span>: <span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LeafIndex</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HpkePublicKey</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">leaf</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">leaf</span>(<span class="ident">leaf_index</span>)<span class="question-mark">?</span>;
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HpkePublicKey</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">leaf</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">diff</span>
+            .<span class="ident">leaf</span>(<span class="ident">leaf_index</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected leaf to be in tree&quot;</span>))<span class="question-mark">?</span>;
 
         <span class="comment">// If we&#39;re the only node in the tree, there&#39;s no copath.</span>
         <span class="kw">if</span> <span class="ident">leaf</span> <span class="op">==</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">root</span>() {
@@ -1499,8 +1550,13 @@
         <span class="comment">// We want the full path here, including the leaf itself, but not the</span>
         <span class="comment">// root.</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">full_path</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">leaf</span>];
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">direct_path</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">direct_path</span>(<span class="ident">leaf_index</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">direct_path</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">diff</span>
+            .<span class="ident">direct_path</span>(<span class="ident">leaf_index</span>)
+            <span class="comment">// We know the leaf index is in the tree</span>
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected leaf index to be in tree&quot;</span>))<span class="question-mark">?</span>;
         <span class="kw">if</span> <span class="op">!</span><span class="ident">direct_path</span>.<span class="ident">is_empty</span>() {
+            <span class="comment">// Remove root</span>
             <span class="ident">direct_path</span>.<span class="ident">pop</span>();
         }
         <span class="ident">full_path</span>.<span class="ident">append</span>(<span class="kw-2">&amp;mut</span> <span class="ident">direct_path</span>);
@@ -1508,7 +1564,11 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">copath_resolutions</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
         <span class="kw">for</span> <span class="ident">node_id</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="ident">full_path</span> {
             <span class="comment">// If sibling is not a blank, return its HpkePublicKey.</span>
-            <span class="kw">let</span> <span class="ident">sibling_id</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">sibling</span>(<span class="kw-2">*</span><span class="ident">node_id</span>)<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">sibling_id</span> <span class="op">=</span> <span class="self">self</span>
+                .<span class="ident">diff</span>
+                .<span class="ident">sibling</span>(<span class="kw-2">*</span><span class="ident">node_id</span>)
+                <span class="comment">// The root should not be there anymore, hence sibling cannot fail</span>
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected root to be removed&quot;</span>))<span class="question-mark">?</span>;
             <span class="kw">let</span> <span class="ident">resolution</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">resolution</span>(<span class="ident">sibling_id</span>, <span class="ident">excluded_indices</span>)<span class="question-mark">?</span>;
             <span class="ident">copath_resolutions</span>.<span class="ident">push</span>(<span class="ident">resolution</span>);
         }

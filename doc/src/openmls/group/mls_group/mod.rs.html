@@ -410,7 +410,6 @@
 <span id="409">409</span>
 <span id="410">410</span>
 <span id="411">411</span>
-<span id="412">412</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">application</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
 <span class="kw">mod</span> <span class="ident">creation</span>;
@@ -451,10 +450,7 @@
 <span class="comment">// Public exports</span>
 <span class="kw">pub</span> <span class="kw">use</span> {
     <span class="ident">config</span>::<span class="kw-2">*</span>,
-    <span class="ident">errors</span>::{
-        <span class="ident">EmptyInputError</span>, <span class="ident">InvalidMessageError</span>, <span class="ident">MlsGroupError</span>, <span class="ident">PendingProposalsError</span>,
-        <span class="ident">UseAfterEviction</span>,
-    },
+    <span class="ident">errors</span>::{<span class="ident">EmptyInputError</span>, <span class="ident">MlsGroupError</span>, <span class="ident">MlsGroupStateError</span>, <span class="ident">UnverifiedMessageError</span>},
     <span class="ident">membership::RemoveOperation</span>,
 };
 
@@ -649,7 +645,9 @@
     <span class="doccomment">/// `UseAfterEviction` error.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">credential</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Credential</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">is_active</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::UseAfterEviction</span>(<span class="ident">UseAfterEviction::Error</span>));
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::GroupStateError</span>(
+                <span class="ident">MlsGroupStateError::UseAfterEviction</span>,
+            ));
         }
         <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">treesync</span>();
         <span class="prelude-val">Ok</span>(<span class="ident">tree</span>.<span class="ident">own_leaf_node</span>()<span class="question-mark">?</span>.<span class="ident">key_package</span>().<span class="ident">credential</span>())
@@ -805,9 +803,9 @@
     <span class="kw">fn</span> <span class="ident">is_operational</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">group_state</span> {
             <span class="ident">MlsGroupState::PendingCommit</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::PendingCommitError</span>),
-            <span class="ident">MlsGroupState::Inactive</span> =&gt; {
-                <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::UseAfterEviction</span>(<span class="ident">UseAfterEviction::Error</span>))
-            }
+            <span class="ident">MlsGroupState::Inactive</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::GroupStateError</span>(
+                <span class="ident">MlsGroupStateError::UseAfterEviction</span>,
+            )),
             <span class="ident">MlsGroupState::Operational</span> =&gt; <span class="prelude-val">Ok</span>(()),
         }
     }

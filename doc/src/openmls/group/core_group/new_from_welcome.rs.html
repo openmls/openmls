@@ -296,9 +296,9 @@
         <span class="comment">// Prepare the PskSecret</span>
         <span class="kw">let</span> <span class="ident">psk_secret</span> <span class="op">=</span> <span class="ident">PskSecret::new</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">group_secrets</span>.<span class="ident">psks</span>.<span class="ident">psks</span>()).<span class="ident">map_err</span>(
             <span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">e</span> {
-                <span class="ident">PskSecretError::LibraryError</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">into</span>(),
-                <span class="ident">PskSecretError::TooManyKeys</span> =&gt; <span class="ident">WelcomeError::PskTooManyKeys</span>,
-                <span class="ident">PskSecretError::KeyNotFound</span> =&gt; <span class="ident">WelcomeError::PskNotFound</span>,
+                <span class="ident">PskError::LibraryError</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">into</span>(),
+                <span class="ident">PskError::TooManyKeys</span> =&gt; <span class="ident">WelcomeError::PskTooManyKeys</span>,
+                <span class="ident">PskError::KeyNotFound</span> =&gt; <span class="ident">WelcomeError::PskNotFound</span>,
             },
         )<span class="question-mark">?</span>;
 

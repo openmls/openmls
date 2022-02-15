@@ -203,7 +203,19 @@
 <span id="202">202</span>
 <span id="203">203</span>
 <span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">core_group</span>::{<span class="ident">proposals::QueuedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
+
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::mls_group::errors::UnverifiedMessageError</span>;
 
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">proposals::ProposalStore</span>, <span class="kw-2">*</span>};
 
@@ -298,10 +310,15 @@
         <span class="ident">proposal_store</span>: <span class="kw-2">&amp;</span><span class="ident">ProposalStore</span>,
         <span class="ident">own_kpbs</span>: <span class="kw-2">&amp;</span>[<span class="ident">KeyPackageBundle</span>],
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ProcessedMessage</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ProcessedMessage</span>, <span class="ident">UnverifiedMessageError</span><span class="op">&gt;</span> {
         <span class="comment">// Add the context to the message and verify the membership tag if necessary.</span>
         <span class="comment">// If the message is older than the current epoch, we need to fetch the correct secret tree first.</span>
-        <span class="kw">let</span> <span class="ident">message_secrets</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">message_secrets_mut</span>(<span class="ident">unverified_message</span>.<span class="ident">epoch</span>())<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">message_secrets</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">message_secrets_mut</span>(<span class="ident">unverified_message</span>.<span class="ident">epoch</span>())
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">e</span> {
+                <span class="ident">SecretTreeError::TooDistantInThePast</span> =&gt; <span class="ident">UnverifiedMessageError::NoPastEpochData</span>,
+                <span class="kw">_</span> =&gt; <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Unexpected return value&quot;</span>).<span class="ident">into</span>(),
+            })<span class="question-mark">?</span>;
 
         <span class="comment">// Checks the following semantic validation:</span>
         <span class="comment">//  - ValSem008</span>
@@ -309,14 +326,16 @@
             <span class="ident">unverified_message</span>,
             <span class="ident">message_secrets</span>,
             <span class="ident">backend</span>,
-        )<span class="question-mark">?</span>;
+        )
+        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">UnverifiedMessageError::InvalidMembershipTag</span>)<span class="question-mark">?</span>;
 
         <span class="kw">match</span> <span class="ident">context_plaintext</span> {
             <span class="ident">UnverifiedContextMessage::Group</span>(<span class="ident">unverified_message</span>) =&gt; {
                 <span class="comment">// Checks the following semantic validation:</span>
                 <span class="comment">//  - ValSem010</span>
-                <span class="kw">let</span> <span class="ident">verified_member_message</span> <span class="op">=</span>
-                    <span class="ident">unverified_message</span>.<span class="ident">into_verified</span>(<span class="ident">backend</span>, <span class="ident">signature_key</span>)<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">verified_member_message</span> <span class="op">=</span> <span class="ident">unverified_message</span>
+                    .<span class="ident">into_verified</span>(<span class="ident">backend</span>, <span class="ident">signature_key</span>)
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">UnverifiedMessageError::InvalidSignature</span>)<span class="question-mark">?</span>;
 
                 <span class="prelude-val">Ok</span>(<span class="kw">match</span> <span class="ident">verified_member_message</span>.<span class="ident">plaintext</span>().<span class="ident">content</span>() {
                     <span class="ident">MlsPlaintextContentType::Application</span>(<span class="ident">application_message</span>) =&gt; {
@@ -360,10 +379,11 @@
             <span class="ident">UnverifiedContextMessage::Preconfigured</span>(<span class="ident">external_message</span>) =&gt; {
                 <span class="comment">// Signature verification</span>
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">signature_public_key</span>) <span class="op">=</span> <span class="ident">signature_key</span> {
-                    <span class="kw">let</span> <span class="ident">_verified_external_message</span> <span class="op">=</span>
-                        <span class="ident">external_message</span>.<span class="ident">into_verified</span>(<span class="ident">backend</span>, <span class="ident">signature_public_key</span>)<span class="question-mark">?</span>;
+                    <span class="kw">let</span> <span class="ident">_verified_external_message</span> <span class="op">=</span> <span class="ident">external_message</span>
+                        .<span class="ident">into_verified</span>(<span class="ident">backend</span>, <span class="ident">signature_public_key</span>)
+                        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">UnverifiedMessageError::InvalidSignature</span>)<span class="question-mark">?</span>;
                 } <span class="kw">else</span> {
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CoreGroupError::NoSignatureKey</span>);
+                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">UnverifiedMessageError::MissingSignatureKey</span>);
                 }
 
                 <span class="comment">// We don&#39;t support external messages from preconfigured senders yet</span>

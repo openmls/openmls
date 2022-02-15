@@ -447,6 +447,31 @@
 <span id="446">446</span>
 <span id="447">447</span>
 <span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync</span>::{<span class="ident">diff::StagedTreeSyncDiff</span>, <span class="ident">treekem::DecryptPathParams</span>};
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::proposals</span>::{
@@ -500,9 +525,8 @@
         <span class="ident">proposal_store</span>: <span class="kw-2">&amp;</span><span class="ident">ProposalStore</span>,
         <span class="ident">own_key_packages</span>: <span class="kw-2">&amp;</span>[<span class="ident">KeyPackageBundle</span>],
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">StagedCommit</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">StagedCommit</span>, <span class="ident">StageCommitError</span><span class="op">&gt;</span> {
         <span class="comment">// Extract the sender of the Commit message</span>
-        <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">mls_plaintext</span>.<span class="ident">sender</span>();
         <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ciphersuite</span>();
 
         <span class="comment">// Verify epoch</span>
@@ -512,13 +536,26 @@
                 <span class="ident">mls_plaintext</span>.<span class="ident">epoch</span>(),
                 <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">epoch</span>()
             );
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::EpochMismatch</span>.<span class="ident">into</span>());
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::EpochMismatch</span>);
+        }
+
+        <span class="comment">// Check that the sender is another member of the group</span>
+        <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">mls_plaintext</span>.<span class="ident">sender</span>();
+
+        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">Sender::Member</span>(<span class="ident">member</span>) <span class="op">=</span> <span class="ident">sender</span> {
+            <span class="kw">if</span> <span class="ident">member</span>
+                <span class="op">==</span> <span class="self">self</span>
+                    .<span class="ident">key_package_ref</span>()
+                    .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected own key package reference&quot;</span>))<span class="question-mark">?</span>
+            {
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::OwnCommit</span>);
+            }
         }
 
         <span class="comment">// Extract Commit &amp; Confirmation Tag from MlsPlaintext</span>
         <span class="kw">let</span> <span class="ident">commit</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">mls_plaintext</span>.<span class="ident">content</span>() {
             <span class="ident">MlsPlaintextContentType::Commit</span>(<span class="ident">commit</span>) =&gt; <span class="ident">commit</span>,
-            <span class="kw">_</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::WrongPlaintextContentType</span>.<span class="ident">into</span>()),
+            <span class="kw">_</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::WrongPlaintextContentType</span>),
         };
 
         <span class="kw">let</span> <span class="ident">received_confirmation_tag</span> <span class="op">=</span> <span class="ident">mls_plaintext</span>
@@ -540,8 +577,6 @@
             .<span class="ident">path</span>()
             .<span class="ident">as_ref</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">update_path</span><span class="op">|</span> <span class="ident">update_path</span>.<span class="ident">leaf_key_package</span>().<span class="ident">clone</span>());
-
-        <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">mls_plaintext</span>.<span class="ident">sender</span>();
 
         <span class="comment">// Validate the staged proposals by doing the following checks:</span>
         <span class="comment">// ValSem100</span>
@@ -566,7 +601,7 @@
             }
             <span class="ident">Sender::Preconfigured</span>(<span class="kw">_</span>) =&gt; {
                 <span class="comment">// A commit cannot be issued by a pre-configured sender.</span>
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CoreGroupError::SenderError</span>(<span class="ident">SenderError::NotAMember</span>));
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::SenderTypePreconfigured</span>);
             }
             <span class="ident">Sender::NewMember</span> =&gt; {
                 <span class="comment">// ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.</span>
@@ -601,7 +636,7 @@
             }
             <span class="ident">Sender::NewMember</span> =&gt; <span class="ident">diff</span>.<span class="ident">free_leaf_index</span>()<span class="question-mark">?</span>,
             <span class="kw">_</span> =&gt; {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CoreGroupError::SenderError</span>(<span class="ident">SenderError::NotAMember</span>));
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::SenderTypePreconfigured</span>);
             }
         };
 
@@ -622,9 +657,12 @@
             <span class="comment">// TODO #106: Support external members</span>
             <span class="kw">let</span> <span class="ident">kp</span> <span class="op">=</span> <span class="ident">path</span>.<span class="ident">leaf_key_package</span>();
             <span class="kw">if</span> <span class="ident">kp</span>.<span class="ident">verify</span>(<span class="ident">backend</span>).<span class="ident">is_err</span>() {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::PathKeyPackageVerificationFailure</span>.<span class="ident">into</span>());
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::PathKeyPackageVerificationFailure</span>);
             }
-            <span class="kw">let</span> <span class="ident">serialized_context</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">serialized_context</span> <span class="op">=</span> <span class="self">self</span>
+                .<span class="ident">group_context</span>
+                .<span class="ident">tls_serialize_detached</span>()
+                .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>;
 
             <span class="kw">let</span> (<span class="ident">key_package</span>, <span class="ident">update_path_nodes</span>) <span class="op">=</span> <span class="ident">path</span>.<span class="ident">into_parts</span>();
 
@@ -638,10 +676,15 @@
             <span class="comment">// there are no blanks and the new member extended the tree to</span>
             <span class="comment">// fit in.</span>
             <span class="kw">if</span> <span class="ident">apply_proposals_values</span>.<span class="ident">external_init_secret_option</span>.<span class="ident">is_some</span>() {
-                <span class="kw">let</span> <span class="ident">sender_leaf_index</span> <span class="op">=</span> <span class="ident">diff</span>.<span class="ident">add_leaf</span>(<span class="ident">key_package</span>.<span class="ident">clone</span>(), <span class="ident">backend</span>.<span class="ident">crypto</span>())<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">sender_leaf_index</span> <span class="op">=</span> <span class="ident">diff</span>
+                    .<span class="ident">add_leaf</span>(<span class="ident">key_package</span>.<span class="ident">clone</span>(), <span class="ident">backend</span>.<span class="ident">crypto</span>())
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">e</span> {
+                        <span class="ident">TreeSyncAddLeaf::LibraryError</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">into</span>(),
+                        <span class="ident">TreeSyncAddLeaf::TreeFull</span> =&gt; <span class="ident">StageCommitError::TooManyNewMembers</span>,
+                    })<span class="question-mark">?</span>;
                 <span class="comment">// The new member should have the same index as the claimed sender index.</span>
                 <span class="kw">if</span> <span class="ident">sender_leaf_index</span> <span class="op">!</span><span class="op">=</span> <span class="ident">sender_index</span> {
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::InconsistentSenderIndex</span>.<span class="ident">into</span>());
+                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::InconsistentSenderIndex</span>);
                 }
             }
 
@@ -667,7 +710,7 @@
         } <span class="kw">else</span> {
             <span class="kw">if</span> <span class="ident">apply_proposals_values</span>.<span class="ident">path_required</span> {
                 <span class="comment">// ValSem201</span>
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::RequiredPathNotFound</span>.<span class="ident">into</span>());
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::RequiredPathNotFound</span>);
             }
             <span class="ident">CommitSecret::zero_secret</span>(<span class="ident">ciphersuite</span>, <span class="self">self</span>.<span class="ident">mls_version</span>)
         };
@@ -681,7 +724,8 @@
                 <span class="self">self</span>.<span class="ident">group_epoch_secrets</span>.<span class="ident">init_secret</span>()
             };
 
-        <span class="kw">let</span> <span class="ident">joiner_secret</span> <span class="op">=</span> <span class="ident">JoinerSecret::new</span>(<span class="ident">backend</span>, <span class="ident">commit_secret</span>, <span class="ident">init_secret</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">joiner_secret</span> <span class="op">=</span> <span class="ident">JoinerSecret::new</span>(<span class="ident">backend</span>, <span class="ident">commit_secret</span>, <span class="ident">init_secret</span>)
+            .<span class="ident">map_err</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Create provisional group state</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">provisional_epoch</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">epoch</span>();
@@ -714,11 +758,16 @@
         <span class="comment">// Create key schedule</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">key_schedule</span> <span class="op">=</span> <span class="ident">KeySchedule::init</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">joiner_secret</span>, <span class="ident">psk_secret</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">serialized_provisional_group_context</span> <span class="op">=</span>
-            <span class="ident">provisional_group_context</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">serialized_provisional_group_context</span> <span class="op">=</span> <span class="ident">provisional_group_context</span>
+            .<span class="ident">tls_serialize_detached</span>()
+            .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>;
 
-        <span class="ident">key_schedule</span>.<span class="ident">add_context</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">serialized_provisional_group_context</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">provisional_epoch_secrets</span> <span class="op">=</span> <span class="ident">key_schedule</span>.<span class="ident">epoch_secrets</span>(<span class="ident">backend</span>)<span class="question-mark">?</span>;
+        <span class="ident">key_schedule</span>
+            .<span class="ident">add_context</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">serialized_provisional_group_context</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">provisional_epoch_secrets</span> <span class="op">=</span> <span class="ident">key_schedule</span>
+            .<span class="ident">epoch_secrets</span>(<span class="ident">backend</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Using the key schedule in the wrong state&quot;</span>))<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">mls_plaintext_commit_auth_data</span> <span class="op">=</span> <span class="ident">MlsPlaintextCommitAuthData::try_from</span>(<span class="ident">mls_plaintext</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
@@ -737,12 +786,13 @@
         <span class="comment">// ValSem205</span>
         <span class="kw">let</span> <span class="ident">own_confirmation_tag</span> <span class="op">=</span> <span class="ident">provisional_epoch_secrets</span>
             .<span class="ident">confirmation_key</span>()
-            .<span class="ident">tag</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">confirmed_transcript_hash</span>)<span class="question-mark">?</span>;
+            .<span class="ident">tag</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">confirmed_transcript_hash</span>)
+            .<span class="ident">map_err</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>)<span class="question-mark">?</span>;
         <span class="kw">if</span> <span class="kw-2">&amp;</span><span class="ident">own_confirmation_tag</span> <span class="op">!</span><span class="op">=</span> <span class="ident">received_confirmation_tag</span> {
             <span class="macro">log::error!</span>(<span class="string">&quot;Confirmation tag mismatch&quot;</span>);
             <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;  Got:      {:x?}&quot;</span>, <span class="ident">received_confirmation_tag</span>);
             <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;  Expected: {:x?}&quot;</span>, <span class="ident">own_confirmation_tag</span>);
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::ConfirmationTagMismatch</span>.<span class="ident">into</span>());
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">StageCommitError::ConfirmationTagMismatch</span>);
         }
 
         <span class="kw">let</span> (<span class="ident">provisional_group_epoch_secrets</span>, <span class="ident">provisional_message_secrets</span>) <span class="op">=</span>

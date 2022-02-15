@@ -113,8 +113,6 @@
 <span id="112">112</span>
 <span id="113">113</span>
 <span id="114">114</span>
-<span id="115">115</span>
-<span id="116">116</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Group APIs for MLS</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This file contains the API to interact with groups.</span>
@@ -136,9 +134,7 @@
 <span class="comment">// Crate</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">core_group</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">core_group</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">errors</span>::{
-    <span class="ident">CoreGroupError</span>, <span class="ident">CreateCommitError</span>, <span class="ident">ExporterError</span>, <span class="ident">StageCommitError</span>, <span class="ident">WelcomeError</span>,
-};
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">errors</span>::{<span class="ident">CoreGroupError</span>, <span class="ident">CreateCommitError</span>, <span class="ident">ExporterError</span>, <span class="ident">WelcomeError</span>};
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>)))]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">group_context</span>::<span class="kw-2">*</span>;
 

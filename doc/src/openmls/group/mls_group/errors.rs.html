@@ -101,11 +101,6 @@
 <span id="100">100</span>
 <span id="101">101</span>
 <span id="102">102</span>
-<span id="103">103</span>
-<span id="104">104</span>
-<span id="105">105</span>
-<span id="106">106</span>
-<span id="107">107</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS MlsGroup errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -114,104 +109,99 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config::ConfigError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credentials::CredentialError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::LibraryError</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::framing::MlsCiphertextError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::framing::ValidationError</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::errors::StageCommitError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::WelcomeError</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group</span>::{<span class="ident">CoreGroupError</span>, <span class="ident">CreateCommitError</span>, <span class="ident">ExporterError</span>, <span class="ident">StageCommitError</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group</span>::{<span class="ident">CoreGroupError</span>, <span class="ident">CreateCommitError</span>, <span class="ident">ExporterError</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::TreeSyncError</span>;
 <span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
+<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 <span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
 
-<span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsGroupError</span> {
-        <span class="ident">Simple</span> {
-            <span class="ident">NoMatchingCredentialBundle</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t find a `CredentialBundle` in the `KeyStore` that matches the one in my leaf.&quot;</span>,
-            <span class="ident">NoMatchingKeyPackageBundle</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t find a `KeyPackageBundle` in the `KeyStore` that matches the given `KeyPackage` hash.&quot;</span>,
-            <span class="ident">PoisonedCredentialBundle</span> <span class="op">=</span> <span class="string">&quot;Tried to access a poisoned `CredentialBundle`. See [`PoisonError`](`std::sync::PoisonError`) for details.&quot;</span>,
-            <span class="ident">NoSignatureKey</span> <span class="op">=</span> <span class="string">&quot;No signature key was available to verify the message signature.&quot;</span>,
-            <span class="ident">PendingCommitError</span> <span class="op">=</span> <span class="string">&quot;Can&#39;t create a new commit while another commit is still pending. Please clear or merge the pending commit before creating a new one.&quot;</span>,
-            <span class="ident">NoPendingCommit</span> <span class="op">=</span> <span class="string">&quot;There is no pending commit that can be merged.&quot;</span>,
-            <span class="ident">ExternalCommitError</span> <span class="op">=</span> <span class="string">&quot;Can&#39;t clear an external commit, as the group can&#39;t merge `Member` commits yet. If an external commit is rejected by the DS, a new external init must be performed. See the MLS spec for more information.&quot;</span>,
-            <span class="ident">KeyStoreError</span> <span class="op">=</span> <span class="string">&quot;Error performing key store operation.&quot;</span>,
-            <span class="ident">IncompatibleWireFormat</span> <span class="op">=</span> <span class="string">&quot;The incoming message&#39;s wire format was not compatible with the wire format policy for incoming messages.&quot;</span>,
-        }
-        <span class="ident">Complex</span> {
-            <span class="ident">LibraryError</span>(<span class="ident">LibraryError</span>) <span class="op">=</span>
-                <span class="string">&quot;An internal library error occurred. Additional detail is provided.&quot;</span>,
-            <span class="ident">Config</span>(<span class="ident">ConfigError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`ConfigError`](`crate::config::ConfigError`) for details&quot;</span>,
-            <span class="ident">Group</span>(<span class="ident">CoreGroupError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`CoreGroupError`](`crate::group::CoreGroupError`) for details&quot;</span>,
-            <span class="ident">CreateCommit</span>(<span class="ident">CreateCommitError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`CreateCommitError`](`crate::group::CreateCommitError`) for details&quot;</span>,
-            <span class="ident">UseAfterEviction</span>(<span class="ident">UseAfterEviction</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`UseAfterEviction`](`UseAfterEviction`) for details&quot;</span>,
-            <span class="ident">PendingProposalsExist</span>(<span class="ident">PendingProposalsError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`PendingProposalsError`](`PendingProposalsError`) for details&quot;</span>,
-            <span class="ident">Exporter</span>(<span class="ident">ExporterError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`ExporterError`](`crate::group::ExporterError`) for details&quot;</span>,
-            <span class="ident">EmptyInput</span>(<span class="ident">EmptyInputError</span>) <span class="op">=</span>
-                <span class="string">&quot;Empty input. Additional detail is provided.&quot;</span>,
-            <span class="ident">InvalidMessage</span>(<span class="ident">InvalidMessageError</span>) <span class="op">=</span> <span class="string">&quot;The message could not be processed.&quot;</span>,
-            <span class="ident">CredentialError</span>(<span class="ident">CredentialError</span>) <span class="op">=</span> <span class="string">&quot;See [`CredentialError`](`crate::credentials::CredentialError`) for details&quot;</span>,
-            <span class="ident">TreeSyncError</span>(<span class="ident">TreeSyncError</span>) <span class="op">=</span> <span class="string">&quot;An error occurred during an operation on the tree underlying the group.&quot;</span>,
-            <span class="ident">ValidationError</span>(<span class="ident">ValidationError</span>) <span class="op">=</span> <span class="string">&quot;See [`ValidationError`](`crate::framing::ValidationError`) for details&quot;</span>,
-            <span class="ident">TlsCodecError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span> <span class="string">&quot;An error occured during TLS encoding/decoding.&quot;</span>,
-            <span class="ident">CryptoError</span>(<span class="ident">CryptoError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`CryptoError`](openmls_traits::types::CryptoError) for details.&quot;</span>,
-            <span class="ident">WelcomeError</span>(<span class="ident">WelcomeError</span>) <span class="op">=</span> <span class="string">&quot;See [`WelcomeError`] for details.&quot;</span>,
-        }
-    }
+<span class="doccomment">/// MlsGroup error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsGroupError</span> {
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(
+        <span class="string">&quot;Couldn&#39;t find a `CredentialBundle` in the `KeyStore` that matches the one in my leaf.&quot;</span>
+    )]</span>
+    <span class="ident">NoMatchingCredentialBundle</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Couldn&#39;t find a `KeyPackageBundle` in the `KeyStore` that matches the given `KeyPackage` hash.&quot;</span>)]</span>
+    <span class="ident">NoMatchingKeyPackageBundle</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Tried to access a poisoned `CredentialBundle`. See [`PoisonError`](`std::sync::PoisonError`) for details.&quot;</span>)]</span>
+    <span class="ident">PoisonedCredentialBundle</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;No signature key was available to verify the message signature.&quot;</span>)]</span>
+    <span class="ident">NoSignatureKey</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Can&#39;t create a new commit while another commit is still pending. Please clear or merge the pending commit before creating a new one.&quot;</span>)]</span>
+    <span class="ident">PendingCommitError</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;There is no pending commit that can be merged.&quot;</span>)]</span>
+    <span class="ident">NoPendingCommit</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Can&#39;t clear an external commit, as the group can&#39;t merge `Member` commits yet. If an external commit is rejected by the DS, a new external init must be performed. See the MLS spec for more information.&quot;</span>)]</span>
+    <span class="ident">ExternalCommitError</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Error performing key store operation.&quot;</span>)]</span>
+    <span class="ident">KeyStoreError</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The incoming message&#39;s wire format was not compatible with the wire format policy for incoming messages.&quot;</span>)]</span>
+    <span class="ident">IncompatibleWireFormat</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">Config</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ConfigError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">Group</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CoreGroupError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">CreateCommit</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CreateCommitError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">GroupStateError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsGroupStateError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">Exporter</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ExporterError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">EmptyInput</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">EmptyInputError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">CredentialError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CredentialError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">TreeSyncError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TreeSyncError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">ValidationError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ValidationError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">TlsCodecError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TlsCodecError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">CryptoError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CryptoError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">WelcomeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">WelcomeError</span>),
 }
 
-<span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">EmptyInputError</span> {
-        <span class="ident">AddMembers</span> <span class="op">=</span> <span class="string">&quot;An empty list of KeyPackages was provided.&quot;</span>,
-        <span class="ident">RemoveMembers</span> <span class="op">=</span> <span class="string">&quot;An empty list of indexes was provided.&quot;</span>,
-    }
+<span class="doccomment">/// EmptyInput error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">EmptyInputError</span> {
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;An empty list of KeyPackages was provided.&quot;</span>)]</span>
+    <span class="ident">AddMembers</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;An empty list of KeyPackage references was provided.&quot;</span>)]</span>
+    <span class="ident">RemoveMembers</span>,
 }
 
-<span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">UseAfterEviction</span> {
-        <span class="ident">Error</span> <span class="op">=</span> <span class="string">&quot;Tried to use a group after being evicted from it.&quot;</span>,
-    }
+<span class="doccomment">/// Group state error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">MlsGroupStateError</span> {
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Tried to use a group after being evicted from it.&quot;</span>)]</span>
+    <span class="ident">UseAfterEviction</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Can&#39;t create message because a pending proposal exists.&quot;</span>)]</span>
+    <span class="ident">PendingProposal</span>,
 }
 
-<span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PendingProposalsError</span> {
-        <span class="ident">Exists</span> <span class="op">=</span> <span class="string">&quot;Can&#39;t create message because a pending proposal exists.&quot;</span>,
-    }
-}
-
-<span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">InvalidMessageError</span> {
-        <span class="ident">Simple</span> {
-            <span class="ident">MissingMembershipTag</span> <span class="op">=</span>
-                <span class="string">&quot;A message without a membership tag received.&quot;</span>,
-            <span class="ident">MembershipTagMismatch</span> <span class="op">=</span>
-                <span class="string">&quot;A message with an invalid membership tag was received.&quot;</span>,
-            <span class="ident">UnknownSender</span> <span class="op">=</span>
-                <span class="string">&quot;Could not retrieve credential for the given sender.&quot;</span>,
-            <span class="ident">InvalidProposal</span> <span class="op">=</span>
-                <span class="string">&quot;The given proposal is invalid.&quot;</span>,
-            <span class="ident">CommitWithInvalidProposals</span> <span class="op">=</span>
-                <span class="string">&quot;A commit contained an invalid proposal.&quot;</span>,
-            <span class="ident">InvalidApplicationMessage</span> <span class="op">=</span>
-                <span class="string">&quot;The application message is invalid.&quot;</span>,
-            <span class="ident">WrongEpoch</span> <span class="op">=</span> <span class="string">&quot;The epoch does not match the group&#39;s epoch.&quot;</span>,
-            <span class="ident">MissingConfirmationTag</span> <span class="op">=</span> <span class="string">&quot;The confirmation tag is missing in the Commit message.&quot;</span>,
-            <span class="ident">InvalidSignature</span> <span class="op">=</span> <span class="string">&quot;The message&#39;s signature is invalid.&quot;</span>,
-            <span class="ident">WrongGroupId</span> <span class="op">=</span> <span class="string">&quot;Wrong group ID.&quot;</span>,
-        }
-        <span class="ident">Complex</span> {
-            <span class="ident">InvalidCiphertext</span>(<span class="ident">MlsCiphertextError</span>) <span class="op">=</span>
-                <span class="string">&quot;An invalid ciphertext was provided. The error returns the associated data of the ciphertext.&quot;</span>,
-            <span class="ident">CommitError</span>(<span class="ident">StageCommitError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`StageCommitError`](`crate::group::StageCommitError`) for details&quot;</span>,
-            <span class="ident">GroupError</span>(<span class="ident">CoreGroupError</span>) <span class="op">=</span>
-                <span class="string">&quot;See [`CoreGroupError`](`crate::group::CoreGroupError`) for details&quot;</span>,
-        }
-    }
+<span class="doccomment">/// Unverified message error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">UnverifiedMessageError</span> {
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The message is from an epoch too far in the past.&quot;</span>)]</span>
+    <span class="ident">NoPastEpochData</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The message&#39;s signature is invalid.&quot;</span>)]</span>
+    <span class="ident">InvalidSignature</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The message&#39;s membership tag is invalid.&quot;</span>)]</span>
+    <span class="ident">InvalidMembershipTag</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;A signature key was not provided for a preconfigured message.&quot;</span>)]</span>
+    <span class="ident">MissingSignatureKey</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">InvalidCommit</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">StageCommitError</span>),
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-search-index-js="../../../../search-index.js" data-search-js="../../../../search.js"></div>

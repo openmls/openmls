@@ -320,17 +320,6 @@
 <span id="319">319</span>
 <span id="320">320</span>
 <span id="321">321</span>
-<span id="322">322</span>
-<span id="323">323</span>
-<span id="324">324</span>
-<span id="325">325</span>
-<span id="326">326</span>
-<span id="327">327</span>
-<span id="328">328</span>
-<span id="329">329</span>
-<span id="330">330</span>
-<span id="331">331</span>
-<span id="332">332</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Module to encrypt and decrypt update paths for a [`TreeSyncDiff`] instance.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -339,7 +328,7 @@
 <span class="doccomment">//! updates for a [`TreeSyncDiff`] instance.</span>
 <span class="kw">use</span> <span class="ident">rayon::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std::collections::HashSet</span>;
-<span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsVecU32</span>};
+<span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsVecU32</span>};
 
 <span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">crypto::OpenMlsCrypto</span>, <span class="ident">types::HpkeCiphertext</span>, <span class="ident">OpenMlsCryptoProvider</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -349,17 +338,16 @@
     <span class="ident">ciphersuite</span>::{<span class="ident">hash_ref::KeyPackageRef</span>, <span class="ident">Ciphersuite</span>, <span class="ident">HpkePublicKey</span>},
     <span class="ident">config::ProtocolVersion</span>,
     <span class="ident">error::LibraryError</span>,
-    <span class="ident">key_packages</span>::{<span class="ident">KeyPackage</span>, <span class="ident">KeyPackageError</span>},
-    <span class="ident">messages</span>::{
-        <span class="ident">proposals::AddProposal</span>, <span class="ident">EncryptedGroupSecrets</span>, <span class="ident">GroupSecrets</span>, <span class="ident">PathSecret</span>, <span class="ident">PathSecretError</span>,
-    },
+    <span class="ident">key_packages::KeyPackage</span>,
+    <span class="ident">messages</span>::{<span class="ident">proposals::AddProposal</span>, <span class="ident">EncryptedGroupSecrets</span>, <span class="ident">GroupSecrets</span>, <span class="ident">PathSecret</span>},
     <span class="ident">schedule</span>::{<span class="ident">CommitSecret</span>, <span class="ident">JoinerSecret</span>, <span class="ident">PreSharedKeys</span>},
 };
 
 <span class="kw">use</span> <span class="kw">super</span>::{
     <span class="ident">diff::TreeSyncDiff</span>,
+    <span class="ident">errors::TreeKemError</span>,
     <span class="ident">node::parent_node</span>::{<span class="ident">ParentNode</span>, <span class="ident">PlainUpdatePathNode</span>},
-    <span class="ident">TreeSyncDiffError</span>, <span class="ident">TreeSyncError</span>,
+    <span class="ident">ApplyUpdatePathError</span>,
 };
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">TreeSyncDiff</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
@@ -407,24 +395,33 @@
     <span class="doccomment">/// Returns a vector containing the decrypted [`ParentNode`] instances, as</span>
     <span class="doccomment">/// well as the [`CommitSecret`] resulting from their derivation. Returns an</span>
     <span class="doccomment">/// error if the `sender_leaf_index` is outside of the tree.</span>
+    <span class="doccomment">/// TODO #804</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">decrypt_path</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">Ciphersuite</span>,
         <span class="ident">params</span>: <span class="ident">DecryptPathParams</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ParentNode</span><span class="op">&gt;</span>, <span class="ident">CommitSecret</span>), <span class="ident">TreeKemError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">path_position</span> <span class="op">=</span>
-            <span class="self">self</span>.<span class="ident">subtree_root_position</span>(<span class="ident">params</span>.<span class="ident">sender_leaf_index</span>, <span class="self">self</span>.<span class="ident">own_leaf_index</span>())<span class="question-mark">?</span>;
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ParentNode</span><span class="op">&gt;</span>, <span class="ident">CommitSecret</span>), <span class="ident">ApplyUpdatePathError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">path_position</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">subtree_root_position</span>(<span class="ident">params</span>.<span class="ident">sender_leaf_index</span>, <span class="self">self</span>.<span class="ident">own_leaf_index</span>())
+            <span class="comment">// We know our own leaf is in the tree</span>
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected own leaf to be in the tree&quot;</span>))<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">update_path_node</span> <span class="op">=</span> <span class="ident">params</span>
             .<span class="ident">update_path</span>
             .<span class="ident">get</span>(<span class="ident">path_position</span>)
-            .<span class="ident">ok_or</span>(<span class="ident">TreeKemError::UpdatePathNodeNotFound</span>)<span class="question-mark">?</span>;
+            <span class="comment">// We know the update path has the right length through validation, therefore there must be an element at this position</span>
+            <span class="comment">// TODO #804</span>
+            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected to find ciphertext in update path&quot;</span>))<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> (<span class="ident">decryption_key</span>, <span class="ident">resolution_position</span>) <span class="op">=</span>
-            <span class="self">self</span>.<span class="ident">decryption_key</span>(<span class="ident">params</span>.<span class="ident">sender_leaf_index</span>, <span class="ident">params</span>.<span class="ident">exclusion_list</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> (<span class="ident">decryption_key</span>, <span class="ident">resolution_position</span>) <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">decryption_key</span>(<span class="ident">params</span>.<span class="ident">sender_leaf_index</span>, <span class="ident">params</span>.<span class="ident">exclusion_list</span>)
+            <span class="comment">// TODO #804</span>
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected sender to be in the tree&quot;</span>))<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="ident">update_path_node</span>
             .<span class="ident">encrypted_path_secrets</span>(<span class="ident">resolution_position</span>)
-            .<span class="ident">ok_or</span>(<span class="ident">TreeKemError::EncryptedCiphertextNotFound</span>)<span class="question-mark">?</span>;
+            <span class="comment">// We know the update path has the right length through validation, therefore there must be a ciphertext at this position</span>
+            <span class="comment">// TODO #804</span>
+            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected to find ciphertext in update path&quot;</span>))<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">path_secret</span> <span class="op">=</span> <span class="ident">PathSecret::decrypt</span>(
             <span class="ident">backend</span>,
@@ -433,7 +430,8 @@
             <span class="ident">ciphertext</span>,
             <span class="ident">decryption_key</span>,
             <span class="ident">params</span>.<span class="ident">group_context</span>,
-        )<span class="question-mark">?</span>;
+        )
+        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ApplyUpdatePathError::UnableToDecrypt</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">remaining_path_length</span> <span class="op">=</span> <span class="ident">params</span>.<span class="ident">update_path</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="ident">path_position</span>;
         <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">derived_path</span>, <span class="ident">_plain_update_path</span>, <span class="ident">commit_secret</span>) <span class="op">=</span>
@@ -447,7 +445,7 @@
             .<span class="ident">zip</span>(<span class="ident">derived_path</span>.<span class="ident">iter</span>())
         {
             <span class="kw">if</span> <span class="ident">update_parent_node</span>.<span class="ident">public_key</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">derived_parent_node</span>.<span class="ident">public_key</span>() {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TreeKemError::PathMismatch</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ApplyUpdatePathError::PathMismatch</span>);
             }
         }
 
@@ -641,26 +639,6 @@
     <span class="doccomment">/// Set the path key package.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_leaf_key_package</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">key_package</span>: <span class="ident">KeyPackage</span>) {
         <span class="self">self</span>.<span class="ident">leaf_key_package</span> <span class="op">=</span> <span class="ident">key_package</span>
-    }
-}
-
-<span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TreeKemError</span> {
-        <span class="ident">Simple</span> {
-            <span class="ident">PathLengthError</span> <span class="op">=</span> <span class="string">&quot;The given path to encrypt does not have the same length as the direct path.&quot;</span>,
-            <span class="ident">PathMismatch</span> <span class="op">=</span> <span class="string">&quot;The received update path and the derived nodes are inconsistent.&quot;</span>,
-            <span class="ident">UpdatePathNodeNotFound</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t find our UpdatePathNode in the given UpdatePath.&quot;</span>,
-            <span class="ident">EncryptedCiphertextNotFound</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t find a matching encrypted ciphertext in the given UpdatePathNode.&quot;</span>,
-            <span class="ident">PathSecretNotFound</span> <span class="op">=</span> <span class="string">&quot;Couldn&#39;t find the path secret to encrypt for one of the new members.&quot;</span>,
-        }
-        <span class="ident">Complex</span> {
-            <span class="ident">LibraryError</span>(<span class="ident">LibraryError</span>) <span class="op">=</span> <span class="string">&quot;LibraryError&quot;</span>,
-            <span class="ident">TreeSyncError</span>(<span class="ident">TreeSyncError</span>) <span class="op">=</span> <span class="string">&quot;Error while creating treesync diff.&quot;</span>,
-            <span class="ident">TreeSyncDiffError</span>(<span class="ident">TreeSyncDiffError</span>) <span class="op">=</span> <span class="string">&quot;Error while retrieving public keys from the tree.&quot;</span>,
-            <span class="ident">PathSecretError</span>(<span class="ident">PathSecretError</span>) <span class="op">=</span> <span class="string">&quot;Error decrypting PathSecret.&quot;</span>,
-            <span class="ident">EncodingError</span>(<span class="ident">TlsCodecError</span>) <span class="op">=</span> <span class="string">&quot;Error while encoding GroupSecrets.&quot;</span>,
-            <span class="ident">KeyPackageError</span>(<span class="ident">KeyPackageError</span>) <span class="op">=</span> <span class="string">&quot;Error while hashing KeyPackage.&quot;</span>,
-        }
     }
 }
 </code></pre></div>
