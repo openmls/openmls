@@ -16,7 +16,7 @@ use crate::{
     group::errors::StageCommitError,
     group::mls_group::UnverifiedMessageError,
     messages::ProposalOrRef,
-    prelude_test::signable::{Signable, Verifiable},
+    ciphersuite::signable::{Signable, Verifiable},
     treesync::ApplyUpdatePathError,
 };
 
