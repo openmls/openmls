@@ -2,7 +2,7 @@
 //! https://openmls.tech/book/message_validation.html#commit-message-validation
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{key_store::OpenMlsKeyStore, types::CryptoError};
+use openmls_traits::key_store::OpenMlsKeyStore;
 use tls_codec::{Deserialize, Serialize};
 
 use rstest::*;
@@ -15,7 +15,7 @@ use crate::{
     framing::*,
     group::errors::StageCommitError,
     group::mls_group::UnverifiedMessageError,
-    messages::{PathSecretError, ProposalOrRef},
+    messages::ProposalOrRef,
     prelude_test::signable::{Signable, Verifiable},
     treesync::ApplyUpdatePathError,
 };
