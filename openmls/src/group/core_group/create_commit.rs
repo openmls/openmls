@@ -33,7 +33,7 @@ impl CoreGroup {
         &self,
         params: CreateCommitParams,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<CreateCommitResult, CoreGroupError> {
+    ) -> Result<CreateCommitResult, CreateCommitError> {
         let ciphersuite = self.ciphersuite();
 
         // If this is an external commit, we don't have an `own_leaf_index` set
@@ -79,7 +79,19 @@ impl CoreGroup {
             params.proposal_store(),
             params.inline_proposals(),
             own_kpr,
-        )?;
+        )
+        .map_err(|e| match e {
+            crate::group::errors::ProposalQueueError::LibraryError(e) => e.into(),
+            crate::group::errors::ProposalQueueError::ProposalNotFound => {
+                CreateCommitError::MissingProposal
+            }
+            crate::group::errors::ProposalQueueError::SelfRemoval => {
+                CreateCommitError::CannotRemoveSelf
+            }
+            crate::group::errors::ProposalQueueError::SenderError(_) => {
+                CreateCommitError::WrongProposalSender
+            }
+        })?;
 
         // TODO: #581 Filter proposals by support
         // 11.2:
@@ -121,10 +133,11 @@ impl CoreGroup {
         }
 
         // Apply proposals to tree
-        let apply_proposals_values =
-            self.apply_proposals(&mut diff, backend, &proposal_queue, &[])?;
+        let apply_proposals_values = self
+            .apply_proposals(&mut diff, backend, &proposal_queue, &[])
+            .map_err(|_| CreateCommitError::OwnKeyNotFound)?;
         if apply_proposals_values.self_removed {
-            return Err(CreateCommitError::CannotRemoveSelf.into());
+            return Err(CreateCommitError::CannotRemoveSelf);
         }
 
         // Generate the [`KeyPackageBundlePayload`]. If we're doing an external
@@ -132,7 +145,10 @@ impl CoreGroup {
         // tree.
         let key_package_bundle_payload = self.prepare_kpb_payload(backend, &params, &mut diff)?;
 
-        let serialized_group_context = self.group_context.tls_serialize_detached()?;
+        let serialized_group_context = self
+            .group_context
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
         let path_processing_result =
         // If path is needed, compute path values
             if apply_proposals_values.path_required
@@ -228,7 +244,8 @@ impl CoreGroup {
             backend,
             path_processing_result.commit_secret,
             self.group_epoch_secrets().init_secret(),
-        )?;
+        )
+        .map_err(LibraryError::unexpected_crypto_error)?;
 
         // Create group secrets for later use, so we can afterwards consume the
         // `joiner_secret`.
@@ -251,17 +268,25 @@ impl CoreGroup {
         // Create key schedule
         let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)?;
 
-        let serialized_provisional_group_context =
-            provisional_group_context.tls_serialize_detached()?;
+        let serialized_provisional_group_context = provisional_group_context
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
 
-        let welcome_secret = key_schedule.welcome(backend)?;
-        key_schedule.add_context(backend, &serialized_provisional_group_context)?;
-        let provisional_epoch_secrets = key_schedule.epoch_secrets(backend)?;
+        let welcome_secret = key_schedule
+            .welcome(backend)
+            .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
+        key_schedule
+            .add_context(backend, &serialized_provisional_group_context)
+            .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
+        let provisional_epoch_secrets = key_schedule
+            .epoch_secrets(backend)
+            .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
         // Calculate the confirmation tag
         let confirmation_tag = provisional_epoch_secrets
             .confirmation_key()
-            .tag(backend, &confirmed_transcript_hash)?;
+            .tag(backend, &confirmed_transcript_hash)
+            .map_err(LibraryError::unexpected_crypto_error)?;
 
         // Set the confirmation tag
         mls_plaintext.set_confirmation_tag(confirmation_tag.clone());
@@ -299,13 +324,19 @@ impl CoreGroup {
             let group_info = group_info.sign(backend, params.credential_bundle())?;
 
             // Encrypt GroupInfo object
-            let (welcome_key, welcome_nonce) = welcome_secret.derive_welcome_key_nonce(backend)?;
-            let encrypted_group_info = welcome_key.aead_seal(
-                backend,
-                &group_info.tls_serialize_detached()?,
-                &[],
-                &welcome_nonce,
-            )?;
+            let (welcome_key, welcome_nonce) = welcome_secret
+                .derive_welcome_key_nonce(backend)
+                .map_err(LibraryError::unexpected_crypto_error)?;
+            let encrypted_group_info = welcome_key
+                .aead_seal(
+                    backend,
+                    &group_info
+                        .tls_serialize_detached()
+                        .map_err(LibraryError::missing_bound_check)?,
+                    &[],
+                    &welcome_nonce,
+                )
+                .map_err(LibraryError::unexpected_crypto_error)?;
             // Encrypt group secrets
             let secrets = plaintext_secrets
                 .into_iter()
@@ -357,11 +388,23 @@ impl CoreGroup {
         })
     }
 
+    /// Returns the leftmost free leaf index.
+    ///
+    /// For External Commits of the "resync" type, this returns the index
+    /// of the sender.
+    ///
+    /// The proposals must be validated before calling this function.
     pub(crate) fn free_leaf_index<'a>(
         &self,
         mut inline_proposals: impl Iterator<Item = Option<&'a Proposal>>,
-    ) -> Result<u32, CoreGroupError> {
-        let free_leaf_index = self.treesync().free_leaf_index()?;
+    ) -> Result<u32, LibraryError> {
+        // Leftmost free leaf in the tree
+        // This cannot fail unless the tree is completely empty
+        let free_leaf_index = self
+            .treesync()
+            .free_leaf_index()
+            .map_err(|_| LibraryError::custom("The tree was empty"))?;
+        // Returns the first remove proposal (if there is one)
         let remove_proposal_option = inline_proposals
             .find(|proposal| match proposal {
                 Some(p) => p.is_type(ProposalType::Remove),
@@ -371,14 +414,17 @@ impl CoreGroup {
         let leaf_index = if let Some(remove_proposal) = remove_proposal_option {
             if let Proposal::Remove(remove_proposal) = remove_proposal {
                 let removed = remove_proposal.removed();
-                let removed_index = self.treesync().leaf_index(removed)?;
+                let removed_index = self
+                    .treesync()
+                    .leaf_index(removed)
+                    .map_err(|_| LibraryError::custom("Expected valid remove proposal"))?;
                 if removed_index < free_leaf_index {
                     removed_index
                 } else {
                     free_leaf_index
                 }
             } else {
-                return Err(LibraryError::custom("missing key package").into());
+                return Err(LibraryError::custom("missing key package"));
             }
         } else {
             free_leaf_index
@@ -393,7 +439,7 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider,
         params: &CreateCommitParams,
         diff: &mut TreeSyncDiff,
-    ) -> Result<KeyPackageBundlePayload, CoreGroupError> {
+    ) -> Result<KeyPackageBundlePayload, LibraryError> {
         let key_package = if params.commit_type() == CommitType::External {
             // Generate a KeyPackageBundle to generate a payload from for later
             // path generation.
@@ -402,19 +448,23 @@ impl CoreGroup {
                 params.credential_bundle(),
                 backend,
                 vec![],
-            )?;
+            )
+            .map_err(|_| LibraryError::custom("Unexpected KeyPackage error"))?;
 
             diff.add_leaf(key_package_bundle.key_package().clone(), backend.crypto())
                 .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
-            diff.own_leaf()?.key_package()
+            diff.own_leaf()
+                .map_err(|_| LibraryError::custom("Expecte own leaf"))?
+                .key_package()
         } else {
-            self.treesync().own_leaf_node()?.key_package()
+            self.treesync()
+                .own_leaf_node()
+                .map_err(|_| LibraryError::custom("Expecte own leaf"))?
+                .key_package()
         };
         // Create a new key package bundle payload from the existing key
         // package.
-        Ok(KeyPackageBundlePayload::from_rekeyed_key_package(
-            key_package,
-            backend,
-        )?)
+        KeyPackageBundlePayload::from_rekeyed_key_package(key_package, backend)
+            .map_err(LibraryError::unexpected_crypto_error)
     }
 }

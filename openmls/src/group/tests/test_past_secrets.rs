@@ -11,7 +11,7 @@ use crate::{
     ciphersuite::{Ciphersuite, CiphersuiteName},
     config::Config,
     credentials::{CredentialBundle, CredentialType},
-    framing::{MlsCiphertextError, ProcessedMessage, ValidationError},
+    framing::{MessageDecryptionError, ProcessedMessage, ValidationError},
     group::{CoreGroupError, GroupId, MlsGroup, MlsGroupConfig, MlsGroupError},
     key_packages::KeyPackageBundle,
 };
@@ -193,7 +193,7 @@ fn test_past_secrets_in_group(
             assert_eq!(
                 err,
                 MlsGroupError::Group(CoreGroupError::ValidationError(
-                    ValidationError::UnableToDecrypt(MlsCiphertextError::DecryptionError),
+                    ValidationError::UnableToDecrypt(MessageDecryptionError::DecryptionError),
                 ))
             );
         }

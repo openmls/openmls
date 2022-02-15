@@ -60,6 +60,16 @@ pub enum ClientError {
     #[error(transparent)]
     UnverifiedMessageError(#[from] UnverifiedMessageError),
     #[error(transparent)]
+    MlsGroupStateError(#[from] MlsGroupStateError),
+    #[error(transparent)]
+    AddMembersError(#[from] AddMembersError),
+    #[error(transparent)]
+    RemoveMembersError(#[from] RemoveMembersError),
+    #[error(transparent)]
+    ProposeAddMemberError(#[from] ProposeAddMemberError),
+    #[error(transparent)]
+    ProposeRemoveMemberError(#[from] ProposeRemoveMemberError),
+    #[error(transparent)]
     LibraryError(#[from] LibraryError),
     #[error("")]
     Unknown,

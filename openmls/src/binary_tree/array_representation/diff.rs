@@ -356,11 +356,14 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// Returns a vector containing the nodes of the tree in-order, i.e. in the
     /// array representation of the diff. This function should not fail and only
     /// returns a [`Result`], because it might throw a
-    /// [LibraryError](ABinaryTreeError::LibraryError).
-    pub(crate) fn export_nodes(&self) -> Result<Vec<T>, ABinaryTreeDiffError> {
+    /// [`LibraryError`].
+    pub(crate) fn export_nodes(&self) -> Result<Vec<T>, LibraryError> {
         let mut nodes = Vec::new();
         for node_index in 0..self.tree_size() {
-            let node = self.node_by_index(node_index)?;
+            let node = self
+                .node_by_index(node_index)
+                // We know the node must be in the tree
+                .map_err(|_| LibraryError::custom("Expected node to be in the tree"))?;
             nodes.push(node.clone());
         }
         Ok(nodes)

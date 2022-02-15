@@ -74,10 +74,7 @@ impl User {
         let mut recipients = Vec::new();
 
         let mls_group = group.mls_group.borrow();
-        for member in mls_group
-            .members()
-            .expect("Failed to retrieve membership in group!")
-        {
+        for member in mls_group.members() {
             if self.identity.borrow().credential.credential().identity()
                 != member.credential().identity()
             {

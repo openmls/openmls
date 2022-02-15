@@ -8,9 +8,11 @@ use crate::{
 };
 use thiserror::Error;
 
-/// MlsCiphertext error
+// === Public ===
+
+/// Message decryption error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum MlsCiphertextError {
+pub enum MessageDecryptionError {
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     #[error("Couldn't find a ratcheting secret for the given sender and generation.")]
@@ -21,6 +23,19 @@ pub enum MlsCiphertextError {
     WrongWireFormat,
     #[error("The content is malformed.")]
     MalformedContent,
+    #[error(transparent)]
+    SecretTreeError(#[from] SecretTreeError),
+    #[error(transparent)]
+    SenderError(#[from] SenderError),
+}
+
+/// Message encryption error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub(crate) enum MessageEncryptionError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The WireFormat was MLSPlaintext.")]
+    WrongWireFormat,
     #[error(transparent)]
     SecretTreeError(#[from] SecretTreeError),
     #[error(transparent)]
@@ -76,7 +91,7 @@ pub enum ValidationError {
     VerificationError(#[from] VerificationError),
     /// Could not decrypt the message
     #[error(transparent)]
-    UnableToDecrypt(#[from] MlsCiphertextError),
+    UnableToDecrypt(#[from] MessageDecryptionError),
 }
 
 /// MlsMessage error

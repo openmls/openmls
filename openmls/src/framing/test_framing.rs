@@ -291,7 +291,7 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
         ciphertext
             .sender_data(&mut message_secrets, backend, ciphersuite)
             .expect_err("Could decrypt despite wrong wire format."),
-        MlsCiphertextError::WrongWireFormat
+        MessageDecryptionError::WrongWireFormat
     );
 
     message_secrets.replace_secret_tree(sender_secret_tree);
@@ -314,7 +314,7 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
             0,
         )
         .expect_err("Could encrypt despite wrong wire format."),
-        MlsCiphertextError::WrongWireFormat
+        MessageEncryptionError::WrongWireFormat
     );
 }
 
@@ -587,7 +587,7 @@ fn unknown_sender(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     let received_message = group_charlie.decrypt(&enc_message, backend, configuration);
     assert_eq!(
         received_message.unwrap_err(),
-        CoreGroupError::MlsCiphertextError(MlsCiphertextError::SenderError(
+        CoreGroupError::MlsCiphertextError(MessageDecryptionError::SenderError(
             SenderError::UnknownSender
         ))
     );

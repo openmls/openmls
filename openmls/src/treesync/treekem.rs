@@ -44,13 +44,11 @@ impl<'a> TreeSyncDiff<'a> {
         group_context: &[u8],
         exclusion_list: &HashSet<&LeafIndex>,
         key_package: KeyPackage,
-    ) -> Result<UpdatePath, TreeKemError> {
+    ) -> Result<UpdatePath, LibraryError> {
         let copath_resolutions = self.copath_resolutions(self.own_leaf_index(), exclusion_list)?;
 
         // There should be as many copath resolutions.
-        if copath_resolutions.len() != path.len() {
-            return Err(TreeKemError::PathLengthError);
-        }
+        debug_assert_eq!(copath_resolutions.len(), path.len());
 
         // Encrypt the secrets
         let update_path_nodes = path
@@ -211,6 +209,11 @@ impl PlaintextSecret {
     /// Prepare the `GroupSecrets` for a number of `invited_members` based on a
     /// [`TreeSyncDiff`]. If a slice of [`PlainUpdatePathNode`] is given, they
     /// are included in the [`GroupSecrets`] of the path.
+    ///
+    /// Returns an error if
+    ///  - the own node is outside the tree
+    ///  - the invited members are not part of the tree yet
+    ///  - the leaf index of a new member is identical to the own leaf index
     pub(crate) fn from_plain_update_path(
         diff: &TreeSyncDiff,
         joiner_secret: &JoinerSecret,
@@ -218,13 +221,15 @@ impl PlaintextSecret {
         plain_path_option: Option<&[PlainUpdatePathNode]>,
         presharedkeys: &PreSharedKeys,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<Vec<Self>, TreeKemError> {
+    ) -> Result<Vec<Self>, LibraryError> {
         let mut plaintext_secrets = vec![];
         for (leaf_index, add_proposal) in invited_members {
             let key_package = add_proposal.key_package;
 
-            let direct_path_position =
-                diff.subtree_root_position(diff.own_leaf_index(), leaf_index)?;
+            let direct_path_position = diff
+                .subtree_root_position(diff.own_leaf_index(), leaf_index)
+                // This can only fail if the nodes are outside theree or identical
+                .map_err(|_| LibraryError::custom("Unexpected error in subtree_root_position"))?;
 
             // If a plain path was given, there have to be secrets for every new member.
             let path_secret_option = if let Some(plain_path) = plain_path_option {
@@ -232,7 +237,9 @@ impl PlaintextSecret {
                     plain_path
                         .get(direct_path_position)
                         .map(|pupn| pupn.path_secret())
-                        .ok_or(TreeKemError::PathSecretNotFound)?,
+                        .ok_or(TreeKemError::PathSecretNotFound)
+                        // This only fails if the supplied plain path is invalid
+                        .map_err(|_| LibraryError::custom("Invalid plain path"))?,
                 )
             } else {
                 None
@@ -240,7 +247,8 @@ impl PlaintextSecret {
 
             // Create the GroupSecrets object for the respective member.
             let group_secrets_bytes =
-                GroupSecrets::new_encoded(joiner_secret, path_secret_option, presharedkeys)?;
+                GroupSecrets::new_encoded(joiner_secret, path_secret_option, presharedkeys)
+                    .map_err(LibraryError::missing_bound_check)?;
             plaintext_secrets.push(PlaintextSecret {
                 public_key: key_package.hpke_init_key().clone(),
                 group_secrets_bytes,

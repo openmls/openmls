@@ -277,15 +277,18 @@ impl InitSecret {
         version: ProtocolVersion,
         external_priv: &HpkePrivateKey,
         kem_output: &[u8],
-    ) -> Result<Self, KeyScheduleError> {
-        let raw_init_secret = backend.crypto().hpke_setup_receiver_and_export(
-            ciphersuite.hpke_config(),
-            kem_output,
-            external_priv.as_slice(),
-            &[],
-            hpke_info_from_version(version).as_bytes(),
-            ciphersuite.hash_length(),
-        )?;
+    ) -> Result<Self, LibraryError> {
+        let raw_init_secret = backend
+            .crypto()
+            .hpke_setup_receiver_and_export(
+                ciphersuite.hpke_config(),
+                kem_output,
+                external_priv.as_slice(),
+                &[],
+                hpke_info_from_version(version).as_bytes(),
+                ciphersuite.hash_length(),
+            )
+            .map_err(LibraryError::unexpected_crypto_error)?;
         Ok(InitSecret {
             secret: Secret::from_slice(&raw_init_secret, version, ciphersuite),
         })

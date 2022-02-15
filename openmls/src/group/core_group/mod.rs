@@ -65,7 +65,10 @@ use tls_codec::Serialize as TlsSerializeTrait;
 use self::{past_secrets::MessageSecretsStore, staged_commit::StagedCommit};
 
 use super::{
-    errors::{CoreGroupError, ExporterError, FramingValidationError, ProposalValidationError},
+    errors::{
+        CoreGroupError, CreateAddProposalError, ExporterError, FramingValidationError,
+        ProposalValidationError,
+    },
     group_context::*,
 };
 
@@ -202,9 +205,13 @@ impl CoreGroupBuilder {
         let psk_secret = PskSecret::new(ciphersuite, backend, &self.psk_ids)?;
 
         let mut key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)?;
-        key_schedule.add_context(backend, &serialized_group_context)?;
+        key_schedule
+            .add_context(backend, &serialized_group_context)
+            .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
-        let epoch_secrets = key_schedule.epoch_secrets(backend)?;
+        let epoch_secrets = key_schedule
+            .epoch_secrets(backend)
+            .map_err(|_| LibraryError::custom("Using the key schedule in the wrong state"))?;
 
         let (group_epoch_secrets, message_secrets) =
             epoch_secrets.split_secrets(serialized_group_context, 1u32, 0u32);
@@ -249,8 +256,16 @@ impl CoreGroup {
         credential_bundle: &CredentialBundle,
         joiner_key_package: KeyPackage,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsPlaintext, CoreGroupError> {
-        joiner_key_package.validate_required_capabilities(self.required_capabilities())?;
+    ) -> Result<MlsPlaintext, CreateAddProposalError> {
+        joiner_key_package
+            .validate_required_capabilities(self.required_capabilities())
+            .map_err(|e| match e {
+                KeyPackageError::UnsupportedExtension => {
+                    CreateAddProposalError::UnsupportedExtensions
+                }
+                KeyPackageError::LibraryError(e) => e.into(),
+                _ => LibraryError::custom("Unexpected KeyPackage error").into(),
+            })?;
         let add_proposal = AddProposal {
             key_package: joiner_key_package,
         };
@@ -304,7 +319,7 @@ impl CoreGroup {
         credential_bundle: &CredentialBundle,
         removed: &KeyPackageRef,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsPlaintext, CoreGroupError> {
+    ) -> Result<MlsPlaintext, LibraryError> {
         let remove_proposal = RemoveProposal { removed: *removed };
         let proposal = Proposal::Remove(remove_proposal);
         MlsPlaintext::member_proposal(
@@ -317,7 +332,6 @@ impl CoreGroup {
             self.message_secrets().membership_key(),
             backend,
         )
-        .map_err(|e| e.into())
     }
 
     // 11.1.4. PreSharedKey
@@ -398,7 +412,7 @@ impl CoreGroup {
         credential_bundle: &CredentialBundle,
         padding_size: usize,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsCiphertext, CoreGroupError> {
+    ) -> Result<MlsCiphertext, MessageEncryptionError> {
         let mls_plaintext = MlsPlaintext::new_application(
             self.key_package_ref()
                 .ok_or_else(|| LibraryError::custom("missing key package"))?,
@@ -418,7 +432,7 @@ impl CoreGroup {
         mls_plaintext: MlsPlaintext,
         padding_size: usize,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsCiphertext, CoreGroupError> {
+    ) -> Result<MlsCiphertext, MessageEncryptionError> {
         log::trace!("{:?}", mls_plaintext.confirmation_tag());
         MlsCiphertext::try_from_plaintext(
             &mls_plaintext,
@@ -429,11 +443,9 @@ impl CoreGroup {
                 epoch: self.context().epoch(),
                 sender: crate::tree::index::SecretTreeLeafIndex(self.own_leaf_index()),
             },
-            self.message_secrets_mut(mls_plaintext.epoch())
-                .map_err(MlsCiphertextError::SecretTreeError)?,
+            self.message_secrets_store.message_secrets_mut(),
             padding_size,
         )
-        .map_err(CoreGroupError::MlsCiphertextError)
     }
 
     /// Decrypt an MlsCiphertext into an MlsPlaintext
@@ -447,15 +459,15 @@ impl CoreGroup {
         let ciphersuite = self.ciphersuite();
         let message_secrets = self
             .message_secrets_mut(mls_ciphertext.epoch())
-            .map_err(|_| MlsCiphertextError::DecryptionError)?;
+            .map_err(|_| MessageDecryptionError::DecryptionError)?;
         let sender_data = mls_ciphertext.sender_data(message_secrets, backend, ciphersuite)?;
         let sender_index = self
             .sender_index(&sender_data.sender)
-            .map_err(|_| MlsCiphertextError::SenderError(SenderError::UnknownSender))?;
+            .map_err(|_| MessageDecryptionError::SenderError(SenderError::UnknownSender))?;
         let sender_index = crate::tree::index::SecretTreeLeafIndex(sender_index);
         let message_secrets = self
             .message_secrets_mut(mls_ciphertext.epoch())
-            .map_err(|_| MlsCiphertextError::DecryptionError)?;
+            .map_err(|_| MessageDecryptionError::DecryptionError)?;
         Ok(mls_ciphertext.to_plaintext(
             ciphersuite,
             backend,
@@ -632,7 +644,7 @@ impl CoreGroup {
             self.message_secrets_store
                 .secrets_and_leaves_for_epoch_mut(epoch)
                 .ok_or({
-                    CoreGroupError::MlsCiphertextError(MlsCiphertextError::SecretTreeError(
+                    CoreGroupError::MlsCiphertextError(MessageDecryptionError::SecretTreeError(
                         SecretTreeError::TooDistantInThePast,
                     ))
                 })

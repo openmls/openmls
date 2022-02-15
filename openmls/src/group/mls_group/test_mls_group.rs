@@ -546,36 +546,55 @@ fn test_pending_commit_logic(
     let error = alice_group
         .add_members(backend, &[bob_key_package.clone()])
         .expect_err("no error committing while a commit is pending");
-    assert_eq!(error, MlsGroupError::PendingCommitError);
+    assert_eq!(
+        error,
+        AddMembersError::GroupStateError(MlsGroupStateError::PendingCommit)
+    );
     let error = alice_group
         .propose_add_member(backend, &bob_key_package)
         .expect_err("no error creating a proposal while a commit is pending");
-    assert_eq!(error, MlsGroupError::PendingCommitError);
+    assert_eq!(
+        error,
+        ProposeAddMemberError::GroupStateError(MlsGroupStateError::PendingCommit)
+    );
     let error = alice_group
         .remove_members(backend, &[bob_kpr])
         .expect_err("no error committing while a commit is pending");
-    assert_eq!(error, MlsGroupError::PendingCommitError);
+    assert_eq!(
+        error,
+        RemoveMembersError::GroupStateError(MlsGroupStateError::PendingCommit)
+    );
     let error = alice_group
         .propose_remove_member(backend, &bob_kpr)
         .expect_err("no error creating a proposal while a commit is pending");
-    assert_eq!(error, MlsGroupError::PendingCommitError);
+    assert_eq!(
+        error,
+        ProposeRemoveMemberError::GroupStateError(MlsGroupStateError::PendingCommit)
+    );
     let error = alice_group
         .commit_to_pending_proposals(backend)
         .expect_err("no error committing while a commit is pending");
-    assert_eq!(error, MlsGroupError::PendingCommitError);
+    assert_eq!(
+        error,
+        MlsGroupError::GroupStateError(MlsGroupStateError::PendingCommit)
+    );
     let error = alice_group
         .self_update(backend, None)
         .expect_err("no error committing while a commit is pending");
-    assert_eq!(error, MlsGroupError::PendingCommitError);
+    assert_eq!(
+        error,
+        MlsGroupError::GroupStateError(MlsGroupStateError::PendingCommit)
+    );
     let error = alice_group
         .propose_self_update(backend, None)
         .expect_err("no error creating a proposal while a commit is pending");
-    assert_eq!(error, MlsGroupError::PendingCommitError);
+    assert_eq!(
+        error,
+        MlsGroupError::GroupStateError(MlsGroupStateError::PendingCommit)
+    );
 
     // Clearing the pending commit should actually clear it.
-    alice_group
-        .clear_pending_commit()
-        .expect("error clearing pending commit");
+    alice_group.clear_pending_commit();
     assert!(alice_group.pending_commit().is_none());
 
     // Creating a new commit should commit the same proposals.

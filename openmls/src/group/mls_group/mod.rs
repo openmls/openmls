@@ -11,7 +11,6 @@ mod ser;
 mod test_mls_group;
 mod updates;
 
-use crate::treesync::node::Node;
 use crate::{ciphersuite::hash_ref::KeyPackageRef, credentials::CredentialBundle};
 
 use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
@@ -36,11 +35,9 @@ use std::io::{Error, Read, Write};
 pub(crate) use resumption::ResumptionSecretStore;
 
 // Public exports
-pub use {
-    config::*,
-    errors::{EmptyInputError, MlsGroupError, MlsGroupStateError, UnverifiedMessageError},
-    membership::RemoveOperation,
-};
+pub use crate::treesync::node::Node;
+pub use crate::treesync::node::{leaf_node::LeafNode, parent_node::ParentNode};
+pub use {config::*, errors::*, membership::RemoveOperation};
 
 /// Pending Commit state. Differentiates between Commits issued by group members
 /// and External Commits.
@@ -231,14 +228,16 @@ impl MlsGroup {
 
     /// Returns own credential. If the group is inactive, it returns a
     /// `UseAfterEviction` error.
-    pub fn credential(&self) -> Result<&Credential, MlsGroupError> {
+    pub fn credential(&self) -> Result<&Credential, MlsGroupStateError> {
         if !self.is_active() {
-            return Err(MlsGroupError::GroupStateError(
-                MlsGroupStateError::UseAfterEviction,
-            ));
+            return Err(MlsGroupStateError::UseAfterEviction);
         }
         let tree = self.group.treesync();
-        Ok(tree.own_leaf_node()?.key_package().credential())
+        Ok(tree
+            .own_leaf_node()
+            .map_err(|_| LibraryError::custom("Own leaf node missing"))?
+            .key_package()
+            .credential())
     }
 
     /// Get the [`KeyPackageRef`] of the client owning this group.
@@ -277,7 +276,7 @@ impl MlsGroup {
     /// Sets the `group_state` to [`MlsGroupState::Operational`], thus clearing
     /// any potentially pending commits.
     ///
-    /// Returns an error if the group was created through an external commit and
+    /// Note that this has no effect if the group was created through an external commit and
     /// the resulting external commit has not been merged yet. For more
     /// information, see [`MlsGroup::join_by_external_commit()`].
     ///
@@ -285,19 +284,15 @@ impl MlsGroup {
     /// the pending commit will not be used in the group. In particular, if a
     /// pending commit is later accepted by the group, this client will lack the
     /// key material to encrypt or decrypt group messages.
-    pub fn clear_pending_commit(&mut self) -> Result<(), MlsGroupError> {
+    pub fn clear_pending_commit(&mut self) {
         match self.group_state {
             MlsGroupState::PendingCommit(ref pending_commit_state) => {
-                match **pending_commit_state {
-                    PendingCommitState::Member(_) => self.group_state = MlsGroupState::Operational,
-                    PendingCommitState::External(_) => {
-                        return Err(MlsGroupError::ExternalCommitError)
-                    }
+                if let PendingCommitState::Member(_) = **pending_commit_state {
+                    self.group_state = MlsGroupState::Operational
                 }
             }
             MlsGroupState::Operational | MlsGroupState::Inactive => (),
         }
-        Ok(())
     }
 
     // === Load & save ===
@@ -360,13 +355,15 @@ impl MlsGroup {
         &mut self,
         plaintext: MlsPlaintext,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsMessageOut, MlsGroupError> {
+    ) -> Result<MlsMessageOut, LibraryError> {
         let msg = match self.configuration().wire_format_policy().outgoing() {
             OutgoingWireFormatPolicy::AlwaysPlaintext => MlsMessageOut::from(plaintext),
             OutgoingWireFormatPolicy::AlwaysCiphertext => {
-                let ciphertext =
-                    self.group
-                        .encrypt(plaintext, self.configuration().padding_size(), backend)?;
+                let ciphertext = self
+                    .group
+                    .encrypt(plaintext, self.configuration().padding_size(), backend)
+                    // We can be sure the encryption will work because the plaintext was created by us
+                    .map_err(|_| LibraryError::custom("Malformed plaintext"))?;
                 MlsMessageOut::from(ciphertext)
             }
         };
@@ -388,12 +385,10 @@ impl MlsGroup {
 
     /// Check if the group is operational. Throws an error if the group is
     /// inactive or if there is a pending commit.
-    fn is_operational(&self) -> Result<(), MlsGroupError> {
+    fn is_operational(&self) -> Result<(), MlsGroupStateError> {
         match self.group_state {
-            MlsGroupState::PendingCommit(_) => Err(MlsGroupError::PendingCommitError),
-            MlsGroupState::Inactive => Err(MlsGroupError::GroupStateError(
-                MlsGroupStateError::UseAfterEviction,
-            )),
+            MlsGroupState::PendingCommit(_) => Err(MlsGroupStateError::PendingCommit),
+            MlsGroupState::Inactive => Err(MlsGroupStateError::UseAfterEviction),
             MlsGroupState::Operational => Ok(()),
         }
     }

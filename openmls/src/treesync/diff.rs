@@ -241,23 +241,25 @@ impl<'a> TreeSyncDiff<'a> {
     }
 
     /// Derive a new direct path for our own leaf from the given `leaf_secret`.
+    ///
+    /// Returns an error if the own leaf is not in the tree
     fn derive_path_from_leaf_secret(
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
         leaf_secret: Secret,
-    ) -> Result<PathDerivationResult, TreeSyncDiffError> {
+    ) -> Result<PathDerivationResult, LibraryError> {
         let leaf_path_secret = PathSecret::from(leaf_secret);
         let path_secret = leaf_path_secret.derive_path_secret(backend, ciphersuite)?;
 
-        let path_length = self.diff.direct_path(self.own_leaf_index)?.len();
+        let path_length = self
+            .diff
+            .direct_path(self.own_leaf_index)
+            // We assume the own leaf is in the tree
+            .map_err(|_| LibraryError::custom("Own leaf was not in tree"))?
+            .len();
 
-        Ok(ParentNode::derive_path(
-            backend,
-            ciphersuite,
-            path_secret,
-            path_length,
-        )?)
+        ParentNode::derive_path(backend, ciphersuite, path_secret, path_length)
     }
 
     /// Given a [`KeyPackageBundlePayload`], use it to create a new path and
@@ -266,13 +268,15 @@ impl<'a> TreeSyncDiff<'a> {
     ///
     /// Returns the [`CommitSecret`] and the path resulting from the path
     /// derivation, as well as the [`KeyPackage`].
+    ///
+    /// Returns an error if the own leaf is not in the tree
     pub(crate) fn apply_own_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
         mut key_package_bundle_payload: KeyPackageBundlePayload,
         credential_bundle: &CredentialBundle,
-    ) -> Result<UpdatePathResult, TreeSyncDiffError> {
+    ) -> Result<UpdatePathResult, LibraryError> {
         let leaf_secret = key_package_bundle_payload.leaf_secret().clone();
 
         let (path, update_path_nodes, commit_secret) =
@@ -291,7 +295,10 @@ impl<'a> TreeSyncDiff<'a> {
         )?);
 
         // Replace the leaf.
-        self.diff.replace_leaf(self.own_leaf_index, node.into())?;
+        self.diff
+            .replace_leaf(self.own_leaf_index, node.into())
+            // We assume the own leaf is in the tree
+            .map_err(|_| LibraryError::custom("Own leaf not in tree"))?;
         Ok((key_package, update_path_nodes, commit_secret))
     }
 
@@ -909,7 +916,7 @@ impl<'a> TreeSyncDiff<'a> {
 
     /// Returns a vector of all nodes in the tree resulting from merging this
     /// diff.
-    pub(crate) fn export_nodes(&self) -> Result<Vec<Option<Node>>, TreeSyncDiffError> {
+    pub(crate) fn export_nodes(&self) -> Result<Vec<Option<Node>>, LibraryError> {
         let nodes = self
             .diff
             .export_nodes()?
@@ -921,16 +928,22 @@ impl<'a> TreeSyncDiff<'a> {
 
     /// Returns the [`KeyPackageRef`] for the own leaf in the tree resulting from
     /// merging this diff.
-    pub(crate) fn hash_ref(&self) -> Result<&KeyPackageRef, TreeSyncDiffError> {
-        let node = self.diff.node(self.diff.leaf(self.own_leaf_index)?)?;
+    ///
+    /// Returns an error if the own leaf is not in the tree.
+    pub(crate) fn hash_ref(&self) -> Result<&KeyPackageRef, LibraryError> {
+        let node = self
+            .diff
+            .node(
+                self.diff
+                    .leaf(self.own_leaf_index)
+                    .map_err(|_| LibraryError::custom("Expected own leaf to be in the tree"))?,
+            )
+            .map_err(|_| LibraryError::custom("Expected own leaf to be in the tree"))?;
         if let Some(Node::LeafNode(node)) = node.node() {
-            node.key_package_ref().ok_or_else(|| {
-                TreeSyncDiffError::LibraryError(LibraryError::custom("missing key package ref"))
-            })
+            node.key_package_ref()
+                .ok_or_else(|| LibraryError::custom("missing key package ref"))
         } else {
-            Err(TreeSyncDiffError::LibraryError(LibraryError::custom(
-                "missing leaf node",
-            )))
+            Err(LibraryError::custom("missing leaf node"))
         }
     }
 }
