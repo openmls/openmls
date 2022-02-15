@@ -16,8 +16,8 @@ use openmls_traits::{
     crypto::OpenMlsCrypto,
     random::OpenMlsRand,
     types::{
-        AeadType, CryptoError, ExporterSecret, HashType, HpkeAeadType, HpkeCiphertext, HpkeConfig,
-        HpkeKdfType, HpkeKemType, HpkeKeyPair, KemOutput, SignatureScheme,
+        AeadType, Ciphersuite, CryptoError, ExporterSecret, HashType, HpkeAeadType, HpkeCiphertext,
+        HpkeConfig, HpkeKdfType, HpkeKemType, HpkeKeyPair, KemOutput, SignatureScheme,
     },
 };
 use rand::{RngCore, SeedableRng};
