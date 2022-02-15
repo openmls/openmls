@@ -71,7 +71,7 @@ pub enum MlsGroupError {
 pub enum EmptyInputError {
     #[error("An empty list of KeyPackages was provided.")]
     AddMembers,
-    #[error("An empty list of indexes was provided.")]
+    #[error("An empty list of KeyPackage references was provided.")]
     RemoveMembers,
 }
 
