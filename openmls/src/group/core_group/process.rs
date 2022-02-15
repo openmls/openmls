@@ -100,7 +100,10 @@ impl CoreGroup {
         // If the message is older than the current epoch, we need to fetch the correct secret tree first.
         let message_secrets = self
             .message_secrets_mut(unverified_message.epoch())
-            .map_err(|_| UnverifiedMessageError::NoPastEpochData)?;
+            .map_err(|e| match e {
+                SecretTreeError::TooDistantInThePast => UnverifiedMessageError::NoPastEpochData,
+                _ => LibraryError::custom("Unexpected return value").into(),
+            })?;
 
         // Checks the following semantic validation:
         //  - ValSem008

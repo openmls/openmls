@@ -187,7 +187,8 @@ impl<'a> TreeSyncDiff<'a> {
         if leaf_index < self.leaf_count() {
             self.diff
                 .replace_leaf(leaf_index, node.into())
-                .map_err(|_| LibraryError::custom("no parent hash extension"))?;
+                // We know the leaf index is in the tree, so replacing it should not fail
+                .map_err(|_| LibraryError::custom("Could not replace the leaf"))?;
         } else {
             self.diff
                 .add_leaf(TreeSyncNode::blank(), node.into())
@@ -300,6 +301,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// secrets.
     ///
     /// Returns an error if the `sender_leaf_index` is outside of the tree.
+    /// TODO #804
     pub(crate) fn apply_received_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -327,6 +329,7 @@ impl<'a> TreeSyncDiff<'a> {
         let node = Node::LeafNode(LeafNode::new(key_package, backend.crypto())?);
         self.diff
             .replace_leaf(sender_leaf_index, node.into())
+            // We assume the sender leaf is in the tree
             .map_err(|_| LibraryError::custom("Expected sender leaf to be in the tree"))?;
         Ok(())
     }
@@ -337,6 +340,7 @@ impl<'a> TreeSyncDiff<'a> {
     ///
     /// Returns the parent hash of the leaf at `leaf_index`. Returns an error if
     /// the target leaf is outside of the tree.
+    /// TODO #804
     fn process_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -352,6 +356,7 @@ impl<'a> TreeSyncDiff<'a> {
             .collect();
 
         // Set the direct path. Note, that the nodes here don't have a tree hash
+        // TODO #804
         // set.
         self.diff
             .set_direct_path(leaf_index, direct_path)
