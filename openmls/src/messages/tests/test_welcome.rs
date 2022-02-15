@@ -3,10 +3,10 @@
 use crate::{
     ciphersuite::hash_ref::KeyPackageRef,
     ciphersuite::{signable::Signable, AeadKey, AeadNonce, Ciphersuite, Mac, Secret},
-    config::ProtocolVersion,
     credentials::{CredentialBundle, CredentialType},
     group::{GroupEpoch, GroupId},
     messages::{ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload, Welcome},
+    versions::ProtocolVersion,
 };
 
 use rstest::*;

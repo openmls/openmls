@@ -7,7 +7,7 @@ use openmls_traits::{random::OpenMlsRand, OpenMlsCryptoProvider};
 use tls_codec::Serialize;
 
 use crate::{
-    ciphersuite::Secret, config::ProtocolVersion, schedule::psk::PskBundle, schedule::psk::*,
+    ciphersuite::Secret, schedule::psk::PskBundle, schedule::psk::*, versions::ProtocolVersion,
 };
 
 use super::PskSecret;

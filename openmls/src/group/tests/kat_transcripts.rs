@@ -9,8 +9,8 @@ use std::convert::TryFrom;
 use crate::test_utils::{read, write};
 
 use crate::{
-    ciphersuite::hash_ref::KeyPackageRef, ciphersuite::signable::*, config::*, credentials::*,
-    framing::*, group::*, messages::*, schedule::*, test_utils::*,
+    ciphersuite::hash_ref::KeyPackageRef, ciphersuite::signable::*, credentials::*, framing::*,
+    group::*, messages::*, schedule::*, test_utils::*, versions::ProtocolVersion,
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;

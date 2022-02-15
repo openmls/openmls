@@ -19,8 +19,8 @@ pub use crate::messages::*;
 // Credentials
 pub use crate::credentials::{CredentialError, *};
 
-// Configuration
-pub use crate::config::*;
+// MLS Versions
+pub use crate::versions::*;
 
 // Extensions
 pub use crate::extensions::*;

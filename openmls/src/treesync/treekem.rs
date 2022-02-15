@@ -14,11 +14,11 @@ use serde::{Deserialize, Serialize};
 use crate::{
     binary_tree::LeafIndex,
     ciphersuite::{hash_ref::KeyPackageRef, Ciphersuite, HpkePublicKey},
-    config::ProtocolVersion,
     error::LibraryError,
     key_packages::KeyPackage,
     messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
     schedule::{CommitSecret, JoinerSecret, PreSharedKeys},
+    versions::ProtocolVersion,
 };
 
 use super::{

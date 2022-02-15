@@ -6,7 +6,6 @@
 
 use crate::{
     ciphersuite::signable::Signable,
-    config::*,
     credentials::*,
     framing::*,
     group::*,
@@ -19,6 +18,7 @@ use crate::{
     test_utils::*,
     tree::sender_ratchet::*,
     treesync::node::Node,
+    versions::ProtocolVersion,
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;

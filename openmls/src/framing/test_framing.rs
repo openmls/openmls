@@ -11,7 +11,6 @@ use crate::{
         hash_ref::KeyPackageRef,
         signable::{Signable, Verifiable},
     },
-    config::*,
     framing::*,
     group::{
         core_group::{
@@ -26,6 +25,7 @@ use crate::{
         index::SecretTreeLeafIndex, secret_tree::SecretTree,
         sender_ratchet::SenderRatchetConfiguration,
     },
+    versions::ProtocolVersion,
 };
 
 /// This tests serializing/deserializing MlsPlaintext

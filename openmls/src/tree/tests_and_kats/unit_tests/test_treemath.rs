@@ -2,7 +2,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::types::SignatureScheme;
 
 use crate::{
-    config::*,
+    
     test_utils::*,
     tree::{
         index::{LeafIndex, NodeIndex},

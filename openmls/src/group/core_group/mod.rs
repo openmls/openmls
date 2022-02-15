@@ -35,7 +35,6 @@ mod test_proposals;
 
 use crate::{
     ciphersuite::hash_ref::KeyPackageRef,
-    config::*,
     credentials::*,
     error::LibraryError,
     framing::*,
@@ -45,6 +44,7 @@ use crate::{
     schedule::{psk::*, *},
     tree::{secret_tree::SecretTreeError, SenderRatchetConfiguration},
     treesync::*,
+    versions::ProtocolVersion,
 };
 
 use crate::{ciphersuite::signable::*, messages::public_group_state::*};

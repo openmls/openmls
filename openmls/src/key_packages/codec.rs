@@ -1,7 +1,7 @@
 use std::io::Read;
 
-use crate::config::ProtocolVersion;
 use crate::key_packages::*;
+use crate::versions::ProtocolVersion;
 
 impl tls_codec::Size for KeyPackage {
     #[inline]

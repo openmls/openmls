@@ -83,13 +83,13 @@ use tls_codec::{
 
 use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, signable::*, *},
-    config::ProtocolVersion,
     credentials::*,
     error::LibraryError,
     extensions::{
         CapabilitiesExtension, Extension, ExtensionError, ExtensionType, LifetimeExtension,
         ParentHashExtension, RequiredCapabilitiesExtension,
     },
+    versions::ProtocolVersion,
 };
 
 use serde::{Deserialize, Serialize};

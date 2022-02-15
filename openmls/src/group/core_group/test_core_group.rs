@@ -6,7 +6,6 @@ use tls_codec::Serialize;
 
 use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, signable::Signable, AeadNonce},
-    config::ProtocolVersion,
     credentials::*,
     framing::*,
     group::{errors::StageCommitError, *},
@@ -15,6 +14,7 @@ use crate::{
     schedule::psk::*,
     test_utils::*,
     treesync::errors::ApplyUpdatePathError,
+    versions::ProtocolVersion,
 };
 
 #[apply(ciphersuites_and_backends)]

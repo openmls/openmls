@@ -5,12 +5,12 @@ use crate::{
         hash_ref::{KeyPackageRef, ProposalRef},
         *,
     },
-    config::ProtocolVersion,
     error::LibraryError,
     extensions::Extension,
     group::GroupId,
     key_packages::*,
     schedule::psk::*,
+    versions::ProtocolVersion,
 };
 
 use openmls_traits::OpenMlsCryptoProvider;

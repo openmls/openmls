@@ -3,12 +3,12 @@
 use crate::{
     ciphersuite::hash_ref::KeyPackageRef,
     ciphersuite::{signable::*, *},
-    config::ProtocolVersion,
     error::LibraryError,
     extensions::*,
     group::*,
     schedule::{psk::PreSharedKeys, JoinerSecret},
     treesync::treekem::UpdatePath,
+    versions::ProtocolVersion,
 };
 
 use openmls_traits::{

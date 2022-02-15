@@ -10,6 +10,7 @@ use crate::{
         node::parent_node::PlainUpdatePathNode,
         treekem::{PlaintextSecret, UpdatePath},
     },
+    versions::ProtocolVersion,
 };
 
 use super::{

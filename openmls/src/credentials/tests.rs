@@ -4,7 +4,7 @@ use super::*;
 
 #[test]
 fn test_protocol_version() {
-    use crate::config::ProtocolVersion;
+    use crate::versions::ProtocolVersion;
     let mls10_version = ProtocolVersion::Mls10;
     let default_version = ProtocolVersion::default();
     let mls10_e = mls10_version

@@ -1,8 +1,8 @@
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use crate::{
-    ciphersuite::Secret, config::ProtocolVersion, test_utils::*,
-    tree::secret_tree::SecretTreeError, tree::sender_ratchet::*,
+    ciphersuite::Secret, test_utils::*, tree::secret_tree::SecretTreeError,
+    tree::sender_ratchet::*, versions::ProtocolVersion,
 };
 
 // Test the maximum forward ratcheting

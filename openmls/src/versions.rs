@@ -1,11 +1,12 @@
-//! This config contains all structs, enums and functions to configure MLS.
+//! # MLS versions
+//!
+//! Only MLS 1.0 is currently supported.
 
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, fmt};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
-pub mod errors;
-pub use errors::ConfigError;
+use crate::error::OpenMlsError;
 
 /// # Protocol Version
 ///
@@ -48,7 +49,7 @@ impl Default for ProtocolVersion {
 }
 
 impl TryFrom<u8> for ProtocolVersion {
-    type Error = ConfigError;
+    type Error = OpenMlsError;
 
     /// Convert an integer to the corresponding protocol version.
     ///
@@ -57,7 +58,7 @@ impl TryFrom<u8> for ProtocolVersion {
         match v {
             1 => Ok(ProtocolVersion::Mls10),
             200 => Ok(ProtocolVersion::Mls10Draft11),
-            _ => Err(ConfigError::UnsupportedMlsVersion),
+            _ => Err(OpenMlsError::UnsupportedMlsVersion),
         }
     }
 }

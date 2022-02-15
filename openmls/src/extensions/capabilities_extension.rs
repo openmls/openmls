@@ -4,8 +4,8 @@ use openmls_traits::types::Ciphersuite;
 use tls_codec::{TlsSerialize, TlsSize, TlsVecU8};
 
 use super::{CapabilitiesExtensionError, Deserialize, ExtensionType, Serialize};
-use crate::config::ProtocolVersion;
 use crate::messages::proposals::ProposalType;
+use crate::versions::ProtocolVersion;
 
 /// # Capabilities Extension
 ///
@@ -124,21 +124,6 @@ impl tls_codec::Deserialize for CapabilitiesExtension {
         }
 
         let ciphersuites = TlsVecU8::<Ciphersuite>::tls_deserialize(bytes)?;
-        // // There must be at least one ciphersuite we support.
-        // let mut supported_suite = false;
-        // for suite in ciphersuites.iter() {
-        //     if suite.is_supported() {
-        //         supported_suite = true;
-        //         break;
-        //     }
-        // }
-        // if !supported_suite {
-        //     return Err(tls_codec::Error::DecodingError(format!(
-        //         "{:?}",
-        //         CapabilitiesExtensionError::UnsupportedCiphersuite,
-        //     )));
-        // }
-
         let extensions = TlsVecU8::tls_deserialize(bytes)?;
         let proposals = TlsVecU8::tls_deserialize(bytes)?;
 

@@ -13,10 +13,10 @@ use crate::{
         signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
         HpkePublicKey, Signature,
     },
-    config::ProtocolVersion,
     error::LibraryError,
     extensions::Extension,
     group::*,
+    versions::ProtocolVersion,
 };
 
 /// PublicGroupState as defined in the MLS specification as follows:

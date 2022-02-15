@@ -4,7 +4,6 @@
 //! `CreateCommitError`.
 
 use crate::{
-    config::ConfigError,
     credentials::CredentialError,
     error::LibraryError,
     extensions::errors::ExtensionError,
@@ -38,8 +37,6 @@ pub enum CoreGroupError {
     StageCommitError(#[from] StageCommitError),
     #[error(transparent)]
     CreateCommitError(#[from] CreateCommitError),
-    #[error(transparent)]
-    ConfigError(#[from] ConfigError),
     #[error(transparent)]
     ExporterError(#[from] ExporterError),
     #[error(transparent)]

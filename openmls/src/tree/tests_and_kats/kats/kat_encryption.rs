@@ -79,7 +79,6 @@
 
 use crate::{
     ciphersuite::Ciphersuite,
-    config::ProtocolVersion,
     credentials::{CredentialBundle, CredentialType},
     framing::*,
     group::*,
@@ -93,6 +92,7 @@ use crate::{
         sender_ratchet::SenderRatchetConfiguration,
     },
     utils::random_u64,
+    versions::ProtocolVersion,
 };
 use crate::{messages::proposals::RemoveProposal, tree::index::SecretTreeLeafIndex};
 

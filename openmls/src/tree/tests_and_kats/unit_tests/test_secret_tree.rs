@@ -2,10 +2,10 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::random::OpenMlsRand;
 
 use crate::{
-    config::ProtocolVersion,
     schedule::EncryptionSecret,
     test_utils::*,
     tree::{index::SecretTreeLeafIndex, secret_tree::*, *},
+    versions::ProtocolVersion,
 };
 use std::collections::HashMap;
 

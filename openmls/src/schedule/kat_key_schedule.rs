@@ -5,7 +5,7 @@
 //!
 //! If values are not present, they are encoded as empty strings.
 
-use crate::{ciphersuite::*, config::*, group::*, schedule::*, test_utils::*};
+use crate::{ciphersuite::*, group::*, schedule::*, test_utils::*};
 
 #[cfg(test)]
 use crate::test_utils::{read, write};

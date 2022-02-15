@@ -2,8 +2,8 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 
 use crate::{
     ciphersuite::{Ciphersuite, Secret},
-    config::ProtocolVersion,
     test_utils::*,
+    versions::ProtocolVersion,
 };
 
 #[apply(ciphersuites_and_backends)]

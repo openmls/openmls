@@ -123,12 +123,12 @@
 
 use crate::{
     ciphersuite::{AeadKey, AeadNonce, Ciphersuite, HpkePrivateKey, Mac, Secret},
-    config::ProtocolVersion,
     error::LibraryError,
     framing::{MembershipTag, MlsPlaintextTbmPayload},
     messages::{ConfirmationTag, PathSecret, PublicGroupState},
     tree::secret_tree::SecretTree,
     treesync::LeafIndex,
+    versions::ProtocolVersion,
 };
 
 use openmls_traits::{types::*, OpenMlsCryptoProvider};
