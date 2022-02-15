@@ -141,6 +141,7 @@ pub enum CryptoError {
     SenderSetupError,
     ReceiverSetupError,
     ExporterError,
+    UnsupportedCiphersuite,
 }
 
 impl std::fmt::Display for CryptoError {
@@ -287,6 +288,7 @@ impl TryFrom<u16> for Ciphersuite {
             0x0004 => Ok(Ciphersuite::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448),
             0x0005 => Ok(Ciphersuite::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521),
             0x0006 => Ok(Ciphersuite::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448),
+            0x0007 => Ok(Ciphersuite::MLS10_256_DHKEMP384_AES256GCM_SHA384_P384),
             _ => Err(Self::Error::DecodingError(format!(
                 "{} is not a valid cipher suite value",
                 v
@@ -350,9 +352,7 @@ impl Ciphersuite {
             Ciphersuite::MLS10_256_DHKEMP384_AES256GCM_SHA384_P384 => HashType::Sha2_384,
             Ciphersuite::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448
             | Ciphersuite::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521
-            | Ciphersuite::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
-                HashType::Sha2_512
-            }
+            | Ciphersuite::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => HashType::Sha2_512,
         }
     }
 

@@ -9,7 +9,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::OpenMlsCryptoProvider;
 
 fn criterion_kp_bundle(c: &mut Criterion, backend: &impl OpenMlsCryptoProvider) {
-    for ciphersuite in Config::supported_ciphersuites() {
+    for &ciphersuite in Config::supported_ciphersuites() {
         c.bench_function(
             &format!(
                 "KeyPackage create bundle with ciphersuite: {:?}",
