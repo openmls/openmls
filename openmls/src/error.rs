@@ -4,6 +4,7 @@
 //! helper macros and functions to define OpenMLS errors.
 use std::fmt::Display;
 
+use backtrace::Backtrace;
 use openmls_traits::types::CryptoError;
 use thiserror::Error;
 use tls_codec::Error as TlsCodecError;
@@ -42,8 +43,10 @@ pub struct LibraryError {
 impl LibraryError {
     /// A custom error (typically to avoid an unwrap())
     pub(crate) fn custom(s: &'static str) -> Self {
+        let bt = Backtrace::new();
+        let display_string = format!("Error description: {}\n Backtrace:\n{:?}", s, bt);
         Self {
-            internal: InternalLibraryError::Custom(s),
+            internal: InternalLibraryError::Custom(display_string),
         }
     }
 
@@ -76,7 +79,7 @@ enum InternalLibraryError {
     #[error(transparent)]
     CryptoError(#[from] CryptoError),
     #[error("Custom library error: {0}")]
-    Custom(&'static str),
+    Custom(String),
 }
 
 // Macro helpers

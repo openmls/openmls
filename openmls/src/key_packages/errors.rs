@@ -4,6 +4,7 @@
 //! `KeyPackageBundle`s.
 
 use openmls_traits::types::CryptoError;
+use thiserror::Error;
 use tls_codec::Error as TlsCodecError;
 
 use crate::{
@@ -11,32 +12,35 @@ use crate::{
     extensions::ExtensionError,
 };
 
-implement_error! {
-    pub enum KeyPackageError {
-        Simple {
-            UnsupportedCiphersuite = "The requested ciphersuite is not supported.",
-            UnknownConfigError = "An unknown configuration error occurred.",
-            MandatoryExtensionsMissing = "A mandatory extension is missing in the key package.",
-            InvalidLifetimeExtension = "The lifetime extension of the key package is not valid.",
-            InvalidSignature = "The key package signature is not valid.",
-            DuplicateExtension = "Duplicate extensions are not allowed.",
-            UnsupportedExtension = "The key package does not support all required extensions.",
-            NoCiphersuitesSupplied = "Creating a new key package requires at least one ciphersuite.",
-            CiphersuiteMismatch = "The list of ciphersuites is not consistent with the capabilities extension.",
-            CiphersuiteSignatureSchemeMismatch = "The ciphersuite does not match the signature scheme.",
-        }
-        Complex {
-            LibraryError(LibraryError) = "A LibraryError occurred.",
-            ExtensionError(ExtensionError) =
-                "See [`ExtensionError`](crate::extensions::ExtensionError`) for details.",
-            ConfigError(ConfigError) =
-                "See [`ConfigError`](crate::config::ConfigError`) for details.",
-            CredentialError(CredentialError) =
-                "See [`CredentialError`](crate::credentials::CredentialError`) for details.",
-            CodecError(TlsCodecError) =
-                "TLS (de)serialization error occurred.",
-            CryptoError(CryptoError) =
-                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
-        }
-    }
+/// KeyPackage error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum KeyPackageError {
+    #[error("A mandatory extension is missing in the key package.")]
+    MandatoryExtensionsMissing,
+    #[error("The lifetime extension of the key package is not valid.")]
+    InvalidLifetimeExtension,
+    #[error("The key package signature is not valid.")]
+    InvalidSignature,
+    #[error("Duplicate extensions are not allowed.")]
+    DuplicateExtension,
+    #[error("The key package does not support all required extensions.")]
+    UnsupportedExtension,
+    #[error("Creating a new key package requires at least one ciphersuite.")]
+    NoCiphersuitesSupplied,
+    #[error("The list of ciphersuites is not consistent with the capabilities extension.")]
+    CiphersuiteMismatch,
+    #[error("The ciphersuite does not match the signature scheme.")]
+    CiphersuiteSignatureSchemeMismatch,
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error(transparent)]
+    ExtensionError(#[from] ExtensionError),
+    #[error(transparent)]
+    ConfigError(#[from] ConfigError),
+    #[error(transparent)]
+    CredentialError(#[from] CredentialError),
+    #[error(transparent)]
+    CodecError(#[from] TlsCodecError),
+    #[error(transparent)]
+    CryptoError(#[from] CryptoError),
 }

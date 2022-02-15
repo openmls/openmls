@@ -5,7 +5,7 @@ use std::collections::HashSet;
 
 use crate::{
     ciphersuite::hash_ref::HashReference,
-    framing::{Sender, SenderError},
+    framing::Sender,
     group::errors::ExternalCommitValidationError,
     messages::{Proposal, ProposalOrRefType, ProposalType},
 };
@@ -63,7 +63,6 @@ impl CoreGroup {
             if self
             .treesync()
             .leaf_from_id(hash_ref)
-            .ok()
             .is_none()
         // ... or in a tree from a past epoch we still have around.
         && !self
@@ -117,7 +116,7 @@ impl CoreGroup {
     pub(crate) fn validate_add_proposals(
         &self,
         proposal_queue: &ProposalQueue,
-    ) -> Result<(), CoreGroupError> {
+    ) -> Result<(), ProposalValidationError> {
         let add_proposals = proposal_queue.add_proposals();
 
         let mut identity_set = HashSet::new();
@@ -132,7 +131,7 @@ impl CoreGroup {
                 .to_vec();
             // ValSem100
             if !identity_set.insert(identity) {
-                return Err(ProposalValidationError::DuplicateIdentityAddProposal.into());
+                return Err(ProposalValidationError::DuplicateIdentityAddProposal);
             }
             let signature_key = add_proposal
                 .add_proposal()
@@ -143,7 +142,7 @@ impl CoreGroup {
                 .to_vec();
             // ValSem101
             if !signature_key_set.insert(signature_key) {
-                return Err(ProposalValidationError::DuplicateSignatureKeyAddProposal.into());
+                return Err(ProposalValidationError::DuplicateSignatureKeyAddProposal);
             }
             let public_key = add_proposal
                 .add_proposal()
@@ -153,7 +152,7 @@ impl CoreGroup {
                 .to_vec();
             // ValSem102
             if !public_key_set.insert(public_key) {
-                return Err(ProposalValidationError::DuplicatePublicKeyAddProposal.into());
+                return Err(ProposalValidationError::DuplicatePublicKeyAddProposal);
             }
         }
 
@@ -161,17 +160,17 @@ impl CoreGroup {
             let identity = key_package.credential().identity();
             // ValSem103
             if identity_set.contains(identity) {
-                return Err(ProposalValidationError::ExistingIdentityAddProposal.into());
+                return Err(ProposalValidationError::ExistingIdentityAddProposal);
             }
             // ValSem104
             let signature_key = key_package.credential().signature_key().as_slice();
             if signature_key_set.contains(signature_key) {
-                return Err(ProposalValidationError::ExistingSignatureKeyAddProposal.into());
+                return Err(ProposalValidationError::ExistingSignatureKeyAddProposal);
             }
             // ValSem105
             let public_key = key_package.hpke_init_key().as_slice();
             if public_key_set.contains(public_key) {
-                return Err(ProposalValidationError::ExistingPublicKeyAddProposal.into());
+                return Err(ProposalValidationError::ExistingPublicKeyAddProposal);
             }
         }
         // TODO #538: ValSem106: Check the required capabilities of the add proposals
@@ -184,7 +183,7 @@ impl CoreGroup {
     pub(crate) fn validate_remove_proposals(
         &self,
         proposal_queue: &ProposalQueue,
-    ) -> Result<(), CoreGroupError> {
+    ) -> Result<(), ProposalValidationError> {
         let remove_proposals = proposal_queue.remove_proposals();
 
         let mut removes_set = HashSet::new();
@@ -193,12 +192,12 @@ impl CoreGroup {
             let removed = remove_proposal.remove_proposal().removed();
             // ValSem107
             if !removes_set.insert(*removed) {
-                return Err(ProposalValidationError::DuplicateMemberRemoval.into());
+                return Err(ProposalValidationError::DuplicateMemberRemoval);
             }
 
             // TODO: ValSem108
-            if !self.treesync().leaves()?.contains_key(&Some(*removed)) {
-                return Err(ProposalValidationError::UnknownMemberRemoval.into());
+            if !self.treesync().leaves().contains_key(&Some(*removed)) {
+                return Err(ProposalValidationError::UnknownMemberRemoval);
             }
         }
 
@@ -214,7 +213,7 @@ impl CoreGroup {
         &self,
         proposal_queue: &ProposalQueue,
         committer: &HashReference,
-    ) -> Result<HashSet<Vec<u8>>, CoreGroupError> {
+    ) -> Result<HashSet<Vec<u8>>, ProposalValidationError> {
         let mut public_key_set = HashSet::new();
         for (_index, key_package) in self.treesync().full_leaves()? {
             let public_key = key_package.hpke_init_key().as_slice().to_vec();
@@ -228,7 +227,7 @@ impl CoreGroup {
         for update_proposal in update_proposals {
             let hash_ref = match update_proposal.sender() {
                 Sender::Member(hash_ref) => hash_ref,
-                _ => return Err(CoreGroupError::SenderError(SenderError::NotAMember)),
+                _ => return Err(ProposalValidationError::UpdateFromNonMember),
             };
             // ValSem112
             // The sender of a standalone update proposal must be of type member
@@ -236,13 +235,13 @@ impl CoreGroup {
                 // ValSem111
                 // The sender of a full Commit must not include own update proposals
                 if committer == hash_ref {
-                    return Err(ProposalValidationError::CommitterIncludedOwnUpdate.into());
+                    return Err(ProposalValidationError::CommitterIncludedOwnUpdate);
                 }
             } else {
-                return Err(ProposalValidationError::UpdateFromNonMember.into());
+                return Err(ProposalValidationError::UpdateFromNonMember);
             }
 
-            if let Some(leaf_node) = tree.leaf_from_id(hash_ref)? {
+            if let Some(leaf_node) = tree.leaf_from_id(hash_ref) {
                 let existing_key_package = leaf_node.key_package();
                 // ValSem109
                 // Identity must be unchanged between existing member and new proposal
@@ -253,7 +252,7 @@ impl CoreGroup {
                     .identity()
                     != existing_key_package.credential().identity()
                 {
-                    return Err(ProposalValidationError::UpdateProposalIdentityMismatch.into());
+                    return Err(ProposalValidationError::UpdateProposalIdentityMismatch);
                 }
                 let public_key = update_proposal
                     .update_proposal()
@@ -263,10 +262,10 @@ impl CoreGroup {
                 // ValSem110
                 // HPKE init key must be unique among existing members
                 if public_key_set.contains(public_key) {
-                    return Err(ProposalValidationError::ExistingPublicKeyUpdateProposal.into());
+                    return Err(ProposalValidationError::ExistingPublicKeyUpdateProposal);
                 }
             } else {
-                return Err(ProposalValidationError::UnknownMember.into());
+                return Err(ProposalValidationError::UnknownMember);
             }
         }
         Ok(public_key_set)
@@ -311,37 +310,37 @@ impl CoreGroup {
         &self,
         proposal_queue: &ProposalQueue,
         path_key_package_option: Option<&KeyPackage>,
-    ) -> Result<(), CoreGroupError> {
+    ) -> Result<(), ExternalCommitValidationError> {
         let mut external_init_proposals =
             proposal_queue.filtered_by_type(ProposalType::ExternalInit);
         // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
         if let Some(external_init_proposal) = external_init_proposals.next() {
             // ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
             if external_init_proposal.proposal_or_ref_type() == ProposalOrRefType::Reference {
-                return Err(ExternalCommitValidationError::ReferencedExternalInitProposal.into());
+                return Err(ExternalCommitValidationError::ReferencedExternalInitProposal);
             }
         } else {
-            return Err(ExternalCommitValidationError::NoExternalInitProposals.into());
+            return Err(ExternalCommitValidationError::NoExternalInitProposals);
         };
 
         // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
         if external_init_proposals.next().is_some() {
             // ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
-            return Err(ExternalCommitValidationError::MultipleExternalInitProposals.into());
+            return Err(ExternalCommitValidationError::MultipleExternalInitProposals);
         }
 
         let add_proposals = proposal_queue.filtered_by_type(ProposalType::Add);
         for proposal in add_proposals {
             // ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.
             if proposal.proposal_or_ref_type() == ProposalOrRefType::Proposal {
-                return Err(ExternalCommitValidationError::InvalidInlineProposals.into());
+                return Err(ExternalCommitValidationError::InvalidInlineProposals);
             }
         }
         let update_proposals = proposal_queue.filtered_by_type(ProposalType::Update);
         for proposal in update_proposals {
             // ValSem243: External Commit, inline Proposals: There MUST NOT be any Update proposals.
             if proposal.proposal_or_ref_type() == ProposalOrRefType::Proposal {
-                return Err(ExternalCommitValidationError::InvalidInlineProposals.into());
+                return Err(ExternalCommitValidationError::InvalidInlineProposals);
             }
         }
 
@@ -352,16 +351,14 @@ impl CoreGroup {
                     let removed_leaf = self
                         .treesync()
                         .leaf_from_id(remove_proposal.removed())
-                        // Unknown because outside of tree.
-                        .map_err(|_| ProposalValidationError::UnknownMemberRemoval)?
-                        // Unknown because blank.
-                        .ok_or(ProposalValidationError::UnknownMemberRemoval)?;
+                        .ok_or(ExternalCommitValidationError::UnknownMemberRemoval)?;
+
                     if let Some(path_key_package) = path_key_package_option {
                         // ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed leaf are identical to the ones in the path KeyPackage.
                         if removed_leaf.key_package().credential().identity()
                             != path_key_package.credential().identity()
                         {
-                            return Err(ExternalCommitValidationError::InvalidRemoveProposal.into());
+                            return Err(ExternalCommitValidationError::InvalidRemoveProposal);
                         }
                     };
                 }

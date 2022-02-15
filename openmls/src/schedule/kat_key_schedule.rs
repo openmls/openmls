@@ -145,8 +145,7 @@ fn generate(
         tree_hash.to_vec(),
         confirmed_transcript_hash.clone(),
         &[], // Extensions
-    )
-    .expect("An unexpected error occurred.");
+    );
 
     let serialized_group_context = group_context
         .tls_serialize_detached()
@@ -403,8 +402,7 @@ pub fn run_test_vector(
             tree_hash.to_vec(),
             confirmed_transcript_hash.clone(),
             &[], // Extensions
-        )
-        .expect("Error creating group context");
+        );
 
         let expected_group_context = hex_to_bytes(&epoch.group_context);
         let group_context_serialized = group_context

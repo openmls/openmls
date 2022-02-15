@@ -8,7 +8,6 @@ use crate::credentials::CredentialError;
 use crate::error::LibraryError;
 use crate::framing::MlsCiphertextError;
 use crate::framing::ValidationError;
-use crate::group::errors::QueuedProposalError;
 use crate::group::WelcomeError;
 use crate::group::{CoreGroupError, CreateCommitError, ExporterError, StageCommitError};
 use crate::treesync::TreeSyncError;
@@ -52,8 +51,6 @@ implement_error! {
             TlsCodecError(TlsCodecError) = "An error occured during TLS encoding/decoding.",
             CryptoError(CryptoError) =
                 "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
-            QueuedProposalError(QueuedProposalError) =
-                "See [`QueuedProposalError`](crate::group::QueuedProposalError) for details.",
             WelcomeError(WelcomeError) = "See [`WelcomeError`] for details.",
         }
     }

@@ -1,72 +1,41 @@
 //! Key schedule errors.
 
 use openmls_traits::types::CryptoError;
-use tls_codec::Error as TlsCodecError;
+use thiserror::Error;
 
-implement_error! {
-    pub enum ErrorState {
-        Init = "Expected to be in initial state.",
-        Epoch = "Expected to be in epoch state.",
-        Context = "Expected to be in a state where the context is added.",
-    }
+use crate::error::LibraryError;
+
+/// Key schedule state error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ErrorState {
+    #[error("Expected to be in initial state.")]
+    Init,
+    #[error("Expected to be in epoch state.")]
+    Context,
 }
 
-implement_error! {
-    pub enum KeyScheduleError {
-        Simple {
-            UnsupportedCiphersuite =
-                "The ciphersuite of the given public group state is not supported.",
-            HpkeError =
-                "Error while setting up HPKE keypair for external commit.",
-            EncodingError =
-                "Error while encoding public group state.",
-            LibraryError =
-                "An unrecoverable error has occurred due to a bug in the implementation.",
-        }
-        Complex {
-            InvalidState(ErrorState) =
-                "The requested operation is not valid on the key schedule state.",
-            CryptoError(CryptoError) =
-                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
-        }
-    }
+/// Key schedule error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum KeyScheduleError {
+    #[error("The ciphersuite of the given public group state is not supported.")]
+    UnsupportedCiphersuite,
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error(transparent)]
+    InvalidState(#[from] ErrorState),
+    #[error(transparent)]
+    CryptoError(#[from] CryptoError),
 }
 
-implement_error! {
-    pub enum ExporterError {
-        Simple {}
-        Complex {
-            CodecError(TlsCodecError) =
-                "TLS (de)serialization error occurred.",
-            CryptoError(CryptoError) =
-                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
-        }
-    }
-}
-
-implement_error! {
-    pub enum PskSecretError {
-        Simple {
-            TooManyKeys = "More than 2^16 PSKs were provided.",
-            KeyNotFound = "The PSK could not be found in the key store.",
-            EncodingError = "Error serializing the PSK label.",
-        }
-        Complex {
-            CryptoError(CryptoError) = "See [`CryptoError`] for more details.",
-        }
-    }
-}
-
-implement_error! {
-    pub enum MembershipKeyError {
-        Simple {}
-        Complex {
-            CodecError(TlsCodecError) =
-                "TLS (de)serialization error occurred.",
-            CryptoError(CryptoError) =
-                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
-        }
-    }
+/// PSK secret error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum PskSecretError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("More than 2^16 PSKs were provided.")]
+    TooManyKeys,
+    #[error("The PSK could not be found in the key store.")]
+    KeyNotFound,
 }
 
 #[cfg(any(feature = "test-utils", test))]

@@ -34,6 +34,7 @@ use crate::{
     binary_tree::{MlsBinaryTree, MlsBinaryTreeError},
     ciphersuite::hash_ref::KeyPackageRef,
     ciphersuite::Ciphersuite,
+    error::LibraryError,
     framing::SenderError,
     key_packages::{KeyPackage, KeyPackageBundle, KeyPackageError},
     messages::{PathSecret, PathSecretError},
@@ -41,18 +42,21 @@ use crate::{
 };
 
 use self::{
-    diff::{StagedTreeSyncDiff, TreeSyncDiff, TreeSyncDiffError},
+    diff::{StagedTreeSyncDiff, TreeSyncDiff},
+    errors::TreeSyncDiffError,
     node::{leaf_node::LeafNode, Node, NodeError},
     treesync_node::{TreeSyncNode, TreeSyncNodeError},
 };
 
 pub(crate) mod diff;
+pub mod errors;
 mod hashes;
 pub mod node;
 pub(crate) mod treekem;
 pub(crate) mod treesync_node;
 
 pub use crate::binary_tree::LeafIndex;
+pub use errors::*;
 
 #[cfg(any(feature = "test-utils", test))]
 pub mod tests_and_kats;
@@ -85,16 +89,16 @@ impl TreeSync {
     pub(crate) fn new(
         backend: &impl OpenMlsCryptoProvider,
         key_package_bundle: KeyPackageBundle,
-    ) -> Result<(Self, CommitSecret), TreeSyncError> {
+    ) -> Result<(Self, CommitSecret), LibraryError> {
         let key_package = key_package_bundle.key_package();
         // We generate our own leaf without a private key for now. The private
         // key is set in the `from_nodes` constructor below.
         let node = Node::LeafNode(
             LeafNode::new(key_package.clone(), backend.crypto()).map_err(|e| {
                 if let KeyPackageError::CryptoError(e) = e {
-                    TreeSyncError::CryptoError(e)
+                    LibraryError::unexpected_crypto_error(e)
                 } else {
-                    TreeSyncError::LibraryError
+                    LibraryError::custom("Unexpected error in KeyPackage")
                 }
             })?,
         );
@@ -109,7 +113,8 @@ impl TreeSync {
                 key_package.ciphersuite(),
                 &node_options,
                 key_package_bundle,
-            )?,
+            )
+            .map_err(|_| LibraryError::custom("Malformed empty tree"))?,
             commit_secret,
         ))
     }
@@ -127,11 +132,11 @@ impl TreeSync {
     pub(crate) fn merge_diff(
         &mut self,
         tree_sync_diff: StagedTreeSyncDiff,
-    ) -> Result<(), TreeSyncError> {
+    ) -> Result<(), LibraryError> {
         let (own_leaf_index, diff, new_tree_hash) = tree_sync_diff.into_parts();
         self.own_leaf_index = own_leaf_index;
         self.tree_hash = new_tree_hash;
-        Ok(self.tree.merge_diff(diff)?)
+        self.tree.merge_diff(diff)
     }
 
     /// Create an empty diff based on this [`TreeSync`] instance all operations
@@ -139,8 +144,9 @@ impl TreeSync {
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    pub(crate) fn empty_diff(&self) -> Result<TreeSyncDiff, TreeSyncError> {
-        Ok(self.try_into()?)
+    pub(crate) fn empty_diff(&self) -> Result<TreeSyncDiff, LibraryError> {
+        self.try_into()
+            .map_err(|_| LibraryError::custom("Could not create empty tree sync diff"))
     }
 
     /// Create a new [`TreeSync`] instance from a given slice of `Option<Node>`,
@@ -152,6 +158,9 @@ impl TreeSync {
     ///
     /// Returns the new [`TreeSync`] instance or an error if one of the
     /// invariants is not true (see [`TreeSync`]).
+    ///
+    /// Returns TreeSyncFromNodesError::LibraryError if the input parameters are
+    /// malformed.
     pub(crate) fn from_nodes_with_secrets(
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
@@ -159,19 +168,27 @@ impl TreeSync {
         sender_kpr: &KeyPackageRef,
         path_secret_option: impl Into<Option<PathSecret>>,
         key_package_bundle: KeyPackageBundle,
-    ) -> Result<(Self, Option<CommitSecret>), TreeSyncError> {
+    ) -> Result<(Self, Option<CommitSecret>), TreeSyncFromNodesError> {
         let mut tree_sync =
             Self::from_nodes(backend, ciphersuite, node_options, key_package_bundle)?;
 
         // Get the leaf index of the sender.
-        let sender_index = tree_sync.leaf_index(sender_kpr)?;
+        let sender_index = tree_sync
+            .leaf_index(sender_kpr)
+            .map_err(|_| LibraryError::custom("Sender not in tree"))?;
 
         // Populate the tree with secrets and derive a commit secret if a path
         // secret is given.
         let commit_secret = if let Some(path_secret) = path_secret_option.into() {
             let mut diff = tree_sync.empty_diff()?;
-            let commit_secret =
-                diff.set_path_secrets(backend, ciphersuite, path_secret, sender_index)?;
+            let commit_secret = diff
+                .set_path_secrets(backend, ciphersuite, path_secret, sender_index)
+                .map_err(|e| match e {
+                    TreeSyncSetPathError::LibraryError(e) => e.into(),
+                    TreeSyncSetPathError::PublicKeyMismatch => {
+                        TreeSyncFromNodesError::from(PublicTreeError::PublicKeyMismatch)
+                    }
+                })?;
             let staged_diff = diff.into_staged_diff(backend, ciphersuite)?;
             tree_sync.merge_diff(staged_diff)?;
             Some(commit_secret)
@@ -190,7 +207,8 @@ impl TreeSync {
         ciphersuite: &Ciphersuite,
         node_options: &[Option<Node>],
         key_package_bundle: KeyPackageBundle,
-    ) -> Result<Self, TreeSyncError> {
+    ) -> Result<Self, TreeSyncFromNodesError> {
+        // TODO #800: Unmerged leaves should be checked
         // Before we can instantiate the TreeSync instance, we have to figure
         // out what our leaf index is.
         let mut ts_nodes: Vec<TreeSyncNode> = Vec::with_capacity(node_options.len());
@@ -208,11 +226,11 @@ impl TreeSync {
                             if let Some(private_key) = private_key.take() {
                                 own_index_option = Some(
                                     u32::try_from(node_index / 2)
-                                        .map_err(|_| TreeSyncError::LibraryError)?,
+                                        .map_err(|_| LibraryError::custom("Architecture error"))?,
                                 );
                                 leaf_node.set_private_key(private_key);
                             } else {
-                                return Err(TreeSyncError::DuplicateKeyPackage);
+                                return Err(PublicTreeError::DuplicateKeyPackage.into());
                             }
                         }
                         leaf_node.set_key_package_ref(backend.crypto())?;
@@ -223,7 +241,7 @@ impl TreeSync {
             };
             ts_nodes.push(ts_node_option);
         }
-        let tree = MlsBinaryTree::new(ts_nodes)?;
+        let tree = MlsBinaryTree::new(ts_nodes).map_err(|_| PublicTreeError::MalformedTree)?;
         if let Some(leaf_index) = own_index_option {
             let mut tree_sync = Self {
                 tree,
@@ -231,12 +249,19 @@ impl TreeSync {
                 own_leaf_index: leaf_index,
             };
             // Verify all parent hashes.
-            tree_sync.verify_parent_hashes(backend, ciphersuite)?;
+            tree_sync
+                .verify_parent_hashes(backend, ciphersuite)
+                .map_err(|e| match e {
+                    TreeSyncParentHashError::LibraryError(e) => e.into(),
+                    TreeSyncParentHashError::InvalidParentHash => {
+                        TreeSyncFromNodesError::from(PublicTreeError::InvalidParentHash)
+                    }
+                })?;
             // Populate tree hash caches.
             tree_sync.populate_parent_hashes(backend, ciphersuite)?;
             Ok(tree_sync)
         } else {
-            Err(TreeSyncError::MissingKeyPackage)
+            Err(PublicTreeError::MissingKeyPackage.into())
         }
     }
 
@@ -249,16 +274,18 @@ impl TreeSync {
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
         mut nodes: Vec<Option<Node>>,
-    ) -> Result<Self, TreeSyncError> {
+    ) -> Result<Self, TreeSyncFromNodesError> {
         let ts_nodes: Vec<TreeSyncNode> = nodes.drain(..).map(|node| node.into()).collect();
-        let tree = MlsBinaryTree::new(ts_nodes)?;
+        let tree = MlsBinaryTree::new(ts_nodes).map_err(|_| PublicTreeError::MalformedTree)?;
         let mut tree_sync = Self {
             tree,
             tree_hash: vec![],
             own_leaf_index: 0,
         };
         // Verify all parent hashes.
-        tree_sync.verify_parent_hashes(backend, ciphersuite)?;
+        tree_sync
+            .verify_parent_hashes(backend, ciphersuite)
+            .map_err(|_| PublicTreeError::InvalidParentHash)?;
         // Populate tree hash caches.
         tree_sync.populate_parent_hashes(backend, ciphersuite)?;
         Ok(tree_sync)
@@ -278,7 +305,7 @@ impl TreeSync {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
-    ) -> Result<(), TreeSyncError> {
+    ) -> Result<(), LibraryError> {
         let diff = self.empty_diff()?;
         // Make the diff into a staged diff. This implicitly computes the
         // tree hashes and poulates the tree hash caches.
@@ -295,7 +322,7 @@ impl TreeSync {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &Ciphersuite,
-    ) -> Result<(), TreeSyncError> {
+    ) -> Result<(), TreeSyncParentHashError> {
         // The ability to verify parent hashes is required both for diffs and
         // treesync instances. We choose the computationally slightly more
         // expensive solution of implementing parent hash verification for the
@@ -311,7 +338,7 @@ impl TreeSync {
         // should reconsider and choose the alternative sketched above
         let diff = self.empty_diff()?;
         // No need to merge the diff, since we didn't actually modify any state.
-        Ok(diff.verify_parent_hashes(backend, ciphersuite)?)
+        diff.verify_parent_hashes(backend, ciphersuite)
     }
 
     /// Returns the number of leaves in the tree.
@@ -328,7 +355,7 @@ impl TreeSync {
     ///
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a [LibraryError](TreeSyncError::LibraryError).
-    pub(crate) fn full_leaves(&self) -> Result<BTreeMap<LeafIndex, &KeyPackage>, TreeSyncError> {
+    pub(crate) fn full_leaves(&self) -> Result<BTreeMap<LeafIndex, &KeyPackage>, LibraryError> {
         let tsn_leaves: Vec<(usize, &TreeSyncNode)> = self
             .tree
             .leaves()?
@@ -338,9 +365,12 @@ impl TreeSync {
             .collect();
         let mut leaves = BTreeMap::new();
         for (index, tsn_leaf) in tsn_leaves {
-            let index = u32::try_from(index).map_err(|_| TreeSyncError::LibraryError)?;
+            let index = u32::try_from(index)
+                .map_err(|_| LibraryError::custom("Index outside of the tree"))?;
             if let Some(ref node) = tsn_leaf.node() {
-                let leaf = node.as_leaf_node()?;
+                let leaf = node
+                    .as_leaf_node()
+                    .map_err(|_| LibraryError::custom("Expected a leaf node"))?;
                 leaves.insert(index, leaf.key_package());
             }
         }
@@ -350,9 +380,7 @@ impl TreeSync {
     /// Returns a [`BTreeMap`] mapping [`KeyPackageRef`]s to the corresponding
     /// [`KeyPackage`] instances in the leaves. The map only contains full
     /// nodes.
-    pub(crate) fn leaves(
-        &self,
-    ) -> Result<BTreeMap<Option<KeyPackageRef>, &KeyPackage>, TreeSyncError> {
+    pub(crate) fn leaves(&self) -> BTreeMap<Option<KeyPackageRef>, &KeyPackage> {
         let tsn_leaves = self.tree.nodes().iter().filter(|tsn| tsn.node().is_some());
         let mut leaves = BTreeMap::new();
         for tsn_leaf in tsn_leaves {
@@ -360,7 +388,7 @@ impl TreeSync {
                 leaves.insert(leaf.key_package_ref().cloned(), leaf.key_package());
             }
         }
-        Ok(leaves)
+        leaves
     }
 
     /// Return the [`KeyPackageRef`] of the node with the given `leaf_index`.
@@ -397,7 +425,7 @@ impl TreeSync {
     pub(crate) fn own_leaf_node(&self) -> Result<&LeafNode, TreeSyncError> {
         // Our own leaf should be inside of the tree and never blank.
         self.leaf(self.own_leaf_index)?
-            .ok_or(TreeSyncError::LibraryError)
+            .ok_or_else(|| LibraryError::custom("Own leaf is outside of the tree").into())
     }
 
     /// Return a reference to the leaf at the given `LeafIndex` or `None` if the
@@ -413,18 +441,19 @@ impl TreeSync {
     }
 
     /// Return a reference to the leaf at the given `key_package_ref` or `None`
-    /// if the leaf is blank.
-    ///
-    /// Returns an error if the leaf is outside of the tree.
-    pub(crate) fn leaf_from_id(
-        &self,
-        key_package_ref: &KeyPackageRef,
-    ) -> Result<Option<&LeafNode>, TreeSyncError> {
-        let tsn = self.tree.leaf(self.leaf_index(key_package_ref)?)?;
-        Ok(match tsn.node() {
-            Some(node) => Some(node.as_leaf_node()?),
-            None => None,
-        })
+    /// if the leaf is blank or outside the tree.
+    pub(crate) fn leaf_from_id(&self, key_package_ref: &KeyPackageRef) -> Option<&LeafNode> {
+        match self.leaf_index(key_package_ref) {
+            Ok(leaf_index) => match self.tree.leaf(leaf_index) {
+                Ok(leaf) => leaf
+                    .node()
+                    .as_ref()
+                    .map(|node| node.as_leaf_node().ok())
+                    .flatten(),
+                Err(_) => None,
+            },
+            Err(_) => None,
+        }
     }
 
     /// Get the [`LeafIndex`] for a given [`KeyPackageRef`].
@@ -456,26 +485,5 @@ impl TreeSync {
             })
             .map(|(node_index, _)| (node_index / 2) as u32)
             .ok_or(TreeSyncError::KeyPackageRefNotInTree)
-    }
-}
-
-implement_error! {
-    pub enum TreeSyncError {
-        Simple {
-            LibraryError = "An inconsistency in the internal state of the tree was detected.",
-            MissingKeyPackage = "Couldn't find our own key package in this tree.",
-            DuplicateKeyPackage = "Found two KeyPackages with the same public key.",
-            OutOfBounds = "The given `LeafIndex` is outside of the tree.",
-            KeyPackageRefNotInTree = "The given `KeyPackageRef` is not in the tree.",
-        }
-        Complex {
-            BinaryTreeError(MlsBinaryTreeError) = "An error occurred during an operation on the underlying binary tree.",
-            TreeSyncNodeError(TreeSyncNodeError) = "An error occurred during an operation on the underlying binary tree.",
-            NodeTypeError(NodeError) = "We found a node with an unexpected type.",
-            TreeSyncDiffError(TreeSyncDiffError) = "An error while trying to apply a diff.",
-            DerivationError(PathSecretError) = "Error while deriving commit secret for new tree.",
-            SenderError(SenderError) = "Sender error",
-            CryptoError(CryptoError) = "See [`CryptoError`] for details.",
-        }
     }
 }

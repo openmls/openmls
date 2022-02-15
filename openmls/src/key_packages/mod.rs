@@ -245,10 +245,7 @@ impl KeyPackage {
                     }
                     Err(_) => {
                         log::error!("as_lifetime_extension failed while verifying a key package.");
-                        return Err(LibraryError::custom(
-                            "verify(): Expected a lifetime extension",
-                        )
-                        .into());
+                        return Err(LibraryError::custom("Expected a lifetime extension").into());
                     }
                 }
             }
@@ -327,12 +324,15 @@ impl KeyPackage {
     /// Compute the [`KeyPackageRef`] of this [`KeyPackage`].
     /// The [`KeyPackageRef`] is used to identify a member in a group (leaf in
     /// the tree) within MLS.
-    pub fn hash_ref(&self, backend: &impl OpenMlsCrypto) -> Result<KeyPackageRef, KeyPackageError> {
-        Ok(KeyPackageRef::new(
-            &self.tls_serialize_detached()?,
+    pub fn hash_ref(&self, backend: &impl OpenMlsCrypto) -> Result<KeyPackageRef, LibraryError> {
+        KeyPackageRef::new(
+            &self
+                .tls_serialize_detached()
+                .map_err(LibraryError::missing_bound_check)?,
             self.payload.ciphersuite,
             backend,
-        )?)
+        )
+        .map_err(LibraryError::unexpected_crypto_error)
     }
 
     /// Get the [`CiphersuiteName`].

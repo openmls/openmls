@@ -44,8 +44,7 @@ fn codec_plaintext(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
             .expect("An unexpected error occurred."),
     ));
     let group_context =
-        GroupContext::new(GroupId::random(backend), GroupEpoch(1), vec![], vec![], &[])
-            .expect("An unexpected error occurred.");
+        GroupContext::new(GroupId::random(backend), GroupEpoch(1), vec![], vec![], &[]);
 
     let serialized_context = group_context
         .tls_serialize_detached()
@@ -101,8 +100,7 @@ fn codec_ciphertext(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         vec![],
         vec![],
         &[],
-    )
-    .expect("An unexpected error occurred.");
+    );
 
     let serialized_context = group_context
         .tls_serialize_detached()
@@ -188,8 +186,7 @@ fn wire_format_checks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsC
         vec![],
         vec![],
         &[],
-    )
-    .expect("An unexpected error occurred.");
+    );
 
     let serialized_context = group_context
         .tls_serialize_detached()
@@ -330,8 +327,7 @@ fn membership_tag(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     )
     .expect("An unexpected error occurred.");
     let group_context =
-        GroupContext::new(GroupId::random(backend), GroupEpoch(1), vec![], vec![], &[])
-            .expect("An unexpected error occurred.");
+        GroupContext::new(GroupId::random(backend), GroupEpoch(1), vec![], vec![], &[]);
     let membership_key = MembershipKey::from_secret(
         Secret::random(ciphersuite, backend, None /* MLS version */)
             .expect("Not enough randomness."),

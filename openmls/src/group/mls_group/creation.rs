@@ -1,5 +1,5 @@
 use crate::{
-    group::core_group::create_commit_params::CreateCommitParams,
+    group::{core_group::create_commit_params::CreateCommitParams, errors::ExternalCommitError},
     messages::VerifiablePublicGroupState,
 };
 
@@ -118,7 +118,7 @@ impl MlsGroup {
         aad: &[u8],
         credential_bundle: &CredentialBundle,
         proposal_store: ProposalStore,
-    ) -> Result<(Self, MlsMessageOut), MlsGroupError> {
+    ) -> Result<(Self, MlsMessageOut), ExternalCommitError> {
         let resumption_secret_store =
             ResumptionSecretStore::new(mls_group_config.number_of_resumption_secrets);
 

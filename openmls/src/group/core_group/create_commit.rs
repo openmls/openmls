@@ -55,9 +55,10 @@ impl CoreGroup {
                 (Sender::build_new_member(), leaf_index)
             }
             CommitType::Member => (
-                Sender::build_member(self.key_package_ref().ok_or_else(|| {
-                    LibraryError::custom("CoreGroup::create_commit(): missing key package")
-                })?),
+                Sender::build_member(
+                    self.key_package_ref()
+                        .ok_or_else(|| LibraryError::custom("missing key package"))?,
+                ),
                 self.own_leaf_index(),
             ),
         };
@@ -66,9 +67,10 @@ impl CoreGroup {
         let own_kpr = if params.commit_type() == CommitType::External {
             None
         } else {
-            Some(self.key_package_ref().ok_or_else(|| {
-                LibraryError::custom("CoreGroup::create_commit(): missing key package")
-            })?)
+            Some(
+                self.key_package_ref()
+                    .ok_or_else(|| LibraryError::custom("missing key package"))?,
+            )
         };
         let (proposal_queue, contains_own_updates) = ProposalQueue::filter_proposals(
             ciphersuite,
@@ -167,11 +169,10 @@ impl CoreGroup {
 
         let sender = match params.commit_type() {
             CommitType::External => Sender::build_new_member(),
-            CommitType::Member => {
-                Sender::build_member(self.key_package_ref().ok_or_else(|| {
-                    LibraryError::custom("CoreGroup::create_commit(): missing key package")
-                })?)
-            }
+            CommitType::Member => Sender::build_member(
+                self.key_package_ref()
+                    .ok_or_else(|| LibraryError::custom(" missing key package"))?,
+            ),
         };
 
         // Keep a copy of the update path key package
@@ -206,9 +207,8 @@ impl CoreGroup {
             backend,
             // It is ok to a library error here, because we know the MlsPlaintext contains a
             // Commit
-            &MlsPlaintextCommitContent::try_from(&mls_plaintext).map_err(|_| {
-                LibraryError::custom("create_commit(): MlsPlaintext did not contain a commit")
-            })?,
+            &MlsPlaintextCommitContent::try_from(&mls_plaintext)
+                .map_err(|_| LibraryError::custom("MlsPlaintext did not contain a commit"))?,
             &self.interim_transcript_hash,
         )?;
 
@@ -222,7 +222,7 @@ impl CoreGroup {
             tree_hash.clone(),
             confirmed_transcript_hash.clone(),
             self.group_context.extensions(),
-        )?;
+        );
 
         let joiner_secret = JoinerSecret::new(
             backend,
@@ -378,10 +378,7 @@ impl CoreGroup {
                     free_leaf_index
                 }
             } else {
-                return Err(LibraryError::custom(
-                    "CoreGroup::create_commit(): missing key package",
-                )
-                .into());
+                return Err(LibraryError::custom("missing key package").into());
             }
         } else {
             free_leaf_index

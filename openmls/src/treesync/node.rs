@@ -2,14 +2,15 @@
 //! variants of the enum are [`LeafNode`] and [`ParentNode`], both of which are
 //! defined in the respective [`leaf_node`] and [`parent_node`] submodules.
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 use crate::{
     ciphersuite::{HpkePrivateKey, HpkePublicKey},
+    error::LibraryError,
     extensions::ExtensionType::ParentHash,
 };
 
 use self::{leaf_node::LeafNode, parent_node::ParentNode};
-use super::hashes::ParentHashError;
 
 mod codec;
 pub(crate) mod leaf_node;
@@ -76,14 +77,14 @@ impl Node {
 
     /// Returns the parent hash of a given node. Returns [`None`] if the node is
     /// a [`LeafNode`] without a [`crate::extensions::ParentHashExtension`].
-    pub(crate) fn parent_hash(&self) -> Result<Option<&[u8]>, NodeError> {
+    pub(crate) fn parent_hash(&self) -> Result<Option<&[u8]>, LibraryError> {
         let parent_hash = match self {
             Node::LeafNode(ln) => {
                 let kp = ln.key_package();
                 if let Some(extension) = kp.extension_with_type(ParentHash) {
                     let parent_hash_extension = extension
                         .as_parent_hash_extension()
-                        .map_err(|_| NodeError::LibraryError)?;
+                        .map_err(|_| LibraryError::custom("Wrong extension type"))?;
                     parent_hash_extension.parent_hash()
                 } else {
                     return Ok(None);
@@ -95,16 +96,13 @@ impl Node {
     }
 }
 
-implement_error! {
-    pub enum NodeError {
-        Simple{
-            AsLeafError = "This is not a leaf node.",
-            AsParentError = "This is not a parent node.",
-            MissingParentHashExtension = "The given key package does not have a parent hash extension.",
-            LibraryError = "An unrecoverable error has occurred during a [`Node`] operation.",
-        }
-        Complex {
-            ParentHashError(ParentHashError) = "Error while computing parent hash.",
-        }
-    }
+/// Binary Tree error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum NodeError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("This is not a leaf node.")]
+    AsLeafError,
+    #[error("This is not a parent node.")]
+    AsParentError,
 }

@@ -30,10 +30,11 @@ impl CoreGroup {
         params: CreateCommitParams,
         tree_option: Option<&[Option<Node>]>,
         verifiable_public_group_state: VerifiablePublicGroupState,
-    ) -> Result<ExternalCommitResult, CoreGroupError> {
-        let ciphersuite = Config::ciphersuite(verifiable_public_group_state.ciphersuite())?;
+    ) -> Result<ExternalCommitResult, ExternalCommitError> {
+        let ciphersuite = Config::ciphersuite(verifiable_public_group_state.ciphersuite())
+            .map_err(|_| ExternalCommitError::UnsupportedCiphersuite)?;
         if !Config::supported_versions().contains(&verifiable_public_group_state.version()) {
-            return Err(ExternalCommitError::UnsupportedMlsVersion.into());
+            return Err(ExternalCommitError::UnsupportedMlsVersion);
         }
 
         // Build the ratchet tree
@@ -45,34 +46,49 @@ impl CoreGroup {
         let extension_tree_option = try_nodes_from_extensions(
             verifiable_public_group_state.other_extensions(),
             backend.crypto(),
-        )?;
+        )
+        .map_err(|e| match e {
+            ExtensionError::DuplicateRatchetTreeExtension => {
+                ExternalCommitError::DuplicateRatchetTreeExtension
+            }
+            _ => LibraryError::custom("Unexpected extension error").into(),
+        })?;
         let (nodes, enable_ratchet_tree_extension) = match extension_tree_option {
             Some(nodes) => (nodes, true),
             None => match tree_option {
                 Some(n) => (n.into(), false),
-                None => return Err(ExternalCommitError::MissingRatchetTree.into()),
+                None => return Err(ExternalCommitError::MissingRatchetTree),
             },
         };
 
         // Create a RatchetTree from the given nodes. We have to do this before
         // verifying the PGS, since we need to find the Credential to verify the
         // signature against.
-        let treesync = TreeSync::from_nodes_without_leaf(backend, ciphersuite, nodes)?;
+        let treesync = TreeSync::from_nodes_without_leaf(backend, ciphersuite, nodes).map_err(
+            |e| match e {
+                TreeSyncFromNodesError::LibraryError(e) => e.into(),
+                TreeSyncFromNodesError::PublicTreeError(e) => {
+                    ExternalCommitError::PublicTreeError(e)
+                }
+            },
+        )?;
 
         if treesync.tree_hash() != verifiable_public_group_state.tree_hash() {
-            return Err(ExternalCommitError::TreeHashMismatch.into());
+            return Err(ExternalCommitError::TreeHashMismatch);
         }
 
         // FIXME #680: Validation of external commits
-        let pgs_signer_leaf = treesync.leaf_from_id(verifiable_public_group_state.signer())?;
+        let pgs_signer_leaf = treesync.leaf_from_id(verifiable_public_group_state.signer());
         let pgs_signer_credential = pgs_signer_leaf
             .ok_or(ExternalCommitError::UnknownSender)?
             .key_package()
             .credential();
-        let pgs: PublicGroupState =
-            verifiable_public_group_state.verify(backend, pgs_signer_credential)?;
+        let pgs: PublicGroupState = verifiable_public_group_state
+            .verify(backend, pgs_signer_credential)
+            .map_err(|_| ExternalCommitError::InvalidPublicGroupStateSignature)?;
 
-        let (init_secret, kem_output) = InitSecret::from_public_group_state(backend, &pgs)?;
+        let (init_secret, kem_output) = InitSecret::from_public_group_state(backend, &pgs)
+            .map_err(|_| ExternalCommitError::UnsupportedCiphersuite)?;
 
         let group_context = GroupContext::new(
             pgs.group_id,
@@ -80,15 +96,20 @@ impl CoreGroup {
             pgs.tree_hash.as_slice().to_vec(),
             pgs.confirmed_transcript_hash.into(),
             pgs.group_context_extensions.as_slice(),
-        )?;
+        );
 
         // The `EpochSecrets` we create here are essentially zero, with the
         // exception of the `InitSecret`, which is all we need here for the
         // external commit.
-        let epoch_secrets = EpochSecrets::with_init_secret(backend, init_secret)?;
+        let epoch_secrets = EpochSecrets::with_init_secret(backend, init_secret)
+            .map_err(LibraryError::unexpected_crypto_error)?;
         let (group_epoch_secrets, message_secrets) = epoch_secrets.split_secrets(
-            group_context.tls_serialize_detached()?,
-            treesync.leaf_count()?,
+            group_context
+                .tls_serialize_detached()
+                .map_err(LibraryError::missing_bound_check)?,
+            treesync
+                .leaf_count()
+                .map_err(|_| LibraryError::custom("The tree was too big"))?,
             // We use a fake own index of 0 here, as we're not going to use the
             // tree for encryption until after the first commit. This issue is
             // tracked in #767.

@@ -99,11 +99,12 @@ fn duplicate_ratchet_tree_extension(
 
     // Find key_package in welcome secrets
     let egs = CoreGroup::find_key_package_from_welcome_secrets(
-        bob_key_package_bundle.key_package(),
+        bob_key_package_bundle
+            .key_package()
+            .hash_ref(backend.crypto())
+            .expect("An unexpected error occurred."),
         welcome.secrets(),
-        backend,
     )
-    .expect("Could not hash KeyPackage.")
     .expect("JoinerSecret not found");
 
     let group_secrets_bytes = backend
@@ -172,6 +173,6 @@ fn duplicate_ratchet_tree_extension(
     // We expect an error because the ratchet tree is duplicated
     assert_eq!(
         error.expect("We expected an error"),
-        WelcomeError::ExtensionError(ExtensionError::DuplicateRatchetTreeExtension)
+        WelcomeError::DuplicateRatchetTreeExtension
     );
 }

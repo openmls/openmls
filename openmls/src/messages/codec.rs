@@ -1,7 +1,6 @@
 //! Codec implementations for message structs.
 
 use super::*;
-use crate::ciphersuite::hash_ref::ProposalRef;
 
 use std::convert::TryFrom;
 use std::io::{Read, Write};
@@ -34,41 +33,6 @@ impl tls_codec::Deserialize for GroupInfo {
         let payload = GroupInfoPayload::tls_deserialize(bytes)?;
         let signature = Signature::tls_deserialize(bytes)?;
         Ok(GroupInfo { payload, signature })
-    }
-}
-
-impl tls_codec::Size for ProposalOrRef {
-    #[inline]
-    fn tls_serialized_len(&self) -> usize {
-        self.proposal_or_ref_type().tls_serialized_len()
-            + match self {
-                ProposalOrRef::Proposal(proposal) => proposal.tls_serialized_len(),
-                ProposalOrRef::Reference(reference) => reference.tls_serialized_len(),
-            }
-    }
-}
-
-impl tls_codec::Serialize for ProposalOrRef {
-    fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        let written = self.proposal_or_ref_type().tls_serialize(writer)?;
-        match self {
-            ProposalOrRef::Proposal(proposal) => proposal.tls_serialize(writer),
-            ProposalOrRef::Reference(reference) => reference.tls_serialize(writer),
-        }
-        .map(|l| l + written)
-    }
-}
-
-impl tls_codec::Deserialize for ProposalOrRef {
-    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
-        match ProposalOrRefType::try_from(u8::tls_deserialize(bytes)?)? {
-            ProposalOrRefType::Proposal => {
-                Ok(ProposalOrRef::Proposal(Proposal::tls_deserialize(bytes)?))
-            }
-            ProposalOrRefType::Reference => Ok(ProposalOrRef::Reference(
-                ProposalRef::tls_deserialize(bytes)?,
-            )),
-        }
     }
 }
 
