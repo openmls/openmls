@@ -182,12 +182,12 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
 
     /// Returns references to the leaves of the diff in order from left to
     /// right. This function should not throw an error. However, it might throw
-    /// an LibraryError error if there is a bug in the implementation.
+    /// a [`LibraryError`] error if there is a bug in the implementation.
     pub(crate) fn leaves(&self) -> Result<Vec<NodeId>, LibraryError> {
         let mut leaf_references = Vec::new();
         for leaf_index in 0..self.leaf_count() {
             let node_index = to_node_index(leaf_index);
-            // The node reference must be valid, since it is a vlaid leaf
+            // The node reference must be valid, since it is a valid leaf
             let node_ref = NodeId::try_from_node_index(self, node_index)
                 .map_err(|_| LibraryError::custom("Expected a valid node reference"))?;
             leaf_references.push(node_ref);
