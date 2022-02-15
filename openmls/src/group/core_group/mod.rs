@@ -429,7 +429,8 @@ impl CoreGroup {
                 epoch: self.context().epoch(),
                 sender: crate::tree::index::SecretTreeLeafIndex(self.own_leaf_index()),
             },
-            self.message_secrets_mut(mls_plaintext.epoch())?,
+            self.message_secrets_mut(mls_plaintext.epoch())
+                .map_err(MlsCiphertextError::SecretTreeError)?,
             padding_size,
         )
         .map_err(CoreGroupError::MlsCiphertextError)
@@ -608,15 +609,11 @@ impl CoreGroup {
     pub(crate) fn message_secrets_mut<'secret, 'group: 'secret>(
         &'group mut self,
         epoch: GroupEpoch,
-    ) -> Result<&'secret mut MessageSecrets, CoreGroupError> {
+    ) -> Result<&'secret mut MessageSecrets, SecretTreeError> {
         if epoch < self.context().epoch() {
             self.message_secrets_store
                 .secrets_for_epoch_mut(epoch)
-                .ok_or({
-                    CoreGroupError::MlsCiphertextError(MlsCiphertextError::SecretTreeError(
-                        SecretTreeError::TooDistantInThePast,
-                    ))
-                })
+                .ok_or(SecretTreeError::TooDistantInThePast)
         } else {
             Ok(self.message_secrets_store.message_secrets_mut())
         }

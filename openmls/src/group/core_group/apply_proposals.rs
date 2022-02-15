@@ -154,6 +154,7 @@ impl CoreGroup {
         for add_proposal in add_proposals {
             let leaf_index = diff
                 .add_leaf(add_proposal.key_package().clone(), backend.crypto())
+                // TODO #810
                 .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
             invitation_list.push((leaf_index, add_proposal.clone()))
         }

@@ -73,6 +73,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// Returns a vector containing the decrypted [`ParentNode`] instances, as
     /// well as the [`CommitSecret`] resulting from their derivation. Returns an
     /// error if the `sender_leaf_index` is outside of the tree.
+    /// TODO #804
     pub(crate) fn decrypt_path(
         &self,
         backend: &impl OpenMlsCryptoProvider,
@@ -87,14 +88,17 @@ impl<'a> TreeSyncDiff<'a> {
             .update_path
             .get(path_position)
             // We know the update path has the right length through validation, therefore there must be an element at this position
+            // TODO #804
             .ok_or_else(|| LibraryError::custom("Expected to find ciphertext in update path"))?;
 
         let (decryption_key, resolution_position) = self
             .decryption_key(params.sender_leaf_index, params.exclusion_list)
+            // TODO #804
             .map_err(|_| LibraryError::custom("Expected sender to be in the tree"))?;
         let ciphertext = update_path_node
             .encrypted_path_secrets(resolution_position)
             // We know the update path has the right length through validation, therefore there must be a ciphertext at this position
+            // TODO #804
             .ok_or_else(|| LibraryError::custom("Expected to find ciphertext in update path"))?;
 
         let path_secret = PathSecret::decrypt(
