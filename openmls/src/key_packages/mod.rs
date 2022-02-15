@@ -31,7 +31,7 @@
 //! use openmls::prelude::*;
 //! use openmls_rust_crypto::OpenMlsRustCrypto;
 //!
-//! let ciphersuite = Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+//! let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 //! let backend = OpenMlsRustCrypto::default();
 //!
 //! let credential_bundle = CredentialBundle::new(

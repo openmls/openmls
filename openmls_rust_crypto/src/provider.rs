@@ -73,18 +73,18 @@ fn aead_mode(aead: HpkeAeadType) -> hpke_types::AeadAlgorithm {
 impl OpenMlsCrypto for RustCrypto {
     fn supports(&self, ciphersuite: Ciphersuite) -> Result<(), CryptoError> {
         match ciphersuite {
-            Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
-            | Ciphersuite::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
-            | Ciphersuite::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256 => Ok(()),
+            Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
+            | Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
+            | Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256 => Ok(()),
             _ => Err(CryptoError::UnsupportedCiphersuite),
         }
     }
 
     fn supported_ciphersuites(&self) -> Vec<Ciphersuite> {
         vec![
-            Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-            Ciphersuite::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-            Ciphersuite::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256,
+            Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+            Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+            Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
         ]
     }
 

@@ -37,7 +37,7 @@ impl tls_codec::Deserialize for Secret {
         Ok(Secret {
             value,
             mls_version: ProtocolVersion::default(),
-            ciphersuite: Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+            ciphersuite: Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         })
     }
 }

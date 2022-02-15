@@ -132,7 +132,7 @@ fn test_forward_secrecy(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
 #[test]
 fn sender_ratchet_generation_overflow() {
     let backend = OpenMlsRustCrypto::default();
-    let ciphersuite = Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let secret = Secret::random(ciphersuite, &backend, ProtocolVersion::Mls10)
         .expect("Not enough randomness.");
     let mut ratchet = RatchetSecret::initial_ratchet_secret(secret);

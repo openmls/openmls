@@ -8,7 +8,7 @@ use openmls_traits::OpenMlsCryptoProvider;
 use super::{backend::Backend, conversation::Conversation, identity::Identity};
 
 const CIPHERSUITE: CiphersuiteName =
-    CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    CiphersuiteName::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 
 pub struct Contact {
     username: String,

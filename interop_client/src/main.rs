@@ -83,7 +83,7 @@ fn into_status<E: Display>(e: E) -> Status {
 }
 
 fn to_ciphersuite(cs: u32) -> Result<&'static Ciphersuite, Status> {
-    let cs_name = match CiphersuiteName::try_from(cs as u16) {
+    let cs_name = match Ciphersuite::try_from(cs as u16) {
         Ok(cs_name) => cs_name,
         Err(_) => {
             return Err(tonic::Status::new(
@@ -92,10 +92,12 @@ fn to_ciphersuite(cs: u32) -> Result<&'static Ciphersuite, Status> {
             ));
         }
     };
-    match Config::supported_ciphersuites()
-        .iter()
-        .find(|cs| cs.name() == cs_name)
-    {
+    let ciphersuites = &[
+        Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+        Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
+        Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+    ];
+    match ciphersuites.iter().find(|&&cs| cs == cs_name) {
         Some(ciphersuite) => Ok(ciphersuite),
         None => Err(tonic::Status::new(
             tonic::Code::InvalidArgument,
@@ -151,11 +153,13 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<SupportedCiphersuitesResponse>, tonic::Status> {
         println!("Got SupportedCiphersuites request");
 
+        let ciphersuites = &[
+            Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+            Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
+            Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+        ];
         let response = SupportedCiphersuitesResponse {
-            ciphersuites: Config::supported_ciphersuite_names()
-                .iter()
-                .map(|cs| *cs as u32)
-                .collect(),
+            ciphersuites: ciphersuites.iter().map(|cs| *cs as u32).collect(),
         };
 
         Ok(Response::new(response))
@@ -179,7 +183,7 @@ impl MlsClient for MlsClientImpl {
                 let kat_encryption = kat_encryption::generate_test_vector(
                     obj.n_generations,
                     obj.n_leaves,
-                    ciphersuite,
+                    *ciphersuite,
                 );
                 let kat_bytes = into_bytes(kat_encryption);
                 ("Encryption", kat_bytes)
@@ -187,13 +191,13 @@ impl MlsClient for MlsClientImpl {
             Ok(TestVectorType::KeySchedule) => {
                 let ciphersuite = to_ciphersuite(obj.cipher_suite)?;
                 let kat_key_schedule =
-                    kat_key_schedule::generate_test_vector(obj.n_epochs as u64, ciphersuite);
+                    kat_key_schedule::generate_test_vector(obj.n_epochs as u64, *ciphersuite);
                 let kat_bytes = into_bytes(kat_key_schedule);
                 ("Key Schedule", kat_bytes)
             }
             Ok(TestVectorType::Transcript) => {
                 let ciphersuite = to_ciphersuite(obj.cipher_suite)?;
-                let kat_transcript = kat_transcripts::generate_test_vector(ciphersuite);
+                let kat_transcript = kat_transcripts::generate_test_vector(*ciphersuite);
                 let kat_bytes = into_bytes(kat_transcript);
                 ("Transcript", kat_bytes)
             }
@@ -204,8 +208,7 @@ impl MlsClient for MlsClientImpl {
                 ));
             }
             Ok(TestVectorType::Messages) => {
-                let ciphersuite: &'static Ciphersuite =
-                    Config::supported_ciphersuites().as_ref().first().unwrap();
+                let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
                 let kat_messages = kat_messages::generate_test_vector(ciphersuite);
                 let kat_bytes = into_bytes(kat_messages);
                 ("Messages", kat_bytes)
@@ -393,8 +396,7 @@ impl MlsClient for MlsClientImpl {
     ) -> Result<tonic::Response<CreateGroupResponse>, tonic::Status> {
         let create_group_request = request.get_ref();
 
-        let ciphersuite =
-            CiphersuiteName::try_from(create_group_request.cipher_suite as u16).unwrap();
+        let ciphersuite = Ciphersuite::try_from(create_group_request.cipher_suite as u16).unwrap();
         let credential_bundle = CredentialBundle::new(
             "OpenMLS".bytes().collect(),
             CredentialType::Basic,
@@ -454,12 +456,12 @@ impl MlsClient for MlsClientImpl {
         let credential_bundle = CredentialBundle::new(
             "OpenMLS".bytes().collect(),
             CredentialType::Basic,
-            SignatureScheme::from(ciphersuite.name()),
+            ciphersuite.signature_algorithm(),
             &self.crypto_provider,
         )
         .unwrap();
         let key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
+            &[*ciphersuite],
             &credential_bundle,
             &self.crypto_provider,
             vec![],
@@ -695,7 +697,7 @@ impl MlsClient for MlsClientImpl {
             .get_mut(update_proposal_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
         let key_package_bundle = KeyPackageBundle::new(
-            &[interop_group.group.ciphersuite().name()],
+            &[interop_group.group.ciphersuite()],
             &interop_group.credential_bundle,
             &self.crypto_provider,
             vec![],

@@ -114,7 +114,7 @@ fn key_package_id_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
 fn test_mismatch(backend: &impl OpenMlsCryptoProvider) {
     // === KeyPackageBundle negative test ===
 
-    let ciphersuite_name = Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let ciphersuite_name = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let signature_scheme = SignatureScheme::ECDSA_SECP256R1_SHA256;
 
     let credential_bundle = CredentialBundle::new(
@@ -132,7 +132,7 @@ fn test_mismatch(backend: &impl OpenMlsCryptoProvider) {
 
     // === KeyPackageBundle positive test ===
 
-    let ciphersuite_name = Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let ciphersuite_name = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let signature_scheme = SignatureScheme::ED25519;
 
     let credential_bundle = CredentialBundle::new(

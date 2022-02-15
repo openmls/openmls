@@ -311,15 +311,15 @@ fn test_random() {
 fn test_setup(backend: &impl OpenMlsCryptoProvider) {
     let test_client_config_a = TestClientConfig {
         name: "TestClientConfigA",
-        ciphersuites: vec![Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519],
+        ciphersuites: vec![Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519],
     };
     let test_client_config_b = TestClientConfig {
         name: "TestClientConfigB",
-        ciphersuites: vec![Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519],
+        ciphersuites: vec![Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519],
     };
     let group_config = CoreGroupConfig::default();
     let test_group_config = TestGroupConfig {
-        ciphersuite: Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+        ciphersuite: Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         config: group_config,
         members: vec![test_client_config_a.clone(), test_client_config_b.clone()],
     };

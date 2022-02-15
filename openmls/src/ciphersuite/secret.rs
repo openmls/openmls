@@ -14,7 +14,7 @@ pub struct Secret {
 impl Default for Secret {
     fn default() -> Self {
         Self {
-            ciphersuite: Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+            ciphersuite: Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
             value: Vec::new(),
             mls_version: ProtocolVersion::default(),
         }
@@ -232,7 +232,7 @@ impl From<&[u8]> for Secret {
         Secret {
             value: bytes.to_vec(),
             mls_version: ProtocolVersion::default(),
-            ciphersuite: Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+            ciphersuite: Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         }
     }
 }
