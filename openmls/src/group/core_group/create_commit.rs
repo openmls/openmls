@@ -2,7 +2,6 @@ use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
     ciphersuite::signable::Signable,
-    config::Config,
     framing::*,
     group::{core_group::*, *},
     messages::*,
@@ -313,7 +312,7 @@ impl CoreGroup {
                 .collect();
             // Create welcome message
             let welcome = Welcome::new(
-                Config::supported_versions()[0],
+                ProtocolVersion::Mls10,
                 self.ciphersuite,
                 secrets,
                 encrypted_group_info,

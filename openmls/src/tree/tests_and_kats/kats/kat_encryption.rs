@@ -79,7 +79,7 @@
 
 use crate::{
     ciphersuite::Ciphersuite,
-    config::{Config, ProtocolVersion},
+    config::ProtocolVersion,
     credentials::{CredentialBundle, CredentialType},
     framing::*,
     group::*,
@@ -98,7 +98,7 @@ use crate::{messages::proposals::RemoveProposal, tree::index::SecretTreeLeafInde
 
 use crate::ciphersuite::Secret;
 
-use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, types::SignatureScheme, OpenMlsCryptoProvider};
 
 use itertools::izip;
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -447,7 +447,11 @@ fn write_test_vectors() {
     const NUM_LEAVES: u32 = 7;
     const NUM_GENERATIONS: u32 = 5;
 
-    for &ciphersuite in Config::supported_ciphersuites() {
+    for &ciphersuite in OpenMlsRustCrypto::default()
+        .crypto()
+        .supported_ciphersuites()
+        .iter()
+    {
         for n_leaves in 1u32..NUM_LEAVES {
             let test = generate_test_vector(NUM_GENERATIONS, n_leaves, ciphersuite);
             tests.push(test);
@@ -469,16 +473,6 @@ pub fn run_test_vector(
         return Err(EncTestVectorError::LeafNumberMismatch);
     }
     let ciphersuite = Ciphersuite::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
-    let ciphersuite = match Config::ciphersuite(ciphersuite) {
-        Ok(cs) => cs,
-        Err(_) => {
-            println!(
-                "Unsupported ciphersuite {} in test vector. Skipping ...",
-                ciphersuite
-            );
-            return Ok(());
-        }
-    };
     log::debug!("Running test vector with {:?}", ciphersuite);
 
     let sender_data_secret = SenderDataSecret::from_slice(

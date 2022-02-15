@@ -123,7 +123,7 @@
 
 use crate::{
     ciphersuite::{AeadKey, AeadNonce, Ciphersuite, HpkePrivateKey, Mac, Secret},
-    config::{Config, ProtocolVersion},
+    config::ProtocolVersion,
     error::LibraryError,
     framing::{MembershipTag, MlsPlaintextTbmPayload},
     messages::{ConfirmationTag, PathSecret, PublicGroupState},
@@ -249,8 +249,7 @@ impl InitSecret {
         backend: &impl OpenMlsCryptoProvider,
         public_group_state: &PublicGroupState,
     ) -> Result<(Self, Vec<u8>), KeyScheduleError> {
-        let ciphersuite = Config::ciphersuite(public_group_state.ciphersuite)
-            .map_err(|_| KeyScheduleError::UnsupportedCiphersuite)?;
+        let ciphersuite = public_group_state.ciphersuite;
         let version = public_group_state.version;
         let (kem_output, raw_init_secret) = backend.crypto().hpke_setup_sender_and_export(
             ciphersuite.hpke_config(),

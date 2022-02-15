@@ -4,7 +4,6 @@ use rstest_reuse::apply;
 
 use crate::{
     ciphersuite::Ciphersuite,
-    config::Config,
     credentials::{CredentialBundle, CredentialType},
     prelude::KeyPackageBundle,
     prelude_test::{node::Node, TreeSync},

@@ -3,6 +3,7 @@ use crate::{
     ciphersuite::signable::*, framing::*, group::*, key_packages::*, messages::*, test_utils::*, *,
 };
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::crypto::OpenMlsCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 /// Creates a simple test setup for various encoding tests.
@@ -11,24 +12,24 @@ fn create_encoding_test_setup(backend: &impl OpenMlsCryptoProvider) -> TestSetup
     // ciphersuites.
     let alice_config = TestClientConfig {
         name: "alice",
-        ciphersuites: Config::supported_ciphersuite_names().to_vec(),
+        ciphersuites: backend.crypto().supported_ciphersuites(),
     };
 
     let bob_config = TestClientConfig {
         name: "bob",
-        ciphersuites: Config::supported_ciphersuite_names().to_vec(),
+        ciphersuites: backend.crypto().supported_ciphersuites(),
     };
     let charlie_config = TestClientConfig {
         name: "charlie",
-        ciphersuites: Config::supported_ciphersuite_names().to_vec(),
+        ciphersuites: backend.crypto().supported_ciphersuites(),
     };
 
     let mut test_group_configs = Vec::new();
 
     // Create a group config for each ciphersuite.
-    for ciphersuite_name in Config::supported_ciphersuite_names() {
+    for &ciphersuite in backend.crypto().supported_ciphersuites().iter() {
         let test_group = TestGroupConfig {
-            ciphersuite: *ciphersuite_name,
+            ciphersuite,
             config: CoreGroupConfig {
                 add_ratchet_tree_extension: true,
             },

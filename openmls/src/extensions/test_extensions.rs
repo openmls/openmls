@@ -16,8 +16,8 @@ use crate::{
 fn capabilities() {
     // A capabilities extension with the default values for openmls.
     let extension_bytes = [
-        0u8, 1, 0, 0, 0, 30, 2, 1, 200, 6, 0, 1, 0, 2, 0, 3, 6, 0, 1, 0, 2, 0, 3, 12, 0, 1, 0, 2,
-        0, 3, 0, 4, 0, 5, 0, 8,
+        0u8, 1, 0, 0, 0, 29, 1, 1, 6, 0, 1, 0, 2, 0, 3, 6, 0, 1, 0, 2, 0, 3, 12, 0, 1, 0, 2, 0, 3,
+        0, 4, 0, 5, 0, 8,
     ];
     let mut extension_bytes_mut = &extension_bytes[..];
 

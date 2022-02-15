@@ -33,9 +33,9 @@ use crate::{
 };
 use ::rand::{rngs::OsRng, RngCore};
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore};
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::sync::RwLock;
@@ -131,7 +131,7 @@ impl MlsGroupTestSetup {
             // For now, everyone supports all ciphersuites.
             let crypto = OpenMlsRustCrypto::default();
             let mut credentials = HashMap::new();
-            for ciphersuite in Config::supported_ciphersuite_names() {
+            for ciphersuite in crypto.crypto().supported_ciphersuites().iter() {
                 let cb = CredentialBundle::new(
                     identity.clone(),
                     CredentialType::Basic,

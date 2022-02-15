@@ -7,9 +7,11 @@ use crate::{
         hash_ref::{KeyPackageRef, ProposalRef},
         Ciphersuite, Secret,
     },
-    config::{errors::ConfigError, Config},
     credentials::{CredentialBundle, CredentialType},
-    extensions::{Extension, ExtensionType, ExternalKeyIdExtension, RequiredCapabilitiesExtension},
+    extensions::{
+        Extension, ExtensionError, ExtensionType, ExternalKeyIdExtension,
+        RequiredCapabilitiesExtension,
+    },
     framing::sender::Sender,
     framing::{FramingParameters, MlsPlaintext, WireFormat},
     group::{
@@ -341,7 +343,7 @@ fn test_required_unsupported_proposals(
         );
     assert_eq!(
         e,
-        CoreGroupError::ConfigError(ConfigError::UnsupportedProposalType)
+        CoreGroupError::ExtensionError(ExtensionError::UnsupportedProposalType)
     )
 }
 

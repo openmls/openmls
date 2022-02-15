@@ -1,6 +1,7 @@
 use super::utils::*;
 use crate::{group::*, test_utils::*, *};
 use openmls_rust_crypto::OpenMlsRustCrypto;
+use openmls_traits::crypto::OpenMlsCrypto;
 
 #[apply(backends)]
 fn padding(backend: &impl OpenMlsCryptoProvider) {
@@ -8,15 +9,15 @@ fn padding(backend: &impl OpenMlsCryptoProvider) {
     // ciphersuites.
     let alice_config = TestClientConfig {
         name: "alice",
-        ciphersuites: Config::supported_ciphersuite_names().to_vec(),
+        ciphersuites: backend.crypto().supported_ciphersuites(),
     };
 
     let mut test_group_configs = Vec::new();
 
     // Create a group config for each ciphersuite.
-    for ciphersuite_name in Config::supported_ciphersuite_names() {
+    for &ciphersuite in backend.crypto().supported_ciphersuites().iter() {
         let test_group = TestGroupConfig {
-            ciphersuite: *ciphersuite_name,
+            ciphersuite,
             config: CoreGroupConfig::default(),
             members: vec![alice_config.clone()],
         };

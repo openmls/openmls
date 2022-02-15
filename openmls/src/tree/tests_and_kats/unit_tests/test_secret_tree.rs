@@ -2,7 +2,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::random::OpenMlsRand;
 
 use crate::{
-    config::{Config, ProtocolVersion},
+    config::ProtocolVersion,
     schedule::EncryptionSecret,
     test_utils::*,
     tree::{index::SecretTreeLeafIndex, secret_tree::*, *},

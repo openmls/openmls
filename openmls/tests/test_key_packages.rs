@@ -38,14 +38,15 @@ fn key_package_generation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         assert_eq!(ciphersuite, capabilities_extension.ciphersuites()[0]);
 
         // Check supported versions.
-        assert_eq!(
-            Config::supported_versions(),
-            capabilities_extension.versions()
-        );
+        assert_eq!(&[ProtocolVersion::Mls10], capabilities_extension.versions());
 
         // Check supported extensions.
         assert_eq!(
-            Config::supported_extensions(),
+            vec![
+                ExtensionType::Capabilities,
+                ExtensionType::Lifetime,
+                ExtensionType::ExternalKeyId
+            ],
             capabilities_extension.extensions()
         );
 

@@ -6,6 +6,7 @@ use tls_codec::Serialize;
 
 use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, signable::Signable, AeadNonce},
+    config::ProtocolVersion,
     credentials::*,
     framing::*,
     group::{errors::StageCommitError, *},
@@ -70,7 +71,7 @@ fn test_failed_groupinfo_decryption(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
-    for version in Config::supported_versions() {
+    for version in &[ProtocolVersion::Mls10] {
         let epoch = GroupEpoch(123);
         let group_id = GroupId::random(backend);
         let tree_hash = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];

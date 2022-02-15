@@ -14,7 +14,9 @@ use crate::{
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{random::OpenMlsRand, types::SignatureScheme, OpenMlsCryptoProvider};
+use openmls_traits::{
+    crypto::OpenMlsCrypto, random::OpenMlsRand, types::SignatureScheme, OpenMlsCryptoProvider,
+};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerializeTrait};
 
@@ -164,7 +166,11 @@ fn write_test_vectors() {
     let mut tests = Vec::new();
     const NUM_TESTS: usize = 100;
 
-    for &ciphersuite in Config::supported_ciphersuites() {
+    for &ciphersuite in OpenMlsRustCrypto::default()
+        .crypto()
+        .supported_ciphersuites()
+        .iter()
+    {
         for _ in 0..NUM_TESTS {
             let test = generate_test_vector(ciphersuite);
             tests.push(test);
@@ -179,16 +185,6 @@ pub fn run_test_vector(
     backend: &impl OpenMlsCryptoProvider,
 ) -> Result<(), TranscriptTestVectorError> {
     let ciphersuite = Ciphersuite::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
-    let ciphersuite = match Config::ciphersuite(ciphersuite) {
-        Ok(cs) => cs,
-        Err(_) => {
-            log::info!(
-                "Unsupported ciphersuite {} in test vector. Skipping ...",
-                ciphersuite
-            );
-            return Ok(());
-        }
-    };
     log::debug!("Testing test vector for ciphersuite {:?}", ciphersuite);
     log::trace!("  {:?}", test_vector);
 

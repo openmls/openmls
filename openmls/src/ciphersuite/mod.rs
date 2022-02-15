@@ -3,7 +3,7 @@
 //! This file contains the API to interact with ciphersuites.
 //! See `codec.rs` and `ciphersuites.rs` for internals.
 
-use crate::config::{Config, ProtocolVersion};
+use crate::config::ProtocolVersion;
 use ::tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 pub use openmls_traits::types::Ciphersuite;
 use openmls_traits::types::CryptoError;

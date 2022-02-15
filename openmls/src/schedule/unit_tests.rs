@@ -6,7 +6,9 @@ use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::{random::OpenMlsRand, OpenMlsCryptoProvider};
 use tls_codec::Serialize;
 
-use crate::{ciphersuite::Secret, config::Config, schedule::psk::PskBundle, schedule::psk::*};
+use crate::{
+    ciphersuite::Secret, config::ProtocolVersion, schedule::psk::PskBundle, schedule::psk::*,
+};
 
 use super::PskSecret;
 
@@ -31,7 +33,7 @@ fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
         .map(|_| {
             Secret::from_slice(
                 &prng.random_vec(55).expect("An unexpected error occurred."),
-                Config::supported_versions()[0],
+                ProtocolVersion::Mls10,
                 ciphersuite,
             )
         })

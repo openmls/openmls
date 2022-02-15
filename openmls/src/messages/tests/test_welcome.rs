@@ -3,7 +3,7 @@
 use crate::{
     ciphersuite::hash_ref::KeyPackageRef,
     ciphersuite::{signable::Signable, AeadKey, AeadNonce, Ciphersuite, Mac, Secret},
-    config::{Config, ProtocolVersion},
+    config::ProtocolVersion,
     credentials::{CredentialBundle, CredentialType},
     group::{GroupEpoch, GroupId},
     messages::{ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload, Welcome},
@@ -18,7 +18,7 @@ use tls_codec::{Deserialize, Serialize};
 
 #[apply(ciphersuites_and_backends)]
 fn test_welcome_msg(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    test_welcome_message_with_version(ciphersuite, backend, Config::supported_versions()[0]);
+    test_welcome_message_with_version(ciphersuite, backend, ProtocolVersion::Mls10);
 }
 
 fn test_welcome_message_with_version(

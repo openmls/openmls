@@ -1,4 +1,3 @@
-use crate::config::Config;
 use crate::test_utils::*;
 
 use super::*;

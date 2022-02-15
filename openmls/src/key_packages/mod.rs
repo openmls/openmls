@@ -83,7 +83,7 @@ use tls_codec::{
 
 use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, signable::*, *},
-    config::{Config, ProtocolVersion},
+    config::ProtocolVersion,
     credentials::*,
     error::LibraryError,
     extensions::{
@@ -108,7 +108,7 @@ mod test_key_packages;
 /// The unsigned payload of a key package.
 /// Any modification must happen on this unsigned struct. Use `sign` to get a
 /// signed key package.
-#[derive(Debug, Clone, PartialEq, TlsSize)]
+#[derive(Debug, Clone, PartialEq, TlsSize, Serialize, Deserialize)]
 struct KeyPackagePayload {
     protocol_version: ProtocolVersion,
     ciphersuite: Ciphersuite,
@@ -126,14 +126,6 @@ impl tls_codec::Serialize for KeyPackagePayload {
         self.extensions.tls_serialize(writer).map(|l| l + written)
     }
 }
-
-implement_persistence!(
-    KeyPackagePayload,
-    protocol_version,
-    hpke_init_key,
-    credential,
-    extensions
-);
 
 impl Signable for KeyPackagePayload {
     type SignedOutput = KeyPackage;
@@ -336,7 +328,7 @@ impl KeyPackage {
     }
 
     /// Get the [`Ciphersuite`].
-    pub fn ciphersuite_name(&self) -> Ciphersuite {
+    pub fn ciphersuite(&self) -> Ciphersuite {
         self.payload.ciphersuite
     }
 }
@@ -347,21 +339,19 @@ impl KeyPackage {
     /// given `ciphersuite` and `identity`, and the initial HPKE key pair
     /// `init_key`.
     fn new(
-        ciphersuite_name: Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         hpke_init_key: HpkePublicKey,
         credential_bundle: &CredentialBundle,
         extensions: Vec<Extension>,
     ) -> Result<Self, KeyPackageError> {
-        if SignatureScheme::from(ciphersuite_name)
-            != credential_bundle.credential().signature_scheme()
-        {
+        if SignatureScheme::from(ciphersuite) != credential_bundle.credential().signature_scheme() {
             return Err(KeyPackageError::CiphersuiteSignatureSchemeMismatch);
         }
         let key_package = KeyPackagePayload {
             // TODO: #85 Take from global config.
             protocol_version: ProtocolVersion::default(),
-            ciphersuite: Config::ciphersuite(ciphersuite_name)?,
+            ciphersuite,
             hpke_init_key,
             credential: credential_bundle.credential().clone(),
             extensions: extensions.into(),
@@ -387,11 +377,6 @@ impl KeyPackage {
     /// Get a reference to the HPKE init key.
     pub(crate) fn hpke_init_key(&self) -> &HpkePublicKey {
         &self.payload.hpke_init_key
-    }
-
-    /// Get the `Ciphersuite`.
-    pub(crate) fn ciphersuite(&self) -> Ciphersuite {
-        self.payload.ciphersuite
     }
 
     /// Get the `ProtocolVersion`.
@@ -555,13 +540,14 @@ impl KeyPackageBundle {
         credential_bundle: &CredentialBundle,
         extensions: Vec<Extension>,
     ) -> Result<Self, KeyPackageError> {
+        debug_assert!(!ciphersuites.is_empty());
         if SignatureScheme::from(ciphersuites[0])
             != credential_bundle.credential().signature_scheme()
         {
             return Err(KeyPackageError::CiphersuiteSignatureSchemeMismatch);
         }
         debug_assert!(!ciphersuites.is_empty());
-        let ciphersuite = Config::ciphersuite(ciphersuites[0])?;
+        let ciphersuite = ciphersuites[0];
         let leaf_secret = Secret::random(ciphersuite, backend, version)?;
         Self::new_from_leaf_secret(
             ciphersuites,
@@ -699,7 +685,7 @@ impl KeyPackageBundle {
             return Err(error);
         }
 
-        let ciphersuite = Config::ciphersuite(ciphersuites[0])?;
+        let ciphersuite = ciphersuites[0];
         let leaf_node_secret = derive_leaf_node_secret(&leaf_secret, backend);
         let keypair = backend
             .crypto()

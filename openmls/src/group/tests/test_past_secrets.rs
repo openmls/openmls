@@ -9,7 +9,6 @@ use rstest_reuse::{self, *};
 
 use crate::{
     ciphersuite::Ciphersuite,
-    config::Config,
     credentials::{CredentialBundle, CredentialType},
     framing::{MlsCiphertextError, ProcessedMessage, ValidationError},
     group::{CoreGroupError, GroupId, MlsGroup, MlsGroupConfig, MlsGroupError},

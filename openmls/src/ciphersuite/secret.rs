@@ -4,14 +4,12 @@ use super::*;
 /// A struct to contain secrets. This is to provide better visibility into where
 /// and how secrets are used and to avoid passing secrets in their raw
 /// representation.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Secret {
     pub(in crate::ciphersuite) ciphersuite: Ciphersuite,
     pub(in crate::ciphersuite) value: Vec<u8>,
     pub(in crate::ciphersuite) mls_version: ProtocolVersion,
 }
-
-implement_persistence!(Secret, value, mls_version);
 
 impl Default for Secret {
     fn default() -> Self {

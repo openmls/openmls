@@ -4,7 +4,6 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
-    config::Config,
     group::{GroupEpoch, GroupId},
     messages::{PreSharedKeyProposal, ProtocolVersion, ReInitProposal},
     schedule::psk::{BranchPsk, ExternalPsk, PreSharedKeyId, Psk, PskType, ReinitPsk},

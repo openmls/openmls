@@ -5,7 +5,7 @@ pub use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 pub use rstest::*;
 pub use rstest_reuse::{self, *};
 
-pub use crate::{config::Config, utils::*};
+pub use crate::utils::*;
 
 use serde::{self, de::DeserializeOwned, Serialize};
 use std::{
@@ -122,12 +122,18 @@ pub fn backends(backend: &impl OpenMlsCryptoProvider) {}
 
 #[allow(non_snake_case)]
 #[template]
-#[rstest(ciphersuite,
-    case::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Config::ciphersuite(Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519).expect("Ciphersuite not supported.")),
-    case::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256(Config::ciphersuite(Ciphersuite::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256).expect("Ciphersuite not supported.")),
-    case::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Config::ciphersuite(Ciphersuite::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519).expect("Ciphersuite not supported.")),
-  )
-]
+#[rstest(
+    ciphersuite,
+    case::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(
+        Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
+    ),
+    case::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256(
+        Ciphersuite::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256
+    ),
+    case::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(
+        Ciphersuite::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
+    )
+)]
 pub fn ciphersuites(ciphersuite: Ciphersuite) {}
 
 // === Ciphersuites & backends ===
@@ -141,9 +147,9 @@ pub fn ciphersuites(ciphersuite: Ciphersuite) {}
 #[allow(non_snake_case)]
 #[template]
 #[rstest(ciphersuite, backend,
-    case::rust_crypto_MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Config::ciphersuite(Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519).expect("Ciphersuite not supported."), &OpenMlsRustCrypto::default()),
-    case::rust_crypto_MLS10_128_DHKEMP256_AES128GCM_SHA256_P256(Config::ciphersuite(Ciphersuite::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256).expect("Ciphersuite not supported."), &OpenMlsRustCrypto::default()),
-    case::rust_crypto_MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Config::ciphersuite(Ciphersuite::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519).expect("Ciphersuite not supported."), &OpenMlsRustCrypto::default()),
+    case::rust_crypto_MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
+    case::rust_crypto_MLS10_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256, &OpenMlsRustCrypto::default()),
+    case::rust_crypto_MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
   )
 ]
 pub fn ciphersuites_and_backends(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {}
@@ -159,12 +165,12 @@ pub fn ciphersuites_and_backends(ciphersuite: Ciphersuite, backend: &impl OpenMl
 #[allow(non_snake_case)]
 #[template]
 #[rstest(ciphersuite, backend,
-    case::rust_crypto_MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Config::ciphersuite(Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519).expect("Ciphersuite not supported."), &OpenMlsRustCrypto::default()),
-    case::rust_crypto_MLS10_128_DHKEMP256_AES128GCM_SHA256_P256(Config::ciphersuite(Ciphersuite::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256).expect("Ciphersuite not supported."), &OpenMlsRustCrypto::default()),
-    case::rust_crypto_MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Config::ciphersuite(Ciphersuite::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519).expect("Ciphersuite not supported."), &OpenMlsRustCrypto::default()),
-    case::evercrypt_MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Config::ciphersuite(Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519).expect("Ciphersuite not supported."), &openmls_evercrypt::OpenMlsEvercrypt::default()),
-    case::evercrypt_MLS10_128_DHKEMP256_AES128GCM_SHA256_P256(Config::ciphersuite(Ciphersuite::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256).expect("Ciphersuite not supported."), &openmls_evercrypt::OpenMlsEvercrypt::default()),
-    case::evercrypt_MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Config::ciphersuite(Ciphersuite::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519).expect("Ciphersuite not supported."), &openmls_evercrypt::OpenMlsEvercrypt::default()),
+    case::rust_crypto_MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
+    case::rust_crypto_MLS10_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256, &OpenMlsRustCrypto::default()),
+    case::rust_crypto_MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
+    case::evercrypt_MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &openmls_evercrypt::OpenMlsEvercrypt::default()),
+    case::evercrypt_MLS10_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256, &openmls_evercrypt::OpenMlsEvercrypt::default()),
+    case::evercrypt_MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &openmls_evercrypt::OpenMlsEvercrypt::default()),
   )
 ]
 pub fn ciphersuites_and_backends(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {}

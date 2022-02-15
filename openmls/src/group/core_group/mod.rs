@@ -77,7 +77,7 @@ pub(crate) struct CreateCommitResult {
     pub(crate) staged_commit: StagedCommit,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct CoreGroup {
     ciphersuite: Ciphersuite,
@@ -99,17 +99,6 @@ pub(crate) struct CoreGroup {
     /// the store must be increased through [`max_past_epochs()`].
     message_secrets_store: MessageSecretsStore,
 }
-
-implement_persistence!(
-    CoreGroup,
-    group_context,
-    group_epoch_secrets,
-    tree,
-    interim_transcript_hash,
-    use_ratchet_tree_extension,
-    mls_version,
-    message_secrets_store
-);
 
 /// Builder for [`CoreGroup`].
 pub(crate) struct CoreGroupBuilder {
@@ -179,7 +168,7 @@ impl CoreGroupBuilder {
         trace!(" >>> with {:?}, {:?}", ciphersuite, config);
         let (tree, commit_secret) = TreeSync::new(backend, self.key_package_bundle)?;
 
-        check_required_capabilities_support(&required_capabilities)?;
+        required_capabilities.check_support()?;
         let required_capabilities = &[Extension::RequiredCapabilities(required_capabilities)];
 
         let group_context = GroupContext::create_initial_group_context(
@@ -365,7 +354,7 @@ impl CoreGroup {
         if let Some(required_extension) = required_extension {
             let required_capabilities = required_extension.as_required_capabilities_extension()?;
             // Ensure we support all the capabilities.
-            check_required_capabilities_support(required_capabilities)?;
+            required_capabilities.check_support()?;
             self.treesync()
                 .own_leaf_node()?
                 .key_package()

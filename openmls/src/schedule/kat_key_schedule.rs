@@ -261,7 +261,11 @@ pub fn generate_test_vector(n_epochs: u64, ciphersuite: Ciphersuite) -> KeySched
 fn write_test_vectors() {
     const NUM_EPOCHS: u64 = 200;
     let mut tests = Vec::new();
-    for &ciphersuite in Config::supported_ciphersuites() {
+    for &ciphersuite in OpenMlsRustCrypto::default()
+        .crypto()
+        .supported_ciphersuites()
+        .iter()
+    {
         tests.push(generate_test_vector(NUM_EPOCHS, ciphersuite));
     }
     write("test_vectors/kat_key_schedule_openmls-new.json", &tests);
@@ -298,17 +302,6 @@ pub fn run_test_vector(
     use tls_codec::{Deserialize, Serialize};
 
     let ciphersuite = Ciphersuite::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
-    let ciphersuite = match Config::ciphersuite(ciphersuite) {
-        Ok(cs) => cs,
-        Err(_) => {
-            log::info!(
-                "Unsupported ciphersuite {} in test vector. Skipping ...",
-                ciphersuite
-            );
-            return Ok(());
-        }
-    };
-    log::debug!("Testing test vector for ciphersuite {:?}", ciphersuite);
     log::trace!("  {:?}", test_vector);
 
     let group_id = hex_to_bytes(&test_vector.group_id);

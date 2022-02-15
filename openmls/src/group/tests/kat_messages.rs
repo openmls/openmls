@@ -22,7 +22,9 @@ use crate::{
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{random::OpenMlsRand, types::SignatureScheme, OpenMlsCryptoProvider};
+use openmls_traits::{
+    crypto::OpenMlsCrypto, random::OpenMlsRand, types::SignatureScheme, OpenMlsCryptoProvider,
+};
 use serde::{self, Deserialize, Serialize};
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize, TlsSliceU32, TlsVecU32};
 
@@ -389,7 +391,11 @@ fn write_test_vectors_msg() {
     let mut tests = Vec::new();
     const NUM_TESTS: usize = 100;
 
-    for &ciphersuite in Config::supported_ciphersuites() {
+    for &ciphersuite in OpenMlsRustCrypto::default()
+        .crypto()
+        .supported_ciphersuites()
+        .iter()
+    {
         for _ in 0..NUM_TESTS {
             let test = generate_test_vector(ciphersuite);
             tests.push(test);

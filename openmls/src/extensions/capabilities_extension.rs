@@ -4,7 +4,7 @@ use openmls_traits::types::Ciphersuite;
 use tls_codec::{TlsSerialize, TlsSize, TlsVecU8};
 
 use super::{CapabilitiesExtensionError, Deserialize, ExtensionType, Serialize};
-use crate::config::{Config, ProtocolVersion};
+use crate::config::ProtocolVersion;
 use crate::messages::proposals::ProposalType;
 
 /// # Capabilities Extension
@@ -24,13 +24,44 @@ pub struct CapabilitiesExtension {
     proposals: TlsVecU8<ProposalType>,
 }
 
+fn default_extensions() -> Vec<ExtensionType> {
+    vec![
+        ExtensionType::Capabilities,
+        ExtensionType::Lifetime,
+        ExtensionType::ExternalKeyId,
+    ]
+}
+
+fn default_proposals() -> Vec<ProposalType> {
+    vec![
+        ProposalType::Add,
+        ProposalType::Update,
+        ProposalType::Remove,
+        ProposalType::Presharedkey,
+        ProposalType::Reinit,
+        ProposalType::GroupContextExtensions,
+    ]
+}
+
+fn default_versions() -> Vec<ProtocolVersion> {
+    vec![ProtocolVersion::Mls10]
+}
+
+fn default_ciphersuites() -> Vec<Ciphersuite> {
+    vec![
+        Ciphersuite::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+        Ciphersuite::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256,
+        Ciphersuite::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+    ]
+}
+
 impl Default for CapabilitiesExtension {
     fn default() -> Self {
         CapabilitiesExtension {
-            versions: Config::supported_versions().into(),
-            ciphersuites: Config::supported_ciphersuite_names().into(),
-            extensions: Config::supported_extensions().into(),
-            proposals: Config::supported_proposals().into(),
+            versions: default_versions().into(),
+            ciphersuites: default_ciphersuites().into(),
+            extensions: default_extensions().into(),
+            proposals: default_proposals().into(),
         }
     }
 }
@@ -48,19 +79,19 @@ impl CapabilitiesExtension {
         Self {
             versions: match versions {
                 Some(v) => v.into(),
-                None => Config::supported_versions().into(),
+                None => default_versions().into(),
             },
             ciphersuites: match ciphersuites {
                 Some(c) => c.into(),
-                None => Config::supported_ciphersuite_names().into(),
+                None => default_ciphersuites().into(),
             },
             extensions: match extensions {
                 Some(e) => e.into(),
-                None => Config::supported_extensions().into(),
+                None => default_extensions().into(),
             },
             proposals: match proposals {
                 Some(p) => p.into(),
-                None => Config::supported_proposals().into(),
+                None => default_proposals().into(),
             },
         }
     }

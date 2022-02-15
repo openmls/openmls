@@ -6,10 +6,10 @@ extern crate rand;
 use criterion::Criterion;
 use openmls::prelude::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
 
 fn criterion_kp_bundle(c: &mut Criterion, backend: &impl OpenMlsCryptoProvider) {
-    for &ciphersuite in Config::supported_ciphersuites() {
+    for &ciphersuite in backend.crypto().supported_ciphersuites().iter() {
         c.bench_function(
             &format!(
                 "KeyPackage create bundle with ciphersuite: {:?}",

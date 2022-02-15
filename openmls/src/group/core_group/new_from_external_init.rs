@@ -31,9 +31,8 @@ impl CoreGroup {
         tree_option: Option<&[Option<Node>]>,
         verifiable_public_group_state: VerifiablePublicGroupState,
     ) -> Result<ExternalCommitResult, ExternalCommitError> {
-        let ciphersuite = Config::ciphersuite(verifiable_public_group_state.ciphersuite())
-            .map_err(|_| ExternalCommitError::UnsupportedCiphersuite)?;
-        if !Config::supported_versions().contains(&verifiable_public_group_state.version()) {
+        let ciphersuite = verifiable_public_group_state.ciphersuite();
+        if verifiable_public_group_state.version() != ProtocolVersion::Mls10 {
             return Err(ExternalCommitError::UnsupportedMlsVersion);
         }
 

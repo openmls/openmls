@@ -2,7 +2,6 @@ use crate::group::GroupId;
 use crate::messages::ProposalType;
 use crate::{
     ciphersuite::Ciphersuite,
-    config::Config,
     credentials::{CredentialBundle, CredentialType},
     framing::{FramingParameters, WireFormat},
     key_packages::KeyPackageBundle,
