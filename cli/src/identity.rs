@@ -48,7 +48,7 @@ fn store_credential_bundle_in_keystore(
 }
 
 impl Identity {
-    pub(crate) fn new(ciphersuite: CiphersuiteName, crypto: &OpenMlsRustCrypto, id: &[u8]) -> Self {
+    pub(crate) fn new(ciphersuite: Ciphersuite, crypto: &OpenMlsRustCrypto, id: &[u8]) -> Self {
         let credential_bundle = CredentialBundle::new(
             id.to_vec(),
             CredentialType::Basic,
@@ -70,7 +70,7 @@ impl Identity {
     /// Update the key package bundle in this identity.
     /// The function returns the old `KeyPackageBundle`.
     pub fn update(&mut self, crypto: &OpenMlsRustCrypto) -> KeyPackageBundle {
-        let ciphersuite = self.kpb.key_package().ciphersuite_name();
+        let ciphersuite = self.kpb.key_package().ciphersuite();
         let key_package_bundle =
             KeyPackageBundle::new(&[ciphersuite], &self.credential, crypto, vec![]).unwrap();
 
