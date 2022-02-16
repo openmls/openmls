@@ -145,7 +145,7 @@ impl MlsGroup {
         self.own_kpbs.clear();
 
         // Delete a potential pending commit
-        self.clear_pending_commit()?;
+        self.clear_pending_commit();
 
         Ok(())
     }

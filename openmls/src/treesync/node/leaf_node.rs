@@ -87,7 +87,7 @@ impl LeafNode {
     }
 
     /// Return a reference to the `key_package` of this node.
-    pub(crate) fn key_package(&self) -> &KeyPackage {
+    pub fn key_package(&self) -> &KeyPackage {
         &self.key_package
     }
 

@@ -60,7 +60,7 @@ impl MlsGroup {
         mls_group_config: &MlsGroupConfig,
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
-    ) -> Result<Self, MlsGroupError> {
+    ) -> Result<Self, WelcomeError> {
         let resumption_secret_store =
             ResumptionSecretStore::new(mls_group_config.number_of_resumption_secrets);
         let (key_package_bundle, hash_ref) = welcome
@@ -73,13 +73,13 @@ impl MlsGroup {
                     .read(&hash_ref)
                     .map(|kpb: KeyPackageBundle| (kpb, hash_ref))
             })
-            .ok_or(MlsGroupError::NoMatchingKeyPackageBundle)?;
+            .ok_or(WelcomeError::NoMatchingKeyPackageBundle)?;
 
         // Delete the KeyPackageBundle from the key store
         backend
             .key_store()
             .delete(&hash_ref)
-            .map_err(|_| MlsGroupError::KeyStoreError)?;
+            .map_err(|_| WelcomeError::KeyStoreDeletionError)?;
         // TODO #751
         let mut group =
             CoreGroup::new_from_welcome(welcome, ratchet_tree, key_package_bundle, backend)?;

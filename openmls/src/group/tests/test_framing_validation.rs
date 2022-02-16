@@ -452,7 +452,7 @@ fn test_valsem006(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     assert_eq!(
         err,
         MlsGroupError::Group(CoreGroupError::ValidationError(
-            ValidationError::UnableToDecrypt(MlsCiphertextError::DecryptionError)
+            ValidationError::UnableToDecrypt(MessageDecryptionError::AeadError)
         ))
     );
 

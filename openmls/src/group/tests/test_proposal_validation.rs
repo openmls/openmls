@@ -65,7 +65,7 @@ fn create_group_with_members(
     alice_key_package_bundle: KeyPackageBundle,
     member_key_packages: &[KeyPackage],
     backend: &impl OpenMlsCryptoProvider,
-) -> Result<(MlsMessageOut, Welcome), MlsGroupError> {
+) -> Result<(MlsMessageOut, Welcome), AddMembersError> {
     let mut alice_group = MlsGroup::new(
         backend,
         &MlsGroupConfig::default(),
@@ -265,7 +265,7 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             let err = res.expect_err("was able to add users with the same identity!");
             assert_eq!(
                 err,
-                MlsGroupError::Group(CoreGroupError::ProposalValidationError(
+                AddMembersError::CreateCommitError(CreateCommitError::ProposalValidationError(
                     ProposalValidationError::DuplicateIdentityAddProposal
                 ))
             );
@@ -412,7 +412,7 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 let err = res.expect_err("was able to add users with the same signature key!");
                 assert_eq!(
                     err,
-                    MlsGroupError::Group(CoreGroupError::ProposalValidationError(
+                    AddMembersError::CreateCommitError(CreateCommitError::ProposalValidationError(
                         ProposalValidationError::DuplicateSignatureKeyAddProposal
                     ))
                 );
@@ -571,7 +571,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 let err = res.expect_err("was able to add users with the same HPKE init key!");
                 assert_eq!(
                     err,
-                    MlsGroupError::Group(CoreGroupError::ProposalValidationError(
+                    AddMembersError::CreateCommitError(CreateCommitError::ProposalValidationError(
                         ProposalValidationError::DuplicatePublicKeyAddProposal
                     ))
                 );
@@ -693,7 +693,7 @@ fn test_valsem103(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             );
             assert_eq!(
                 err,
-                MlsGroupError::Group(CoreGroupError::ProposalValidationError(
+                AddMembersError::CreateCommitError(CreateCommitError::ProposalValidationError(
                     ProposalValidationError::ExistingIdentityAddProposal
                 ))
             );
