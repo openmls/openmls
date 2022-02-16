@@ -379,13 +379,9 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         let bob_credential_bundle =
             CredentialBundle::from_parts("Bob".into(), bob_signature_keypair);
 
-        let alice_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite],
-            &alice_credential_bundle,
-            backend,
-            vec![],
-        )
-        .expect("failed to generate key package");
+        let alice_key_package_bundle =
+            KeyPackageBundle::new(&[ciphersuite], &alice_credential_bundle, backend, vec![])
+                .expect("failed to generate key package");
         let alice_key_package = alice_key_package_bundle.key_package().clone();
         backend
             .key_store()
@@ -398,13 +394,9 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             )
             .expect("An unexpected error occurred.");
 
-        let bob_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite],
-            &bob_credential_bundle,
-            backend,
-            vec![],
-        )
-        .expect("failed to generate key package");
+        let bob_key_package_bundle =
+            KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, vec![])
+                .expect("failed to generate key package");
         let bob_key_package = bob_key_package_bundle.key_package().clone();
 
         // 1. Alice creates a group and tries to add Bob to it
