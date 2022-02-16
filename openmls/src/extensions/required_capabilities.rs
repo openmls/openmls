@@ -2,7 +2,7 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, TlsVecU8};
 
 use crate::messages::proposals::ProposalType;
 
-use super::{Deserialize, ExtensionType, Serialize};
+use super::{Deserialize, ExtensionError, ExtensionType, Serialize};
 
 /// # Required Capabilities Extension.
 ///
@@ -43,5 +43,20 @@ impl RequiredCapabilitiesExtension {
     /// Get a slice with the required proposal types.
     pub(crate) fn proposals(&self) -> &[ProposalType] {
         self.proposals.as_slice()
+    }
+
+    /// Check if all extension and proposal types are supported.
+    pub(crate) fn check_support(&self) -> Result<(), ExtensionError> {
+        for extension in self.extensions() {
+            if !extension.is_supported() {
+                return Err(ExtensionError::UnsupportedExtensionType);
+            }
+        }
+        for proposal in self.proposals() {
+            if !proposal.is_supported() {
+                return Err(ExtensionError::UnsupportedProposalType);
+            }
+        }
+        Ok(())
     }
 }

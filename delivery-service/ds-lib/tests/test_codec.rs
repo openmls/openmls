@@ -8,7 +8,7 @@ use tls_codec::{Deserialize, Serialize};
 fn test_client_info() {
     let crypto = &OpenMlsRustCrypto::default();
     let client_name = "Client1";
-    let ciphersuite = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let credential_bundle = CredentialBundle::new(
         client_name.as_bytes().to_vec(),
         CredentialType::Basic,

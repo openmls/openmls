@@ -5,15 +5,15 @@ use openmls_traits::OpenMlsCryptoProvider;
 use crate::{
     binary_tree::LeafIndex,
     error::LibraryError,
-    framing::{Sender, SenderError},
-    group::CoreGroupError,
+    framing::Sender,
+    group::errors::ApplyProposalsError,
     key_packages::KeyPackageBundle,
     messages::{
         proposals::{AddProposal, ProposalType},
         Proposal,
     },
     schedule::{InitSecret, PreSharedKeyId, PreSharedKeys},
-    treesync::{diff::TreeSyncDiff, node::leaf_node::LeafNode, TreeSyncError},
+    treesync::{diff::TreeSyncDiff, node::leaf_node::LeafNode},
 };
 
 use super::{proposals::ProposalQueue, CoreGroup};
@@ -47,7 +47,9 @@ impl ApplyProposalsValues {
 /// `proposal_queue` is the queue of proposals received or sent in the
 /// current epoch `updates_key_package_bundles` is the list of own
 /// KeyPackageBundles corresponding to updates or commits sent in the
-/// current epoch
+/// current epoch.
+///
+/// Returns an error if the proposals have not been validated before.
 impl CoreGroup {
     pub(crate) fn apply_proposals(
         &self,
@@ -55,7 +57,7 @@ impl CoreGroup {
         backend: &impl OpenMlsCryptoProvider,
         proposal_queue: &ProposalQueue,
         key_package_bundles: &[KeyPackageBundle],
-    ) -> Result<ApplyProposalsValues, CoreGroupError> {
+    ) -> Result<ApplyProposalsValues, ApplyProposalsError> {
         log::debug!("Applying proposal");
         let mut has_updates = false;
         let mut has_removes = false;
@@ -98,11 +100,13 @@ impl CoreGroup {
                 // ValSem112
                 let hash_ref = match sender {
                     Sender::Member(hash_ref) => hash_ref,
-                    _ => return Err(CoreGroupError::SenderError(SenderError::NotAMember)),
+                    // This should not happen with validated proposals
+                    _ => return Err(LibraryError::custom("Update proposal from non-member").into()),
                 };
                 let sender_index = self
                     .sender_index(hash_ref)
-                    .map_err(|_| TreeSyncError::KeyPackageRefNotInTree)?;
+                    // This should not happen with validated proposals
+                    .map_err(|_| LibraryError::custom("Update proposal from non-member"))?;
                 let leaf_node: LeafNode = if sender_index == self.tree.own_leaf_index() {
                     let own_kpb = match key_package_bundles
                         .iter()
@@ -110,13 +114,14 @@ impl CoreGroup {
                     {
                         Some(kpb) => kpb,
                         // We lost the KeyPackageBundle apparently
-                        None => return Err(CoreGroupError::MissingKeyPackageBundle),
+                        None => return Err(ApplyProposalsError::MissingKeyPackageBundle),
                     };
                     LeafNode::new_from_bundle(own_kpb.clone(), backend.crypto())
                 } else {
                     LeafNode::new(update_proposal.key_package().clone(), backend.crypto())
                 }?;
-                diff.update_leaf(leaf_node, sender_index)?;
+                diff.update_leaf(leaf_node, sender_index)
+                    .map_err(|_| LibraryError::custom("Update proposal from non-member"))?;
             }
         }
 
@@ -132,8 +137,9 @@ impl CoreGroup {
                 }
                 // Blank the direct path of the removed member
                 if let Ok(removed_index) = self.sender_index(remove_proposal.removed()) {
-                    // The removed leaf might not actually exist.
-                    diff.blank_leaf(removed_index)?;
+                    diff.blank_leaf(removed_index)
+                        // The remove proposals were validated before, so this should not happen
+                        .map_err(|_| LibraryError::custom("Removed member not in tree"))?;
                 }
             }
         }
@@ -173,8 +179,17 @@ impl CoreGroup {
 
         let presharedkeys = PreSharedKeys { psks: psks.into() };
 
-        // Determine if Commit needs a path field
-        let path_required = has_updates || has_removes || external_init_secret_option.is_some();
+        // This flag determines if the commit requires a path. A path is
+        // required if the commit is empty, i.e. if it doesn't contain any
+        // proposals or if it is a "full" commit. A commit is full if it refers
+        // to proposal types other than Add, PreSharedKey and/or ReInit
+        // proposals.
+        let path_required = has_updates
+            || has_removes
+            // The fact that this is some implies that there's an external init
+            // proposal.
+            || external_init_secret_option.is_some()
+            || proposal_queue.is_empty();
 
         Ok(ApplyProposalsValues {
             path_required,

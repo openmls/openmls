@@ -64,7 +64,7 @@ pub struct QueuedProposal {
 impl QueuedProposal {
     /// Creates a new [QueuedProposal] from an [MlsPlaintext]
     pub(crate) fn from_mls_plaintext(
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         mls_plaintext: MlsPlaintext,
     ) -> Result<Self, LibraryError> {
@@ -82,7 +82,7 @@ impl QueuedProposal {
     }
     /// Creates a new [QueuedProposal] from a [Proposal] and [Sender]
     pub(crate) fn from_proposal_and_sender(
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         proposal: Proposal,
         sender: &Sender,
@@ -129,17 +129,21 @@ pub(crate) struct ProposalQueue {
 }
 
 impl ProposalQueue {
+    /// Returns `true` if the [`ProposalQueue`] is empty. Otherwise returns `false`.
+    pub(crate) fn is_empty(&self) -> bool {
+        self.proposal_references.is_empty()
+    }
     /// Returns a new `QueuedProposalQueue` from proposals that were committed and
     /// don't need filtering.
     /// This functions does the following checks:
     ///  - ValSem200
     pub(crate) fn from_committed_proposals(
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         committed_proposals: Vec<ProposalOrRef>,
         proposal_store: &ProposalStore,
         sender: &Sender,
-    ) -> Result<Self, ProposalQueueError> {
+    ) -> Result<Self, FromCommittedProposalsError> {
         // Feed the `proposals_by_reference` in a `HashMap` so that we can easily
         // extract then by reference later
         let mut proposals_by_reference_queue: HashMap<ProposalRef, QueuedProposal> = HashMap::new();
@@ -160,7 +164,7 @@ impl ProposalQueue {
                     if let Proposal::Remove(ref remove_proposal) = proposal {
                         if let Sender::Member(hash_ref) = sender {
                             if remove_proposal.removed() == hash_ref {
-                                return Err(ProposalQueueError::SelfRemoval);
+                                return Err(FromCommittedProposalsError::SelfRemoval);
                             }
                         }
                     }
@@ -180,14 +184,14 @@ impl ProposalQueue {
                             {
                                 if let Sender::Member(hash_ref) = sender {
                                     if remove_proposal.removed() == hash_ref {
-                                        return Err(ProposalQueueError::SelfRemoval);
+                                        return Err(FromCommittedProposalsError::SelfRemoval);
                                     }
                                 }
                             }
 
                             queued_proposal.clone()
                         }
-                        None => return Err(ProposalQueueError::ProposalNotFound),
+                        None => return Err(FromCommittedProposalsError::ProposalNotFound),
                     }
                 }
             };
@@ -325,7 +329,7 @@ impl ProposalQueue {
     /// Return a [`ProposalQueue`] and a bool that indicates whether Updates for the
     /// own node were included
     pub(crate) fn filter_proposals<'a>(
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         sender: Sender,
         proposal_store: &'a ProposalStore,

@@ -31,7 +31,7 @@
 //! use openmls::prelude::*;
 //! use openmls_rust_crypto::OpenMlsRustCrypto;
 //!
-//! let ciphersuite = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+//! let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 //! let backend = OpenMlsRustCrypto::default();
 //!
 //! let credential_bundle = CredentialBundle::new(
@@ -83,20 +83,16 @@ use tls_codec::{
 
 use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, signable::*, *},
-    config::{Config, ProtocolVersion},
     credentials::*,
     error::LibraryError,
     extensions::{
         CapabilitiesExtension, Extension, ExtensionError, ExtensionType, LifetimeExtension,
         ParentHashExtension, RequiredCapabilitiesExtension,
     },
+    versions::ProtocolVersion,
 };
 
-use serde::{
-    de::{self, MapAccess, SeqAccess, Visitor},
-    ser::{SerializeStruct, Serializer},
-    Deserialize, Deserializer, Serialize,
-};
+use serde::{Deserialize, Serialize};
 
 mod codec;
 pub mod errors;
@@ -108,10 +104,10 @@ mod test_key_packages;
 /// The unsigned payload of a key package.
 /// Any modification must happen on this unsigned struct. Use `sign` to get a
 /// signed key package.
-#[derive(Debug, Clone, PartialEq, TlsSize)]
+#[derive(Debug, Clone, PartialEq, TlsSize, Serialize, Deserialize)]
 struct KeyPackagePayload {
     protocol_version: ProtocolVersion,
-    ciphersuite: &'static Ciphersuite,
+    ciphersuite: Ciphersuite,
     hpke_init_key: HpkePublicKey,
     credential: Credential,
     extensions: TlsVecU32<Extension>,
@@ -126,14 +122,6 @@ impl tls_codec::Serialize for KeyPackagePayload {
         self.extensions.tls_serialize(writer).map(|l| l + written)
     }
 }
-
-implement_persistence!(
-    KeyPackagePayload,
-    protocol_version,
-    hpke_init_key,
-    credential,
-    extensions
-);
 
 impl Signable for KeyPackagePayload {
     type SignedOutput = KeyPackage;
@@ -335,9 +323,9 @@ impl KeyPackage {
         .map_err(LibraryError::unexpected_crypto_error)
     }
 
-    /// Get the [`CiphersuiteName`].
-    pub fn ciphersuite_name(&self) -> CiphersuiteName {
-        self.payload.ciphersuite.name()
+    /// Get the [`Ciphersuite`].
+    pub fn ciphersuite(&self) -> Ciphersuite {
+        self.payload.ciphersuite
     }
 }
 
@@ -347,21 +335,19 @@ impl KeyPackage {
     /// given `ciphersuite` and `identity`, and the initial HPKE key pair
     /// `init_key`.
     fn new(
-        ciphersuite_name: CiphersuiteName,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         hpke_init_key: HpkePublicKey,
         credential_bundle: &CredentialBundle,
         extensions: Vec<Extension>,
     ) -> Result<Self, KeyPackageError> {
-        if SignatureScheme::from(ciphersuite_name)
-            != credential_bundle.credential().signature_scheme()
-        {
+        if SignatureScheme::from(ciphersuite) != credential_bundle.credential().signature_scheme() {
             return Err(KeyPackageError::CiphersuiteSignatureSchemeMismatch);
         }
         let key_package = KeyPackagePayload {
             // TODO: #85 Take from global config.
             protocol_version: ProtocolVersion::default(),
-            ciphersuite: Config::ciphersuite(ciphersuite_name)?,
+            ciphersuite,
             hpke_init_key,
             credential: credential_bundle.credential().clone(),
             extensions: extensions.into(),
@@ -387,11 +373,6 @@ impl KeyPackage {
     /// Get a reference to the HPKE init key.
     pub(crate) fn hpke_init_key(&self) -> &HpkePublicKey {
         &self.payload.hpke_init_key
-    }
-
-    /// Get the `Ciphersuite`.
-    pub(crate) fn ciphersuite(&self) -> &'static Ciphersuite {
-        self.payload.ciphersuite
     }
 
     /// Get the `ProtocolVersion`.
@@ -524,7 +505,7 @@ impl KeyPackageBundle {
     ///
     /// Returns a new [`KeyPackageBundle`] or a [`KeyPackageError`].
     pub fn new(
-        ciphersuites: &[CiphersuiteName],
+        ciphersuites: &[Ciphersuite],
         credential_bundle: &CredentialBundle,
         backend: &impl OpenMlsCryptoProvider,
         extensions: Vec<Extension>,
@@ -550,18 +531,19 @@ impl KeyPackageBundle {
     /// Returns a new [`KeyPackageBundle`] or a [`KeyPackageError`].
     pub fn new_with_version(
         version: ProtocolVersion,
-        ciphersuites: &[CiphersuiteName],
+        ciphersuites: &[Ciphersuite],
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
         extensions: Vec<Extension>,
     ) -> Result<Self, KeyPackageError> {
+        debug_assert!(!ciphersuites.is_empty());
         if SignatureScheme::from(ciphersuites[0])
             != credential_bundle.credential().signature_scheme()
         {
             return Err(KeyPackageError::CiphersuiteSignatureSchemeMismatch);
         }
         debug_assert!(!ciphersuites.is_empty());
-        let ciphersuite = Config::ciphersuite(ciphersuites[0])?;
+        let ciphersuite = ciphersuites[0];
         let leaf_secret = Secret::random(ciphersuite, backend, version)?;
         Self::new_from_leaf_secret(
             ciphersuites,
@@ -586,7 +568,7 @@ impl KeyPackageBundle {
     ///
     /// Returns a new [`KeyPackageBundle`].
     pub fn new_with_keypair(
-        ciphersuites: &[CiphersuiteName],
+        ciphersuites: &[Ciphersuite],
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
         mut extensions: Vec<Extension>,
@@ -684,7 +666,7 @@ impl KeyPackageBundle {
 /// Crate visible `KeyPackageBundle` functions.
 impl KeyPackageBundle {
     pub(crate) fn new_from_leaf_secret(
-        ciphersuites: &[CiphersuiteName],
+        ciphersuites: &[Ciphersuite],
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
         extensions: Vec<Extension>,
@@ -699,7 +681,7 @@ impl KeyPackageBundle {
             return Err(error);
         }
 
-        let ciphersuite = Config::ciphersuite(ciphersuites[0])?;
+        let ciphersuite = ciphersuites[0];
         let leaf_node_secret = derive_leaf_node_secret(&leaf_secret, backend);
         let keypair = backend
             .crypto()

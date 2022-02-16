@@ -1,10 +1,18 @@
 use tls_codec::{TlsSerialize, TlsSize};
 
 use super::{Deserialize, LifetimeExtensionError, Serialize};
-use crate::config::Config;
 
 use std::io::Read;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+/// This value is used as the default lifetime of `KeyPackage`s if no default
+/// lifetime is configured. The value is in seconds and amounts to 3 * 28 Days,
+/// i.e. about 3 months.
+const DEFAULT_KEY_PACKAGE_LIFETIME: u64 = 60 * 60 * 24 * 28 * 3; // in Seconds
+/// This value is used as the default amount of time (in seconds) the lifetime
+/// of a `KeyPackage` is extended into the past to allow for skewed clocks. The
+/// value is in seconds and amounts to 1h.
+const DEFAULT_KEY_PACKAGE_LIFETIME_MARGIN: u64 = 60 * 60; // in Seconds
 
 /// # Life time extension
 ///
@@ -28,7 +36,7 @@ impl LifetimeExtension {
     /// Note that the lifetime is extended 1h into the past to adapt to skewed
     /// clocks, i.e. `not_before` is set to now - 1h.
     pub fn new(t: u64) -> Self {
-        let lifetime_margin: u64 = Config::key_package_lifetime_margin();
+        let lifetime_margin: u64 = DEFAULT_KEY_PACKAGE_LIFETIME_MARGIN;
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("SystemTime before UNIX EPOCH!")
@@ -53,7 +61,7 @@ impl LifetimeExtension {
 
 impl Default for LifetimeExtension {
     fn default() -> Self {
-        LifetimeExtension::new(Config::default_key_package_lifetime())
+        LifetimeExtension::new(DEFAULT_KEY_PACKAGE_LIFETIME)
     }
 }
 

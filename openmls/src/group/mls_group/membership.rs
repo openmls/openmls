@@ -6,7 +6,10 @@ use tls_codec::Serialize;
 
 use crate::{ciphersuite::hash_ref::HashReference, ciphersuite::hash_ref::KeyPackageRef};
 
-use super::*;
+use super::{
+    errors::{AddMembersError, LeaveGroupError, RemoveMembersError},
+    *,
+};
 
 impl MlsGroup {
     // === Membership management ===
@@ -25,11 +28,11 @@ impl MlsGroup {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         key_packages: &[KeyPackage],
-    ) -> Result<(MlsMessageOut, Welcome), MlsGroupError> {
+    ) -> Result<(MlsMessageOut, Welcome), AddMembersError> {
         self.is_operational()?;
 
         if key_packages.is_empty() {
-            return Err(MlsGroupError::EmptyInput(EmptyInputError::AddMembers));
+            return Err(AddMembersError::EmptyInput(EmptyInputError::AddMembers));
         }
 
         // Create inline add proposals from key packages
@@ -45,8 +48,13 @@ impl MlsGroup {
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
-            .read(&credential.signature_key().tls_serialize_detached()?)
-            .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
+            .read(
+                &credential
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)?,
+            )
+            .ok_or(AddMembersError::NoMatchingCredentialBundle)?;
 
         // Create Commit over all proposals
         // TODO #751
@@ -93,11 +101,13 @@ impl MlsGroup {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         members: &[KeyPackageRef],
-    ) -> Result<(MlsMessageOut, Option<Welcome>), MlsGroupError> {
+    ) -> Result<(MlsMessageOut, Option<Welcome>), RemoveMembersError> {
         self.is_operational()?;
 
         if members.is_empty() {
-            return Err(MlsGroupError::EmptyInput(EmptyInputError::RemoveMembers));
+            return Err(RemoveMembersError::EmptyInput(
+                EmptyInputError::RemoveMembers,
+            ));
         }
 
         // Create inline remove proposals
@@ -109,8 +119,13 @@ impl MlsGroup {
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
-            .read(&credential.signature_key().tls_serialize_detached()?)
-            .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
+            .read(
+                &credential
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)?,
+            )
+            .ok_or(RemoveMembersError::NoMatchingCredentialBundle)?;
 
         // Create Commit over all proposals
         // TODO #751
@@ -146,21 +161,34 @@ impl MlsGroup {
         backend: &impl OpenMlsCryptoProvider,
 
         key_package: &KeyPackage,
-    ) -> Result<MlsMessageOut, MlsGroupError> {
+    ) -> Result<MlsMessageOut, ProposeAddMemberError> {
         self.is_operational()?;
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
-            .read(&credential.signature_key().tls_serialize_detached()?)
-            .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
+            .read(
+                &credential
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)?,
+            )
+            .ok_or(ProposeAddMemberError::NoMatchingCredentialBundle)?;
 
-        let add_proposal = self.group.create_add_proposal(
-            self.framing_parameters(),
-            &credential_bundle,
-            key_package.clone(),
-            backend,
-        )?;
+        let add_proposal = self
+            .group
+            .create_add_proposal(
+                self.framing_parameters(),
+                &credential_bundle,
+                key_package.clone(),
+                backend,
+            )
+            .map_err(|e| match e {
+                crate::group::errors::CreateAddProposalError::LibraryError(e) => e.into(),
+                crate::group::errors::CreateAddProposalError::UnsupportedExtensions => {
+                    ProposeAddMemberError::UnsupportedExtensions
+                }
+            })?;
 
         self.proposal_store.add(QueuedProposal::from_mls_plaintext(
             self.ciphersuite(),
@@ -183,14 +211,19 @@ impl MlsGroup {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         member: &KeyPackageRef,
-    ) -> Result<MlsMessageOut, MlsGroupError> {
+    ) -> Result<MlsMessageOut, ProposeRemoveMemberError> {
         self.is_operational()?;
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
-            .read(&credential.signature_key().tls_serialize_detached()?)
-            .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
+            .read(
+                &credential
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)?,
+            )
+            .ok_or(ProposeRemoveMemberError::NoMatchingCredentialBundle)?;
 
         let remove_proposal = self.group.create_remove_proposal(
             self.framing_parameters(),
@@ -219,14 +252,22 @@ impl MlsGroup {
     pub fn leave_group(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsMessageOut, MlsGroupError> {
+    ) -> Result<MlsMessageOut, LeaveGroupError> {
         self.is_operational()?;
 
-        let credential = self.credential()?;
+        let credential = self
+            .credential()
+            // We checked we are in the right state above
+            .map_err(|_| LibraryError::custom("Wrong group state"))?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
-            .read(&credential.signature_key().tls_serialize_detached()?)
-            .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
+            .read(
+                &credential
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)?,
+            )
+            .ok_or(LeaveGroupError::NoMatchingCredentialBundle)?;
 
         let removed = self
             .group
@@ -245,18 +286,19 @@ impl MlsGroup {
             remove_proposal.clone(),
         )?);
 
-        self.plaintext_to_mls_message(remove_proposal, backend)
+        Ok(self.plaintext_to_mls_message(remove_proposal, backend)?)
     }
 
     /// Gets a list of [`KeyPackage`]s of the current group members.
-    pub fn members(&self) -> Result<Vec<&KeyPackage>, MlsGroupError> {
-        Ok(self
-            .group
-            .treesync()
-            .full_leaves()?
-            .iter()
-            .map(|(_, &kp)| kp)
-            .collect())
+    pub fn members(&self) -> Vec<&KeyPackage> {
+        match self.group.treesync().full_leaves() {
+            Ok(leaves) => leaves.iter().map(|(_, &kp)| kp).collect(),
+            // This should not happen, but this way we avoid returning a library error
+            Err(e) => {
+                log::debug!("treesync::full_leaves() returned an error: {:?}", e);
+                Vec::new()
+            }
+        }
     }
 
     /// Get the [`KeyPackage`] of a member corresponding to the given

@@ -58,22 +58,22 @@ impl MlsCiphertext {
     /// Try to create a new `MlsCiphertext` from an `MlsPlaintext`
     pub(crate) fn try_from_plaintext(
         mls_plaintext: &MlsPlaintext,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         header: MlsMessageHeader,
         message_secrets: &mut MessageSecrets,
         padding_size: usize,
-    ) -> Result<MlsCiphertext, MlsCiphertextError> {
+    ) -> Result<MlsCiphertext, MessageEncryptionError> {
         log::debug!("MlsCiphertext::try_from_plaintext");
         log::trace!("  ciphersuite: {}", ciphersuite);
         // Check the plaintext has the correct wire format
         if mls_plaintext.wire_format() != WireFormat::MlsCiphertext {
-            return Err(MlsCiphertextError::WrongWireFormat);
+            return Err(MessageEncryptionError::WrongWireFormat);
         }
         // Check that the plaintext has the right sender type
         let hash_ref = match mls_plaintext.sender() {
             Sender::Member(hash_ref) => hash_ref,
-            _ => return Err(MlsCiphertextError::SenderError(SenderError::NotAMember)),
+            _ => return Err(MessageEncryptionError::SenderError(SenderError::NotAMember)),
         };
         // Serialize the content AAD
         let mls_ciphertext_content_aad = MlsCiphertextContentAad {
@@ -158,12 +158,12 @@ impl MlsCiphertext {
         &self,
         message_secrets: &mut MessageSecrets,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
-    ) -> Result<MlsSenderData, MlsCiphertextError> {
+        ciphersuite: Ciphersuite,
+    ) -> Result<MlsSenderData, MessageDecryptionError> {
         log::debug!("Decrypting MlsCiphertext");
         // Check the ciphertext has the correct wire format
         if self.wire_format != WireFormat::MlsCiphertext {
-            return Err(MlsCiphertextError::WrongWireFormat);
+            return Err(MessageDecryptionError::WrongWireFormat);
         }
         // Derive key from the key schedule using the ciphertext.
         let sender_data_key = message_secrets
@@ -191,11 +191,11 @@ impl MlsCiphertext {
             )
             .map_err(|_| {
                 log::error!("Sender data decryption error");
-                MlsCiphertextError::DecryptionError
+                MessageDecryptionError::AeadError
             })?;
         log::trace!("  Successfully decrypted sender data.");
         MlsSenderData::tls_deserialize(&mut sender_data_bytes.as_slice())
-            .map_err(|_| MlsCiphertextError::MalformedContent)
+            .map_err(|_| MessageDecryptionError::MalformedContent)
     }
 
     /// Decrypt this [`MlsCiphertext`] and return the [`MlsCiphertextContent`].
@@ -205,7 +205,7 @@ impl MlsCiphertext {
         backend: &impl OpenMlsCryptoProvider,
         ratchet_key: AeadKey,
         ratchet_nonce: &AeadNonce,
-    ) -> Result<MlsCiphertextContent, MlsCiphertextError> {
+    ) -> Result<MlsCiphertextContent, MessageDecryptionError> {
         // Serialize content AAD
         let mls_ciphertext_content_aad_bytes = MlsCiphertextContentAad {
             group_id: self.group_id.clone(),
@@ -225,7 +225,7 @@ impl MlsCiphertext {
             )
             .map_err(|_| {
                 log::error!("  Ciphertext decryption error");
-                MlsCiphertextError::DecryptionError
+                MessageDecryptionError::AeadError
             })?;
         log_content!(
             trace,
@@ -236,20 +236,20 @@ impl MlsCiphertext {
             self.content_type,
             &mut mls_ciphertext_content_bytes.as_slice(),
         )
-        .map_err(|_| MlsCiphertextError::MalformedContent)
+        .map_err(|_| MessageDecryptionError::MalformedContent)
     }
 
     /// This function decrypts an [`MlsCiphertext`] into an [`VerifiableMlsPlaintext`].
     /// In order to get an [`MlsPlaintext`] the result must be verified.
     pub(crate) fn to_plaintext(
         &self,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         message_secrets: &mut MessageSecrets,
         sender_index: SecretTreeLeafIndex,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
         sender_data: MlsSenderData,
-    ) -> Result<VerifiableMlsPlaintext, MlsCiphertextError> {
+    ) -> Result<VerifiableMlsPlaintext, MessageDecryptionError> {
         let secret_type = SecretType::from(&self.content_type);
         // Extract generation and key material for encryption
         let (ratchet_key, mut ratchet_nonce) = message_secrets
@@ -264,7 +264,7 @@ impl MlsCiphertext {
             )
             .map_err(|_| {
                 log::error!("  Ciphertext generation out of bounds");
-                MlsCiphertextError::GenerationOutOfBound
+                MessageDecryptionError::GenerationOutOfBound
             })?;
         // Prepare the nonce by xoring with the reuse guard.
         ratchet_nonce.xor_with_reuse_guard(&sender_data.reuse_guard);

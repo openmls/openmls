@@ -136,10 +136,6 @@ impl SignaturePublicKey {
     ) -> Result<(), CryptoError> {
         backend
             .crypto()
-            .supports(self.signature_scheme)
-            .map_err(|_| CryptoError::UnsupportedSignatureScheme)?;
-        backend
-            .crypto()
             .verify_signature(
                 self.signature_scheme,
                 payload,

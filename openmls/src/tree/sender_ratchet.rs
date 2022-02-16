@@ -115,7 +115,7 @@ impl RatchetSecret {
     pub(crate) fn ratchet_forward(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
     ) -> Result<(Generation, RatchetKeyMaterial), SecretTreeError> {
         // Check if the generation is getting too large.
         if self.generation == u32::MAX {
@@ -197,7 +197,7 @@ impl DecryptionRatchet {
     /// is out of bound.
     pub(crate) fn secret_for_decryption(
         &mut self,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         generation: Generation,
         configuration: &SenderRatchetConfiguration,

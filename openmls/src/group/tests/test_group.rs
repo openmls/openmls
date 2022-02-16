@@ -12,10 +12,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::Serialize;
 
 #[apply(ciphersuites_and_backends)]
-fn create_commit_optional_path(
-    ciphersuite: &'static Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
+fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_aad = b"Alice's test group";
     // Framing parameters
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
@@ -24,14 +21,14 @@ fn create_commit_optional_path(
     let alice_credential_bundle = CredentialBundle::new(
         "Alice".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
     let bob_credential_bundle = CredentialBundle::new(
         "Bob".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
@@ -42,7 +39,7 @@ fn create_commit_optional_path(
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &alice_credential_bundle,
         backend,
         mandatory_extensions.clone(),
@@ -50,7 +47,7 @@ fn create_commit_optional_path(
     .expect("An unexpected error occurred.");
 
     let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &bob_credential_bundle,
         backend,
         mandatory_extensions.clone(),
@@ -59,7 +56,7 @@ fn create_commit_optional_path(
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let alice_update_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &alice_credential_bundle,
         backend,
         mandatory_extensions,
@@ -205,7 +202,7 @@ fn create_commit_optional_path(
 }
 
 #[apply(ciphersuites_and_backends)]
-fn basic_group_setup(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn basic_group_setup(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_aad = b"Alice's test group";
     // Framing parameters
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
@@ -214,30 +211,26 @@ fn basic_group_setup(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCr
     let alice_credential_bundle = CredentialBundle::new(
         "Alice".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
     let bob_credential_bundle = CredentialBundle::new(
         "Bob".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &bob_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let bob_key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
+            .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &alice_credential_bundle,
         backend,
         Vec::new(),
@@ -288,7 +281,7 @@ fn basic_group_setup(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCr
 ///  - Charlie updates and commits
 ///  - Charlie removes Bob
 #[apply(ciphersuites_and_backends)]
-fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_aad = b"Alice's test group";
     // Framing parameters
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
@@ -298,14 +291,14 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     let alice_credential_bundle = CredentialBundle::new(
         "Alice".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
     let bob_credential_bundle = CredentialBundle::new(
         "Bob".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
@@ -313,7 +306,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     // Mandatory extensions
     let capabilities_extension = Extension::Capabilities(CapabilitiesExtension::new(
         None,
-        Some(&[ciphersuite.name()]),
+        Some(&[ciphersuite]),
         None,
         None,
     ));
@@ -322,7 +315,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &alice_credential_bundle,
         backend,
         mandatory_extensions.clone(),
@@ -330,7 +323,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     .expect("An unexpected error occurred.");
 
     let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &bob_credential_bundle,
         backend,
         mandatory_extensions.clone(),
@@ -439,7 +432,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     // === Bob updates and commits ===
     let bob_update_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &bob_credential_bundle,
         backend,
         mandatory_extensions.clone(),
@@ -500,7 +493,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     // === Alice updates and commits ===
     let alice_update_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &alice_credential_bundle,
         backend,
         mandatory_extensions.clone(),
@@ -555,7 +548,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     // === Bob updates and Alice commits ===
     let bob_update_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &bob_credential_bundle,
         backend,
         mandatory_extensions.clone(),
@@ -622,13 +615,13 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     let charlie_credential_bundle = CredentialBundle::new(
         "Charlie".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
 
     let charlie_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &charlie_credential_bundle,
         backend,
         mandatory_extensions.clone(),
@@ -780,7 +773,7 @@ fn group_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
     // === Charlie updates and commits ===
     let charlie_update_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &charlie_credential_bundle,
         backend,
         mandatory_extensions,

@@ -1,5 +1,8 @@
 use super::*;
 
+/// The default NONCE size in bytes.
+pub(crate) const NONCE_BYTES: usize = 12;
+
 /// AEAD keys holding the plain key value and the AEAD algorithm type.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(feature = "test-utils", test), derive(Clone, PartialEq))]
@@ -21,17 +24,17 @@ impl AeadKey {
     pub(crate) fn from_secret(secret: Secret) -> Self {
         log::trace!("AeadKey::from_secret with {}", secret.ciphersuite);
         AeadKey {
-            aead_mode: secret.ciphersuite.aead,
+            aead_mode: secret.ciphersuite.aead_algorithm(),
             value: secret.value,
         }
     }
 
     #[cfg(test)]
     /// Generate a random AEAD Key
-    pub fn random(ciphersuite: &Ciphersuite, rng: &impl OpenMlsRand) -> Self {
+    pub fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsRand) -> Self {
         AeadKey {
-            aead_mode: ciphersuite.aead(),
-            value: aead_key_gen(ciphersuite.aead(), rng),
+            aead_mode: ciphersuite.aead_algorithm(),
+            value: aead_key_gen(ciphersuite.aead_algorithm(), rng),
         }
     }
 

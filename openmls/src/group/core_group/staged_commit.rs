@@ -36,6 +36,10 @@ impl CoreGroup {
     ///  - ValSem111
     ///  - ValSem112
     ///  - ValSem201
+    ///  - ValSem202: Path must be the right length
+    ///  - ValSem203: Path secrets must decrypt correctly
+    ///  - ValSem204: Public keys from Path must be verified and match the
+    ///               private keys from the direct path
     ///  - ValSem205
     ///  - ValSem240
     ///  - ValSem241
@@ -97,7 +101,11 @@ impl CoreGroup {
             proposal_store,
             sender,
         )
-        .map_err(|_| StageCommitError::MissingProposal)?;
+        .map_err(|e| match e {
+            FromCommittedProposalsError::LibraryError(e) => StageCommitError::LibraryError(e),
+            FromCommittedProposalsError::ProposalNotFound => StageCommitError::MissingProposal,
+            FromCommittedProposalsError::SelfRemoval => StageCommitError::AttemptedSelfRemoval,
+        })?;
 
         let commit_update_key_package = commit
             .path()
@@ -222,9 +230,11 @@ impl CoreGroup {
                 exclusion_list: &apply_proposals_values.exclusion_list(),
                 group_context: &serialized_context,
             };
+            // ValSem202: Path must be the right length
+            // ValSem203: Path secrets must decrypt correctly
+            // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
             let (plain_path, commit_secret) =
                 diff.decrypt_path(backend, ciphersuite, decrypt_path_params)?;
-
             diff.apply_received_update_path(
                 backend,
                 ciphersuite,

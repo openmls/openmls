@@ -11,7 +11,6 @@ use rstest_reuse::{self, *};
 
 use crate::{
     ciphersuite::signable::{Signable, Verifiable},
-    config::*,
     credentials::*,
     framing::*,
     group::errors::{ExternalCommitValidationError, StageCommitError},
@@ -35,7 +34,7 @@ struct ECValidationTestSetup {
 // Validation test setup
 fn validation_test_setup(
     wire_format_policy: WireFormatPolicy,
-    ciphersuite: &'static Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) -> ECValidationTestSetup {
     let group_id = GroupId::from_slice(b"Test Group");
@@ -44,7 +43,7 @@ fn validation_test_setup(
     let alice_credential = generate_credential_bundle(
         "Alice".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
@@ -52,14 +51,14 @@ fn validation_test_setup(
     let bob_credential = generate_credential_bundle(
         "Bob".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
     let alice_key_package =
-        generate_key_package_bundle(&[ciphersuite.name()], &alice_credential, vec![], backend)
+        generate_key_package_bundle(&[ciphersuite], &alice_credential, vec![], backend)
             .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
@@ -134,7 +133,7 @@ fn validation_test_setup(
 
 // ValSem240: External Commit, inline Proposals: There MUST be at least one ExternalInit proposal.
 #[apply(ciphersuites_and_backends)]
-fn test_valsem240(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem240(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test with MlsPlaintext
     let ECValidationTestSetup {
         mut alice_group,
@@ -212,7 +211,7 @@ fn test_valsem240(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
 // ValSem241: External Commit, inline Proposals: There MUST be at most one ExternalInit proposal.
 #[apply(ciphersuites_and_backends)]
-fn test_valsem241(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem241(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test with MlsPlaintext
     let ECValidationTestSetup {
         mut alice_group,
@@ -286,7 +285,7 @@ fn test_valsem241(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
 // ValSem242: External Commit, inline Proposals: There MUST NOT be any Add proposals.
 #[apply(ciphersuites_and_backends)]
-fn test_valsem242(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test with MlsPlaintext
     let ECValidationTestSetup {
         mut alice_group,
@@ -302,7 +301,7 @@ fn test_valsem242(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     };
 
     let bob_key_package = generate_key_package_bundle(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         bob_credential_bundle.credential(),
         vec![],
         backend,
@@ -367,7 +366,7 @@ fn test_valsem242(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
 // ValSem243: External Commit, inline Proposals: There MUST NOT be any Update proposals.
 #[apply(ciphersuites_and_backends)]
-fn test_valsem243(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test with MlsPlaintext
     let ECValidationTestSetup {
         mut alice_group,
@@ -382,7 +381,7 @@ fn test_valsem243(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     // error before we get the external commit specific one.
 
     let bob_key_package = generate_key_package_bundle(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         bob_credential_bundle.credential(),
         vec![],
         backend,
@@ -438,7 +437,7 @@ fn test_valsem243(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     };
 
     let bob_key_package = generate_key_package_bundle(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         bob_credential_bundle.credential(),
         vec![],
         backend,
@@ -501,7 +500,7 @@ fn test_valsem243(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
 // ValSem244: External Commit, inline Remove Proposal: The identity and the endpoint_id of the removed leaf are identical to the ones in the path KeyPackage.
 #[apply(ciphersuites_and_backends)]
-fn test_valsem244(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test with MlsPlaintext
     let ECValidationTestSetup {
         mut alice_group,
@@ -514,7 +513,7 @@ fn test_valsem244(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     // proposal to remove his former self.
 
     let bob_key_package = generate_key_package_bundle(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         bob_credential_bundle.credential(),
         vec![],
         backend,
@@ -640,7 +639,7 @@ fn test_valsem244(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
 // ValSem245: External Commit, referenced Proposals: There MUST NOT be any ExternalInit proposals.
 #[apply(ciphersuites_and_backends)]
-fn test_valsem245(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test with MlsPlaintext
     let ECValidationTestSetup {
         mut alice_group,
@@ -727,7 +726,7 @@ fn test_valsem245(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
 // ValSem246: External Commit: MUST contain a path.
 #[apply(ciphersuites_and_backends)]
-fn test_valsem246(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test with MlsPlaintext
     let ECValidationTestSetup {
         mut alice_group,
@@ -788,7 +787,7 @@ fn test_valsem246(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
 // ValSem247: External Commit: The signature of the MLSPlaintext MUST be verified with the credential of the KeyPackage in the included `path`.
 #[apply(ciphersuites_and_backends)]
-fn test_valsem247(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem247(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test with MlsPlaintext
     let ECValidationTestSetup {
         mut alice_group,
@@ -809,14 +808,14 @@ fn test_valsem247(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     let bob_new_credential = generate_credential_bundle(
         "Bob".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackage
     let bob_new_key_package =
-        generate_key_package_bundle(&[ciphersuite.name()], &bob_new_credential, vec![], backend)
+        generate_key_package_bundle(&[ciphersuite], &bob_new_credential, vec![], backend)
             .expect("An unexpected error occurred.");
 
     if let Some(ref mut path) = content.path {

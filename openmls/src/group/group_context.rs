@@ -42,7 +42,7 @@ impl GroupContext {
 
     /// Create the `GroupContext` needed upon creation of a new group.
     pub(crate) fn create_initial_group_context(
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         group_id: GroupId,
         tree_hash: Vec<u8>,
         extensions: &[Extension],

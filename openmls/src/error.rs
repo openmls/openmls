@@ -82,6 +82,13 @@ enum InternalLibraryError {
     Custom(String),
 }
 
+/// OpenMLS Error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum OpenMlsError {
+    #[error("Unsupported MLS version.")]
+    UnsupportedMlsVersion,
+}
+
 // Macro helpers
 
 macro_rules! as_item {

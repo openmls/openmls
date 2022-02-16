@@ -9,7 +9,7 @@ use rstest_reuse::{self, *};
 use tls_codec::Serialize;
 
 use crate::{
-    config::*, credentials::*, framing::MlsMessageOut, group::errors::*, group::*, key_packages::*,
+    credentials::*, framing::MlsMessageOut, group::errors::*, group::*, key_packages::*,
     messages::Welcome,
 };
 
@@ -18,13 +18,13 @@ use super::utils::{generate_credential_bundle, generate_key_package_bundle};
 /// Helper function to generate and output CredentialBundle and KeyPackageBundle
 fn generate_credential_bundle_and_key_package_bundle(
     identity: Vec<u8>,
-    ciphersuite: &Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) -> (CredentialBundle, KeyPackageBundle) {
     let credential = generate_credential_bundle(
         identity,
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("Failed to generate CredentialBundle.");
@@ -38,9 +38,8 @@ fn generate_credential_bundle_and_key_package_bundle(
         )
         .expect("An unexpected error occurred.");
 
-    let key_package =
-        generate_key_package_bundle(&[ciphersuite.name()], &credential, vec![], backend)
-            .expect("Failed to generate KeyPackage.");
+    let key_package = generate_key_package_bundle(&[ciphersuite], &credential, vec![], backend)
+        .expect("Failed to generate KeyPackage.");
     let key_package_bundle = backend
         .key_store()
         .read(
@@ -59,7 +58,7 @@ fn create_group_with_members(
     alice_key_package_bundle: KeyPackageBundle,
     member_key_packages: &[KeyPackage],
     backend: &impl OpenMlsCryptoProvider,
-) -> Result<(MlsMessageOut, Welcome), MlsGroupError> {
+) -> Result<(MlsMessageOut, Welcome), AddMembersError> {
     let mut alice_group = MlsGroup::new(
         backend,
         &MlsGroupConfig::default(),
@@ -86,7 +85,7 @@ enum KeyUniqueness {
 /// Add Proposal:
 /// Identity in proposals must be unique among proposals
 #[apply(ciphersuites_and_backends)]
-fn test_valsem100(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     for (bob_id, charlie_id) in [
         ("42", "42"), // Negative Case: Bob and Charlie have same identity
         ("42", "24"), // Positive Case: Bob and Charlie have different identity
@@ -119,7 +118,7 @@ fn test_valsem100(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
             let err = res.expect_err("was able to add users with the same identity!");
             assert_eq!(
                 err,
-                MlsGroupError::Group(CoreGroupError::ProposalValidationError(
+                AddMembersError::CreateCommitError(CreateCommitError::ProposalValidationError(
                     ProposalValidationError::DuplicateIdentityAddProposal
                 ))
             );
@@ -136,7 +135,7 @@ fn test_valsem100(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 /// Add Proposal:
 /// Signature public key in proposals must be unique among proposals
 #[apply(ciphersuites_and_backends)]
-fn test_valsem101(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     for bob_and_charlie_share_keys in [
         KeyUniqueness::NegativeSameKey,
         KeyUniqueness::PositiveDifferentKey,
@@ -152,7 +151,7 @@ fn test_valsem101(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         match bob_and_charlie_share_keys {
             KeyUniqueness::NegativeSameKey => {
                 let shared_signature_keypair =
-                    SignatureKeypair::new(ciphersuite.signature_scheme(), backend)
+                    SignatureKeypair::new(ciphersuite.signature_algorithm(), backend)
                         .expect("failed to generate signature keypair");
 
                 bob_signature_keypair = shared_signature_keypair.clone();
@@ -160,10 +159,10 @@ fn test_valsem101(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
             }
             KeyUniqueness::PositiveDifferentKey => {
                 bob_signature_keypair =
-                    SignatureKeypair::new(ciphersuite.signature_scheme(), backend)
+                    SignatureKeypair::new(ciphersuite.signature_algorithm(), backend)
                         .expect("failed to generate signature keypair");
                 charlie_signature_keypair =
-                    SignatureKeypair::new(ciphersuite.signature_scheme(), backend)
+                    SignatureKeypair::new(ciphersuite.signature_algorithm(), backend)
                         .expect("failed to generate signature keypair");
             }
         }
@@ -173,21 +172,13 @@ fn test_valsem101(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         let charlie_credential_bundle =
             CredentialBundle::from_parts("Charlie".into(), charlie_signature_keypair);
 
-        let bob_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
-            &bob_credential_bundle,
-            backend,
-            vec![],
-        )
-        .expect("failed to generate key package");
+        let bob_key_package_bundle =
+            KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, vec![])
+                .expect("failed to generate key package");
         let bob_key_package = bob_key_package_bundle.key_package().clone();
-        let charlie_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
-            &charlie_credential_bundle,
-            backend,
-            vec![],
-        )
-        .expect("failed to generate key package");
+        let charlie_key_package_bundle =
+            KeyPackageBundle::new(&[ciphersuite], &charlie_credential_bundle, backend, vec![])
+                .expect("failed to generate key package");
         let charlie_key_package = charlie_key_package_bundle.key_package().clone();
 
         // 1. Alice creates a group and tries to add Bob and Charlie to it
@@ -202,7 +193,7 @@ fn test_valsem101(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
                 let err = res.expect_err("was able to add users with the same signature key!");
                 assert_eq!(
                     err,
-                    MlsGroupError::Group(CoreGroupError::ProposalValidationError(
+                    AddMembersError::CreateCommitError(CreateCommitError::ProposalValidationError(
                         ProposalValidationError::DuplicateSignatureKeyAddProposal
                     ))
                 );
@@ -220,7 +211,7 @@ fn test_valsem101(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 /// Add Proposal:
 /// HPKE init key in proposals must be unique among proposals
 #[apply(ciphersuites_and_backends)]
-fn test_valsem102(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     for bob_and_charlie_share_keys in [
         KeyUniqueness::NegativeSameKey,
         KeyUniqueness::PositiveDifferentKey,
@@ -247,7 +238,7 @@ fn test_valsem102(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
                 .expect("failed to generate random leaf secret");
 
                 bob_key_package_bundle = KeyPackageBundle::new_from_leaf_secret(
-                    &[ciphersuite.name()],
+                    &[ciphersuite],
                     backend,
                     &bob_credential_bundle,
                     vec![],
@@ -255,7 +246,7 @@ fn test_valsem102(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
                 )
                 .expect("failed to generate key package");
                 charlie_key_package_bundle = KeyPackageBundle::new_from_leaf_secret(
-                    &[ciphersuite.name()],
+                    &[ciphersuite],
                     backend,
                     &charlie_credential_bundle,
                     vec![],
@@ -284,7 +275,7 @@ fn test_valsem102(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
                 let err = res.expect_err("was able to add users with the same HPKE init key!");
                 assert_eq!(
                     err,
-                    MlsGroupError::Group(CoreGroupError::ProposalValidationError(
+                    AddMembersError::CreateCommitError(CreateCommitError::ProposalValidationError(
                         ProposalValidationError::DuplicatePublicKeyAddProposal
                     ))
                 );
@@ -302,7 +293,7 @@ fn test_valsem102(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 /// Add Proposal:
 /// Identity in proposals must be unique among existing group members
 #[apply(ciphersuites_and_backends)]
-fn test_valsem103(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem103(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     for (alice_id, bob_id) in [
         ("42", "42"), // Negative Case: Alice and Bob have same identity
         ("42", "24"), // Positive Case: Alice and Bob have different identity
@@ -328,7 +319,7 @@ fn test_valsem103(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
             );
             assert_eq!(
                 err,
-                MlsGroupError::Group(CoreGroupError::ProposalValidationError(
+                AddMembersError::CreateCommitError(CreateCommitError::ProposalValidationError(
                     ProposalValidationError::ExistingIdentityAddProposal
                 ))
             );

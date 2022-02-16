@@ -146,7 +146,7 @@ impl SecretTree {
     /// calculating and deleting the appropriate values in the SecretTree
     fn initialize_sender_ratchets(
         &mut self,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         index: SecretTreeLeafIndex,
     ) -> Result<(), SecretTreeError> {
@@ -240,7 +240,7 @@ impl SecretTree {
     /// Returns an error if index or generation are out of bound.
     pub(crate) fn secret_for_decryption(
         &mut self,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         index: SecretTreeLeafIndex,
         secret_type: SecretType,
@@ -273,7 +273,7 @@ impl SecretTree {
     /// then increments the generation.
     pub(crate) fn secret_for_encryption(
         &mut self,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         index: SecretTreeLeafIndex,
         secret_type: SecretType,
@@ -328,7 +328,7 @@ impl SecretTree {
     /// parent leaf.
     fn derive_down(
         &mut self,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         index_in_tree: SecretTreeNodeIndex,
     ) -> Result<(), SecretTreeError> {

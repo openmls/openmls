@@ -16,8 +16,8 @@ use openmls_traits::{
     crypto::OpenMlsCrypto,
     random::OpenMlsRand,
     types::{
-        AeadType, CryptoError, ExporterSecret, HashType, HpkeAeadType, HpkeCiphertext, HpkeConfig,
-        HpkeKdfType, HpkeKemType, HpkeKeyPair, KemOutput, SignatureScheme,
+        AeadType, Ciphersuite, CryptoError, ExporterSecret, HashType, HpkeAeadType, HpkeCiphertext,
+        HpkeConfig, HpkeKdfType, HpkeKemType, HpkeKeyPair, KemOutput, SignatureScheme,
     },
 };
 use rand::{RngCore, SeedableRng};
@@ -95,15 +95,21 @@ fn hmac_from_hash(hash_type: HashType) -> HmacMode {
 }
 
 impl OpenMlsCrypto for EvercryptProvider {
-    /// Returns an error if the `signature_scheme` is not supported by evercrypt.
-    fn supports(&self, signature_scheme: SignatureScheme) -> Result<(), CryptoError> {
-        if signature_mode(signature_scheme).is_err()
-            || hash_from_signature(signature_scheme).is_err()
-        {
-            Err(CryptoError::UnsupportedSignatureScheme)
-        } else {
-            Ok(())
+    fn supports(&self, ciphersuite: Ciphersuite) -> Result<(), CryptoError> {
+        match ciphersuite {
+            Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519
+            | Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
+            | Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256 => Ok(()),
+            _ => Err(CryptoError::UnsupportedCiphersuite),
         }
+    }
+
+    fn supported_ciphersuites(&self) -> Vec<Ciphersuite> {
+        vec![
+            Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+            Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+            Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
+        ]
     }
 
     /// Returns `HKDF::extract` with the given parameters or an error if the HKDF

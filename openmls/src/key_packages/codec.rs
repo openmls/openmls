@@ -1,7 +1,7 @@
 use std::io::Read;
 
-use crate::config::{Config, ProtocolVersion};
 use crate::key_packages::*;
+use crate::versions::ProtocolVersion;
 
 impl tls_codec::Size for KeyPackage {
     #[inline]
@@ -35,16 +35,14 @@ impl tls_codec::Serialize for KeyPackage {
 impl tls_codec::Deserialize for KeyPackage {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
         let protocol_version = ProtocolVersion::tls_deserialize(bytes)?;
-        let cipher_suite_name = CiphersuiteName::tls_deserialize(bytes)?;
+        let ciphersuite = Ciphersuite::tls_deserialize(bytes)?;
         let hpke_init_key = HpkePublicKey::tls_deserialize(bytes)?;
         let credential = Credential::tls_deserialize(bytes)?;
         let extensions = TlsVecU32::tls_deserialize(bytes)?;
         let signature = Signature::tls_deserialize(bytes)?;
         let payload = KeyPackagePayload {
             protocol_version,
-            ciphersuite: Config::ciphersuite(cipher_suite_name).map_err(|e| {
-                tls_codec::Error::DecodingError(format!("Invalid cipher suite {:?}", e))
-            })?,
+            ciphersuite,
             hpke_init_key,
             credential,
             extensions,

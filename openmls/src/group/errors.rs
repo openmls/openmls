@@ -4,13 +4,12 @@
 //! `CreateCommitError`.
 
 use crate::{
-    config::ConfigError,
     credentials::CredentialError,
     error::LibraryError,
     extensions::errors::ExtensionError,
-    framing::errors::{MlsCiphertextError, SenderError, ValidationError},
+    framing::errors::{MessageDecryptionError, SenderError, ValidationError},
     key_packages::KeyPackageError,
-    schedule::{KeyScheduleError, PskError},
+    schedule::PskError,
     treesync::errors::*,
 };
 use openmls_traits::types::CryptoError;
@@ -29,7 +28,7 @@ pub enum CoreGroupError {
     #[error("No signature key was found.")]
     NoSignatureKey,
     #[error(transparent)]
-    MlsCiphertextError(#[from] MlsCiphertextError),
+    MlsCiphertextError(#[from] MessageDecryptionError),
     #[error(transparent)]
     WelcomeError(#[from] WelcomeError),
     #[error(transparent)]
@@ -39,15 +38,11 @@ pub enum CoreGroupError {
     #[error(transparent)]
     CreateCommitError(#[from] CreateCommitError),
     #[error(transparent)]
-    ConfigError(#[from] ConfigError),
-    #[error(transparent)]
     ExporterError(#[from] ExporterError),
     #[error(transparent)]
     ProposalQueueError(#[from] ProposalQueueError),
     #[error(transparent)]
     CodecError(#[from] TlsCodecError),
-    #[error(transparent)]
-    KeyScheduleError(#[from] KeyScheduleError),
     #[error(transparent)]
     PskSecretError(#[from] PskError),
     #[error(transparent)]
@@ -115,6 +110,10 @@ pub enum WelcomeError {
     PskTooManyKeys,
     #[error("The PSK could not be found in the key store.")]
     PskNotFound,
+    #[error("No matching KeyPackageBundle was found in the key store.")]
+    NoMatchingKeyPackageBundle,
+    #[error("Failed to delete the KeyPackageBundle from the key store.")]
+    KeyStoreDeletionError,
     /// This error indicates the public tree is invalid. See [`PublicTreeError`] for more details.
     #[error(transparent)]
     PublicTreeError(#[from] PublicTreeError),
@@ -165,6 +164,8 @@ pub enum StageCommitError {
     ConfirmationTagMissing,
     #[error("The confirmation tag is invalid.")]
     ConfirmationTagMismatch,
+    #[error("The committer can't remove themselves.")]
+    AttemptedSelfRemoval,
     #[error("The proposal queue is missing a proposal for the commit.")]
     MissingProposal,
     #[error("Missing own key to apply proposal.")]
@@ -185,16 +186,34 @@ pub enum StageCommitError {
     UpdatePathError(#[from] ApplyUpdatePathError),
 }
 
-// === Crate errors ===
-
 /// Create commit error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum CreateCommitError {
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    #[error("Missing own key to apply proposal.")]
+    OwnKeyNotFound,
     #[error("The Commit tried to remove self from the group. This is not possible.")]
     CannotRemoveSelf,
+    #[error("The proposal queue is missing a proposal for the commit.")]
+    MissingProposal,
+    #[error("A proposal has the wrong sender type.")]
+    WrongProposalSenderType,
+    #[error(transparent)]
+    PskError(#[from] PskError),
+    #[error(transparent)]
+    ProposalValidationError(#[from] ProposalValidationError),
 }
+
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum CreateAddProposalError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The KeyPackage does not support all required extensions.")]
+    UnsupportedExtensions,
+}
+
+// === Crate errors ===
 
 /// Exporter error
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -212,10 +231,20 @@ pub enum ProposalQueueError {
     LibraryError(#[from] LibraryError),
     #[error("Not all proposals in the Commit were found locally.")]
     ProposalNotFound,
-    #[error("The sender of a Commit tried to remove themselves.")]
-    SelfRemoval,
     #[error(transparent)]
     SenderError(#[from] SenderError),
+}
+
+/// Errors that can arise when creating a [`ProposalQueue`] from committed
+/// proposals.
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum FromCommittedProposalsError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("Not all proposals in the Commit were found locally.")]
+    ProposalNotFound,
+    #[error("The sender of a Commit tried to remove themselves.")]
+    SelfRemoval,
 }
 
 /// Creation proposal queue error
@@ -306,4 +335,13 @@ pub enum ExternalCommitValidationError {
     NoPath,
     #[error("The remove proposal referenced a non-existing member.")]
     UnknownMemberRemoval,
+}
+
+// Apply proposals error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ApplyProposalsError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("Own KeyPackageBundle was not found in the key store.")]
+    MissingKeyPackageBundle,
 }

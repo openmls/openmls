@@ -13,12 +13,12 @@ lazy_static! {
 fn generate_credential_bundle(
     identity: Vec<u8>,
     credential_type: CredentialType,
-    signature_scheme: SignatureScheme,
+    signature_algorithm: SignatureScheme,
     backend: &impl OpenMlsCryptoProvider,
 ) -> Result<Credential, CredentialError> {
     // ANCHOR: create_credential_bundle
     let credential_bundle =
-        CredentialBundle::new(identity, credential_type, signature_scheme, backend)?;
+        CredentialBundle::new(identity, credential_type, signature_algorithm, backend)?;
     // ANCHOR_END: create_credential_bundle
     // ANCHOR: store_credential_bundle
     let credential = credential_bundle.credential().clone();
@@ -37,7 +37,7 @@ fn generate_credential_bundle(
 }
 
 fn generate_key_package_bundle(
-    ciphersuites: &[CiphersuiteName],
+    ciphersuites: &[Ciphersuite],
     credential: &Credential,
     backend: &impl OpenMlsCryptoProvider,
 ) -> Result<KeyPackage, KeyPackageError> {
@@ -95,7 +95,7 @@ fn generate_key_package_bundle(
 ///  - Bob leaves
 ///  - Test saving the group state
 #[apply(ciphersuites_and_backends)]
-fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // ANCHOR: set_group_id
     let group_id = GroupId::from_slice(b"Test Group");
     // ANCHOR_END: set_group_id
@@ -104,7 +104,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     let alice_credential = generate_credential_bundle(
         "Alice".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
@@ -112,7 +112,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     let bob_credential = generate_credential_bundle(
         "Bob".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
@@ -120,19 +120,17 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     let charlie_credential = generate_credential_bundle(
         "Charlie".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package =
-        generate_key_package_bundle(&[ciphersuite.name()], &alice_credential, backend)
-            .expect("An unexpected error occurred.");
+    let alice_key_package = generate_key_package_bundle(&[ciphersuite], &alice_credential, backend)
+        .expect("An unexpected error occurred.");
 
-    let bob_key_package =
-        generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, backend)
-            .expect("An unexpected error occurred.");
+    let bob_key_package = generate_key_package_bundle(&[ciphersuite], &bob_credential, backend)
+        .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
     // ANCHOR: mls_group_config_example
@@ -196,18 +194,10 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
         .expect("error merging pending commit");
 
     // Check that the group now has two members
-    assert_eq!(
-        alice_group
-            .members()
-            .expect("error getting members from group")
-            .len(),
-        2
-    );
+    assert_eq!(alice_group.members().len(), 2);
 
     // Check that Alice & Bob are the members of the group
-    let members = alice_group
-        .members()
-        .expect("error getting members from group");
+    let members = alice_group.members();
     assert_eq!(members[0].credential().identity(), b"Alice");
     assert_eq!(members[1].credential().identity(), b"Bob");
 
@@ -222,14 +212,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     // ANCHOR_END: bob_joins_with_welcome
 
     // Make sure that both groups have the same members
-    assert_eq!(
-        alice_group
-            .members()
-            .expect("error getting members from group"),
-        bob_group
-            .members()
-            .expect("error getting members from group")
-    );
+    assert_eq!(alice_group.members(), bob_group.members());
 
     // Make sure that both groups have the same authentication secret
     assert_eq!(
@@ -427,7 +410,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 
     // === Bob adds Charlie ===
     let charlie_key_package =
-        generate_key_package_bundle(&[ciphersuite.name()], &charlie_credential, backend)
+        generate_key_package_bundle(&[ciphersuite], &charlie_credential, backend)
             .expect("An unexpected error occurred.");
 
     let (queued_message, welcome) = match bob_group.add_members(backend, &[charlie_key_package]) {
@@ -473,7 +456,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     );
 
     // Check that Alice, Bob & Charlie are the members of the group
-    let members = alice_group.members().expect("error getting member");
+    let members = alice_group.members();
     assert_eq!(members[0].credential().identity(), b"Alice");
     assert_eq!(members[1].credential().identity(), b"Bob");
     assert_eq!(members[2].credential().identity(), b"Charlie");
@@ -576,9 +559,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     );
 
     // ANCHOR: retrieve_members
-    let charlie_members = charlie_group
-        .members()
-        .expect("Error retrieving list of group members.");
+    let charlie_members = charlie_group.members();
     // ANCHOR_END: retrieve_members
 
     let bob_kp_ref = charlie_members
@@ -612,9 +593,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 
     // Check that alice can use the member list to check if the message is
     // actually from Charlie.
-    let alice_members = alice_group
-        .members()
-        .expect("Error getting list of members");
+    let alice_members = alice_group.members();
     let sender_credential = unverified_message
         .credential()
         .expect("Couldn't retrieve credential from unverified message.");
@@ -709,7 +688,7 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 
     // Check that Bob's group is no longer active
     assert!(!bob_group.is_active());
-    let members = bob_group.members().expect("Error getting list of members.");
+    let members = bob_group.members();
     assert_eq!(members.len(), 2);
     assert_eq!(members[0].credential().identity(), b"Alice");
     assert_eq!(members[1].credential().identity(), b"Charlie");
@@ -722,13 +701,10 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     );
 
     // Make sure the group only contains two members
-    assert_eq!(
-        alice_group.members().expect("error getting members").len(),
-        2
-    );
+    assert_eq!(alice_group.members().len(), 2);
 
     // Check that Alice & Charlie are the members of the group
-    let members = alice_group.members().expect("error getting members");
+    let members = alice_group.members();
     assert_eq!(members[0].credential().identity(), b"Alice");
     assert_eq!(members[1].credential().identity(), b"Charlie");
 
@@ -740,9 +716,8 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     // === Alice removes Charlie and re-adds Bob ===
 
     // Create a new KeyPackageBundle for Bob
-    let bob_key_package =
-        generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, backend)
-            .expect("An unexpected error occurred.");
+    let bob_key_package = generate_key_package_bundle(&[ciphersuite], &bob_credential, backend)
+        .expect("An unexpected error occurred.");
 
     // Create RemoveProposal and process it
     // ANCHOR: propose_remove
@@ -857,13 +832,10 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     }
 
     // Make sure the group contains two members
-    assert_eq!(
-        alice_group.members().expect("error getting members").len(),
-        2
-    );
+    assert_eq!(alice_group.members().len(), 2);
 
     // Check that Alice & Bob are the members of the group
-    let members = alice_group.members().expect("error getting members");
+    let members = alice_group.members();
     assert_eq!(members[0].credential().identity(), b"Alice");
     assert_eq!(members[1].credential().identity(), b"Bob");
 
@@ -877,21 +849,18 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     .expect("Error creating group from Welcome");
 
     // Make sure the group contains two members
-    assert_eq!(
-        alice_group.members().expect("error getting members").len(),
-        2
-    );
+    assert_eq!(alice_group.members().len(), 2);
 
     // Check that Alice & Bob are the members of the group
-    let members = alice_group.members().expect("error getting members");
+    let members = alice_group.members();
     assert_eq!(members[0].credential().identity(), b"Alice");
     assert_eq!(members[1].credential().identity(), b"Bob");
 
     // Make sure the group contains two members
-    assert_eq!(bob_group.members().expect("error getting members").len(), 2);
+    assert_eq!(bob_group.members().len(), 2);
 
     // Check that Alice & Bob are the members of the group
-    let members = bob_group.members().expect("error getting members");
+    let members = bob_group.members();
     assert_eq!(members[0].credential().identity(), b"Alice");
     assert_eq!(members[1].credential().identity(), b"Bob");
 
@@ -968,9 +937,9 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     // Should fail because you cannot remove yourself from a group
     assert_eq!(
         bob_group.commit_to_pending_proposals(backend,),
-        Err(MlsGroupError::Group(CoreGroupError::CreateCommitError(
+        Err(MlsGroupError::CreateCommit(
             CreateCommitError::CannotRemoveSelf
-        )))
+        ))
     );
 
     let (queued_message, _welcome_option) = alice_group
@@ -1049,21 +1018,17 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
     assert!(!bob_group.is_active());
 
     // Make sure the group contains one member
-    assert_eq!(
-        alice_group.members().expect("error getting members").len(),
-        1
-    );
+    assert_eq!(alice_group.members().len(), 1);
 
     // Check that Alice is the only member of the group
-    let members = alice_group.members().expect("error getting members");
+    let members = alice_group.members();
     assert_eq!(members[0].credential().identity(), b"Alice");
 
     // === Save the group state ===
 
     // Create a new KeyPackageBundle for Bob
-    let bob_key_package =
-        generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, backend)
-            .expect("An unexpected error occurred.");
+    let bob_key_package = generate_key_package_bundle(&[ciphersuite], &bob_credential, backend)
+        .expect("An unexpected error occurred.");
 
     // Add Bob to the group
     let (_queued_message, welcome) = alice_group
@@ -1122,25 +1087,21 @@ fn book_operations(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryp
 }
 
 #[apply(ciphersuites_and_backends)]
-fn test_empty_input_errors(
-    ciphersuite: &'static Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
+fn test_empty_input_errors(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_id = GroupId::from_slice(b"Test Group");
 
     // Generate credential bundles
     let alice_credential = generate_credential_bundle(
         "Alice".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let alice_key_package =
-        generate_key_package_bundle(&[ciphersuite.name()], &alice_credential, backend)
-            .expect("An unexpected error occurred.");
+    let alice_key_package = generate_key_package_bundle(&[ciphersuite], &alice_credential, backend)
+        .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
     let mls_group_config = MlsGroupConfig::test_default();
@@ -1161,12 +1122,12 @@ fn test_empty_input_errors(
         alice_group
             .add_members(backend, &[])
             .expect_err("No EmptyInputError when trying to pass an empty slice to `add_members`."),
-        MlsGroupError::EmptyInput(EmptyInputError::AddMembers)
+        AddMembersError::EmptyInput(EmptyInputError::AddMembers)
     );
     assert_eq!(
         alice_group.remove_members(backend, &[]).expect_err(
             "No EmptyInputError when trying to pass an empty slice to `remove_members`."
         ),
-        MlsGroupError::EmptyInput(EmptyInputError::RemoveMembers)
+        RemoveMembersError::EmptyInput(EmptyInputError::RemoveMembers)
     );
 }

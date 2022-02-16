@@ -5,7 +5,7 @@ use tls_codec::{Deserialize, Serialize};
 use crate::{
     ciphersuite::{
         hash_ref::{KeyPackageRef, ProposalRef},
-        Ciphersuite, CiphersuiteName,
+        Ciphersuite,
     },
     messages::proposals::{Proposal, ProposalOrRef, RemoveProposal},
     test_utils::*,
@@ -14,7 +14,7 @@ use crate::{
 /// This test encodes and decodes the `ProposalOrRef` struct and makes sure the
 /// decoded values are the same as the original
 #[apply(ciphersuites_and_backends)]
-fn proposals_codec(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn proposals_codec(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Proposal
 
     let remove_proposal = RemoveProposal {

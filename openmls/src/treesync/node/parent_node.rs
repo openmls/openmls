@@ -57,7 +57,7 @@ impl PlainUpdatePathNode {
     pub(in crate::treesync) fn encrypt(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         public_keys: &[HpkePublicKey],
         group_context: &[u8],
     ) -> UpdatePathNode {
@@ -109,7 +109,7 @@ impl ParentNode {
     /// intermediary `PathSecret`s and the [`CommitSecret`].
     pub(crate) fn derive_path(
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         path_secret: PathSecret,
         path_length: usize,
     ) -> Result<PathDerivationResult, LibraryError> {
@@ -177,7 +177,7 @@ impl ParentNode {
     pub(in crate::treesync) fn compute_parent_hash(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         parent_hash: &[u8],
         original_child_resolution: &[HpkePublicKey],
     ) -> Result<Vec<u8>, LibraryError> {

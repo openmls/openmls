@@ -7,10 +7,7 @@ use openmls_traits::types::CryptoError;
 use thiserror::Error;
 use tls_codec::Error as TlsCodecError;
 
-use crate::{
-    config::ConfigError, credentials::CredentialError, error::LibraryError,
-    extensions::ExtensionError,
-};
+use crate::{credentials::CredentialError, error::LibraryError, extensions::ExtensionError};
 
 /// KeyPackage error
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -35,8 +32,6 @@ pub enum KeyPackageError {
     LibraryError(#[from] LibraryError),
     #[error(transparent)]
     ExtensionError(#[from] ExtensionError),
-    #[error(transparent)]
-    ConfigError(#[from] ConfigError),
     #[error(transparent)]
     CredentialError(#[from] CredentialError),
     #[error(transparent)]

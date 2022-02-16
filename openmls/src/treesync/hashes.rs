@@ -1,6 +1,6 @@
 //! This module contains helper structs and functions related to parent hashing
 //! and tree hashing.
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
 use tls_codec::{Serialize, TlsSerialize, TlsSize, TlsSliceU32, TlsSliceU8};
 
 use crate::{
@@ -39,13 +39,14 @@ impl<'a> ParentHashInput<'a> {
     pub(super) fn hash(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
     ) -> Result<Vec<u8>, LibraryError> {
         let payload = self
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
-        ciphersuite
-            .hash(backend, &payload)
+        backend
+            .crypto()
+            .hash(ciphersuite.hash_algorithm(), &payload)
             .map_err(LibraryError::unexpected_crypto_error)
     }
 }
@@ -69,14 +70,15 @@ impl<'a> LeafNodeHashInput<'a> {
     /// Serialize and hash this instance of [`LeafNodeHashInput`].
     pub(super) fn hash(
         &self,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Vec<u8>, LibraryError> {
         let payload = self
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
-        ciphersuite
-            .hash(backend, &payload)
+        backend
+            .crypto()
+            .hash(ciphersuite.hash_algorithm(), &payload)
             .map_err(LibraryError::unexpected_crypto_error)
     }
 }
@@ -109,14 +111,15 @@ impl<'a> ParentNodeTreeHashInput<'a> {
     /// Serialize and hash this instance of [`ParentNodeTreeHashInput`].
     pub(super) fn hash(
         &self,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Vec<u8>, LibraryError> {
         let payload = self
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
-        ciphersuite
-            .hash(backend, &payload)
+        backend
+            .crypto()
+            .hash(ciphersuite.hash_algorithm(), &payload)
             .map_err(LibraryError::unexpected_crypto_error)
     }
 }
