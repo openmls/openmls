@@ -85,7 +85,7 @@ impl NodeId {
     pub(super) fn try_from_node_index<T: Clone + Debug>(
         diff: &AbDiff<T>,
         node_index: NodeIndex,
-    ) -> Result<Self, ABinaryTreeDiffError> {
+    ) -> Result<Self, OutOfBoundsError> {
         diff.out_of_bounds(node_index)?;
         Ok(NodeId { node_index })
     }
@@ -177,7 +177,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// in the diff.
     pub(crate) fn leaf(&self, leaf_index: LeafIndex) -> Result<NodeId, ABinaryTreeDiffError> {
         let node_index = to_node_index(leaf_index);
-        NodeId::try_from_node_index(self, node_index)
+        Ok(NodeId::try_from_node_index(self, node_index)?)
     }
 
     /// Returns references to the leaves of the diff in order from left to
@@ -204,12 +204,16 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     pub(crate) fn direct_path(
         &self,
         leaf_index: LeafIndex,
-    ) -> Result<Vec<NodeId>, ABinaryTreeDiffError> {
+    ) -> Result<Vec<NodeId>, OutOfBoundsError> {
         let node_index = to_node_index(leaf_index);
-        let direct_path_indices = direct_path(node_index, self.tree_size())?;
+        // `direct_path` only throws an error if the input index is out of bounds.
+        let direct_path_indices = direct_path(node_index, self.tree_size())
+            .map_err(|_| OutOfBoundsError::IndexOutOfBounds)?;
         let mut direct_path = Vec::new();
         for node_index in direct_path_indices {
-            let node_ref = NodeId::try_from_node_index(self, node_index)?;
+            // `direct_path` only throws an error if the input index is out of bounds.
+            let node_ref = NodeId::try_from_node_index(self, node_index)
+                .map_err(|_| OutOfBoundsError::IndexOutOfBounds)?;
             direct_path.push(node_ref);
         }
         Ok(direct_path)
@@ -310,7 +314,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
             right(subtree_root_node_index, self.tree_size())?
         };
 
-        NodeId::try_from_node_index(self, copath_node_index)
+        Ok(NodeId::try_from_node_index(self, copath_node_index)?)
     }
 
     /// Returns a vector of [`NodeReference`]s, where the first reference is to
@@ -423,7 +427,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// node not in the tree.
     pub(crate) fn parent(&self, node_ref: NodeId) -> Result<NodeId, ABinaryTreeDiffError> {
         let parent_index = parent(node_ref.node_index, self.tree_size())?;
-        NodeId::try_from_node_index(self, parent_index)
+        Ok(NodeId::try_from_node_index(self, parent_index)?)
     }
 
     /// Returns a [`NodeReference`] to the sibling of the referenced node. Returns
@@ -431,7 +435,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// node not in the tree.
     pub(crate) fn sibling(&self, node_ref: NodeId) -> Result<NodeId, ABinaryTreeDiffError> {
         let sibling_index = sibling(node_ref.node_index, self.tree_size())?;
-        NodeId::try_from_node_index(self, sibling_index)
+        Ok(NodeId::try_from_node_index(self, sibling_index)?)
     }
 
     /// Returns a [`NodeReference`] to the left child of the referenced node.
@@ -439,7 +443,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// to a node not in the tree.
     pub(crate) fn left_child(&self, node_ref: NodeId) -> Result<NodeId, ABinaryTreeDiffError> {
         let left_child_index = left(node_ref.node_index)?;
-        NodeId::try_from_node_index(self, left_child_index)
+        Ok(NodeId::try_from_node_index(self, left_child_index)?)
     }
 
     /// Returns a [`NodeReference`] to the right child of the referenced node.
@@ -447,7 +451,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// to a node not in the tree.
     pub(crate) fn right_child(&self, node_ref: NodeId) -> Result<NodeId, ABinaryTreeDiffError> {
         let right_child_index = right(node_ref.node_index, self.tree_size())?;
-        NodeId::try_from_node_index(self, right_child_index)
+        Ok(NodeId::try_from_node_index(self, right_child_index)?)
     }
 
     /// Returns the [`LeafIndex`] of the referenced node. If the referenced node
@@ -550,9 +554,9 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     ///
     /// Returns an error if the given leaf is out of bounds. Otherwise returns
     /// nothing.
-    fn out_of_bounds(&self, node_index: NodeIndex) -> Result<(), ABinaryTreeDiffError> {
+    fn out_of_bounds(&self, node_index: NodeIndex) -> Result<(), OutOfBoundsError> {
         if node_index >= self.tree_size() {
-            return Err(ABinaryTreeDiffError::OutOfBounds);
+            return Err(OutOfBoundsError::IndexOutOfBounds);
         }
         Ok(())
     }
@@ -635,4 +639,15 @@ pub enum ABinaryTreeDiffError {
     ABinaryTreeError(#[from] ABinaryTreeError),
     #[error(transparent)]
     TreeError(#[from] TreeMathError),
+    #[error(transparent)]
+    IndexOutOfBounds(#[from] OutOfBoundsError),
+}
+
+/// Error type for functions that only throw OutOfBounds errors.
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum OutOfBoundsError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The given index is not within the bounds of the tree.")]
+    IndexOutOfBounds,
 }

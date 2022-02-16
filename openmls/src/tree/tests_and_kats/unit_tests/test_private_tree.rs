@@ -17,19 +17,19 @@ use crate::{
 
 // Common setup for tests.
 fn setup(
-    ciphersuite: &'static Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     len: usize,
 ) -> (KeyPackageBundle, LeafIndex, Vec<NodeIndex>) {
     let credential_bundle = CredentialBundle::new(
         "username".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
     let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, backend, vec![])
+        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, vec![])
             .expect("An unexpected error occurred.");
     let own_index = LeafIndex::from(0u32);
     let direct_path = generate_path_u8(len);
@@ -42,7 +42,7 @@ fn test_private_tree(
     private_tree: &PrivateTree,
     direct_path: &[NodeIndex],
     public_keys: &[HpkePublicKey],
-    ciphersuite: &Ciphersuite,
+    ciphersuite: Ciphersuite,
     crypto: &impl OpenMlsCryptoProvider,
 ) {
     // Check that we can encrypt to a public key.
@@ -82,7 +82,7 @@ fn test_private_tree(
 
 #[apply(ciphersuites_and_backends)]
 fn create_private_tree_from_secret(
-    ciphersuite: &'static Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
     const PATH_LENGTH: usize = 33;

@@ -6,7 +6,6 @@
 
 use crate::{
     ciphersuite::signable::Signable,
-    config::*,
     credentials::*,
     framing::*,
     group::*,
@@ -19,6 +18,7 @@ use crate::{
     test_utils::*,
     tree::sender_ratchet::*,
     treesync::node::Node,
+    versions::ProtocolVersion,
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
@@ -55,9 +55,9 @@ pub struct MessagesTestVector {
     mls_ciphertext: String,            /* serialized MLSCiphertext */
 }
 
-pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVector {
+pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     let crypto = OpenMlsRustCrypto::default();
-    let ciphersuite_name = ciphersuite.name();
+    let ciphersuite_name = ciphersuite;
     let credential_bundle = CredentialBundle::new(
         b"OpenMLS rocks".to_vec(),
         CredentialType::Basic,
@@ -386,10 +386,15 @@ pub fn generate_test_vector(ciphersuite: &'static Ciphersuite) -> MessagesTestVe
 
 #[test]
 fn write_test_vectors_msg() {
+    use openmls_traits::crypto::OpenMlsCrypto;
     let mut tests = Vec::new();
     const NUM_TESTS: usize = 100;
 
-    for ciphersuite in Config::supported_ciphersuites() {
+    for &ciphersuite in OpenMlsRustCrypto::default()
+        .crypto()
+        .supported_ciphersuites()
+        .iter()
+    {
         for _ in 0..NUM_TESTS {
             let test = generate_test_vector(ciphersuite);
             tests.push(test);

@@ -21,12 +21,12 @@ pub(crate) struct TestClientConfig {
     /// Name of the client.
     pub(crate) name: &'static str,
     /// Ciphersuites supported by the client.
-    pub(crate) ciphersuites: Vec<CiphersuiteName>,
+    pub(crate) ciphersuites: Vec<Ciphersuite>,
 }
 
 /// Configuration of a group meant to be used in a test setup.
 pub(crate) struct TestGroupConfig {
-    pub(crate) ciphersuite: CiphersuiteName,
+    pub(crate) ciphersuite: Ciphersuite,
     pub(crate) config: CoreGroupConfig,
     pub(crate) members: Vec<TestClientConfig>,
 }
@@ -40,7 +40,7 @@ pub(crate) struct TestSetupConfig {
 
 /// A client in a test setup.
 pub(crate) struct TestClient {
-    pub(crate) credential_bundles: HashMap<CiphersuiteName, CredentialBundle>,
+    pub(crate) credential_bundles: HashMap<Ciphersuite, CredentialBundle>,
     pub(crate) key_package_bundles: RefCell<Vec<KeyPackageBundle>>,
     pub(crate) group_states: RefCell<HashMap<GroupId, CoreGroup>>,
 }
@@ -64,7 +64,7 @@ impl TestClient {
 /// The state of a test setup, including the state of the clients and the
 /// keystore, which holds the KeyPackages published by the clients.
 pub(crate) struct TestSetup {
-    pub(crate) _key_store: RefCell<HashMap<(&'static str, CiphersuiteName), Vec<KeyPackage>>>,
+    pub(crate) _key_store: RefCell<HashMap<(&'static str, Ciphersuite), Vec<KeyPackage>>>,
     // Clippy has a hard time figuring this one out
     #[allow(dead_code)]
     pub clients: RefCell<HashMap<&'static str, RefCell<TestClient>>>,
@@ -77,7 +77,7 @@ const KEY_PACKAGE_COUNT: usize = 10;
 /// The setup function creates a set of groups and clients.
 pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvider) -> TestSetup {
     let mut test_clients: HashMap<&'static str, RefCell<TestClient>> = HashMap::new();
-    let mut key_store: HashMap<(&'static str, CiphersuiteName), Vec<KeyPackage>> = HashMap::new();
+    let mut key_store: HashMap<(&'static str, Ciphersuite), Vec<KeyPackage>> = HashMap::new();
     // Initialize the clients for which we have configurations.
     for client in config.clients {
         // Set up the client
@@ -206,13 +206,8 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
             let mut proposal_store = ProposalStore::new();
             for proposal in proposal_list {
                 proposal_store.add(
-                    QueuedProposal::from_mls_plaintext(
-                        &Ciphersuite::new(group_config.ciphersuite)
-                            .expect("Could not create ciphersuite."),
-                        backend,
-                        proposal,
-                    )
-                    .expect("Could not create staged proposal."),
+                    QueuedProposal::from_mls_plaintext(group_config.ciphersuite, backend, proposal)
+                        .expect("Could not create staged proposal."),
                 );
             }
             let params = CreateCommitParams::builder()
@@ -316,15 +311,15 @@ fn test_random() {
 fn test_setup(backend: &impl OpenMlsCryptoProvider) {
     let test_client_config_a = TestClientConfig {
         name: "TestClientConfigA",
-        ciphersuites: vec![CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519],
+        ciphersuites: vec![Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519],
     };
     let test_client_config_b = TestClientConfig {
         name: "TestClientConfigB",
-        ciphersuites: vec![CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519],
+        ciphersuites: vec![Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519],
     };
     let group_config = CoreGroupConfig::default();
     let test_group_config = TestGroupConfig {
-        ciphersuite: CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+        ciphersuite: Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         config: group_config,
         members: vec![test_client_config_a.clone(), test_client_config_b.clone()],
     };
@@ -359,7 +354,7 @@ pub(super) fn generate_credential_bundle(
 
 // Helper function to generate a KeyPackageBundle
 pub(super) fn generate_key_package_bundle(
-    ciphersuites: &[CiphersuiteName],
+    ciphersuites: &[Ciphersuite],
     credential: &Credential,
     extensions: Vec<Extension>,
     backend: &impl OpenMlsCryptoProvider,

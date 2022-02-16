@@ -1,5 +1,8 @@
 use super::*;
 
+/// Re-use guard size.
+pub(crate) const REUSE_GUARD_BYTES: usize = 4;
+
 #[derive(Debug, Clone, Copy, TlsSerialize, TlsDeserialize, TlsSize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct ReuseGuard {

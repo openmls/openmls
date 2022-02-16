@@ -8,8 +8,7 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::{
-    ciphersuite::{Ciphersuite, CiphersuiteName},
-    config::Config,
+    ciphersuite::Ciphersuite,
     credentials::{CredentialBundle, CredentialType},
     framing::{MessageDecryptionError, ProcessedMessage, ValidationError},
     group::{CoreGroupError, GroupId, MlsGroup, MlsGroupConfig, MlsGroupError},
@@ -17,10 +16,7 @@ use crate::{
 };
 
 #[apply(ciphersuites_and_backends)]
-fn test_past_secrets_in_group(
-    ciphersuite: &'static Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
+fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test this for different parameters
     for max_epochs in (0..10usize).step_by(2) {
         let group_id = GroupId::from_slice(b"Test Group");
@@ -30,7 +26,7 @@ fn test_past_secrets_in_group(
         let alice_credential_bundle = CredentialBundle::new(
             "Alice".into(),
             CredentialType::Basic,
-            ciphersuite.signature_scheme(),
+            ciphersuite.signature_algorithm(),
             backend,
         )
         .expect("An unexpected error occurred.");
@@ -49,7 +45,7 @@ fn test_past_secrets_in_group(
         let bob_credential_bundle = CredentialBundle::new(
             "Bob".into(),
             CredentialType::Basic,
-            ciphersuite.signature_scheme(),
+            ciphersuite.signature_algorithm(),
             backend,
         )
         .expect("An unexpected error occurred.");
@@ -67,13 +63,9 @@ fn test_past_secrets_in_group(
 
         // Generate KeyPackages
 
-        let alice_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
-            &alice_credential_bundle,
-            backend,
-            vec![],
-        )
-        .expect("An unexpected error occurred.");
+        let alice_key_package_bundle =
+            KeyPackageBundle::new(&[ciphersuite], &alice_credential_bundle, backend, vec![])
+                .expect("An unexpected error occurred.");
         let alice_key_package = alice_key_package_bundle.key_package().clone();
         backend
             .key_store()
@@ -86,13 +78,9 @@ fn test_past_secrets_in_group(
             )
             .expect("An unexpected error occurred.");
 
-        let bob_key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
-            &bob_credential_bundle,
-            backend,
-            vec![],
-        )
-        .expect("An unexpected error occurred.");
+        let bob_key_package_bundle =
+            KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, vec![])
+                .expect("An unexpected error occurred.");
         let bob_key_package = bob_key_package_bundle.key_package().clone();
         backend
             .key_store()

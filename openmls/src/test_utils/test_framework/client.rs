@@ -23,7 +23,7 @@ pub struct Client {
     /// Name of the client.
     pub identity: Vec<u8>,
     /// Ciphersuites supported by the client.
-    pub credentials: HashMap<CiphersuiteName, Credential>,
+    pub credentials: HashMap<Ciphersuite, Credential>,
     pub crypto: OpenMlsRustCrypto,
     pub groups: RwLock<HashMap<GroupId, MlsGroup>>,
 }
@@ -35,7 +35,7 @@ impl Client {
     /// corresponding `KeyPackage`.
     pub fn get_fresh_key_package(
         &self,
-        ciphersuites: &[CiphersuiteName],
+        ciphersuites: &[Ciphersuite],
     ) -> Result<KeyPackage, ClientError> {
         if ciphersuites.is_empty() {
             return Err(ClientError::NoCiphersuite);
@@ -78,11 +78,11 @@ impl Client {
         &self,
         group_id: GroupId,
         mls_group_config: MlsGroupConfig,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
     ) -> Result<(), ClientError> {
         let credential = self
             .credentials
-            .get(&ciphersuite.name())
+            .get(&ciphersuite)
             .ok_or(ClientError::CiphersuiteNotSupported)?;
         let mandatory_extensions: Vec<Extension> =
             vec![Extension::LifeTime(LifetimeExtension::new(157788000))]; // 5 years
@@ -97,7 +97,7 @@ impl Client {
             )
             .ok_or(ClientError::NoMatchingCredential)?;
         let kpb = KeyPackageBundle::new(
-            &[ciphersuite.name()],
+            &[ciphersuite],
             &credential_bundle,
             &self.crypto,
             mandatory_extensions,

@@ -6,7 +6,7 @@ use openmls::{
 };
 
 #[apply(ciphersuites)]
-fn test_mls_group_api(ciphersuite: &'static Ciphersuite) {
+fn test_mls_group_api(ciphersuite: Ciphersuite) {
     // Some basic setup functions for the MlsGroup.
     let mls_group_config = MlsGroupConfig::test_default();
     let number_of_clients = 20;

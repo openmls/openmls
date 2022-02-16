@@ -22,13 +22,11 @@ impl CoreGroup {
     ) -> Result<Self, WelcomeError> {
         log::debug!("CoreGroup::new_from_welcome_internal");
         let mls_version = *welcome.version();
-        if !Config::supported_versions().contains(&mls_version) {
+        if mls_version != ProtocolVersion::Mls10 {
             return Err(WelcomeError::UnsupportedMlsVersion);
         }
 
-        let ciphersuite_name = welcome.ciphersuite();
-        let ciphersuite = Config::ciphersuite(ciphersuite_name)
-            .map_err(|_| WelcomeError::UnsupportedCiphersuite)?;
+        let ciphersuite = welcome.ciphersuite();
 
         // Find key_package in welcome secrets
         let egs = if let Some(egs) = Self::find_key_package_from_welcome_secrets(
@@ -41,7 +39,7 @@ impl CoreGroup {
         } else {
             return Err(WelcomeError::JoinerSecretNotFound);
         };
-        if ciphersuite_name != key_package_bundle.key_package().ciphersuite_name() {
+        if ciphersuite != key_package_bundle.key_package().ciphersuite() {
             let e = WelcomeError::CiphersuiteMismatch;
             debug!("new_from_welcome {:?}", e);
             return Err(e);
@@ -96,7 +94,8 @@ impl CoreGroup {
             let required_capabilities = required_capabilities
                 .as_required_capabilities_extension()
                 .map_err(|_| LibraryError::custom("Expected required capabilities extension"))?;
-            check_required_capabilities_support(required_capabilities)
+            required_capabilities
+                .check_support()
                 .map_err(|_| WelcomeError::UnsupportedCapability)?;
             // Also check that our key package actually supports the extensions.
             // Per spec the sender must have checked this. But you never know.

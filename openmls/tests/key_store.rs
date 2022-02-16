@@ -3,20 +3,17 @@ use openmls::{prelude::*, test_utils::*, *};
 use openmls_traits::{key_store::OpenMlsKeyStore, types::SignatureScheme};
 
 #[apply(ciphersuites_and_backends)]
-fn test_store_key_package_bundle(
-    ciphersuite: &'static Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
+fn test_store_key_package_bundle(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // First we generate a credential and key package for our user.
     let credential_bundle = CredentialBundle::new(
         b"User ID".to_vec(),
         CredentialType::Basic,
-        SignatureScheme::from(ciphersuite.name()),
+        SignatureScheme::from(ciphersuite),
         backend,
     )
     .unwrap();
     let key_package_bundle =
-        KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, backend, vec![])
+        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, vec![])
             .expect("Error generating new key package bundle.");
 
     // In order to store something in the key store we need to define an ID.
@@ -40,15 +37,12 @@ fn test_store_key_package_bundle(
 }
 
 #[apply(ciphersuites_and_backends)]
-fn test_read_credential_bundle(
-    ciphersuite: &'static Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
+fn test_read_credential_bundle(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // First we generate a credential bundle
     let credential_bundle_to_store = CredentialBundle::new(
         b"User ID".to_vec(),
         CredentialType::Basic,
-        SignatureScheme::from(ciphersuite.name()),
+        SignatureScheme::from(ciphersuite),
         backend,
     )
     .unwrap();

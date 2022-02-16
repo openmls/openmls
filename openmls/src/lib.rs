@@ -45,7 +45,6 @@ pub mod error;
 
 // Public
 pub mod ciphersuite;
-pub mod config;
 pub mod credentials;
 pub mod extensions;
 pub mod framing;
@@ -54,6 +53,7 @@ pub mod key_packages;
 pub mod key_store;
 pub mod messages;
 pub mod schedule;
+pub mod versions;
 
 // Private
 mod binary_tree;

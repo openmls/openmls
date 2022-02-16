@@ -28,7 +28,7 @@ fn generate_credential(
 }
 
 fn generate_key_package(
-    ciphersuites: &[CiphersuiteName],
+    ciphersuites: &[Ciphersuite],
     credential: &Credential,
     extensions: Vec<Extension>,
     crypto_backend: &impl OpenMlsCryptoProvider,
@@ -91,7 +91,7 @@ async fn test_list_clients() {
 
     // Add a client.
     let client_name = "Client1";
-    let ciphersuite = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+    let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
     let crypto = &OpenMlsRustCrypto::default();
     let credential_bundle = generate_credential(
         client_name.into(),
@@ -193,7 +193,7 @@ async fn test_group() {
     let mut credentials = Vec::new();
     let mut client_ids = Vec::new();
     for client_name in clients.iter() {
-        let ciphersuite = CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
+        let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
         let credential_bundle = generate_credential(
             client_name.as_bytes().to_vec(),
             CredentialType::Basic,
@@ -229,7 +229,7 @@ async fn test_group() {
 
     // Client1 creates MyFirstGroup
     let group_id = GroupId::from_slice(b"MyFirstGroup");
-    let group_ciphersuite = key_package_bundles[0].ciphersuite_name();
+    let group_ciphersuite = key_package_bundles[0].ciphersuite();
     let mut group = MlsGroup::new(
         crypto,
         &mls_group_config,
@@ -264,7 +264,7 @@ async fn test_group() {
     };
     let client2_key_package = client2_key_packages
         .iter()
-        .position(|(_hash, kp)| kp.ciphersuite_name() == group_ciphersuite)
+        .position(|(_hash, kp)| kp.ciphersuite() == group_ciphersuite)
         .expect("No key package with the group ciphersuite available");
     let (_client2_key_package_hash, client2_key_package) =
         client2_key_packages.remove(client2_key_package);

@@ -4,19 +4,19 @@
 //! the `MlsPlaintext` and as described in the [`OpenMLS Wiki`].
 //!
 //! [`OpenMLS Wiki`]: https://github.com/openmls/openmls/wiki/Signable
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use tls_codec::{Serialize, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
 use crate::{
     ciphersuite::{
         hash_ref::KeyPackageRef,
         signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
-        CiphersuiteName, HpkePublicKey, Signature,
+        HpkePublicKey, Signature,
     },
-    config::ProtocolVersion,
     error::LibraryError,
     extensions::Extension,
     group::*,
+    versions::ProtocolVersion,
 };
 
 /// PublicGroupState as defined in the MLS specification as follows:
@@ -42,7 +42,7 @@ use crate::{
 #[derive(PartialEq, Debug, TlsSerialize, TlsSize)]
 pub struct PublicGroupState {
     pub(crate) version: ProtocolVersion,
-    pub(crate) ciphersuite: CiphersuiteName,
+    pub(crate) ciphersuite: Ciphersuite,
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
     pub(crate) tree_hash: TlsByteVecU8,
@@ -77,7 +77,7 @@ impl VerifiablePublicGroupState {
 
     /// Get a reference to the `Ciphersuite` of the unverified
     /// `PublicGroupState`.
-    pub(crate) fn ciphersuite(&self) -> CiphersuiteName {
+    pub(crate) fn ciphersuite(&self) -> Ciphersuite {
         self.tbs.ciphersuite
     }
 
@@ -170,7 +170,7 @@ impl<'a> Verifiable for VerifiablePublicGroupState {
 #[derive(TlsSize, TlsSerialize, TlsDeserialize, Debug, Clone)]
 pub(crate) struct PublicGroupStateTbs {
     pub(crate) version: ProtocolVersion,
-    pub(crate) ciphersuite: CiphersuiteName,
+    pub(crate) ciphersuite: Ciphersuite,
     pub(crate) group_id: GroupId,
     pub(crate) epoch: GroupEpoch,
     pub(crate) tree_hash: TlsByteVecU8,
@@ -213,7 +213,7 @@ impl PublicGroupStateTbs {
             group_context_extensions: core_group.group_context_extensions().into(),
             other_extensions,
             external_pub: external_pub.into(),
-            ciphersuite: ciphersuite.name(),
+            ciphersuite,
             signer: *core_group
                 .key_package_ref()
                 .ok_or_else(|| LibraryError::custom("missing key package ref"))?,

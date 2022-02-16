@@ -2,7 +2,6 @@ use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
     ciphersuite::signable::Signable,
-    config::Config,
     framing::*,
     group::{core_group::*, *},
     messages::*,
@@ -11,6 +10,7 @@ use crate::{
         node::parent_node::PlainUpdatePathNode,
         treekem::{PlaintextSecret, UpdatePath},
     },
+    versions::ProtocolVersion,
 };
 
 use super::{
@@ -84,9 +84,6 @@ impl CoreGroup {
             crate::group::errors::ProposalQueueError::LibraryError(e) => e.into(),
             crate::group::errors::ProposalQueueError::ProposalNotFound => {
                 CreateCommitError::MissingProposal
-            }
-            crate::group::errors::ProposalQueueError::SelfRemoval => {
-                CreateCommitError::CannotRemoveSelf
             }
             crate::group::errors::ProposalQueueError::SenderError(_) => {
                 CreateCommitError::WrongProposalSender
@@ -344,7 +341,7 @@ impl CoreGroup {
                 .collect();
             // Create welcome message
             let welcome = Welcome::new(
-                Config::supported_versions()[0],
+                ProtocolVersion::Mls10,
                 self.ciphersuite,
                 secrets,
                 encrypted_group_info,
@@ -444,7 +441,7 @@ impl CoreGroup {
             // Generate a KeyPackageBundle to generate a payload from for later
             // path generation.
             let key_package_bundle = KeyPackageBundle::new(
-                &[self.ciphersuite().name()],
+                &[self.ciphersuite()],
                 params.credential_bundle(),
                 backend,
                 vec![],

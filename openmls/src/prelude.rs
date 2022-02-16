@@ -11,7 +11,7 @@ pub use crate::group::errors::*;
 pub use crate::binary_tree::LeafIndex;
 
 // Ciphersuite
-pub use crate::ciphersuite::{ciphersuites::*, hash_ref::KeyPackageRef, signable::*, *};
+pub use crate::ciphersuite::{hash_ref::KeyPackageRef, signable::*, *};
 
 // Messages
 pub use crate::messages::*;
@@ -19,8 +19,8 @@ pub use crate::messages::*;
 // Credentials
 pub use crate::credentials::{CredentialError, *};
 
-// Configuration
-pub use crate::config::*;
+// MLS Versions
+pub use crate::versions::*;
 
 // Extensions
 pub use crate::extensions::*;

@@ -1,11 +1,11 @@
 use std::io::Read;
 
+use openmls_traits::types::Ciphersuite;
 use tls_codec::{TlsSerialize, TlsSize, TlsVecU8};
 
 use super::{CapabilitiesExtensionError, Deserialize, ExtensionType, Serialize};
-use crate::ciphersuite::CiphersuiteName;
-use crate::config::{Config, ProtocolVersion};
 use crate::messages::proposals::ProposalType;
+use crate::versions::ProtocolVersion;
 
 /// # Capabilities Extension
 ///
@@ -19,18 +19,49 @@ use crate::messages::proposals::ProposalType;
 #[derive(PartialEq, Clone, Debug, Serialize, Deserialize, TlsSize, TlsSerialize)]
 pub struct CapabilitiesExtension {
     versions: TlsVecU8<ProtocolVersion>,
-    ciphersuites: TlsVecU8<CiphersuiteName>,
+    ciphersuites: TlsVecU8<Ciphersuite>,
     extensions: TlsVecU8<ExtensionType>,
     proposals: TlsVecU8<ProposalType>,
+}
+
+fn default_extensions() -> Vec<ExtensionType> {
+    vec![
+        ExtensionType::Capabilities,
+        ExtensionType::Lifetime,
+        ExtensionType::ExternalKeyId,
+    ]
+}
+
+fn default_proposals() -> Vec<ProposalType> {
+    vec![
+        ProposalType::Add,
+        ProposalType::Update,
+        ProposalType::Remove,
+        ProposalType::Presharedkey,
+        ProposalType::Reinit,
+        ProposalType::GroupContextExtensions,
+    ]
+}
+
+fn default_versions() -> Vec<ProtocolVersion> {
+    vec![ProtocolVersion::Mls10]
+}
+
+fn default_ciphersuites() -> Vec<Ciphersuite> {
+    vec![
+        Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+        Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
+        Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+    ]
 }
 
 impl Default for CapabilitiesExtension {
     fn default() -> Self {
         CapabilitiesExtension {
-            versions: Config::supported_versions().into(),
-            ciphersuites: Config::supported_ciphersuite_names().into(),
-            extensions: Config::supported_extensions().into(),
-            proposals: Config::supported_proposals().into(),
+            versions: default_versions().into(),
+            ciphersuites: default_ciphersuites().into(),
+            extensions: default_extensions().into(),
+            proposals: default_proposals().into(),
         }
     }
 }
@@ -41,26 +72,26 @@ impl CapabilitiesExtension {
     /// global configuration.
     pub fn new(
         versions: Option<&[ProtocolVersion]>,
-        ciphersuites: Option<&[CiphersuiteName]>,
+        ciphersuites: Option<&[Ciphersuite]>,
         extensions: Option<&[ExtensionType]>,
         proposals: Option<&[ProposalType]>,
     ) -> Self {
         Self {
             versions: match versions {
                 Some(v) => v.into(),
-                None => Config::supported_versions().into(),
+                None => default_versions().into(),
             },
             ciphersuites: match ciphersuites {
                 Some(c) => c.into(),
-                None => Config::supported_ciphersuite_names().into(),
+                None => default_ciphersuites().into(),
             },
             extensions: match extensions {
                 Some(e) => e.into(),
-                None => Config::supported_extensions().into(),
+                None => default_extensions().into(),
             },
             proposals: match proposals {
                 Some(p) => p.into(),
-                None => Config::supported_proposals().into(),
+                None => default_proposals().into(),
             },
         }
     }
@@ -69,7 +100,7 @@ impl CapabilitiesExtension {
         self.versions.as_slice()
     }
     /// Get a reference to the list of cipher suites in this extension.
-    pub fn ciphersuites(&self) -> &[CiphersuiteName] {
+    pub fn ciphersuites(&self) -> &[Ciphersuite] {
         self.ciphersuites.as_slice()
     }
     /// Get a reference to the list of supported extensions.
@@ -92,22 +123,7 @@ impl tls_codec::Deserialize for CapabilitiesExtension {
             return Err(e);
         }
 
-        let ciphersuites = TlsVecU8::<CiphersuiteName>::tls_deserialize(bytes)?;
-        // There must be at least one ciphersuite we support.
-        let mut supported_suite = false;
-        for suite in ciphersuites.iter() {
-            if suite.is_supported() {
-                supported_suite = true;
-                break;
-            }
-        }
-        if !supported_suite {
-            return Err(tls_codec::Error::DecodingError(format!(
-                "{:?}",
-                CapabilitiesExtensionError::UnsupportedCiphersuite,
-            )));
-        }
-
+        let ciphersuites = TlsVecU8::<Ciphersuite>::tls_deserialize(bytes)?;
         let extensions = TlsVecU8::tls_deserialize(bytes)?;
         let proposals = TlsVecU8::tls_deserialize(bytes)?;
 

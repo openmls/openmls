@@ -4,7 +4,6 @@
 //! `CreateCommitError`.
 
 use crate::{
-    config::ConfigError,
     credentials::CredentialError,
     error::LibraryError,
     extensions::errors::ExtensionError,
@@ -38,8 +37,6 @@ pub enum CoreGroupError {
     StageCommitError(#[from] StageCommitError),
     #[error(transparent)]
     CreateCommitError(#[from] CreateCommitError),
-    #[error(transparent)]
-    ConfigError(#[from] ConfigError),
     #[error(transparent)]
     ExporterError(#[from] ExporterError),
     #[error(transparent)]
@@ -167,6 +164,8 @@ pub enum StageCommitError {
     ConfirmationTagMissing,
     #[error("The confirmation tag is invalid.")]
     ConfirmationTagMismatch,
+    #[error("The committer can't remove themselves.")]
+    AttemptedSelfRemoval,
     #[error("The proposal queue is missing a proposal for the commit.")]
     MissingProposal,
     #[error("Missing own key to apply proposal.")]
@@ -232,10 +231,20 @@ pub enum ProposalQueueError {
     LibraryError(#[from] LibraryError),
     #[error("Not all proposals in the Commit were found locally.")]
     ProposalNotFound,
-    #[error("The sender of a Commit tried to remove themselves.")]
-    SelfRemoval,
     #[error(transparent)]
     SenderError(#[from] SenderError),
+}
+
+/// Errors that can arise when creating a [`ProposalQueue`] from committed
+/// proposals.
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum FromCommittedProposalsError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("Not all proposals in the Commit were found locally.")]
+    ProposalNotFound,
+    #[error("The sender of a Commit tried to remove themselves.")]
+    SelfRemoval,
 }
 
 /// Creation proposal queue error

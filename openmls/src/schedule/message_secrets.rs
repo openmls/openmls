@@ -67,7 +67,7 @@ impl MessageSecrets {
 
     #[cfg(test)]
     pub fn random(
-        ciphersuite: &'static Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         own_index: u32,
     ) -> Self {

@@ -6,7 +6,7 @@ use crate::{
 };
 
 #[apply(ciphersuites_and_backends)]
-fn test_secret_tree_store(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_secret_tree_store(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Create a store that keeps up to 3 epochs
     let mut message_secrets_store =
         MessageSecretsStore::new_with_secret(3, MessageSecrets::random(ciphersuite, backend, 0));
@@ -59,10 +59,7 @@ fn test_secret_tree_store(ciphersuite: &'static Ciphersuite, backend: &impl Open
 }
 
 #[apply(ciphersuites_and_backends)]
-fn test_empty_secret_tree_store(
-    ciphersuite: &'static Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
+fn test_empty_secret_tree_store(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Create a store that keeps no epochs
     let mut message_secrets_store =
         MessageSecretsStore::new_with_secret(0, MessageSecrets::random(ciphersuite, backend, 0));
