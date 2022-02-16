@@ -341,3 +341,187 @@ fn test_valsem103(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
     // TODO #525: Add test for incoming proposals.
 }
+
+/// ValSem104:
+/// Add Proposal:
+/// Signature public key in proposals must be unique among existing group
+/// members
+#[apply(ciphersuites_and_backends)]
+fn test_valsem104(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    for alice_and_bob_share_keys in [
+        KeyUniqueness::NegativeSameKey,
+        KeyUniqueness::PositiveDifferentKey,
+    ] {
+        // 0. Initialize Alice and Bob
+        let alice_signature_keypair: SignatureKeypair;
+        let bob_signature_keypair: SignatureKeypair;
+
+        match alice_and_bob_share_keys {
+            KeyUniqueness::NegativeSameKey => {
+                let shared_signature_keypair =
+                    SignatureKeypair::new(ciphersuite.signature_scheme(), backend)
+                        .expect("failed to generate signature keypair");
+
+                alice_signature_keypair = shared_signature_keypair.clone();
+                bob_signature_keypair = shared_signature_keypair.clone();
+            }
+            KeyUniqueness::PositiveDifferentKey => {
+                alice_signature_keypair =
+                    SignatureKeypair::new(ciphersuite.signature_scheme(), backend)
+                        .expect("failed to generate signature keypair");
+                bob_signature_keypair =
+                    SignatureKeypair::new(ciphersuite.signature_scheme(), backend)
+                        .expect("failed to generate signature keypair");
+            }
+        }
+
+        let alice_credential_bundle =
+            CredentialBundle::from_parts("Alice".into(), alice_signature_keypair);
+        let alice_credential = alice_credential_bundle.credential().clone();
+        backend
+            .key_store()
+            .store(
+                &alice_credential
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .expect("Error serializing signature key."),
+                &alice_credential_bundle,
+            )
+            .expect("An unexpected error occurred.");
+
+        let bob_credential_bundle =
+            CredentialBundle::from_parts("Bob".into(), bob_signature_keypair);
+
+        let alice_key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &alice_credential_bundle,
+            backend,
+            vec![],
+        )
+        .expect("failed to generate key package");
+        let alice_key_package = alice_key_package_bundle.key_package().clone();
+        backend
+            .key_store()
+            .store(
+                alice_key_package
+                    .hash_ref(backend.crypto())
+                    .expect("Could not hash KeyPackage.")
+                    .value(),
+                &alice_key_package_bundle,
+            )
+            .expect("An unexpected error occurred.");
+
+        let bob_key_package_bundle = KeyPackageBundle::new(
+            &[ciphersuite.name()],
+            &bob_credential_bundle,
+            backend,
+            vec![],
+        )
+        .expect("failed to generate key package");
+        let bob_key_package = bob_key_package_bundle.key_package().clone();
+
+        // 1. Alice creates a group and tries to add Bob to it
+        let res = create_group_with_members(alice_key_package_bundle, &[bob_key_package], backend);
+
+        match alice_and_bob_share_keys {
+            KeyUniqueness::NegativeSameKey => {
+                let err = res
+                    .expect_err("was able to add user with same signature key as a group member!");
+                assert_eq!(
+                    err,
+                    MlsGroupError::Group(CoreGroupError::ProposalValidationError(
+                        ProposalValidationError::ExistingSignatureKeyAddProposal
+                    ))
+                );
+            }
+            KeyUniqueness::PositiveDifferentKey => {
+                let _ = res.expect("failed to add user with different signature keypair!");
+            }
+        }
+    }
+
+    // TODO #525: Add test for incoming proposals.
+}
+
+/// ValSem105:
+/// Add Proposal:
+/// HPKE init key in proposals must be unique among existing group members
+#[apply(ciphersuites_and_backends)]
+fn test_valsem105(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    for alice_and_bob_share_keys in [
+        KeyUniqueness::NegativeSameKey,
+        KeyUniqueness::PositiveDifferentKey,
+    ] {
+        // 0. Initialize Alice and Bob
+        let (alice_credential_bundle, mut alice_key_package_bundle) =
+            generate_credential_bundle_and_key_package_bundle("Alice".into(), ciphersuite, backend);
+        let (bob_credential_bundle, mut bob_key_package_bundle) =
+            generate_credential_bundle_and_key_package_bundle("Bob".into(), ciphersuite, backend);
+
+        match alice_and_bob_share_keys {
+            KeyUniqueness::NegativeSameKey => {
+                let shared_leaf_secret = Secret::random(
+                    alice_key_package_bundle.key_package().ciphersuite(),
+                    backend,
+                    alice_key_package_bundle.key_package().protocol_version(),
+                )
+                .expect("failed to generate random leaf secret");
+
+                alice_key_package_bundle = KeyPackageBundle::new_from_leaf_secret(
+                    &[ciphersuite.name()],
+                    backend,
+                    &alice_credential_bundle,
+                    vec![],
+                    shared_leaf_secret.clone(),
+                )
+                .expect("failed to generate key package");
+                bob_key_package_bundle = KeyPackageBundle::new_from_leaf_secret(
+                    &[ciphersuite.name()],
+                    backend,
+                    &bob_credential_bundle,
+                    vec![],
+                    shared_leaf_secret.clone(),
+                )
+                .expect("failed to generate key package");
+            }
+            KeyUniqueness::PositiveDifferentKey => {
+                // don't need to do anything since the keys are already
+                // different.
+            }
+        }
+
+        let alice_key_package = alice_key_package_bundle.key_package().clone();
+        backend
+            .key_store()
+            .store(
+                alice_key_package
+                    .hash_ref(backend.crypto())
+                    .expect("Could not hash KeyPackage.")
+                    .value(),
+                &alice_key_package_bundle,
+            )
+            .expect("An unexpected error occurred.");
+        let bob_key_package = bob_key_package_bundle.key_package().clone();
+
+        // 1. Alice creates a group and tries to add Bob to it
+        let res = create_group_with_members(alice_key_package_bundle, &[bob_key_package], backend);
+
+        match alice_and_bob_share_keys {
+            KeyUniqueness::NegativeSameKey => {
+                let err =
+                    res.expect_err("was able to add user with same HPKE init key as group member!");
+                assert_eq!(
+                    err,
+                    MlsGroupError::Group(CoreGroupError::ProposalValidationError(
+                        ProposalValidationError::ExistingPublicKeyAddProposal
+                    ))
+                );
+            }
+            KeyUniqueness::PositiveDifferentKey => {
+                let _ = res.expect("failed to add user with different HPKE init key!");
+            }
+        }
+    }
+
+    // TODO #525: Add test for incoming proposals.
+}
