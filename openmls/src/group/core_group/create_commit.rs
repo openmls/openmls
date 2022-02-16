@@ -454,12 +454,12 @@ impl CoreGroup {
             diff.add_leaf(key_package_bundle.key_package().clone(), backend.crypto())
                 .map_err(|_| LibraryError::custom("Tree full: cannot add more members"))?;
             diff.own_leaf()
-                .map_err(|_| LibraryError::custom("Expecte own leaf"))?
+                .map_err(|_| LibraryError::custom("Expected own leaf"))?
                 .key_package()
         } else {
             self.treesync()
                 .own_leaf_node()
-                .map_err(|_| LibraryError::custom("Expecte own leaf"))?
+                .map_err(|_| LibraryError::custom("Expected own leaf"))?
                 .key_package()
         };
         // Create a new key package bundle payload from the existing key

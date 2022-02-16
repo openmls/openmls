@@ -293,7 +293,7 @@ impl MlsGroup {
     pub fn members(&self) -> Vec<&KeyPackage> {
         match self.group.treesync().full_leaves() {
             Ok(leaves) => leaves.iter().map(|(_, &kp)| kp).collect(),
-            // This should not happen, but this way we avoid returnung a library error
+            // This should not happen, but this way we avoid returning a library error
             Err(_) => Vec::new(),
         }
     }

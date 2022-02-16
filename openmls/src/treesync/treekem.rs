@@ -228,7 +228,7 @@ impl PlaintextSecret {
 
             let direct_path_position = diff
                 .subtree_root_position(diff.own_leaf_index(), leaf_index)
-                // This can only fail if the nodes are outside theree or identical
+                // This can only fail if the nodes are outside the tree or identical
                 .map_err(|_| LibraryError::custom("Unexpected error in subtree_root_position"))?;
 
             // If a plain path was given, there have to be secrets for every new member.
