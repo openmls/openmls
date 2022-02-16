@@ -620,13 +620,11 @@ impl<'a, T: Clone + Debug> Iterator for DiffIterator<'a, T> {
 
 /// Binary Tree Diff error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ABinaryTreeDiffError {
+pub(crate) enum ABinaryTreeDiffError {
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     #[error("Can't compute the copath node of the subtree root of a single leaf.")]
     SameLeafError,
-    #[error("The given leaf index is not within the tree.")]
-    OutOfBounds,
     #[error("Maximum tree size reached.")]
     TreeTooLarge,
     #[error("Minimum tree size reached.")]
@@ -645,7 +643,7 @@ pub enum ABinaryTreeDiffError {
 
 /// Error type for functions that only throw OutOfBounds errors.
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum OutOfBoundsError {
+pub(crate) enum OutOfBoundsError {
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     #[error("The given index is not within the bounds of the tree.")]

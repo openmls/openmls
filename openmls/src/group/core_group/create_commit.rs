@@ -3,7 +3,7 @@ use openmls_traits::OpenMlsCryptoProvider;
 use crate::{
     ciphersuite::signable::Signable,
     framing::*,
-    group::{core_group::*, *},
+    group::{core_group::*, errors::CreateCommitError, *},
     messages::*,
     treesync::{
         diff::TreeSyncDiff,

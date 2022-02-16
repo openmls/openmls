@@ -16,6 +16,7 @@ use crate::{
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{random::OpenMlsRand, types::SignatureScheme, OpenMlsCryptoProvider};
 use serde::{self, Deserialize, Serialize};
+use thiserror::Error;
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerializeTrait};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -345,12 +346,17 @@ fn read_test_vectors_transcript(backend: &impl OpenMlsCryptoProvider) {
     // }
 }
 
-implement_error! {
-    pub enum TranscriptTestVectorError {
-        MembershipTagVerificationError = "Membership tag could not be verified.",
-        GroupContextMismatch = "The group context does not match",
-        ConfirmationTagMismatch = "The computed confirmation tag doesn't match the one in the test vector.",
-        ConfirmedTranscriptHashMismatch = "The computed transcript hash doesn't match the one in the test vector.",
-        InterimTranscriptHashMismatch = "The computed interim transcript hash doesn't match the one in the test vector.",
-    }
+/// Transcript test vector error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum TranscriptTestVectorError {
+    #[error("Membership tag could not be verified.")]
+    MembershipTagVerificationError,
+    #[error("The group context does not match")]
+    GroupContextMismatch,
+    #[error("The computed confirmation tag doesn't match the one in the test vector.")]
+    ConfirmationTagMismatch,
+    #[error("The computed transcript hash doesn't match the one in the test vector.")]
+    ConfirmedTranscriptHashMismatch,
+    #[error("The computed interim transcript hash doesn't match the one in the test vector.")]
+    InterimTranscriptHashMismatch,
 }

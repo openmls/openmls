@@ -1,4 +1,5 @@
 use openmls_traits::types::CryptoError;
+use thiserror::Error;
 use tls_codec::{Error as TlsCodecError, TlsSerialize, TlsSize};
 
 use crate::ciphersuite::*;
@@ -8,24 +9,27 @@ use crate::tree::{index::*, sender_ratchet::*, treemath::*};
 
 use super::*;
 
-implement_error! {
-    pub enum SecretTreeError {
-        Simple {
-            TooDistantInThePast = "Generation is too old to be processed.",
-            TooDistantInTheFuture = "Generation is too far in the future to be processed.",
-            IndexOutOfBounds = "Index out of bounds",
-            SecretReuseError = "The requested secret was deleted to preserve forward secrecy.",
-            RatchetTypeError = "Cannot create decryption secrets from own sender ratchet or encryption secrets from the sender ratchets of other members.",
-            RatchetTooLong = "Ratchet generation has reached `u32::MAX`.",
-            LibraryError = "An unrecoverable error has occurred due to a bug in the implementation.",
-        }
-        Complex {
-            CodecError(TlsCodecError) =
-                "TLS (de)serialization error occurred.",
-            CryptoError(CryptoError) =
-                "See [`CryptoError`](openmls_traits::types::CryptoError) for details.",
-        }
-    }
+/// Secret tree error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum SecretTreeError {
+    #[error("Generation is too old to be processed.")]
+    TooDistantInThePast,
+    #[error("Generation is too far in the future to be processed.")]
+    TooDistantInTheFuture,
+    #[error("Index out of bounds")]
+    IndexOutOfBounds,
+    #[error("The requested secret was deleted to preserve forward secrecy.")]
+    SecretReuseError,
+    #[error("Cannot create decryption secrets from own sender ratchet or encryption secrets from the sender ratchets of other members.")]
+    RatchetTypeError,
+    #[error("Ratchet generation has reached `u32::MAX`.")]
+    RatchetTooLong,
+    #[error("An unrecoverable error has occurred due to a bug in the implementation.")]
+    LibraryError,
+    #[error(transparent)]
+    CodecError(#[from] TlsCodecError),
+    #[error(transparent)]
+    CryptoError(#[from] CryptoError),
 }
 
 #[derive(Debug, Copy, Clone)]

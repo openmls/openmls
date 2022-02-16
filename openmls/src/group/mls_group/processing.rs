@@ -20,10 +20,10 @@ impl MlsGroup {
         &mut self,
         message: MlsMessageIn,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<UnverifiedMessage, MlsGroupError> {
+    ) -> Result<UnverifiedMessage, ParseMessageError> {
         // Make sure we are still a member of the group
         if !self.is_active() {
-            return Err(MlsGroupError::GroupStateError(
+            return Err(ParseMessageError::GroupStateError(
                 MlsGroupStateError::UseAfterEviction,
             ));
         }
@@ -36,7 +36,7 @@ impl MlsGroup {
                 .incoming()
                 .is_compatible_with(message.wire_format())
         {
-            return Err(MlsGroupError::IncompatibleWireFormat);
+            return Err(ParseMessageError::IncompatibleWireFormat);
         }
 
         // Since the state of the group might be changed, arm the state flag
@@ -47,7 +47,7 @@ impl MlsGroup {
             self.configuration().sender_ratchet_configuration().clone();
         self.group
             .parse_message(backend, message, &sender_ratchet_configuration)
-            .map_err(MlsGroupError::Group)
+            .map_err(ParseMessageError::from)
     }
 
     /// This processing function does most of the semantic verifications.
@@ -83,14 +83,19 @@ impl MlsGroup {
     pub fn commit_to_pending_proposals(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<(MlsMessageOut, Option<Welcome>), MlsGroupError> {
+    ) -> Result<(MlsMessageOut, Option<Welcome>), CommitToPendingProposalsError> {
         self.is_operational()?;
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
-            .read(&credential.signature_key().tls_serialize_detached()?)
-            .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
+            .read(
+                &credential
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)?,
+            )
+            .ok_or(CommitToPendingProposalsError::NoMatchingCredentialBundle)?;
 
         // Create Commit over all pending proposals
         // TODO #751
@@ -119,10 +124,7 @@ impl MlsGroup {
 
     /// Merge a [StagedCommit] into the group after inspection. As this advances
     /// the epoch of the group, it also clears any pending commits.
-    pub fn merge_staged_commit(
-        &mut self,
-        staged_commit: StagedCommit,
-    ) -> Result<(), MlsGroupError> {
+    pub fn merge_staged_commit(&mut self, staged_commit: StagedCommit) -> Result<(), LibraryError> {
         // Check if we were removed from the group
         if staged_commit.self_removed() {
             self.group_state = MlsGroupState::Inactive;
@@ -133,8 +135,7 @@ impl MlsGroup {
 
         // Merge staged commit
         self.group
-            .merge_staged_commit(staged_commit, &mut self.proposal_store)
-            .map_err(MlsGroupError::Group)?;
+            .merge_staged_commit(staged_commit, &mut self.proposal_store)?;
 
         // Extract and store the resumption secret for the current epoch
         let resumption_secret = self.group.group_epoch_secrets().resumption_secret();
@@ -150,21 +151,21 @@ impl MlsGroup {
         Ok(())
     }
 
-    /// Merges the pending [`StagedCommit`] and, if the merge was successful,
+    /// Merges the pending [`StagedCommit`] if there is one, and
     /// clears the field by setting it to `None`.
-    pub fn merge_pending_commit(&mut self) -> Result<(), MlsGroupError> {
+    pub fn merge_pending_commit(&mut self) -> Result<(), MlsGroupStateError> {
         match &self.group_state {
             MlsGroupState::PendingCommit(_) => {
                 let old_state = mem::replace(&mut self.group_state, MlsGroupState::Operational);
                 if let MlsGroupState::PendingCommit(pending_commit_state) = old_state {
-                    self.merge_staged_commit((*pending_commit_state).into())?
+                    if let Err(e) = self.merge_staged_commit((*pending_commit_state).into()) {
+                        log::debug!("Error when merging own commit: {:?}", e);
+                    }
                 }
                 Ok(())
             }
-            MlsGroupState::Operational => Err(MlsGroupError::NoPendingCommit),
-            MlsGroupState::Inactive => Err(MlsGroupError::GroupStateError(
-                MlsGroupStateError::UseAfterEviction,
-            )),
+            MlsGroupState::Inactive => Err(MlsGroupStateError::UseAfterEviction),
+            MlsGroupState::Operational => Ok(()),
         }
     }
 }

@@ -186,7 +186,7 @@ impl<T: Clone + Debug> ABinaryTree<T> {
 
 /// Binary Tree error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ABinaryTreeError {
+pub(crate) enum ABinaryTreeError {
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     #[error("Adding nodes exceeds the maximum possible size of the tree.")]

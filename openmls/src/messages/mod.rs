@@ -406,7 +406,7 @@ impl PathSecret {
 
 /// Path secret error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum PathSecretError {
+pub(crate) enum PathSecretError {
     #[error(transparent)]
     DecryptionError(#[from] CryptoError),
 }

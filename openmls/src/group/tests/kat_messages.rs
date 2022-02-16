@@ -24,6 +24,7 @@ use crate::{
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{random::OpenMlsRand, types::SignatureScheme, OpenMlsCryptoProvider};
 use serde::{self, Deserialize, Serialize};
+use thiserror::Error;
 use tls_codec::{Deserialize as TlsDeserialize, Serialize as TlsSerialize, TlsSliceU32, TlsVecU32};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -711,24 +712,41 @@ fn read_test_vectors_messages() {
     }
 }
 
-implement_error! {
-    pub enum MessagesTestVectorError {
-        LifetimeEncodingMismatch = "Lifetime encodings don't match.",
-        RatchetTreeEncodingMismatch = "RatchetTree encodings don't match.",
-        WelcomeEncodingMismatch = "Welcome encodings don't match.",
-        PublicGroupStateEncodingMismatch = "PublicGroupState encodings don't match.",
-        AddProposalEncodingMismatch = "AddProposal encodings don't match.",
-        MlsCiphertextEncodingMismatch = "MlsCiphertext encodings don't match.",
-        MlsPlaintextCommitEncodingMismatch = "MlsPlaintextCommit encodings don't match.",
-        MlsPlaintextProposalEncodingMismatch = "MlsPlaintextProposal encodings don't match.",
-        MlsPlaintextApplicationEncodingMismatch = "MlsPlaintextApplication encodings don't match.",
-        CommitEncodingMismatch = "Commit encodings don't match.",
-        PreSharedKeyProposalEncodingMismatch = "PreSharedKeyProposal encodings don't match.",
-        RemoveProposalEncodingMismatch = "RemoveProposal encodings don't match.",
-        UpdateProposalEncodingMismatch = "UpdateProposal encodings don't match.",
-        GroupSecretsEncodingMismatch = "GroupSecrets encodings don't match.",
-        GroupInfoEncodingMismatch = "GroupInfo encodings don't match.",
-        KeyPackageEncodingMismatch = "KeyPackage encodings don't match.",
-        CapabilitiesEncodingMismatch = "Capabilities encodings don't match.",
-    }
+/// Messages test vector error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum MessagesTestVectorError {
+    #[error("Lifetime encodings don't match.")]
+    LifetimeEncodingMismatch,
+    #[error("RatchetTree encodings don't match.")]
+    RatchetTreeEncodingMismatch,
+    #[error("Welcome encodings don't match.")]
+    WelcomeEncodingMismatch,
+    #[error("PublicGroupState encodings don't match.")]
+    PublicGroupStateEncodingMismatch,
+    #[error("AddProposal encodings don't match.")]
+    AddProposalEncodingMismatch,
+    #[error("MlsCiphertext encodings don't match.")]
+    MlsCiphertextEncodingMismatch,
+    #[error("MlsPlaintextCommit encodings don't match.")]
+    MlsPlaintextCommitEncodingMismatch,
+    #[error("MlsPlaintextProposal encodings don't match.")]
+    MlsPlaintextProposalEncodingMismatch,
+    #[error("MlsPlaintextApplication encodings don't match.")]
+    MlsPlaintextApplicationEncodingMismatch,
+    #[error("Commit encodings don't match.")]
+    CommitEncodingMismatch,
+    #[error("PreSharedKeyProposal encodings don't match.")]
+    PreSharedKeyProposalEncodingMismatch,
+    #[error("RemoveProposal encodings don't match.")]
+    RemoveProposalEncodingMismatch,
+    #[error("UpdateProposal encodings don't match.")]
+    UpdateProposalEncodingMismatch,
+    #[error("GroupSecrets encodings don't match.")]
+    GroupSecretsEncodingMismatch,
+    #[error("GroupInfo encodings don't match.")]
+    GroupInfoEncodingMismatch,
+    #[error("KeyPackage encodings don't match.")]
+    KeyPackageEncodingMismatch,
+    #[error("Capabilities encodings don't match.")]
+    CapabilitiesEncodingMismatch,
 }

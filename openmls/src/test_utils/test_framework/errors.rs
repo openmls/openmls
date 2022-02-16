@@ -1,6 +1,10 @@
 use thiserror::Error;
 
-use crate::{error::LibraryError, group::*, key_packages::*};
+use crate::{
+    error::LibraryError,
+    group::{errors::WelcomeError, *},
+    key_packages::*,
+};
 
 /// Setup error
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -22,7 +26,7 @@ pub enum SetupError {
     #[error(transparent)]
     KeyPackageError(#[from] KeyPackageError),
     #[error(transparent)]
-    MlsGroupError(#[from] MlsGroupError),
+    ExportSecretError(#[from] ExportSecretError),
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     #[error("")]
@@ -50,10 +54,6 @@ pub enum ClientError {
     #[error(transparent)]
     FailedToJoinGroup(#[from] WelcomeError),
     #[error(transparent)]
-    MlsGroupError(#[from] MlsGroupError),
-    #[error(transparent)]
-    GroupError(#[from] CoreGroupError),
-    #[error(transparent)]
     TlsCodecError(#[from] tls_codec::Error),
     #[error(transparent)]
     KeyPackageError(#[from] KeyPackageError),
@@ -69,6 +69,16 @@ pub enum ClientError {
     ProposeAddMemberError(#[from] ProposeAddMemberError),
     #[error(transparent)]
     ProposeRemoveMemberError(#[from] ProposeRemoveMemberError),
+    #[error(transparent)]
+    ExportSecretError(#[from] ExportSecretError),
+    #[error(transparent)]
+    NewGroupError(#[from] NewGroupError),
+    #[error(transparent)]
+    SelfUpdateError(#[from] SelfUpdateError),
+    #[error(transparent)]
+    ProposeSelfUpdateError(#[from] ProposeSelfUpdateError),
+    #[error(transparent)]
+    ParseMessageError(#[from] ParseMessageError),
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     #[error("")]

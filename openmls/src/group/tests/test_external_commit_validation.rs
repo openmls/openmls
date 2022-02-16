@@ -13,7 +13,7 @@ use crate::{
     ciphersuite::signable::{Signable, Verifiable},
     credentials::*,
     framing::*,
-    group::errors::{ExternalCommitValidationError, StageCommitError},
+    group::errors::{ExternalCommitValidationError, StageCommitError, ValidationError},
     group::*,
     messages::{
         public_group_state::VerifiablePublicGroupState, AddProposal, ExternalInitProposal,
@@ -773,7 +773,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::ValidationError(ValidationError::NoPath))
+        ParseMessageError::ValidationError(ValidationError::NoPath)
     );
 
     // Positive case

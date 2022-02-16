@@ -13,77 +13,84 @@
 use crate::error::{ErrorString, LibraryError};
 
 use openmls_traits::types::CryptoError;
+use thiserror::Error;
 use tls_codec::Error as TlsCodecError;
 
-implement_error! {
-    pub enum ExtensionError {
-        Simple {
-            DuplicateRatchetTreeExtension =
-                "Found a duplicate ratchet tree extension.",
-            UnsupportedProposalType =
-                "Unsupported proposal type in required capabilities.",
-            UnsupportedExtensionType =
-                "Unsupported extension type in required capabilities.",
-        }
-        Complex {
-            LibraryError(LibraryError) = "Library error",
-            InvalidExtensionType(ErrorString) =
-                "Invalid extension type error.",
-            Capabilities(CapabilitiesExtensionError) =
-                "Capabilities extension error. See `CapabilitiesExtensionError` for details.",
-            Lifetime(LifetimeExtensionError) =
-                "Lifetime extension error. See `LifetimeExtensionError` for details.",
-            KeyPackageId(KeyPackageIdError) =
-                "Key package ID extension error. See `KeyPackageIdError` for details.",
-            ParentHash(ParentHashError) =
-                "Parent hash extension error. See `ParentHashError` for details.",
-            RatchetTree(RatchetTreeError) =
-                "Ratchet tree extension error. See `RatchetTreeError` for details.",
-            CodecError(TlsCodecError) =
-                "Error decoding or encoding an extension.",
-            InvalidExtension(InvalidExtensionError) =
-                "The extension is malformed. See [`InvalidExtensionError`](`InvalidExtensionError`) for details.",
-            CryptoError(CryptoError) =
-                "See [`CryptoError`] for details.",
-        }
-    }
+/// Extension error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ExtensionError {
+    #[error("Found a duplicate ratchet tree extension.")]
+    DuplicateRatchetTreeExtension,
+    #[error("Unsupported proposal type in required capabilities.")]
+    UnsupportedProposalType,
+    #[error("Unsupported extension type in required capabilities.")]
+    UnsupportedExtensionType,
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error(transparent)]
+    InvalidExtensionType(#[from] ErrorString),
+    #[error(transparent)]
+    Capabilities(#[from] CapabilitiesExtensionError),
+    #[error(transparent)]
+    Lifetime(#[from] LifetimeExtensionError),
+    #[error(transparent)]
+    KeyPackageId(#[from] KeyPackageIdError),
+    #[error(transparent)]
+    ParentHash(#[from] ParentHashError),
+    #[error(transparent)]
+    RatchetTree(#[from] RatchetTreeError),
+    #[error(transparent)]
+    CodecError(#[from] TlsCodecError),
+    #[error(transparent)]
+    InvalidExtension(#[from] InvalidExtensionError),
+    #[error(transparent)]
+    CryptoError(#[from] CryptoError),
 }
 
-implement_error! {
-    pub enum LifetimeExtensionError {
-        Invalid = "Invalid lifetime extensions.",
-        Expired = "Lifetime extension is expired.",
-    }
+/// Lifetime extension error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum LifetimeExtensionError {
+    #[error("Invalid lifetime extensions.")]
+    Invalid,
+    #[error("Lifetime extension is expired.")]
+    Expired,
 }
 
-implement_error! {
-    pub enum CapabilitiesExtensionError {
-        Invalid = "Invalid capabilities extensions.",
-        EmptyVersionsField = "Capabilities extension is missing a version field.",
-        UnsupportedCiphersuite = "Capabilities contains only unsupported ciphersuites.",
-    }
+/// Capabilities extension error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum CapabilitiesExtensionError {
+    #[error("Invalid capabilities extensions.")]
+    Invalid,
+    #[error("Capabilities extension is missing a version field.")]
+    EmptyVersionsField,
+    #[error("Capabilities contains only unsupported ciphersuites.")]
+    UnsupportedCiphersuite,
 }
 
-implement_error! {
-    pub enum KeyPackageIdError {
-        Invalid = "Invalid key package ID extensions.",
-    }
+/// KeyPackage Id error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum KeyPackageIdError {
+    #[error("Invalid key package ID extensions.")]
+    Invalid,
 }
 
-implement_error! {
-    pub enum ParentHashError {
-        Invalid = "Invalid parent hash extensions.",
-    }
+/// Parent hash error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ParentHashError {
+    #[error("Invalid parent hash extensions.")]
+    Invalid,
 }
 
-implement_error! {
-    pub enum RatchetTreeError {
-        Invalid = "Invalid ratchet tree extensions.",
-    }
+/// Ratchet tree error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum RatchetTreeError {
+    #[error("Invalid ratchet tree extensions.")]
+    Invalid,
 }
 
-implement_error! {
-    pub enum InvalidExtensionError {
-        Duplicate = "The provided extension list contains duplicate extensions.",
-    }
+/// Invalid extension error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum InvalidExtensionError {
+    #[error("The provided extension list contains duplicate extensions.")]
+    Duplicate,
 }

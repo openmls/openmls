@@ -12,10 +12,7 @@ use crate::{
     treesync::hashes::{LeafNodeHashInput, ParentNodeTreeHashInput},
 };
 
-use super::{
-    node::{leaf_node::LeafNode, NodeError},
-    Node,
-};
+use super::{errors::NodeError, node::leaf_node::LeafNode, Node};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -151,7 +148,7 @@ impl TreeSyncNode {
 
 /// Binary Tree error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum TreeSyncNodeError {
+pub(crate) enum TreeSyncNodeError {
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     #[error(transparent)]

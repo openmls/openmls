@@ -1,5 +1,8 @@
 use crate::{
-    group::{core_group::create_commit_params::CreateCommitParams, errors::ExternalCommitError},
+    group::{
+        core_group::create_commit_params::CreateCommitParams,
+        errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
+    },
     messages::VerifiablePublicGroupState,
 };
 
@@ -17,17 +20,17 @@ impl MlsGroup {
         mls_group_config: &MlsGroupConfig,
         group_id: GroupId,
         key_package_hash: &[u8],
-    ) -> Result<Self, MlsGroupError> {
+    ) -> Result<Self, NewGroupError> {
         // TODO #751
         let kph = key_package_hash.to_vec();
         let key_package_bundle: KeyPackageBundle = backend
             .key_store()
             .read(&kph)
-            .ok_or(MlsGroupError::NoMatchingKeyPackageBundle)?;
+            .ok_or(NewGroupError::NoMatchingKeyPackageBundle)?;
         backend
             .key_store()
             .delete(&kph)
-            .map_err(|_| MlsGroupError::KeyStoreError)?;
+            .map_err(|_| NewGroupError::KeyStoreDeletionError)?;
         let group_config = CoreGroupConfig {
             add_ratchet_tree_extension: mls_group_config.use_ratchet_tree_extension,
         };
@@ -35,7 +38,21 @@ impl MlsGroup {
             .with_config(group_config)
             .with_required_capabilities(mls_group_config.required_capabilities.clone())
             .with_max_past_epoch_secrets(mls_group_config.max_past_epochs)
-            .build(backend)?;
+            .build(backend)
+            .map_err(|e| match e {
+                CoreGroupBuildError::LibraryError(e) => e.into(),
+                CoreGroupBuildError::UnsupportedProposalType => {
+                    NewGroupError::UnsupportedProposalType
+                }
+                CoreGroupBuildError::UnsupportedExtensionType => {
+                    NewGroupError::UnsupportedExtensionType
+                }
+                // We don't support PSKs yet
+                CoreGroupBuildError::PskError(e) => {
+                    log::debug!("Unexpected PSK error: {:?}", e);
+                    LibraryError::custom("Unexpected PSK error").into()
+                }
+            })?;
 
         let resumption_secret_store =
             ResumptionSecretStore::new(mls_group_config.number_of_resumption_secrets);

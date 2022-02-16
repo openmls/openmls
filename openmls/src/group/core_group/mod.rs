@@ -32,6 +32,8 @@ mod test_external_init;
 mod test_past_secrets;
 #[cfg(test)]
 mod test_proposals;
+#[cfg(test)]
+use super::errors::CreateGroupContextExtProposalError;
 
 use crate::{
     ciphersuite::hash_ref::KeyPackageRef,
@@ -62,10 +64,7 @@ use tls_codec::Serialize as TlsSerializeTrait;
 use self::{past_secrets::MessageSecretsStore, staged_commit::StagedCommit};
 
 use super::{
-    errors::{
-        CoreGroupError, CreateAddProposalError, ExporterError, FramingValidationError,
-        ProposalValidationError,
-    },
+    errors::{CoreGroupBuildError, CreateAddProposalError, ExporterError, ProposalValidationError},
     group_context::*,
 };
 
@@ -157,7 +156,7 @@ impl CoreGroupBuilder {
     pub(crate) fn build(
         self,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<CoreGroup, CoreGroupError> {
+    ) -> Result<CoreGroup, CoreGroupBuildError> {
         let ciphersuite = self.key_package_bundle.key_package().ciphersuite();
         let config = self.config.unwrap_or_default();
         let required_capabilities = self.required_capabilities.unwrap_or_default();
@@ -167,7 +166,13 @@ impl CoreGroupBuilder {
         trace!(" >>> with {:?}, {:?}", ciphersuite, config);
         let (tree, commit_secret) = TreeSync::new(backend, self.key_package_bundle)?;
 
-        required_capabilities.check_support()?;
+        required_capabilities.check_support().map_err(|e| match e {
+            ExtensionError::UnsupportedProposalType => CoreGroupBuildError::UnsupportedProposalType,
+            ExtensionError::UnsupportedExtensionType => {
+                CoreGroupBuildError::UnsupportedExtensionType
+            }
+            _ => LibraryError::custom("Unexpected ExtensionError").into(),
+        })?;
         let required_capabilities = &[Extension::RequiredCapabilities(required_capabilities)];
 
         let group_context = GroupContext::create_initial_group_context(
@@ -182,10 +187,14 @@ impl CoreGroupBuilder {
         let joiner_secret = JoinerSecret::new(
             backend,
             commit_secret,
-            &InitSecret::random(ciphersuite, backend, version)?,
-        )?;
+            &InitSecret::random(ciphersuite, backend, version)
+                .map_err(LibraryError::unexpected_crypto_error)?,
+        )
+        .map_err(LibraryError::unexpected_crypto_error)?;
 
-        let serialized_group_context = group_context.tls_serialize_detached()?;
+        let serialized_group_context = group_context
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
 
         // Prepare the PskSecret
         let psk_secret = PskSecret::new(ciphersuite, backend, &self.psk_ids)?;
@@ -279,7 +288,7 @@ impl CoreGroup {
         credential_bundle: &CredentialBundle,
         key_package: KeyPackage,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsPlaintext, CoreGroupError> {
+    ) -> Result<MlsPlaintext, LibraryError> {
         let update_proposal = UpdateProposal { key_package };
         let proposal = Proposal::Update(update_proposal);
         MlsPlaintext::member_proposal(
@@ -292,7 +301,6 @@ impl CoreGroup {
             self.message_secrets().membership_key(),
             backend,
         )
-        .map_err(|e| e.into())
     }
 
     // 11.1.3. Remove
@@ -332,7 +340,7 @@ impl CoreGroup {
         credential_bundle: &CredentialBundle,
         psk: PreSharedKeyId,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsPlaintext, CoreGroupError> {
+    ) -> Result<MlsPlaintext, LibraryError> {
         let presharedkey_proposal = PreSharedKeyProposal::new(psk);
         let proposal = Proposal::PreSharedKey(presharedkey_proposal);
         MlsPlaintext::member_proposal(
@@ -345,7 +353,6 @@ impl CoreGroup {
             self.message_secrets().membership_key(),
             backend,
         )
-        .map_err(|e| e.into())
     }
 
     /// Create a `GroupContextExtensions` proposal.
@@ -356,8 +363,9 @@ impl CoreGroup {
         credential_bundle: &CredentialBundle,
         extensions: &[Extension],
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<MlsPlaintext, CoreGroupError> {
+    ) -> Result<MlsPlaintext, CreateGroupContextExtProposalError> {
         // Ensure that the group supports all the extensions that are wanted.
+
         let required_extension = extensions
             .iter()
             .find(|extension| extension.extension_type() == ExtensionType::RequiredCapabilities);
@@ -366,7 +374,8 @@ impl CoreGroup {
             // Ensure we support all the capabilities.
             required_capabilities.check_support()?;
             self.treesync()
-                .own_leaf_node()?
+                .own_leaf_node()
+                .map_err(|_| LibraryError::custom("Expected own leaf"))?
                 .key_package()
                 .validate_required_capabilities(required_capabilities)?;
             // Ensure that all other key packages support all the required
@@ -441,7 +450,7 @@ impl CoreGroup {
         mls_ciphertext: &MlsCiphertext,
         backend: &impl OpenMlsCryptoProvider,
         sender_ratchet_configuration: &SenderRatchetConfiguration,
-    ) -> Result<VerifiableMlsPlaintext, CoreGroupError> {
+    ) -> Result<VerifiableMlsPlaintext, MessageDecryptionError> {
         let ciphersuite = self.ciphersuite();
         let message_secrets = self
             .message_secrets_mut(mls_ciphertext.epoch())
@@ -454,14 +463,14 @@ impl CoreGroup {
         let message_secrets = self
             .message_secrets_mut(mls_ciphertext.epoch())
             .map_err(|_| MessageDecryptionError::AeadError)?;
-        Ok(mls_ciphertext.to_plaintext(
+        mls_ciphertext.to_plaintext(
             ciphersuite,
             backend,
             message_secrets,
             sender_index,
             sender_ratchet_configuration,
             sender_data,
-        )?)
+        )
     }
 
     /// Exporter
@@ -569,8 +578,8 @@ impl CoreGroup {
     pub(crate) fn sender_index(
         &self,
         key_package_ref: &KeyPackageRef,
-    ) -> Result<u32, CoreGroupError> {
-        Ok(self.treesync().leaf_index(key_package_ref)?)
+    ) -> Result<u32, TreeSyncError> {
+        self.treesync().leaf_index(key_package_ref)
     }
 
     /// Get the leaf index of this client.
@@ -625,14 +634,12 @@ impl CoreGroup {
     pub(crate) fn message_secrets_and_leaves_mut<'secret, 'group: 'secret>(
         &'group mut self,
         epoch: GroupEpoch,
-    ) -> Result<(&'secret mut MessageSecrets, IndexedKeyPackageRefs), CoreGroupError> {
+    ) -> Result<(&'secret mut MessageSecrets, IndexedKeyPackageRefs), MessageDecryptionError> {
         if epoch < self.context().epoch() {
             self.message_secrets_store
                 .secrets_and_leaves_for_epoch_mut(epoch)
                 .ok_or({
-                    CoreGroupError::MlsCiphertextError(MessageDecryptionError::SecretTreeError(
-                        SecretTreeError::TooDistantInThePast,
-                    ))
+                    MessageDecryptionError::SecretTreeError(SecretTreeError::TooDistantInThePast)
                 })
         } else {
             // No need for leaves here. The tree of the current epoch is

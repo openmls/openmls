@@ -3,9 +3,7 @@
 //! `MlsPlaintextError` and `MlsCiphertextError` are thrown on errors
 //! handling `MlsPlaintext` and `MlsCiphertext`.
 
-use crate::{
-    credentials::CredentialError, error::LibraryError, tree::secret_tree::SecretTreeError,
-};
+use crate::{error::LibraryError, tree::secret_tree::SecretTreeError};
 use thiserror::Error;
 
 // === Public ===
@@ -17,9 +15,9 @@ pub enum MessageDecryptionError {
     LibraryError(#[from] LibraryError),
     #[error("Couldn't find a ratcheting secret for the given sender and generation.")]
     GenerationOutOfBound,
-    #[error("An error occurred while decrypting.")]
+    #[error("An error occurred during AEAD decryption.")]
     AeadError,
-    #[error("The WireFormat was MLSPlaintext.")]
+    #[error("The WireFormat was not MLSCiphertext.")]
     WrongWireFormat,
     #[error("The content is malformed.")]
     MalformedContent,
@@ -51,47 +49,6 @@ pub enum SenderError {
     NotAMember,
     #[error("Unknown sender")]
     UnknownSender,
-}
-
-/// Verification error
-#[derive(Error, Debug, PartialEq, Clone)]
-pub enum VerificationError {
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
-    #[error("The MlsPlaintext membership tag is missing")]
-    MissingMembershipTag,
-    #[error("The MlsPlaintext membership tag is invalid")]
-    InvalidMembershipTag,
-    #[error(transparent)]
-    CredentialError(#[from] CredentialError),
-}
-
-/// Validation error
-#[derive(Error, Debug, PartialEq, Clone)]
-pub enum ValidationError {
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
-    #[error(
-        "The MlsPlaintext message is not a Commit despite the sender begin of type NewMember."
-    )]
-    NotACommit,
-    #[error("The Commit doesn't have a path despite the sender being of type NewMember.")]
-    NoPath,
-    #[error("The MlsPlaintext contains an application message but was not encrypted.")]
-    UnencryptedApplicationMessage,
-    #[error("Sender is not part of the group.")]
-    UnknownSender,
-    #[error("The confirmation tag is missing.")]
-    MissingConfirmationTag,
-    #[error("Wrong wire format.")]
-    WrongWireFormat,
-    #[error("Verifying the signature failed.")]
-    InvalidSignature,
-    #[error(transparent)]
-    VerificationError(#[from] VerificationError),
-    /// Could not decrypt the message
-    #[error(transparent)]
-    UnableToDecrypt(#[from] MessageDecryptionError),
 }
 
 /// MlsMessage error

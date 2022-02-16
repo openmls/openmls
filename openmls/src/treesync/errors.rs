@@ -7,7 +7,7 @@ use tls_codec::Error as TlsCodecError;
 // === Public errors ===
 
 // Re-exporting OutOfBoundsError from the ABinaryTree
-pub use crate::binary_tree::OutOfBoundsError;
+pub(crate) use crate::binary_tree::OutOfBoundsError;
 
 /// Public tree error
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -49,7 +49,7 @@ pub enum ApplyUpdatePathError {
 
 /// TreeSync error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum TreeSyncError {
+pub(crate) enum TreeSyncError {
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     #[error("Found two KeyPackages with the same public key.")]
@@ -74,7 +74,7 @@ pub enum TreeSyncError {
 
 /// TreeSync set path error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum TreeSyncSetPathError {
+pub(crate) enum TreeSyncSetPathError {
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     #[error("The derived public key doesn't match the one in the tree.")]
@@ -83,7 +83,7 @@ pub enum TreeSyncSetPathError {
 
 /// TreeSync set path error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum TreeSyncAddLeaf {
+pub(crate) enum TreeSyncAddLeaf {
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     #[error("The tree is full, we cannot add any more leaves.")]
@@ -110,19 +110,9 @@ pub(crate) enum TreeSyncParentHashError {
 
 /// TreeSync parent hash error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum TreeSyncDiffError {
+pub(crate) enum TreeSyncDiffError {
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    #[error("The given path does not have the length of the given leaf's direct path.")]
-    PathLengthError,
-    #[error("The given key package does not contain a parent hash extension.")]
-    MissingParentHash,
-    #[error("The parent hash of the given key package is invalid.")]
-    ParentHashMismatch,
-    #[error("The parent hash of a node in the given tree is invalid.")]
-    InvalidParentHash,
-    #[error("The leaf index in the unmerged leaves of a parent node point to a blank.")]
-    BlankUnmergedLeaf,
     #[error(
         "Couldn't find a fitting private key in the filtered resolution of the given leaf index."
     )]
@@ -147,13 +137,10 @@ pub enum TreeSyncDiffError {
 
 /// TreeKem error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum TreeKemError {
+#[allow(clippy::enum_variant_names)]
+pub(crate) enum TreeKemError {
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    #[error("The given path to encrypt does not have the same length as the direct path.")]
-    PathLengthError,
-    #[error("Couldn't find the path secret to encrypt for one of the new members.")]
-    PathSecretNotFound,
     #[error(transparent)]
     TreeSyncError(#[from] TreeSyncError),
     #[error(transparent)]
@@ -164,4 +151,16 @@ pub enum TreeKemError {
     EncodingError(#[from] TlsCodecError),
     #[error(transparent)]
     KeyPackageError(#[from] KeyPackageError),
+}
+
+/// Binary Tree error
+#[derive(Error, Debug, PartialEq, Clone)]
+#[allow(clippy::enum_variant_names)]
+pub(crate) enum NodeError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("This is not a leaf node.")]
+    AsLeafError,
+    #[error("This is not a parent node.")]
+    AsParentError,
 }

@@ -5,7 +5,7 @@ use tls_codec::Deserialize;
 use crate::{
     ciphersuite::{hash_ref::HashReference, signable::Verifiable},
     extensions::ExtensionType,
-    group::{core_group::*, *},
+    group::{core_group::*, errors::WelcomeError, *},
     key_packages::*,
     messages::*,
     schedule::*,

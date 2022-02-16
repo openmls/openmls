@@ -4,51 +4,24 @@
 //! `CreateCommitError`.
 
 use crate::{
-    credentials::CredentialError,
     error::LibraryError,
-    framing::ValidationError,
-    group::{errors::StageCommitError, CoreGroupError, CreateCommitError, ExporterError},
-    treesync::TreeSyncError,
+    group::errors::{CreateCommitError, StageCommitError, ValidationError},
 };
-use openmls_traits::types::CryptoError;
 use thiserror::Error;
-use tls_codec::Error as TlsCodecError;
 
-/// MlsGroup error
+/// New group error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum MlsGroupError {
+pub enum NewGroupError {
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    #[error(
-        "Couldn't find a `CredentialBundle` in the `KeyStore` that matches the one in my leaf."
-    )]
-    NoMatchingCredentialBundle,
-    #[error("Couldn't find a `KeyPackageBundle` in the `KeyStore` that matches the given `KeyPackage` hash.")]
+    #[error("No matching KeyPackageBundle was found in the key store.")]
     NoMatchingKeyPackageBundle,
-    #[error("There is no pending commit that can be merged.")]
-    NoPendingCommit,
-    #[error("Error performing key store operation.")]
-    KeyStoreError,
-    #[error("The incoming message's wire format was not compatible with the wire format policy for incoming messages.")]
-    IncompatibleWireFormat,
-    #[error(transparent)]
-    Group(#[from] CoreGroupError),
-    #[error(transparent)]
-    CreateCommit(#[from] CreateCommitError),
-    #[error(transparent)]
-    GroupStateError(#[from] MlsGroupStateError),
-    #[error(transparent)]
-    Exporter(#[from] ExporterError),
-    #[error(transparent)]
-    CredentialError(#[from] CredentialError),
-    #[error(transparent)]
-    TreeSyncError(#[from] TreeSyncError),
-    #[error(transparent)]
-    ValidationError(#[from] ValidationError),
-    #[error(transparent)]
-    TlsCodecError(#[from] TlsCodecError),
-    #[error(transparent)]
-    CryptoError(#[from] CryptoError),
+    #[error("Failed to delete the KeyPackageBundle from the key store.")]
+    KeyStoreDeletionError,
+    #[error("Unsupported proposal type in required capabilities.")]
+    UnsupportedProposalType,
+    #[error("Unsupported extension type in required capabilities.")]
+    UnsupportedExtensionType,
 }
 
 /// EmptyInput error
@@ -71,6 +44,19 @@ pub enum MlsGroupStateError {
     PendingProposal,
     #[error("Can't execute operation because a pending commit exists.")]
     PendingCommit,
+}
+
+/// Parse message error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ParseMessageError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The message's wire format is incompatible with the group's wire format policy.")]
+    IncompatibleWireFormat,
+    #[error(transparent)]
+    ValidationError(#[from] ValidationError),
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
 }
 
 /// Unverified message error
@@ -162,6 +148,65 @@ pub enum LeaveGroupError {
     LibraryError(#[from] LibraryError),
     #[error("The own CredentialBundle could not be found in the key store.")]
     NoMatchingCredentialBundle,
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+}
+
+/// Self update error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum SelfUpdateError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The own CredentialBundle could not be found in the key store.")]
+    NoMatchingCredentialBundle,
+    #[error(transparent)]
+    CreateCommitError(#[from] CreateCommitError),
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+}
+
+/// Propose self update error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ProposeSelfUpdateError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The own CredentialBundle could not be found in the key store.")]
+    NoMatchingCredentialBundle,
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+}
+
+/// Commit to pending proposals error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum CommitToPendingProposalsError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The own CredentialBundle could not be found in the key store.")]
+    NoMatchingCredentialBundle,
+    #[error(transparent)]
+    CreateCommitError(#[from] CreateCommitError),
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+}
+
+/// Export public group state error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ExportPublicGroupStateError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The own CredentialBundle could not be found in the key store.")]
+    NoMatchingCredentialBundle,
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+}
+
+/// Export secret error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ExportSecretError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The requested key length is too long.")]
+    KeyLengthTooLong,
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
 }

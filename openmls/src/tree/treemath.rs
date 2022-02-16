@@ -1,12 +1,17 @@
 use crate::tree::index::*;
+use thiserror::Error;
 
-implement_error! {
-    pub enum TreeMathError {
-        LeafHasNoChildren = "Leaf nodes don't have children.",
-        RootHasNoParent = "Root nodes don't have parents.",
-        LeafNotInTree = "The leaf index is larger than the tree size.",
-        InvalidInput = "The provided input is invalid for tree math.",
-    }
+/// TreeMath error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub(crate) enum TreeMathError {
+    #[error("Leaf nodes don't have children.")]
+    LeafHasNoChildren,
+    #[error("Root nodes don't have parents.")]
+    RootHasNoParent,
+    #[error("The leaf index is larger than the tree size.")]
+    LeafNotInTree,
+    #[error("The provided input is invalid for tree math.")]
+    InvalidInput,
 }
 
 pub(crate) fn log2(x: usize) -> usize {
