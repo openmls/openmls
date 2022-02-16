@@ -2,7 +2,6 @@
 //! variants of the enum are [`LeafNode`] and [`ParentNode`], both of which are
 //! defined in the respective [`leaf_node`] and [`parent_node`] submodules.
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
 
 use crate::{
     ciphersuite::{HpkePrivateKey, HpkePublicKey},
@@ -11,6 +10,8 @@ use crate::{
 };
 
 use self::{leaf_node::LeafNode, parent_node::ParentNode};
+
+use super::NodeError;
 
 mod codec;
 pub(crate) mod leaf_node;
@@ -94,15 +95,4 @@ impl Node {
         };
         Ok(Some(parent_hash))
     }
-}
-
-/// Binary Tree error
-#[derive(Error, Debug, PartialEq, Clone)]
-pub enum NodeError {
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
-    #[error("This is not a leaf node.")]
-    AsLeafError,
-    #[error("This is not a parent node.")]
-    AsParentError,
 }

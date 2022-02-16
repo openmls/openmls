@@ -269,14 +269,21 @@ fn read_test_vectors_tree_kem(backend: &impl OpenMlsCryptoProvider) {
 }
 
 #[cfg(feature = "test-utils")]
-implement_error! {
-    pub enum TreeKemTestVectorError {
-        BeforeTreeHashMismatch = "Tree hash mismatch in the 'before' tree.",
-        AfterTreeHashMismatch = "Tree hash mismatch in the 'after' tree.",
-        BeforeParentHashMismatch = "Parent hash mismatch in the 'before' tree.",
-        AfterParentHashMismatch = "Parent hash mismatch in the 'after' tree.",
-        BeforeRootSecretMismatch = "Root secret mismatch in the 'before' tree.",
-        AfterRootSecretMismatch = "Root secret mismatch in the 'after' tree.",
-        AfterRatchetTreeMismatch = "Ratchet tree mismatch in the after the update.",
-    }
+/// TreeKem test vector error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum TreeKemTestVectorError {
+    #[error("Tree hash mismatch in the 'before' tree.")]
+    BeforeTreeHashMismatch,
+    #[error("Tree hash mismatch in the 'after' tree.")]
+    AfterTreeHashMismatch,
+    #[error("Parent hash mismatch in the 'before' tree.")]
+    BeforeParentHashMismatch,
+    #[error("Parent hash mismatch in the 'after' tree.")]
+    AfterParentHashMismatch,
+    #[error("Root secret mismatch in the 'before' tree.")]
+    BeforeRootSecretMismatch,
+    #[error("Root secret mismatch in the 'after' tree.")]
+    AfterRootSecretMismatch,
+    #[error("Ratchet tree mismatch in the after the update.")]
+    AfterRatchetTreeMismatch,
 }

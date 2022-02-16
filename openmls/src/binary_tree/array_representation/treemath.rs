@@ -6,7 +6,7 @@ use super::tree::NodeIndex;
 
 /// Tree math error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum TreeMathError {
+pub(crate) enum TreeMathError {
     #[error("Leaf nodes don't have children.")]
     LeafHasNoChildren,
     #[error("Root nodes don't have parents.")]

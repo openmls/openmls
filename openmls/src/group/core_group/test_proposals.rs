@@ -8,15 +8,12 @@ use crate::{
         Ciphersuite, Secret,
     },
     credentials::{CredentialBundle, CredentialType},
-    extensions::{
-        Extension, ExtensionError, ExtensionType, ExternalKeyIdExtension,
-        RequiredCapabilitiesExtension,
-    },
+    extensions::{Extension, ExtensionType, ExternalKeyIdExtension, RequiredCapabilitiesExtension},
     framing::sender::Sender,
     framing::{FramingParameters, MlsPlaintext, WireFormat},
     group::{
         create_commit_params::CreateCommitParams,
-        errors::{CoreGroupError, CreateAddProposalError},
+        errors::*,
         proposals::{ProposalQueue, ProposalStore, QueuedProposal},
         GroupContext, GroupEpoch, GroupId,
     },
@@ -341,10 +338,7 @@ fn test_required_unsupported_proposals(
         .expect_err(
             "CoreGroup creation must fail because AppAck proposals aren't supported in OpenMLS yet.",
         );
-    assert_eq!(
-        e,
-        CoreGroupError::ExtensionError(ExtensionError::UnsupportedProposalType)
-    )
+    assert_eq!(e, CoreGroupBuildError::UnsupportedProposalType)
 }
 
 #[apply(ciphersuites_and_backends)]
@@ -520,7 +514,7 @@ fn test_group_context_extension_proposal_fails(
     ).expect_err("Alice was able to create a gce proposal with a required extensions she doesn't support.");
     assert_eq!(
         e,
-        CoreGroupError::KeyPackageError(KeyPackageError::UnsupportedExtension)
+        CreateGroupContextExtProposalError::KeyPackage(KeyPackageError::UnsupportedExtension)
     );
 
     // Well, this failed luckily.
@@ -579,7 +573,7 @@ fn test_group_context_extension_proposal_fails(
         .expect_err("Bob was able to create a gce proposal for an extension not supported by all other parties.");
     assert_eq!(
         e,
-        CoreGroupError::KeyPackageError(KeyPackageError::UnsupportedExtension)
+        CreateGroupContextExtProposalError::KeyPackage(KeyPackageError::UnsupportedExtension)
     );
 }
 

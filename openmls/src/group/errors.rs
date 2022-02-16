@@ -4,72 +4,16 @@
 //! `CreateCommitError`.
 
 use crate::{
-    credentials::CredentialError,
     error::LibraryError,
     extensions::errors::ExtensionError,
-    framing::errors::{MessageDecryptionError, SenderError, ValidationError},
+    framing::errors::{MessageDecryptionError, SenderError},
     key_packages::KeyPackageError,
     schedule::PskError,
     treesync::errors::*,
 };
-use openmls_traits::types::CryptoError;
 use thiserror::Error;
-use tls_codec::Error as TlsCodecError;
 
 // === Public errors ===
-
-/// CoreGroup error
-#[derive(Error, Debug, PartialEq, Clone)]
-pub enum CoreGroupError {
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
-    #[error("Couldn't find KeyPackageBundle corresponding to own update proposal.")]
-    MissingKeyPackageBundle,
-    #[error("No signature key was found.")]
-    NoSignatureKey,
-    #[error(transparent)]
-    MlsCiphertextError(#[from] MessageDecryptionError),
-    #[error(transparent)]
-    WelcomeError(#[from] WelcomeError),
-    #[error(transparent)]
-    ExternalCommitError(#[from] ExternalCommitError),
-    #[error(transparent)]
-    StageCommitError(#[from] StageCommitError),
-    #[error(transparent)]
-    CreateCommitError(#[from] CreateCommitError),
-    #[error(transparent)]
-    ExporterError(#[from] ExporterError),
-    #[error(transparent)]
-    ProposalQueueError(#[from] ProposalQueueError),
-    #[error(transparent)]
-    CodecError(#[from] TlsCodecError),
-    #[error(transparent)]
-    PskSecretError(#[from] PskError),
-    #[error(transparent)]
-    CredentialError(#[from] CredentialError),
-    #[error(transparent)]
-    TreeSyncError(#[from] TreeSyncError),
-    #[error(transparent)]
-    TreeSyncDiffError(#[from] TreeSyncDiffError),
-    #[error(transparent)]
-    TreeKemError(#[from] TreeKemError),
-    #[error(transparent)]
-    KeyPackageError(#[from] KeyPackageError),
-    #[error(transparent)]
-    ExtensionError(#[from] ExtensionError),
-    #[error(transparent)]
-    ValidationError(#[from] ValidationError),
-    #[error(transparent)]
-    FramingValidationError(#[from] FramingValidationError),
-    #[error(transparent)]
-    ProposalValidationError(#[from] ProposalValidationError),
-    #[error(transparent)]
-    ExternalCommitValidationError(#[from] ExternalCommitValidationError),
-    #[error(transparent)]
-    CryptoError(#[from] CryptoError),
-    #[error(transparent)]
-    SenderError(#[from] SenderError),
-}
 
 /// Welcome error
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -206,75 +150,47 @@ pub enum CreateCommitError {
 }
 
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum CreateAddProposalError {
+pub(crate) enum CreateAddProposalError {
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     #[error("The KeyPackage does not support all required extensions.")]
     UnsupportedExtensions,
 }
 
-// === Crate errors ===
-
-/// Exporter error
+/// Validation error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ExporterError {
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
-    #[error("The requested key length is not supported (too large).")]
-    KeyLengthTooLong,
-}
-
-/// Proposal queue error
-#[derive(Error, Debug, PartialEq, Clone)]
-pub enum ProposalQueueError {
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
-    #[error("Not all proposals in the Commit were found locally.")]
-    ProposalNotFound,
-    #[error(transparent)]
-    SenderError(#[from] SenderError),
-}
-
-/// Errors that can arise when creating a [`ProposalQueue`] from committed
-/// proposals.
-#[derive(Error, Debug, PartialEq, Clone)]
-pub enum FromCommittedProposalsError {
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
-    #[error("Not all proposals in the Commit were found locally.")]
-    ProposalNotFound,
-    #[error("The sender of a Commit tried to remove themselves.")]
-    SelfRemoval,
-}
-
-/// Creation proposal queue error
-#[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum CreationProposalQueueError {
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
-    #[error(transparent)]
-    SenderError(#[from] SenderError),
-}
-
-/// Framing validaton error
-#[derive(Error, Debug, PartialEq, Clone)]
-pub enum FramingValidationError {
+pub enum ValidationError {
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     #[error("Message group ID differs from the group's group ID.")]
     WrongGroupId,
     #[error("Message epoch differs from the group's epoch.")]
     WrongEpoch,
-    #[error("The sender could not be matched to a member of the group.")]
-    UnknownMember,
-    #[error("Application messages must always be encrypted.")]
+    #[error(
+        "The MlsPlaintext message is not a Commit despite the sender begin of type NewMember."
+    )]
+    NotACommit,
+    #[error("The Commit doesn't have a path despite the sender being of type NewMember.")]
+    NoPath,
+    #[error("The MlsPlaintext contains an application message but was not encrypted.")]
     UnencryptedApplicationMessage,
-    #[error("An application message was sent from an external sender.")]
-    NonMemberApplicationMessage,
+    #[error("Sender is not part of the group.")]
+    UnknownMember,
     #[error("Membership tag is missing.")]
     MissingMembershipTag,
-    #[error("Confirmation tag is missing.")]
+    #[error("Membership tag is invalid.")]
+    InvalidMembershipTag,
+    #[error("The confirmation tag is missing.")]
     MissingConfirmationTag,
+    #[error("Wrong wire format.")]
+    WrongWireFormat,
+    #[error("Verifying the signature failed.")]
+    InvalidSignature,
+    #[error("An application message was sent from an external sender.")]
+    NonMemberApplicationMessage,
+    /// Could not decrypt the message
+    #[error(transparent)]
+    UnableToDecrypt(#[from] MessageDecryptionError),
 }
 
 /// Proposal validation error
@@ -337,11 +253,89 @@ pub enum ExternalCommitValidationError {
     UnknownMemberRemoval,
 }
 
+// === Crate errors ===
+
+/// Exporter error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub(crate) enum ExporterError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The requested key length is not supported (too large).")]
+    KeyLengthTooLong,
+}
+
+/// Proposal queue error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub(crate) enum ProposalQueueError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("Not all proposals in the Commit were found locally.")]
+    ProposalNotFound,
+    #[error(transparent)]
+    SenderError(#[from] SenderError),
+}
+
+/// Errors that can arise when creating a [`ProposalQueue`] from committed
+/// proposals.
+#[derive(Error, Debug, PartialEq, Clone)]
+pub(crate) enum FromCommittedProposalsError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("Not all proposals in the Commit were found locally.")]
+    ProposalNotFound,
+    #[error("The sender of a Commit tried to remove themselves.")]
+    SelfRemoval,
+}
+
+/// Creation proposal queue error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub(crate) enum CreationProposalQueueError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error(transparent)]
+    SenderError(#[from] SenderError),
+}
+
 // Apply proposals error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ApplyProposalsError {
+pub(crate) enum ApplyProposalsError {
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     #[error("Own KeyPackageBundle was not found in the key store.")]
     MissingKeyPackageBundle,
+}
+
+// Core group build error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub(crate) enum CoreGroupBuildError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("Unsupported proposal type in required capabilities.")]
+    UnsupportedProposalType,
+    #[error("Unsupported extension type in required capabilities.")]
+    UnsupportedExtensionType,
+    #[error(transparent)]
+    PskError(#[from] PskError),
+}
+
+// CoreGroup parse message error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub(crate) enum CoreGroupParseMessageError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    //#[error(transparent)]
+    //FramingValidationError(#[from] FramingValidationError),
+    #[error(transparent)]
+    ValidationError(#[from] ValidationError),
+}
+
+/// Create group context ext proposal error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub(crate) enum CreateGroupContextExtProposalError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error(transparent)]
+    KeyPackage(#[from] KeyPackageError),
+    #[error(transparent)]
+    Extension(#[from] ExtensionError),
 }

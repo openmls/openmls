@@ -6,7 +6,7 @@ use crate::{
     ciphersuite::hash_ref::KeyPackageRef,
     credentials::*,
     framing::*,
-    group::errors::FramingValidationError,
+    group::errors::ValidationError,
     group::*,
     key_packages::*,
     messages::proposals::*,
@@ -431,8 +431,8 @@ fn test_invalid_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
         .expect_err("No error when distributing message with invalid signature.");
 
     assert_eq!(
-        ClientError::MlsGroupError(MlsGroupError::Group(
-            CoreGroupError::FramingValidationError(FramingValidationError::UnknownMember)
+        ClientError::ParseMessageError(ParseMessageError::ValidationError(
+            ValidationError::UnknownMember
         )),
         error
     );
@@ -519,13 +519,6 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
     // There should be no pending commit after issuing and processing a proposal.
     assert!(alice_group.pending_commit().is_none());
 
-    // Trying to merge a pending commit while there is no pending commit should
-    // result in an error.
-    let error = alice_group
-        .merge_pending_commit()
-        .expect_err("no error while trying to merge non-existant pending commit");
-    assert_eq!(error, MlsGroupError::NoPendingCommit);
-
     println!("\nCreating commit with add proposal.");
     let (_msg, _welcome_option) = alice_group
         .self_update(backend, None)
@@ -570,21 +563,21 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         .expect_err("no error committing while a commit is pending");
     assert_eq!(
         error,
-        MlsGroupError::GroupStateError(MlsGroupStateError::PendingCommit)
+        CommitToPendingProposalsError::GroupStateError(MlsGroupStateError::PendingCommit)
     );
     let error = alice_group
         .self_update(backend, None)
         .expect_err("no error committing while a commit is pending");
     assert_eq!(
         error,
-        MlsGroupError::GroupStateError(MlsGroupStateError::PendingCommit)
+        SelfUpdateError::GroupStateError(MlsGroupStateError::PendingCommit)
     );
     let error = alice_group
         .propose_self_update(backend, None)
         .expect_err("no error creating a proposal while a commit is pending");
     assert_eq!(
         error,
-        MlsGroupError::GroupStateError(MlsGroupStateError::PendingCommit)
+        ProposeSelfUpdateError::GroupStateError(MlsGroupStateError::PendingCommit)
     );
 
     // Clearing the pending commit should actually clear it.

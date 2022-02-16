@@ -1,6 +1,6 @@
 use tls_codec::Serialize;
 
-use crate::messages::PublicGroupState;
+use crate::{group::errors::ExporterError, messages::PublicGroupState};
 
 use super::*;
 
@@ -14,13 +14,17 @@ impl MlsGroup {
         label: &str,
         context: &[u8],
         key_length: usize,
-    ) -> Result<Vec<u8>, MlsGroupError> {
+    ) -> Result<Vec<u8>, ExportSecretError> {
         if self.is_active() {
             Ok(self
                 .group
-                .export_secret(backend, label, context, key_length)?)
+                .export_secret(backend, label, context, key_length)
+                .map_err(|e| match e {
+                    ExporterError::LibraryError(e) => e.into(),
+                    ExporterError::KeyLengthTooLong => ExportSecretError::KeyLengthTooLong,
+                })?)
         } else {
-            Err(MlsGroupError::GroupStateError(
+            Err(ExportSecretError::GroupStateError(
                 MlsGroupStateError::UseAfterEviction,
             ))
         }
@@ -43,18 +47,23 @@ impl MlsGroup {
     pub fn export_public_group_state(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-    ) -> Result<PublicGroupState, MlsGroupError> {
-        let credential_bundle: CredentialBundle = backend
-            .key_store()
-            .read(
-                &self
-                    .credential()?
-                    .signature_key()
-                    .tls_serialize_detached()?,
-            )
-            .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
-        Ok(self
-            .group
-            .export_public_group_state(backend, &credential_bundle)?)
+    ) -> Result<PublicGroupState, ExportPublicGroupStateError> {
+        match self.credential() {
+            Ok(credential) => {
+                let credential_bundle: CredentialBundle = backend
+                    .key_store()
+                    .read(
+                        &credential
+                            .signature_key()
+                            .tls_serialize_detached()
+                            .map_err(LibraryError::missing_bound_check)?,
+                    )
+                    .ok_or(ExportPublicGroupStateError::NoMatchingCredentialBundle)?;
+                Ok(self
+                    .group
+                    .export_public_group_state(backend, &credential_bundle)?)
+            }
+            Err(e) => Err(e.into()),
+        }
     }
 }
