@@ -158,7 +158,7 @@ impl Client {
         } else {
             if message.content_type() == ContentType::Commit {
                 // Clear any potential pending commits.
-                group_state.clear_pending_commit()?;
+                group_state.clear_pending_commit();
             }
             // Process the message.
             let unverified_message = group_state.parse_message(message.clone(), &self.crypto)?;

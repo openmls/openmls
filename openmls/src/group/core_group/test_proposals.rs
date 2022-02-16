@@ -16,7 +16,7 @@ use crate::{
     framing::{FramingParameters, MlsPlaintext, WireFormat},
     group::{
         create_commit_params::CreateCommitParams,
-        errors::CoreGroupError,
+        errors::{CoreGroupError, CreateAddProposalError},
         proposals::{ProposalQueue, ProposalStore, QueuedProposal},
         GroupContext, GroupEpoch, GroupId,
     },
@@ -389,10 +389,7 @@ fn test_required_extension_key_package_mismatch(
             backend,
         )
         .expect_err("Proposal was created even though the key package didn't support the required extensions.");
-    assert_eq!(
-        e,
-        CoreGroupError::KeyPackageError(KeyPackageError::UnsupportedExtension)
-    );
+    assert_eq!(e, CreateAddProposalError::UnsupportedExtensions);
 }
 
 #[apply(ciphersuites_and_backends)]

@@ -3,13 +3,13 @@
 //! `WelcomeError`, `StageCommitError`, `DecryptionError`, and
 //! `CreateCommitError`.
 
-use crate::credentials::CredentialError;
-use crate::error::LibraryError;
-use crate::framing::ValidationError;
-use crate::group::errors::StageCommitError;
-use crate::group::WelcomeError;
-use crate::group::{CoreGroupError, CreateCommitError, ExporterError};
-use crate::treesync::TreeSyncError;
+use crate::{
+    credentials::CredentialError,
+    error::LibraryError,
+    framing::ValidationError,
+    group::{errors::StageCommitError, CoreGroupError, CreateCommitError, ExporterError},
+    treesync::TreeSyncError,
+};
 use openmls_traits::types::CryptoError;
 use thiserror::Error;
 use tls_codec::Error as TlsCodecError;
@@ -25,16 +25,8 @@ pub enum MlsGroupError {
     NoMatchingCredentialBundle,
     #[error("Couldn't find a `KeyPackageBundle` in the `KeyStore` that matches the given `KeyPackage` hash.")]
     NoMatchingKeyPackageBundle,
-    #[error("Tried to access a poisoned `CredentialBundle`. See [`PoisonError`](`std::sync::PoisonError`) for details.")]
-    PoisonedCredentialBundle,
-    #[error("No signature key was available to verify the message signature.")]
-    NoSignatureKey,
-    #[error("Can't create a new commit while another commit is still pending. Please clear or merge the pending commit before creating a new one.")]
-    PendingCommitError,
     #[error("There is no pending commit that can be merged.")]
     NoPendingCommit,
-    #[error("Can't clear an external commit, as the group can't merge `Member` commits yet. If an external commit is rejected by the DS, a new external init must be performed. See the MLS spec for more information.")]
-    ExternalCommitError,
     #[error("Error performing key store operation.")]
     KeyStoreError,
     #[error("The incoming message's wire format was not compatible with the wire format policy for incoming messages.")]
@@ -48,8 +40,6 @@ pub enum MlsGroupError {
     #[error(transparent)]
     Exporter(#[from] ExporterError),
     #[error(transparent)]
-    EmptyInput(#[from] EmptyInputError),
-    #[error(transparent)]
     CredentialError(#[from] CredentialError),
     #[error(transparent)]
     TreeSyncError(#[from] TreeSyncError),
@@ -59,8 +49,6 @@ pub enum MlsGroupError {
     TlsCodecError(#[from] TlsCodecError),
     #[error(transparent)]
     CryptoError(#[from] CryptoError),
-    #[error(transparent)]
-    WelcomeError(#[from] WelcomeError),
 }
 
 /// EmptyInput error
@@ -75,10 +63,14 @@ pub enum EmptyInputError {
 /// Group state error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum MlsGroupStateError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
     #[error("Tried to use a group after being evicted from it.")]
     UseAfterEviction,
     #[error("Can't create message because a pending proposal exists.")]
     PendingProposal,
+    #[error("Can't execute operation because a pending commit exists.")]
+    PendingCommit,
 }
 
 /// Unverified message error
@@ -96,4 +88,80 @@ pub enum UnverifiedMessageError {
     MissingSignatureKey,
     #[error(transparent)]
     InvalidCommit(#[from] StageCommitError),
+}
+
+/// Create message error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum CreateMessageError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The own CredentialBundle could not be found in the key store.")]
+    NoMatchingCredentialBundle,
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+}
+
+/// Add members error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum AddMembersError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The own CredentialBundle could not be found in the key store.")]
+    NoMatchingCredentialBundle,
+    #[error(transparent)]
+    EmptyInput(#[from] EmptyInputError),
+    #[error(transparent)]
+    CreateCommitError(#[from] CreateCommitError),
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+}
+
+/// Propose add members error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ProposeAddMemberError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The own CredentialBundle could not be found in the key store.")]
+    NoMatchingCredentialBundle,
+    #[error("The new member does not support all required extensions.")]
+    UnsupportedExtensions,
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+}
+
+/// Propose remove members error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ProposeRemoveMemberError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The own CredentialBundle could not be found in the key store.")]
+    NoMatchingCredentialBundle,
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+}
+
+/// Remove members error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum RemoveMembersError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The own CredentialBundle could not be found in the key store.")]
+    NoMatchingCredentialBundle,
+    #[error(transparent)]
+    EmptyInput(#[from] EmptyInputError),
+    #[error(transparent)]
+    CreateCommitError(#[from] CreateCommitError),
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+}
+
+/// Leave group error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum LeaveGroupError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("The own CredentialBundle could not be found in the key store.")]
+    NoMatchingCredentialBundle,
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
 }

@@ -10,7 +10,7 @@ use rstest_reuse::{self, *};
 use crate::{
     ciphersuite::Ciphersuite,
     credentials::{CredentialBundle, CredentialType},
-    framing::{MlsCiphertextError, ProcessedMessage, ValidationError},
+    framing::{MessageDecryptionError, ProcessedMessage, ValidationError},
     group::{CoreGroupError, GroupId, MlsGroup, MlsGroupConfig, MlsGroupError},
     key_packages::KeyPackageBundle,
 };
@@ -181,7 +181,7 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
             assert_eq!(
                 err,
                 MlsGroupError::Group(CoreGroupError::ValidationError(
-                    ValidationError::UnableToDecrypt(MlsCiphertextError::DecryptionError),
+                    ValidationError::UnableToDecrypt(MessageDecryptionError::AeadError),
                 ))
             );
         }
