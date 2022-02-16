@@ -12,7 +12,7 @@ use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext, OpenMlsCrypto
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    binary_tree::LeafIndex,
+    binary_tree::{LeafIndex, OutOfBoundsError},
     ciphersuite::{hash_ref::KeyPackageRef, Ciphersuite, HpkePublicKey},
     error::LibraryError,
     key_packages::KeyPackage,
@@ -73,6 +73,10 @@ impl<'a> TreeSyncDiff<'a> {
     /// Returns a vector containing the decrypted [`ParentNode`] instances, as
     /// well as the [`CommitSecret`] resulting from their derivation. Returns an
     /// error if the `sender_leaf_index` is outside of the tree.
+    ///
+    /// ValSem202: Path must be the right length
+    /// ValSem203: Path secrets must decrypt correctly
+    /// ValSem204: Public keys from Path must be verified and match the private keys from the direct path
     /// TODO #804
     pub(crate) fn decrypt_path(
         &self,
@@ -82,8 +86,19 @@ impl<'a> TreeSyncDiff<'a> {
     ) -> Result<(Vec<ParentNode>, CommitSecret), ApplyUpdatePathError> {
         let path_position = self
             .subtree_root_position(params.sender_leaf_index, self.own_leaf_index())
-            // We know our own leaf is in the tree
             .map_err(|_| LibraryError::custom("Expected own leaf to be in the tree"))?;
+
+        // ValSem202: Path must be the right length
+        let direct_path_length =
+            self.direct_path_len(params.sender_leaf_index)
+                .map_err(|e| match e {
+                    OutOfBoundsError::LibraryError(e) => ApplyUpdatePathError::LibraryError(e),
+                    OutOfBoundsError::IndexOutOfBounds => ApplyUpdatePathError::MissingSender,
+                })?;
+        if direct_path_length != params.update_path.len() {
+            return Err(ApplyUpdatePathError::PathLengthMismatch);
+        }
+
         let update_path_node = params
             .update_path
             .get(path_position)
@@ -101,6 +116,7 @@ impl<'a> TreeSyncDiff<'a> {
             // TODO #804
             .ok_or_else(|| LibraryError::custom("Expected to find ciphertext in update path"))?;
 
+        // ValSem203: Path secrets must decrypt correctly
         let path_secret = PathSecret::decrypt(
             backend,
             ciphersuite,
@@ -116,6 +132,7 @@ impl<'a> TreeSyncDiff<'a> {
             ParentNode::derive_path(backend, ciphersuite, path_secret, remaining_path_length)?;
         // We now check that the public keys in the update path and in the
         // derived path match up.
+        // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
         for (update_parent_node, derived_parent_node) in params
             .update_path
             .iter()
@@ -195,6 +212,24 @@ impl UpdatePathNode {
             new_eps_vec.push(new_eps);
         }
         self.encrypted_path_secrets = new_eps_vec.into();
+    }
+
+    /// Flip the last byte of the public key in this node.
+    #[cfg(test)]
+    fn flip_last_pk_byte(&mut self) {
+        use tls_codec::{Deserialize, Serialize};
+
+        let mut new_pk_serialized = self
+            .public_key
+            .tls_serialize_detached()
+            .expect("error serializing public key");
+        let mut last_bits = new_pk_serialized
+            .pop()
+            .expect("An unexpected error occurred.");
+        last_bits ^= 0xff;
+        new_pk_serialized.push(last_bits);
+        self.public_key = HpkePublicKey::tls_deserialize(&mut new_pk_serialized.as_slice())
+            .expect("error deserializing pk");
     }
 }
 
@@ -317,5 +352,20 @@ impl UpdatePath {
     /// Set the path key package.
     pub fn set_leaf_key_package(&mut self, key_package: KeyPackage) {
         self.leaf_key_package = key_package
+    }
+
+    #[cfg(test)]
+    /// Remove and return the last node in the update path. Returns `None` if
+    /// the path is empty.
+    pub fn pop(&mut self) -> Option<UpdatePathNode> {
+        self.nodes.pop()
+    }
+
+    #[cfg(test)]
+    /// Flip the last bytes of the public key in the last node in the path.
+    pub fn flip_node_bytes(&mut self) {
+        let mut last_node = self.nodes.pop().expect("path empty");
+        last_node.flip_last_pk_byte();
+        self.nodes.push(last_node)
     }
 }

@@ -1,6 +1,9 @@
 use std::collections::HashSet;
 
-use crate::binary_tree::{MlsBinaryTree, MlsBinaryTreeDiffError, MlsBinaryTreeError};
+use crate::{
+    binary_tree::{MlsBinaryTree, MlsBinaryTreeDiffError, MlsBinaryTreeError},
+    prelude_test::OutOfBoundsError,
+};
 
 use super::array_representation::{tree::NodeIndex, treemath::TreeMathError};
 
@@ -110,7 +113,7 @@ fn test_node_references() {
     assert_eq!(
         diff.leaf(1)
             .expect_err("no error when accessing leaf outside of tree"),
-        MlsBinaryTreeDiffError::OutOfBounds
+        MlsBinaryTreeDiffError::IndexOutOfBounds(OutOfBoundsError::IndexOutOfBounds)
     );
 
     let leaf_index = diff
@@ -132,7 +135,7 @@ fn test_node_references() {
 
     assert_eq!(
         diff.replace_leaf(1, 1).expect_err("error replacing leaf"),
-        MlsBinaryTreeDiffError::OutOfBounds
+        MlsBinaryTreeDiffError::IndexOutOfBounds(OutOfBoundsError::IndexOutOfBounds)
     );
 
     let leaf_reference = diff.leaf(0).expect("error obtaining leaf reference.");
@@ -369,7 +372,7 @@ fn test_direct_path_manipulation() {
         st_diff.direct_path(1).expect_err(
             "should not be able to compute direct path with leaf index outside of tree."
         ),
-        MlsBinaryTreeDiffError::TreeError(TreeMathError::NodeNotInTree)
+        OutOfBoundsError::IndexOutOfBounds
     );
 
     // Setting the direct path to one node.
@@ -547,7 +550,10 @@ fn test_subtree_root_position() {
     let error = diff
         .subtree_root_position(3, 0)
         .expect_err("no error when computing subtree root position outside of tree");
-    assert_eq!(error, MlsBinaryTreeDiffError::OutOfBounds);
+    assert_eq!(
+        error,
+        MlsBinaryTreeDiffError::IndexOutOfBounds(OutOfBoundsError::IndexOutOfBounds)
+    );
 
     // Larger tree
     let tree = MlsBinaryTree::new((0..101).collect()).expect("error creating tree");
@@ -604,7 +610,10 @@ fn test_subtree_root_copath_node() {
     let error = diff
         .subtree_root_copath_node(3, 0)
         .expect_err("no error when computing subtree root position outside of tree");
-    assert_eq!(error, MlsBinaryTreeDiffError::OutOfBounds);
+    assert_eq!(
+        error,
+        MlsBinaryTreeDiffError::IndexOutOfBounds(OutOfBoundsError::IndexOutOfBounds)
+    );
 
     // Larger tree
     let tree = MlsBinaryTree::new((0..101).collect()).expect("error creating tree");
@@ -679,7 +688,10 @@ fn test_subtree_path() {
     let error = diff
         .subtree_path(0, 3)
         .expect_err("no error when computing subtree root position outside of tree");
-    assert_eq!(error, MlsBinaryTreeDiffError::OutOfBounds);
+    assert_eq!(
+        error,
+        MlsBinaryTreeDiffError::IndexOutOfBounds(OutOfBoundsError::IndexOutOfBounds)
+    );
 
     // Larger tree
     let tree = MlsBinaryTree::new((0..101).collect()).expect("error creating tree");
