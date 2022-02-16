@@ -344,27 +344,23 @@ fn test_valsem104(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         KeyUniqueness::PositiveDifferentKey,
     ] {
         // 0. Initialize Alice and Bob
-        let alice_signature_keypair: SignatureKeypair;
-        let bob_signature_keypair: SignatureKeypair;
-
-        match alice_and_bob_share_keys {
+        let (alice_signature_keypair, bob_signature_keypair) = match alice_and_bob_share_keys {
             KeyUniqueness::NegativeSameKey => {
                 let shared_signature_keypair =
                     SignatureKeypair::new(ciphersuite.signature_scheme(), backend)
                         .expect("failed to generate signature keypair");
-
-                alice_signature_keypair = shared_signature_keypair.clone();
-                bob_signature_keypair = shared_signature_keypair.clone();
+                (
+                    shared_signature_keypair.clone(),
+                    shared_signature_keypair.clone(),
+                )
             }
-            KeyUniqueness::PositiveDifferentKey => {
-                alice_signature_keypair =
-                    SignatureKeypair::new(ciphersuite.signature_scheme(), backend)
-                        .expect("failed to generate signature keypair");
-                bob_signature_keypair =
-                    SignatureKeypair::new(ciphersuite.signature_scheme(), backend)
-                        .expect("failed to generate signature keypair");
-            }
-        }
+            KeyUniqueness::PositiveDifferentKey => (
+                SignatureKeypair::new(ciphersuite.signature_scheme(), backend)
+                    .expect("failed to generate signature keypair"),
+                SignatureKeypair::new(ciphersuite.signature_scheme(), backend)
+                    .expect("failed to generate signature keypair"),
+            ),
+        };
 
         let alice_credential_bundle =
             CredentialBundle::from_parts("Alice".into(), alice_signature_keypair);
