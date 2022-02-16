@@ -357,6 +357,66 @@ fn test_valsem201(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     let unverified_message = charlie_group
         .parse_message(MlsMessageIn::from(original_remove_plaintext), backend)
         .expect("Could not parse message.");
+    if let ProcessedMessage::StagedCommitMessage(staged_commit) = charlie_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect("Unexpected error.")
+    {
+        charlie_group
+            .merge_staged_commit(*staged_commit)
+            .expect("error merging staged commit");
+    } else {
+        panic!("Expected a staged commit.");
+    };
+
+    // Make sure that alice' and charlies states match up.
+    alice_group
+        .merge_pending_commit()
+        .expect("error merging pending commit");
+
+    // Create a commit covering an update proposal.
+    // Have charlie create an update proposal and then let Alice commit to it.
+    let charlie_update_proposal = charlie_group
+        .propose_self_update(backend, None)
+        .expect("error creating self-update proposal");
+
+    let unverified_message = alice_group
+        .parse_message(charlie_update_proposal.into(), backend)
+        .expect("error parsing proposal");
+    alice_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect("error processing proposal");
+
+    let serialized_update = alice_group
+        .commit_to_pending_proposals(backend)
+        .expect("Error creating self-update")
+        .tls_serialize_detached()
+        .expect("Could not serialize message.");
+
+    // Erase the path.
+    let update_message_in = erase_path(backend, &serialized_update, &alice_group);
+
+    // Have charlie process it.
+    let unverified_message = charlie_group
+        .parse_message(update_message_in, backend)
+        .expect("Could not parse message.");
+
+    let err = charlie_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect_err("Could process unverified message despite missing path.");
+
+    assert_eq!(
+        err,
+        UnverifiedMessageError::InvalidCommit(StageCommitError::RequiredPathNotFound)
+    );
+
+    let original_update_plaintext =
+        VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+            .expect("Could not deserialize message.");
+
+    // Positive case
+    let unverified_message = charlie_group
+        .parse_message(MlsMessageIn::from(original_update_plaintext), backend)
+        .expect("Could not parse message.");
     charlie_group
         .process_unverified_message(unverified_message, None, backend)
         .expect("Unexpected error.");
