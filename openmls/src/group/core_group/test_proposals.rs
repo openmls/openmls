@@ -7,9 +7,11 @@ use crate::{
         hash_ref::{KeyPackageRef, ProposalRef},
         Ciphersuite, Secret,
     },
-    config::{errors::ConfigError, Config},
     credentials::{CredentialBundle, CredentialType},
-    extensions::{Extension, ExtensionType, ExternalKeyIdExtension, RequiredCapabilitiesExtension},
+    extensions::{
+        Extension, ExtensionError, ExtensionType, ExternalKeyIdExtension,
+        RequiredCapabilitiesExtension,
+    },
     framing::sender::Sender,
     framing::{FramingParameters, MlsPlaintext, WireFormat},
     group::{
@@ -28,23 +30,19 @@ use super::CoreGroup;
 
 fn setup_client(
     id: &str,
-    ciphersuite: &Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) -> (CredentialBundle, KeyPackageBundle) {
     let credential_bundle = CredentialBundle::new(
         id.into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
-    let key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, Vec::new())
+            .expect("An unexpected error occurred.");
     (credential_bundle, key_package_bundle)
 }
 
@@ -52,10 +50,7 @@ fn setup_client(
 /// used in `create_commit` to filter the epoch proposals. Expected result:
 /// `filtered_queued_proposals` returns only proposals of a certain type
 #[apply(ciphersuites_and_backends)]
-fn proposal_queue_functions(
-    ciphersuite: &'static Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
+fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Framing parameters
     let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
     // Define identities
@@ -85,7 +80,7 @@ fn proposal_queue_functions(
 
     let bob_key_package = bob_key_package_bundle.key_package();
     let alice_update_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &alice_credential_bundle,
         backend,
         Vec::new(),
@@ -206,7 +201,7 @@ fn proposal_queue_functions(
 
 /// Test, that we QueuedProposalQueue is iterated in the right order.
 #[apply(ciphersuites_and_backends)]
-fn proposal_queue_order(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Framing parameters
     let framing_parameters = FramingParameters::new(&[], WireFormat::MlsPlaintext);
     // Define identities
@@ -236,7 +231,7 @@ fn proposal_queue_order(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
 
     let bob_key_package = bob_key_package_bundle.key_package();
     let alice_update_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &alice_credential_bundle,
         backend,
         Vec::new(),
@@ -328,7 +323,7 @@ fn proposal_queue_order(ciphersuite: &'static Ciphersuite, backend: &impl OpenMl
 
 #[apply(ciphersuites_and_backends)]
 fn test_required_unsupported_proposals(
-    ciphersuite: &'static Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
     let (_alice_credential_bundle, alice_key_package_bundle) =
@@ -348,13 +343,13 @@ fn test_required_unsupported_proposals(
         );
     assert_eq!(
         e,
-        CoreGroupError::ConfigError(ConfigError::UnsupportedProposalType)
+        CoreGroupError::ExtensionError(ExtensionError::UnsupportedProposalType)
     )
 }
 
 #[apply(ciphersuites_and_backends)]
 fn test_required_extension_key_package_mismatch(
-    ciphersuite: &'static Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
     // Basic group setup.
@@ -401,10 +396,7 @@ fn test_required_extension_key_package_mismatch(
 }
 
 #[apply(ciphersuites_and_backends)]
-fn test_group_context_extensions(
-    ciphersuite: &'static Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
+fn test_group_context_extensions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
@@ -414,7 +406,7 @@ fn test_group_context_extensions(
     let (bob_credential_bundle, _) = setup_client("Bob", ciphersuite, backend);
 
     let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &bob_credential_bundle,
         backend,
         vec![Extension::ExternalKeyId(ExternalKeyIdExtension::default())],
@@ -483,7 +475,7 @@ fn test_group_context_extensions(
 
 #[apply(ciphersuites_and_backends)]
 fn test_group_context_extension_proposal_fails(
-    ciphersuite: &'static Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
     // Basic group setup.
@@ -495,7 +487,7 @@ fn test_group_context_extension_proposal_fails(
     let (bob_credential_bundle, _) = setup_client("Bob", ciphersuite, backend);
 
     let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &bob_credential_bundle,
         backend,
         vec![Extension::ExternalKeyId(ExternalKeyIdExtension::default())],
@@ -596,7 +588,7 @@ fn test_group_context_extension_proposal_fails(
 
 #[apply(ciphersuites_and_backends)]
 fn test_group_context_extension_proposal(
-    ciphersuite: &'static Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
     // Basic group setup.
@@ -607,14 +599,14 @@ fn test_group_context_extension_proposal(
     let (bob_credential_bundle, _) = setup_client("Bob", ciphersuite, backend);
 
     let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &bob_credential_bundle,
         backend,
         vec![Extension::ExternalKeyId(ExternalKeyIdExtension::default())],
     )
     .expect("An unexpected error occurred.");
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &alice_credential_bundle,
         backend,
         vec![Extension::ExternalKeyId(ExternalKeyIdExtension::default())],

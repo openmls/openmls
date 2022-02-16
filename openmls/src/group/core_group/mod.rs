@@ -35,7 +35,6 @@ mod test_proposals;
 
 use crate::{
     ciphersuite::hash_ref::KeyPackageRef,
-    config::*,
     credentials::*,
     error::LibraryError,
     framing::*,
@@ -45,16 +44,14 @@ use crate::{
     schedule::{psk::*, *},
     tree::{secret_tree::SecretTreeError, SenderRatchetConfiguration},
     treesync::*,
+    versions::ProtocolVersion,
 };
 
 use crate::{ciphersuite::signable::*, messages::public_group_state::*};
 
 use log::{debug, trace};
-use serde::{
-    de::{self, MapAccess, SeqAccess, Visitor},
-    ser::{SerializeStruct, Serializer},
-    Deserialize, Deserializer, Serialize,
-};
+use openmls_traits::crypto::OpenMlsCrypto;
+use serde::{Deserialize, Serialize};
 #[cfg(test)]
 use std::convert::TryFrom;
 #[cfg(test)]
@@ -76,10 +73,10 @@ pub(crate) struct CreateCommitResult {
     pub(crate) staged_commit: StagedCommit,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub(crate) struct CoreGroup {
-    ciphersuite: &'static Ciphersuite,
+    ciphersuite: Ciphersuite,
     group_context: GroupContext,
     group_epoch_secrets: GroupEpochSecrets,
     tree: TreeSync,
@@ -98,17 +95,6 @@ pub(crate) struct CoreGroup {
     /// the store must be increased through [`max_past_epochs()`].
     message_secrets_store: MessageSecretsStore,
 }
-
-implement_persistence!(
-    CoreGroup,
-    group_context,
-    group_epoch_secrets,
-    tree,
-    interim_transcript_hash,
-    use_ratchet_tree_extension,
-    mls_version,
-    message_secrets_store
-);
 
 /// Builder for [`CoreGroup`].
 pub(crate) struct CoreGroupBuilder {
@@ -178,7 +164,7 @@ impl CoreGroupBuilder {
         trace!(" >>> with {:?}, {:?}", ciphersuite, config);
         let (tree, commit_secret) = TreeSync::new(backend, self.key_package_bundle)?;
 
-        check_required_capabilities_support(&required_capabilities)?;
+        required_capabilities.check_support()?;
         let required_capabilities = &[Extension::RequiredCapabilities(required_capabilities)];
 
         let group_context = GroupContext::create_initial_group_context(
@@ -364,7 +350,7 @@ impl CoreGroup {
         if let Some(required_extension) = required_extension {
             let required_capabilities = required_extension.as_required_capabilities_extension()?;
             // Ensure we support all the capabilities.
-            check_required_capabilities_support(required_capabilities)?;
+            required_capabilities.check_support()?;
             self.treesync()
                 .own_leaf_node()?
                 .key_package()
@@ -509,7 +495,7 @@ impl CoreGroup {
     }
 
     /// Get the ciphersuite implementation used in this group.
-    pub(crate) fn ciphersuite(&self) -> &'static Ciphersuite {
+    pub(crate) fn ciphersuite(&self) -> Ciphersuite {
         self.ciphersuite
     }
 
@@ -674,7 +660,7 @@ impl CoreGroup {
 // Helper functions
 
 pub(crate) fn update_confirmed_transcript_hash(
-    ciphersuite: &Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     mls_plaintext_commit_content: &MlsPlaintextCommitContent,
     interim_transcript_hash: &[u8],
@@ -682,16 +668,17 @@ pub(crate) fn update_confirmed_transcript_hash(
     let commit_content_bytes = mls_plaintext_commit_content
         .tls_serialize_detached()
         .map_err(LibraryError::missing_bound_check)?;
-    ciphersuite
+    backend
+        .crypto()
         .hash(
-            backend,
+            ciphersuite.hash_algorithm(),
             &[interim_transcript_hash, &commit_content_bytes].concat(),
         )
         .map_err(LibraryError::unexpected_crypto_error)
 }
 
 pub(crate) fn update_interim_transcript_hash(
-    ciphersuite: &Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
     mls_plaintext_commit_auth_data: &MlsPlaintextCommitAuthData,
     confirmed_transcript_hash: &[u8],
@@ -699,9 +686,10 @@ pub(crate) fn update_interim_transcript_hash(
     let commit_auth_data_bytes = mls_plaintext_commit_auth_data
         .tls_serialize_detached()
         .map_err(LibraryError::missing_bound_check)?;
-    ciphersuite
+    backend
+        .crypto()
         .hash(
-            backend,
+            ciphersuite.hash_algorithm(),
             &[confirmed_transcript_hash, &commit_auth_data_bytes].concat(),
         )
         .map_err(LibraryError::unexpected_crypto_error)

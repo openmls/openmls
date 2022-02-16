@@ -67,7 +67,6 @@ pub fn run_test_vector(
     log::trace!("{:?}", test_vector);
     let ciphersuite =
         CiphersuiteName::try_from(test_vector.cipher_suite).expect("Invalid ciphersuite");
-    let ciphersuite = Config::ciphersuite(ciphersuite).expect("Invalid ciphersuite");
 
     log::trace!("ratchet tree before: {}", test_vector.ratchet_tree_before);
     let ratchet_tree_before_bytes = hex_to_bytes(&test_vector.ratchet_tree_before);
@@ -90,7 +89,7 @@ pub fn run_test_vector(
     let credential_bundle = CredentialBundle::new(
         "username".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");

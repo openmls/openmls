@@ -219,7 +219,7 @@ impl MlsGroup {
     // === Advanced functions ===
 
     /// Returns the group's ciphersuite
-    pub fn ciphersuite(&self) -> &Ciphersuite {
+    pub fn ciphersuite(&self) -> Ciphersuite {
         self.group.ciphersuite()
     }
 

@@ -10,10 +10,7 @@
 //! * `ParentHashError`
 //! * `RatchetTreeError`
 
-use crate::{
-    config::ConfigError,
-    error::{ErrorString, LibraryError},
-};
+use crate::error::{ErrorString, LibraryError};
 
 use openmls_traits::types::CryptoError;
 use tls_codec::Error as TlsCodecError;
@@ -23,6 +20,10 @@ implement_error! {
         Simple {
             DuplicateRatchetTreeExtension =
                 "Found a duplicate ratchet tree extension.",
+            UnsupportedProposalType =
+                "Unsupported proposal type in required capabilities.",
+            UnsupportedExtensionType =
+                "Unsupported extension type in required capabilities.",
         }
         Complex {
             LibraryError(LibraryError) = "Library error",
@@ -40,8 +41,6 @@ implement_error! {
                 "Ratchet tree extension error. See `RatchetTreeError` for details.",
             CodecError(TlsCodecError) =
                 "Error decoding or encoding an extension.",
-            ConfigError(ConfigError) =
-                "Configuration error. See `ConfigError` for details.",
             InvalidExtension(InvalidExtensionError) =
                 "The extension is malformed. See [`InvalidExtensionError`](`InvalidExtensionError`) for details.",
             CryptoError(CryptoError) =

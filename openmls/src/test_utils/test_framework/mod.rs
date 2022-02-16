@@ -23,7 +23,6 @@
 
 use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, *},
-    config::*,
     credentials::*,
     framing::*,
     group::*,
@@ -33,9 +32,9 @@ use crate::{
 };
 use ::rand::{rngs::OsRng, RngCore};
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::key_store::OpenMlsKeyStore;
 use openmls_traits::types::SignatureScheme;
 use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore};
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::sync::RwLock;
@@ -131,7 +130,7 @@ impl MlsGroupTestSetup {
             // For now, everyone supports all ciphersuites.
             let crypto = OpenMlsRustCrypto::default();
             let mut credentials = HashMap::new();
-            for ciphersuite in Config::supported_ciphersuite_names() {
+            for ciphersuite in crypto.crypto().supported_ciphersuites().iter() {
                 let cb = CredentialBundle::new(
                     identity.clone(),
                     CredentialType::Basic,
@@ -178,9 +177,9 @@ impl MlsGroupTestSetup {
     pub fn get_fresh_key_package(
         &self,
         client: &Client,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
     ) -> Result<KeyPackage, SetupError> {
-        let key_package = client.get_fresh_key_package(&[ciphersuite.name()])?;
+        let key_package = client.get_fresh_key_package(&[ciphersuite])?;
         self.waiting_for_welcome
             .write()
             .expect("An unexpected error occurred.")
@@ -416,7 +415,7 @@ impl MlsGroupTestSetup {
     /// does not support the given ciphersuite. TODO #310: Fix to always work
     /// reliably, probably by introducing a mapping from ciphersuite to the set
     /// of client ids supporting it.
-    pub fn create_group(&self, ciphersuite: &Ciphersuite) -> Result<GroupId, SetupError> {
+    pub fn create_group(&self, ciphersuite: Ciphersuite) -> Result<GroupId, SetupError> {
         // Pick a random group creator.
         let clients = self.clients.read().expect("An unexpected error occurred.");
         let group_creator_id = ((OsRng.next_u32() as usize) % clients.len())
@@ -444,7 +443,7 @@ impl MlsGroupTestSetup {
         let group = Group {
             group_id: group_id.clone(),
             members: member_ids,
-            ciphersuite: ciphersuite.clone(),
+            ciphersuite,
             group_config: self.default_mgc.clone(),
             public_tree,
             exporter_secret,
@@ -457,7 +456,7 @@ impl MlsGroupTestSetup {
     pub fn create_random_group(
         &self,
         target_group_size: usize,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
     ) -> Result<GroupId, SetupError> {
         // Create the initial group.
         let group_id = self.create_group(ciphersuite)?;
@@ -540,7 +539,7 @@ impl MlsGroupTestSetup {
                 .ok_or(SetupError::UnknownClientId)?
                 .read()
                 .expect("An unexpected error occurred.");
-            let key_package = self.get_fresh_key_package(&addee, &group.ciphersuite)?;
+            let key_package = self.get_fresh_key_package(&addee, group.ciphersuite)?;
             key_packages.push(key_package);
         }
         let (messages, welcome_option) =

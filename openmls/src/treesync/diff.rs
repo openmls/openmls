@@ -244,7 +244,7 @@ impl<'a> TreeSyncDiff<'a> {
     fn derive_path_from_leaf_secret(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         leaf_secret: Secret,
     ) -> Result<PathDerivationResult, TreeSyncDiffError> {
         let leaf_path_secret = PathSecret::from(leaf_secret);
@@ -269,7 +269,7 @@ impl<'a> TreeSyncDiff<'a> {
     pub(crate) fn apply_own_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         mut key_package_bundle_payload: KeyPackageBundlePayload,
         credential_bundle: &CredentialBundle,
     ) -> Result<UpdatePathResult, TreeSyncDiffError> {
@@ -305,7 +305,7 @@ impl<'a> TreeSyncDiff<'a> {
     pub(crate) fn apply_received_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         sender_leaf_index: LeafIndex,
         key_package: KeyPackage,
         path: Vec<ParentNode>,
@@ -344,7 +344,7 @@ impl<'a> TreeSyncDiff<'a> {
     fn process_update_path(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         leaf_index: LeafIndex,
         mut path: Vec<ParentNode>,
     ) -> Result<Vec<u8>, LibraryError> {
@@ -379,7 +379,7 @@ impl<'a> TreeSyncDiff<'a> {
     pub(super) fn set_path_secrets(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         mut path_secret: PathSecret,
         sender_index: LeafIndex,
     ) -> Result<CommitSecret, TreeSyncSetPathError> {
@@ -469,7 +469,7 @@ impl<'a> TreeSyncDiff<'a> {
     fn set_parent_hashes(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         path: &mut [ParentNode],
         leaf_index: LeafIndex,
     ) -> Result<Vec<u8>, LibraryError> {
@@ -646,7 +646,7 @@ impl<'a> TreeSyncDiff<'a> {
     pub(crate) fn verify_parent_hashes(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
     ) -> Result<(), TreeSyncParentHashError> {
         for node_id in self.diff.iter() {
             // Continue early if node is blank.
@@ -750,7 +750,7 @@ impl<'a> TreeSyncDiff<'a> {
     pub(crate) fn into_staged_diff(
         mut self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
     ) -> Result<StagedTreeSyncDiff, LibraryError> {
         let new_tree_hash = self.compute_tree_hashes(backend, ciphersuite)?;
         debug_assert!(self.verify_parent_hashes(backend, ciphersuite).is_ok());
@@ -768,7 +768,7 @@ impl<'a> TreeSyncDiff<'a> {
     fn compute_tree_hash(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         node_id: NodeId,
     ) -> Result<Vec<u8>, LibraryError> {
         // Check if this is a leaf.
@@ -840,7 +840,7 @@ impl<'a> TreeSyncDiff<'a> {
     pub(crate) fn compute_tree_hashes(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
     ) -> Result<Vec<u8>, LibraryError> {
         self.compute_tree_hash(backend, ciphersuite, self.diff.root())
     }

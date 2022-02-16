@@ -3,7 +3,6 @@
 //! `WelcomeError`, `StageCommitError`, `DecryptionError`, and
 //! `CreateCommitError`.
 
-use crate::config::ConfigError;
 use crate::credentials::CredentialError;
 use crate::error::LibraryError;
 use crate::framing::ValidationError;
@@ -40,8 +39,6 @@ pub enum MlsGroupError {
     KeyStoreError,
     #[error("The incoming message's wire format was not compatible with the wire format policy for incoming messages.")]
     IncompatibleWireFormat,
-    #[error(transparent)]
-    Config(#[from] ConfigError),
     #[error(transparent)]
     Group(#[from] CoreGroupError),
     #[error(transparent)]

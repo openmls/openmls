@@ -14,25 +14,23 @@ use crate::{
     schedule::psk::*,
     test_utils::*,
     treesync::errors::ApplyUpdatePathError,
+    versions::ProtocolVersion,
 };
 
 #[apply(ciphersuites_and_backends)]
-fn test_core_group_persistence(
-    ciphersuite: &'static Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
+fn test_core_group_persistence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Define credential bundles
     let alice_credential_bundle = CredentialBundle::new(
         "Alice".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &alice_credential_bundle,
         backend,
         Vec::new(),
@@ -70,122 +68,112 @@ pub fn flip_last_byte(ctxt: &mut HpkeCiphertext) {
 
 #[apply(ciphersuites_and_backends)]
 fn test_failed_groupinfo_decryption(
-    ciphersuite: &'static Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
-    for version in Config::supported_versions() {
-        let epoch = GroupEpoch(123);
-        let group_id = GroupId::random(backend);
-        let tree_hash = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
-        let confirmed_transcript_hash = vec![1, 1, 1];
-        let extensions = Vec::new();
-        let confirmation_tag = ConfirmationTag(Mac {
-            mac_value: vec![1, 2, 3, 4, 5, 6, 7, 8, 9].into(),
-        });
+    let version = ProtocolVersion::Mls10;
+    let epoch = GroupEpoch(123);
+    let group_id = GroupId::random(backend);
+    let tree_hash = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
+    let confirmed_transcript_hash = vec![1, 1, 1];
+    let extensions = Vec::new();
+    let confirmation_tag = ConfirmationTag(Mac {
+        mac_value: vec![1, 2, 3, 4, 5, 6, 7, 8, 9].into(),
+    });
 
-        let alice_credential_bundle = CredentialBundle::new(
-            "Alice".into(),
-            CredentialType::Basic,
-            ciphersuite.signature_scheme(),
-            backend,
-        )
-        .expect("An unexpected error occurred.");
+    let alice_credential_bundle = CredentialBundle::new(
+        "Alice".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_algorithm(),
+        backend,
+    )
+    .expect("An unexpected error occurred.");
 
-        let key_package_bundle = KeyPackageBundle::new(
-            &[ciphersuite.name()],
-            &alice_credential_bundle,
-            backend,
-            vec![],
-        )
-        .expect("An unexpected error occurred.");
-
-        let group_info = GroupInfoPayload::new(
-            group_id,
-            epoch,
-            tree_hash,
-            confirmed_transcript_hash,
-            &Vec::new(),
-            &extensions,
-            confirmation_tag,
-            &KeyPackageRef::new(
-                &key_package_bundle
-                    .key_package()
-                    .tls_serialize_detached()
-                    .expect("An unexpected error occurred."),
-                ciphersuite,
-                backend.crypto(),
-            )
-            .expect("An unexpected error occurred."),
-        );
-
-        // Generate key and nonce for the symmetric cipher.
-        let welcome_key = AeadKey::random(ciphersuite, backend.rand());
-        let welcome_nonce = AeadNonce::random(backend);
-
-        // Generate receiver key pair.
-        let receiver_key_pair = backend.crypto().derive_hpke_keypair(
-            ciphersuite.hpke_config(),
-            Secret::random(ciphersuite, backend, None)
-                .expect("Not enough randomness.")
-                .as_slice(),
-        );
-        let hpke_info = b"group info welcome test info";
-        let hpke_aad = b"group info welcome test aad";
-        let hpke_input = b"these should be the group secrets";
-        let mut encrypted_group_secrets = backend.crypto().hpke_seal(
-            ciphersuite.hpke_config(),
-            receiver_key_pair.public.as_slice(),
-            hpke_info,
-            hpke_aad,
-            hpke_input,
-        );
-
-        let group_info = group_info
-            .sign(backend, &alice_credential_bundle)
-            .expect("Error signing group info");
-
-        // Mess with the ciphertext by flipping the last byte.
-        flip_last_byte(&mut encrypted_group_secrets);
-
-        let broken_secrets = vec![EncryptedGroupSecrets {
-            new_member: key_package_bundle
-                .key_package
-                .hash_ref(backend.crypto())
-                .expect("Could not hash KeyPackage."),
-            encrypted_group_secrets,
-        }];
-
-        // Encrypt the group info.
-        let encrypted_group_info = welcome_key
-            .aead_seal(
-                backend,
-                &group_info
-                    .tls_serialize_detached()
-                    .expect("An unexpected error occurred."),
-                &[],
-                &welcome_nonce,
-            )
+    let key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite], &alice_credential_bundle, backend, vec![])
             .expect("An unexpected error occurred.");
 
-        // Now build the welcome message.
-        let broken_welcome = Welcome::new(
-            *version,
+    let group_info = GroupInfoPayload::new(
+        group_id,
+        epoch,
+        tree_hash,
+        confirmed_transcript_hash,
+        &Vec::new(),
+        &extensions,
+        confirmation_tag,
+        &KeyPackageRef::new(
+            &key_package_bundle
+                .key_package()
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
             ciphersuite,
-            broken_secrets,
-            encrypted_group_info.clone(),
-        );
+            backend.crypto(),
+        )
+        .expect("An unexpected error occurred."),
+    );
 
-        let error = CoreGroup::new_from_welcome(broken_welcome, None, key_package_bundle, backend)
-            .expect_err("Creation of core group from a broken Welcome was successful.");
+    // Generate key and nonce for the symmetric cipher.
+    let welcome_key = AeadKey::random(ciphersuite, backend.rand());
+    let welcome_nonce = AeadNonce::random(backend);
 
-        assert_eq!(error, WelcomeError::UnableToDecrypt)
-    }
+    // Generate receiver key pair.
+    let receiver_key_pair = backend.crypto().derive_hpke_keypair(
+        ciphersuite.hpke_config(),
+        Secret::random(ciphersuite, backend, None)
+            .expect("Not enough randomness.")
+            .as_slice(),
+    );
+    let hpke_info = b"group info welcome test info";
+    let hpke_aad = b"group info welcome test aad";
+    let hpke_input = b"these should be the group secrets";
+    let mut encrypted_group_secrets = backend.crypto().hpke_seal(
+        ciphersuite.hpke_config(),
+        receiver_key_pair.public.as_slice(),
+        hpke_info,
+        hpke_aad,
+        hpke_input,
+    );
+
+    let group_info = group_info
+        .sign(backend, &alice_credential_bundle)
+        .expect("Error signing group info");
+
+    // Mess with the ciphertext by flipping the last byte.
+    flip_last_byte(&mut encrypted_group_secrets);
+
+    let broken_secrets = vec![EncryptedGroupSecrets {
+        new_member: key_package_bundle
+            .key_package
+            .hash_ref(backend.crypto())
+            .expect("Could not hash KeyPackage."),
+        encrypted_group_secrets,
+    }];
+
+    // Encrypt the group info.
+    let encrypted_group_info = welcome_key
+        .aead_seal(
+            backend,
+            &group_info
+                .tls_serialize_detached()
+                .expect("An unexpected error occurred."),
+            &[],
+            &welcome_nonce,
+        )
+        .expect("An unexpected error occurred.");
+
+    // Now build the welcome message.
+    let broken_welcome = Welcome::new(version, ciphersuite, broken_secrets, encrypted_group_info);
+
+    let error = CoreGroup::new_from_welcome(broken_welcome, None, key_package_bundle, backend)
+        .expect_err("Creation of core group from a broken Welcome was successful.");
+
+    assert_eq!(error, WelcomeError::UnableToDecrypt)
 }
 
 /// Test what happens if the KEM ciphertext for the receiver in the UpdatePath
 /// is broken.
 #[apply(ciphersuites_and_backends)]
-fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
@@ -194,34 +182,30 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     let alice_credential_bundle = CredentialBundle::new(
         "Alice".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
     let bob_credential_bundle = CredentialBundle::new(
         "Bob".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &alice_credential_bundle,
         backend,
         Vec::new(),
     )
     .expect("An unexpected error occurred.");
 
-    let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &bob_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let bob_key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
+            .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group ===
@@ -281,13 +265,9 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
     .expect("An unexpected error occurred.");
 
     // === Bob updates and commits ===
-    let bob_update_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &bob_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let bob_update_key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
+            .expect("An unexpected error occurred.");
 
     let update_proposal_bob = group_bob
         .create_update_proposal(
@@ -379,7 +359,7 @@ fn test_update_path(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
 // Test several scenarios when PSKs are used in a group
 #[apply(ciphersuites_and_backends)]
-fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_psks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
@@ -388,34 +368,30 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
     let alice_credential_bundle = CredentialBundle::new(
         "Alice".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
     let bob_credential_bundle = CredentialBundle::new(
         "Bob".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &alice_credential_bundle,
         backend,
         Vec::new(),
     )
     .expect("An unexpected error occurred.");
 
-    let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &bob_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let bob_key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
+            .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group with a PSK ===
@@ -500,13 +476,9 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
     .expect("Could not create new group from Welcome");
 
     // === Bob updates and commits ===
-    let bob_update_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &bob_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let bob_update_key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
+            .expect("An unexpected error occurred.");
 
     let update_proposal_bob = group_bob
         .create_update_proposal(
@@ -533,10 +505,7 @@ fn test_psks(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProv
 
 // Test several scenarios when PSKs are used in a group
 #[apply(ciphersuites_and_backends)]
-fn test_staged_commit_creation(
-    ciphersuite: &'static Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
+fn test_staged_commit_creation(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
@@ -545,34 +514,30 @@ fn test_staged_commit_creation(
     let alice_credential_bundle = CredentialBundle::new(
         "Alice".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
     let bob_credential_bundle = CredentialBundle::new(
         "Bob".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &alice_credential_bundle,
         backend,
         Vec::new(),
     )
     .expect("An unexpected error occurred.");
 
-    let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &bob_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let bob_key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
+            .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     // === Alice creates a group ===
@@ -632,10 +597,7 @@ fn test_staged_commit_creation(
 
 // Test processing of own commits
 #[apply(ciphersuites_and_backends)]
-fn test_own_commit_processing(
-    ciphersuite: &'static Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
+fn test_own_commit_processing(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
@@ -644,14 +606,14 @@ fn test_own_commit_processing(
     let alice_credential_bundle = CredentialBundle::new(
         "Alice".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &alice_credential_bundle,
         backend,
         Vec::new(),
@@ -684,29 +646,25 @@ fn test_own_commit_processing(
 
 fn setup_client(
     id: &str,
-    ciphersuite: &Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) -> (CredentialBundle, KeyPackageBundle) {
     let credential_bundle = CredentialBundle::new(
         id.into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
-    let key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, Vec::new())
+            .expect("An unexpected error occurred.");
     (credential_bundle, key_package_bundle)
 }
 
 #[apply(ciphersuites_and_backends)]
 fn test_proposal_application_after_self_was_removed(
-    ciphersuite: &'static Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
     // We're going to test if proposals are still applied, even after a client

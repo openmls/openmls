@@ -16,8 +16,8 @@ use crate::{
 fn capabilities() {
     // A capabilities extension with the default values for openmls.
     let extension_bytes = [
-        0u8, 1, 0, 0, 0, 30, 2, 1, 200, 6, 0, 1, 0, 2, 0, 3, 6, 0, 1, 0, 2, 0, 3, 12, 0, 1, 0, 2,
-        0, 3, 0, 4, 0, 5, 0, 8,
+        0u8, 1, 0, 0, 0, 29, 1, 1, 6, 0, 1, 0, 2, 0, 3, 6, 0, 1, 0, 2, 0, 3, 12, 0, 1, 0, 2, 0, 3,
+        0, 4, 0, 5, 0, 8,
     ];
     let mut extension_bytes_mut = &extension_bytes[..];
 
@@ -89,7 +89,7 @@ fn lifetime() {
 // This tests the ratchet tree extension to deliver the public ratcheting tree
 // in-band
 #[apply(ciphersuites_and_backends)]
-fn ratchet_tree_extension(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Basic group setup.
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
@@ -98,34 +98,30 @@ fn ratchet_tree_extension(ciphersuite: &'static Ciphersuite, backend: &impl Open
     let alice_credential_bundle = CredentialBundle::new(
         "Alice".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
     let bob_credential_bundle = CredentialBundle::new(
         "Bob".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &alice_credential_bundle,
         backend,
         Vec::new(),
     )
     .expect("An unexpected error occurred.");
 
-    let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &bob_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let bob_key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
+            .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let config = CoreGroupConfig {
@@ -193,20 +189,16 @@ fn ratchet_tree_extension(ciphersuite: &'static Ciphersuite, backend: &impl Open
 
     // Generate KeyPackages
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &alice_credential_bundle,
         backend,
         Vec::new(),
     )
     .expect("An unexpected error occurred.");
 
-    let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &bob_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let bob_key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
+            .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let config = CoreGroupConfig {

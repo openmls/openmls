@@ -3,7 +3,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use crate::{test_utils::*, tree::*};
 
 #[apply(ciphersuites_and_backends)]
-fn test_parent_hash(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_parent_hash(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Number of leaf nodes in the tree
     const NODES: usize = 31;
 
@@ -14,12 +14,12 @@ fn test_parent_hash(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
         let credential_bundle = CredentialBundle::new(
             vec![i as u8],
             CredentialType::Basic,
-            ciphersuite.signature_scheme(),
+            ciphersuite.signature_algorithm(),
             backend,
         )
         .expect("An unexpected error occurred.");
         let key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, backend, vec![])
+            KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, vec![])
                 .expect("An unexpected error occurred.");
 
         // We build a leaf node from the key packages

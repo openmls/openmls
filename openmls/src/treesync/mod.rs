@@ -154,7 +154,7 @@ impl TreeSync {
     /// malformed.
     pub(crate) fn from_nodes_with_secrets(
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         node_options: &[Option<Node>],
         sender_kpr: &KeyPackageRef,
         path_secret_option: impl Into<Option<PathSecret>>,
@@ -195,7 +195,7 @@ impl TreeSync {
     /// documented in [`TreeSync`] hold.
     fn from_nodes(
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         node_options: &[Option<Node>],
         key_package_bundle: KeyPackageBundle,
     ) -> Result<Self, TreeSyncFromNodesError> {
@@ -263,7 +263,7 @@ impl TreeSync {
     /// material in it.
     pub(crate) fn from_nodes_without_leaf(
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         mut nodes: Vec<Option<Node>>,
     ) -> Result<Self, TreeSyncFromNodesError> {
         let ts_nodes: Vec<TreeSyncNode> = nodes.drain(..).map(|node| node.into()).collect();
@@ -295,7 +295,7 @@ impl TreeSync {
     fn populate_parent_hashes(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
     ) -> Result<(), LibraryError> {
         let diff = self.empty_diff()?;
         // Make the diff into a staged diff. This implicitly computes the
@@ -312,7 +312,7 @@ impl TreeSync {
     fn verify_parent_hashes(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
     ) -> Result<(), TreeSyncParentHashError> {
         // The ability to verify parent hashes is required both for diffs and
         // treesync instances. We choose the computationally slightly more

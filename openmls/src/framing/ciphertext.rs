@@ -58,7 +58,7 @@ impl MlsCiphertext {
     /// Try to create a new `MlsCiphertext` from an `MlsPlaintext`
     pub(crate) fn try_from_plaintext(
         mls_plaintext: &MlsPlaintext,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         header: MlsMessageHeader,
         message_secrets: &mut MessageSecrets,
@@ -158,7 +158,7 @@ impl MlsCiphertext {
         &self,
         message_secrets: &mut MessageSecrets,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
     ) -> Result<MlsSenderData, MlsCiphertextError> {
         log::debug!("Decrypting MlsCiphertext");
         // Check the ciphertext has the correct wire format
@@ -243,7 +243,7 @@ impl MlsCiphertext {
     /// In order to get an [`MlsPlaintext`] the result must be verified.
     pub(crate) fn to_plaintext(
         &self,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         message_secrets: &mut MessageSecrets,
         sender_index: SecretTreeLeafIndex,

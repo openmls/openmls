@@ -20,8 +20,8 @@ fn default_mls_group_config() -> MlsGroupConfig {
 // A->B: Welcome
 // ***:  Verify group state
 #[apply(ciphersuites)]
-fn one_to_one_join(ciphersuite: &'static Ciphersuite) {
-    println!("Testing ciphersuite {:?}", ciphersuite.name());
+fn one_to_one_join(ciphersuite: Ciphersuite) {
+    println!("Testing ciphersuite {:?}", ciphersuite);
     let number_of_clients = 2;
     let setup = MlsGroupTestSetup::new(
         default_mls_group_config(),
@@ -66,8 +66,8 @@ fn one_to_one_join(ciphersuite: &'static Ciphersuite) {
 // A->C: Welcome
 // ***:  Verify group state
 #[apply(ciphersuites)]
-fn three_party_join(ciphersuite: &'static Ciphersuite) {
-    println!("Testing ciphersuite {:?}", ciphersuite.name());
+fn three_party_join(ciphersuite: Ciphersuite) {
+    println!("Testing ciphersuite {:?}", ciphersuite);
 
     let number_of_clients = 3;
     let setup = MlsGroupTestSetup::new(
@@ -122,8 +122,8 @@ fn three_party_join(ciphersuite: &'static Ciphersuite) {
 // A->C: Welcome
 // ***:  Verify group state
 #[apply(ciphersuites)]
-fn multiple_joins(ciphersuite: &'static Ciphersuite) {
-    println!("Testing ciphersuite {:?}", ciphersuite.name());
+fn multiple_joins(ciphersuite: Ciphersuite) {
+    println!("Testing ciphersuite {:?}", ciphersuite);
 
     let number_of_clients = 3;
     let setup = MlsGroupTestSetup::new(
@@ -170,8 +170,8 @@ fn multiple_joins(ciphersuite: &'static Ciphersuite) {
 // A->B: Update, Commit
 // ***:  Verify group state
 #[apply(ciphersuites)]
-fn update(ciphersuite: &'static Ciphersuite) {
-    println!("Testing ciphersuite {:?}", ciphersuite.name());
+fn update(ciphersuite: Ciphersuite) {
+    println!("Testing ciphersuite {:?}", ciphersuite);
 
     let number_of_clients = 2;
     let setup = MlsGroupTestSetup::new(
@@ -213,8 +213,8 @@ fn update(ciphersuite: &'static Ciphersuite) {
 // A->B: Remove(B), Commit
 // ***:  Verify group state
 #[apply(ciphersuites)]
-fn remove(ciphersuite: &'static Ciphersuite) {
-    println!("Testing ciphersuite {:?}", ciphersuite.name());
+fn remove(ciphersuite: Ciphersuite) {
+    println!("Testing ciphersuite {:?}", ciphersuite);
 
     let number_of_clients = 2;
     let setup = MlsGroupTestSetup::new(
@@ -267,8 +267,8 @@ fn remove(ciphersuite: &'static Ciphersuite) {
 // * While the group size is >1, a randomly-chosen group member removes a
 //   randomly-chosen other group member
 #[apply(ciphersuites)]
-fn large_group_lifecycle(ciphersuite: &'static Ciphersuite) {
-    println!("Testing ciphersuite {:?}", ciphersuite.name());
+fn large_group_lifecycle(ciphersuite: Ciphersuite) {
+    println!("Testing ciphersuite {:?}", ciphersuite);
 
     // "Large" is 20 for now.
     let number_of_clients = 20;

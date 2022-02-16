@@ -1,13 +1,11 @@
 use tls_codec::{Deserialize, Serialize};
 
-use crate::{
-    config::*, credentials::*, framing::*, group::*, key_packages::*, messages::*, test_utils::*,
-};
+use crate::{credentials::*, framing::*, group::*, key_packages::*, messages::*, test_utils::*};
 
 /// Tests the creation of a `PublicGroupState` and verifies it was correctly
 /// signed
 #[apply(ciphersuites_and_backends)]
-fn test_pgs(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_pgs(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let group_aad = b"Alice's test group";
     let framing_parameters = FramingParameters::new(group_aad, WireFormat::MlsPlaintext);
 
@@ -15,30 +13,26 @@ fn test_pgs(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvi
     let alice_credential_bundle = CredentialBundle::new(
         "Alice".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
     let bob_credential_bundle = CredentialBundle::new(
         "Bob".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
-    let bob_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
-        &bob_credential_bundle,
-        backend,
-        Vec::new(),
-    )
-    .expect("An unexpected error occurred.");
+    let bob_key_package_bundle =
+        KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, Vec::new())
+            .expect("An unexpected error occurred.");
     let bob_key_package = bob_key_package_bundle.key_package();
 
     let alice_key_package_bundle = KeyPackageBundle::new(
-        &[ciphersuite.name()],
+        &[ciphersuite],
         &alice_credential_bundle,
         backend,
         Vec::new(),

@@ -207,7 +207,7 @@ pub struct PreSharedKeyId {
 impl PreSharedKeyId {
     /// Create a new `PreSharedKeyID`
     pub fn new(
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         rand: &impl OpenMlsRand,
         psk: Psk,
     ) -> Result<Self, CryptoError> {
@@ -288,7 +288,7 @@ impl PskSecret {
     /// psk_secret     = psk_secret[n]
     /// ```
     pub fn new(
-        ciphersuite: &'static Ciphersuite,
+        ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         psk_ids: &[PreSharedKeyId],
     ) -> Result<Self, PskError> {
@@ -345,10 +345,7 @@ impl PskSecret {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn random(
-        ciphersuite: &'static Ciphersuite,
-        rng: &impl OpenMlsCryptoProvider,
-    ) -> Self {
+    pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
         Self {
             secret: Secret::random(ciphersuite, rng, None /* MLS version */)
                 .expect("Not enough randomness."),

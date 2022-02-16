@@ -14,11 +14,11 @@ use serde::{Deserialize, Serialize};
 use crate::{
     binary_tree::{LeafIndex, OutOfBoundsError},
     ciphersuite::{hash_ref::KeyPackageRef, Ciphersuite, HpkePublicKey},
-    config::ProtocolVersion,
     error::LibraryError,
     key_packages::KeyPackage,
     messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
     schedule::{CommitSecret, JoinerSecret, PreSharedKeys},
+    versions::ProtocolVersion,
 };
 
 use super::{
@@ -39,7 +39,7 @@ impl<'a> TreeSyncDiff<'a> {
     pub(crate) fn encrypt_path(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
         path: &[PlainUpdatePathNode],
         group_context: &[u8],
         exclusion_list: &HashSet<&LeafIndex>,
@@ -81,7 +81,7 @@ impl<'a> TreeSyncDiff<'a> {
     pub(crate) fn decrypt_path(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &'static Ciphersuite,
+        ciphersuite: Ciphersuite,
         params: DecryptPathParams,
     ) -> Result<(Vec<ParentNode>, CommitSecret), ApplyUpdatePathError> {
         let path_position = self
@@ -292,7 +292,7 @@ impl PlaintextSecret {
     pub(crate) fn encrypt(
         self,
         backend: &impl OpenMlsCryptoProvider,
-        ciphersuite: &Ciphersuite,
+        ciphersuite: Ciphersuite,
     ) -> EncryptedGroupSecrets {
         let encrypted_group_secrets = backend.crypto().hpke_seal(
             ciphersuite.hpke_config(),

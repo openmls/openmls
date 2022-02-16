@@ -12,7 +12,7 @@ use crate::{
 /// This test makes sure the filtering of the exclusion list during resolution
 /// works as intended.
 #[apply(ciphersuites_and_backends)]
-fn test_exclusion_list(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_exclusion_list(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Number of nodes in the tree
     const NODES: usize = 31;
     // Resolution for the root node of that tree
@@ -30,12 +30,12 @@ fn test_exclusion_list(ciphersuite: &'static Ciphersuite, backend: &impl OpenMls
         let credential_bundle = CredentialBundle::new(
             vec![i as u8],
             CredentialType::Basic,
-            ciphersuite.signature_scheme(),
+            ciphersuite.signature_algorithm(),
             backend,
         )
         .expect("An unexpected error occurred.");
         let key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, backend, vec![])
+            KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, vec![])
                 .expect("An unexpected error occurred.");
 
         // We build a leaf node from the key packages
@@ -92,7 +92,7 @@ fn test_exclusion_list(ciphersuite: &'static Ciphersuite, backend: &impl OpenMls
 /// parent hashes
 #[apply(ciphersuites_and_backends)]
 fn test_original_child_resolution(
-    ciphersuite: &'static Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
     // Number of leaf nodes in the tree
@@ -111,12 +111,12 @@ fn test_original_child_resolution(
         let credential_bundle = CredentialBundle::new(
             vec![i as u8],
             CredentialType::Basic,
-            ciphersuite.signature_scheme(),
+            ciphersuite.signature_algorithm(),
             backend,
         )
         .expect("An unexpected error occurred.");
         let key_package_bundle =
-            KeyPackageBundle::new(&[ciphersuite.name()], &credential_bundle, backend, vec![])
+            KeyPackageBundle::new(&[ciphersuite], &credential_bundle, backend, vec![])
                 .expect("An unexpected error occurred.");
 
         // We build a leaf node from the key packages

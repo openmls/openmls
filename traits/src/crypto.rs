@@ -3,16 +3,18 @@
 //! This trait defines all cryptographic functions used by OpenMLS.
 
 use crate::types::{
-    AeadType, CryptoError, ExporterSecret, HashType, HpkeCiphertext, HpkeConfig, HpkeKeyPair,
-    KemOutput, SignatureScheme,
+    AeadType, Ciphersuite, CryptoError, ExporterSecret, HashType, HpkeCiphertext, HpkeConfig,
+    HpkeKeyPair, KemOutput, SignatureScheme,
 };
 
 pub trait OpenMlsCrypto {
-    /// Check whether the [`SignatureScheme`] is supported or not.
+    /// Check whether the [`Ciphersuite`] is supported by the backend or not.
     ///
-    /// Returns an error if the signature scheme is not supported.
-    /// FIXME: Drop.
-    fn supports(&self, signature_scheme: SignatureScheme) -> Result<(), CryptoError>;
+    /// Returns a [`CryptoError::UnsupportedCiphersuite`] if the ciphersuite is not supported.
+    fn supports(&self, ciphersuite: Ciphersuite) -> Result<(), CryptoError>;
+
+    /// Returns the list of supported [`Ciphersuite`]s.
+    fn supported_ciphersuites(&self) -> Vec<Ciphersuite>;
 
     /// HKDF extract.
     ///

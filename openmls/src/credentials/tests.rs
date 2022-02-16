@@ -1,11 +1,10 @@
-use crate::config::Config;
 use crate::test_utils::*;
 
 use super::*;
 
 #[test]
 fn test_protocol_version() {
-    use crate::config::ProtocolVersion;
+    use crate::versions::ProtocolVersion;
     let mls10_version = ProtocolVersion::Mls10;
     let default_version = ProtocolVersion::default();
     let mls10_e = mls10_version
@@ -22,10 +21,10 @@ fn test_protocol_version() {
 
 #[apply(ciphersuites_and_backends)]
 fn test_credential_bundle_from_parts(
-    ciphersuite: &'static Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
-    let signature_scheme = ciphersuite.signature_scheme();
+    let signature_scheme = ciphersuite.signature_algorithm();
     let keypair = SignatureKeypair::new(signature_scheme, backend)
         .expect("Could not create signature keypair.");
 

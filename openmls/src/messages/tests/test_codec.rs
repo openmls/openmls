@@ -1,10 +1,9 @@
-use crate::ciphersuite::{Ciphersuite, CiphersuiteName};
+use crate::ciphersuite::Ciphersuite;
 use crate::test_utils::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
-    config::Config,
     group::{GroupEpoch, GroupId},
     messages::{PreSharedKeyProposal, ProtocolVersion, ReInitProposal},
     schedule::psk::{BranchPsk, ExternalPsk, PreSharedKeyId, Psk, PskType, ReinitPsk},
@@ -65,14 +64,11 @@ fn test_pre_shared_key_proposal_codec(backend: &impl OpenMlsCryptoProvider) {
 /// Test the encoding for ReInitProposal, that also covers some of the
 /// other PSK-related structs
 #[apply(ciphersuites_and_backends)]
-fn test_reinit_proposal_codec(
-    ciphersuite: &'static Ciphersuite,
-    backend: &impl OpenMlsCryptoProvider,
-) {
+fn test_reinit_proposal_codec(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let orig = ReInitProposal {
         group_id: GroupId::random(backend),
         version: ProtocolVersion::default(),
-        ciphersuite: ciphersuite.name(),
+        ciphersuite,
         extensions: vec![].into(),
     };
     let encoded = orig

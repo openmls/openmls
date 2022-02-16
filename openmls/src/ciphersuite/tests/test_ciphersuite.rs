@@ -6,7 +6,7 @@ use crate::{ciphersuite::*, test_utils::*};
 
 // Spot test to make sure hpke seal/open work.
 #[apply(ciphersuites_and_backends)]
-fn test_hpke_seal_open(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_hpke_seal_open(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let plaintext = &[1, 2, 3];
     let kp = backend.crypto().derive_hpke_keypair(
         ciphersuite.hpke_config(),
@@ -73,8 +73,8 @@ fn test_hpke_seal_open(ciphersuite: &'static Ciphersuite, backend: &impl OpenMls
 }
 
 #[apply(ciphersuites_and_backends)]
-fn test_sign_verify(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let keypair = SignatureKeypair::new(ciphersuite.signature_scheme(), backend)
+fn test_sign_verify(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    let keypair = SignatureKeypair::new(ciphersuite.signature_algorithm(), backend)
         .expect("An unexpected error occurred.");
     let payload = &[1, 2, 3];
     let signature = keypair
@@ -85,44 +85,39 @@ fn test_sign_verify(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCry
 
 #[apply(backends)]
 fn supported_ciphersuites(backend: &impl OpenMlsCryptoProvider) {
-    const SUPPORTED_CIPHERSUITE_NAMES: &[CiphersuiteName] = &[
-        CiphersuiteName::MLS10_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
-        CiphersuiteName::MLS10_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
-        CiphersuiteName::MLS10_128_DHKEMP256_AES128GCM_SHA256_P256,
+    const SUPPORTED_CIPHERSUITE_NAMES: &[Ciphersuite] = &[
+        Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+        Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519,
+        Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256,
     ];
 
-    const UNSUPPORTED_CIPHERSUITE_NAMES: &[CiphersuiteName] = &[
-        CiphersuiteName::MLS10_256_DHKEMX448_AES256GCM_SHA512_Ed448,
-        CiphersuiteName::MLS10_256_DHKEMP521_AES256GCM_SHA512_P521,
-        CiphersuiteName::MLS10_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448,
+    const UNSUPPORTED_CIPHERSUITE_NAMES: &[Ciphersuite] = &[
+        Ciphersuite::MLS_256_DHKEMX448_AES256GCM_SHA512_Ed448,
+        Ciphersuite::MLS_256_DHKEMP521_AES256GCM_SHA512_P521,
+        Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448,
+        Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384,
     ];
 
-    for ciphersuite_name in SUPPORTED_CIPHERSUITE_NAMES {
-        // Instantiate ciphersuite
-        let ciphersuite = Ciphersuite::new(*ciphersuite_name)
-            .expect("Could not instantiate a Ciphersuite object.");
+    for ciphersuite in SUPPORTED_CIPHERSUITE_NAMES {
         // Create signature keypair
-        let _signature_keypair = SignatureKeypair::new(ciphersuite.signature_scheme(), backend)
+        let _signature_keypair = SignatureKeypair::new(ciphersuite.signature_algorithm(), backend)
             .expect("Could not create signature keypair.");
     }
 
-    for ciphersuite_name in UNSUPPORTED_CIPHERSUITE_NAMES {
-        // Instantiate ciphersuite
-        let _ciphersuite = Ciphersuite::new(*ciphersuite_name)
-            .expect_err("Could instantiate a Ciphersuite object with an unsupported ciphersuite.");
+    for ciphersuite in UNSUPPORTED_CIPHERSUITE_NAMES {
         // Create signature keypair
         let _signature_keypair =
-            SignatureKeypair::new(SignatureScheme::from(*ciphersuite_name), backend)
+            SignatureKeypair::new(SignatureScheme::from(*ciphersuite), backend)
                 .expect_err("Could create signature keypair with unsupported ciphersuite.");
     }
 }
 
 #[apply(ciphersuites_and_backends)]
-fn test_signatures(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_signatures(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test that valid signatures are properly verified.
     let payload = vec![0u8];
     let signature_scheme =
-        SignatureScheme::try_from(ciphersuite.name()).expect("error deriving signature scheme");
+        SignatureScheme::try_from(ciphersuite).expect("error deriving signature scheme");
     let keypair = SignatureKeypair::new(signature_scheme, backend)
         .expect("error generating signature keypair");
     let mut signature = keypair
