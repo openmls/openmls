@@ -19,30 +19,43 @@ use tls_codec::Error as TlsCodecError;
 /// Extension error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum ExtensionError {
+    /// Found a duplicate ratchet tree extension.
     #[error("Found a duplicate ratchet tree extension.")]
     DuplicateRatchetTreeExtension,
+    /// Unsupported proposal type in required capabilities.
     #[error("Unsupported proposal type in required capabilities.")]
     UnsupportedProposalType,
+    /// Unsupported extension type in required capabilities.
     #[error("Unsupported extension type in required capabilities.")]
     UnsupportedExtensionType,
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// See [`ErrorString`] for more details.
     #[error(transparent)]
     InvalidExtensionType(#[from] ErrorString),
+    /// See [`CapabilitiesExtensionError`] for more details.
     #[error(transparent)]
     Capabilities(#[from] CapabilitiesExtensionError),
+    /// See [`LifetimeExtensionError`] for more details.
     #[error(transparent)]
     Lifetime(#[from] LifetimeExtensionError),
+    /// See [`KeyPackageIdError`] for more details.
     #[error(transparent)]
     KeyPackageId(#[from] KeyPackageIdError),
+    /// See [`ParentHashError`] for more details.
     #[error(transparent)]
     ParentHash(#[from] ParentHashError),
+    /// See [`RatchetTreeError`] for more details.
     #[error(transparent)]
     RatchetTree(#[from] RatchetTreeError),
+    /// See [`TlsCodecError`] for more details.
     #[error(transparent)]
     CodecError(#[from] TlsCodecError),
+    /// See [`InvalidExtensionError`] for more details.
     #[error(transparent)]
     InvalidExtension(#[from] InvalidExtensionError),
+    /// See [`CryptoError`] for more details.
     #[error(transparent)]
     CryptoError(#[from] CryptoError),
 }
@@ -50,8 +63,10 @@ pub enum ExtensionError {
 /// Lifetime extension error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum LifetimeExtensionError {
+    /// Invalid lifetime extensions.
     #[error("Invalid lifetime extensions.")]
     Invalid,
+    /// Lifetime extension is expired.
     #[error("Lifetime extension is expired.")]
     Expired,
 }
@@ -59,10 +74,13 @@ pub enum LifetimeExtensionError {
 /// Capabilities extension error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum CapabilitiesExtensionError {
+    /// Invalid capabilities extensions.
     #[error("Invalid capabilities extensions.")]
     Invalid,
+    /// Capabilities extension is missing a version field.
     #[error("Capabilities extension is missing a version field.")]
     EmptyVersionsField,
+    /// Capabilities contains only unsupported ciphersuites.
     #[error("Capabilities contains only unsupported ciphersuites.")]
     UnsupportedCiphersuite,
 }
@@ -70,6 +88,7 @@ pub enum CapabilitiesExtensionError {
 /// KeyPackage Id error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum KeyPackageIdError {
+    /// Invalid key package ID extensions.
     #[error("Invalid key package ID extensions.")]
     Invalid,
 }
@@ -77,6 +96,7 @@ pub enum KeyPackageIdError {
 /// Parent hash error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum ParentHashError {
+    /// Invalid parent hash extensions.
     #[error("Invalid parent hash extensions.")]
     Invalid,
 }
@@ -84,6 +104,7 @@ pub enum ParentHashError {
 /// Ratchet tree error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum RatchetTreeError {
+    /// Invalid ratchet tree extensions.
     #[error("Invalid ratchet tree extensions.")]
     Invalid,
 }
@@ -91,6 +112,7 @@ pub enum RatchetTreeError {
 /// Invalid extension error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum InvalidExtensionError {
+    /// The provided extension list contains duplicate extensions.
     #[error("The provided extension list contains duplicate extensions.")]
     Duplicate,
 }

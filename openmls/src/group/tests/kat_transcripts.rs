@@ -349,14 +349,19 @@ fn read_test_vectors_transcript(backend: &impl OpenMlsCryptoProvider) {
 /// Transcript test vector error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum TranscriptTestVectorError {
+    /// Membership tag could not be verified.
     #[error("Membership tag could not be verified.")]
     MembershipTagVerificationError,
+    /// The group context does not match
     #[error("The group context does not match")]
     GroupContextMismatch,
+    /// The computed confirmation tag doesn't match the one in the test vector.
     #[error("The computed confirmation tag doesn't match the one in the test vector.")]
     ConfirmationTagMismatch,
+    /// The computed transcript hash doesn't match the one in the test vector.
     #[error("The computed transcript hash doesn't match the one in the test vector.")]
     ConfirmedTranscriptHashMismatch,
+    /// The computed interim transcript hash doesn't match the one in the test vector.
     #[error("The computed interim transcript hash doesn't match the one in the test vector.")]
     InterimTranscriptHashMismatch,
 }

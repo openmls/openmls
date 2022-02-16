@@ -11,18 +11,25 @@ use thiserror::Error;
 /// Message decryption error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum MessageDecryptionError {
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// Couldn't find a ratcheting secret for the given sender and generation.
     #[error("Couldn't find a ratcheting secret for the given sender and generation.")]
     GenerationOutOfBound,
+    /// An error occurred during AEAD decryption.
     #[error("An error occurred during AEAD decryption.")]
     AeadError,
+    /// The WireFormat was not MLSCiphertext.
     #[error("The WireFormat was not MLSCiphertext.")]
     WrongWireFormat,
+    /// The content is malformed.
     #[error("The content is malformed.")]
     MalformedContent,
+    /// See [`SecretTreeError`] for more details.
     #[error(transparent)]
     SecretTreeError(#[from] SecretTreeError),
+    /// See [`SenderError`] for more details.
     #[error(transparent)]
     SenderError(#[from] SenderError),
 }
@@ -30,12 +37,16 @@ pub enum MessageDecryptionError {
 /// Message encryption error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub(crate) enum MessageEncryptionError {
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// The WireFormat was not MLSCiphertext.
     #[error("The WireFormat was not MLSCiphertext.")]
     WrongWireFormat,
+    /// See [`SecretTreeError`] for more details.
     #[error(transparent)]
     SecretTreeError(#[from] SecretTreeError),
+    /// See [`SenderError`] for more details.
     #[error(transparent)]
     SenderError(#[from] SenderError),
 }
@@ -43,10 +54,13 @@ pub(crate) enum MessageEncryptionError {
 /// Sender error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum SenderError {
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// The requested client is not a member of the group.
     #[error("The requested client is not a member of the group.")]
     NotAMember,
+    /// Unknown sender
     #[error("Unknown sender")]
     UnknownSender,
 }
@@ -54,8 +68,10 @@ pub enum SenderError {
 /// MlsMessage error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum MlsMessageError {
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// The message could not be decoded.
     #[error("The message could not be decoded.")]
     UnableToDecode,
 }

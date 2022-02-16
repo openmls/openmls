@@ -21,12 +21,16 @@ pub enum SetupError {
     ClientNotInGroup,
     #[error("")]
     NoFreshKeyPackage,
+    /// See [`ClientError`] for more details.
     #[error(transparent)]
     ClientError(#[from] ClientError),
+    /// See [`KeyPackageError`] for more details.
     #[error(transparent)]
     KeyPackageError(#[from] KeyPackageError),
+    /// See [`ExportSecretError`] for more details.
     #[error(transparent)]
     ExportSecretError(#[from] ExportSecretError),
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     #[error("")]
@@ -51,34 +55,48 @@ pub enum ClientError {
     NoMatchingGroup,
     #[error("")]
     NoCiphersuite,
+    /// See [`WelcomeError`] for more details.
     #[error(transparent)]
     FailedToJoinGroup(#[from] WelcomeError),
     #[error(transparent)]
     TlsCodecError(#[from] tls_codec::Error),
+    /// See [`KeyPackageError`] for more details.
     #[error(transparent)]
     KeyPackageError(#[from] KeyPackageError),
+    /// See [`UnverifiedMessageError`] for more details.
     #[error(transparent)]
     UnverifiedMessageError(#[from] UnverifiedMessageError),
+    /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     MlsGroupStateError(#[from] MlsGroupStateError),
+    /// See [`AddMembersError`] for more details.
     #[error(transparent)]
     AddMembersError(#[from] AddMembersError),
+    /// See [`RemoveMembersError`] for more details.
     #[error(transparent)]
     RemoveMembersError(#[from] RemoveMembersError),
+    /// See [`ProposeAddMemberError`] for more details.
     #[error(transparent)]
     ProposeAddMemberError(#[from] ProposeAddMemberError),
+    /// See [`ProposeRemoveMemberError`] for more details.
     #[error(transparent)]
     ProposeRemoveMemberError(#[from] ProposeRemoveMemberError),
+    /// See [`ExportSecretError`] for more details.
     #[error(transparent)]
     ExportSecretError(#[from] ExportSecretError),
+    /// See [`NewGroupError`] for more details.
     #[error(transparent)]
     NewGroupError(#[from] NewGroupError),
+    /// See [`SelfUpdateError`] for more details.
     #[error(transparent)]
     SelfUpdateError(#[from] SelfUpdateError),
+    /// See [`ProposeSelfUpdateError`] for more details.
     #[error(transparent)]
     ProposeSelfUpdateError(#[from] ProposeSelfUpdateError),
+    /// See [`ParseMessageError`] for more details.
     #[error(transparent)]
     ParseMessageError(#[from] ParseMessageError),
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
     #[error("")]
