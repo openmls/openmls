@@ -634,6 +634,21 @@
 <span id="633">633</span>
 <span id="634">634</span>
 <span id="635">635</span>
+<span id="636">636</span>
+<span id="637">637</span>
+<span id="638">638</span>
+<span id="639">639</span>
+<span id="640">640</span>
+<span id="641">641</span>
+<span id="642">642</span>
+<span id="643">643</span>
+<span id="644">644</span>
+<span id="645">645</span>
+<span id="646">646</span>
+<span id="647">647</span>
+<span id="648">648</span>
+<span id="649">649</span>
+<span id="650">650</span>
 </pre><pre class="rust"><code><span class="doccomment">//! An implementation of a diff functionality for the [`ABinaryTree`] struct.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -721,7 +736,7 @@
     <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">try_from_node_index</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">Debug</span><span class="op">&gt;</span>(
         <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="ident">AbDiff</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>,
         <span class="ident">node_index</span>: <span class="ident">NodeIndex</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OutOfBoundsError</span><span class="op">&gt;</span> {
         <span class="ident">diff</span>.<span class="ident">out_of_bounds</span>(<span class="ident">node_index</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">NodeId</span> { <span class="ident">node_index</span> })
     }
@@ -813,7 +828,7 @@
     <span class="doccomment">/// in the diff.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">leaf</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NodeId</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">node_index</span> <span class="op">=</span> <span class="ident">to_node_index</span>(<span class="ident">leaf_index</span>);
-        <span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">node_index</span>)
+        <span class="prelude-val">Ok</span>(<span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">node_index</span>)<span class="question-mark">?</span>)
     }
 
     <span class="doccomment">/// Returns references to the leaves of the diff in order from left to</span>
@@ -840,12 +855,16 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">direct_path</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>, <span class="ident">OutOfBoundsError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">node_index</span> <span class="op">=</span> <span class="ident">to_node_index</span>(<span class="ident">leaf_index</span>);
-        <span class="kw">let</span> <span class="ident">direct_path_indices</span> <span class="op">=</span> <span class="ident">direct_path</span>(<span class="ident">node_index</span>, <span class="self">self</span>.<span class="ident">tree_size</span>())<span class="question-mark">?</span>;
+        <span class="comment">// `direct_path` only throws an error if the input index is out of bounds.</span>
+        <span class="kw">let</span> <span class="ident">direct_path_indices</span> <span class="op">=</span> <span class="ident">direct_path</span>(<span class="ident">node_index</span>, <span class="self">self</span>.<span class="ident">tree_size</span>())
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">OutOfBoundsError::IndexOutOfBounds</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">direct_path</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
         <span class="kw">for</span> <span class="ident">node_index</span> <span class="kw">in</span> <span class="ident">direct_path_indices</span> {
-            <span class="kw">let</span> <span class="ident">node_ref</span> <span class="op">=</span> <span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">node_index</span>)<span class="question-mark">?</span>;
+            <span class="comment">// `direct_path` only throws an error if the input index is out of bounds.</span>
+            <span class="kw">let</span> <span class="ident">node_ref</span> <span class="op">=</span> <span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">node_index</span>)
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">OutOfBoundsError::IndexOutOfBounds</span>)<span class="question-mark">?</span>;
             <span class="ident">direct_path</span>.<span class="ident">push</span>(<span class="ident">node_ref</span>);
         }
         <span class="prelude-val">Ok</span>(<span class="ident">direct_path</span>)
@@ -946,7 +965,7 @@
             <span class="ident">right</span>(<span class="ident">subtree_root_node_index</span>, <span class="self">self</span>.<span class="ident">tree_size</span>())<span class="question-mark">?</span>
         };
 
-        <span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">copath_node_index</span>)
+        <span class="prelude-val">Ok</span>(<span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">copath_node_index</span>)<span class="question-mark">?</span>)
     }
 
     <span class="doccomment">/// Returns a vector of [`NodeReference`]s, where the first reference is to</span>
@@ -1056,7 +1075,7 @@
     <span class="doccomment">/// node not in the tree.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">parent</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">node_ref</span>: <span class="ident">NodeId</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NodeId</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">parent_index</span> <span class="op">=</span> <span class="ident">parent</span>(<span class="ident">node_ref</span>.<span class="ident">node_index</span>, <span class="self">self</span>.<span class="ident">tree_size</span>())<span class="question-mark">?</span>;
-        <span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">parent_index</span>)
+        <span class="prelude-val">Ok</span>(<span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">parent_index</span>)<span class="question-mark">?</span>)
     }
 
     <span class="doccomment">/// Returns a [`NodeReference`] to the sibling of the referenced node. Returns</span>
@@ -1064,7 +1083,7 @@
     <span class="doccomment">/// node not in the tree.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">sibling</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">node_ref</span>: <span class="ident">NodeId</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NodeId</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">sibling_index</span> <span class="op">=</span> <span class="ident">sibling</span>(<span class="ident">node_ref</span>.<span class="ident">node_index</span>, <span class="self">self</span>.<span class="ident">tree_size</span>())<span class="question-mark">?</span>;
-        <span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">sibling_index</span>)
+        <span class="prelude-val">Ok</span>(<span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">sibling_index</span>)<span class="question-mark">?</span>)
     }
 
     <span class="doccomment">/// Returns a [`NodeReference`] to the left child of the referenced node.</span>
@@ -1072,7 +1091,7 @@
     <span class="doccomment">/// to a node not in the tree.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">left_child</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">node_ref</span>: <span class="ident">NodeId</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NodeId</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">left_child_index</span> <span class="op">=</span> <span class="ident">left</span>(<span class="ident">node_ref</span>.<span class="ident">node_index</span>)<span class="question-mark">?</span>;
-        <span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">left_child_index</span>)
+        <span class="prelude-val">Ok</span>(<span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">left_child_index</span>)<span class="question-mark">?</span>)
     }
 
     <span class="doccomment">/// Returns a [`NodeReference`] to the right child of the referenced node.</span>
@@ -1080,7 +1099,7 @@
     <span class="doccomment">/// to a node not in the tree.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">right_child</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">node_ref</span>: <span class="ident">NodeId</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">NodeId</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">right_child_index</span> <span class="op">=</span> <span class="ident">right</span>(<span class="ident">node_ref</span>.<span class="ident">node_index</span>, <span class="self">self</span>.<span class="ident">tree_size</span>())<span class="question-mark">?</span>;
-        <span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">right_child_index</span>)
+        <span class="prelude-val">Ok</span>(<span class="ident">NodeId::try_from_node_index</span>(<span class="self">self</span>, <span class="ident">right_child_index</span>)<span class="question-mark">?</span>)
     }
 
     <span class="doccomment">/// Returns the [`LeafIndex`] of the referenced node. If the referenced node</span>
@@ -1183,9 +1202,9 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// Returns an error if the given leaf is out of bounds. Otherwise returns</span>
     <span class="doccomment">/// nothing.</span>
-    <span class="kw">fn</span> <span class="ident">out_of_bounds</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">node_index</span>: <span class="ident">NodeIndex</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">out_of_bounds</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">node_index</span>: <span class="ident">NodeIndex</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OutOfBoundsError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">node_index</span> <span class="op">&gt;</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">tree_size</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ABinaryTreeDiffError::OutOfBounds</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OutOfBoundsError::IndexOutOfBounds</span>);
         }
         <span class="prelude-val">Ok</span>(())
     }
@@ -1268,6 +1287,17 @@
     <span class="ident">ABinaryTreeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ABinaryTreeError</span>),
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">TreeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TreeMathError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">IndexOutOfBounds</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">OutOfBoundsError</span>),
+}
+
+<span class="doccomment">/// Error type for functions that only throw OutOfBounds errors.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">OutOfBoundsError</span> {
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The given index is not within the bounds of the tree.&quot;</span>)]</span>
+    <span class="ident">IndexOutOfBounds</span>,
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-search-index-js="../../../../search-index.js" data-search-js="../../../../search.js"></div>

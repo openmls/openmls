@@ -320,6 +320,56 @@
 <span id="319">319</span>
 <span id="320">320</span>
 <span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Module to encrypt and decrypt update paths for a [`TreeSyncDiff`] instance.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -334,7 +384,7 @@
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">binary_tree::LeafIndex</span>,
+    <span class="ident">binary_tree</span>::{<span class="ident">LeafIndex</span>, <span class="ident">OutOfBoundsError</span>},
     <span class="ident">ciphersuite</span>::{<span class="ident">hash_ref::KeyPackageRef</span>, <span class="ident">Ciphersuite</span>, <span class="ident">HpkePublicKey</span>},
     <span class="ident">config::ProtocolVersion</span>,
     <span class="ident">error::LibraryError</span>,
@@ -395,6 +445,10 @@
     <span class="doccomment">/// Returns a vector containing the decrypted [`ParentNode`] instances, as</span>
     <span class="doccomment">/// well as the [`CommitSecret`] resulting from their derivation. Returns an</span>
     <span class="doccomment">/// error if the `sender_leaf_index` is outside of the tree.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// ValSem202: Path must be the right length</span>
+    <span class="doccomment">/// ValSem203: Path secrets must decrypt correctly</span>
+    <span class="doccomment">/// ValSem204: Public keys from Path must be verified and match the private keys from the direct path</span>
     <span class="doccomment">/// TODO #804</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">decrypt_path</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -404,8 +458,19 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ParentNode</span><span class="op">&gt;</span>, <span class="ident">CommitSecret</span>), <span class="ident">ApplyUpdatePathError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">path_position</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">subtree_root_position</span>(<span class="ident">params</span>.<span class="ident">sender_leaf_index</span>, <span class="self">self</span>.<span class="ident">own_leaf_index</span>())
-            <span class="comment">// We know our own leaf is in the tree</span>
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected own leaf to be in the tree&quot;</span>))<span class="question-mark">?</span>;
+
+        <span class="comment">// ValSem202: Path must be the right length</span>
+        <span class="kw">let</span> <span class="ident">direct_path_length</span> <span class="op">=</span>
+            <span class="self">self</span>.<span class="ident">direct_path_len</span>(<span class="ident">params</span>.<span class="ident">sender_leaf_index</span>)
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">e</span> {
+                    <span class="ident">OutOfBoundsError::LibraryError</span>(<span class="ident">e</span>) =&gt; <span class="ident">ApplyUpdatePathError::LibraryError</span>(<span class="ident">e</span>),
+                    <span class="ident">OutOfBoundsError::IndexOutOfBounds</span> =&gt; <span class="ident">ApplyUpdatePathError::MissingSender</span>,
+                })<span class="question-mark">?</span>;
+        <span class="kw">if</span> <span class="ident">direct_path_length</span> <span class="op">!</span><span class="op">=</span> <span class="ident">params</span>.<span class="ident">update_path</span>.<span class="ident">len</span>() {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ApplyUpdatePathError::PathLengthMismatch</span>);
+        }
+
         <span class="kw">let</span> <span class="ident">update_path_node</span> <span class="op">=</span> <span class="ident">params</span>
             .<span class="ident">update_path</span>
             .<span class="ident">get</span>(<span class="ident">path_position</span>)
@@ -423,6 +488,7 @@
             <span class="comment">// TODO #804</span>
             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected to find ciphertext in update path&quot;</span>))<span class="question-mark">?</span>;
 
+        <span class="comment">// ValSem203: Path secrets must decrypt correctly</span>
         <span class="kw">let</span> <span class="ident">path_secret</span> <span class="op">=</span> <span class="ident">PathSecret::decrypt</span>(
             <span class="ident">backend</span>,
             <span class="ident">ciphersuite</span>,
@@ -438,6 +504,7 @@
             <span class="ident">ParentNode::derive_path</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>, <span class="ident">path_secret</span>, <span class="ident">remaining_path_length</span>)<span class="question-mark">?</span>;
         <span class="comment">// We now check that the public keys in the update path and in the</span>
         <span class="comment">// derived path match up.</span>
+        <span class="comment">// ValSem204: Public keys from Path must be verified and match the private keys from the direct path</span>
         <span class="kw">for</span> (<span class="ident">update_parent_node</span>, <span class="ident">derived_parent_node</span>) <span class="kw">in</span> <span class="ident">params</span>
             .<span class="ident">update_path</span>
             .<span class="ident">iter</span>()
@@ -517,6 +584,24 @@
             <span class="ident">new_eps_vec</span>.<span class="ident">push</span>(<span class="ident">new_eps</span>);
         }
         <span class="self">self</span>.<span class="ident">encrypted_path_secrets</span> <span class="op">=</span> <span class="ident">new_eps_vec</span>.<span class="ident">into</span>();
+    }
+
+    <span class="doccomment">/// Flip the last byte of the public key in this node.</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="kw">fn</span> <span class="ident">flip_last_pk_byte</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
+        <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_pk_serialized</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">public_key</span>
+            .<span class="ident">tls_serialize_detached</span>()
+            .<span class="ident">expect</span>(<span class="string">&quot;error serializing public key&quot;</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">last_bits</span> <span class="op">=</span> <span class="ident">new_pk_serialized</span>
+            .<span class="ident">pop</span>()
+            .<span class="ident">expect</span>(<span class="string">&quot;An unexpected error occurred.&quot;</span>);
+        <span class="ident">last_bits</span> <span class="op">^</span><span class="op">=</span> <span class="number">0xff</span>;
+        <span class="ident">new_pk_serialized</span>.<span class="ident">push</span>(<span class="ident">last_bits</span>);
+        <span class="self">self</span>.<span class="ident">public_key</span> <span class="op">=</span> <span class="ident">HpkePublicKey::tls_deserialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">new_pk_serialized</span>.<span class="ident">as_slice</span>())
+            .<span class="ident">expect</span>(<span class="string">&quot;error deserializing pk&quot;</span>);
     }
 }
 
@@ -639,6 +724,21 @@
     <span class="doccomment">/// Set the path key package.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_leaf_key_package</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">key_package</span>: <span class="ident">KeyPackage</span>) {
         <span class="self">self</span>.<span class="ident">leaf_key_package</span> <span class="op">=</span> <span class="ident">key_package</span>
+    }
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="doccomment">/// Remove and return the last node in the update path. Returns `None` if</span>
+    <span class="doccomment">/// the path is empty.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UpdatePathNode</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">nodes</span>.<span class="ident">pop</span>()
+    }
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="doccomment">/// Flip the last bytes of the public key in the last node in the path.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">flip_node_bytes</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">last_node</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">nodes</span>.<span class="ident">pop</span>().<span class="ident">expect</span>(<span class="string">&quot;path empty&quot;</span>);
+        <span class="ident">last_node</span>.<span class="ident">flip_last_pk_byte</span>();
+        <span class="self">self</span>.<span class="ident">nodes</span>.<span class="ident">push</span>(<span class="ident">last_node</span>)
     }
 }
 </code></pre></div>

@@ -935,6 +935,11 @@
 <span id="934">934</span>
 <span id="935">935</span>
 <span id="936">936</span>
+<span id="937">937</span>
+<span id="938">938</span>
+<span id="939">939</span>
+<span id="940">940</span>
+<span id="941">941</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -1869,6 +1874,11 @@
                 <span class="string">&quot;missing leaf node&quot;</span>,
             )))
         }
+    }
+
+    <span class="doccomment">/// Get the length of the direct path of the given [`LeafIndex`].</span>
+    <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">direct_path_len</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">OutOfBoundsError</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">direct_path</span>(<span class="ident">leaf_index</span>)<span class="question-mark">?</span>.<span class="ident">len</span>())
     }
 }
 </code></pre></div>

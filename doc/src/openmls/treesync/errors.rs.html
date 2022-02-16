@@ -155,6 +155,17 @@
 <span id="154">154</span>
 <span id="155">155</span>
 <span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
@@ -162,6 +173,9 @@
 <span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
 
 <span class="comment">// === Public errors ===</span>
+
+<span class="comment">// Re-exporting OutOfBoundsError from the ABinaryTree</span>
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::binary_tree::OutOfBoundsError</span>;
 
 <span class="doccomment">/// Public tree error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
@@ -183,6 +197,10 @@
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ApplyUpdatePathError</span> {
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(
+        <span class="string">&quot;The length of the received update path and that of the sender&#39;s direct path do not match.&quot;</span>
+    )]</span>
+    <span class="ident">PathLengthMismatch</span>,
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The received update path and the derived nodes are not identical.&quot;</span>)]</span>
     <span class="ident">PathMismatch</span>,
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The parent hash of the ney key package is invalid.&quot;</span>)]</span>
@@ -191,6 +209,8 @@
     <span class="ident">MissingParentHash</span>,
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Unable to decrypt the path node.&quot;</span>)]</span>
     <span class="ident">UnableToDecrypt</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Unable to find sender in tree.&quot;</span>)]</span>
+    <span class="ident">MissingSender</span>,
 }
 
 <span class="comment">// === Crate errors ===</span>
@@ -289,6 +309,8 @@
     <span class="ident">CreationError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsBinaryTreeError</span>),
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">KeyPackageError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">KeyPackageError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">UnknownMember</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">OutOfBoundsError</span>),
 }
 
 <span class="doccomment">/// TreeKem error</span>

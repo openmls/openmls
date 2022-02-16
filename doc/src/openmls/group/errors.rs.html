@@ -308,6 +308,18 @@
 <span id="307">307</span>
 <span id="308">308</span>
 <span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS CoreGroup errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -475,6 +487,8 @@
     <span class="ident">ConfirmationTagMissing</span>,
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The confirmation tag is invalid.&quot;</span>)]</span>
     <span class="ident">ConfirmationTagMismatch</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The committer can&#39;t remove themselves.&quot;</span>)]</span>
+    <span class="ident">AttemptedSelfRemoval</span>,
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The proposal queue is missing a proposal for the commit.&quot;</span>)]</span>
     <span class="ident">MissingProposal</span>,
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Missing own key to apply proposal.&quot;</span>)]</span>
@@ -522,10 +536,20 @@
     <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Not all proposals in the Commit were found locally.&quot;</span>)]</span>
     <span class="ident">ProposalNotFound</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The sender of a Commit tried to remove themselves.&quot;</span>)]</span>
-    <span class="ident">SelfRemoval</span>,
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">SenderError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">SenderError</span>),
+}
+
+<span class="doccomment">/// Errors that can arise when creating a [`ProposalQueue`] from committed</span>
+<span class="doccomment">/// proposals.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">FromCommittedProposalsError</span> {
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Not all proposals in the Commit were found locally.&quot;</span>)]</span>
+    <span class="ident">ProposalNotFound</span>,
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The sender of a Commit tried to remove themselves.&quot;</span>)]</span>
+    <span class="ident">SelfRemoval</span>,
 }
 
 <span class="doccomment">/// Creation proposal queue error</span>
