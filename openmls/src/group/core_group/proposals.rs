@@ -129,6 +129,10 @@ pub(crate) struct ProposalQueue {
 }
 
 impl ProposalQueue {
+    /// Returns `true` if the [`ProposalQueue`] is empty. Otherwise returns `false`.
+    pub(crate) fn is_empty(&self) -> bool {
+        self.proposal_references.is_empty()
+    }
     /// Returns a new `QueuedProposalQueue` from proposals that were committed and
     /// don't need filtering.
     /// This functions does the following checks:
@@ -139,7 +143,7 @@ impl ProposalQueue {
         committed_proposals: Vec<ProposalOrRef>,
         proposal_store: &ProposalStore,
         sender: &Sender,
-    ) -> Result<Self, ProposalQueueError> {
+    ) -> Result<Self, FromCommittedProposalsError> {
         // Feed the `proposals_by_reference` in a `HashMap` so that we can easily
         // extract then by reference later
         let mut proposals_by_reference_queue: HashMap<ProposalRef, QueuedProposal> = HashMap::new();
@@ -160,7 +164,7 @@ impl ProposalQueue {
                     if let Proposal::Remove(ref remove_proposal) = proposal {
                         if let Sender::Member(hash_ref) = sender {
                             if remove_proposal.removed() == hash_ref {
-                                return Err(ProposalQueueError::SelfRemoval);
+                                return Err(FromCommittedProposalsError::SelfRemoval);
                             }
                         }
                     }
@@ -180,14 +184,14 @@ impl ProposalQueue {
                             {
                                 if let Sender::Member(hash_ref) = sender {
                                     if remove_proposal.removed() == hash_ref {
-                                        return Err(ProposalQueueError::SelfRemoval);
+                                        return Err(FromCommittedProposalsError::SelfRemoval);
                                     }
                                 }
                             }
 
                             queued_proposal.clone()
                         }
-                        None => return Err(ProposalQueueError::ProposalNotFound),
+                        None => return Err(FromCommittedProposalsError::ProposalNotFound),
                     }
                 }
             };

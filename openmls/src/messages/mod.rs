@@ -381,6 +381,8 @@ impl PathSecret {
     ///
     /// Returns the decrypted `PathSecret`. Returns an error if the decryption
     /// was unsuccessful.
+    ///
+    /// ValSem203: Path secrets must decrypt correctly
     pub(crate) fn decrypt(
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: &'static Ciphersuite,
@@ -389,6 +391,7 @@ impl PathSecret {
         private_key: &HpkePrivateKey,
         group_context: &[u8],
     ) -> Result<PathSecret, PathSecretError> {
+        // ValSem203: Path secrets must decrypt correctly
         let secret_bytes = backend.crypto().hpke_open(
             ciphersuite.hpke_config(),
             ciphertext,

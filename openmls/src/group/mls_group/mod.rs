@@ -349,6 +349,12 @@ impl MlsGroup {
     pub(crate) fn group(&self) -> &CoreGroup {
         &self.group
     }
+
+    /// Clear the pending proposals.
+    #[cfg(test)]
+    pub(crate) fn clear_pending_proposals(&mut self) {
+        self.proposal_store.empty()
+    }
 }
 
 // Private methods of MlsGroup
