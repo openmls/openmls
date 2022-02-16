@@ -507,17 +507,17 @@
         <span class="ident">header</span>: <span class="ident">MlsMessageHeader</span>,
         <span class="ident">message_secrets</span>: <span class="kw-2">&amp;mut</span> <span class="ident">MessageSecrets</span>,
         <span class="ident">padding_size</span>: <span class="ident">usize</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsCiphertext</span>, <span class="ident">MlsCiphertextError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsCiphertext</span>, <span class="ident">MessageEncryptionError</span><span class="op">&gt;</span> {
         <span class="macro">log::debug!</span>(<span class="string">&quot;MlsCiphertext::try_from_plaintext&quot;</span>);
         <span class="macro">log::trace!</span>(<span class="string">&quot;  ciphersuite: {}&quot;</span>, <span class="ident">ciphersuite</span>);
         <span class="comment">// Check the plaintext has the correct wire format</span>
         <span class="kw">if</span> <span class="ident">mls_plaintext</span>.<span class="ident">wire_format</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">WireFormat::MlsCiphertext</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsCiphertextError::WrongWireFormat</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessageEncryptionError::WrongWireFormat</span>);
         }
         <span class="comment">// Check that the plaintext has the right sender type</span>
         <span class="kw">let</span> <span class="ident">hash_ref</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">mls_plaintext</span>.<span class="ident">sender</span>() {
             <span class="ident">Sender::Member</span>(<span class="ident">hash_ref</span>) =&gt; <span class="ident">hash_ref</span>,
-            <span class="kw">_</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsCiphertextError::SenderError</span>(<span class="ident">SenderError::NotAMember</span>)),
+            <span class="kw">_</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessageEncryptionError::SenderError</span>(<span class="ident">SenderError::NotAMember</span>)),
         };
         <span class="comment">// Serialize the content AAD</span>
         <span class="kw">let</span> <span class="ident">mls_ciphertext_content_aad</span> <span class="op">=</span> <span class="ident">MlsCiphertextContentAad</span> {
@@ -603,11 +603,11 @@
         <span class="ident">message_secrets</span>: <span class="kw-2">&amp;mut</span> <span class="ident">MessageSecrets</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsSenderData</span>, <span class="ident">MlsCiphertextError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsSenderData</span>, <span class="ident">MessageDecryptionError</span><span class="op">&gt;</span> {
         <span class="macro">log::debug!</span>(<span class="string">&quot;Decrypting MlsCiphertext&quot;</span>);
         <span class="comment">// Check the ciphertext has the correct wire format</span>
         <span class="kw">if</span> <span class="self">self</span>.<span class="ident">wire_format</span> <span class="op">!</span><span class="op">=</span> <span class="ident">WireFormat::MlsCiphertext</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsCiphertextError::WrongWireFormat</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MessageDecryptionError::WrongWireFormat</span>);
         }
         <span class="comment">// Derive key from the key schedule using the ciphertext.</span>
         <span class="kw">let</span> <span class="ident">sender_data_key</span> <span class="op">=</span> <span class="ident">message_secrets</span>
@@ -635,11 +635,11 @@
             )
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
                 <span class="macro">log::error!</span>(<span class="string">&quot;Sender data decryption error&quot;</span>);
-                <span class="ident">MlsCiphertextError::DecryptionError</span>
+                <span class="ident">MessageDecryptionError::AeadError</span>
             })<span class="question-mark">?</span>;
         <span class="macro">log::trace!</span>(<span class="string">&quot;  Successfully decrypted sender data.&quot;</span>);
         <span class="ident">MlsSenderData::tls_deserialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">sender_data_bytes</span>.<span class="ident">as_slice</span>())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MlsCiphertextError::MalformedContent</span>)
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MessageDecryptionError::MalformedContent</span>)
     }
 
     <span class="doccomment">/// Decrypt this [`MlsCiphertext`] and return the [`MlsCiphertextContent`].</span>
@@ -649,7 +649,7 @@
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">ratchet_key</span>: <span class="ident">AeadKey</span>,
         <span class="ident">ratchet_nonce</span>: <span class="kw-2">&amp;</span><span class="ident">AeadNonce</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsCiphertextContent</span>, <span class="ident">MlsCiphertextError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsCiphertextContent</span>, <span class="ident">MessageDecryptionError</span><span class="op">&gt;</span> {
         <span class="comment">// Serialize content AAD</span>
         <span class="kw">let</span> <span class="ident">mls_ciphertext_content_aad_bytes</span> <span class="op">=</span> <span class="ident">MlsCiphertextContentAad</span> {
             <span class="ident">group_id</span>: <span class="self">self</span>.<span class="ident">group_id</span>.<span class="ident">clone</span>(),
@@ -669,7 +669,7 @@
             )
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
                 <span class="macro">log::error!</span>(<span class="string">&quot;  Ciphertext decryption error&quot;</span>);
-                <span class="ident">MlsCiphertextError::DecryptionError</span>
+                <span class="ident">MessageDecryptionError::AeadError</span>
             })<span class="question-mark">?</span>;
         <span class="macro">log_content!</span>(
             <span class="ident">trace</span>,
@@ -680,7 +680,7 @@
             <span class="self">self</span>.<span class="ident">content_type</span>,
             <span class="kw-2">&amp;mut</span> <span class="ident">mls_ciphertext_content_bytes</span>.<span class="ident">as_slice</span>(),
         )
-        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MlsCiphertextError::MalformedContent</span>)
+        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MessageDecryptionError::MalformedContent</span>)
     }
 
     <span class="doccomment">/// This function decrypts an [`MlsCiphertext`] into an [`VerifiableMlsPlaintext`].</span>
@@ -693,7 +693,7 @@
         <span class="ident">sender_index</span>: <span class="ident">SecretTreeLeafIndex</span>,
         <span class="ident">sender_ratchet_configuration</span>: <span class="kw-2">&amp;</span><span class="ident">SenderRatchetConfiguration</span>,
         <span class="ident">sender_data</span>: <span class="ident">MlsSenderData</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">VerifiableMlsPlaintext</span>, <span class="ident">MlsCiphertextError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">VerifiableMlsPlaintext</span>, <span class="ident">MessageDecryptionError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">secret_type</span> <span class="op">=</span> <span class="ident">SecretType::from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">content_type</span>);
         <span class="comment">// Extract generation and key material for encryption</span>
         <span class="kw">let</span> (<span class="ident">ratchet_key</span>, <span class="kw-2">mut</span> <span class="ident">ratchet_nonce</span>) <span class="op">=</span> <span class="ident">message_secrets</span>
@@ -708,7 +708,7 @@
             )
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
                 <span class="macro">log::error!</span>(<span class="string">&quot;  Ciphertext generation out of bounds&quot;</span>);
-                <span class="ident">MlsCiphertextError::GenerationOutOfBound</span>
+                <span class="ident">MessageDecryptionError::GenerationOutOfBound</span>
             })<span class="question-mark">?</span>;
         <span class="comment">// Prepare the nonce by xoring with the reuse guard.</span>
         <span class="ident">ratchet_nonce</span>.<span class="ident">xor_with_reuse_guard</span>(<span class="kw-2">&amp;</span><span class="ident">sender_data</span>.<span class="ident">reuse_guard</span>);

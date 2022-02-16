@@ -191,7 +191,7 @@ Despite the fact that members were only removed in this operation, the Commit me
 
     // Check that Bob's group is no longer active
     assert!(!bob_group.is_active());
-    let members = bob_group.members().expect(&quot;Error getting list of members.&quot;);
+    let members = bob_group.members();
     assert_eq!(members.len(), 2);
     assert_eq!(members[0].credential().identity(), b&quot;Alice&quot;);
     assert_eq!(members[1].credential().identity(), b&quot;Charlie&quot;);

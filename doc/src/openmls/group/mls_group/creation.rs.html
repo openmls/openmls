@@ -218,7 +218,7 @@
         <span class="ident">mls_group_config</span>: <span class="kw-2">&amp;</span><span class="ident">MlsGroupConfig</span>,
         <span class="ident">welcome</span>: <span class="ident">Welcome</span>,
         <span class="ident">ratchet_tree</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">WelcomeError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">resumption_secret_store</span> <span class="op">=</span>
             <span class="ident">ResumptionSecretStore::new</span>(<span class="ident">mls_group_config</span>.<span class="ident">number_of_resumption_secrets</span>);
         <span class="kw">let</span> (<span class="ident">key_package_bundle</span>, <span class="ident">hash_ref</span>) <span class="op">=</span> <span class="ident">welcome</span>
@@ -231,13 +231,13 @@
                     .<span class="ident">read</span>(<span class="kw-2">&amp;</span><span class="ident">hash_ref</span>)
                     .<span class="ident">map</span>(<span class="op">|</span><span class="ident">kpb</span>: <span class="ident">KeyPackageBundle</span><span class="op">|</span> (<span class="ident">kpb</span>, <span class="ident">hash_ref</span>))
             })
-            .<span class="ident">ok_or</span>(<span class="ident">MlsGroupError::NoMatchingKeyPackageBundle</span>)<span class="question-mark">?</span>;
+            .<span class="ident">ok_or</span>(<span class="ident">WelcomeError::NoMatchingKeyPackageBundle</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Delete the KeyPackageBundle from the key store</span>
         <span class="ident">backend</span>
             .<span class="ident">key_store</span>()
             .<span class="ident">delete</span>(<span class="kw-2">&amp;</span><span class="ident">hash_ref</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MlsGroupError::KeyStoreError</span>)<span class="question-mark">?</span>;
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">WelcomeError::KeyStoreDeletionError</span>)<span class="question-mark">?</span>;
         <span class="comment">// TODO #751</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">group</span> <span class="op">=</span>
             <span class="ident">CoreGroup::new_from_welcome</span>(<span class="ident">welcome</span>, <span class="ident">ratchet_tree</span>, <span class="ident">key_package_bundle</span>, <span class="ident">backend</span>)<span class="question-mark">?</span>;

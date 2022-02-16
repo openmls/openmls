@@ -649,6 +649,9 @@
 <span id="648">648</span>
 <span id="649">649</span>
 <span id="650">650</span>
+<span id="651">651</span>
+<span id="652">652</span>
+<span id="653">653</span>
 </pre><pre class="rust"><code><span class="doccomment">//! An implementation of a diff functionality for the [`ABinaryTree`] struct.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -1011,11 +1014,14 @@
     <span class="doccomment">/// Returns a vector containing the nodes of the tree in-order, i.e. in the</span>
     <span class="doccomment">/// array representation of the diff. This function should not fail and only</span>
     <span class="doccomment">/// returns a [`Result`], because it might throw a</span>
-    <span class="doccomment">/// [LibraryError](ABinaryTreeError::LibraryError).</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">export_nodes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
+    <span class="doccomment">/// [`LibraryError`].</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">export_nodes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nodes</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
         <span class="kw">for</span> <span class="ident">node_index</span> <span class="kw">in</span> <span class="number">0</span>..<span class="self">self</span>.<span class="ident">tree_size</span>() {
-            <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">node_by_index</span>(<span class="ident">node_index</span>)<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="self">self</span>
+                .<span class="ident">node_by_index</span>(<span class="ident">node_index</span>)
+                <span class="comment">// We know the node must be in the tree</span>
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected node to be in the tree&quot;</span>))<span class="question-mark">?</span>;
             <span class="ident">nodes</span>.<span class="ident">push</span>(<span class="ident">node</span>.<span class="ident">clone</span>());
         }
         <span class="prelude-val">Ok</span>(<span class="ident">nodes</span>)

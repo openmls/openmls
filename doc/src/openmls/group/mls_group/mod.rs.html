@@ -411,11 +411,6 @@
 <span id="410">410</span>
 <span id="411">411</span>
 <span id="412">412</span>
-<span id="413">413</span>
-<span id="414">414</span>
-<span id="415">415</span>
-<span id="416">416</span>
-<span id="417">417</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">application</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
 <span class="kw">mod</span> <span class="ident">creation</span>;
@@ -429,7 +424,6 @@
 <span class="kw">mod</span> <span class="ident">test_mls_group</span>;
 <span class="kw">mod</span> <span class="ident">updates</span>;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::node::Node</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ciphersuite::hash_ref::KeyPackageRef</span>, <span class="ident">credentials::CredentialBundle</span>};
 
 <span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">key_store::OpenMlsKeyStore</span>, <span class="ident">OpenMlsCryptoProvider</span>};
@@ -454,11 +448,9 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">resumption::ResumptionSecretStore</span>;
 
 <span class="comment">// Public exports</span>
-<span class="kw">pub</span> <span class="kw">use</span> {
-    <span class="ident">config</span>::<span class="kw-2">*</span>,
-    <span class="ident">errors</span>::{<span class="ident">EmptyInputError</span>, <span class="ident">MlsGroupError</span>, <span class="ident">MlsGroupStateError</span>, <span class="ident">UnverifiedMessageError</span>},
-    <span class="ident">membership::RemoveOperation</span>,
-};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::node::Node</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::node</span>::{<span class="ident">leaf_node::LeafNode</span>, <span class="ident">parent_node::ParentNode</span>};
+<span class="kw">pub</span> <span class="kw">use</span> {<span class="ident">config</span>::<span class="kw-2">*</span>, <span class="ident">errors</span>::<span class="kw-2">*</span>, <span class="ident">membership::RemoveOperation</span>};
 
 <span class="doccomment">/// Pending Commit state. Differentiates between Commits issued by group members</span>
 <span class="doccomment">/// and External Commits.</span>
@@ -649,14 +641,16 @@
 
     <span class="doccomment">/// Returns own credential. If the group is inactive, it returns a</span>
     <span class="doccomment">/// `UseAfterEviction` error.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">credential</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Credential</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">credential</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Credential</span>, <span class="ident">MlsGroupStateError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">is_active</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::GroupStateError</span>(
-                <span class="ident">MlsGroupStateError::UseAfterEviction</span>,
-            ));
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsGroupStateError::UseAfterEviction</span>);
         }
         <span class="kw">let</span> <span class="ident">tree</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">treesync</span>();
-        <span class="prelude-val">Ok</span>(<span class="ident">tree</span>.<span class="ident">own_leaf_node</span>()<span class="question-mark">?</span>.<span class="ident">key_package</span>().<span class="ident">credential</span>())
+        <span class="prelude-val">Ok</span>(<span class="ident">tree</span>
+            .<span class="ident">own_leaf_node</span>()
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Own leaf node missing&quot;</span>))<span class="question-mark">?</span>
+            .<span class="ident">key_package</span>()
+            .<span class="ident">credential</span>())
     }
 
     <span class="doccomment">/// Get the [`KeyPackageRef`] of the client owning this group.</span>
@@ -695,7 +689,7 @@
     <span class="doccomment">/// Sets the `group_state` to [`MlsGroupState::Operational`], thus clearing</span>
     <span class="doccomment">/// any potentially pending commits.</span>
     <span class="doccomment">///</span>
-    <span class="doccomment">/// Returns an error if the group was created through an external commit and</span>
+    <span class="doccomment">/// Note that this has no effect if the group was created through an external commit and</span>
     <span class="doccomment">/// the resulting external commit has not been merged yet. For more</span>
     <span class="doccomment">/// information, see [`MlsGroup::join_by_external_commit()`].</span>
     <span class="doccomment">///</span>
@@ -703,19 +697,15 @@
     <span class="doccomment">/// the pending commit will not be used in the group. In particular, if a</span>
     <span class="doccomment">/// pending commit is later accepted by the group, this client will lack the</span>
     <span class="doccomment">/// key material to encrypt or decrypt group messages.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clear_pending_commit</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">clear_pending_commit</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">group_state</span> {
             <span class="ident">MlsGroupState::PendingCommit</span>(<span class="kw-2">ref</span> <span class="ident">pending_commit_state</span>) =&gt; {
-                <span class="kw">match</span> <span class="kw-2">*</span><span class="kw-2">*</span><span class="ident">pending_commit_state</span> {
-                    <span class="ident">PendingCommitState::Member</span>(<span class="kw">_</span>) =&gt; <span class="self">self</span>.<span class="ident">group_state</span> <span class="op">=</span> <span class="ident">MlsGroupState::Operational</span>,
-                    <span class="ident">PendingCommitState::External</span>(<span class="kw">_</span>) =&gt; {
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::ExternalCommitError</span>)
-                    }
+                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">PendingCommitState::Member</span>(<span class="kw">_</span>) <span class="op">=</span> <span class="kw-2">*</span><span class="kw-2">*</span><span class="ident">pending_commit_state</span> {
+                    <span class="self">self</span>.<span class="ident">group_state</span> <span class="op">=</span> <span class="ident">MlsGroupState::Operational</span>
                 }
             }
             <span class="ident">MlsGroupState::Operational</span> <span class="op">|</span> <span class="ident">MlsGroupState::Inactive</span> =&gt; (),
         }
-        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="comment">// === Load &amp; save ===</span>
@@ -784,13 +774,15 @@
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">plaintext</span>: <span class="ident">MlsPlaintext</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsMessageOut</span>, <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsMessageOut</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">msg</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">configuration</span>().<span class="ident">wire_format_policy</span>().<span class="ident">outgoing</span>() {
             <span class="ident">OutgoingWireFormatPolicy::AlwaysPlaintext</span> =&gt; <span class="ident">MlsMessageOut::from</span>(<span class="ident">plaintext</span>),
             <span class="ident">OutgoingWireFormatPolicy::AlwaysCiphertext</span> =&gt; {
-                <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span>
-                    <span class="self">self</span>.<span class="ident">group</span>
-                        .<span class="ident">encrypt</span>(<span class="ident">plaintext</span>, <span class="self">self</span>.<span class="ident">configuration</span>().<span class="ident">padding_size</span>(), <span class="ident">backend</span>)<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="self">self</span>
+                    .<span class="ident">group</span>
+                    .<span class="ident">encrypt</span>(<span class="ident">plaintext</span>, <span class="self">self</span>.<span class="ident">configuration</span>().<span class="ident">padding_size</span>(), <span class="ident">backend</span>)
+                    <span class="comment">// We can be sure the encryption will work because the plaintext was created by us</span>
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Malformed plaintext&quot;</span>))<span class="question-mark">?</span>;
                 <span class="ident">MlsMessageOut::from</span>(<span class="ident">ciphertext</span>)
             }
         };
@@ -812,12 +804,10 @@
 
     <span class="doccomment">/// Check if the group is operational. Throws an error if the group is</span>
     <span class="doccomment">/// inactive or if there is a pending commit.</span>
-    <span class="kw">fn</span> <span class="ident">is_operational</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MlsGroupError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">is_operational</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">MlsGroupStateError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">group_state</span> {
-            <span class="ident">MlsGroupState::PendingCommit</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::PendingCommitError</span>),
-            <span class="ident">MlsGroupState::Inactive</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">MlsGroupError::GroupStateError</span>(
-                <span class="ident">MlsGroupStateError::UseAfterEviction</span>,
-            )),
+            <span class="ident">MlsGroupState::PendingCommit</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">MlsGroupStateError::PendingCommit</span>),
+            <span class="ident">MlsGroupState::Inactive</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">MlsGroupStateError::UseAfterEviction</span>),
             <span class="ident">MlsGroupState::Operational</span> =&gt; <span class="prelude-val">Ok</span>(()),
         }
     }

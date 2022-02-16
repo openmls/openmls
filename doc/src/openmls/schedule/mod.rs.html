@@ -1262,6 +1262,9 @@
 <span id="1261">1261</span>
 <span id="1262">1262</span>
 <span id="1263">1263</span>
+<span id="1264">1264</span>
+<span id="1265">1265</span>
+<span id="1266">1266</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module represents the key schedule as introduced in Section 8 of the</span>
 <span class="doccomment">//! MLS specification. The key schedule evolves in epochs, where in each epoch</span>
 <span class="doccomment">//! new key material is injected.</span>
@@ -1537,15 +1540,18 @@
         <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>,
         <span class="ident">external_priv</span>: <span class="kw-2">&amp;</span><span class="ident">HpkePrivateKey</span>,
         <span class="ident">kem_output</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">KeyScheduleError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">raw_init_secret</span> <span class="op">=</span> <span class="ident">backend</span>.<span class="ident">crypto</span>().<span class="ident">hpke_setup_receiver_and_export</span>(
-            <span class="ident">ciphersuite</span>.<span class="ident">hpke_config</span>(),
-            <span class="ident">kem_output</span>,
-            <span class="ident">external_priv</span>.<span class="ident">as_slice</span>(),
-            <span class="kw-2">&amp;</span>[],
-            <span class="ident">hpke_info_from_version</span>(<span class="ident">version</span>).<span class="ident">as_bytes</span>(),
-            <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>(),
-        )<span class="question-mark">?</span>;
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">raw_init_secret</span> <span class="op">=</span> <span class="ident">backend</span>
+            .<span class="ident">crypto</span>()
+            .<span class="ident">hpke_setup_receiver_and_export</span>(
+                <span class="ident">ciphersuite</span>.<span class="ident">hpke_config</span>(),
+                <span class="ident">kem_output</span>,
+                <span class="ident">external_priv</span>.<span class="ident">as_slice</span>(),
+                <span class="kw-2">&amp;</span>[],
+                <span class="ident">hpke_info_from_version</span>(<span class="ident">version</span>).<span class="ident">as_bytes</span>(),
+                <span class="ident">ciphersuite</span>.<span class="ident">hash_length</span>(),
+            )
+            .<span class="ident">map_err</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">InitSecret</span> {
             <span class="ident">secret</span>: <span class="ident">Secret::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">raw_init_secret</span>, <span class="ident">version</span>, <span class="ident">ciphersuite</span>),
         })

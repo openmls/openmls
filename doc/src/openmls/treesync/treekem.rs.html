@@ -370,6 +370,15 @@
 <span id="369">369</span>
 <span id="370">370</span>
 <span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Module to encrypt and decrypt update paths for a [`TreeSyncDiff`] instance.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -395,7 +404,6 @@
 
 <span class="kw">use</span> <span class="kw">super</span>::{
     <span class="ident">diff::TreeSyncDiff</span>,
-    <span class="ident">errors::TreeKemError</span>,
     <span class="ident">node::parent_node</span>::{<span class="ident">ParentNode</span>, <span class="ident">PlainUpdatePathNode</span>},
     <span class="ident">ApplyUpdatePathError</span>,
 };
@@ -408,6 +416,8 @@
     <span class="doccomment">/// included in the resulting [`UpdatePath`].</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Returns the encrypted path (i.e. an [`UpdatePath`] instance).</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Returns an error if the path does not have the same length as the copath resolution.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">encrypt_path</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
@@ -416,13 +426,11 @@
         <span class="ident">group_context</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">exclusion_list</span>: <span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">LeafIndex</span><span class="op">&gt;</span>,
         <span class="ident">key_package</span>: <span class="ident">KeyPackage</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UpdatePath</span>, <span class="ident">TreeKemError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UpdatePath</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">copath_resolutions</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">copath_resolutions</span>(<span class="self">self</span>.<span class="ident">own_leaf_index</span>(), <span class="ident">exclusion_list</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// There should be as many copath resolutions.</span>
-        <span class="kw">if</span> <span class="ident">copath_resolutions</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">path</span>.<span class="ident">len</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">TreeKemError::PathLengthError</span>);
-        }
+        <span class="macro">debug_assert_eq!</span>(<span class="ident">copath_resolutions</span>.<span class="ident">len</span>(), <span class="ident">path</span>.<span class="ident">len</span>());
 
         <span class="comment">// Encrypt the secrets</span>
         <span class="kw">let</span> <span class="ident">update_path_nodes</span> <span class="op">=</span> <span class="ident">path</span>
@@ -618,6 +626,12 @@
     <span class="doccomment">/// Prepare the `GroupSecrets` for a number of `invited_members` based on a</span>
     <span class="doccomment">/// [`TreeSyncDiff`]. If a slice of [`PlainUpdatePathNode`] is given, they</span>
     <span class="doccomment">/// are included in the [`GroupSecrets`] of the path.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Returns an error if</span>
+    <span class="doccomment">///  - the own node is outside the tree</span>
+    <span class="doccomment">///  - the invited members are not part of the tree yet</span>
+    <span class="doccomment">///  - the leaf index of a new member is identical to the own leaf index</span>
+    <span class="doccomment">///  - the plain path does not contain the correct secrets</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_plain_update_path</span>(
         <span class="ident">diff</span>: <span class="kw-2">&amp;</span><span class="ident">TreeSyncDiff</span>,
         <span class="ident">joiner_secret</span>: <span class="kw-2">&amp;</span><span class="ident">JoinerSecret</span>,
@@ -625,13 +639,15 @@
         <span class="ident">plain_path_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">PlainUpdatePathNode</span>]<span class="op">&gt;</span>,
         <span class="ident">presharedkeys</span>: <span class="kw-2">&amp;</span><span class="ident">PreSharedKeys</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">TreeKemError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">plaintext_secrets</span> <span class="op">=</span> <span class="macro">vec!</span>[];
         <span class="kw">for</span> (<span class="ident">leaf_index</span>, <span class="ident">add_proposal</span>) <span class="kw">in</span> <span class="ident">invited_members</span> {
             <span class="kw">let</span> <span class="ident">key_package</span> <span class="op">=</span> <span class="ident">add_proposal</span>.<span class="ident">key_package</span>;
 
-            <span class="kw">let</span> <span class="ident">direct_path_position</span> <span class="op">=</span>
-                <span class="ident">diff</span>.<span class="ident">subtree_root_position</span>(<span class="ident">diff</span>.<span class="ident">own_leaf_index</span>(), <span class="ident">leaf_index</span>)<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">direct_path_position</span> <span class="op">=</span> <span class="ident">diff</span>
+                .<span class="ident">subtree_root_position</span>(<span class="ident">diff</span>.<span class="ident">own_leaf_index</span>(), <span class="ident">leaf_index</span>)
+                <span class="comment">// This can only fail if the nodes are outside the tree or identical</span>
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Unexpected error in subtree_root_position&quot;</span>))<span class="question-mark">?</span>;
 
             <span class="comment">// If a plain path was given, there have to be secrets for every new member.</span>
             <span class="kw">let</span> <span class="ident">path_secret_option</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">plain_path</span>) <span class="op">=</span> <span class="ident">plain_path_option</span> {
@@ -639,7 +655,8 @@
                     <span class="ident">plain_path</span>
                         .<span class="ident">get</span>(<span class="ident">direct_path_position</span>)
                         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">pupn</span><span class="op">|</span> <span class="ident">pupn</span>.<span class="ident">path_secret</span>())
-                        .<span class="ident">ok_or</span>(<span class="ident">TreeKemError::PathSecretNotFound</span>)<span class="question-mark">?</span>,
+                        <span class="comment">// This only fails if the supplied plain path is invalid</span>
+                        .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Invalid plain path&quot;</span>))<span class="question-mark">?</span>,
                 )
             } <span class="kw">else</span> {
                 <span class="prelude-val">None</span>
@@ -647,7 +664,8 @@
 
             <span class="comment">// Create the GroupSecrets object for the respective member.</span>
             <span class="kw">let</span> <span class="ident">group_secrets_bytes</span> <span class="op">=</span>
-                <span class="ident">GroupSecrets::new_encoded</span>(<span class="ident">joiner_secret</span>, <span class="ident">path_secret_option</span>, <span class="ident">presharedkeys</span>)<span class="question-mark">?</span>;
+                <span class="ident">GroupSecrets::new_encoded</span>(<span class="ident">joiner_secret</span>, <span class="ident">path_secret_option</span>, <span class="ident">presharedkeys</span>)
+                    .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>;
             <span class="ident">plaintext_secrets</span>.<span class="ident">push</span>(<span class="ident">PlaintextSecret</span> {
                 <span class="ident">public_key</span>: <span class="ident">key_package</span>.<span class="ident">hpke_init_key</span>().<span class="ident">clone</span>(),
                 <span class="ident">group_secrets_bytes</span>,
