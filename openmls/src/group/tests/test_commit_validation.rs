@@ -11,7 +11,6 @@ use rstest_reuse::{self, *};
 use crate::group::*;
 use crate::{
     ciphersuite::signable::{Signable, Verifiable},
-    config::*,
     credentials::*,
     framing::*,
     group::errors::StageCommitError,
@@ -30,7 +29,7 @@ struct CommitValidationTestSetup {
 // Validation test setup
 fn validation_test_setup(
     wire_format_policy: WireFormatPolicy,
-    ciphersuite: &'static Ciphersuite,
+    ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) -> CommitValidationTestSetup {
     let group_id = GroupId::from_slice(b"Test Group");
@@ -39,7 +38,7 @@ fn validation_test_setup(
     let alice_credential = generate_credential_bundle(
         "Alice".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
@@ -47,18 +46,18 @@ fn validation_test_setup(
     let bob_credential = generate_credential_bundle(
         "Bob".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
     let alice_key_package =
-        generate_key_package_bundle(&[ciphersuite.name()], &alice_credential, vec![], backend)
+        generate_key_package_bundle(&[ciphersuite], &alice_credential, vec![], backend)
             .expect("An unexpected error occurred.");
 
     let bob_key_package =
-        generate_key_package_bundle(&[ciphersuite.name()], &bob_credential, vec![], backend)
+        generate_key_package_bundle(&[ciphersuite], &bob_credential, vec![], backend)
             .expect("An unexpected error occurred.");
 
     // Define the MlsGroup configuration
@@ -103,7 +102,7 @@ fn validation_test_setup(
 
 // ValSem200: Commit must not cover inline self Remove proposal
 #[apply(ciphersuites_and_backends)]
-fn test_valsem200(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test with MlsPlaintext
     let CommitValidationTestSetup {
         mut alice_group,
@@ -233,7 +232,7 @@ fn test_valsem200(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
 // ValSem201: Path must be present, if Commit contains Removes or Updates
 #[apply(ciphersuites_and_backends)]
-fn test_valsem201(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     let wire_format_policy = *PURE_PLAINTEXT_WIRE_FORMAT_POLICY;
     // Test with MlsPlaintext
     let CommitValidationTestSetup {
@@ -310,14 +309,14 @@ fn test_valsem201(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
     let charlie_credential = generate_credential_bundle(
         "Charlie".into(),
         CredentialType::Basic,
-        ciphersuite.signature_scheme(),
+        ciphersuite.signature_algorithm(),
         backend,
     )
     .expect("An unexpected error occurred.");
 
     // Generate KeyPackages
     let charlie_key_package =
-        generate_key_package_bundle(&[ciphersuite.name()], &charlie_credential, vec![], backend)
+        generate_key_package_bundle(&[ciphersuite], &charlie_credential, vec![], backend)
             .expect("An unexpected error occurred.");
 
     let (_msg_out, welcome) = alice_group
@@ -509,7 +508,7 @@ fn erase_path(
 
 // ValSem202: Path must be the right length
 #[apply(ciphersuites_and_backends)]
-fn test_valsem202(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem202(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test with MlsPlaintext
     let CommitValidationTestSetup {
         mut alice_group,
@@ -617,7 +616,7 @@ fn test_valsem202(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
 // ValSem203: Path secrets must decrypt correctly
 #[apply(ciphersuites_and_backends)]
-fn test_valsem203(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem203(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test with MlsPlaintext
     let CommitValidationTestSetup {
         mut alice_group,
@@ -727,7 +726,7 @@ fn test_valsem203(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
 // ValSem204: Public keys from Path must be verified and match the private keys from the direct path
 #[apply(ciphersuites_and_backends)]
-fn test_valsem204(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test with MlsPlaintext
     let CommitValidationTestSetup {
         mut alice_group,
@@ -837,7 +836,7 @@ fn test_valsem204(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
 
 // ValSem205: Confirmation tag must be successfully verified
 #[apply(ciphersuites_and_backends)]
-fn test_valsem205(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+fn test_valsem205(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Test with MlsPlaintext
     let CommitValidationTestSetup {
         mut alice_group,
