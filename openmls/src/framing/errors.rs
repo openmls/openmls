@@ -18,7 +18,7 @@ pub enum MessageDecryptionError {
     #[error("Couldn't find a ratcheting secret for the given sender and generation.")]
     GenerationOutOfBound,
     #[error("An error occurred while decrypting.")]
-    DecryptionError,
+    AeadError,
     #[error("The WireFormat was MLSPlaintext.")]
     WrongWireFormat,
     #[error("The content is malformed.")]
@@ -34,7 +34,7 @@ pub enum MessageDecryptionError {
 pub(crate) enum MessageEncryptionError {
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    #[error("The WireFormat was MLSPlaintext.")]
+    #[error("The WireFormat was not MLSCiphertext.")]
     WrongWireFormat,
     #[error(transparent)]
     SecretTreeError(#[from] SecretTreeError),

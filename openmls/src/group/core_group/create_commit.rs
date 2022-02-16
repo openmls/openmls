@@ -86,7 +86,7 @@ impl CoreGroup {
                 CreateCommitError::MissingProposal
             }
             crate::group::errors::ProposalQueueError::SenderError(_) => {
-                CreateCommitError::WrongProposalSender
+                CreateCommitError::WrongProposalSenderType
             }
         })?;
 
@@ -132,7 +132,12 @@ impl CoreGroup {
         // Apply proposals to tree
         let apply_proposals_values = self
             .apply_proposals(&mut diff, backend, &proposal_queue, &[])
-            .map_err(|_| CreateCommitError::OwnKeyNotFound)?;
+            .map_err(|e| match e {
+                crate::group::errors::ApplyProposalsError::LibraryError(e) => e.into(),
+                crate::group::errors::ApplyProposalsError::MissingKeyPackageBundle => {
+                    CreateCommitError::OwnKeyNotFound
+                }
+            })?;
         if apply_proposals_values.self_removed {
             return Err(CreateCommitError::CannotRemoveSelf);
         }

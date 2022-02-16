@@ -294,7 +294,10 @@ impl MlsGroup {
         match self.group.treesync().full_leaves() {
             Ok(leaves) => leaves.iter().map(|(_, &kp)| kp).collect(),
             // This should not happen, but this way we avoid returning a library error
-            Err(_) => Vec::new(),
+            Err(e) => {
+                log::debug!("treesync::full_leaves() returned an error: {:?}", e);
+                Vec::new()
+            }
         }
     }
 

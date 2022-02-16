@@ -198,7 +198,7 @@ pub enum CreateCommitError {
     #[error("The proposal queue is missing a proposal for the commit.")]
     MissingProposal,
     #[error("A proposal has the wrong sender type.")]
-    WrongProposalSender,
+    WrongProposalSenderType,
     #[error(transparent)]
     PskError(#[from] PskError),
     #[error(transparent)]
@@ -335,4 +335,13 @@ pub enum ExternalCommitValidationError {
     NoPath,
     #[error("The remove proposal referenced a non-existing member.")]
     UnknownMemberRemoval,
+}
+
+// Apply proposals error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ApplyProposalsError {
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    #[error("Own KeyPackageBundle was not found in the key store.")]
+    MissingKeyPackageBundle,
 }

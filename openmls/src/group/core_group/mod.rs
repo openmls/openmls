@@ -445,7 +445,7 @@ impl CoreGroup {
         let ciphersuite = self.ciphersuite();
         let message_secrets = self
             .message_secrets_mut(mls_ciphertext.epoch())
-            .map_err(|_| MessageDecryptionError::DecryptionError)?;
+            .map_err(|_| MessageDecryptionError::AeadError)?;
         let sender_data = mls_ciphertext.sender_data(message_secrets, backend, ciphersuite)?;
         let sender_index = self
             .sender_index(&sender_data.sender)
@@ -453,7 +453,7 @@ impl CoreGroup {
         let sender_index = crate::tree::index::SecretTreeLeafIndex(sender_index);
         let message_secrets = self
             .message_secrets_mut(mls_ciphertext.epoch())
-            .map_err(|_| MessageDecryptionError::DecryptionError)?;
+            .map_err(|_| MessageDecryptionError::AeadError)?;
         Ok(mls_ciphertext.to_plaintext(
             ciphersuite,
             backend,

@@ -81,7 +81,7 @@ impl DecryptedMessage {
             let ciphersuite = group.ciphersuite();
             let (message_secrets, old_leaves) = group
                 .message_secrets_and_leaves_mut(ciphertext.epoch())
-                .map_err(|_| MessageDecryptionError::DecryptionError)?;
+                .map_err(|_| MessageDecryptionError::AeadError)?;
             let sender_data = ciphertext.sender_data(message_secrets, backend, ciphersuite)?;
             let sender_index = match group.sender_index(&sender_data.sender) {
                 Ok(i) => i,
@@ -103,7 +103,7 @@ impl DecryptedMessage {
             let sender_index = SecretTreeLeafIndex(sender_index);
             let message_secrets = group
                 .message_secrets_mut(ciphertext.epoch())
-                .map_err(|_| MessageDecryptionError::DecryptionError)?;
+                .map_err(|_| MessageDecryptionError::AeadError)?;
             let plaintext = ciphertext.to_plaintext(
                 ciphersuite,
                 backend,

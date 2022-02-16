@@ -23,7 +23,6 @@ use crate::{
 
 use super::{
     diff::TreeSyncDiff,
-    errors::TreeKemError,
     node::parent_node::{ParentNode, PlainUpdatePathNode},
     ApplyUpdatePathError,
 };
@@ -36,6 +35,8 @@ impl<'a> TreeSyncDiff<'a> {
     /// included in the resulting [`UpdatePath`].
     ///
     /// Returns the encrypted path (i.e. an [`UpdatePath`] instance).
+    ///
+    /// Returns an error if the path does not have the same length as the copath resolution.
     pub(crate) fn encrypt_path(
         &self,
         backend: &impl OpenMlsCryptoProvider,
@@ -249,6 +250,7 @@ impl PlaintextSecret {
     ///  - the own node is outside the tree
     ///  - the invited members are not part of the tree yet
     ///  - the leaf index of a new member is identical to the own leaf index
+    ///  - the plain path does not contain the correct secrets
     pub(crate) fn from_plain_update_path(
         diff: &TreeSyncDiff,
         joiner_secret: &JoinerSecret,
@@ -272,9 +274,8 @@ impl PlaintextSecret {
                     plain_path
                         .get(direct_path_position)
                         .map(|pupn| pupn.path_secret())
-                        .ok_or(TreeKemError::PathSecretNotFound)
                         // This only fails if the supplied plain path is invalid
-                        .map_err(|_| LibraryError::custom("Invalid plain path"))?,
+                        .ok_or_else(|| LibraryError::custom("Invalid plain path"))?,
                 )
             } else {
                 None

@@ -181,7 +181,7 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
             assert_eq!(
                 err,
                 MlsGroupError::Group(CoreGroupError::ValidationError(
-                    ValidationError::UnableToDecrypt(MessageDecryptionError::DecryptionError),
+                    ValidationError::UnableToDecrypt(MessageDecryptionError::AeadError),
                 ))
             );
         }

@@ -191,7 +191,7 @@ impl MlsCiphertext {
             )
             .map_err(|_| {
                 log::error!("Sender data decryption error");
-                MessageDecryptionError::DecryptionError
+                MessageDecryptionError::AeadError
             })?;
         log::trace!("  Successfully decrypted sender data.");
         MlsSenderData::tls_deserialize(&mut sender_data_bytes.as_slice())
@@ -225,7 +225,7 @@ impl MlsCiphertext {
             )
             .map_err(|_| {
                 log::error!("  Ciphertext decryption error");
-                MessageDecryptionError::DecryptionError
+                MessageDecryptionError::AeadError
             })?;
         log_content!(
             trace,
