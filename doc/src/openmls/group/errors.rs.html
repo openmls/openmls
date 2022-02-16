@@ -317,16 +317,12 @@
 <span id="316">316</span>
 <span id="317">317</span>
 <span id="318">318</span>
-<span id="319">319</span>
-<span id="320">320</span>
-<span id="321">321</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS CoreGroup errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
 <span class="doccomment">//! `CreateCommitError`.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">config::ConfigError</span>,
     <span class="ident">credentials::CredentialError</span>,
     <span class="ident">error::LibraryError</span>,
     <span class="ident">extensions::errors::ExtensionError</span>,
@@ -360,8 +356,6 @@
     <span class="ident">StageCommitError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">StageCommitError</span>),
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">CreateCommitError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CreateCommitError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">ConfigError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ConfigError</span>),
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">ExporterError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ExporterError</span>),
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>

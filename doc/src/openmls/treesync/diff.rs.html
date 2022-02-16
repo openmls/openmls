@@ -1186,7 +1186,7 @@
     <span class="kw">fn</span> <span class="ident">derive_path_from_leaf_secret</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
+        <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
         <span class="ident">leaf_secret</span>: <span class="ident">Secret</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PathDerivationResult</span>, <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">leaf_path_secret</span> <span class="op">=</span> <span class="ident">PathSecret::from</span>(<span class="ident">leaf_secret</span>);
@@ -1211,7 +1211,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">apply_own_update_path</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
+        <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
         <span class="kw-2">mut</span> <span class="ident">key_package_bundle_payload</span>: <span class="ident">KeyPackageBundlePayload</span>,
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UpdatePathResult</span>, <span class="ident">TreeSyncDiffError</span><span class="op">&gt;</span> {
@@ -1247,7 +1247,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">apply_received_update_path</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
+        <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
         <span class="ident">sender_leaf_index</span>: <span class="ident">LeafIndex</span>,
         <span class="ident">key_package</span>: <span class="ident">KeyPackage</span>,
         <span class="ident">path</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ParentNode</span><span class="op">&gt;</span>,
@@ -1286,7 +1286,7 @@
     <span class="kw">fn</span> <span class="ident">process_update_path</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
+        <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
         <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>,
         <span class="kw-2">mut</span> <span class="ident">path</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ParentNode</span><span class="op">&gt;</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
@@ -1321,7 +1321,7 @@
     <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">set_path_secrets</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
+        <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
         <span class="kw-2">mut</span> <span class="ident">path_secret</span>: <span class="ident">PathSecret</span>,
         <span class="ident">sender_index</span>: <span class="ident">LeafIndex</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CommitSecret</span>, <span class="ident">TreeSyncSetPathError</span><span class="op">&gt;</span> {
@@ -1411,7 +1411,7 @@
     <span class="kw">fn</span> <span class="ident">set_parent_hashes</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
+        <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
         <span class="ident">path</span>: <span class="kw-2">&amp;mut</span> [<span class="ident">ParentNode</span>],
         <span class="ident">leaf_index</span>: <span class="ident">LeafIndex</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
@@ -1588,7 +1588,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">verify_parent_hashes</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
+        <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">TreeSyncParentHashError</span><span class="op">&gt;</span> {
         <span class="kw">for</span> <span class="ident">node_id</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">iter</span>() {
             <span class="comment">// Continue early if node is blank.</span>
@@ -1692,7 +1692,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">into_staged_diff</span>(
         <span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
+        <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">StagedTreeSyncDiff</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">new_tree_hash</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">compute_tree_hashes</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)<span class="question-mark">?</span>;
         <span class="macro">debug_assert!</span>(<span class="self">self</span>.<span class="ident">verify_parent_hashes</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>).<span class="ident">is_ok</span>());
@@ -1710,7 +1710,7 @@
     <span class="kw">fn</span> <span class="ident">compute_tree_hash</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
+        <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
         <span class="ident">node_id</span>: <span class="ident">NodeId</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="comment">// Check if this is a leaf.</span>
@@ -1782,7 +1782,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">compute_tree_hashes</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">ciphersuite</span>: <span class="kw-2">&amp;</span><span class="ident">Ciphersuite</span>,
+        <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">compute_tree_hash</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>, <span class="self">self</span>.<span class="ident">diff</span>.<span class="ident">root</span>())
     }

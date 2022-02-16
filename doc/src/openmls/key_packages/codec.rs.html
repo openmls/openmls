@@ -59,12 +59,10 @@
 <span id="58">58</span>
 <span id="59">59</span>
 <span id="60">60</span>
-<span id="61">61</span>
-<span id="62">62</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::io::Read</span>;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::config</span>::{<span class="ident">Config</span>, <span class="ident">ProtocolVersion</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::key_packages</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::versions::ProtocolVersion</span>;
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Size</span> <span class="kw">for</span> <span class="ident">KeyPackage</span> {
     <span class="attribute">#[<span class="ident">inline</span>]</span>
@@ -98,16 +96,14 @@
 <span class="kw">impl</span> <span class="ident">tls_codec::Deserialize</span> <span class="kw">for</span> <span class="ident">KeyPackage</span> {
     <span class="kw">fn</span> <span class="ident">tls_deserialize</span><span class="op">&lt;</span><span class="ident">R</span>: <span class="ident">Read</span><span class="op">&gt;</span>(<span class="ident">bytes</span>: <span class="kw-2">&amp;mut</span> <span class="ident">R</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">protocol_version</span> <span class="op">=</span> <span class="ident">ProtocolVersion::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">cipher_suite_name</span> <span class="op">=</span> <span class="ident">CiphersuiteName::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">Ciphersuite::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">hpke_init_key</span> <span class="op">=</span> <span class="ident">HpkePublicKey::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="ident">Credential::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">extensions</span> <span class="op">=</span> <span class="ident">TlsVecU32::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">Signature::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="ident">KeyPackagePayload</span> {
             <span class="ident">protocol_version</span>,
-            <span class="ident">ciphersuite</span>: <span class="ident">Config::ciphersuite</span>(<span class="ident">cipher_suite_name</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="ident">tls_codec::Error::DecodingError</span>(<span class="macro">format!</span>(<span class="string">&quot;Invalid cipher suite {:?}&quot;</span>, <span class="ident">e</span>))
-            })<span class="question-mark">?</span>,
+            <span class="ident">ciphersuite</span>,
             <span class="ident">hpke_init_key</span>,
             <span class="ident">credential</span>,
             <span class="ident">extensions</span>,

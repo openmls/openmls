@@ -143,7 +143,7 @@ Clients need to choose a few parameters to create a <code>CredentialBundle</code
 <li><code>signature_scheme: SignatureScheme</code>: The cryptographic primitive of the identity keypair, e.g. <code>SignatureScheme::ED25519</code>.</li>
 </ul>
 <pre><code class="language-rust no_run noplayground">    let credential_bundle =
-        CredentialBundle::new(identity, credential_type, signature_scheme, backend)?;
+        CredentialBundle::new(identity, credential_type, signature_algorithm, backend)?;
 </code></pre>
 <p>After creating the credential bundle, clients should store it in the key store so that it can be reused during group operations:</p>
 <pre><code class="language-rust no_run noplayground">    let credential = credential_bundle.credential().clone();

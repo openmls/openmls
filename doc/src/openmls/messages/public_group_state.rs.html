@@ -235,19 +235,19 @@
 <span class="doccomment">//! the `MlsPlaintext` and as described in the [`OpenMLS Wiki`].</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! [`OpenMLS Wiki`]: https://github.com/openmls/openmls/wiki/Signable</span>
-<span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
+<span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">types::Ciphersuite</span>, <span class="ident">OpenMlsCryptoProvider</span>};
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Serialize</span>, <span class="ident">TlsByteVecU8</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsVecU32</span>};
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite</span>::{
         <span class="ident">hash_ref::KeyPackageRef</span>,
         <span class="ident">signable</span>::{<span class="ident">Signable</span>, <span class="ident">SignedStruct</span>, <span class="ident">Verifiable</span>, <span class="ident">VerifiedStruct</span>},
-        <span class="ident">CiphersuiteName</span>, <span class="ident">HpkePublicKey</span>, <span class="ident">Signature</span>,
+        <span class="ident">HpkePublicKey</span>, <span class="ident">Signature</span>,
     },
-    <span class="ident">config::ProtocolVersion</span>,
     <span class="ident">error::LibraryError</span>,
     <span class="ident">extensions::Extension</span>,
     <span class="ident">group</span>::<span class="kw-2">*</span>,
+    <span class="ident">versions::ProtocolVersion</span>,
 };
 
 <span class="doccomment">/// PublicGroupState as defined in the MLS specification as follows:</span>
@@ -273,7 +273,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Debug</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PublicGroupState</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">ciphersuite</span>: <span class="ident">CiphersuiteName</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">tree_hash</span>: <span class="ident">TlsByteVecU8</span>,
@@ -308,7 +308,7 @@
 
     <span class="doccomment">/// Get a reference to the `Ciphersuite` of the unverified</span>
     <span class="doccomment">/// `PublicGroupState`.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ciphersuite</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">CiphersuiteName</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ciphersuite</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Ciphersuite</span> {
         <span class="self">self</span>.<span class="ident">tbs</span>.<span class="ident">ciphersuite</span>
     }
 
@@ -401,7 +401,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">TlsSize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">PublicGroupStateTbs</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">ciphersuite</span>: <span class="ident">CiphersuiteName</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">group_id</span>: <span class="ident">GroupId</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">tree_hash</span>: <span class="ident">TlsByteVecU8</span>,
@@ -444,7 +444,7 @@
             <span class="ident">group_context_extensions</span>: <span class="ident">core_group</span>.<span class="ident">group_context_extensions</span>().<span class="ident">into</span>(),
             <span class="ident">other_extensions</span>,
             <span class="ident">external_pub</span>: <span class="ident">external_pub</span>.<span class="ident">into</span>(),
-            <span class="ident">ciphersuite</span>: <span class="ident">ciphersuite</span>.<span class="ident">name</span>(),
+            <span class="ident">ciphersuite</span>,
             <span class="ident">signer</span>: <span class="kw-2">*</span><span class="ident">core_group</span>
                 .<span class="ident">key_package_ref</span>()
                 .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;missing key package ref&quot;</span>))<span class="question-mark">?</span>,

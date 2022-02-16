@@ -163,7 +163,6 @@
 <span id="162">162</span>
 <span id="163">163</span>
 <span id="164">164</span>
-<span id="165">165</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite::signable::Verifiable</span>,
     <span class="ident">group::errors::ExternalCommitError</span>,
@@ -197,9 +196,8 @@
         <span class="ident">tree_option</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span>]<span class="op">&gt;</span>,
         <span class="ident">verifiable_public_group_state</span>: <span class="ident">VerifiablePublicGroupState</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ExternalCommitResult</span>, <span class="ident">ExternalCommitError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">Config::ciphersuite</span>(<span class="ident">verifiable_public_group_state</span>.<span class="ident">ciphersuite</span>())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ExternalCommitError::UnsupportedCiphersuite</span>)<span class="question-mark">?</span>;
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">Config::supported_versions</span>().<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">verifiable_public_group_state</span>.<span class="ident">version</span>()) {
+        <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">verifiable_public_group_state</span>.<span class="ident">ciphersuite</span>();
+        <span class="kw">if</span> <span class="ident">verifiable_public_group_state</span>.<span class="ident">version</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">ProtocolVersion::Mls10</span> {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ExternalCommitError::UnsupportedMlsVersion</span>);
         }
 

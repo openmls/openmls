@@ -148,16 +148,13 @@ See the <a href="./traits.html#openmlskeystore">OpenMlsKeyStore trait</a> descri
 but note that the key used to store, read, and delete values in the key store has
 to be provided as a byte slice.</p>
 <p>In the following examples we have a <code>ciphersuite</code> and a <code>backend</code> (<code>OpenMlsCryptoProvider</code>).</p>
-<pre><code class="language-rust no_run noplayground">    // First we generate a credential and key package for our user.
-    let credential_bundle = CredentialBundle::new(
-        b&quot;User ID&quot;.to_vec(),
-        CredentialType::Basic,
-        SignatureScheme::from(ciphersuite.name()),
+<pre><code class="language-rust no_run noplayground">        CredentialType::Basic,
+        SignatureScheme::from(ciphersuite),
         backend,
     )
     .unwrap();
     let key_package_bundle =
-        KeyPackageBundle::new(&amp;[ciphersuite.name()], &amp;credential_bundle, backend, vec![])
+        KeyPackageBundle::new(&amp;[ciphersuite], &amp;credential_bundle, backend, vec![])
             .expect(&quot;Error generating new key package bundle.&quot;);
 
     // In order to store something in the key store we need to define an ID.
@@ -171,27 +168,27 @@ to be provided as a byte slice.</p>
     backend
         .key_store()
         .store(id.as_slice(), &amp;key_package_bundle)
+        .expect(&quot;Failed to store key package bundle in keystore.&quot;);
+
+    // Delete the key package bundle.
 </code></pre>
 <p>In order to delete a value the <code>delete</code> is called with the identifier.</p>
-<pre><code class="language-rust no_run noplayground">    backend
-        .key_store()
-        .delete(id.as_slice())
-        .expect(&quot;Error deleting key package bundle&quot;);
+<pre><code class="language-rust no_run noplayground">        .expect(&quot;Error deleting key package bundle&quot;);
+}
+
+#[apply(ciphersuites_and_backends)]
 </code></pre>
 <p>Retrieving a value from the key store is as simple as calling <code>read</code>.
 In this example we assume that we got a <code>credential</code> where we want to retrieve
 the credential bundle for, i.e. the private key material.</p>
-<pre><code class="language-rust no_run noplayground">    // In order to read something from the key store we need to define an ID.
-    // Here we simply take the serialized public key of the credential.
-    let id = credential
-        .signature_key()
-        .tls_serialize_detached()
-        .expect(&quot;Error serializing the credential's public key.&quot;);
-
+<pre><code class="language-rust no_run noplayground">
     let credential_bundle: CredentialBundle = backend
         .key_store()
         .read(&amp;id)
         .expect(&quot;Error retrieving the credential bundle&quot;);
+
+    assert_eq!(credential_bundle, credential_bundle_to_store);
+}
 </code></pre>
 
                     </main>

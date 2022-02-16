@@ -189,7 +189,8 @@ algorithm.</p>
 <p>The HPKE implementation is part of the crypto provider as well.
 The crate therefore defines the necessary types too.</p>
 <p>The HPKE algorithms are defined as follows.</p>
-<pre><code class="language-rust no_run noplayground">pub enum HpkeKemType {
+<pre><code class="language-rust no_run noplayground">#[repr(u16)]
+pub enum HpkeKemType {
     /// DH KEM on P256
     DhKemP256 = 0x0010,
 
@@ -204,9 +205,9 @@ The crate therefore defines the necessary types too.</p>
 
     /// DH KEM on x448
     DhKem448 = 0x0021,
-}
 </code></pre>
-<pre><code class="language-rust no_run noplayground">pub enum HpkeKdfType {
+<pre><code class="language-rust no_run noplayground">#[repr(u16)]
+pub enum HpkeKdfType {
     /// HKDF SHA 256
     HkdfSha256 = 0x0001,
 
@@ -215,9 +216,9 @@ The crate therefore defines the necessary types too.</p>
 
     /// HKDF SHA 512
     HkdfSha512 = 0x0003,
-}
 </code></pre>
-<pre><code class="language-rust no_run noplayground">pub enum HpkeAeadType {
+<pre><code class="language-rust no_run noplayground">#[repr(u16)]
+pub enum HpkeAeadType {
     /// AES GCM 128
     AesGcm128 = 0x0001,
 
@@ -229,18 +230,17 @@ The crate therefore defines the necessary types too.</p>
 
     /// Export-only
     Export = 0xFFFF,
-}
 </code></pre>
 <p>In addition helper structs for <code>HpkeCiphertext</code> and <code>HpkeKeyPair</code> are defined.</p>
-<pre><code class="language-rust no_run noplayground">pub struct HpkeCiphertext {
+<pre><code class="language-rust no_run noplayground">)]
+pub struct HpkeCiphertext {
     pub kem_output: TlsByteVecU16,
     pub ciphertext: TlsByteVecU16,
-}
 </code></pre>
-<pre><code class="language-rust no_run noplayground">pub struct HpkeKeyPair {
+<pre><code class="language-rust no_run noplayground">#[derive(Debug, Clone)]
+pub struct HpkeKeyPair {
     pub private: Vec&lt;u8&gt;,
     pub public: Vec&lt;u8&gt;,
-}
 </code></pre>
 
                     </main>

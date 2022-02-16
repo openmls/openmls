@@ -423,7 +423,6 @@
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite::signable::Signable</span>,
-    <span class="ident">config::Config</span>,
     <span class="ident">framing</span>::<span class="kw-2">*</span>,
     <span class="ident">group</span>::{<span class="ident">core_group</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>},
     <span class="ident">messages</span>::<span class="kw-2">*</span>,
@@ -432,6 +431,7 @@
         <span class="ident">node::parent_node::PlainUpdatePathNode</span>,
         <span class="ident">treekem</span>::{<span class="ident">PlaintextSecret</span>, <span class="ident">UpdatePath</span>},
     },
+    <span class="ident">versions::ProtocolVersion</span>,
 };
 
 <span class="kw">use</span> <span class="kw">super</span>::{
@@ -734,7 +734,7 @@
                 .<span class="ident">collect</span>();
             <span class="comment">// Create welcome message</span>
             <span class="kw">let</span> <span class="ident">welcome</span> <span class="op">=</span> <span class="ident">Welcome::new</span>(
-                <span class="ident">Config::supported_versions</span>()[<span class="number">0</span>],
+                <span class="ident">ProtocolVersion::Mls10</span>,
                 <span class="self">self</span>.<span class="ident">ciphersuite</span>,
                 <span class="ident">secrets</span>,
                 <span class="ident">encrypted_group_info</span>,
@@ -819,7 +819,7 @@
             <span class="comment">// Generate a KeyPackageBundle to generate a payload from for later</span>
             <span class="comment">// path generation.</span>
             <span class="kw">let</span> <span class="ident">key_package_bundle</span> <span class="op">=</span> <span class="ident">KeyPackageBundle::new</span>(
-                <span class="kw-2">&amp;</span>[<span class="self">self</span>.<span class="ident">ciphersuite</span>().<span class="ident">name</span>()],
+                <span class="kw-2">&amp;</span>[<span class="self">self</span>.<span class="ident">ciphersuite</span>()],
                 <span class="ident">params</span>.<span class="ident">credential_bundle</span>(),
                 <span class="ident">backend</span>,
                 <span class="macro">vec!</span>[],

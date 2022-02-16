@@ -178,10 +178,6 @@
 <span id="177">177</span>
 <span id="178">178</span>
 <span id="179">179</span>
-<span id="180">180</span>
-<span id="181">181</span>
-<span id="182">182</span>
-<span id="183">183</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(
@@ -318,10 +314,6 @@
         <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="ident">Signature</span>,
         <span class="ident">payload</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CryptoError</span><span class="op">&gt;</span> {
-        <span class="ident">backend</span>
-            .<span class="ident">crypto</span>()
-            .<span class="ident">supports</span>(<span class="self">self</span>.<span class="ident">signature_scheme</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">CryptoError::UnsupportedSignatureScheme</span>)<span class="question-mark">?</span>;
         <span class="ident">backend</span>
             .<span class="ident">crypto</span>()
             .<span class="ident">verify_signature</span>(

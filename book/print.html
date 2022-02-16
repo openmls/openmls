@@ -146,7 +146,7 @@ Clients need to choose a few parameters to create a <code>CredentialBundle</code
 <li><code>signature_scheme: SignatureScheme</code>: The cryptographic primitive of the identity keypair, e.g. <code>SignatureScheme::ED25519</code>.</li>
 </ul>
 <pre><code class="language-rust no_run noplayground">    let credential_bundle =
-        CredentialBundle::new(identity, credential_type, signature_scheme, backend)?;
+        CredentialBundle::new(identity, credential_type, signature_algorithm, backend)?;
 </code></pre>
 <p>After creating the credential bundle, clients should store it in the key store so that it can be reused during group operations:</p>
 <pre><code class="language-rust no_run noplayground">    let credential = credential_bundle.credential().clone();
@@ -543,16 +543,13 @@ See the <a href="traits/./traits.html#openmlskeystore">OpenMlsKeyStore trait</a>
 but note that the key used to store, read, and delete values in the key store has
 to be provided as a byte slice.</p>
 <p>In the following examples we have a <code>ciphersuite</code> and a <code>backend</code> (<code>OpenMlsCryptoProvider</code>).</p>
-<pre><code class="language-rust no_run noplayground">    // First we generate a credential and key package for our user.
-    let credential_bundle = CredentialBundle::new(
-        b&quot;User ID&quot;.to_vec(),
-        CredentialType::Basic,
-        SignatureScheme::from(ciphersuite.name()),
+<pre><code class="language-rust no_run noplayground">        CredentialType::Basic,
+        SignatureScheme::from(ciphersuite),
         backend,
     )
     .unwrap();
     let key_package_bundle =
-        KeyPackageBundle::new(&amp;[ciphersuite.name()], &amp;credential_bundle, backend, vec![])
+        KeyPackageBundle::new(&amp;[ciphersuite], &amp;credential_bundle, backend, vec![])
             .expect(&quot;Error generating new key package bundle.&quot;);
 
     // In order to store something in the key store we need to define an ID.
@@ -566,27 +563,27 @@ to be provided as a byte slice.</p>
     backend
         .key_store()
         .store(id.as_slice(), &amp;key_package_bundle)
+        .expect(&quot;Failed to store key package bundle in keystore.&quot;);
+
+    // Delete the key package bundle.
 </code></pre>
 <p>In order to delete a value the <code>delete</code> is called with the identifier.</p>
-<pre><code class="language-rust no_run noplayground">    backend
-        .key_store()
-        .delete(id.as_slice())
-        .expect(&quot;Error deleting key package bundle&quot;);
+<pre><code class="language-rust no_run noplayground">        .expect(&quot;Error deleting key package bundle&quot;);
+}
+
+#[apply(ciphersuites_and_backends)]
 </code></pre>
 <p>Retrieving a value from the key store is as simple as calling <code>read</code>.
 In this example we assume that we got a <code>credential</code> where we want to retrieve
 the credential bundle for, i.e. the private key material.</p>
-<pre><code class="language-rust no_run noplayground">    // In order to read something from the key store we need to define an ID.
-    // Here we simply take the serialized public key of the credential.
-    let id = credential
-        .signature_key()
-        .tls_serialize_detached()
-        .expect(&quot;Error serializing the credential's public key.&quot;);
-
+<pre><code class="language-rust no_run noplayground">
     let credential_bundle: CredentialBundle = backend
         .key_store()
         .read(&amp;id)
         .expect(&quot;Error retrieving the credential bundle&quot;);
+
+    assert_eq!(credential_bundle, credential_bundle_to_store);
+}
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="openmls-traits"><a class="header" href="#openmls-traits">OpenMLS Traits</a></h1>
 <p>The OpenMLS project provides two default implementations for these traits</p>
@@ -731,7 +728,8 @@ algorithm.</p>
 <p>The HPKE implementation is part of the crypto provider as well.
 The crate therefore defines the necessary types too.</p>
 <p>The HPKE algorithms are defined as follows.</p>
-<pre><code class="language-rust no_run noplayground">pub enum HpkeKemType {
+<pre><code class="language-rust no_run noplayground">#[repr(u16)]
+pub enum HpkeKemType {
     /// DH KEM on P256
     DhKemP256 = 0x0010,
 
@@ -746,9 +744,9 @@ The crate therefore defines the necessary types too.</p>
 
     /// DH KEM on x448
     DhKem448 = 0x0021,
-}
 </code></pre>
-<pre><code class="language-rust no_run noplayground">pub enum HpkeKdfType {
+<pre><code class="language-rust no_run noplayground">#[repr(u16)]
+pub enum HpkeKdfType {
     /// HKDF SHA 256
     HkdfSha256 = 0x0001,
 
@@ -757,9 +755,9 @@ The crate therefore defines the necessary types too.</p>
 
     /// HKDF SHA 512
     HkdfSha512 = 0x0003,
-}
 </code></pre>
-<pre><code class="language-rust no_run noplayground">pub enum HpkeAeadType {
+<pre><code class="language-rust no_run noplayground">#[repr(u16)]
+pub enum HpkeAeadType {
     /// AES GCM 128
     AesGcm128 = 0x0001,
 
@@ -771,18 +769,17 @@ The crate therefore defines the necessary types too.</p>
 
     /// Export-only
     Export = 0xFFFF,
-}
 </code></pre>
 <p>In addition helper structs for <code>HpkeCiphertext</code> and <code>HpkeKeyPair</code> are defined.</p>
-<pre><code class="language-rust no_run noplayground">pub struct HpkeCiphertext {
+<pre><code class="language-rust no_run noplayground">)]
+pub struct HpkeCiphertext {
     pub kem_output: TlsByteVecU16,
     pub ciphertext: TlsByteVecU16,
-}
 </code></pre>
-<pre><code class="language-rust no_run noplayground">pub struct HpkeKeyPair {
+<pre><code class="language-rust no_run noplayground">#[derive(Debug, Clone)]
+pub struct HpkeKeyPair {
     pub private: Vec&lt;u8&gt;,
     pub public: Vec&lt;u8&gt;,
-}
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="message-validation"><a class="header" href="#message-validation">Message Validation</a></h1>
 <h2 id="validation-steps"><a class="header" href="#validation-steps">Validation steps</a></h2>
