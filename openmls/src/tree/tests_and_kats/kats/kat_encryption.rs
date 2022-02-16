@@ -811,26 +811,37 @@ fn read_test_vectors_encryption(backend: &impl OpenMlsCryptoProvider) {
 /// Encryotion test vector error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum EncTestVectorError {
+    /// The test vector does not contain as many leaves as advertised.
     #[error("The test vector does not contain as many leaves as advertised.")]
     LeafNumberMismatch,
+    /// The computed sender data key doesn't match the one in the test vector.
     #[error("The computed sender data key doesn't match the one in the test vector.")]
     SenderDataKeyMismatch,
+    /// The computed sender data nonce doesn't match the one in the test vector.
     #[error("The computed sender data nonce doesn't match the one in the test vector.")]
     SenderDataNonceMismatch,
+    /// The number of generations in leaf sequence doesn't match the number of application messages.
     #[error("The number of generations in leaf sequence doesn't match the number of application messages.")]
     InvalidLeafSequenceApplication,
+    /// The number of generations in leaf sequence doesn't match the number of handshake messages.
     #[error("The number of generations in leaf sequence doesn't match the number of handshake messages.")]
     InvalidLeafSequenceHandshake,
+    /// The computed application secret key doesn't match the one in the test vector.
     #[error("The computed application secret key doesn't match the one in the test vector.")]
     ApplicationSecretKeyMismatch,
+    /// The computed application secret nonce doesn't match the one in the test vector.
     #[error("The computed application secret nonce doesn't match the one in the test vector.")]
     ApplicationSecretNonceMismatch,
+    /// The decrypted application message doesn't match the one in the test vector.
     #[error("The decrypted application message doesn't match the one in the test vector.")]
     DecryptedApplicationMessageMismatch,
+    /// The computed handshake secret key doesn't match the one in the test vector.
     #[error("The computed handshake secret key doesn't match the one in the test vector.")]
     HandshakeSecretKeyMismatch,
+    /// The computed handshake secret nonce doesn't match the one in the test vector.
     #[error("The computed handshake secret nonce doesn't match the one in the test vector.")]
     HandshakeSecretNonceMismatch,
+    /// The decrypted handshake message doesn't match the one in the test vector.
     #[error("The decrypted handshake message doesn't match the one in the test vector.")]
     DecryptedHandshakeMessageMismatch,
 }

@@ -621,22 +621,31 @@ impl<'a, T: Clone + Debug> Iterator for DiffIterator<'a, T> {
 /// Binary Tree Diff error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub(crate) enum ABinaryTreeDiffError {
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// Can't compute the copath node of the subtree root of a single leaf.
     #[error("Can't compute the copath node of the subtree root of a single leaf.")]
     SameLeafError,
+    /// Maximum tree size reached.
     #[error("Maximum tree size reached.")]
     TreeTooLarge,
+    /// Minimum tree size reached.
     #[error("Minimum tree size reached.")]
     TreeTooSmall,
+    /// The given path index is not the same length as the direct path.
     #[error("The given path index is not the same length as the direct path.")]
     PathLengthMismatch,
+    /// Error while executing folding function.
     #[error("Error while executing folding function.")]
     FoldingError,
+    /// See [`ABinaryTreeError`] for more details.
     #[error(transparent)]
     ABinaryTreeError(#[from] ABinaryTreeError),
+    /// See [`TreeMathError`] for more details.
     #[error(transparent)]
     TreeError(#[from] TreeMathError),
+    /// See [`OutOfBoundsError`] for more details.
     #[error(transparent)]
     IndexOutOfBounds(#[from] OutOfBoundsError),
 }
@@ -644,8 +653,10 @@ pub(crate) enum ABinaryTreeDiffError {
 /// Error type for functions that only throw OutOfBounds errors.
 #[derive(Error, Debug, PartialEq, Clone)]
 pub(crate) enum OutOfBoundsError {
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// The given index is not within the bounds of the tree.
     #[error("The given index is not within the bounds of the tree.")]
     IndexOutOfBounds,
 }

@@ -12,22 +12,30 @@ use super::*;
 /// Secret tree error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum SecretTreeError {
+    /// Generation is too old to be processed.
     #[error("Generation is too old to be processed.")]
     TooDistantInThePast,
+    /// Generation is too far in the future to be processed.
     #[error("Generation is too far in the future to be processed.")]
     TooDistantInTheFuture,
+    /// Index out of bounds
     #[error("Index out of bounds")]
     IndexOutOfBounds,
+    /// The requested secret was deleted to preserve forward secrecy.
     #[error("The requested secret was deleted to preserve forward secrecy.")]
     SecretReuseError,
+    /// Cannot create decryption secrets from own sender ratchet or encryption secrets from the sender ratchets of other members.
     #[error("Cannot create decryption secrets from own sender ratchet or encryption secrets from the sender ratchets of other members.")]
     RatchetTypeError,
     #[error("Ratchet generation has reached `u32::MAX`.")]
     RatchetTooLong,
+    /// An unrecoverable error has occurred due to a bug in the implementation.
     #[error("An unrecoverable error has occurred due to a bug in the implementation.")]
     LibraryError,
+    /// See [`TlsCodecError`] for more details.
     #[error(transparent)]
     CodecError(#[from] TlsCodecError),
+    /// See [`CryptoError`] for more details.
     #[error(transparent)]
     CryptoError(#[from] CryptoError),
 }

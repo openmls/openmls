@@ -149,8 +149,10 @@ impl TreeSyncNode {
 /// Binary Tree error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub(crate) enum TreeSyncNodeError {
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// See [`NodeError`] for more details.
     #[error(transparent)]
     NodeType(#[from] NodeError),
 }

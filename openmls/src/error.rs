@@ -74,8 +74,10 @@ impl Display for LibraryError {
 /// Internal enum to differentiate between the different types of library errors
 #[derive(Error, Debug, PartialEq, Clone)]
 enum InternalLibraryError {
+    /// See [`TlsCodecError`] for more details.
     #[error(transparent)]
     MissingBoundsCheck(#[from] TlsCodecError),
+    /// See [`CryptoError`] for more details.
     #[error(transparent)]
     CryptoError(#[from] CryptoError),
     #[error("Custom library error: {0}")]
@@ -85,6 +87,7 @@ enum InternalLibraryError {
 /// OpenMLS Error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum OpenMlsError {
+    /// Unsupported MLS version.
     #[error("Unsupported MLS version.")]
     UnsupportedMlsVersion,
 }

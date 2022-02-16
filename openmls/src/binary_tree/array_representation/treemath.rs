@@ -7,12 +7,16 @@ use super::tree::NodeIndex;
 /// Tree math error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub(crate) enum TreeMathError {
+    /// Leaf nodes don't have children.
     #[error("Leaf nodes don't have children.")]
     LeafHasNoChildren,
+    /// Root nodes don't have parents.
     #[error("Root nodes don't have parents.")]
     RootHasNoParent,
+    /// The node index is larger than the tree size.
     #[error("The node index is larger than the tree size.")]
     NodeNotInTree,
+    /// The provided input is invalid for tree math.
     #[error("The provided input is invalid for tree math.")]
     InvalidInput,
 }

@@ -715,38 +715,55 @@ fn read_test_vectors_messages() {
 /// Messages test vector error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum MessagesTestVectorError {
+    /// Lifetime encodings don't match.
     #[error("Lifetime encodings don't match.")]
     LifetimeEncodingMismatch,
+    /// RatchetTree encodings don't match.
     #[error("RatchetTree encodings don't match.")]
     RatchetTreeEncodingMismatch,
+    /// Welcome encodings don't match.
     #[error("Welcome encodings don't match.")]
     WelcomeEncodingMismatch,
+    /// PublicGroupState encodings don't match.
     #[error("PublicGroupState encodings don't match.")]
     PublicGroupStateEncodingMismatch,
+    /// AddProposal encodings don't match.
     #[error("AddProposal encodings don't match.")]
     AddProposalEncodingMismatch,
+    /// MlsCiphertext encodings don't match.
     #[error("MlsCiphertext encodings don't match.")]
     MlsCiphertextEncodingMismatch,
+    /// MlsPlaintextCommit encodings don't match.
     #[error("MlsPlaintextCommit encodings don't match.")]
     MlsPlaintextCommitEncodingMismatch,
+    /// MlsPlaintextProposal encodings don't match.
     #[error("MlsPlaintextProposal encodings don't match.")]
     MlsPlaintextProposalEncodingMismatch,
+    /// MlsPlaintextApplication encodings don't match.
     #[error("MlsPlaintextApplication encodings don't match.")]
     MlsPlaintextApplicationEncodingMismatch,
+    /// Commit encodings don't match.
     #[error("Commit encodings don't match.")]
     CommitEncodingMismatch,
+    /// PreSharedKeyProposal encodings don't match.
     #[error("PreSharedKeyProposal encodings don't match.")]
     PreSharedKeyProposalEncodingMismatch,
+    /// RemoveProposal encodings don't match.
     #[error("RemoveProposal encodings don't match.")]
     RemoveProposalEncodingMismatch,
+    /// UpdateProposal encodings don't match.
     #[error("UpdateProposal encodings don't match.")]
     UpdateProposalEncodingMismatch,
+    /// GroupSecrets encodings don't match.
     #[error("GroupSecrets encodings don't match.")]
     GroupSecretsEncodingMismatch,
+    /// GroupInfo encodings don't match.
     #[error("GroupInfo encodings don't match.")]
     GroupInfoEncodingMismatch,
+    /// KeyPackage encodings don't match.
     #[error("KeyPackage encodings don't match.")]
     KeyPackageEncodingMismatch,
+    /// Capabilities encodings don't match.
     #[error("Capabilities encodings don't match.")]
     CapabilitiesEncodingMismatch,
 }
