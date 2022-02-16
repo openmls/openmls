@@ -250,7 +250,27 @@ fn test_valsem201(ciphersuite: &'static Ciphersuite, backend: &impl OpenMlsCrypt
         .self_update(backend, None)
         .expect("Error creating self-update")
         .tls_serialize_detached()
-        .expect("Could not serialize message.");
+        .expect("error serializing plaintext");
+
+    let mut update = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+        .expect("Could not deserialize message.");
+
+    // The self-update currently contains an update proposal. This should change
+    // with a future spec-change issue, but for now, we have to remove it
+    // manually to create a completely empty commit.
+    let mut commit_content = if let MlsPlaintextContentType::Commit(commit) = update.content() {
+        commit.clone()
+    } else {
+        panic!("Unexpected content type.");
+    };
+
+    commit_content.proposals = vec![].into();
+
+    update.set_content(MlsPlaintextContentType::Commit(commit_content));
+
+    let serialized_update = update
+        .tls_serialize_detached()
+        .expect("error serializing plaintext");
 
     let update_message_in = erase_path(backend, &serialized_update, &alice_group);
 
