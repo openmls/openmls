@@ -32,8 +32,8 @@
 | `ValSem101`    | Add Proposal: Signature public key in proposals must be unique among proposals              | ✅             | ❌<sup>2</sup> | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem102`    | Add Proposal: HPKE init key in proposals must be unique among proposals                     | ✅             | ❌<sup>2</sup> | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem103`    | Add Proposal: Identity in proposals must be unique among existing group members             | ✅             | ❌<sup>2</sup> | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem104`    | Add Proposal: Signature public key in proposals must be unique among existing group members | ✅             | ❌             | TBD                                                   |
-| `ValSem105`    | Add Proposal: HPKE init key in proposals must be unique among existing group members        | ✅             | ❌             | TBD                                                   |
+| `ValSem104`    | Add Proposal: Signature public key in proposals must be unique among existing group members | ✅             | ❌<sup>2</sup> | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem105`    | Add Proposal: HPKE init key in proposals must be unique among existing group members        | ✅             | ❌<sup>2</sup> | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem106`    | Add Proposal: required capabilities                                                         | ❌<sup>1</sup> | ❌             | TBD                                                   |
 | `ValSem107`    | Remove Proposal: Removed member must be unique among proposals                              | ✅             | ❌             | TBD                                                   |
 | `ValSem108`    | Remove Proposal: Removed member must be an existing group member                            | ✅             | ❌             | TBD                                                   |
