@@ -241,4 +241,12 @@ impl CredentialBundle {
     ) -> Result<Signature, CryptoError> {
         self.signature_private_key.sign(backend, msg)
     }
+
+    /// Return the key pair of the given credential bundle.
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn key_pair(&self) -> SignatureKeypair {
+        let public_key = self.credential().signature_key().clone();
+        let private_key = self.signature_private_key.clone();
+        SignatureKeypair::from_parts(public_key, private_key)
+    }
 }
