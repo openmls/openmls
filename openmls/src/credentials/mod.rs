@@ -209,7 +209,7 @@ impl CredentialBundle {
         })
     }
 
-    /// Creates a new [CredentialBundle] from an identity and a [SignatureKeypair].
+    /// Creates a new [CredentialBundle] from an identity and a `SignatureKeypair`.
     /// Note that only [BasicCredential] is currently supported.
     pub fn from_parts(identity: Vec<u8>, keypair: SignatureKeypair) -> Self {
         let (signature_private_key, public_key) = keypair.into_tuple();

@@ -36,7 +36,7 @@ use crate::{
     ciphersuite::Ciphersuite,
     error::LibraryError,
     framing::SenderError,
-    key_packages::{KeyPackage, KeyPackageBundle, KeyPackageError},
+    key_packages::{KeyPackage, KeyPackageBundle},
     messages::{PathSecret, PathSecretError},
     schedule::CommitSecret,
 };

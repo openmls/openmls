@@ -17,7 +17,7 @@ use crate::{
         proposals::{ProposalQueue, ProposalStore, QueuedProposal},
         GroupContext, GroupEpoch, GroupId,
     },
-    key_packages::{KeyPackageBundle, KeyPackageError},
+    key_packages::{KeyPackageBundle, KeyPackageExtensionSupportError},
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
     schedule::MembershipKey,
 };
@@ -514,7 +514,9 @@ fn test_group_context_extension_proposal_fails(
     ).expect_err("Alice was able to create a gce proposal with a required extensions she doesn't support.");
     assert_eq!(
         e,
-        CreateGroupContextExtProposalError::KeyPackage(KeyPackageError::UnsupportedExtension)
+        CreateGroupContextExtProposalError::KeyPackageExtensionSupport(
+            KeyPackageExtensionSupportError::UnsupportedExtension
+        )
     );
 
     // Well, this failed luckily.
@@ -573,7 +575,9 @@ fn test_group_context_extension_proposal_fails(
         .expect_err("Bob was able to create a gce proposal for an extension not supported by all other parties.");
     assert_eq!(
         e,
-        CreateGroupContextExtProposalError::KeyPackage(KeyPackageError::UnsupportedExtension)
+        CreateGroupContextExtProposalError::KeyPackageExtensionSupport(
+            KeyPackageExtensionSupportError::UnsupportedExtension
+        )
     );
 }
 

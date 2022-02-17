@@ -3,10 +3,13 @@
 //! `MlsPlaintextError` and `MlsCiphertextError` are thrown on errors
 //! handling `MlsPlaintext` and `MlsCiphertext`.
 
-use crate::{error::LibraryError, tree::secret_tree::SecretTreeError};
+use crate::error::LibraryError;
 use thiserror::Error;
 
 // === Public ===
+
+// Re-export errors
+pub use crate::tree::secret_tree::SecretTreeError;
 
 /// Message decryption error
 #[derive(Error, Debug, PartialEq, Clone)]

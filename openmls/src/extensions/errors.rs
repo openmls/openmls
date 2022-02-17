@@ -12,9 +12,7 @@
 
 use crate::error::{ErrorString, LibraryError};
 
-use openmls_traits::types::CryptoError;
 use thiserror::Error;
-use tls_codec::Error as TlsCodecError;
 
 /// Extension error
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -49,15 +47,9 @@ pub enum ExtensionError {
     /// See [`RatchetTreeError`] for more details.
     #[error(transparent)]
     RatchetTree(#[from] RatchetTreeError),
-    /// See [`TlsCodecError`] for more details.
-    #[error(transparent)]
-    CodecError(#[from] TlsCodecError),
     /// See [`InvalidExtensionError`] for more details.
     #[error(transparent)]
     InvalidExtension(#[from] InvalidExtensionError),
-    /// See [`CryptoError`] for more details.
-    #[error(transparent)]
-    CryptoError(#[from] CryptoError),
 }
 
 /// Lifetime extension error

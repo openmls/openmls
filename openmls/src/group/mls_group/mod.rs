@@ -88,9 +88,8 @@ impl From<PendingCommitState> for StagedCommit {
 /// wants to re-join the group, it can either be added by a group member or it
 /// can join via external commit.
 ///
-/// * [`MlsGroupState:PendingCommit`]: This state is split into two possible
-/// sub-states, one for each
-/// [`CommitType`](crate::group::core_group::create_commit_params::CommitType):
+/// * [`MlsGroupState::PendingCommit`]: This state is split into two possible
+/// sub-states, one for each Commit type:
 /// [`PendingCommitState::Member`] and [`PendingCommitState::Member`]:
 ///
 ///   * If the client creates a commit for this group, the `PendingCommit` state
@@ -124,7 +123,7 @@ pub enum MlsGroupState {
     Inactive,
 }
 
-/// A `MlsGroup` represents an [CoreGroup] with
+/// A `MlsGroup` represents an CoreGroup with
 /// an easier, high-level API designed to be used in production. The API exposes
 /// high level functions to manage a group by adding/removing members, get the
 /// current member list, etc.
@@ -133,25 +132,18 @@ pub enum MlsGroupState {
 /// Delivery Service. Functions that modify the public state of the group will
 /// return a `Vec<MLSMessage>` that can be sent to the Delivery
 /// Service directly. Conversely, incoming messages from the Delivery Service
-/// can be fed into [process_message()](`MlsGroup::process_message()`).
+/// can be fed into [parse_message()](`MlsGroup::parse_message()`).
 ///
 /// A `MlsGroup` has an internal queue of pending proposals that builds up
 /// as new messages are processed. When creating proposals, those messages are
 /// not automatically appended to this queue, instead they have to be processed
-/// again through [process_message()](`MlsGroup::process_message()`). This
+/// again through [process_message()](`MlsGroup::parse_message()`). This
 /// allows the Delivery Service to reject them (e.g. if they reference the wrong
 /// epoch).
 ///
 /// If incoming messages or applied operations are semantically or syntactically
 /// incorrect, an error event will be returned with a corresponding error
 /// message and the state of the group will remain unchanged.
-///
-/// The application policy for the group can be enforced by implementing the
-/// validator callback functions and selectively allowing/ disallowing each
-/// operation (see [`MlsGroupCallbacks`])
-///
-/// Changes to the group state are dispatched as events through callback
-/// functions (see [`MlsGroupCallbacks`]).
 ///
 /// An `MlsGroup` has an internal state variable determining if it is active or
 /// inactive, as well as if it has a pending commit. See [`MlsGroupState`] for
@@ -312,7 +304,7 @@ impl MlsGroup {
     }
 
     /// Returns `true` if the internal state has changed and needs to be persisted and
-    /// `false` otherwise. Calling [save()] resets the value to `false`.
+    /// `false` otherwise. Calling [`Self::save()`] resets the value to `false`.
     pub fn state_changed(&self) -> InnerState {
         self.state_changed
     }

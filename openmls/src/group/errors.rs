@@ -7,13 +7,15 @@ use crate::{
     error::LibraryError,
     extensions::errors::ExtensionError,
     framing::errors::{MessageDecryptionError, SenderError},
-    key_packages::KeyPackageError,
+    key_packages::KeyPackageExtensionSupportError,
     schedule::PskError,
-    treesync::errors::*,
 };
 use thiserror::Error;
 
 // === Public errors ===
+
+// Re-export errors
+pub use crate::treesync::errors::{ApplyUpdatePathError, PublicTreeError};
 
 /// Welcome error
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -200,16 +202,6 @@ pub enum CreateCommitError {
     ProposalValidationError(#[from] ProposalValidationError),
 }
 
-#[derive(Error, Debug, PartialEq, Clone)]
-pub(crate) enum CreateAddProposalError {
-    /// See [`LibraryError`] for more details.
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
-    /// The KeyPackage does not support all required extensions.
-    #[error("The KeyPackage does not support all required extensions.")]
-    UnsupportedExtensions,
-}
-
 /// Validation error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum ValidationError {
@@ -343,6 +335,17 @@ pub enum ExternalCommitValidationError {
 
 // === Crate errors ===
 
+/// Create add proposal error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub(crate) enum CreateAddProposalError {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// The KeyPackage does not support all required extensions.
+    #[error("The KeyPackage does not support all required extensions.")]
+    UnsupportedExtensions,
+}
+
 /// Exporter error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub(crate) enum ExporterError {
@@ -440,9 +443,9 @@ pub(crate) enum CreateGroupContextExtProposalError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// See [`KeyPackageError`] for more details.
+    /// See [`KeyPackageExtensionSupportError`] for more details.
     #[error(transparent)]
-    KeyPackage(#[from] KeyPackageError),
+    KeyPackageExtensionSupport(#[from] KeyPackageExtensionSupportError),
     /// See [`ExtensionError`] for more details.
     #[error(transparent)]
     Extension(#[from] ExtensionError),

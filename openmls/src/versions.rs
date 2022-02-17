@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, fmt};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
-use crate::error::OpenMlsError;
+use thiserror::Error;
 
 /// # Protocol Version
 ///
@@ -49,7 +49,7 @@ impl Default for ProtocolVersion {
 }
 
 impl TryFrom<u8> for ProtocolVersion {
-    type Error = OpenMlsError;
+    type Error = VersionError;
 
     /// Convert an integer to the corresponding protocol version.
     ///
@@ -58,7 +58,7 @@ impl TryFrom<u8> for ProtocolVersion {
         match v {
             1 => Ok(ProtocolVersion::Mls10),
             200 => Ok(ProtocolVersion::Mls10Draft11),
-            _ => Err(OpenMlsError::UnsupportedMlsVersion),
+            _ => Err(VersionError::UnsupportedMlsVersion),
         }
     }
 }
@@ -71,4 +71,12 @@ impl fmt::Display for ProtocolVersion {
             ProtocolVersion::Mls10Draft11 => write!(f, "mls10-draft11"),
         }
     }
+}
+
+/// Version Error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum VersionError {
+    /// Unsupported MLS version.
+    #[error("Unsupported MLS version.")]
+    UnsupportedMlsVersion,
 }

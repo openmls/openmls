@@ -255,11 +255,9 @@ impl CoreGroup {
         joiner_key_package
             .validate_required_capabilities(self.required_capabilities())
             .map_err(|e| match e {
-                KeyPackageError::UnsupportedExtension => {
+                KeyPackageExtensionSupportError::UnsupportedExtension => {
                     CreateAddProposalError::UnsupportedExtensions
                 }
-                KeyPackageError::LibraryError(e) => e.into(),
-                _ => LibraryError::custom("Unexpected KeyPackage error").into(),
             })?;
         let add_proposal = AddProposal {
             key_package: joiner_key_package,

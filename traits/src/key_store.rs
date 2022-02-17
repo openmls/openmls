@@ -17,7 +17,7 @@ pub trait OpenMlsKeyStore: Send + Sync {
     /// The error type returned by the [`OpenMlsKeyStore`].
     type Error: Debug + Clone + PartialEq + Into<String>;
 
-    /// Store a value `v` that implements the [`KeyStoreValue`] trait for
+    /// Store a value `v` that implements the [`ToKeyStoreValue`] trait for
     /// serialization for ID `k`.
     ///
     /// Returns an error if storing fails.
@@ -26,7 +26,7 @@ pub trait OpenMlsKeyStore: Send + Sync {
         Self: Sized;
 
     /// Read and return a value stored for ID `k` that implements the
-    /// [`KeyStoreValue`] trait for deserialization.
+    /// [`FromKeyStoreValue`] trait for deserialization.
     ///
     /// Returns [`None`] if no value is stored for `k` or reading fails.
     fn read<V: FromKeyStoreValue>(&self, k: &[u8]) -> Option<V>

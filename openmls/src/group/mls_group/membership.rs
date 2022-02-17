@@ -341,7 +341,7 @@ pub enum RemoveOperation {
     /// the group by issuing a remove proposal in the previous epoch and the
     /// proposal has now been committed.
     TheyLeft(HashReference),
-    /// Another member (indicated by the [`HashRefrence`]) was removed by the [`Sender`].
+    /// Another member (indicated by the [`HashReference`]) was removed by the [`Sender`].
     TheyWereRemovedBy((HashReference, Sender)),
     /// We removed another member (indicated by the [`HashReference`]).
     WeRemovedThem(HashReference),
