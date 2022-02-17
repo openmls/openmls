@@ -250,7 +250,7 @@ impl MlsGroupTestSetup {
                 .waiting_for_welcome
                 .write()
                 .expect("An unexpected error occurred.")
-                .remove(egs.new_member.as_slice())
+                .remove(egs.new_member().as_slice())
                 .ok_or(SetupError::NoFreshKeyPackage)?;
             let client = clients
                 .get(&client_id)

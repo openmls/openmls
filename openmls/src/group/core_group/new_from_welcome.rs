@@ -49,7 +49,7 @@ impl CoreGroup {
             .crypto()
             .hpke_open(
                 ciphersuite.hpke_config(),
-                &egs.encrypted_group_secrets,
+                egs.encrypted_group_secrets(),
                 key_package_bundle.private_key().as_slice(),
                 &[],
                 &[],
@@ -220,7 +220,7 @@ impl CoreGroup {
         welcome_secrets: &[EncryptedGroupSecrets],
     ) -> Option<EncryptedGroupSecrets> {
         for egs in welcome_secrets {
-            if hash_ref == egs.new_member {
+            if hash_ref == egs.new_member() {
                 return Some(egs.clone());
             }
         }

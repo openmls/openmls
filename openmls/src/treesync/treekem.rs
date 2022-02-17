@@ -310,10 +310,7 @@ impl PlaintextSecret {
             &[],
             &self.group_secrets_bytes,
         );
-        EncryptedGroupSecrets {
-            new_member: self.key_package_ref,
-            encrypted_group_secrets,
-        }
+        EncryptedGroupSecrets::new(self.key_package_ref, encrypted_group_secrets)
     }
 }
 

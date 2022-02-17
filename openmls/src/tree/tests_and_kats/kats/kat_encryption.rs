@@ -194,8 +194,8 @@ fn build_handshake_messages(
     use openmls_traits::random::OpenMlsRand;
     use tls_codec::Serialize;
 
-    let epoch = GroupEpoch(random_u64());
-    group.context_mut().set_epoch(epoch);
+    let epoch = random_u64();
+    group.context_mut().set_epoch(epoch.into());
     let membership_key = MembershipKey::from_secret(
         Secret::random(group.ciphersuite(), backend, None /* MLS version */)
             .expect("Not enough randomness."),
@@ -252,8 +252,8 @@ fn build_application_messages(
 ) -> (Vec<u8>, Vec<u8>) {
     use tls_codec::Serialize;
 
-    let epoch = GroupEpoch(random_u64());
-    group.context_mut().set_epoch(epoch);
+    let epoch = random_u64();
+    group.context_mut().set_epoch(epoch.into());
     let membership_key = MembershipKey::from_secret(
         Secret::random(group.ciphersuite(), backend, None /* MLS version */)
             .expect("Not enough randomness."),

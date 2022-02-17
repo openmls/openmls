@@ -177,7 +177,7 @@ async fn send_welcome(mut body: Payload, data: web::Data<Mutex<DsData>>) -> impl
 
     let mut data = unwrap_data!(data.lock());
     for secret in welcome_msg.secrets().iter() {
-        let key_package_hash = &secret.new_member;
+        let key_package_hash = &secret.new_member();
         for (_client_name, client) in data.clients.iter_mut() {
             for (client_hash, _) in client.key_packages.0.iter() {
                 if client_hash.as_slice() == key_package_hash.as_slice() {

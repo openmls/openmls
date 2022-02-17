@@ -72,7 +72,7 @@ fn test_failed_groupinfo_decryption(
     backend: &impl OpenMlsCryptoProvider,
 ) {
     let version = ProtocolVersion::Mls10;
-    let epoch = GroupEpoch(123);
+    let epoch = 123;
     let group_id = GroupId::random(backend);
     let tree_hash = vec![1, 2, 3, 4, 5, 6, 7, 8, 9];
     let confirmed_transcript_hash = vec![1, 1, 1];
@@ -141,13 +141,13 @@ fn test_failed_groupinfo_decryption(
     // Mess with the ciphertext by flipping the last byte.
     flip_last_byte(&mut encrypted_group_secrets);
 
-    let broken_secrets = vec![EncryptedGroupSecrets {
-        new_member: key_package_bundle
+    let broken_secrets = vec![EncryptedGroupSecrets::new(
+        key_package_bundle
             .key_package
             .hash_ref(backend.crypto())
             .expect("Could not hash KeyPackage."),
         encrypted_group_secrets,
-    }];
+    )];
 
     // Encrypt the group info.
     let encrypted_group_info = welcome_key
