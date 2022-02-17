@@ -10,7 +10,4 @@ repository = "https://github.com/openmls/openmls/tree/main/memory_keystore"
 readme = "README.md"
 
 [dependencies]
-openmls_traits = { version = "0.1.0-pre.2" }
-
-[patch.crates-io]
 openmls_traits = { path = "../traits" }

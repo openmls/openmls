@@ -10,7 +10,6 @@ repository = "https://github.com/openmls/openmls/"
 readme = "../README.md"
 
 [dependencies]
-openmls_traits = { version = "0.1.0-pre.2" }
 uuid = { version = "0.8", features = ["v4"] }
 lazy_static = "1.4"
 serde = { version = "^1.0", features = ["derive"] }
@@ -25,13 +24,16 @@ rand = { version = "0.8", optional = true }
 getrandom = { version = "0.2", features = ["js"] }
 # Crypto backends required for KAT and testing - "test-utils" feature
 itertools = { version = "0.10", optional = true }
-openmls_rust_crypto = { version = "0.1.0-pre.2", optional = true }
-openmls_evercrypt = { version = "0.1.0-pre.2", optional = true }
 rstest = {version = "^0.12", optional = true}
 rstest_reuse = {version = "^0.1", optional = true}
 rayon = "^1.5.0"
 thiserror = "^1.0"
 backtrace = "0.3"
+
+openmls_traits = { path = "../traits" }
+openmls_rust_crypto = { path = "../openmls_rust_crypto", optional = true }
+openmls_evercrypt = { path = "../evercrypt_backend", optional = true }
+openmls_memory_keystore = { path = "../memory_keystore" }
 
 [features]
 default = []
@@ -59,9 +61,3 @@ features = ["test-utils", "evercrypt"]
 [[bench]]
 name = "benchmark"
 harness = false
-
-[patch.crates-io]
-openmls_traits = { path = "../traits" }
-openmls_rust_crypto = { path = "../openmls_rust_crypto" }
-openmls_evercrypt = { path = "../evercrypt_backend" }
-openmls_memory_keystore = { path = "../memory_keystore" }
