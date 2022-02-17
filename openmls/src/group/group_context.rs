@@ -26,14 +26,14 @@ impl GroupContext {
     /// Create a new group context
     pub(crate) fn new(
         group_id: GroupId,
-        epoch: GroupEpoch,
+        epoch: impl Into<GroupEpoch>,
         tree_hash: Vec<u8>,
         confirmed_transcript_hash: Vec<u8>,
         extensions: &[Extension],
     ) -> Self {
         GroupContext {
             group_id,
-            epoch,
+            epoch: epoch.into(),
             tree_hash: tree_hash.into(),
             confirmed_transcript_hash: confirmed_transcript_hash.into(),
             extensions: extensions.into(),
@@ -49,7 +49,7 @@ impl GroupContext {
     ) -> Self {
         Self::new(
             group_id,
-            GroupEpoch(0),
+            0,
             tree_hash,
             zero(ciphersuite.hash_length()),
             extensions,

@@ -514,7 +514,7 @@ impl MlsClient for MlsClientImpl {
         let (_kpb, credential_bundle) = welcome
             .secrets()
             .iter()
-            .find_map(|egs| pending_key_packages.remove(egs.new_member.as_slice()))
+            .find_map(|egs| pending_key_packages.remove(egs.new_member().as_slice()))
             .ok_or_else(|| {
                 tonic::Status::new(
                     tonic::Code::NotFound,

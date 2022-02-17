@@ -15,7 +15,7 @@ use crate::{
         create_commit_params::CreateCommitParams,
         errors::*,
         proposals::{ProposalQueue, ProposalStore, QueuedProposal},
-        GroupContext, GroupEpoch, GroupId,
+        GroupContext, GroupId,
     },
     key_packages::{KeyPackageBundle, KeyPackageExtensionSupportError},
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
@@ -86,8 +86,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     assert!(alice_update_key_package.verify(backend).is_ok());
 
-    let group_context =
-        GroupContext::new(GroupId::random(backend), GroupEpoch(0), vec![], vec![], &[]);
+    let group_context = GroupContext::new(GroupId::random(backend), 0, vec![], vec![], &[]);
 
     // Let's create some proposals
     let add_proposal_alice1 = AddProposal {
@@ -237,8 +236,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     assert!(alice_update_key_package.verify(backend).is_ok());
 
-    let group_context =
-        GroupContext::new(GroupId::random(backend), GroupEpoch(0), vec![], vec![], &[]);
+    let group_context = GroupContext::new(GroupId::random(backend), 0, vec![], vec![], &[]);
 
     // Let's create some proposals
     let add_proposal_alice1 = AddProposal {

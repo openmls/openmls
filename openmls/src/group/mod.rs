@@ -92,7 +92,7 @@ impl GroupId {
     TlsSerialize,
     TlsSize,
 )]
-pub struct GroupEpoch(pub u64);
+pub struct GroupEpoch(u64);
 
 impl GroupEpoch {
     /// Increment the group epoch by 1.
@@ -109,5 +109,11 @@ impl GroupEpoch {
 impl PartialOrd for GroupEpoch {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.0.partial_cmp(&other.0)
+    }
+}
+
+impl From<u64> for GroupEpoch {
+    fn from(val: u64) -> Self {
+        Self(val)
     }
 }
