@@ -72,7 +72,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
     .expect("An unexpected error occurred.");
     let context = GroupContext::new(
         group_id.clone(),
-        GroupEpoch(epoch),
+        epoch,
         tree_hash_before.clone(),
         confirmed_transcript_hash_before.clone(),
         &[], // extensions
@@ -217,7 +217,7 @@ pub fn run_test_vector(
         .expect("Error decoding commit");
     let context = GroupContext::new(
         group_id,
-        GroupEpoch(epoch),
+        epoch,
         tree_hash_before,
         confirmed_transcript_hash_before,
         &[], // extensions

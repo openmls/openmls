@@ -83,7 +83,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     // We can't easily get a "natural" GroupInfo, so we just create one here.
     let group_info = GroupInfoPayload::new(
         group.group_id().clone(),
-        GroupEpoch(0),
+        0,
         crypto
             .rand()
             .random_vec(ciphersuite.hash_length())
