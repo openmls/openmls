@@ -112,14 +112,14 @@ impl MlsMessageIn {
         self.mls_message.is_handshake_message()
     }
 
-    /// Tries to deserialize from a byte slice. Returns [`MlsMessageError::DecodingError`] on failure.
+    /// Tries to deserialize from a byte slice. Returns [`MlsMessageError::UnableToDecode`] on failure.
     pub fn try_from_bytes(bytes: &[u8]) -> Result<Self, MlsMessageError> {
         Ok(Self {
             mls_message: MlsMessage::try_from_bytes(bytes)?,
         })
     }
 
-    /// Serializes the message to a byte vector. Returns [`MlsMessageError::EncodingError`] on failure.
+    /// Serializes the message to a byte vector. Returns [`MlsMessageError::LibraryError`] on failure.
     pub fn to_bytes(&self) -> Result<Vec<u8>, MlsMessageError> {
         self.mls_message.to_bytes()
     }
@@ -183,14 +183,14 @@ impl MlsMessageOut {
         self.mls_message.is_handshake_message()
     }
 
-    /// Tries to deserialize from a byte slice. Returns [`MlsMessageError::DecodingError`] on failure.
+    /// Tries to deserialize from a byte slice. Returns [`MlsMessageError::UnableToDecode`] on failure.
     pub fn try_from_bytes(bytes: &[u8]) -> Result<Self, MlsMessageError> {
         Ok(Self {
             mls_message: MlsMessage::try_from_bytes(bytes)?,
         })
     }
 
-    /// Serializes the message to a byte vector. Returns [`MlsMessageError::EncodingError`] on failure.
+    /// Serializes the message to a byte vector. Returns [`MlsMessageError::LibraryError`] on failure.
     pub fn to_bytes(&self) -> Result<Vec<u8>, MlsMessageError> {
         self.mls_message.to_bytes()
     }

@@ -127,7 +127,7 @@ fn test_mismatch(backend: &impl OpenMlsCryptoProvider) {
 
     assert_eq!(
         KeyPackageBundle::new(&[ciphersuite_name], &credential_bundle, backend, vec![],),
-        Err(KeyPackageError::CiphersuiteSignatureSchemeMismatch)
+        Err(KeyPackageBundleNewError::CiphersuiteSignatureSchemeMismatch)
     );
 
     // === KeyPackageBundle positive test ===

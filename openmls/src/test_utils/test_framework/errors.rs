@@ -3,7 +3,6 @@ use thiserror::Error;
 use crate::{
     error::LibraryError,
     group::{errors::WelcomeError, *},
-    key_packages::*,
 };
 
 /// Setup error
@@ -24,9 +23,6 @@ pub enum SetupError {
     /// See [`ClientError`] for more details.
     #[error(transparent)]
     ClientError(#[from] ClientError),
-    /// See [`KeyPackageError`] for more details.
-    #[error(transparent)]
-    KeyPackageError(#[from] KeyPackageError),
     /// See [`ExportSecretError`] for more details.
     #[error(transparent)]
     ExportSecretError(#[from] ExportSecretError),
@@ -60,9 +56,6 @@ pub enum ClientError {
     FailedToJoinGroup(#[from] WelcomeError),
     #[error(transparent)]
     TlsCodecError(#[from] tls_codec::Error),
-    /// See [`KeyPackageError`] for more details.
-    #[error(transparent)]
-    KeyPackageError(#[from] KeyPackageError),
     /// See [`UnverifiedMessageError`] for more details.
     #[error(transparent)]
     UnverifiedMessageError(#[from] UnverifiedMessageError),

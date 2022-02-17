@@ -421,17 +421,17 @@ impl StagedCommit {
         }
     }
 
-    /// Returns the Add proposals that are covered by the Commit message as in iterator over [StagedAddProposal].
+    /// Returns the Add proposals that are covered by the Commit message as in iterator over [QueuedAddProposal].
     pub fn add_proposals(&self) -> impl Iterator<Item = QueuedAddProposal> {
         self.staged_proposal_queue.add_proposals()
     }
 
-    /// Returns the Remove proposals that are covered by the Commit message as in iterator over [StagedRemoveProposal].
+    /// Returns the Remove proposals that are covered by the Commit message as in iterator over [QueuedRemoveProposal].
     pub fn remove_proposals(&self) -> impl Iterator<Item = QueuedRemoveProposal> {
         self.staged_proposal_queue.remove_proposals()
     }
 
-    /// Returns the Update proposals that are covered by the Commit message as in iterator over [StagedUpdateProposal].
+    /// Returns the Update proposals that are covered by the Commit message as in iterator over [QueuedUpdateProposal].
     pub fn update_proposals(&self) -> impl Iterator<Item = QueuedUpdateProposal> {
         self.staged_proposal_queue.update_proposals()
     }

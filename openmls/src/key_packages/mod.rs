@@ -218,7 +218,10 @@ impl KeyPackage {
     /// * verify that all mandatory extensions are present
     /// * make sure that the lifetime is valid
     /// Returns `Ok(())` if all checks succeed and `KeyPackageError` otherwise
-    pub fn verify(&self, backend: &impl OpenMlsCryptoProvider) -> Result<(), KeyPackageError> {
+    pub fn verify(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+    ) -> Result<(), KeyPackageVerifyError> {
         //  First make sure that all mandatory extensions are present.
         let mut mandatory_extensions_found = MANDATORY_EXTENSIONS.to_vec();
         for extension in self.payload.extensions.iter() {
@@ -234,7 +237,7 @@ impl KeyPackage {
                     Ok(e) => {
                         if !e.is_valid() {
                             log::error!("Invalid lifetime extension in key package.");
-                            return Err(KeyPackageError::InvalidLifetimeExtension);
+                            return Err(KeyPackageVerifyError::InvalidLifetimeExtension);
                         }
                     }
                     Err(_) => {
@@ -248,13 +251,13 @@ impl KeyPackage {
         // Make sure we found all mandatory extensions.
         if !mandatory_extensions_found.is_empty() {
             log::error!("This key package is missing mandatory extensions.");
-            return Err(KeyPackageError::MandatoryExtensionsMissing);
+            return Err(KeyPackageVerifyError::MandatoryExtensionsMissing);
         }
 
         // Verify the signature on this key package.
         <Self as Verifiable>::verify_no_out(self, backend, &self.payload.credential).map_err(|_| {
             log::error!("Key package signature is invalid.");
-            KeyPackageError::InvalidSignature
+            KeyPackageVerifyError::InvalidSignature
         })
     }
 
@@ -263,14 +266,15 @@ impl KeyPackage {
     /// for more details on the external key ID extension.
     ///
     ///
-    /// Returns a [`KeyPackageError`] if no external key ID extension is present.
-    pub fn external_key_id(&self) -> Result<&[u8], KeyPackageError> {
+    /// Returns a [`ExtensionError`] if no external key ID extension is present.
+    pub fn external_key_id(&self) -> Result<&[u8], ExtensionError> {
         if let Some(key_id_ext) = self.extension_with_type(ExtensionType::ExternalKeyId) {
             return Ok(key_id_ext.as_external_key_id_extension()?.as_slice());
+        } else {
+            Err(ExtensionError::InvalidExtensionType(
+                "Tried to get a key ID extension".into(),
+            ))
         }
-        Err(KeyPackageError::ExtensionError(
-            ExtensionError::InvalidExtensionType("Tried to get a key ID extension".into()),
-        ))
     }
 
     /// Get a reference to the extensions of this key package.
@@ -283,11 +287,11 @@ impl KeyPackage {
     pub fn check_extension_support(
         &self,
         required_extensions: &[ExtensionType],
-    ) -> Result<(), KeyPackageError> {
+    ) -> Result<(), KeyPackageExtensionSupportError> {
         let my_extension_types = self.extensions().iter().map(|ext| ext.extension_type());
         for required in required_extensions.iter() {
             if !my_extension_types.clone().any(|e| &e == required) {
-                return Err(KeyPackageError::UnsupportedExtension);
+                return Err(KeyPackageExtensionSupportError::UnsupportedExtension);
             }
         }
         Ok(())
@@ -303,12 +307,12 @@ impl KeyPackage {
     pub(crate) fn validate_required_capabilities<'a>(
         &self,
         required_capabilities: impl Into<Option<&'a RequiredCapabilitiesExtension>>,
-    ) -> Result<(), KeyPackageError> {
+    ) -> Result<(), KeyPackageExtensionSupportError> {
         if let Some(required_capabilities) = required_capabilities.into() {
             let my_extension_types = self.extensions().iter().map(|e| e.extension_type());
             for required_extension in required_capabilities.extensions() {
                 if !my_extension_types.clone().any(|e| &e == required_extension) {
-                    return Err(KeyPackageError::UnsupportedExtension);
+                    return Err(KeyPackageExtensionSupportError::UnsupportedExtension);
                 }
             }
         }
@@ -346,9 +350,9 @@ impl KeyPackage {
         hpke_init_key: HpkePublicKey,
         credential_bundle: &CredentialBundle,
         extensions: Vec<Extension>,
-    ) -> Result<Self, KeyPackageError> {
+    ) -> Result<Self, KeyPackageNewError> {
         if SignatureScheme::from(ciphersuite) != credential_bundle.credential().signature_scheme() {
-            return Err(KeyPackageError::CiphersuiteSignatureSchemeMismatch);
+            return Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
         }
         let key_package = KeyPackagePayload {
             // TODO: #85 Take from global config.
@@ -515,13 +519,13 @@ impl KeyPackageBundle {
     /// Note that the capabilities extension gets added automatically, based on
     /// the configuration.
     ///
-    /// Returns a new [`KeyPackageBundle`] or a [`KeyPackageError`].
+    /// Returns a new [`KeyPackageBundle`] or a [`KeyPackageBundleNewError`].
     pub fn new(
         ciphersuites: &[Ciphersuite],
         credential_bundle: &CredentialBundle,
         backend: &impl OpenMlsCryptoProvider,
         extensions: Vec<Extension>,
-    ) -> Result<Self, KeyPackageError> {
+    ) -> Result<Self, KeyPackageBundleNewError> {
         Self::new_with_version(
             ProtocolVersion::default(),
             ciphersuites,
@@ -540,23 +544,32 @@ impl KeyPackageBundle {
     /// Note that the capabilities extension gets added automatically, based on
     /// the configuration.
     ///
-    /// Returns a new [`KeyPackageBundle`] or a [`KeyPackageError`].
+    /// Returns a new [`KeyPackageBundle`] or a [`KeyPackageBundleNewError`].
     pub fn new_with_version(
         version: ProtocolVersion,
         ciphersuites: &[Ciphersuite],
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,
         extensions: Vec<Extension>,
-    ) -> Result<Self, KeyPackageError> {
-        debug_assert!(!ciphersuites.is_empty());
+    ) -> Result<Self, KeyPackageBundleNewError> {
+        if ciphersuites.is_empty() {
+            let error = KeyPackageBundleNewError::NoCiphersuitesSupplied;
+            error!(
+                "Error creating new KeyPackageBundle: No Ciphersuites specified {:?}",
+                error
+            );
+            return Err(error);
+        }
+
         if SignatureScheme::from(ciphersuites[0])
             != credential_bundle.credential().signature_scheme()
         {
-            return Err(KeyPackageError::CiphersuiteSignatureSchemeMismatch);
+            return Err(KeyPackageBundleNewError::CiphersuiteSignatureSchemeMismatch);
         }
-        debug_assert!(!ciphersuites.is_empty());
+
         let ciphersuite = ciphersuites[0];
-        let leaf_secret = Secret::random(ciphersuite, backend, version)?;
+        let leaf_secret = Secret::random(ciphersuite, backend, version)
+            .map_err(LibraryError::unexpected_crypto_error)?;
         Self::new_from_leaf_secret(
             ciphersuites,
             backend,
@@ -575,7 +588,7 @@ impl KeyPackageBundle {
     /// included in the extensions, its supported ciphersuites have to match the
     /// `ciphersuites` list.
     ///
-    /// Returns an [`KeyPackageError::DuplicateExtension`] error if [`extensions`]
+    /// Returns an [`KeyPackageBundleNewError::DuplicateExtension`] error if `extensions`
     /// contains multiple extensions of the same type.
     ///
     /// Returns a new [`KeyPackageBundle`].
@@ -586,9 +599,9 @@ impl KeyPackageBundle {
         mut extensions: Vec<Extension>,
         key_pair: HpkeKeyPair,
         leaf_secret: Secret,
-    ) -> Result<Self, KeyPackageError> {
+    ) -> Result<Self, KeyPackageBundleNewError> {
         if ciphersuites.is_empty() {
-            let error = KeyPackageError::NoCiphersuitesSupplied;
+            let error = KeyPackageBundleNewError::NoCiphersuitesSupplied;
             error!(
                 "Error creating new KeyPackageBundle: No Ciphersuites specified {:?}",
                 error
@@ -601,7 +614,7 @@ impl KeyPackageBundle {
         extensions.sort();
         extensions.dedup();
         if extensions_length != extensions.len() {
-            let error = KeyPackageError::DuplicateExtension;
+            let error = KeyPackageBundleNewError::DuplicateExtension;
             error!(
                 "Error creating new KeyPackageBundle: Duplicate Extension {:?}",
                 error
@@ -624,7 +637,7 @@ impl KeyPackageBundle {
             Some(extension) => {
                 let capabilities_extension = extension.as_capabilities_extension()?;
                 if capabilities_extension.ciphersuites() != ciphersuites {
-                    let error = KeyPackageError::CiphersuiteMismatch;
+                    let error = KeyPackageBundleNewError::CiphersuiteMismatch;
                     error!(
                         "Error creating new KeyPackageBundle: Invalid Capabilities Extensions {:?}",
                         error
@@ -655,7 +668,13 @@ impl KeyPackageBundle {
             key_pair.public.into(),
             credential_bundle,
             extensions,
-        )?;
+        )
+        .map_err(|e| match e {
+            KeyPackageNewError::LibraryError(e) => e.into(),
+            KeyPackageNewError::CiphersuiteSignatureSchemeMismatch => {
+                KeyPackageBundleNewError::CiphersuiteSignatureSchemeMismatch
+            }
+        })?;
         Ok(KeyPackageBundle {
             key_package,
             private_key: key_pair.private.into(),
@@ -683,9 +702,9 @@ impl KeyPackageBundle {
         credential_bundle: &CredentialBundle,
         extensions: Vec<Extension>,
         leaf_secret: Secret,
-    ) -> Result<Self, KeyPackageError> {
+    ) -> Result<Self, KeyPackageBundleNewError> {
         if ciphersuites.is_empty() {
-            let error = KeyPackageError::NoCiphersuitesSupplied;
+            let error = KeyPackageBundleNewError::NoCiphersuitesSupplied;
             error!(
                 "Error creating new KeyPackageBundle: No Ciphersuites specified {:?}",
                 error
@@ -694,10 +713,11 @@ impl KeyPackageBundle {
         }
 
         let ciphersuite = ciphersuites[0];
-        let leaf_node_secret = derive_leaf_node_secret(&leaf_secret, backend);
+        let leaf_node_secret = derive_leaf_node_secret(&leaf_secret, backend)
+            .map_err(LibraryError::unexpected_crypto_error)?;
         let keypair = backend
             .crypto()
-            .derive_hpke_keypair(ciphersuite.hpke_config(), leaf_node_secret?.as_slice());
+            .derive_hpke_keypair(ciphersuite.hpke_config(), leaf_node_secret.as_slice());
         Self::new_with_keypair(
             ciphersuites,
             backend,

@@ -2,7 +2,7 @@ use thiserror::Error;
 
 use crate::error::LibraryError;
 
-/// An error that occurs in methods of a [`Credential`].
+/// An error that occurs in methods of a [`super::Credential`].
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum CredentialError {
     /// A library error occured.

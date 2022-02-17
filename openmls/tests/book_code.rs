@@ -40,7 +40,7 @@ fn generate_key_package_bundle(
     ciphersuites: &[Ciphersuite],
     credential: &Credential,
     backend: &impl OpenMlsCryptoProvider,
-) -> Result<KeyPackage, KeyPackageError> {
+) -> Result<KeyPackage, KeyPackageBundleNewError> {
     // ANCHOR: create_key_package_bundle
     // Define extensions
     let extensions = vec![Extension::LifeTime(LifetimeExtension::new(

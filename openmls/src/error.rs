@@ -18,7 +18,6 @@ use tls_codec::Error as TlsCodecError;
 /// This error is returned when the library tries to serialize data that is too big for the
 /// MLS structs. In particular, when element lists contain more elements than the theoretical maximum
 /// defined in the spec, the serialization will fail. This should not happen when all input values are checked.
-/// TODO: #78
 ///
 /// **CryptoEror**
 ///
@@ -84,14 +83,6 @@ enum InternalLibraryError {
     Custom(String),
 }
 
-/// OpenMLS Error
-#[derive(Error, Debug, PartialEq, Clone)]
-pub enum OpenMlsError {
-    /// Unsupported MLS version.
-    #[error("Unsupported MLS version.")]
-    UnsupportedMlsVersion,
-}
-
 /// A wrapper struct for an error string. This can be used when no complex error
 /// variant is needed.
 #[derive(Debug, Clone, PartialEq)]
@@ -121,3 +112,29 @@ impl ErrorString {
         self.0.clone()
     }
 }
+
+/*
+
+Note to maintainers
+
+The thiserror crate does not add any documentation to enum variants and this needs to be done manually.
+The best way to do this if you don't want to duplicate the string manually is to use the following regex:
+
+Add comments for naked variants:
+
+ ([,|{])\n(\s+)#\[error\("([a-z0-9 .,-_'^:]+)"\)\]
+
+ $1
+ $2/// $3
+ $2#[error("$3")]
+
+ Add comments for nested variants:
+
+ ([,|{])\n([\s]+)#\[error\(transparent\)\]\n[\s]+(([A-Z][a-z0-9]+)+)\(#\[from\] (([A-Z][a-z0-9]+)+)\)
+
+ $1
+ $2/// See [`$5`] for more details.
+ $2#[error(transparent)]
+ $2$3(#[from] $5)
+
+*/

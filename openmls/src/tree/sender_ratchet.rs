@@ -14,7 +14,7 @@ use super::*;
 
 /// The generation of a given [`SenderRatchet`].
 pub(crate) type Generation = u32;
-/// Stores the configuration parameters for [`DecryptionRatchet`]s.
+/// Stores the configuration parameters for `DecryptionRatchet`s.
 ///
 /// **Parameters**
 ///
