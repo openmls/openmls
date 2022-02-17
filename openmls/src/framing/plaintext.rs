@@ -27,6 +27,7 @@ use crate::{
         signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
     },
     error::LibraryError,
+    group::errors::ValidationError,
 };
 
 use super::*;
@@ -523,7 +524,7 @@ impl VerifiableMlsPlaintext {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         membership_key: &MembershipKey,
-    ) -> Result<(), VerificationError> {
+    ) -> Result<(), ValidationError> {
         log::debug!("Verifying membership tag.");
         log_crypto!(trace, "  Membership key: {:x?}", membership_key);
         log_crypto!(trace, "  Serialized context: {:x?}", serialized_context);
@@ -539,10 +540,10 @@ impl VerifiableMlsPlaintext {
         if let Some(membership_tag) = &self.membership_tag {
             // TODO #133: make this a constant-time comparison
             if membership_tag != expected_membership_tag {
-                return Err(VerificationError::InvalidMembershipTag);
+                return Err(ValidationError::InvalidMembershipTag);
             }
         } else {
-            return Err(VerificationError::MissingMembershipTag);
+            return Err(ValidationError::MissingMembershipTag);
         }
         Ok(())
     }

@@ -14,13 +14,13 @@ use self::array_representation::diff::{AbDiff, StagedAbDiff};
 /// representation with a feature-flag.
 pub(crate) type MlsBinaryTree<Node> = ABinaryTree<Node>;
 
-pub use self::array_representation::diff::OutOfBoundsError;
+pub(crate) use self::array_representation::diff::OutOfBoundsError;
 
 pub(crate) type MlsBinaryTreeDiff<'a, Node> = AbDiff<'a, Node>;
 pub(crate) type StagedMlsBinaryTreeDiff<Node> = StagedAbDiff<Node>;
 
-pub type MlsBinaryTreeError = ABinaryTreeError;
-pub type MlsBinaryTreeDiffError = ABinaryTreeDiffError;
+pub(crate) type MlsBinaryTreeError = ABinaryTreeError;
+pub(crate) type MlsBinaryTreeDiffError = ABinaryTreeDiffError;
 
 /// Index type to index the leaves in the binary tree
 pub type LeafIndex = u32;

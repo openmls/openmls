@@ -8,7 +8,7 @@ use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, signable::Signable, AeadNonce},
     credentials::*,
     framing::*,
-    group::{errors::StageCommitError, *},
+    group::{errors::*, *},
     key_packages::*,
     messages::*,
     schedule::psk::*,

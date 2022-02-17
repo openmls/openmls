@@ -4,58 +4,38 @@
 //! `CreateCommitError`.
 
 use crate::{
-    credentials::CredentialError,
     error::LibraryError,
-    framing::ValidationError,
-    group::{errors::StageCommitError, CoreGroupError, CreateCommitError, ExporterError},
-    treesync::TreeSyncError,
+    group::errors::{CreateCommitError, StageCommitError, ValidationError},
 };
-use openmls_traits::types::CryptoError;
 use thiserror::Error;
-use tls_codec::Error as TlsCodecError;
 
-/// MlsGroup error
+/// New group error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum MlsGroupError {
+pub enum NewGroupError {
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    #[error(
-        "Couldn't find a `CredentialBundle` in the `KeyStore` that matches the one in my leaf."
-    )]
-    NoMatchingCredentialBundle,
-    #[error("Couldn't find a `KeyPackageBundle` in the `KeyStore` that matches the given `KeyPackage` hash.")]
+    /// No matching KeyPackageBundle was found in the key store.
+    #[error("No matching KeyPackageBundle was found in the key store.")]
     NoMatchingKeyPackageBundle,
-    #[error("There is no pending commit that can be merged.")]
-    NoPendingCommit,
-    #[error("Error performing key store operation.")]
-    KeyStoreError,
-    #[error("The incoming message's wire format was not compatible with the wire format policy for incoming messages.")]
-    IncompatibleWireFormat,
-    #[error(transparent)]
-    Group(#[from] CoreGroupError),
-    #[error(transparent)]
-    CreateCommit(#[from] CreateCommitError),
-    #[error(transparent)]
-    GroupStateError(#[from] MlsGroupStateError),
-    #[error(transparent)]
-    Exporter(#[from] ExporterError),
-    #[error(transparent)]
-    CredentialError(#[from] CredentialError),
-    #[error(transparent)]
-    TreeSyncError(#[from] TreeSyncError),
-    #[error(transparent)]
-    ValidationError(#[from] ValidationError),
-    #[error(transparent)]
-    TlsCodecError(#[from] TlsCodecError),
-    #[error(transparent)]
-    CryptoError(#[from] CryptoError),
+    /// Failed to delete the KeyPackageBundle from the key store.
+    #[error("Failed to delete the KeyPackageBundle from the key store.")]
+    KeyStoreDeletionError,
+    /// Unsupported proposal type in required capabilities.
+    #[error("Unsupported proposal type in required capabilities.")]
+    UnsupportedProposalType,
+    /// Unsupported extension type in required capabilities.
+    #[error("Unsupported extension type in required capabilities.")]
+    UnsupportedExtensionType,
 }
 
 /// EmptyInput error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum EmptyInputError {
+    /// An empty list of KeyPackages was provided.
     #[error("An empty list of KeyPackages was provided.")]
     AddMembers,
+    /// An empty list of KeyPackage references was provided.
     #[error("An empty list of KeyPackage references was provided.")]
     RemoveMembers,
 }
@@ -63,29 +43,56 @@ pub enum EmptyInputError {
 /// Group state error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum MlsGroupStateError {
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// Tried to use a group after being evicted from it.
     #[error("Tried to use a group after being evicted from it.")]
     UseAfterEviction,
+    /// Can't create message because a pending proposal exists.
     #[error("Can't create message because a pending proposal exists.")]
     PendingProposal,
+    /// Can't execute operation because a pending commit exists.
     #[error("Can't execute operation because a pending commit exists.")]
     PendingCommit,
+}
+
+/// Parse message error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ParseMessageError {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// The message's wire format is incompatible with the group's wire format policy.
+    #[error("The message's wire format is incompatible with the group's wire format policy.")]
+    IncompatibleWireFormat,
+    /// See [`ValidationError`] for more details.
+    #[error(transparent)]
+    ValidationError(#[from] ValidationError),
+    /// See [`MlsGroupStateError`] for more details.
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
 }
 
 /// Unverified message error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum UnverifiedMessageError {
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// The message is from an epoch too far in the past.
     #[error("The message is from an epoch too far in the past.")]
     NoPastEpochData,
+    /// The message's signature is invalid.
     #[error("The message's signature is invalid.")]
     InvalidSignature,
+    /// The message's membership tag is invalid.
     #[error("The message's membership tag is invalid.")]
     InvalidMembershipTag,
+    /// A signature key was not provided for a preconfigured message.
     #[error("A signature key was not provided for a preconfigured message.")]
     MissingSignatureKey,
+    /// See [`StageCommitError`] for more details.
     #[error(transparent)]
     InvalidCommit(#[from] StageCommitError),
 }
@@ -93,10 +100,13 @@ pub enum UnverifiedMessageError {
 /// Create message error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum CreateMessageError {
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// The own CredentialBundle could not be found in the key store.
     #[error("The own CredentialBundle could not be found in the key store.")]
     NoMatchingCredentialBundle,
+    /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
 }
@@ -104,14 +114,19 @@ pub enum CreateMessageError {
 /// Add members error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum AddMembersError {
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// The own CredentialBundle could not be found in the key store.
     #[error("The own CredentialBundle could not be found in the key store.")]
     NoMatchingCredentialBundle,
+    /// See [`EmptyInputError`] for more details.
     #[error(transparent)]
     EmptyInput(#[from] EmptyInputError),
+    /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
     CreateCommitError(#[from] CreateCommitError),
+    /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
 }
@@ -119,12 +134,16 @@ pub enum AddMembersError {
 /// Propose add members error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum ProposeAddMemberError {
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// The own CredentialBundle could not be found in the key store.
     #[error("The own CredentialBundle could not be found in the key store.")]
     NoMatchingCredentialBundle,
+    /// The new member does not support all required extensions.
     #[error("The new member does not support all required extensions.")]
     UnsupportedExtensions,
+    /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
 }
@@ -132,10 +151,13 @@ pub enum ProposeAddMemberError {
 /// Propose remove members error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum ProposeRemoveMemberError {
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// The own CredentialBundle could not be found in the key store.
     #[error("The own CredentialBundle could not be found in the key store.")]
     NoMatchingCredentialBundle,
+    /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
 }
@@ -143,14 +165,19 @@ pub enum ProposeRemoveMemberError {
 /// Remove members error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum RemoveMembersError {
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// The own CredentialBundle could not be found in the key store.
     #[error("The own CredentialBundle could not be found in the key store.")]
     NoMatchingCredentialBundle,
+    /// See [`EmptyInputError`] for more details.
     #[error(transparent)]
     EmptyInput(#[from] EmptyInputError),
+    /// See [`CreateCommitError`] for more details.
     #[error(transparent)]
     CreateCommitError(#[from] CreateCommitError),
+    /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
 }
@@ -158,10 +185,89 @@ pub enum RemoveMembersError {
 /// Leave group error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum LeaveGroupError {
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// The own CredentialBundle could not be found in the key store.
     #[error("The own CredentialBundle could not be found in the key store.")]
     NoMatchingCredentialBundle,
+    /// See [`MlsGroupStateError`] for more details.
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+}
+
+/// Self update error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum SelfUpdateError {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// The own CredentialBundle could not be found in the key store.
+    #[error("The own CredentialBundle could not be found in the key store.")]
+    NoMatchingCredentialBundle,
+    /// See [`CreateCommitError`] for more details.
+    #[error(transparent)]
+    CreateCommitError(#[from] CreateCommitError),
+    /// See [`MlsGroupStateError`] for more details.
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+}
+
+/// Propose self update error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ProposeSelfUpdateError {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// The own CredentialBundle could not be found in the key store.
+    #[error("The own CredentialBundle could not be found in the key store.")]
+    NoMatchingCredentialBundle,
+    /// See [`MlsGroupStateError`] for more details.
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+}
+
+/// Commit to pending proposals error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum CommitToPendingProposalsError {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// The own CredentialBundle could not be found in the key store.
+    #[error("The own CredentialBundle could not be found in the key store.")]
+    NoMatchingCredentialBundle,
+    /// See [`CreateCommitError`] for more details.
+    #[error(transparent)]
+    CreateCommitError(#[from] CreateCommitError),
+    /// See [`MlsGroupStateError`] for more details.
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+}
+
+/// Export public group state error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ExportPublicGroupStateError {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// The own CredentialBundle could not be found in the key store.
+    #[error("The own CredentialBundle could not be found in the key store.")]
+    NoMatchingCredentialBundle,
+    /// See [`MlsGroupStateError`] for more details.
+    #[error(transparent)]
+    GroupStateError(#[from] MlsGroupStateError),
+}
+
+/// Export secret error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum ExportSecretError {
+    /// See [`LibraryError`] for more details.
+    #[error(transparent)]
+    LibraryError(#[from] LibraryError),
+    /// The requested key length is too long.
+    #[error("The requested key length is too long.")]
+    KeyLengthTooLong,
+    /// See [`MlsGroupStateError`] for more details.
     #[error(transparent)]
     GroupStateError(#[from] MlsGroupStateError),
 }

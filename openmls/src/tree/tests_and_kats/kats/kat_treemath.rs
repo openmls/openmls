@@ -152,13 +152,25 @@ fn read_test_vectors() {
 }
 
 #[cfg(any(feature = "test-utils", test))]
-implement_error! {
-    pub enum TmTestVectorError {
-        TreeSizeMismatch = "The computed tree size doesn't match the one in the test vector.",
-        RootIndexMismatch = "The computed root index doesn't match the one in the test vector.",
-        LeftIndexMismatch = "A computed left child index doesn't match the one in the test vector.",
-        RightIndexMismatch = "A computed right child index doesn't match the one in the test vector.",
-        ParentIndexMismatch = "A computed parent index doesn't match the one in the test vector.",
-        SiblingIndexMismatch = "A computed sibling index doesn't match the one in the test vector.",
-    }
+/// TreeMath test vector error
+#[derive(Error, Debug, PartialEq, Clone)]
+pub enum TmTestVectorError {
+    /// The computed tree size doesn't match the one in the test vector.
+    #[error("The computed tree size doesn't match the one in the test vector.")]
+    TreeSizeMismatch,
+    /// The computed root index doesn't match the one in the test vector.
+    #[error("The computed root index doesn't match the one in the test vector.")]
+    RootIndexMismatch,
+    /// A computed left child index doesn't match the one in the test vector.
+    #[error("A computed left child index doesn't match the one in the test vector.")]
+    LeftIndexMismatch,
+    /// A computed right child index doesn't match the one in the test vector.
+    #[error("A computed right child index doesn't match the one in the test vector.")]
+    RightIndexMismatch,
+    /// A computed parent index doesn't match the one in the test vector.
+    #[error("A computed parent index doesn't match the one in the test vector.")]
+    ParentIndexMismatch,
+    /// A computed sibling index doesn't match the one in the test vector.
+    #[error("A computed sibling index doesn't match the one in the test vector.")]
+    SiblingIndexMismatch,
 }

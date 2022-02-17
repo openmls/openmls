@@ -19,7 +19,6 @@ use tls_codec::*;
 // Crate
 pub(crate) mod core_group;
 pub(crate) use core_group::*;
-pub(crate) use errors::{CoreGroupError, CreateCommitError, ExporterError, WelcomeError};
 #[cfg(not(any(feature = "test-utils", test)))]
 pub(crate) use group_context::*;
 

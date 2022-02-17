@@ -43,7 +43,7 @@ use crate::{
 
 use self::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
-    node::{leaf_node::LeafNode, Node, NodeError},
+    node::{leaf_node::LeafNode, Node},
     treesync_node::{TreeSyncNode, TreeSyncNodeError},
 };
 

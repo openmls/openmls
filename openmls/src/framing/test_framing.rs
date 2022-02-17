@@ -17,7 +17,7 @@ use crate::{
             create_commit_params::CreateCommitParams,
             proposals::{ProposalStore, QueuedProposal},
         },
-        errors::StageCommitError,
+        errors::*,
         tests::tree_printing::print_tree,
     },
     key_packages::KeyPackageBundle,
@@ -583,9 +583,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let received_message = group_charlie.decrypt(&enc_message, backend, configuration);
     assert_eq!(
         received_message.unwrap_err(),
-        CoreGroupError::MlsCiphertextError(MessageDecryptionError::SenderError(
-            SenderError::UnknownSender
-        ))
+        MessageDecryptionError::SenderError(SenderError::UnknownSender)
     );
 }
 

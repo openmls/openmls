@@ -3,9 +3,7 @@
 //! `MlsPlaintextError` and `MlsCiphertextError` are thrown on errors
 //! handling `MlsPlaintext` and `MlsCiphertext`.
 
-use crate::{
-    credentials::CredentialError, error::LibraryError, tree::secret_tree::SecretTreeError,
-};
+use crate::{error::LibraryError, tree::secret_tree::SecretTreeError};
 use thiserror::Error;
 
 // === Public ===
@@ -13,18 +11,25 @@ use thiserror::Error;
 /// Message decryption error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum MessageDecryptionError {
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// Couldn't find a ratcheting secret for the given sender and generation.
     #[error("Couldn't find a ratcheting secret for the given sender and generation.")]
     GenerationOutOfBound,
-    #[error("An error occurred while decrypting.")]
+    /// An error occurred during AEAD decryption.
+    #[error("An error occurred during AEAD decryption.")]
     AeadError,
-    #[error("The WireFormat was MLSPlaintext.")]
+    /// The WireFormat was not MLSCiphertext.
+    #[error("The WireFormat was not MLSCiphertext.")]
     WrongWireFormat,
+    /// The content is malformed.
     #[error("The content is malformed.")]
     MalformedContent,
+    /// See [`SecretTreeError`] for more details.
     #[error(transparent)]
     SecretTreeError(#[from] SecretTreeError),
+    /// See [`SenderError`] for more details.
     #[error(transparent)]
     SenderError(#[from] SenderError),
 }
@@ -32,12 +37,16 @@ pub enum MessageDecryptionError {
 /// Message encryption error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub(crate) enum MessageEncryptionError {
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// The WireFormat was not MLSCiphertext.
     #[error("The WireFormat was not MLSCiphertext.")]
     WrongWireFormat,
+    /// See [`SecretTreeError`] for more details.
     #[error(transparent)]
     SecretTreeError(#[from] SecretTreeError),
+    /// See [`SenderError`] for more details.
     #[error(transparent)]
     SenderError(#[from] SenderError),
 }
@@ -45,60 +54,24 @@ pub(crate) enum MessageEncryptionError {
 /// Sender error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum SenderError {
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// The requested client is not a member of the group.
     #[error("The requested client is not a member of the group.")]
     NotAMember,
+    /// Unknown sender
     #[error("Unknown sender")]
     UnknownSender,
-}
-
-/// Verification error
-#[derive(Error, Debug, PartialEq, Clone)]
-pub enum VerificationError {
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
-    #[error("The MlsPlaintext membership tag is missing")]
-    MissingMembershipTag,
-    #[error("The MlsPlaintext membership tag is invalid")]
-    InvalidMembershipTag,
-    #[error(transparent)]
-    CredentialError(#[from] CredentialError),
-}
-
-/// Validation error
-#[derive(Error, Debug, PartialEq, Clone)]
-pub enum ValidationError {
-    #[error(transparent)]
-    LibraryError(#[from] LibraryError),
-    #[error(
-        "The MlsPlaintext message is not a Commit despite the sender begin of type NewMember."
-    )]
-    NotACommit,
-    #[error("The Commit doesn't have a path despite the sender being of type NewMember.")]
-    NoPath,
-    #[error("The MlsPlaintext contains an application message but was not encrypted.")]
-    UnencryptedApplicationMessage,
-    #[error("Sender is not part of the group.")]
-    UnknownSender,
-    #[error("The confirmation tag is missing.")]
-    MissingConfirmationTag,
-    #[error("Wrong wire format.")]
-    WrongWireFormat,
-    #[error("Verifying the signature failed.")]
-    InvalidSignature,
-    #[error(transparent)]
-    VerificationError(#[from] VerificationError),
-    /// Could not decrypt the message
-    #[error(transparent)]
-    UnableToDecrypt(#[from] MessageDecryptionError),
 }
 
 /// MlsMessage error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum MlsMessageError {
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// The message could not be decoded.
     #[error("The message could not be decoded.")]
     UnableToDecode,
 }

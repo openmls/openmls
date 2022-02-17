@@ -34,7 +34,10 @@
 //! ProcessedMessage (Application, Proposal, ExternalProposal, Commit, External Commit)
 //! ```
 
-use crate::{schedule::MessageSecrets, tree::index::SecretTreeLeafIndex, treesync::TreeSync};
+use crate::{
+    group::errors::ValidationError, schedule::MessageSecrets, tree::index::SecretTreeLeafIndex,
+    treesync::TreeSync,
+};
 use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 use openmls_traits::OpenMlsCryptoProvider;
 
@@ -97,7 +100,7 @@ impl DecryptedMessage {
                                 None
                             }
                         })
-                        .ok_or(ValidationError::UnknownSender)?
+                        .ok_or(ValidationError::UnknownMember)?
                 }
             };
             let sender_index = SecretTreeLeafIndex(sender_index);
@@ -128,7 +131,7 @@ impl DecryptedMessage {
             && plaintext.wire_format() != WireFormat::MlsCiphertext
             && plaintext.membership_tag().is_none()
         {
-            return Err(VerificationError::MissingMembershipTag.into());
+            return Err(ValidationError::MissingMembershipTag);
         }
         // ValSem009
         if plaintext.content_type() == ContentType::Commit && plaintext.confirmation_tag().is_none()
@@ -171,13 +174,13 @@ impl DecryptedMessage {
                         {
                             match treesync
                                 .leaf(*sender_index)
-                                .map_err(|_| ValidationError::UnknownSender)?
+                                .map_err(|_| ValidationError::UnknownMember)?
                             {
                                 Some(node) => Ok(node.key_package().credential().clone()),
-                                None => Err(ValidationError::UnknownSender),
+                                None => Err(ValidationError::UnknownMember),
                             }
                         } else {
-                            Err(ValidationError::UnknownSender)
+                            Err(ValidationError::UnknownMember)
                         }
                     }
                 }

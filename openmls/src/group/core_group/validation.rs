@@ -7,12 +7,13 @@ use crate::{
     ciphersuite::hash_ref::HashReference,
     framing::Sender,
     group::errors::ExternalCommitValidationError,
+    group::errors::ValidationError,
     messages::{Proposal, ProposalOrRefType, ProposalType},
 };
 
 use super::{
-    proposals::ProposalQueue, ContentType, CoreGroup, CoreGroupError, FramingValidationError,
-    KeyPackage, MlsMessageIn, ProposalValidationError, VerifiableMlsPlaintext, WireFormat,
+    proposals::ProposalQueue, ContentType, CoreGroup, KeyPackage, MlsMessageIn,
+    ProposalValidationError, VerifiableMlsPlaintext, WireFormat,
 };
 
 impl CoreGroup {
@@ -21,10 +22,10 @@ impl CoreGroup {
     /// Checks the following semantic validation:
     ///  - ValSem002
     ///  - ValSem003
-    pub(crate) fn validate_framing(&self, message: &MlsMessageIn) -> Result<(), CoreGroupError> {
+    pub(crate) fn validate_framing(&self, message: &MlsMessageIn) -> Result<(), ValidationError> {
         // ValSem002
         if message.group_id() != self.group_id() {
-            return Err(FramingValidationError::WrongGroupId.into());
+            return Err(ValidationError::WrongGroupId);
         }
 
         // ValSem003: Check boundaries for the epoch
@@ -33,13 +34,13 @@ impl CoreGroup {
             // For application messages we allow messages for older epochs as well
             ContentType::Application => {
                 if message.epoch() > self.context().epoch() {
-                    return Err(FramingValidationError::WrongEpoch.into());
+                    return Err(ValidationError::WrongEpoch);
                 }
             }
             // For all other messages we only only accept the current epoch
             _ => {
                 if message.epoch() != self.context().epoch() {
-                    return Err(FramingValidationError::WrongEpoch.into());
+                    return Err(ValidationError::WrongEpoch);
                 }
             }
         }
@@ -55,7 +56,7 @@ impl CoreGroup {
     pub(crate) fn validate_plaintext(
         &self,
         plaintext: &VerifiableMlsPlaintext,
-    ) -> Result<(), CoreGroupError> {
+    ) -> Result<(), ValidationError> {
         // ValSem004
         let sender = plaintext.sender();
         if let Sender::Member(hash_ref) = sender {
@@ -69,7 +70,7 @@ impl CoreGroup {
             .message_secrets_store
             .epoch_has_leaf(plaintext.epoch(), hash_ref)
             {
-                return Err(FramingValidationError::UnknownMember.into());
+                return Err(ValidationError::UnknownMember);
             }
         }
 
@@ -77,9 +78,9 @@ impl CoreGroup {
         // Application messages must always be encrypted
         if plaintext.content_type() == ContentType::Application {
             if plaintext.wire_format() != WireFormat::MlsCiphertext {
-                return Err(FramingValidationError::UnencryptedApplicationMessage.into());
+                return Err(ValidationError::UnencryptedApplicationMessage);
             } else if !plaintext.sender().is_member() {
-                return Err(FramingValidationError::NonMemberApplicationMessage.into());
+                return Err(ValidationError::NonMemberApplicationMessage);
             }
         }
 
@@ -91,13 +92,13 @@ impl CoreGroup {
             && plaintext.wire_format() != WireFormat::MlsCiphertext
             && plaintext.membership_tag().is_none()
         {
-            return Err(FramingValidationError::MissingMembershipTag.into());
+            return Err(ValidationError::MissingMembershipTag);
         }
 
         // ValSem009
         if plaintext.content_type() == ContentType::Commit && plaintext.confirmation_tag().is_none()
         {
-            return Err(FramingValidationError::MissingConfirmationTag.into());
+            return Err(ValidationError::MissingConfirmationTag);
         }
 
         Ok(())
