@@ -77,7 +77,15 @@ impl LeafNode {
 
     /// Return a reference to the `private_key` corresponding to the
     /// [`KeyPackage`] in this node.
+    #[cfg(not(any(feature = "test-utils", test)))]
     pub(in crate::treesync) fn private_key(&self) -> Option<&HpkePrivateKey> {
+        self.private_key_option.as_ref()
+    }
+
+    /// Return a reference to the `private_key` corresponding to the
+    /// [`KeyPackage`] in this node.
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn private_key(&self) -> Option<&HpkePrivateKey> {
         self.private_key_option.as_ref()
     }
 

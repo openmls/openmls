@@ -166,6 +166,12 @@ impl KeyPackagePayload {
     pub fn exchange_credential(&mut self, credential: Credential) {
         self.credential = credential
     }
+
+    /// Replace the public key in the KeyPackage.
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn exchange_public_key(&mut self, public_key: HpkePublicKey) {
+        self.hpke_init_key = public_key
+    }
 }
 
 /// The key package struct.
@@ -463,6 +469,12 @@ impl KeyPackageBundlePayload {
     #[cfg(any(feature = "test-utils", test))]
     pub fn exchange_credential(&mut self, credential: Credential) {
         self.key_package_payload.exchange_credential(credential)
+    }
+
+    /// Replace the public key in the KeyPackage.
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn exchange_public_key(&mut self, public_key: HpkePublicKey) {
+        self.key_package_payload.exchange_public_key(public_key)
     }
 }
 
