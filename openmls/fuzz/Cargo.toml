@@ -10,6 +10,10 @@ cargo-fuzz = true
 
 [dependencies]
 libfuzzer-sys = "0.3"
+openmls_traits = { path = "../../traits" }
+openmls_rust_crypto = { path = "../../openmls_rust_crypto" }
+openmls_evercrypt = { path = "../../evercrypt_backend" }
+openmls_memory_keystore = { path = "../../memory_keystore" }
 
 [dependencies.openmls]
 path = ".."
@@ -41,9 +45,3 @@ name = "proposal_decode"
 path = "fuzz_targets/proposal_decode.rs"
 test = false
 doc = false
-
-[patch.crates-io]
-openmls_traits = { path = "../../traits" }
-openmls_rust_crypto = { path = "../../openmls_rust_crypto" }
-openmls_evercrypt = { path = "../../evercrypt_backend" }
-openmls_memory_keystore = { path = "../../memory_keystore" }
