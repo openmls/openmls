@@ -32,7 +32,7 @@ fn generate_key_package(
     credential: &Credential,
     extensions: Vec<Extension>,
     crypto_backend: &impl OpenMlsCryptoProvider,
-) -> Result<KeyPackage, KeyPackageError> {
+) -> Result<KeyPackage, KeyPackageBundleNewError> {
     let credential_bundle = crypto_backend
         .key_store()
         .read(
