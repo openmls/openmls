@@ -160,6 +160,12 @@ impl KeyPackagePayload {
         self.remove_extension(extension.extension_type());
         self.extensions.push(extension);
     }
+
+    /// Replace the credential in the KeyPackage.
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn exchange_credential(&mut self, credential: Credential) {
+        self.credential = credential
+    }
 }
 
 /// The key package struct.
@@ -455,6 +461,12 @@ impl KeyPackageBundlePayload {
     /// Get a reference to the `leaf_secret`.
     pub(crate) fn leaf_secret(&self) -> &Secret {
         &self.leaf_secret
+    }
+
+    /// Replace the credential in the KeyPackage.
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn exchange_credential(&mut self, credential: Credential) {
+        self.key_package_payload.exchange_credential(credential)
     }
 }
 

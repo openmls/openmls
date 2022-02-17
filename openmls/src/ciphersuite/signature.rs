@@ -115,6 +115,15 @@ impl SignatureKeypair {
             },
         })
     }
+
+    /// Create a [`SignatureKeypair`] from a public and a private key.
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn from_parts(public_key: SignaturePublicKey, private_key: SignaturePrivateKey) -> Self {
+        Self {
+            private_key,
+            public_key,
+        }
+    }
 }
 
 impl SignaturePublicKey {

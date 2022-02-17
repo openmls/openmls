@@ -570,8 +570,8 @@ impl VerifiableMlsPlaintext {
 
     /// Set the epoch.
     #[cfg(test)]
-    pub(crate) fn set_epoch(&mut self, epoch: GroupEpoch) {
-        self.tbs.epoch = epoch;
+    pub(crate) fn set_epoch(&mut self, epoch: u64) {
+        self.tbs.epoch = epoch.into();
     }
 
     /// Get the underlying MlsPlaintext data of the tbs object.
@@ -670,7 +670,7 @@ impl MlsPlaintextTbs {
     pub(crate) fn new(
         wire_format: WireFormat,
         group_id: GroupId,
-        epoch: GroupEpoch,
+        epoch: impl Into<GroupEpoch>,
         sender: Sender,
         authenticated_data: TlsByteVecU32,
         payload: Payload,
@@ -679,7 +679,7 @@ impl MlsPlaintextTbs {
             serialized_context: None,
             wire_format,
             group_id,
-            epoch,
+            epoch: epoch.into(),
             sender,
             authenticated_data,
             content_type: payload.content_type,

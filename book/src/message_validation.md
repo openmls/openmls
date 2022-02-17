@@ -28,10 +28,10 @@
 
 | ValidationStep | Description                                                                                 | Implemented    | Tested         | Test File                                             |
 | -------------- | ------------------------------------------------------------------------------------------- | -------------- | -------------- | ----------------------------------------------------- |
-| `ValSem100`    | Add Proposal: Identity in proposals must be unique among proposals                          | ✅             | ❌<sup>2</sup> | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem101`    | Add Proposal: Signature public key in proposals must be unique among proposals              | ✅             | ❌<sup>2</sup> | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem102`    | Add Proposal: HPKE init key in proposals must be unique among proposals                     | ✅             | ❌<sup>2</sup> | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem103`    | Add Proposal: Identity in proposals must be unique among existing group members             | ✅             | ❌<sup>2</sup> | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem100`    | Add Proposal: Identity in proposals must be unique among proposals                          | ✅             | ✅ | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem101`    | Add Proposal: Signature public key in proposals must be unique among proposals              | ✅             | ✅ | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem102`    | Add Proposal: HPKE init key in proposals must be unique among proposals                     | ✅             | ✅ | `openmls/src/group/tests/test_proposal_validation.rs` |
+| `ValSem103`    | Add Proposal: Identity in proposals must be unique among existing group members             | ✅             | ✅ | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem104`    | Add Proposal: Signature public key in proposals must be unique among existing group members | ✅             | ❌<sup>2</sup> | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem105`    | Add Proposal: HPKE init key in proposals must be unique among existing group members        | ✅             | ❌<sup>2</sup> | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem106`    | Add Proposal: required capabilities                                                         | ❌<sup>1</sup> | ❌             | TBD                                                   |
