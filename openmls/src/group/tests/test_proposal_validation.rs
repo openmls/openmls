@@ -275,8 +275,9 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         }
     }
 
-    // Before we can test reception of (invalid) proposals, we set up a new
-    // group with Alice and Bob.
+    // We now test if ValSem100 is also performed when a client receives a
+    // commit.  Before we can test reception of (invalid) proposals, we set up a
+    // new group with Alice and Bob.
     let ProposalValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -423,8 +424,9 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         }
     }
 
-    // Before we can test reception of (invalid) proposals, we set up a new
-    // group with Alice and Bob.
+    // We now test if ValSem101 is also performed when a client receives a
+    // commit.  Before we can test reception of (invalid) proposals, we set up a
+    // new group with Alice and Bob.
     let ProposalValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -582,8 +584,9 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         }
     }
 
-    // Before we can test reception of (invalid) proposals, we set up a new
-    // group with Alice and Bob.
+    // We now test if ValSem102 is also performed when a client receives a
+    // commit.  Before we can test reception of (invalid) proposals, we set up a
+    // new group with Alice and Bob.
     let ProposalValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -704,8 +707,9 @@ fn test_valsem103(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         }
     }
 
-    // Before we can test reception of (invalid) proposals, we set up a new
-    // group with Alice and Bob.
+    // We now test if ValSem103 is also performed when a client receives a
+    // commit. Before we can test reception of (invalid) proposals, we set up a
+    // new group with Alice and Bob.
     let ProposalValidationTestSetup {
         mut alice_group,
         mut bob_group,
