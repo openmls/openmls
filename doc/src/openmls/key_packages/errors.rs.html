@@ -40,6 +40,19 @@
 <span id="39">39</span>
 <span id="40">40</span>
 <span id="41">41</span>
+<span id="42">42</span>
+<span id="43">43</span>
+<span id="44">44</span>
+<span id="45">45</span>
+<span id="46">46</span>
+<span id="47">47</span>
+<span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
+<span id="51">51</span>
+<span id="52">52</span>
+<span id="53">53</span>
+<span id="54">54</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Package errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `KeyPackageError` are thrown on errors handling `KeyPackage`s and</span>
@@ -54,30 +67,43 @@
 <span class="doccomment">/// KeyPackage error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KeyPackageError</span> {
+    <span class="doccomment">/// A mandatory extension is missing in the key package.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;A mandatory extension is missing in the key package.&quot;</span>)]</span>
     <span class="ident">MandatoryExtensionsMissing</span>,
+    <span class="doccomment">/// The lifetime extension of the key package is not valid.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The lifetime extension of the key package is not valid.&quot;</span>)]</span>
     <span class="ident">InvalidLifetimeExtension</span>,
+    <span class="doccomment">/// The key package signature is not valid.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The key package signature is not valid.&quot;</span>)]</span>
     <span class="ident">InvalidSignature</span>,
+    <span class="doccomment">/// Duplicate extensions are not allowed.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Duplicate extensions are not allowed.&quot;</span>)]</span>
     <span class="ident">DuplicateExtension</span>,
+    <span class="doccomment">/// The key package does not support all required extensions.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The key package does not support all required extensions.&quot;</span>)]</span>
     <span class="ident">UnsupportedExtension</span>,
+    <span class="doccomment">/// Creating a new key package requires at least one ciphersuite.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Creating a new key package requires at least one ciphersuite.&quot;</span>)]</span>
     <span class="ident">NoCiphersuitesSupplied</span>,
+    <span class="doccomment">/// The list of ciphersuites is not consistent with the capabilities extension.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The list of ciphersuites is not consistent with the capabilities extension.&quot;</span>)]</span>
     <span class="ident">CiphersuiteMismatch</span>,
+    <span class="doccomment">/// The ciphersuite does not match the signature scheme.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The ciphersuite does not match the signature scheme.&quot;</span>)]</span>
     <span class="ident">CiphersuiteSignatureSchemeMismatch</span>,
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// See [`ExtensionError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">ExtensionError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ExtensionError</span>),
+    <span class="doccomment">/// See [`CredentialError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">CredentialError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CredentialError</span>),
+    <span class="doccomment">/// See [`TlsCodecError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">CodecError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TlsCodecError</span>),
+    <span class="doccomment">/// See [`CryptoError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">CryptoError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CryptoError</span>),
 }

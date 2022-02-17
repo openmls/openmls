@@ -843,6 +843,7 @@
 <span id="842">842</span>
 <span id="843">843</span>
 <span id="844">844</span>
+<span id="845">845</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MlsPlaintext</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! An MlsPlaintext is a framing structure for MLS messages. It can contain</span>
@@ -872,6 +873,7 @@
         <span class="ident">signable</span>::{<span class="ident">Signable</span>, <span class="ident">SignedStruct</span>, <span class="ident">Verifiable</span>, <span class="ident">VerifiedStruct</span>},
     },
     <span class="ident">error::LibraryError</span>,
+    <span class="ident">group::errors::ValidationError</span>,
 };
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
@@ -1368,7 +1370,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">membership_key</span>: <span class="kw-2">&amp;</span><span class="ident">MembershipKey</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">VerificationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ValidationError</span><span class="op">&gt;</span> {
         <span class="macro">log::debug!</span>(<span class="string">&quot;Verifying membership tag.&quot;</span>);
         <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;  Membership key: {:x?}&quot;</span>, <span class="ident">membership_key</span>);
         <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;  Serialized context: {:x?}&quot;</span>, <span class="ident">serialized_context</span>);
@@ -1384,10 +1386,10 @@
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">membership_tag</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">membership_tag</span> {
             <span class="comment">// TODO #133: make this a constant-time comparison</span>
             <span class="kw">if</span> <span class="ident">membership_tag</span> <span class="op">!</span><span class="op">=</span> <span class="ident">expected_membership_tag</span> {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">VerificationError::InvalidMembershipTag</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ValidationError::InvalidMembershipTag</span>);
             }
         } <span class="kw">else</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">VerificationError::MissingMembershipTag</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ValidationError::MissingMembershipTag</span>);
         }
         <span class="prelude-val">Ok</span>(())
     }

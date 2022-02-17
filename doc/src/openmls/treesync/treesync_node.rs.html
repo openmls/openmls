@@ -163,7 +163,6 @@
 <span id="162">162</span>
 <span id="163">163</span>
 <span id="164">164</span>
-<span id="165">165</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the [`TreeSyncNode`] struct and its implementation.</span>
 
 <span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
@@ -178,10 +177,7 @@
     <span class="ident">treesync::hashes</span>::{<span class="ident">LeafNodeHashInput</span>, <span class="ident">ParentNodeTreeHashInput</span>},
 };
 
-<span class="kw">use</span> <span class="kw">super</span>::{
-    <span class="ident">node</span>::{<span class="ident">leaf_node::LeafNode</span>, <span class="ident">NodeError</span>},
-    <span class="ident">Node</span>,
-};
+<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">errors::NodeError</span>, <span class="ident">node::leaf_node::LeafNode</span>, <span class="ident">Node</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Default</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
@@ -317,9 +313,11 @@
 
 <span class="doccomment">/// Binary Tree error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TreeSyncNodeError</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">TreeSyncNodeError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// See [`NodeError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">NodeType</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">NodeError</span>),
 }

@@ -652,6 +652,15 @@
 <span id="651">651</span>
 <span id="652">652</span>
 <span id="653">653</span>
+<span id="654">654</span>
+<span id="655">655</span>
+<span id="656">656</span>
+<span id="657">657</span>
+<span id="658">658</span>
+<span id="659">659</span>
+<span id="660">660</span>
+<span id="661">661</span>
+<span id="662">662</span>
 </pre><pre class="rust"><code><span class="doccomment">//! An implementation of a diff functionality for the [`ABinaryTree`] struct.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -1274,34 +1283,43 @@
 
 <span class="doccomment">/// Binary Tree Diff error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ABinaryTreeDiffError</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">ABinaryTreeDiffError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// Can&#39;t compute the copath node of the subtree root of a single leaf.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Can&#39;t compute the copath node of the subtree root of a single leaf.&quot;</span>)]</span>
     <span class="ident">SameLeafError</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The given leaf index is not within the tree.&quot;</span>)]</span>
-    <span class="ident">OutOfBounds</span>,
+    <span class="doccomment">/// Maximum tree size reached.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Maximum tree size reached.&quot;</span>)]</span>
     <span class="ident">TreeTooLarge</span>,
+    <span class="doccomment">/// Minimum tree size reached.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Minimum tree size reached.&quot;</span>)]</span>
     <span class="ident">TreeTooSmall</span>,
+    <span class="doccomment">/// The given path index is not the same length as the direct path.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The given path index is not the same length as the direct path.&quot;</span>)]</span>
     <span class="ident">PathLengthMismatch</span>,
+    <span class="doccomment">/// Error while executing folding function.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Error while executing folding function.&quot;</span>)]</span>
     <span class="ident">FoldingError</span>,
+    <span class="doccomment">/// See [`ABinaryTreeError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">ABinaryTreeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ABinaryTreeError</span>),
+    <span class="doccomment">/// See [`TreeMathError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">TreeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TreeMathError</span>),
+    <span class="doccomment">/// See [`OutOfBoundsError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">IndexOutOfBounds</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">OutOfBoundsError</span>),
 }
 
 <span class="doccomment">/// Error type for functions that only throw OutOfBounds errors.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">OutOfBoundsError</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">OutOfBoundsError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// The given index is not within the bounds of the tree.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The given index is not within the bounds of the tree.&quot;</span>)]</span>
     <span class="ident">IndexOutOfBounds</span>,
 }

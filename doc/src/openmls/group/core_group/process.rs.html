@@ -238,9 +238,13 @@
 <span id="237">237</span>
 <span id="238">238</span>
 <span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">core_group</span>::{<span class="ident">proposals::QueuedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::mls_group::errors::UnverifiedMessageError</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group</span>::{<span class="ident">errors::ValidationError</span>, <span class="ident">mls_group::errors::UnverifiedMessageError</span>};
 
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">proposals::ProposalStore</span>, <span class="kw-2">*</span>};
 
@@ -263,7 +267,7 @@
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">message</span>: <span class="ident">MlsMessageIn</span>,
         <span class="ident">sender_ratchet_configuration</span>: <span class="kw-2">&amp;</span><span class="ident">SenderRatchetConfiguration</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnverifiedMessage</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnverifiedMessage</span>, <span class="ident">ValidationError</span><span class="op">&gt;</span> {
         <span class="comment">// Checks the following semantic validation:</span>
         <span class="comment">//  - ValSem002</span>
         <span class="comment">//  - ValSem003</span>
@@ -448,21 +452,25 @@
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">staged_commit</span>: <span class="ident">StagedCommit</span>,
         <span class="ident">proposal_store</span>: <span class="kw-2">&amp;mut</span> <span class="ident">ProposalStore</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="comment">// Save the past epoch</span>
         <span class="kw">let</span> <span class="ident">past_epoch</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">context</span>().<span class="ident">epoch</span>();
         <span class="comment">// We may need to keep a mapping from key package references to indices.</span>
-        <span class="kw">let</span> <span class="ident">leaves</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">full_leaves</span>()<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">leaves</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">treesync</span>()
+            .<span class="ident">full_leaves</span>()
+            <span class="comment">// This should disappear after refactoring TreeSync, fetching the leaves should never fail</span>
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Unexpected error in TreeSync&quot;</span>))<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">my_leaves</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">leaves</span>.<span class="ident">len</span>());
         <span class="kw">for</span> (<span class="kw-2">&amp;</span><span class="ident">i</span>, <span class="kw">_</span>) <span class="kw">in</span> <span class="ident">leaves</span>.<span class="ident">iter</span>() {
             <span class="ident">my_leaves</span>.<span class="ident">push</span>((
                 <span class="ident">i</span>,
                 <span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">leaf_id</span>(<span class="ident">i</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                    <span class="ident">CoreGroupError::LibraryError</span>(<span class="ident">LibraryError::custom</span>(
+                    <span class="ident">LibraryError::custom</span>(
                         <span class="string">&quot;Unable to get the key package reference for a leaf from \
                          tree. This indicates a bug in the library where the tree \
                          isn&#39;t built correctly.&quot;</span>,
-                    ))
+                    )
                 })<span class="question-mark">?</span>,
             ))
         }

@@ -717,6 +717,13 @@
 <span id="716">716</span>
 <span id="717">717</span>
 <span id="718">718</span>
+<span id="719">719</span>
+<span id="720">720</span>
+<span id="721">721</span>
+<span id="722">722</span>
+<span id="723">723</span>
+<span id="724">724</span>
+<span id="725">725</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Functions in this module should never panic. However, if there is a bug in</span>
@@ -751,6 +758,8 @@
 <span class="kw">mod</span> <span class="ident">test_past_secrets</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">test_proposals</span>;
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::errors::CreateGroupContextExtProposalError</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite::hash_ref::KeyPackageRef</span>,
@@ -781,10 +790,7 @@
 <span class="kw">use</span> <span class="self">self</span>::{<span class="ident">past_secrets::MessageSecretsStore</span>, <span class="ident">staged_commit::StagedCommit</span>};
 
 <span class="kw">use</span> <span class="kw">super</span>::{
-    <span class="ident">errors</span>::{
-        <span class="ident">CoreGroupError</span>, <span class="ident">CreateAddProposalError</span>, <span class="ident">ExporterError</span>, <span class="ident">FramingValidationError</span>,
-        <span class="ident">ProposalValidationError</span>,
-    },
+    <span class="ident">errors</span>::{<span class="ident">CoreGroupBuildError</span>, <span class="ident">CreateAddProposalError</span>, <span class="ident">ExporterError</span>, <span class="ident">ProposalValidationError</span>},
     <span class="ident">group_context</span>::<span class="kw-2">*</span>,
 };
 
@@ -876,7 +882,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">build</span>(
         <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CoreGroup</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CoreGroup</span>, <span class="ident">CoreGroupBuildError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">key_package_bundle</span>.<span class="ident">key_package</span>().<span class="ident">ciphersuite</span>();
         <span class="kw">let</span> <span class="ident">config</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">unwrap_or_default</span>();
         <span class="kw">let</span> <span class="ident">required_capabilities</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">required_capabilities</span>.<span class="ident">unwrap_or_default</span>();
@@ -886,7 +892,13 @@
         <span class="macro">trace!</span>(<span class="string">&quot; &gt;&gt;&gt; with {:?}, {:?}&quot;</span>, <span class="ident">ciphersuite</span>, <span class="ident">config</span>);
         <span class="kw">let</span> (<span class="ident">tree</span>, <span class="ident">commit_secret</span>) <span class="op">=</span> <span class="ident">TreeSync::new</span>(<span class="ident">backend</span>, <span class="self">self</span>.<span class="ident">key_package_bundle</span>)<span class="question-mark">?</span>;
 
-        <span class="ident">required_capabilities</span>.<span class="ident">check_support</span>()<span class="question-mark">?</span>;
+        <span class="ident">required_capabilities</span>.<span class="ident">check_support</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">e</span> {
+            <span class="ident">ExtensionError::UnsupportedProposalType</span> =&gt; <span class="ident">CoreGroupBuildError::UnsupportedProposalType</span>,
+            <span class="ident">ExtensionError::UnsupportedExtensionType</span> =&gt; {
+                <span class="ident">CoreGroupBuildError::UnsupportedExtensionType</span>
+            }
+            <span class="kw">_</span> =&gt; <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Unexpected ExtensionError&quot;</span>).<span class="ident">into</span>(),
+        })<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">required_capabilities</span> <span class="op">=</span> <span class="kw-2">&amp;</span>[<span class="ident">Extension::RequiredCapabilities</span>(<span class="ident">required_capabilities</span>)];
 
         <span class="kw">let</span> <span class="ident">group_context</span> <span class="op">=</span> <span class="ident">GroupContext::create_initial_group_context</span>(
@@ -901,10 +913,14 @@
         <span class="kw">let</span> <span class="ident">joiner_secret</span> <span class="op">=</span> <span class="ident">JoinerSecret::new</span>(
             <span class="ident">backend</span>,
             <span class="ident">commit_secret</span>,
-            <span class="kw-2">&amp;</span><span class="ident">InitSecret::random</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">version</span>)<span class="question-mark">?</span>,
-        )<span class="question-mark">?</span>;
+            <span class="kw-2">&amp;</span><span class="ident">InitSecret::random</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">version</span>)
+                .<span class="ident">map_err</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>)<span class="question-mark">?</span>,
+        )
+        .<span class="ident">map_err</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">serialized_group_context</span> <span class="op">=</span> <span class="ident">group_context</span>.<span class="ident">tls_serialize_detached</span>()<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">serialized_group_context</span> <span class="op">=</span> <span class="ident">group_context</span>
+            .<span class="ident">tls_serialize_detached</span>()
+            .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Prepare the PskSecret</span>
         <span class="kw">let</span> <span class="ident">psk_secret</span> <span class="op">=</span> <span class="ident">PskSecret::new</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">psk_ids</span>)<span class="question-mark">?</span>;
@@ -998,7 +1014,7 @@
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">key_package</span>: <span class="ident">KeyPackage</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">update_proposal</span> <span class="op">=</span> <span class="ident">UpdateProposal</span> { <span class="ident">key_package</span> };
         <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="ident">Proposal::Update</span>(<span class="ident">update_proposal</span>);
         <span class="ident">MlsPlaintext::member_proposal</span>(
@@ -1011,7 +1027,6 @@
             <span class="self">self</span>.<span class="ident">message_secrets</span>().<span class="ident">membership_key</span>(),
             <span class="ident">backend</span>,
         )
-        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">into</span>())
     }
 
     <span class="comment">// 11.1.3. Remove</span>
@@ -1051,7 +1066,7 @@
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">psk</span>: <span class="ident">PreSharedKeyId</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">presharedkey_proposal</span> <span class="op">=</span> <span class="ident">PreSharedKeyProposal::new</span>(<span class="ident">psk</span>);
         <span class="kw">let</span> <span class="ident">proposal</span> <span class="op">=</span> <span class="ident">Proposal::PreSharedKey</span>(<span class="ident">presharedkey_proposal</span>);
         <span class="ident">MlsPlaintext::member_proposal</span>(
@@ -1064,7 +1079,6 @@
             <span class="self">self</span>.<span class="ident">message_secrets</span>().<span class="ident">membership_key</span>(),
             <span class="ident">backend</span>,
         )
-        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">into</span>())
     }
 
     <span class="doccomment">/// Create a `GroupContextExtensions` proposal.</span>
@@ -1075,8 +1089,9 @@
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
         <span class="ident">extensions</span>: <span class="kw-2">&amp;</span>[<span class="ident">Extension</span>],
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsPlaintext</span>, <span class="ident">CreateGroupContextExtProposalError</span><span class="op">&gt;</span> {
         <span class="comment">// Ensure that the group supports all the extensions that are wanted.</span>
+
         <span class="kw">let</span> <span class="ident">required_extension</span> <span class="op">=</span> <span class="ident">extensions</span>
             .<span class="ident">iter</span>()
             .<span class="ident">find</span>(<span class="op">|</span><span class="ident">extension</span><span class="op">|</span> <span class="ident">extension</span>.<span class="ident">extension_type</span>() <span class="op">==</span> <span class="ident">ExtensionType::RequiredCapabilities</span>);
@@ -1085,7 +1100,8 @@
             <span class="comment">// Ensure we support all the capabilities.</span>
             <span class="ident">required_capabilities</span>.<span class="ident">check_support</span>()<span class="question-mark">?</span>;
             <span class="self">self</span>.<span class="ident">treesync</span>()
-                .<span class="ident">own_leaf_node</span>()<span class="question-mark">?</span>
+                .<span class="ident">own_leaf_node</span>()
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected own leaf&quot;</span>))<span class="question-mark">?</span>
                 .<span class="ident">key_package</span>()
                 .<span class="ident">validate_required_capabilities</span>(<span class="ident">required_capabilities</span>)<span class="question-mark">?</span>;
             <span class="comment">// Ensure that all other key packages support all the required</span>
@@ -1160,7 +1176,7 @@
         <span class="ident">mls_ciphertext</span>: <span class="kw-2">&amp;</span><span class="ident">MlsCiphertext</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">sender_ratchet_configuration</span>: <span class="kw-2">&amp;</span><span class="ident">SenderRatchetConfiguration</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">VerifiableMlsPlaintext</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">VerifiableMlsPlaintext</span>, <span class="ident">MessageDecryptionError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ciphersuite</span>();
         <span class="kw">let</span> <span class="ident">message_secrets</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">message_secrets_mut</span>(<span class="ident">mls_ciphertext</span>.<span class="ident">epoch</span>())
@@ -1173,14 +1189,14 @@
         <span class="kw">let</span> <span class="ident">message_secrets</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">message_secrets_mut</span>(<span class="ident">mls_ciphertext</span>.<span class="ident">epoch</span>())
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">MessageDecryptionError::AeadError</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="ident">mls_ciphertext</span>.<span class="ident">to_plaintext</span>(
+        <span class="ident">mls_ciphertext</span>.<span class="ident">to_plaintext</span>(
             <span class="ident">ciphersuite</span>,
             <span class="ident">backend</span>,
             <span class="ident">message_secrets</span>,
             <span class="ident">sender_index</span>,
             <span class="ident">sender_ratchet_configuration</span>,
             <span class="ident">sender_data</span>,
-        )<span class="question-mark">?</span>)
+        )
     }
 
     <span class="doccomment">/// Exporter</span>
@@ -1288,8 +1304,8 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">sender_index</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">key_package_ref</span>: <span class="kw-2">&amp;</span><span class="ident">KeyPackageRef</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u32</span>, <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
-        <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">leaf_index</span>(<span class="ident">key_package_ref</span>)<span class="question-mark">?</span>)
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u32</span>, <span class="ident">TreeSyncError</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">leaf_index</span>(<span class="ident">key_package_ref</span>)
     }
 
     <span class="doccomment">/// Get the leaf index of this client.</span>
@@ -1344,14 +1360,12 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">message_secrets_and_leaves_mut</span><span class="op">&lt;</span><span class="lifetime">&#39;secret</span>, <span class="lifetime">&#39;group</span>: <span class="lifetime">&#39;secret</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="lifetime">&#39;group</span> <span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;secret</span> <span class="kw-2">mut</span> <span class="ident">MessageSecrets</span>, <span class="ident">IndexedKeyPackageRefs</span>), <span class="ident">CoreGroupError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;secret</span> <span class="kw-2">mut</span> <span class="ident">MessageSecrets</span>, <span class="ident">IndexedKeyPackageRefs</span>), <span class="ident">MessageDecryptionError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">epoch</span> <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">context</span>().<span class="ident">epoch</span>() {
             <span class="self">self</span>.<span class="ident">message_secrets_store</span>
                 .<span class="ident">secrets_and_leaves_for_epoch_mut</span>(<span class="ident">epoch</span>)
                 .<span class="ident">ok_or</span>({
-                    <span class="ident">CoreGroupError::MlsCiphertextError</span>(<span class="ident">MessageDecryptionError::SecretTreeError</span>(
-                        <span class="ident">SecretTreeError::TooDistantInThePast</span>,
-                    ))
+                    <span class="ident">MessageDecryptionError::SecretTreeError</span>(<span class="ident">SecretTreeError::TooDistantInThePast</span>)
                 })
         } <span class="kw">else</span> {
             <span class="comment">// No need for leaves here. The tree of the current epoch is</span>

@@ -199,6 +199,11 @@
 <span id="198">198</span>
 <span id="199">199</span>
 <span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
 </pre><pre class="rust"><code><span class="doccomment">//! A binary tree implementation for use with MLS.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -387,15 +392,20 @@
 
 <span class="doccomment">/// Binary Tree error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ABinaryTreeError</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">ABinaryTreeError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// Adding nodes exceeds the maximum possible size of the tree.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Adding nodes exceeds the maximum possible size of the tree.&quot;</span>)]</span>
     <span class="ident">OutOfRange</span>,
+    <span class="doccomment">/// Not enough nodes to remove.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Not enough nodes to remove.&quot;</span>)]</span>
     <span class="ident">InvalidNumberOfNodes</span>,
+    <span class="doccomment">/// The given index is outside of the tree.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The given index is outside of the tree.&quot;</span>)]</span>
     <span class="ident">OutOfBounds</span>,
+    <span class="doccomment">/// An error occurred while handling a diff.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;An error occurred while handling a diff.&quot;</span>)]</span>
     <span class="ident">ABinaryTreeDiffError</span>,
 }

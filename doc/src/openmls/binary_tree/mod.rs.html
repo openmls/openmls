@@ -44,13 +44,13 @@
 <span class="doccomment">/// representation with a feature-flag.</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type</span> <span class="ident">MlsBinaryTree</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">ABinaryTree</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span>;
 
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::array_representation::diff::OutOfBoundsError</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident"><span class="self">self</span>::array_representation::diff::OutOfBoundsError</span>;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type</span> <span class="ident">MlsBinaryTreeDiff</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Node</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">AbDiff</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Node</span><span class="op">&gt;</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type</span> <span class="ident">StagedMlsBinaryTreeDiff</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">StagedAbDiff</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span>;
 
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">MlsBinaryTreeError</span> <span class="op">=</span> <span class="ident">ABinaryTreeError</span>;
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">MlsBinaryTreeDiffError</span> <span class="op">=</span> <span class="ident">ABinaryTreeDiffError</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type</span> <span class="ident">MlsBinaryTreeError</span> <span class="op">=</span> <span class="ident">ABinaryTreeError</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type</span> <span class="ident">MlsBinaryTreeDiffError</span> <span class="op">=</span> <span class="ident">ABinaryTreeDiffError</span>;
 
 <span class="doccomment">/// Index type to index the leaves in the binary tree</span>
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">LeafIndex</span> <span class="op">=</span> <span class="ident">u32</span>;

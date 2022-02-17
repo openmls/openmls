@@ -57,6 +57,42 @@
 <span id="56">56</span>
 <span id="57">57</span>
 <span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
+<span id="68">68</span>
+<span id="69">69</span>
+<span id="70">70</span>
+<span id="71">71</span>
+<span id="72">72</span>
+<span id="73">73</span>
+<span id="74">74</span>
+<span id="75">75</span>
+<span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
+<span id="88">88</span>
+<span id="89">89</span>
+<span id="90">90</span>
+<span id="91">91</span>
+<span id="92">92</span>
+<span id="93">93</span>
+<span id="94">94</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Key schedule errors.</span>
 
 <span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
@@ -64,56 +100,92 @@
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::LibraryError</span>;
 
+<span class="comment">// === Public ===</span>
+
+<span class="doccomment">/// PSK secret error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PskError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// More than 2^16 PSKs were provided.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;More than 2^16 PSKs were provided.&quot;</span>)]</span>
+    <span class="ident">TooManyKeys</span>,
+    <span class="doccomment">/// The PSK could not be found in the key store.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The PSK could not be found in the key store.&quot;</span>)]</span>
+    <span class="ident">KeyNotFound</span>,
+}
+
+<span class="comment">// === Crate ===</span>
+
 <span class="doccomment">/// Key schedule state error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ErrorState</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">ErrorState</span> {
+    <span class="doccomment">/// Expected to be in initial state.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Expected to be in initial state.&quot;</span>)]</span>
     <span class="ident">Init</span>,
+    <span class="doccomment">/// Expected to be in epoch state.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Expected to be in epoch state.&quot;</span>)]</span>
     <span class="ident">Context</span>,
 }
 
 <span class="doccomment">/// Key schedule error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KeyScheduleError</span> {
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The ciphersuite of the given public group state is not supported.&quot;</span>)]</span>
-    <span class="ident">UnsupportedCiphersuite</span>,
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">KeyScheduleError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// See [`ErrorState`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">InvalidState</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ErrorState</span>),
+    <span class="doccomment">/// See [`CryptoError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">CryptoError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CryptoError</span>),
 }
 
-<span class="doccomment">/// PSK secret error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PskError</span> {
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;More than 2^16 PSKs were provided.&quot;</span>)]</span>
-    <span class="ident">TooManyKeys</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The PSK could not be found in the key store.&quot;</span>)]</span>
-    <span class="ident">KeyNotFound</span>,
-}
-
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="macro">implement_error!</span> {
-    <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KsTestVectorError</span> {
-        <span class="ident">JoinerSecretMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed joiner secret doesn&#39;t match the one in the test vector.&quot;</span>,
-        <span class="ident">WelcomeSecretMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed welcome secret doesn&#39;t match the one in the test vector.&quot;</span>,
-        <span class="ident">InitSecretMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed init secret doesn&#39;t match the one in the test vector.&quot;</span>,
-        <span class="ident">GroupContextMismatch</span> <span class="op">=</span> <span class="string">&quot;The group context doesn&#39;t match the one in the test vector.&quot;</span>,
-        <span class="ident">SenderDataSecretMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed sender data secret doesn&#39;t match the one in the test vector.&quot;</span>,
-        <span class="ident">EncryptionSecretMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed encryption secret doesn&#39;t match the one in the test vector.&quot;</span>,
-        <span class="ident">ExporterSecretMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed exporter secret doesn&#39;t match the one in the test vector.&quot;</span>,
-        <span class="ident">AuthenticationSecretMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed authentication secret doesn&#39;t match the one in the test vector.&quot;</span>,
-        <span class="ident">ExternalSecretMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed external secret doesn&#39;t match the one in the test vector.&quot;</span>,
-        <span class="ident">ConfirmationKeyMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed confirmation key doesn&#39;t match the one in the test vector.&quot;</span>,
-        <span class="ident">MembershipKeyMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed membership key doesn&#39;t match the one in the test vector.&quot;</span>,
-        <span class="ident">ResumptionSecretMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed resumption secret doesn&#39;t match the one in the test vector.&quot;</span>,
-        <span class="ident">ExternalPubMismatch</span> <span class="op">=</span> <span class="string">&quot;The computed external public key doesn&#39;t match the one in the test vector.&quot;</span>,
-    }
+<span class="doccomment">/// KeySchedule test vector error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KsTestVectorError</span> {
+    <span class="doccomment">/// The computed joiner secret doesn&#39;t match the one in the test vector.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed joiner secret doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
+    <span class="ident">JoinerSecretMismatch</span>,
+    <span class="doccomment">/// The computed welcome secret doesn&#39;t match the one in the test vector.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed welcome secret doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
+    <span class="ident">WelcomeSecretMismatch</span>,
+    <span class="doccomment">/// The computed init secret doesn&#39;t match the one in the test vector.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed init secret doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
+    <span class="ident">InitSecretMismatch</span>,
+    <span class="doccomment">/// The group context doesn&#39;t match the one in the test vector.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The group context doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
+    <span class="ident">GroupContextMismatch</span>,
+    <span class="doccomment">/// The computed sender data secret doesn&#39;t match the one in the test vector.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed sender data secret doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
+    <span class="ident">SenderDataSecretMismatch</span>,
+    <span class="doccomment">/// The computed encryption secret doesn&#39;t match the one in the test vector.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed encryption secret doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
+    <span class="ident">EncryptionSecretMismatch</span>,
+    <span class="doccomment">/// The computed exporter secret doesn&#39;t match the one in the test vector.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed exporter secret doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
+    <span class="ident">ExporterSecretMismatch</span>,
+    <span class="doccomment">/// The computed authentication secret doesn&#39;t match the one in the test vector.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed authentication secret doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
+    <span class="ident">AuthenticationSecretMismatch</span>,
+    <span class="doccomment">/// The computed external secret doesn&#39;t match the one in the test vector.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed external secret doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
+    <span class="ident">ExternalSecretMismatch</span>,
+    <span class="doccomment">/// The computed confirmation key doesn&#39;t match the one in the test vector.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed confirmation key doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
+    <span class="ident">ConfirmationKeyMismatch</span>,
+    <span class="doccomment">/// The computed membership key doesn&#39;t match the one in the test vector.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed membership key doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
+    <span class="ident">MembershipKeyMismatch</span>,
+    <span class="doccomment">/// The computed resumption secret doesn&#39;t match the one in the test vector.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed resumption secret doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
+    <span class="ident">ResumptionSecretMismatch</span>,
+    <span class="doccomment">/// The computed external public key doesn&#39;t match the one in the test vector.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed external public key doesn&#39;t match the one in the test vector.&quot;</span>)]</span>
+    <span class="ident">ExternalPubMismatch</span>,
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div>

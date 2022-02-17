@@ -498,6 +498,7 @@
 <span id="497">497</span>
 <span id="498">498</span>
 <span id="499">499</span>
+<span id="500">500</span>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS messages and message framing.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -906,7 +907,8 @@
 
 <span class="doccomment">/// Path secret error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PathSecretError</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">PathSecretError</span> {
+    <span class="doccomment">/// See [`CryptoError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">DecryptionError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CryptoError</span>),
 }

@@ -346,120 +346,183 @@
 <span id="345">345</span>
 <span id="346">346</span>
 <span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS CoreGroup errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
 <span class="doccomment">//! `CreateCommitError`.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">credentials::CredentialError</span>,
     <span class="ident">error::LibraryError</span>,
     <span class="ident">extensions::errors::ExtensionError</span>,
-    <span class="ident">framing::errors</span>::{<span class="ident">MessageDecryptionError</span>, <span class="ident">SenderError</span>, <span class="ident">ValidationError</span>},
+    <span class="ident">framing::errors</span>::{<span class="ident">MessageDecryptionError</span>, <span class="ident">SenderError</span>},
     <span class="ident">key_packages::KeyPackageError</span>,
     <span class="ident">schedule::PskError</span>,
     <span class="ident">treesync::errors</span>::<span class="kw-2">*</span>,
 };
-<span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
-<span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
 
 <span class="comment">// === Public errors ===</span>
-
-<span class="doccomment">/// CoreGroup error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CoreGroupError</span> {
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Couldn&#39;t find KeyPackageBundle corresponding to own update proposal.&quot;</span>)]</span>
-    <span class="ident">MissingKeyPackageBundle</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;No signature key was found.&quot;</span>)]</span>
-    <span class="ident">NoSignatureKey</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">MlsCiphertextError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MessageDecryptionError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">WelcomeError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">WelcomeError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">ExternalCommitError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ExternalCommitError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">StageCommitError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">StageCommitError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">CreateCommitError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CreateCommitError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">ExporterError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ExporterError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">ProposalQueueError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ProposalQueueError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">CodecError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TlsCodecError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">PskSecretError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">PskError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">CredentialError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CredentialError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">TreeSyncError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TreeSyncError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">TreeSyncDiffError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TreeSyncDiffError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">TreeKemError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TreeKemError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">KeyPackageError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">KeyPackageError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">ExtensionError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ExtensionError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">ValidationError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ValidationError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">FramingValidationError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">FramingValidationError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">ProposalValidationError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ProposalValidationError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">ExternalCommitValidationError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ExternalCommitValidationError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">CryptoError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CryptoError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">SenderError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">SenderError</span>),
-}
 
 <span class="doccomment">/// Welcome error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">WelcomeError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(
-        <span class="string">&quot;Ciphersuites in the Welcome message and the corresponding key package bundle don&#39;t match.&quot;</span>
-    )]</span>
+    <span class="doccomment">/// Ciphersuites in Welcome and key package bundle don&#39;t match.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Ciphersuites in Welcome and key package bundle don&#39;t match.&quot;</span>)]</span>
     <span class="ident">CiphersuiteMismatch</span>,
+    <span class="doccomment">/// No joiner secret found in the Welcome message.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;No joiner secret found in the Welcome message.&quot;</span>)]</span>
     <span class="ident">JoinerSecretNotFound</span>,
+    <span class="doccomment">/// No ratchet tree available to build initial tree after receiving a Welcome message.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;No ratchet tree available to build initial tree after receiving a Welcome message.&quot;</span>)]</span>
     <span class="ident">MissingRatchetTree</span>,
+    <span class="doccomment">/// The computed confirmation tag does not match the expected one.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed confirmation tag does not match the expected one.&quot;</span>)]</span>
     <span class="ident">ConfirmationTagMismatch</span>,
+    <span class="doccomment">/// The signature on the GroupInfo is not valid.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The signature on the GroupInfo is not valid.&quot;</span>)]</span>
     <span class="ident">InvalidGroupInfoSignature</span>,
+    <span class="doccomment">/// Unable to decrypt the GroupInfo.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Unable to decrypt the GroupInfo.&quot;</span>)]</span>
     <span class="ident">GroupInfoDecryptionFailure</span>,
+    <span class="doccomment">/// We don&#39;t support the version of the group we are trying to join.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;We don&#39;t support the version of the group we are trying to join.&quot;</span>)]</span>
     <span class="ident">UnsupportedMlsVersion</span>,
+    <span class="doccomment">/// We don&#39;t support the ciphersuite of the group we are trying to join.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;We don&#39;t support the ciphersuite of the group we are trying to join.&quot;</span>)]</span>
     <span class="ident">UnsupportedCiphersuite</span>,
+    <span class="doccomment">/// We don&#39;t support all capabilities of the group.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;We don&#39;t support all capabilities of the group.&quot;</span>)]</span>
     <span class="ident">UnsupportedCapability</span>,
+    <span class="doccomment">/// Sender not found in tree.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Sender not found in tree.&quot;</span>)]</span>
     <span class="ident">UnknownSender</span>,
+    <span class="doccomment">/// Malformed Welcome message.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Malformed Welcome message.&quot;</span>)]</span>
     <span class="ident">MalformedWelcomeMessage</span>,
+    <span class="doccomment">/// Could not decrypt the Welcome message.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Could not decrypt the Welcome message.&quot;</span>)]</span>
     <span class="ident">UnableToDecrypt</span>,
+    <span class="doccomment">/// Unsupported extensions found in the KeyPackage of another member.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Unsupported extensions found in the KeyPackage of another member.&quot;</span>)]</span>
     <span class="ident">UnsupportedExtensions</span>,
+    <span class="doccomment">/// A duplicate ratchet tree was found.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;A duplicate ratchet tree was found.&quot;</span>)]</span>
     <span class="ident">DuplicateRatchetTreeExtension</span>,
+    <span class="doccomment">/// More than 2^16 PSKs were provided.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;More than 2^16 PSKs were provided.&quot;</span>)]</span>
     <span class="ident">PskTooManyKeys</span>,
+    <span class="doccomment">/// The PSK could not be found in the key store.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The PSK could not be found in the key store.&quot;</span>)]</span>
     <span class="ident">PskNotFound</span>,
+    <span class="doccomment">/// No matching KeyPackageBundle was found in the key store.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;No matching KeyPackageBundle was found in the key store.&quot;</span>)]</span>
     <span class="ident">NoMatchingKeyPackageBundle</span>,
+    <span class="doccomment">/// Failed to delete the KeyPackageBundle from the key store.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Failed to delete the KeyPackageBundle from the key store.&quot;</span>)]</span>
     <span class="ident">KeyStoreDeletionError</span>,
     <span class="doccomment">/// This error indicates the public tree is invalid. See [`PublicTreeError`] for more details.</span>
@@ -470,22 +533,31 @@
 <span class="doccomment">/// External Commit error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExternalCommitError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// No ratchet tree available to build initial tree.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;No ratchet tree available to build initial tree.&quot;</span>)]</span>
     <span class="ident">MissingRatchetTree</span>,
+    <span class="doccomment">/// The computed tree hash does not match the one in the GroupInfo.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed tree hash does not match the one in the GroupInfo.&quot;</span>)]</span>
     <span class="ident">TreeHashMismatch</span>,
+    <span class="doccomment">/// We don&#39;t support the version of the group we are trying to join.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;We don&#39;t support the version of the group we are trying to join.&quot;</span>)]</span>
     <span class="ident">UnsupportedMlsVersion</span>,
+    <span class="doccomment">/// We don&#39;t support the ciphersuite of the group we are trying to join.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;We don&#39;t support the ciphersuite of the group we are trying to join.&quot;</span>)]</span>
     <span class="ident">UnsupportedCiphersuite</span>,
+    <span class="doccomment">/// Sender not found in tree.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Sender not found in tree.&quot;</span>)]</span>
     <span class="ident">UnknownSender</span>,
+    <span class="doccomment">/// The signature over the given public group state is invalid.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The signature over the given public group state is invalid.&quot;</span>)]</span>
     <span class="ident">InvalidPublicGroupStateSignature</span>,
+    <span class="doccomment">/// A duplicate ratchet tree was found.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;A duplicate ratchet tree was found.&quot;</span>)]</span>
     <span class="ident">DuplicateRatchetTreeExtension</span>,
+    <span class="doccomment">/// Error creating external commit.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Error creating external commit.&quot;</span>)]</span>
     <span class="ident">CommitError</span>,
     <span class="doccomment">/// This error indicates the public tree is invalid. See [`PublicTreeError`] for more details.</span>
@@ -496,40 +568,58 @@
 <span class="doccomment">/// Stage Commit error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">StageCommitError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// The epoch of the group context and MlsPlaintext didn&#39;t match.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The epoch of the group context and MlsPlaintext didn&#39;t match.&quot;</span>)]</span>
     <span class="ident">EpochMismatch</span>,
+    <span class="doccomment">/// The Commit was created by this client.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The Commit was created by this client.&quot;</span>)]</span>
     <span class="ident">OwnCommit</span>,
+    <span class="doccomment">/// stage_commit was called with an MlsPlaintext that is not a Commit.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;stage_commit was called with an MlsPlaintext that is not a Commit.&quot;</span>)]</span>
     <span class="ident">WrongPlaintextContentType</span>,
+    <span class="doccomment">/// Unable to verify the key package signature.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Unable to verify the key package signature.&quot;</span>)]</span>
     <span class="ident">PathKeyPackageVerificationFailure</span>,
+    <span class="doccomment">/// Unable to determine commit path.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Unable to determine commit path.&quot;</span>)]</span>
     <span class="ident">RequiredPathNotFound</span>,
+    <span class="doccomment">/// The confirmation Tag is missing.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The confirmation Tag is missing.&quot;</span>)]</span>
     <span class="ident">ConfirmationTagMissing</span>,
+    <span class="doccomment">/// The confirmation tag is invalid.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The confirmation tag is invalid.&quot;</span>)]</span>
     <span class="ident">ConfirmationTagMismatch</span>,
+    <span class="doccomment">/// The committer can&#39;t remove themselves.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The committer can&#39;t remove themselves.&quot;</span>)]</span>
     <span class="ident">AttemptedSelfRemoval</span>,
+    <span class="doccomment">/// The proposal queue is missing a proposal for the commit.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The proposal queue is missing a proposal for the commit.&quot;</span>)]</span>
     <span class="ident">MissingProposal</span>,
+    <span class="doccomment">/// Missing own key to apply proposal.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Missing own key to apply proposal.&quot;</span>)]</span>
     <span class="ident">OwnKeyNotFound</span>,
+    <span class="doccomment">/// External Committer used the wrong index.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;External Committer used the wrong index.&quot;</span>)]</span>
     <span class="ident">InconsistentSenderIndex</span>,
+    <span class="doccomment">/// The sender is of type preconfigured, which is not valid.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The sender is of type preconfigured, which is not valid.&quot;</span>)]</span>
     <span class="ident">SenderTypePreconfigured</span>,
+    <span class="doccomment">/// Too many new members: the tree is full.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Too many new members: the tree is full.&quot;</span>)]</span>
     <span class="ident">TooManyNewMembers</span>,
+    <span class="doccomment">/// See [`ProposalValidationError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">ProposalValidationError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ProposalValidationError</span>),
+    <span class="doccomment">/// See [`PskError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">PskError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">PskError</span>),
+    <span class="doccomment">/// See [`ExternalCommitValidationError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">ExternalCommitValidation</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ExternalCommitValidationError</span>),
+    <span class="doccomment">/// See [`ApplyUpdatePathError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">UpdatePathError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ApplyUpdatePathError</span>),
 }
@@ -537,35 +627,176 @@
 <span class="doccomment">/// Create commit error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CreateCommitError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// Missing own key to apply proposal.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Missing own key to apply proposal.&quot;</span>)]</span>
     <span class="ident">OwnKeyNotFound</span>,
+    <span class="doccomment">/// The Commit tried to remove self from the group. This is not possible.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The Commit tried to remove self from the group. This is not possible.&quot;</span>)]</span>
     <span class="ident">CannotRemoveSelf</span>,
+    <span class="doccomment">/// The proposal queue is missing a proposal for the commit.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The proposal queue is missing a proposal for the commit.&quot;</span>)]</span>
     <span class="ident">MissingProposal</span>,
+    <span class="doccomment">/// A proposal has the wrong sender type.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;A proposal has the wrong sender type.&quot;</span>)]</span>
     <span class="ident">WrongProposalSenderType</span>,
+    <span class="doccomment">/// See [`PskError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">PskError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">PskError</span>),
+    <span class="doccomment">/// See [`ProposalValidationError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">ProposalValidationError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ProposalValidationError</span>),
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CreateAddProposalError</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">CreateAddProposalError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// The KeyPackage does not support all required extensions.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The KeyPackage does not support all required extensions.&quot;</span>)]</span>
     <span class="ident">UnsupportedExtensions</span>,
+}
+
+<span class="doccomment">/// Validation error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ValidationError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// Message group ID differs from the group&#39;s group ID.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Message group ID differs from the group&#39;s group ID.&quot;</span>)]</span>
+    <span class="ident">WrongGroupId</span>,
+    <span class="doccomment">/// Message epoch differs from the group&#39;s epoch.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Message epoch differs from the group&#39;s epoch.&quot;</span>)]</span>
+    <span class="ident">WrongEpoch</span>,
+    <span class="doccomment">/// The MlsPlaintext is not a Commit despite the sender begin of type NewMember.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The MlsPlaintext is not a Commit despite the sender begin of type NewMember.&quot;</span>)]</span>
+    <span class="ident">NotACommit</span>,
+    <span class="doccomment">/// The Commit doesn&#39;t have a path despite the sender being of type NewMember.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The Commit doesn&#39;t have a path despite the sender being of type NewMember.&quot;</span>)]</span>
+    <span class="ident">NoPath</span>,
+    <span class="doccomment">/// The MlsPlaintext contains an application message but was not encrypted.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The MlsPlaintext contains an application message but was not encrypted.&quot;</span>)]</span>
+    <span class="ident">UnencryptedApplicationMessage</span>,
+    <span class="doccomment">/// Sender is not part of the group.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Sender is not part of the group.&quot;</span>)]</span>
+    <span class="ident">UnknownMember</span>,
+    <span class="doccomment">/// Membership tag is missing.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Membership tag is missing.&quot;</span>)]</span>
+    <span class="ident">MissingMembershipTag</span>,
+    <span class="doccomment">/// Membership tag is invalid.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Membership tag is invalid.&quot;</span>)]</span>
+    <span class="ident">InvalidMembershipTag</span>,
+    <span class="doccomment">/// The confirmation tag is missing.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The confirmation tag is missing.&quot;</span>)]</span>
+    <span class="ident">MissingConfirmationTag</span>,
+    <span class="doccomment">/// Wrong wire format.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Wrong wire format.&quot;</span>)]</span>
+    <span class="ident">WrongWireFormat</span>,
+    <span class="doccomment">/// Verifying the signature failed.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Verifying the signature failed.&quot;</span>)]</span>
+    <span class="ident">InvalidSignature</span>,
+    <span class="doccomment">/// An application message was sent from an external sender.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;An application message was sent from an external sender.&quot;</span>)]</span>
+    <span class="ident">NonMemberApplicationMessage</span>,
+    <span class="doccomment">/// Could not decrypt the message</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">UnableToDecrypt</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MessageDecryptionError</span>),
+}
+
+<span class="doccomment">/// Proposal validation error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProposalValidationError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// The sender could not be matched to a member of the group.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The sender could not be matched to a member of the group.&quot;</span>)]</span>
+    <span class="ident">UnknownMember</span>,
+    <span class="doccomment">/// Found two add proposals with the same identity.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Found two add proposals with the same identity.&quot;</span>)]</span>
+    <span class="ident">DuplicateIdentityAddProposal</span>,
+    <span class="doccomment">/// Found two add proposals with the same signature key.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Found two add proposals with the same signature key.&quot;</span>)]</span>
+    <span class="ident">DuplicateSignatureKeyAddProposal</span>,
+    <span class="doccomment">/// Found two add proposals with the same HPKE public key.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Found two add proposals with the same HPKE public key.&quot;</span>)]</span>
+    <span class="ident">DuplicatePublicKeyAddProposal</span>,
+    <span class="doccomment">/// Identity of the add proposal already existed in tree.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Identity of the add proposal already existed in tree.&quot;</span>)]</span>
+    <span class="ident">ExistingIdentityAddProposal</span>,
+    <span class="doccomment">/// Signature key of the add proposal already existed in tree.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Signature key of the add proposal already existed in tree.&quot;</span>)]</span>
+    <span class="ident">ExistingSignatureKeyAddProposal</span>,
+    <span class="doccomment">/// HPKE public key of the add proposal already existed in tree.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;HPKE public key of the add proposal already existed in tree.&quot;</span>)]</span>
+    <span class="ident">ExistingPublicKeyAddProposal</span>,
+    <span class="doccomment">/// The identity of the update proposal did not match the existing identity.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The identity of the update proposal did not match the existing identity.&quot;</span>)]</span>
+    <span class="ident">UpdateProposalIdentityMismatch</span>,
+    <span class="doccomment">/// Signature key of the update proposal already existed in tree.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Signature key of the update proposal already existed in tree.&quot;</span>)]</span>
+    <span class="ident">ExistingSignatureKeyUpdateProposal</span>,
+    <span class="doccomment">/// HPKE public key of the update proposal already existed in tree.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;HPKE public key of the update proposal already existed in tree.&quot;</span>)]</span>
+    <span class="ident">ExistingPublicKeyUpdateProposal</span>,
+    <span class="doccomment">/// Duplicate remove proposals for the same member.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Duplicate remove proposals for the same member.&quot;</span>)]</span>
+    <span class="ident">DuplicateMemberRemoval</span>,
+    <span class="doccomment">/// The remove proposal referenced a non-existing member.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The remove proposal referenced a non-existing member.&quot;</span>)]</span>
+    <span class="ident">UnknownMemberRemoval</span>,
+    <span class="doccomment">/// Found an update from a non-member.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Found an update from a non-member.&quot;</span>)]</span>
+    <span class="ident">UpdateFromNonMember</span>,
+    <span class="doccomment">/// The Commit includes update proposals from the committer.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The Commit includes update proposals from the committer.&quot;</span>)]</span>
+    <span class="ident">CommitterIncludedOwnUpdate</span>,
+}
+
+<span class="doccomment">/// External Commit validaton error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExternalCommitValidationError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// No ExternalInit proposal found.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;No ExternalInit proposal found.&quot;</span>)]</span>
+    <span class="ident">NoExternalInitProposals</span>,
+    <span class="doccomment">/// Multiple ExternalInit proposal found.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Multiple ExternalInit proposal found.&quot;</span>)]</span>
+    <span class="ident">MultipleExternalInitProposals</span>,
+    <span class="doccomment">/// Found inline Add or Update proposals.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Found inline Add or Update proposals.&quot;</span>)]</span>
+    <span class="ident">InvalidInlineProposals</span>,
+    <span class="comment">// TODO #803: this seems unused</span>
+    <span class="doccomment">/// Found multiple inline Remove proposals.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Found multiple inline Remove proposals.&quot;</span>)]</span>
+    <span class="ident">MultipleRemoveProposals</span>,
+    <span class="doccomment">/// Remove proposal targets the wrong group member.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Remove proposal targets the wrong group member.&quot;</span>)]</span>
+    <span class="ident">InvalidRemoveProposal</span>,
+    <span class="doccomment">/// Found an ExternalInit proposal among the referenced proposals.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Found an ExternalInit proposal among the referenced proposals.&quot;</span>)]</span>
+    <span class="ident">ReferencedExternalInitProposal</span>,
+    <span class="comment">// TODO #803: this seems unused</span>
+    <span class="doccomment">/// External Commit has to contain a path.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;External Commit has to contain a path.&quot;</span>)]</span>
+    <span class="ident">NoPath</span>,
+    <span class="doccomment">/// The remove proposal referenced a non-existing member.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The remove proposal referenced a non-existing member.&quot;</span>)]</span>
+    <span class="ident">UnknownMemberRemoval</span>,
 }
 
 <span class="comment">// === Crate errors ===</span>
 
 <span class="doccomment">/// Exporter error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExporterError</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">ExporterError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The requested key length is not supported (too large).&quot;</span>)]</span>
@@ -574,11 +805,14 @@
 
 <span class="doccomment">/// Proposal queue error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProposalQueueError</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">ProposalQueueError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// Not all proposals in the Commit were found locally.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Not all proposals in the Commit were found locally.&quot;</span>)]</span>
     <span class="ident">ProposalNotFound</span>,
+    <span class="doccomment">/// See [`SenderError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">SenderError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">SenderError</span>),
 }
@@ -586,11 +820,14 @@
 <span class="doccomment">/// Errors that can arise when creating a [`ProposalQueue`] from committed</span>
 <span class="doccomment">/// proposals.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">FromCommittedProposalsError</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">FromCommittedProposalsError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// Not all proposals in the Commit were found locally.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Not all proposals in the Commit were found locally.&quot;</span>)]</span>
     <span class="ident">ProposalNotFound</span>,
+    <span class="doccomment">/// The sender of a Commit tried to remove themselves.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The sender of a Commit tried to remove themselves.&quot;</span>)]</span>
     <span class="ident">SelfRemoval</span>,
 }
@@ -598,100 +835,67 @@
 <span class="doccomment">/// Creation proposal queue error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">CreationProposalQueueError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// See [`SenderError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">SenderError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">SenderError</span>),
 }
 
-<span class="doccomment">/// Framing validaton error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">FramingValidationError</span> {
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Message group ID differs from the group&#39;s group ID.&quot;</span>)]</span>
-    <span class="ident">WrongGroupId</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Message epoch differs from the group&#39;s epoch.&quot;</span>)]</span>
-    <span class="ident">WrongEpoch</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The sender could not be matched to a member of the group.&quot;</span>)]</span>
-    <span class="ident">UnknownMember</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Application messages must always be encrypted.&quot;</span>)]</span>
-    <span class="ident">UnencryptedApplicationMessage</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;An application message was sent from an external sender.&quot;</span>)]</span>
-    <span class="ident">NonMemberApplicationMessage</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Membership tag is missing.&quot;</span>)]</span>
-    <span class="ident">MissingMembershipTag</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Confirmation tag is missing.&quot;</span>)]</span>
-    <span class="ident">MissingConfirmationTag</span>,
-}
-
-<span class="doccomment">/// Proposal validation error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProposalValidationError</span> {
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The sender could not be matched to a member of the group.&quot;</span>)]</span>
-    <span class="ident">UnknownMember</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Found two add proposals with the same identity.&quot;</span>)]</span>
-    <span class="ident">DuplicateIdentityAddProposal</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Found two add proposals with the same signature key.&quot;</span>)]</span>
-    <span class="ident">DuplicateSignatureKeyAddProposal</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Found two add proposals with the same HPKE public key.&quot;</span>)]</span>
-    <span class="ident">DuplicatePublicKeyAddProposal</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Identity of the add proposal already existed in tree.&quot;</span>)]</span>
-    <span class="ident">ExistingIdentityAddProposal</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Signature key of the add proposal already existed in tree.&quot;</span>)]</span>
-    <span class="ident">ExistingSignatureKeyAddProposal</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;HPKE public key of the add proposal already existed in tree.&quot;</span>)]</span>
-    <span class="ident">ExistingPublicKeyAddProposal</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The identity of the update proposal did not match the existing identity.&quot;</span>)]</span>
-    <span class="ident">UpdateProposalIdentityMismatch</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Signature key of the update proposal already existed in tree.&quot;</span>)]</span>
-    <span class="ident">ExistingSignatureKeyUpdateProposal</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;HPKE public key of the update proposal already existed in tree.&quot;</span>)]</span>
-    <span class="ident">ExistingPublicKeyUpdateProposal</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Duplicate remove proposals for the same member.&quot;</span>)]</span>
-    <span class="ident">DuplicateMemberRemoval</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The remove proposal referenced a non-existing member.&quot;</span>)]</span>
-    <span class="ident">UnknownMemberRemoval</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Found an update from a non-member.&quot;</span>)]</span>
-    <span class="ident">UpdateFromNonMember</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The Commit includes update proposals from the committer.&quot;</span>)]</span>
-    <span class="ident">CommitterIncludedOwnUpdate</span>,
-}
-
-<span class="doccomment">/// External Commit validaton error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ExternalCommitValidationError</span> {
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;No ExternalInit proposal found.&quot;</span>)]</span>
-    <span class="ident">NoExternalInitProposals</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Multiple ExternalInit proposal found.&quot;</span>)]</span>
-    <span class="ident">MultipleExternalInitProposals</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Found inline Add or Update proposals.&quot;</span>)]</span>
-    <span class="ident">InvalidInlineProposals</span>,
-    <span class="comment">// TODO #803: this seems unused</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Found multiple inline Remove proposals.&quot;</span>)]</span>
-    <span class="ident">MultipleRemoveProposals</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Remove proposal targets the wrong group member.&quot;</span>)]</span>
-    <span class="ident">InvalidRemoveProposal</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Found an ExternalInit proposal among the referenced proposals.&quot;</span>)]</span>
-    <span class="ident">ReferencedExternalInitProposal</span>,
-    <span class="comment">// TODO #803: this seems unused</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;External Commit has to contain a path.&quot;</span>)]</span>
-    <span class="ident">NoPath</span>,
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The remove proposal referenced a non-existing member.&quot;</span>)]</span>
-    <span class="ident">UnknownMemberRemoval</span>,
-}
-
 <span class="comment">// Apply proposals error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ApplyProposalsError</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">ApplyProposalsError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// Own KeyPackageBundle was not found in the key store.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Own KeyPackageBundle was not found in the key store.&quot;</span>)]</span>
     <span class="ident">MissingKeyPackageBundle</span>,
+}
+
+<span class="comment">// Core group build error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">CoreGroupBuildError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// Unsupported proposal type in required capabilities.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Unsupported proposal type in required capabilities.&quot;</span>)]</span>
+    <span class="ident">UnsupportedProposalType</span>,
+    <span class="doccomment">/// Unsupported extension type in required capabilities.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Unsupported extension type in required capabilities.&quot;</span>)]</span>
+    <span class="ident">UnsupportedExtensionType</span>,
+    <span class="doccomment">/// See [`PskError`] for more details.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">PskError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">PskError</span>),
+}
+
+<span class="comment">// CoreGroup parse message error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">CoreGroupParseMessageError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="comment">//#[error(transparent)]</span>
+    <span class="comment">//FramingValidationError(#[from] FramingValidationError),</span>
+    <span class="doccomment">/// See [`ValidationError`] for more details.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">ValidationError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ValidationError</span>),
+}
+
+<span class="doccomment">/// Create group context ext proposal error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">CreateGroupContextExtProposalError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// See [`KeyPackageError`] for more details.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">KeyPackage</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">KeyPackageError</span>),
+    <span class="doccomment">/// See [`ExtensionError`] for more details.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">Extension</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ExtensionError</span>),
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div>

@@ -68,9 +68,9 @@
     <span class="comment">// === Application messages ===</span>
 
     <span class="doccomment">/// Creates an application message.</span>
-    <span class="doccomment">/// Returns `MlsGroupError::UseAfterEviction(UseAfterEviction::Error)`</span>
+    <span class="doccomment">/// Returns `CreateMessageError::MlsGroupStateError::UseAfterEviction`</span>
     <span class="doccomment">/// if the member is no longer part of the group.</span>
-    <span class="doccomment">/// Returns `MlsGroupError::PendingProposalsExist` if pending proposals</span>
+    <span class="doccomment">/// Returns `CreateMessageError::MlsGroupStateError::PendingProposal` if pending proposals</span>
     <span class="doccomment">/// exist. In that case `.process_pending_proposals()` must be called first</span>
     <span class="doccomment">/// and incoming messages from the DS must be processed afterwards.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_message</span>(

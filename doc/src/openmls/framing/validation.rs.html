@@ -430,6 +430,9 @@
 <span id="429">429</span>
 <span id="430">430</span>
 <span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ```text</span>
@@ -466,7 +469,10 @@
 <span class="doccomment">//! ProcessedMessage (Application, Proposal, ExternalProposal, Commit, External Commit)</span>
 <span class="doccomment">//! ```</span>
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">schedule::MessageSecrets</span>, <span class="ident">tree::index::SecretTreeLeafIndex</span>, <span class="ident">treesync::TreeSync</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{
+    <span class="ident">group::errors::ValidationError</span>, <span class="ident">schedule::MessageSecrets</span>, <span class="ident">tree::index::SecretTreeLeafIndex</span>,
+    <span class="ident">treesync::TreeSync</span>,
+};
 <span class="kw">use</span> <span class="ident">core_group</span>::{<span class="ident">proposals::QueuedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
 <span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 
@@ -529,7 +535,7 @@
                                 <span class="prelude-val">None</span>
                             }
                         })
-                        .<span class="ident">ok_or</span>(<span class="ident">ValidationError::UnknownSender</span>)<span class="question-mark">?</span>
+                        .<span class="ident">ok_or</span>(<span class="ident">ValidationError::UnknownMember</span>)<span class="question-mark">?</span>
                 }
             };
             <span class="kw">let</span> <span class="ident">sender_index</span> <span class="op">=</span> <span class="ident">SecretTreeLeafIndex</span>(<span class="ident">sender_index</span>);
@@ -560,7 +566,7 @@
             <span class="op">&amp;&amp;</span> <span class="ident">plaintext</span>.<span class="ident">wire_format</span>() <span class="op">!</span><span class="op">=</span> <span class="ident">WireFormat::MlsCiphertext</span>
             <span class="op">&amp;&amp;</span> <span class="ident">plaintext</span>.<span class="ident">membership_tag</span>().<span class="ident">is_none</span>()
         {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">VerificationError::MissingMembershipTag</span>.<span class="ident">into</span>());
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ValidationError::MissingMembershipTag</span>);
         }
         <span class="comment">// ValSem009</span>
         <span class="kw">if</span> <span class="ident">plaintext</span>.<span class="ident">content_type</span>() <span class="op">==</span> <span class="ident">ContentType::Commit</span> <span class="op">&amp;&amp;</span> <span class="ident">plaintext</span>.<span class="ident">confirmation_tag</span>().<span class="ident">is_none</span>()
@@ -603,13 +609,13 @@
                         {
                             <span class="kw">match</span> <span class="ident">treesync</span>
                                 .<span class="ident">leaf</span>(<span class="kw-2">*</span><span class="ident">sender_index</span>)
-                                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ValidationError::UnknownSender</span>)<span class="question-mark">?</span>
+                                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ValidationError::UnknownMember</span>)<span class="question-mark">?</span>
                             {
                                 <span class="prelude-val">Some</span>(<span class="ident">node</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">node</span>.<span class="ident">key_package</span>().<span class="ident">credential</span>().<span class="ident">clone</span>()),
-                                <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">ValidationError::UnknownSender</span>),
+                                <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">ValidationError::UnknownMember</span>),
                             }
                         } <span class="kw">else</span> {
-                            <span class="prelude-val">Err</span>(<span class="ident">ValidationError::UnknownSender</span>)
+                            <span class="prelude-val">Err</span>(<span class="ident">ValidationError::UnknownMember</span>)
                         }
                     }
                 }
