@@ -263,7 +263,7 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let original_message = plaintext.clone();
 
     // Set the epoch too high
-    plaintext.set_epoch(GroupEpoch(100));
+    plaintext.set_epoch(100);
 
     let message_in = MlsMessageIn::from(plaintext.clone());
 
@@ -277,7 +277,7 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     );
 
     // Set the epoch too low
-    plaintext.set_epoch(GroupEpoch(0));
+    plaintext.set_epoch(0);
 
     let message_in = MlsMessageIn::from(plaintext);
 

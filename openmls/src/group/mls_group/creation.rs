@@ -84,7 +84,7 @@ impl MlsGroup {
             .secrets()
             .iter()
             .find_map(|egs| {
-                let hash_ref = egs.new_member.as_slice().to_vec();
+                let hash_ref = egs.new_member().as_slice().to_vec();
                 backend
                     .key_store()
                     .read(&hash_ref)

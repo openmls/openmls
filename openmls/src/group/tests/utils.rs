@@ -246,7 +246,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                                 y.key_package()
                                     .hash_ref(backend.crypto())
                                     .expect("Could not hash KeyPackage.")
-                                    == x.new_member
+                                    == x.new_member()
                             })
                     })
                     .expect("An unexpected error occurred.");
@@ -258,7 +258,7 @@ pub(crate) fn setup(config: TestSetupConfig, backend: &impl OpenMlsCryptoProvide
                         y.key_package()
                             .hash_ref(backend.crypto())
                             .expect("Could not hash KeyPackage.")
-                            == member_secret.new_member
+                            == member_secret.new_member()
                     })
                     .expect("An unexpected error occurred.");
                 let key_package_bundle = new_group_member

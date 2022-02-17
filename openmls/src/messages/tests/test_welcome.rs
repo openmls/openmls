@@ -4,7 +4,7 @@ use crate::{
     ciphersuite::hash_ref::KeyPackageRef,
     ciphersuite::{signable::Signable, AeadKey, AeadNonce, Ciphersuite, Mac, Secret},
     credentials::{CredentialBundle, CredentialType},
-    group::{GroupEpoch, GroupId},
+    group::GroupId,
     messages::{ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload, Welcome},
     versions::ProtocolVersion,
 };
@@ -29,7 +29,7 @@ fn test_welcome_message_with_version(
     // We use this dummy group info in all test cases.
     let group_info = GroupInfoPayload::new(
         GroupId::random(backend),
-        GroupEpoch(123),
+        123,
         vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
         vec![1, 1, 1],
         &Vec::new(),

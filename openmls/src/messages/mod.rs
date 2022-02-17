@@ -77,9 +77,29 @@ pub struct Welcome {
 #[derive(Clone, Debug, PartialEq, TlsDeserialize, TlsSerialize, TlsSize)]
 pub struct EncryptedGroupSecrets {
     /// Key package refrence of the new member
-    pub new_member: KeyPackageRef,
+    new_member: KeyPackageRef,
     /// Ciphertext of the encrypted group secret
-    pub encrypted_group_secrets: HpkeCiphertext,
+    encrypted_group_secrets: HpkeCiphertext,
+}
+
+impl EncryptedGroupSecrets {
+    /// Build a new [`EncryptedGroupSecrets`].
+    pub fn new(new_member: KeyPackageRef, encrypted_group_secrets: HpkeCiphertext) -> Self {
+        Self {
+            new_member,
+            encrypted_group_secrets,
+        }
+    }
+
+    /// Get the encrypted group secrets's new member [`KeyPackageRef`].
+    pub fn new_member(&self) -> KeyPackageRef {
+        self.new_member
+    }
+
+    /// Get a reference to the encrypted group secrets's encrypted group secrets.
+    pub fn encrypted_group_secrets(&self) -> &HpkeCiphertext {
+        &self.encrypted_group_secrets
+    }
 }
 
 impl Welcome {
@@ -177,7 +197,7 @@ impl GroupInfoPayload {
     /// Create a new group info payload struct.
     pub(crate) fn new(
         group_id: GroupId,
-        epoch: GroupEpoch,
+        epoch: impl Into<GroupEpoch>,
         tree_hash: Vec<u8>,
         confirmed_transcript_hash: Vec<u8>,
         group_context_extensions: &[Extension],
@@ -187,7 +207,7 @@ impl GroupInfoPayload {
     ) -> Self {
         Self {
             group_id,
-            epoch,
+            epoch: epoch.into(),
             tree_hash: tree_hash.into(),
             confirmed_transcript_hash: confirmed_transcript_hash.into(),
             group_context_extensions: group_context_extensions.into(),
