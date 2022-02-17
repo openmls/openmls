@@ -178,6 +178,15 @@
 <span id="177">177</span>
 <span id="178">178</span>
 <span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(
@@ -294,6 +303,15 @@
                 <span class="ident">signature_scheme</span>,
             },
         })
+    }
+
+    <span class="doccomment">/// Create a [`SignatureKeypair`] from a public and a private key.</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(<span class="ident">public_key</span>: <span class="ident">SignaturePublicKey</span>, <span class="ident">private_key</span>: <span class="ident">SignaturePrivateKey</span>) -&gt; <span class="self">Self</span> {
+        <span class="self">Self</span> {
+            <span class="ident">private_key</span>,
+            <span class="ident">public_key</span>,
+        }
     }
 }
 
