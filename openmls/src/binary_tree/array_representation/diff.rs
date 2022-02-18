@@ -16,7 +16,7 @@
 //! return a [`Result`] since they may throw a
 //! [`LibraryError`](ABinaryTreeDiffError::LibraryError).
 
-use std::{collections::BTreeMap, convert::TryFrom};
+use std::collections::BTreeMap;
 
 use std::fmt::Debug;
 
@@ -109,15 +109,13 @@ pub(crate) struct AbDiff<'a, T: Clone + Debug> {
     size: TreeSize,
 }
 
-impl<'a, T: Clone + Debug> TryFrom<&'a ABinaryTree<T>> for AbDiff<'a, T> {
-    type Error = ABinaryTreeDiffError;
-
-    fn try_from(tree: &'a ABinaryTree<T>) -> Result<AbDiff<'a, T>, ABinaryTreeDiffError> {
-        Ok(AbDiff {
+impl<'a, T: Clone + Debug> From<&'a ABinaryTree<T>> for AbDiff<'a, T> {
+    fn from(tree: &'a ABinaryTree<T>) -> Self {
+        AbDiff {
             original_tree: tree,
             diff: BTreeMap::new(),
-            size: tree.size()?,
-        })
+            size: tree.size(),
+        }
     }
 }
 
@@ -183,16 +181,12 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     /// Returns references to the leaves of the diff in order from left to
     /// right. This function should not throw an error. However, it might throw
     /// a [`LibraryError`] error if there is a bug in the implementation.
-    pub(crate) fn leaves(&self) -> Result<Vec<NodeId>, LibraryError> {
-        let mut leaf_references = Vec::new();
-        for leaf_index in 0..self.leaf_count() {
-            let node_index = to_node_index(leaf_index);
-            // The node reference must be valid, since it is a valid leaf
-            let node_ref = NodeId::try_from_node_index(self, node_index)
-                .map_err(|_| LibraryError::custom("Expected a valid node reference"))?;
-            leaf_references.push(node_ref);
-        }
-        Ok(leaf_references)
+    pub(crate) fn leaves(&self) -> Vec<NodeId> {
+        (0..self.leaf_count())
+            .map(|index| NodeId {
+                node_index: to_node_index(index),
+            })
+            .collect()
     }
 
     // Functions related to the direct paths of leaves
@@ -536,7 +530,7 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
             return Err(ABinaryTreeDiffError::TreeTooSmall);
         }
         let removed = self.diff.remove(&(self.tree_size() - 1));
-        if self.tree_size() > self.original_tree.size()? {
+        if self.tree_size() > self.original_tree.size() {
             // If the diff extended the tree, there should be a node to remove
             // here.
             debug_assert!(removed.is_some());

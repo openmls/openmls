@@ -337,7 +337,7 @@ impl TreeSync {
     /// This function should not fail and only returns a [`Result`], because it
     /// might throw a [LibraryError](TreeSyncError::LibraryError).
     pub(crate) fn leaf_count(&self) -> Result<LeafIndex, TreeSyncError> {
-        Ok(self.tree.leaf_count()?)
+        Ok(self.tree.leaf_count())
     }
 
     /// Returns a [`BTreeMap`] mapping leaf indices to the corresponding
@@ -349,7 +349,7 @@ impl TreeSync {
     pub(crate) fn full_leaves(&self) -> Result<BTreeMap<LeafIndex, &KeyPackage>, LibraryError> {
         let tsn_leaves: Vec<(usize, &TreeSyncNode)> = self
             .tree
-            .leaves()?
+            .leaves()
             .drain(..)
             .enumerate()
             .filter(|(_, tsn)| tsn.node().is_some())

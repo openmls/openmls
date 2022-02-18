@@ -82,7 +82,7 @@ impl<'a> TryFrom<&'a TreeSync> for TreeSyncDiff<'a> {
 
     fn try_from(tree_sync: &'a TreeSync) -> Result<Self, Self::Error> {
         Ok(TreeSyncDiff {
-            diff: tree_sync.tree.empty_diff()?,
+            diff: tree_sync.tree.empty_diff(),
             own_leaf_index: tree_sync.own_leaf_index,
         })
     }
@@ -145,7 +145,7 @@ impl<'a> TreeSyncDiff<'a> {
     /// there are no blank leaves, the leaf count.
     pub(crate) fn free_leaf_index(&self) -> Result<LeafIndex, LibraryError> {
         // Find a free leaf and fill it with the new key package.
-        let leaf_ids = self.diff.leaves()?;
+        let leaf_ids = self.diff.leaves();
         let mut leaf_index_option = None;
         for (leaf_index, leaf_id) in leaf_ids.iter().enumerate() {
             let leaf_index: LeafIndex = u32::try_from(leaf_index)
