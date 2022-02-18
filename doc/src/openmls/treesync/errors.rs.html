@@ -200,23 +200,10 @@
 <span id="199">199</span>
 <span id="200">200</span>
 <span id="201">201</span>
-<span id="202">202</span>
-<span id="203">203</span>
-<span id="204">204</span>
-<span id="205">205</span>
-<span id="206">206</span>
-<span id="207">207</span>
-<span id="208">208</span>
-<span id="209">209</span>
-<span id="210">210</span>
-<span id="211">211</span>
-<span id="212">212</span>
-<span id="213">213</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">binary_tree::MlsBinaryTreeDiffError</span>, <span class="ident">error::LibraryError</span>};
-<span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
 
 <span class="comment">// === Public errors ===</span>
 
@@ -249,6 +236,7 @@
     <span class="doccomment">/// See [`LibraryError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// The length of the received update path and that of the sender&#39;s direct path do not match.</span>
     <span class="attribute">#[<span class="ident">error</span>(
         <span class="string">&quot;The length of the received update path and that of the sender&#39;s direct path do not match.&quot;</span>
     )]</span>
@@ -370,18 +358,12 @@
     <span class="doccomment">/// See [`MlsBinaryTreeDiffError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">TreeDiffError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsBinaryTreeDiffError</span>),
-    <span class="doccomment">/// See [`CryptoError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">CryptoError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CryptoError</span>),
     <span class="doccomment">/// See [`PathSecretError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">DerivationError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">PathSecretError</span>),
     <span class="doccomment">/// See [`MlsBinaryTreeError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">CreationError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">MlsBinaryTreeError</span>),
-    <span class="doccomment">/// See [`KeyPackageError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">KeyPackageError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">KeyPackageError</span>),
     <span class="doccomment">/// See [`OutOfBoundsError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">UnknownMember</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">OutOfBoundsError</span>),
@@ -403,12 +385,6 @@
     <span class="doccomment">/// See [`PathSecretError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">PathSecretError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">PathSecretError</span>),
-    <span class="doccomment">/// See [`TlsCodecError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">EncodingError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TlsCodecError</span>),
-    <span class="doccomment">/// See [`KeyPackageError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">KeyPackageError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">KeyPackageError</span>),
 }
 
 <span class="doccomment">/// Binary Tree error</span>

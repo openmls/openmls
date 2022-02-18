@@ -826,46 +826,10 @@
 <span id="825">825</span>
 <span id="826">826</span>
 <span id="827">827</span>
-<span id="828">828</span>
-<span id="829">829</span>
-<span id="830">830</span>
-<span id="831">831</span>
-<span id="832">832</span>
-<span id="833">833</span>
-<span id="834">834</span>
-<span id="835">835</span>
-<span id="836">836</span>
-<span id="837">837</span>
-<span id="838">838</span>
-<span id="839">839</span>
-<span id="840">840</span>
-<span id="841">841</span>
-<span id="842">842</span>
-<span id="843">843</span>
-<span id="844">844</span>
-<span id="845">845</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MlsPlaintext</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! An MlsPlaintext is a framing structure for MLS messages. It can contain</span>
 <span class="doccomment">//! Proposals, Commits and application messages.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! There are two different of ways of constructing an [`MlsPlaintext`].</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! An [`MlsPlaintext`] must always contain a valid signature.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## Sending an MlsPlaintext</span>
-<span class="doccomment">//! When creating an MlsPlaintext for sending it can be created through a</span>
-<span class="doccomment">//! [`MlsPlaintext::new_proposal()`], [`MlsPlaintext::new_commit()`], and</span>
-<span class="doccomment">//! [`MlsPlaintext::new_application`].</span>
-<span class="doccomment">//! These plaintexts are signed. Note that proposals and application messages</span>
-<span class="doccomment">//! might need to get a membership tag and commits must get a confirmation tag</span>
-<span class="doccomment">//! in addition.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! ## Receiving an MlsPlaintext</span>
-<span class="doccomment">//! It is not possible to receive an [`MlsPlaintext`] object. Instead, a</span>
-<span class="doccomment">//! [`VerifiableMlsPlaintext`] must be received, which gets transformed into an</span>
-<span class="doccomment">//! [`MlsPlaintext`] by calling `verify` on it. This ensures that all [`MlsPlaintext`]</span>
-<span class="doccomment">//! objects contain a valid signature.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite</span>::{

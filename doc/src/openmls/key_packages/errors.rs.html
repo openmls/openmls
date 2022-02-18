@@ -53,59 +53,85 @@
 <span id="52">52</span>
 <span id="53">53</span>
 <span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
+<span id="65">65</span>
+<span id="66">66</span>
+<span id="67">67</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Package errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `KeyPackageError` are thrown on errors handling `KeyPackage`s and</span>
 <span class="doccomment">//! `KeyPackageBundle`s.</span>
 
-<span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
-<span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">credentials::CredentialError</span>, <span class="ident">error::LibraryError</span>, <span class="ident">extensions::ExtensionError</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">error::LibraryError</span>, <span class="ident">extensions::ExtensionError</span>};
 
-<span class="doccomment">/// KeyPackage error</span>
+<span class="doccomment">/// KeyPackage verify error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KeyPackageError</span> {
-    <span class="doccomment">/// A mandatory extension is missing in the key package.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;A mandatory extension is missing in the key package.&quot;</span>)]</span>
-    <span class="ident">MandatoryExtensionsMissing</span>,
-    <span class="doccomment">/// The lifetime extension of the key package is not valid.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The lifetime extension of the key package is not valid.&quot;</span>)]</span>
-    <span class="ident">InvalidLifetimeExtension</span>,
-    <span class="doccomment">/// The key package signature is not valid.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The key package signature is not valid.&quot;</span>)]</span>
-    <span class="ident">InvalidSignature</span>,
-    <span class="doccomment">/// Duplicate extensions are not allowed.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Duplicate extensions are not allowed.&quot;</span>)]</span>
-    <span class="ident">DuplicateExtension</span>,
-    <span class="doccomment">/// The key package does not support all required extensions.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The key package does not support all required extensions.&quot;</span>)]</span>
-    <span class="ident">UnsupportedExtension</span>,
-    <span class="doccomment">/// Creating a new key package requires at least one ciphersuite.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Creating a new key package requires at least one ciphersuite.&quot;</span>)]</span>
-    <span class="ident">NoCiphersuitesSupplied</span>,
-    <span class="doccomment">/// The list of ciphersuites is not consistent with the capabilities extension.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The list of ciphersuites is not consistent with the capabilities extension.&quot;</span>)]</span>
-    <span class="ident">CiphersuiteMismatch</span>,
-    <span class="doccomment">/// The ciphersuite does not match the signature scheme.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The ciphersuite does not match the signature scheme.&quot;</span>)]</span>
-    <span class="ident">CiphersuiteSignatureSchemeMismatch</span>,
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KeyPackageVerifyError</span> {
     <span class="doccomment">/// See [`LibraryError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// The lifetime extension of the key package is not valid.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The lifetime extension of the key package is not valid.&quot;</span>)]</span>
+    <span class="ident">InvalidLifetimeExtension</span>,
+    <span class="doccomment">/// A mandatory extension is missing in the key package.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;A mandatory extension is missing in the key package.&quot;</span>)]</span>
+    <span class="ident">MandatoryExtensionsMissing</span>,
+    <span class="doccomment">/// The key package signature is not valid.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The key package signature is not valid.&quot;</span>)]</span>
+    <span class="ident">InvalidSignature</span>,
+}
+
+<span class="doccomment">/// KeyPackage extension support error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KeyPackageExtensionSupportError</span> {
+    <span class="doccomment">/// The key package does not support all required extensions.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The key package does not support all required extensions.&quot;</span>)]</span>
+    <span class="ident">UnsupportedExtension</span>,
+}
+
+<span class="doccomment">/// KeyPackage new error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KeyPackageNewError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// The ciphersuite does not match the signature scheme.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The ciphersuite does not match the signature scheme.&quot;</span>)]</span>
+    <span class="ident">CiphersuiteSignatureSchemeMismatch</span>,
+}
+
+<span class="doccomment">/// KeyPackageBundle new error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KeyPackageBundleNewError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// Creating a new key package requires at least one ciphersuite.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Creating a new key package requires at least one ciphersuite.&quot;</span>)]</span>
+    <span class="ident">NoCiphersuitesSupplied</span>,
+    <span class="doccomment">/// The ciphersuite does not match the signature scheme.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The ciphersuite does not match the signature scheme.&quot;</span>)]</span>
+    <span class="ident">CiphersuiteSignatureSchemeMismatch</span>,
+    <span class="doccomment">/// Duplicate extensions are not allowed.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Duplicate extensions are not allowed.&quot;</span>)]</span>
+    <span class="ident">DuplicateExtension</span>,
+    <span class="doccomment">/// The list of ciphersuites is not consistent with the capabilities extension.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The list of ciphersuites is not consistent with the capabilities extension.&quot;</span>)]</span>
+    <span class="ident">CiphersuiteMismatch</span>,
     <span class="doccomment">/// See [`ExtensionError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">ExtensionError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ExtensionError</span>),
-    <span class="doccomment">/// See [`CredentialError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">CredentialError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CredentialError</span>),
-    <span class="doccomment">/// See [`TlsCodecError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">CodecError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">TlsCodecError</span>),
-    <span class="doccomment">/// See [`CryptoError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">CryptoError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">CryptoError</span>),
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="openmls" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div>

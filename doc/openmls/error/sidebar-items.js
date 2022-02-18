@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["OpenMlsError","OpenMLS Error"]],"struct":[["ErrorString","A wrapper struct for an error string. This can be used when no complex error variant is needed."],["LibraryError","Generic error type that indicates unrecoverable errors in the library."]]});
+initSidebarItems({"struct":[["ErrorString","A wrapper struct for an error string. This can be used when no complex error variant is needed."],["LibraryError","Generic error type that indicates unrecoverable errors in the library."]]});

@@ -448,6 +448,9 @@
 <span id="447">447</span>
 <span id="448">448</span>
 <span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS CoreGroup errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
@@ -457,13 +460,15 @@
     <span class="ident">error::LibraryError</span>,
     <span class="ident">extensions::errors::ExtensionError</span>,
     <span class="ident">framing::errors</span>::{<span class="ident">MessageDecryptionError</span>, <span class="ident">SenderError</span>},
-    <span class="ident">key_packages::KeyPackageError</span>,
+    <span class="ident">key_packages::KeyPackageExtensionSupportError</span>,
     <span class="ident">schedule::PskError</span>,
-    <span class="ident">treesync::errors</span>::<span class="kw-2">*</span>,
 };
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
 <span class="comment">// === Public errors ===</span>
+
+<span class="comment">// Re-export errors</span>
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::errors</span>::{<span class="ident">ApplyUpdatePathError</span>, <span class="ident">PublicTreeError</span>};
 
 <span class="doccomment">/// Welcome error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
@@ -650,16 +655,6 @@
     <span class="ident">ProposalValidationError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ProposalValidationError</span>),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">CreateAddProposalError</span> {
-    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// The KeyPackage does not support all required extensions.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The KeyPackage does not support all required extensions.&quot;</span>)]</span>
-    <span class="ident">UnsupportedExtensions</span>,
-}
-
 <span class="doccomment">/// Validation error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ValidationError</span> {
@@ -793,6 +788,17 @@
 
 <span class="comment">// === Crate errors ===</span>
 
+<span class="doccomment">/// Create add proposal error</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">CreateAddProposalError</span> {
+    <span class="doccomment">/// See [`LibraryError`] for more details.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
+    <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
+    <span class="doccomment">/// The KeyPackage does not support all required extensions.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The KeyPackage does not support all required extensions.&quot;</span>)]</span>
+    <span class="ident">UnsupportedExtensions</span>,
+}
+
 <span class="doccomment">/// Exporter error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">ExporterError</span> {
@@ -890,9 +896,9 @@
     <span class="doccomment">/// See [`LibraryError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">LibraryError</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">LibraryError</span>),
-    <span class="doccomment">/// See [`KeyPackageError`] for more details.</span>
+    <span class="doccomment">/// See [`KeyPackageExtensionSupportError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
-    <span class="ident">KeyPackage</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">KeyPackageError</span>),
+    <span class="ident">KeyPackageExtensionSupport</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">KeyPackageExtensionSupportError</span>),
     <span class="doccomment">/// See [`ExtensionError`] for more details.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="ident">transparent</span>)]</span>
     <span class="ident">Extension</span>(<span class="attribute">#[<span class="ident">from</span>]</span> <span class="ident">ExtensionError</span>),

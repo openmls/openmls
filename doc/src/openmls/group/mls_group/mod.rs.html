@@ -403,14 +403,6 @@
 <span id="402">402</span>
 <span id="403">403</span>
 <span id="404">404</span>
-<span id="405">405</span>
-<span id="406">406</span>
-<span id="407">407</span>
-<span id="408">408</span>
-<span id="409">409</span>
-<span id="410">410</span>
-<span id="411">411</span>
-<span id="412">412</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">application</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
 <span class="kw">mod</span> <span class="ident">creation</span>;
@@ -501,9 +493,8 @@
 <span class="doccomment">/// wants to re-join the group, it can either be added by a group member or it</span>
 <span class="doccomment">/// can join via external commit.</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// * [`MlsGroupState:PendingCommit`]: This state is split into two possible</span>
-<span class="doccomment">/// sub-states, one for each</span>
-<span class="doccomment">/// [`CommitType`](crate::group::core_group::create_commit_params::CommitType):</span>
+<span class="doccomment">/// * [`MlsGroupState::PendingCommit`]: This state is split into two possible</span>
+<span class="doccomment">/// sub-states, one for each Commit type:</span>
 <span class="doccomment">/// [`PendingCommitState::Member`] and [`PendingCommitState::Member`]:</span>
 <span class="doccomment">///</span>
 <span class="doccomment">///   * If the client creates a commit for this group, the `PendingCommit` state</span>
@@ -537,7 +528,7 @@
     <span class="ident">Inactive</span>,
 }
 
-<span class="doccomment">/// A `MlsGroup` represents an [CoreGroup] with</span>
+<span class="doccomment">/// A `MlsGroup` represents an CoreGroup with</span>
 <span class="doccomment">/// an easier, high-level API designed to be used in production. The API exposes</span>
 <span class="doccomment">/// high level functions to manage a group by adding/removing members, get the</span>
 <span class="doccomment">/// current member list, etc.</span>
@@ -546,25 +537,18 @@
 <span class="doccomment">/// Delivery Service. Functions that modify the public state of the group will</span>
 <span class="doccomment">/// return a `Vec&lt;MLSMessage&gt;` that can be sent to the Delivery</span>
 <span class="doccomment">/// Service directly. Conversely, incoming messages from the Delivery Service</span>
-<span class="doccomment">/// can be fed into [process_message()](`MlsGroup::process_message()`).</span>
+<span class="doccomment">/// can be fed into [parse_message()](`MlsGroup::parse_message()`).</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// A `MlsGroup` has an internal queue of pending proposals that builds up</span>
 <span class="doccomment">/// as new messages are processed. When creating proposals, those messages are</span>
 <span class="doccomment">/// not automatically appended to this queue, instead they have to be processed</span>
-<span class="doccomment">/// again through [process_message()](`MlsGroup::process_message()`). This</span>
+<span class="doccomment">/// again through [process_message()](`MlsGroup::parse_message()`). This</span>
 <span class="doccomment">/// allows the Delivery Service to reject them (e.g. if they reference the wrong</span>
 <span class="doccomment">/// epoch).</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// If incoming messages or applied operations are semantically or syntactically</span>
 <span class="doccomment">/// incorrect, an error event will be returned with a corresponding error</span>
 <span class="doccomment">/// message and the state of the group will remain unchanged.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// The application policy for the group can be enforced by implementing the</span>
-<span class="doccomment">/// validator callback functions and selectively allowing/ disallowing each</span>
-<span class="doccomment">/// operation (see [`MlsGroupCallbacks`])</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// Changes to the group state are dispatched as events through callback</span>
-<span class="doccomment">/// functions (see [`MlsGroupCallbacks`]).</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// An `MlsGroup` has an internal state variable determining if it is active or</span>
 <span class="doccomment">/// inactive, as well as if it has a pending commit. See [`MlsGroupState`] for</span>
@@ -725,7 +709,7 @@
     }
 
     <span class="doccomment">/// Returns `true` if the internal state has changed and needs to be persisted and</span>
-    <span class="doccomment">/// `false` otherwise. Calling [save()] resets the value to `false`.</span>
+    <span class="doccomment">/// `false` otherwise. Calling [`Self::save()`] resets the value to `false`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">state_changed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">InnerState</span> {
         <span class="self">self</span>.<span class="ident">state_changed</span>
     }

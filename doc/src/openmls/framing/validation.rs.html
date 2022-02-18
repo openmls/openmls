@@ -649,7 +649,7 @@
 
 <span class="doccomment">/// Partially checked and potentially decrypted message.</span>
 <span class="doccomment">/// Use this to inspect the [Credential] of the message sender</span>
-<span class="doccomment">/// and the optional `aad` if the original message was an [MlsCiphertext].</span>
+<span class="doccomment">/// and the optional `aad` if the original message was an MlsCiphertext.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UnverifiedMessage</span> {
     <span class="ident">plaintext</span>: <span class="ident">VerifiableMlsPlaintext</span>,
@@ -696,7 +696,7 @@
     }
 }
 
-<span class="doccomment">/// Contains an [VerifiableMlsPlaintext] and a [Credential] if it is a message</span>
+<span class="doccomment">/// Contains an VerifiableMlsPlaintext and a [Credential] if it is a message</span>
 <span class="doccomment">/// from a `Member` or a `NewMember`.  It sets the serialized group context and</span>
 <span class="doccomment">/// verifies the membership tag for member messages.  It can be converted to a</span>
 <span class="doccomment">/// verified message by verifying the signature, either with the credential or</span>

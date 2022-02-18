@@ -722,8 +722,6 @@
 <span id="721">721</span>
 <span id="722">722</span>
 <span id="723">723</span>
-<span id="724">724</span>
-<span id="725">725</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Functions in this module should never panic. However, if there is a bug in</span>
@@ -981,11 +979,9 @@
         <span class="ident">joiner_key_package</span>
             .<span class="ident">validate_required_capabilities</span>(<span class="self">self</span>.<span class="ident">required_capabilities</span>())
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">e</span> {
-                <span class="ident">KeyPackageError::UnsupportedExtension</span> =&gt; {
+                <span class="ident">KeyPackageExtensionSupportError::UnsupportedExtension</span> =&gt; {
                     <span class="ident">CreateAddProposalError::UnsupportedExtensions</span>
                 }
-                <span class="ident">KeyPackageError::LibraryError</span>(<span class="ident">e</span>) =&gt; <span class="ident">e</span>.<span class="ident">into</span>(),
-                <span class="kw">_</span> =&gt; <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Unexpected KeyPackage error&quot;</span>).<span class="ident">into</span>(),
             })<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">add_proposal</span> <span class="op">=</span> <span class="ident">AddProposal</span> {
             <span class="ident">key_package</span>: <span class="ident">joiner_key_package</span>,

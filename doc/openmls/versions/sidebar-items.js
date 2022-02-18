@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["ProtocolVersion","Protocol Version"]]});
+initSidebarItems({"enum":[["ProtocolVersion","Protocol Version"],["VersionError","Version Error"]]});

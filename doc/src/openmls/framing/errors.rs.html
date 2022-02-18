@@ -76,15 +76,21 @@
 <span id="75">75</span>
 <span id="76">76</span>
 <span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Framing errors.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! `MlsPlaintextError` and `MlsCiphertextError` are thrown on errors</span>
 <span class="doccomment">//! handling `MlsPlaintext` and `MlsCiphertext`.</span>
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">error::LibraryError</span>, <span class="ident">tree::secret_tree::SecretTreeError</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::LibraryError</span>;
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
 <span class="comment">// === Public ===</span>
+
+<span class="comment">// Re-export errors</span>
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree::secret_tree::SecretTreeError</span>;
 
 <span class="doccomment">/// Message decryption error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>

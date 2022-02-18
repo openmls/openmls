@@ -905,17 +905,17 @@
         }
     }
 
-    <span class="doccomment">/// Returns the Add proposals that are covered by the Commit message as in iterator over [StagedAddProposal].</span>
+    <span class="doccomment">/// Returns the Add proposals that are covered by the Commit message as in iterator over [QueuedAddProposal].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_proposals</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">QueuedAddProposal</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">staged_proposal_queue</span>.<span class="ident">add_proposals</span>()
     }
 
-    <span class="doccomment">/// Returns the Remove proposals that are covered by the Commit message as in iterator over [StagedRemoveProposal].</span>
+    <span class="doccomment">/// Returns the Remove proposals that are covered by the Commit message as in iterator over [QueuedRemoveProposal].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_proposals</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">QueuedRemoveProposal</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">staged_proposal_queue</span>.<span class="ident">remove_proposals</span>()
     }
 
-    <span class="doccomment">/// Returns the Update proposals that are covered by the Commit message as in iterator over [StagedUpdateProposal].</span>
+    <span class="doccomment">/// Returns the Update proposals that are covered by the Commit message as in iterator over [QueuedUpdateProposal].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_proposals</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">QueuedUpdateProposal</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">staged_proposal_queue</span>.<span class="ident">update_proposals</span>()
     }
