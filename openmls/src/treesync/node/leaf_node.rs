@@ -9,7 +9,7 @@ use crate::{
 };
 
 /// This struct implements the MLS leaf node and contains a [`KeyPackage`] and
-/// potentially a corresponding [`HpkePrivateKey`].
+/// potentially a corresponding `HpkePrivateKey`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LeafNode {
     key_package_ref: Option<KeyPackageRef>,

@@ -2,24 +2,6 @@
 //!
 //! An MlsPlaintext is a framing structure for MLS messages. It can contain
 //! Proposals, Commits and application messages.
-//!
-//! There are two different of ways of constructing an [`MlsPlaintext`].
-//!
-//! An [`MlsPlaintext`] must always contain a valid signature.
-//!
-//! ## Sending an MlsPlaintext
-//! When creating an MlsPlaintext for sending it can be created through a
-//! [`MlsPlaintext::new_proposal()`], [`MlsPlaintext::new_commit()`], and
-//! [`MlsPlaintext::new_application`].
-//! These plaintexts are signed. Note that proposals and application messages
-//! might need to get a membership tag and commits must get a confirmation tag
-//! in addition.
-//!
-//! ## Receiving an MlsPlaintext
-//! It is not possible to receive an [`MlsPlaintext`] object. Instead, a
-//! [`VerifiableMlsPlaintext`] must be received, which gets transformed into an
-//! [`MlsPlaintext`] by calling `verify` on it. This ensures that all [`MlsPlaintext`]
-//! objects contain a valid signature.
 
 use crate::{
     ciphersuite::{

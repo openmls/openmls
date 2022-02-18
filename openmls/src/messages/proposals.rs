@@ -17,8 +17,7 @@ use openmls_traits::OpenMlsCryptoProvider;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use tls_codec::{
-    Serialize as TlsSerializeTrait, TlsByteVecU16, TlsByteVecU8, TlsDeserialize, TlsSerialize,
-    TlsSize, TlsVecU32,
+    Serialize as TlsSerializeTrait, TlsByteVecU16, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32,
 };
 
 /// ## MLS Proposal Types
@@ -256,7 +255,6 @@ pub struct ReInitProposal {
     pub(crate) extensions: TlsVecU32<Extension>,
 }
 
-/// TODO: #556 Implement ExternalInit
 ///
 /// ``` text
 /// struct {
@@ -283,19 +281,6 @@ impl From<Vec<u8>> for ExternalInitProposal {
             kem_output: kem_output.into(),
         }
     }
-}
-
-/// TODO: This is going away in https://github.com/mlswg/mls-protocol/pull/510
-/// ```text
-/// struct {
-///     opaque key_package_hash<0..255>;
-/// } KeyPackageID
-/// ```
-#[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
-)]
-pub struct KeyPackageId {
-    key_package_hash: TlsByteVecU8,
 }
 
 /// TODO: #291 Implement AppAck

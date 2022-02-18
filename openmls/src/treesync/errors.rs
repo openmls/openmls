@@ -2,7 +2,6 @@ use thiserror::Error;
 
 use super::*;
 use crate::{binary_tree::MlsBinaryTreeDiffError, error::LibraryError};
-use tls_codec::Error as TlsCodecError;
 
 // === Public errors ===
 
@@ -35,6 +34,7 @@ pub enum ApplyUpdatePathError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// The length of the received update path and that of the sender's direct path do not match.
     #[error(
         "The length of the received update path and that of the sender's direct path do not match."
     )]
@@ -156,18 +156,12 @@ pub(crate) enum TreeSyncDiffError {
     /// See [`MlsBinaryTreeDiffError`] for more details.
     #[error(transparent)]
     TreeDiffError(#[from] MlsBinaryTreeDiffError),
-    /// See [`CryptoError`] for more details.
-    #[error(transparent)]
-    CryptoError(#[from] CryptoError),
     /// See [`PathSecretError`] for more details.
     #[error(transparent)]
     DerivationError(#[from] PathSecretError),
     /// See [`MlsBinaryTreeError`] for more details.
     #[error(transparent)]
     CreationError(#[from] MlsBinaryTreeError),
-    /// See [`KeyPackageError`] for more details.
-    #[error(transparent)]
-    KeyPackageError(#[from] KeyPackageError),
     /// See [`OutOfBoundsError`] for more details.
     #[error(transparent)]
     UnknownMember(#[from] OutOfBoundsError),
@@ -189,12 +183,6 @@ pub(crate) enum TreeKemError {
     /// See [`PathSecretError`] for more details.
     #[error(transparent)]
     PathSecretError(#[from] PathSecretError),
-    /// See [`TlsCodecError`] for more details.
-    #[error(transparent)]
-    EncodingError(#[from] TlsCodecError),
-    /// See [`KeyPackageError`] for more details.
-    #[error(transparent)]
-    KeyPackageError(#[from] KeyPackageError),
 }
 
 /// Binary Tree error

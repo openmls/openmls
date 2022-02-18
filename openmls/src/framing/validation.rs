@@ -217,7 +217,7 @@ impl DecryptedMessage {
 
 /// Partially checked and potentially decrypted message.
 /// Use this to inspect the [Credential] of the message sender
-/// and the optional `aad` if the original message was an [MlsCiphertext].
+/// and the optional `aad` if the original message was an MlsCiphertext.
 #[derive(Debug)]
 pub struct UnverifiedMessage {
     plaintext: VerifiableMlsPlaintext,
@@ -264,7 +264,7 @@ impl UnverifiedMessage {
     }
 }
 
-/// Contains an [VerifiableMlsPlaintext] and a [Credential] if it is a message
+/// Contains an VerifiableMlsPlaintext and a [Credential] if it is a message
 /// from a `Member` or a `NewMember`.  It sets the serialized group context and
 /// verifies the membership tag for member messages.  It can be converted to a
 /// verified message by verifying the signature, either with the credential or

@@ -1,8 +1,6 @@
 //! # Message framing
 //!
 //! This module implements framing for MLS messages.
-//!
-//! See [`MlsPlaintext`] and [`MlsCiphertext`] for details.
 
 use crate::ciphersuite::*;
 use crate::credentials::*;
@@ -23,10 +21,10 @@ pub(crate) use ciphertext::*;
 pub(crate) use plaintext::*;
 
 // Crate
-pub(crate) use errors::*;
 pub(crate) use sender::*;
 
 // Public
+pub use errors::*;
 pub use message::*;
 pub use sender::*;
 pub use validation::*;

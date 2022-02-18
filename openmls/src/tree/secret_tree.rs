@@ -27,6 +27,7 @@ pub enum SecretTreeError {
     /// Cannot create decryption secrets from own sender ratchet or encryption secrets from the sender ratchets of other members.
     #[error("Cannot create decryption secrets from own sender ratchet or encryption secrets from the sender ratchets of other members.")]
     RatchetTypeError,
+    /// Ratchet generation has reached `u32::MAX`.
     #[error("Ratchet generation has reached `u32::MAX`.")]
     RatchetTooLong,
     /// An unrecoverable error has occurred due to a bug in the implementation.

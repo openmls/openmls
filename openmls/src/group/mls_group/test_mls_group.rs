@@ -42,7 +42,7 @@ fn generate_key_package_bundle(
     ciphersuites: &[Ciphersuite],
     credential: &Credential,
     extensions: Vec<Extension>,
-) -> Result<KeyPackage, KeyPackageError> {
+) -> Result<KeyPackage, KeyPackageBundleNewError> {
     let credential_bundle = key_store
         .key_store()
         .read(
