@@ -17,14 +17,19 @@ impl MlsGroup {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         key_package_bundle_option: Option<KeyPackageBundle>,
-    ) -> Result<(MlsMessageOut, Option<Welcome>), MlsGroupError> {
+    ) -> Result<(MlsMessageOut, Option<Welcome>), SelfUpdateError> {
         self.is_operational()?;
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
-            .read(&credential.signature_key().tls_serialize_detached()?)
-            .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
+            .read(
+                &credential
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)?,
+            )
+            .ok_or(SelfUpdateError::NoMatchingCredentialBundle)?;
 
         // Create Commit over all proposals. If a `KeyPackageBundle` was passed
         // in, use it to create an update proposal by value. TODO #751
@@ -72,21 +77,30 @@ impl MlsGroup {
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
         key_package_bundle_option: Option<KeyPackageBundle>,
-    ) -> Result<MlsMessageOut, MlsGroupError> {
+    ) -> Result<MlsMessageOut, ProposeSelfUpdateError> {
         self.is_operational()?;
 
         let credential = self.credential()?;
         let credential_bundle: CredentialBundle = backend
             .key_store()
-            .read(&credential.signature_key().tls_serialize_detached()?)
-            .ok_or(MlsGroupError::NoMatchingCredentialBundle)?;
+            .read(
+                &credential
+                    .signature_key()
+                    .tls_serialize_detached()
+                    .map_err(LibraryError::missing_bound_check)?,
+            )
+            .ok_or(ProposeSelfUpdateError::NoMatchingCredentialBundle)?;
 
         let tree = self.group.treesync();
-        let existing_key_package = tree.own_leaf_node()?.key_package();
+        let existing_key_package = tree
+            .own_leaf_node()
+            .map_err(|_| LibraryError::custom("Expected own leaf to exist"))?
+            .key_package();
         let key_package_bundle = match key_package_bundle_option {
             Some(kpb) => kpb,
             None => {
-                KeyPackageBundlePayload::from_rekeyed_key_package(existing_key_package, backend)?
+                KeyPackageBundlePayload::from_rekeyed_key_package(existing_key_package, backend)
+                    .map_err(LibraryError::unexpected_crypto_error)?
                     .sign(backend, &credential_bundle)?
             }
         };

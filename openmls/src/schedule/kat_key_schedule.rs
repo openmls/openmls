@@ -98,7 +98,7 @@ fn generate(
             crypto.rand(),
             Psk::Branch(BranchPsk {
                 psk_group_id: GroupId::random(&crypto),
-                psk_epoch: GroupEpoch(epoch),
+                psk_epoch: epoch.into(),
             }),
         ).expect("An unexpected error occurred.");
         let psk = PskSecret::random(ciphersuite, &crypto);
@@ -139,7 +139,7 @@ fn generate(
 
     let group_context = GroupContext::new(
         GroupId::from_slice(group_id),
-        GroupEpoch(epoch),
+        epoch,
         tree_hash.to_vec(),
         confirmed_transcript_hash.clone(),
         &[], // Extensions
@@ -385,7 +385,7 @@ pub fn run_test_vector(
 
         let group_context = GroupContext::new(
             GroupId::from_slice(&group_id),
-            GroupEpoch(i as u64),
+            i as u64,
             tree_hash.to_vec(),
             confirmed_transcript_hash.clone(),
             &[], // Extensions

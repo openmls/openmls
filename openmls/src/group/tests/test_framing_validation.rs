@@ -9,8 +9,8 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::{
-    ciphersuite::hash_ref::KeyPackageRef, credentials::*, framing::*,
-    group::errors::FramingValidationError, group::*, key_packages::*,
+    ciphersuite::hash_ref::KeyPackageRef, credentials::*, framing::*, group::errors::*, group::*,
+    key_packages::*,
 };
 
 use super::utils::{generate_credential_bundle, generate_key_package_bundle};
@@ -187,9 +187,7 @@ fn test_valsem002(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::FramingValidationError(
-            FramingValidationError::WrongGroupId
-        ))
+        ParseMessageError::ValidationError(ValidationError::WrongGroupId)
     );
 
     // Positive case
@@ -265,7 +263,7 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let original_message = plaintext.clone();
 
     // Set the epoch too high
-    plaintext.set_epoch(GroupEpoch(100));
+    plaintext.set_epoch(100);
 
     let message_in = MlsMessageIn::from(plaintext.clone());
 
@@ -275,13 +273,11 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::FramingValidationError(
-            FramingValidationError::WrongEpoch
-        ))
+        ParseMessageError::ValidationError(ValidationError::WrongEpoch)
     );
 
     // Set the epoch too low
-    plaintext.set_epoch(GroupEpoch(0));
+    plaintext.set_epoch(0);
 
     let message_in = MlsMessageIn::from(plaintext);
 
@@ -291,9 +287,7 @@ fn test_valsem003(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::FramingValidationError(
-            FramingValidationError::WrongEpoch
-        ))
+        ParseMessageError::ValidationError(ValidationError::WrongEpoch)
     );
 
     // Positive case
@@ -342,9 +336,7 @@ fn test_valsem004(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::FramingValidationError(
-            FramingValidationError::UnknownMember
-        ))
+        ParseMessageError::ValidationError(ValidationError::UnknownMember)
     );
 
     // Positive case
@@ -388,9 +380,7 @@ fn test_valsem005(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::ValidationError(
-            ValidationError::UnencryptedApplicationMessage
-        ))
+        ParseMessageError::ValidationError(ValidationError::UnencryptedApplicationMessage)
     );
 
     // Positive case
@@ -451,8 +441,8 @@ fn test_valsem006(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::ValidationError(
-            ValidationError::UnableToDecrypt(MessageDecryptionError::AeadError)
+        ParseMessageError::ValidationError(ValidationError::UnableToDecrypt(
+            MessageDecryptionError::AeadError
         ))
     );
 
@@ -496,9 +486,7 @@ fn test_valsem007(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::ValidationError(
-            ValidationError::VerificationError(VerificationError::MissingMembershipTag)
-        ))
+        ParseMessageError::ValidationError(ValidationError::MissingMembershipTag)
     );
 
     // Positive case
@@ -613,9 +601,7 @@ fn test_valsem009(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::ValidationError(
-            ValidationError::MissingConfirmationTag
-        ))
+        ParseMessageError::ValidationError(ValidationError::MissingConfirmationTag)
     );
 
     // Positive case

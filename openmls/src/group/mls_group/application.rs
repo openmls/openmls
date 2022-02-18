@@ -6,9 +6,9 @@ impl MlsGroup {
     // === Application messages ===
 
     /// Creates an application message.
-    /// Returns `MlsGroupError::UseAfterEviction(UseAfterEviction::Error)`
+    /// Returns `CreateMessageError::MlsGroupStateError::UseAfterEviction`
     /// if the member is no longer part of the group.
-    /// Returns `MlsGroupError::PendingProposalsExist` if pending proposals
+    /// Returns `CreateMessageError::MlsGroupStateError::PendingProposal` if pending proposals
     /// exist. In that case `.process_pending_proposals()` must be called first
     /// and incoming messages from the DS must be processed afterwards.
     pub fn create_message(

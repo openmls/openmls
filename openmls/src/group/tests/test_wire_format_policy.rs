@@ -122,6 +122,6 @@ fn test_wire_policy_negative(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         let err = alice_group
             .parse_message(message.into(), backend)
             .expect_err("An unexpected error occurred.");
-        assert_eq!(err, MlsGroupError::IncompatibleWireFormat);
+        assert_eq!(err, ParseMessageError::IncompatibleWireFormat);
     }
 }

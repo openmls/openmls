@@ -13,7 +13,7 @@ use crate::{
     credentials::*,
     framing::{
         MlsMessageIn, MlsMessageOut, MlsPlaintext, MlsPlaintextContentType, ProcessedMessage,
-        Sender, ValidationError, VerifiableMlsPlaintext,
+        Sender, VerifiableMlsPlaintext,
     },
     group::errors::*,
     group::*,
@@ -274,8 +274,9 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         }
     }
 
-    // Before we can test reception of (invalid) proposals, we set up a new
-    // group with Alice and Bob.
+    // We now test if ValSem100 is also performed when a client receives a
+    // commit.  Before we can test reception of (invalid) proposals, we set up a
+    // new group with Alice and Bob.
     let ProposalValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -422,8 +423,9 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         }
     }
 
-    // Before we can test reception of (invalid) proposals, we set up a new
-    // group with Alice and Bob.
+    // We now test if ValSem101 is also performed when a client receives a
+    // commit.  Before we can test reception of (invalid) proposals, we set up a
+    // new group with Alice and Bob.
     let ProposalValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -581,8 +583,9 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         }
     }
 
-    // Before we can test reception of (invalid) proposals, we set up a new
-    // group with Alice and Bob.
+    // We now test if ValSem102 is also performed when a client receives a
+    // commit.  Before we can test reception of (invalid) proposals, we set up a
+    // new group with Alice and Bob.
     let ProposalValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -703,8 +706,9 @@ fn test_valsem103(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         }
     }
 
-    // Before we can test reception of (invalid) proposals, we set up a new
-    // group with Alice and Bob.
+    // We now test if ValSem103 is also performed when a client receives a
+    // commit. Before we can test reception of (invalid) proposals, we set up a
+    // new group with Alice and Bob.
     let ProposalValidationTestSetup {
         mut alice_group,
         mut bob_group,
@@ -1239,9 +1243,11 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     assert_eq!(
         err,
-        MlsGroupError::CreateCommit(CreateCommitError::ProposalValidationError(
-            ProposalValidationError::UnknownMemberRemoval
-        ))
+        CommitToPendingProposalsError::CreateCommitError(
+            CreateCommitError::ProposalValidationError(
+                ProposalValidationError::UnknownMemberRemoval
+            )
+        )
     );
 
     // Clear commit to try another way of committing a remove of a non-member.
@@ -1389,9 +1395,11 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     assert_eq!(
         err,
-        MlsGroupError::CreateCommit(CreateCommitError::ProposalValidationError(
-            ProposalValidationError::UpdateProposalIdentityMismatch
-        ))
+        CommitToPendingProposalsError::CreateCommitError(
+            CreateCommitError::ProposalValidationError(
+                ProposalValidationError::UpdateProposalIdentityMismatch
+            )
+        )
     );
 
     // Clear commit to try another way of committing with a mismatching identity.
@@ -1543,9 +1551,11 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     assert_eq!(
         err,
-        MlsGroupError::CreateCommit(CreateCommitError::ProposalValidationError(
-            ProposalValidationError::ExistingPublicKeyUpdateProposal
-        ))
+        CommitToPendingProposalsError::CreateCommitError(
+            CreateCommitError::ProposalValidationError(
+                ProposalValidationError::ExistingPublicKeyUpdateProposal
+            )
+        )
     );
 
     // Clear commit to try another way of committing two identical removes.
@@ -1838,7 +1848,7 @@ fn test_valsem112(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     assert_eq!(
         err,
-        MlsGroupError::Group(CoreGroupError::ValidationError(ValidationError::NotACommit))
+        ParseMessageError::ValidationError(ValidationError::NotACommit)
     );
 
     // We can't test with sender type Preconfigured, since that currently panics

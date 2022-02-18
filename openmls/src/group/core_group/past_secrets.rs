@@ -53,7 +53,7 @@ impl MessageSecretsStore {
     /// oldest element.
     pub(crate) fn add(
         &mut self,
-        group_epoch: GroupEpoch,
+        group_epoch: impl Into<GroupEpoch>,
         message_secrets: MessageSecrets,
         leaves: Vec<(u32, KeyPackageRef)>,
     ) {
@@ -66,7 +66,7 @@ impl MessageSecretsStore {
             self.past_epoch_trees.truncate(self.max_epochs - 1);
         }
         self.past_epoch_trees.push_back(EpochTree {
-            epoch: group_epoch.0,
+            epoch: group_epoch.into().as_u64(),
             message_secrets,
             leaves,
         });
@@ -82,9 +82,9 @@ impl MessageSecretsStore {
     /// If no message secrets are found for that epoch, `None` is returned.
     pub(crate) fn secrets_for_epoch_mut(
         &mut self,
-        group_epoch: GroupEpoch,
+        group_epoch: impl Into<GroupEpoch>,
     ) -> Option<&mut MessageSecrets> {
-        let GroupEpoch(epoch) = group_epoch;
+        let epoch = group_epoch.into().as_u64();
         for epoch_tree in self.past_epoch_trees.iter_mut() {
             if epoch_tree.epoch == epoch {
                 return Some(&mut epoch_tree.message_secrets);
@@ -98,9 +98,9 @@ impl MessageSecretsStore {
     /// epoch.
     pub(crate) fn secrets_and_leaves_for_epoch_mut(
         &mut self,
-        group_epoch: GroupEpoch,
+        group_epoch: impl Into<GroupEpoch>,
     ) -> Option<(&mut MessageSecrets, Vec<(u32, KeyPackageRef)>)> {
-        let GroupEpoch(epoch) = group_epoch;
+        let epoch = group_epoch.into().as_u64();
         for epoch_tree in self.past_epoch_trees.iter_mut() {
             if epoch_tree.epoch == epoch {
                 return Some((&mut epoch_tree.message_secrets, epoch_tree.leaves.clone()));
@@ -111,9 +111,13 @@ impl MessageSecretsStore {
 
     /// Return a slice with the key package references and leaf indices of the
     /// epoch.
-    pub(crate) fn leaves_for_epoch(&self, group_epoch: GroupEpoch) -> &[(u32, KeyPackageRef)] {
+    pub(crate) fn leaves_for_epoch(
+        &self,
+        group_epoch: impl Into<GroupEpoch>,
+    ) -> &[(u32, KeyPackageRef)] {
+        let epoch = group_epoch.into().as_u64();
         for epoch_tree in self.past_epoch_trees.iter() {
-            if epoch_tree.epoch == group_epoch.0 {
+            if epoch_tree.epoch == epoch {
                 return &epoch_tree.leaves;
             }
         }

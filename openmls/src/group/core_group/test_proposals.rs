@@ -8,17 +8,14 @@ use crate::{
         Ciphersuite, Secret,
     },
     credentials::{CredentialBundle, CredentialType},
-    extensions::{
-        Extension, ExtensionError, ExtensionType, ExternalKeyIdExtension,
-        RequiredCapabilitiesExtension,
-    },
+    extensions::{Extension, ExtensionType, ExternalKeyIdExtension, RequiredCapabilitiesExtension},
     framing::sender::Sender,
     framing::{FramingParameters, MlsPlaintext, WireFormat},
     group::{
         create_commit_params::CreateCommitParams,
-        errors::{CoreGroupError, CreateAddProposalError},
+        errors::*,
         proposals::{ProposalQueue, ProposalStore, QueuedProposal},
-        GroupContext, GroupEpoch, GroupId,
+        GroupContext, GroupId,
     },
     key_packages::{KeyPackageBundle, KeyPackageError},
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
@@ -89,8 +86,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     assert!(alice_update_key_package.verify(backend).is_ok());
 
-    let group_context =
-        GroupContext::new(GroupId::random(backend), GroupEpoch(0), vec![], vec![], &[]);
+    let group_context = GroupContext::new(GroupId::random(backend), 0, vec![], vec![], &[]);
 
     // Let's create some proposals
     let add_proposal_alice1 = AddProposal {
@@ -240,8 +236,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     let alice_update_key_package = alice_update_key_package_bundle.key_package();
     assert!(alice_update_key_package.verify(backend).is_ok());
 
-    let group_context =
-        GroupContext::new(GroupId::random(backend), GroupEpoch(0), vec![], vec![], &[]);
+    let group_context = GroupContext::new(GroupId::random(backend), 0, vec![], vec![], &[]);
 
     // Let's create some proposals
     let add_proposal_alice1 = AddProposal {
@@ -341,10 +336,7 @@ fn test_required_unsupported_proposals(
         .expect_err(
             "CoreGroup creation must fail because AppAck proposals aren't supported in OpenMLS yet.",
         );
-    assert_eq!(
-        e,
-        CoreGroupError::ExtensionError(ExtensionError::UnsupportedProposalType)
-    )
+    assert_eq!(e, CoreGroupBuildError::UnsupportedProposalType)
 }
 
 #[apply(ciphersuites_and_backends)]
@@ -520,7 +512,7 @@ fn test_group_context_extension_proposal_fails(
     ).expect_err("Alice was able to create a gce proposal with a required extensions she doesn't support.");
     assert_eq!(
         e,
-        CoreGroupError::KeyPackageError(KeyPackageError::UnsupportedExtension)
+        CreateGroupContextExtProposalError::KeyPackage(KeyPackageError::UnsupportedExtension)
     );
 
     // Well, this failed luckily.
@@ -579,7 +571,7 @@ fn test_group_context_extension_proposal_fails(
         .expect_err("Bob was able to create a gce proposal for an extension not supported by all other parties.");
     assert_eq!(
         e,
-        CoreGroupError::KeyPackageError(KeyPackageError::UnsupportedExtension)
+        CreateGroupContextExtProposalError::KeyPackage(KeyPackageError::UnsupportedExtension)
     );
 }
 

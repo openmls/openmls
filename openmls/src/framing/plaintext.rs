@@ -27,6 +27,7 @@ use crate::{
         signable::{Signable, SignedStruct, Verifiable, VerifiedStruct},
     },
     error::LibraryError,
+    group::errors::ValidationError,
 };
 
 use super::*;
@@ -523,7 +524,7 @@ impl VerifiableMlsPlaintext {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         membership_key: &MembershipKey,
-    ) -> Result<(), VerificationError> {
+    ) -> Result<(), ValidationError> {
         log::debug!("Verifying membership tag.");
         log_crypto!(trace, "  Membership key: {:x?}", membership_key);
         log_crypto!(trace, "  Serialized context: {:x?}", serialized_context);
@@ -539,10 +540,10 @@ impl VerifiableMlsPlaintext {
         if let Some(membership_tag) = &self.membership_tag {
             // TODO #133: make this a constant-time comparison
             if membership_tag != expected_membership_tag {
-                return Err(VerificationError::InvalidMembershipTag);
+                return Err(ValidationError::InvalidMembershipTag);
             }
         } else {
-            return Err(VerificationError::MissingMembershipTag);
+            return Err(ValidationError::MissingMembershipTag);
         }
         Ok(())
     }
@@ -587,8 +588,8 @@ impl VerifiableMlsPlaintext {
 
     /// Set the epoch.
     #[cfg(test)]
-    pub(crate) fn set_epoch(&mut self, epoch: GroupEpoch) {
-        self.tbs.epoch = epoch;
+    pub(crate) fn set_epoch(&mut self, epoch: u64) {
+        self.tbs.epoch = epoch.into();
     }
 
     /// Get the underlying MlsPlaintext data of the tbs object.
@@ -687,7 +688,7 @@ impl MlsPlaintextTbs {
     pub(crate) fn new(
         wire_format: WireFormat,
         group_id: GroupId,
-        epoch: GroupEpoch,
+        epoch: impl Into<GroupEpoch>,
         sender: Sender,
         authenticated_data: TlsByteVecU32,
         payload: Payload,
@@ -696,7 +697,7 @@ impl MlsPlaintextTbs {
             serialized_context: None,
             wire_format,
             group_id,
-            epoch,
+            epoch: epoch.into(),
             sender,
             authenticated_data,
             content_type: payload.content_type,

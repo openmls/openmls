@@ -937,7 +937,7 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // Should fail because you cannot remove yourself from a group
     assert_eq!(
         bob_group.commit_to_pending_proposals(backend,),
-        Err(MlsGroupError::CreateCommit(
+        Err(CommitToPendingProposalsError::CreateCommitError(
             CreateCommitError::CannotRemoveSelf
         ))
     );

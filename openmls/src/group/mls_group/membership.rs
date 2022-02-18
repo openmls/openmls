@@ -319,8 +319,11 @@ impl MlsGroup {
     /// This should go away in future when all tests are rewritten to use key
     /// package references instead of leaf indices.
     #[cfg(any(feature = "test-utils", test))]
-    pub fn indexed_members(&self) -> Result<BTreeMap<u32, &KeyPackage>, MlsGroupError> {
-        Ok(self.group.treesync().full_leaves()?)
+    pub fn indexed_members(&self) -> Result<BTreeMap<u32, &KeyPackage>, LibraryError> {
+        self.group
+            .treesync()
+            .full_leaves()
+            .map_err(|_| LibraryError::custom("Unexpected error in TreeSync"))
     }
 }
 

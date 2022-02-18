@@ -186,15 +186,20 @@ impl<T: Clone + Debug> ABinaryTree<T> {
 
 /// Binary Tree error
 #[derive(Error, Debug, PartialEq, Clone)]
-pub enum ABinaryTreeError {
+pub(crate) enum ABinaryTreeError {
+    /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
+    /// Adding nodes exceeds the maximum possible size of the tree.
     #[error("Adding nodes exceeds the maximum possible size of the tree.")]
     OutOfRange,
+    /// Not enough nodes to remove.
     #[error("Not enough nodes to remove.")]
     InvalidNumberOfNodes,
+    /// The given index is outside of the tree.
     #[error("The given index is outside of the tree.")]
     OutOfBounds,
+    /// An error occurred while handling a diff.
     #[error("An error occurred while handling a diff.")]
     ABinaryTreeDiffError,
 }

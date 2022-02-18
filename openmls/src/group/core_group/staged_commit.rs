@@ -367,7 +367,7 @@ impl CoreGroup {
     pub(crate) fn merge_commit(
         &mut self,
         staged_commit: StagedCommit,
-    ) -> Result<Option<MessageSecrets>, CoreGroupError> {
+    ) -> Result<Option<MessageSecrets>, LibraryError> {
         match staged_commit.state {
             StagedCommitState::SelfRemoved(staged_diff) => {
                 self.tree.merge_diff(*staged_diff)?;

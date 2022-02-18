@@ -4,7 +4,7 @@ use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
-    group::{GroupEpoch, GroupId},
+    group::GroupId,
     messages::{PreSharedKeyProposal, ProtocolVersion, ReInitProposal},
     schedule::psk::{BranchPsk, ExternalPsk, PreSharedKeyId, Psk, PskType, ReinitPsk},
 };
@@ -18,7 +18,7 @@ fn test_pre_shared_key_proposal_codec(backend: &impl OpenMlsCryptoProvider) {
         psk_type: PskType::Reinit,
         psk: Psk::Reinit(ReinitPsk {
             psk_group_id: GroupId::random(backend),
-            psk_epoch: GroupEpoch(1234),
+            psk_epoch: 1234.into(),
         }),
         psk_nonce: vec![1, 2, 3].into(),
     };
@@ -49,7 +49,7 @@ fn test_pre_shared_key_proposal_codec(backend: &impl OpenMlsCryptoProvider) {
         psk_type: PskType::Branch,
         psk: Psk::Branch(BranchPsk {
             psk_group_id: GroupId::random(backend),
-            psk_epoch: GroupEpoch(1234),
+            psk_epoch: 1234.into(),
         }),
         psk_nonce: vec![1, 2, 3].into(),
     };
