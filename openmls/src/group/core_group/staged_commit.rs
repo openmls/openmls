@@ -123,6 +123,7 @@ impl CoreGroup {
         self.validate_add_proposals(&proposal_queue)?;
         // ValSem107
         // ValSem108
+        println!("Validating proposal queue: {:?}", proposal_queue);
         self.validate_remove_proposals(&proposal_queue)?;
 
         let public_key_set = match sender {

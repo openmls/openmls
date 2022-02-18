@@ -9,15 +9,16 @@ use rstest_reuse::{self, *};
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
-    ciphersuite::signable::Signable,
+    ciphersuite::{hash_ref::ProposalRef, signable::Signable},
     credentials::*,
     framing::{
-        MlsMessageIn, MlsMessageOut, MlsPlaintext, MlsPlaintextContentType, VerifiableMlsPlaintext,
+        MlsMessageIn, MlsMessageOut, MlsPlaintext, MlsPlaintextContentType, ProcessedMessage,
+        Sender, ValidationError, VerifiableMlsPlaintext,
     },
     group::errors::*,
     group::*,
     key_packages::*,
-    messages::{AddProposal, Proposal, ProposalOrRef, RemoveProposal, Welcome},
+    messages::{AddProposal, Proposal, ProposalOrRef, RemoveProposal, UpdateProposal, Welcome},
 };
 
 use super::utils::{generate_credential_bundle, generate_key_package_bundle};
@@ -162,7 +163,7 @@ fn validation_test_setup(
 
 fn insert_proposal_and_resign(
     backend: &impl OpenMlsCryptoProvider,
-    proposal: Proposal,
+    proposal_or_ref: ProposalOrRef,
     mut plaintext: VerifiableMlsPlaintext,
     original_plaintext: VerifiableMlsPlaintext,
     committer_group: &MlsGroup,
@@ -173,9 +174,7 @@ fn insert_proposal_and_resign(
         panic!("Unexpected content type.");
     };
 
-    commit_content
-        .proposals
-        .push(ProposalOrRef::Proposal(proposal));
+    commit_content.proposals.push(proposal_or_ref);
 
     plaintext.set_content(MlsPlaintextContentType::Commit(commit_content));
 
@@ -313,7 +312,7 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
         backend,
-        second_add_proposal,
+        ProposalOrRef::Proposal(second_add_proposal),
         plaintext,
         original_plaintext,
         &alice_group,
@@ -466,7 +465,7 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
         backend,
-        second_add_proposal,
+        ProposalOrRef::Proposal(second_add_proposal),
         plaintext,
         original_plaintext,
         &alice_group,
@@ -626,7 +625,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
         backend,
-        second_add_proposal,
+        ProposalOrRef::Proposal(second_add_proposal),
         plaintext,
         original_plaintext,
         &alice_group,
@@ -737,7 +736,7 @@ fn test_valsem103(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Artificially add a proposal trying to add (another) Bob.
     let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
         backend,
-        add_proposal,
+        ProposalOrRef::Proposal(add_proposal),
         plaintext,
         original_plaintext,
         &alice_group,
@@ -909,7 +908,7 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Artificially add a proposal trying to add (another) Bob.
     let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
         backend,
-        add_proposal,
+        ProposalOrRef::Proposal(add_proposal),
         plaintext,
         original_plaintext,
         &alice_group,
@@ -1077,7 +1076,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // public key.
     let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
         backend,
-        add_proposal,
+        ProposalOrRef::Proposal(add_proposal),
         plaintext,
         original_plaintext,
         &alice_group,
@@ -1121,6 +1120,99 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 /// Removed member must be unique among proposals
 #[apply(ciphersuites_and_backends)]
 fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    // Before we can test creation of (invalid) proposals, we set up a new group
+    // with Alice and Bob.
+    let ProposalValidationTestSetup {
+        mut alice_group,
+        bob_group,
+    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+
+    // We first try to make Alice create a commit with two remove proposals for
+    // Bob.
+
+    // There are two ways in which we could use the MlsGroup API to commit to
+    // remove proposals: Create the proposals and then commit them manually or
+    // use the `remove_members` endpoint with two times the same KeyPackageRef
+    // as input. We first create both commits and then make sure they look as
+    // expected.
+    let bob_kp_ref = bob_group
+        .key_package_ref()
+        .expect("error getting key package ref");
+
+    // We first go the manual route
+    let _remove_proposal1 = alice_group
+        .propose_remove_member(backend, &bob_kp_ref)
+        .expect("error while creating remove proposal");
+    let _remove_proposal2 = alice_group
+        .propose_remove_member(backend, &bob_kp_ref)
+        .expect("error while creating remove proposal");
+    // While this shouldn't fail, it should produce a valid commit, i.e. one
+    // that contains only one remove proposal.
+    let (manual_commit, _welcome) = alice_group
+        .commit_to_pending_proposals(backend)
+        .expect("error while trying to commit to colliding remove proposals");
+
+    // Clear commit to try another way of committing two identical removes.
+    alice_group.clear_pending_commit();
+
+    let (combined_commit, _welcome) = alice_group
+        .remove_members(backend, &[bob_kp_ref.clone(), bob_kp_ref.clone()])
+        .expect("error while trying to remove the same member twice");
+
+    // Now let's verify that both commits only contain one proposal.
+    for commit in [manual_commit, combined_commit.clone()] {
+        let serialized_message = commit
+            .tls_serialize_detached()
+            .expect("error serializing plaintext");
+
+        let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
+            .expect("Could not deserialize message.");
+
+        let commit_content = if let MlsPlaintextContentType::Commit(commit) = plaintext.content() {
+            commit.clone()
+        } else {
+            panic!("Unexpected content type.");
+        };
+
+        // The commit should contain only one proposal.
+        assert_eq!(commit_content.proposals.len(), 1);
+
+        // And it should be the proposal to remove bob.
+        // Depending on the commit, the proposal is either inline or it's a
+        // reference.
+        let expected_inline_proposal = Proposal::Remove(RemoveProposal {
+            removed: bob_kp_ref.clone(),
+        });
+        let expected_reference_proposal =
+            ProposalRef::from_proposal(ciphersuite, backend, &expected_inline_proposal)
+                .expect("error creating hash reference");
+        let committed_proposal = commit_content
+            .proposals
+            .as_slice()
+            .last()
+            .expect("expected remove proposal");
+        match committed_proposal {
+            ProposalOrRef::Proposal(inline_proposal) => {
+                assert_eq!(&expected_inline_proposal, inline_proposal)
+            }
+            ProposalOrRef::Reference(reference_proposal) => {
+                assert_eq!(&expected_reference_proposal, reference_proposal)
+            }
+        }
+    }
+
+    // It remains to verify this behaviour on the receiver side. However, this
+    // is not really possible, since the `ProposalQueue` logic on the receiver
+    // side automatically de-duplicates proposals with the same Proposal
+    // reference. This is the case for Bob's proposal, both in the case of
+    // inline and reference proposal.
+}
+
+/// ValSem108
+/// Remove Proposal:
+/// Removed member must be an existing group member
+#[apply(ciphersuites_and_backends)]
+fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
     // Before we can test creation or reception of (invalid) proposals, we set
     // up a new group with Alice and Bob.
     let ProposalValidationTestSetup {
@@ -1128,35 +1220,51 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         mut bob_group,
     } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
-    // We first try to make Alice create a commit with two remove proposals for
-    // Bob.
-    let bob_kp_ref = bob_group
-        .key_package_ref()
-        .expect("error getting key package ref");
+    // We first try to make Alice create a commit with a proposal targeting a
+    // non-existing group member.
+
+    // There are two ways in which we could use the MlsGroup API to commit to
+    // remove proposals: Create the proposals and then commit them manually or
+    // use the `remove_members` endpoint.
+    let fake_kp_ref = hash_ref::HashReference::from_slice(&vec![0u8; 16]);
+
+    // We first go the manual route
     let _remove_proposal1 = alice_group
-        .propose_remove_member(backend, &bob_kp_ref)
+        .propose_remove_member(backend, &fake_kp_ref)
         .expect("error while creating remove proposal");
-    let _remove_proposal2 = alice_group
-        .propose_remove_member(backend, &bob_kp_ref)
-        .expect("error while creating remove proposal");
-    // TODO: Apparently there is no check to prevent this.
-    let err = alice_group
-        .commit_to_pending_proposals(backend)
-        .expect_err("no error while trying to commit to colliding remove proposals");
-    assert_eq!(err, MlsGroupError::NoMatchingCredentialBundle);
+    // This should fail, since there is no member with the given hash reference.
+    let err = alice_group.commit_to_pending_proposals(backend).expect_err(
+        "no error while trying to commit to remove proposal targeting non group member",
+    );
 
-    // The same should be the case if we use another endpoint.
-    let err = alice_group
-        .remove_members(backend, &[bob_kp_ref.clone(), bob_kp_ref.clone()])
-        .expect_err("no error while trying to remove the same member twice");
-    assert_eq!(err, RemoveMembersError::NoMatchingCredentialBundle);
+    assert_eq!(
+        err,
+        MlsGroupError::CreateCommit(CreateCommitError::ProposalValidationError(
+            ProposalValidationError::UnknownMemberRemoval
+        ))
+    );
 
-    // We now have alice create a commit with one remove proposal. Then we
-    // artificially add a copy of that proposal.
+    // Clear commit to try another way of committing a remove of a non-member.
+    alice_group.clear_pending_commit();
+    alice_group.clear_pending_proposals();
+
+    let err = alice_group
+        .remove_members(backend, &[fake_kp_ref.clone()])
+        .expect_err("no error while trying to remove non-group-member");
+
+    assert_eq!(
+        err,
+        RemoveMembersError::CreateCommitError(CreateCommitError::ProposalValidationError(
+            ProposalValidationError::UnknownMemberRemoval
+        ))
+    );
+
+    // We now have alice create a commit. Then we artificially add an invalid
+    // remove proposal targeting a member that is not part of the group.
 
     // Create the Commit.
     let serialized_update = alice_group
-        .remove_members(backend, &[bob_kp_ref.clone()])
+        .self_update(backend, None)
         .expect("Error creating self-update")
         .tls_serialize_detached()
         .expect("Could not serialize message.");
@@ -1167,15 +1275,16 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
 
-    // Create a remove proposal targeting Bob.
+    // Use the fake kp_ref generated earlier to create a remove proposal.
     let remove_proposal = Proposal::Remove(RemoveProposal {
-        removed: bob_kp_ref.clone(),
+        removed: fake_kp_ref,
     });
 
-    // Artificially add the proposal
+    // Artificially add a proposal trying to remove someone that is not in a
+    // group.
     let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
         backend,
-        remove_proposal,
+        ProposalOrRef::Proposal(remove_proposal),
         plaintext,
         original_plaintext,
         &alice_group,
@@ -1195,7 +1304,7 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     assert_eq!(
         err,
         UnverifiedMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
-            ProposalValidationError::ExistingPublicKeyAddProposal
+            ProposalValidationError::UnknownMemberRemoval
         ))
     );
 
@@ -1206,6 +1315,539 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Positive case
     let unverified_message = bob_group
         .parse_message(MlsMessageIn::from(original_update_plaintext), backend)
+        .expect("Could not parse message.");
+    bob_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect("Unexpected error.");
+}
+
+/// ValSem109
+/// Update Proposal:
+/// Identity must be unchanged between existing member and new proposal
+#[apply(ciphersuites_and_backends)]
+fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    // Before we can test creation or reception of (invalid) proposals, we set
+    // up a new group with Alice and Bob.
+    let ProposalValidationTestSetup {
+        mut alice_group,
+        mut bob_group,
+    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+
+    // We can't test this by having Alice propose an update herself, so we have
+    // to have Bob propose the update. This is due to the commit logic filtering
+    // out own proposals and just including a path instead.
+
+    // We first try make Alice create a commit, where she commits an update
+    // proposal by bob that changes his identity.
+
+    // We begin by creating a KPB with a different identity.
+    let new_cb = CredentialBundle::new(
+        "Bobby".into(),
+        CredentialType::Basic,
+        ciphersuite.signature_algorithm(),
+        backend,
+    )
+    .expect("error creating credential bundle");
+    let bob_kp = bob_group
+        .group()
+        .treesync()
+        .own_leaf_node()
+        .expect("error getting own leaf node")
+        .key_package()
+        .clone();
+    let mut update_kpb_payload =
+        KeyPackageBundlePayload::from_rekeyed_key_package(&bob_kp, backend)
+            .expect("error creating kpb payload");
+    update_kpb_payload.exchange_credential(new_cb.credential().clone());
+    let update_kpb = update_kpb_payload
+        .sign(backend, &new_cb)
+        .expect("error signing kpb");
+
+    // We first go the manual route
+    let update_proposal = bob_group
+        .propose_self_update(backend, Some(update_kpb.clone()))
+        .expect("error while creating remove proposal");
+
+    // Have Alice process this proposal.
+    let unverified_message = alice_group
+        .parse_message(update_proposal.into(), backend)
+        .expect("error parsing message");
+
+    if let ProcessedMessage::ProposalMessage(proposal) = alice_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect("error processing proposal")
+    {
+        alice_group.store_pending_proposal(*proposal)
+    } else {
+        panic!("Unexpected message type");
+    };
+
+    // This should fail, since the identity doesn't match.
+    let err = alice_group
+        .commit_to_pending_proposals(backend)
+        .expect_err("no error while trying to commit to update proposal with differing identity");
+
+    assert_eq!(
+        err,
+        MlsGroupError::CreateCommit(CreateCommitError::ProposalValidationError(
+            ProposalValidationError::UpdateProposalIdentityMismatch
+        ))
+    );
+
+    // Clear commit to try another way of committing with a mismatching identity.
+    alice_group.clear_pending_commit();
+    alice_group.clear_pending_proposals();
+
+    // We now have Alice create a commit. Then we artificially add a
+    // update proposal that changes the updaters identity.
+
+    // Create the Commit.
+    let serialized_update = alice_group
+        .self_update(backend, None)
+        .expect("Error creating self-update")
+        .tls_serialize_detached()
+        .expect("Could not serialize message.");
+
+    let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+        .expect("Could not deserialize message.");
+
+    // Keep the original plaintext for positive test later.
+    let original_plaintext = plaintext.clone();
+
+    let update_proposal = Proposal::Update(UpdateProposal {
+        key_package: update_kpb.key_package().clone(),
+    });
+
+    // Artificially add the proposal.
+    let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
+        backend,
+        ProposalOrRef::Reference(
+            ProposalRef::from_proposal(ciphersuite, backend, &update_proposal)
+                .expect("error creating hash reference"),
+        ),
+        plaintext,
+        original_plaintext,
+        &alice_group,
+    );
+
+    let update_message_in = MlsMessageIn::from(verifiable_plaintext);
+
+    // Have bob process the resulting plaintext
+    let unverified_message = bob_group
+        .parse_message(update_message_in, backend)
+        .expect("Could not parse message.");
+
+    let err = bob_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect_err("Could process unverified message despite modified public key in path.");
+
+    assert_eq!(
+        err,
+        UnverifiedMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+            ProposalValidationError::UpdateProposalIdentityMismatch
+        ))
+    );
+
+    let original_update_plaintext =
+        VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+            .expect("Could not deserialize message.");
+
+    // Positive case
+    let unverified_message = bob_group
+        .parse_message(MlsMessageIn::from(original_update_plaintext), backend)
+        .expect("Could not parse message.");
+    bob_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect("Unexpected error.");
+}
+
+/// ValSem110
+/// Update Proposal:
+/// HPKE init key must be unique among existing members
+#[apply(ciphersuites_and_backends)]
+fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    // Before we can test creation or reception of (invalid) proposals, we set
+    // up a new group with Alice and Bob.
+    let ProposalValidationTestSetup {
+        mut alice_group,
+        mut bob_group,
+    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+
+    // We can't test this by having Alice propose an update herself, so we have
+    // to have Bob propose the update. This is due to the commit logic filtering
+    // out own proposals and just including a path instead.
+
+    // We first try make Alice create a commit, where she commits an update
+    // proposal by bob that contains alice's existing HPKE key.
+
+    // We begin by creating a KPB with a colliding HPKE key.
+    let alice_kp = bob_group
+        .group()
+        .treesync()
+        .own_leaf_node()
+        .expect("error getting own leaf node")
+        .key_package()
+        .clone();
+    let bob_kp = bob_group
+        .group()
+        .treesync()
+        .own_leaf_node()
+        .expect("error getting own leaf node")
+        .key_package()
+        .clone();
+    let mut update_kpb_payload =
+        KeyPackageBundlePayload::from_rekeyed_key_package(&bob_kp, backend)
+            .expect("error creating kpb payload");
+
+    let bob_credential_bundle = backend
+        .key_store()
+        .read::<CredentialBundle>(
+            &bob_group
+                .credential()
+                .expect("error fetching credential")
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("Error serializing signature key."),
+        )
+        .expect("An unexpected error occurred.");
+
+    update_kpb_payload.exchange_public_key(alice_kp.hpke_init_key().clone());
+
+    let update_kpb = update_kpb_payload
+        .sign(backend, &bob_credential_bundle)
+        .expect("error signing kpb");
+
+    // We first go the manual route
+    let update_proposal = bob_group
+        .propose_self_update(backend, Some(update_kpb.clone()))
+        .expect("error while creating remove proposal");
+
+    // Have Alice process this proposal.
+    let unverified_message = alice_group
+        .parse_message(update_proposal.into(), backend)
+        .expect("error parsing message");
+
+    if let ProcessedMessage::ProposalMessage(proposal) = alice_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect("error processing proposal")
+    {
+        alice_group.store_pending_proposal(*proposal)
+    } else {
+        panic!("Unexpected message type");
+    };
+
+    // This should fail, since the hpke keys collide.
+    let err = alice_group
+        .commit_to_pending_proposals(backend)
+        .expect_err("no error while trying to commit to update proposal with differing identity");
+
+    assert_eq!(
+        err,
+        MlsGroupError::CreateCommit(CreateCommitError::ProposalValidationError(
+            ProposalValidationError::ExistingPublicKeyUpdateProposal
+        ))
+    );
+
+    // Clear commit to try another way of committing two identical removes.
+    alice_group.clear_pending_commit();
+    alice_group.clear_pending_proposals();
+
+    // We now have Alice create a commit. Then we artificially add an
+    // update proposal with a colliding hpke key.
+
+    // Create the Commit.
+    let serialized_update = alice_group
+        .self_update(backend, None)
+        .expect("Error creating self-update")
+        .tls_serialize_detached()
+        .expect("Could not serialize message.");
+
+    let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+        .expect("Could not deserialize message.");
+
+    // Keep the original plaintext for positive test later.
+    let original_plaintext = plaintext.clone();
+
+    let update_proposal = Proposal::Update(UpdateProposal {
+        key_package: update_kpb.key_package().clone(),
+    });
+
+    // Artificially add the proposal.
+    let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
+        backend,
+        ProposalOrRef::Reference(
+            ProposalRef::from_proposal(ciphersuite, backend, &update_proposal)
+                .expect("error creating hash reference"),
+        ),
+        plaintext,
+        original_plaintext,
+        &alice_group,
+    );
+
+    let update_message_in = MlsMessageIn::from(verifiable_plaintext);
+
+    // Have bob process the resulting plaintext
+    let unverified_message = bob_group
+        .parse_message(update_message_in, backend)
+        .expect("Could not parse message.");
+
+    let err = bob_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect_err("Could process unverified message despite modified public key in path.");
+
+    assert_eq!(
+        err,
+        UnverifiedMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+            ProposalValidationError::ExistingPublicKeyUpdateProposal
+        ))
+    );
+
+    let original_update_plaintext =
+        VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+            .expect("Could not deserialize message.");
+
+    // Positive case
+    let unverified_message = bob_group
+        .parse_message(MlsMessageIn::from(original_update_plaintext), backend)
+        .expect("Could not parse message.");
+    bob_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect("Unexpected error.");
+}
+
+/// ValSem111
+/// Update Proposal:
+/// The sender of a full Commit must not include own update proposals
+#[apply(ciphersuites_and_backends)]
+fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    // Before we can test creation or reception of (invalid) proposals, we set
+    // up a new group with Alice and Bob.
+    let ProposalValidationTestSetup {
+        mut alice_group,
+        mut bob_group,
+    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+
+    // We can't test this by having Alice propose an update herself. This is due
+    // to the commit logic filtering out own proposals and just including a path
+    // instead.
+
+    // However, we can test the receiving side by crafting such a commit
+    // manually. We have to test two scenarios: One, where the proposal is
+    // inline and one, where it's committed by reference.
+
+    // We begin by creating an update proposal for alice.
+    let update_kpb = generate_key_package_bundle(
+        &[ciphersuite],
+        &alice_group.credential().expect("error fetching credential"),
+        vec![],
+        backend,
+    )
+    .expect("error creating kpb");
+
+    let update_proposal = Proposal::Update(UpdateProposal {
+        key_package: update_kpb.clone(),
+    });
+
+    // We now have Alice create a commit. That commit should not contain any
+    // proposals, just a path.
+    let commit = alice_group
+        .self_update(backend, None)
+        .expect("Error creating self-update");
+
+    // Check that there's no proposal in it.
+    let serialized_message = commit
+        .tls_serialize_detached()
+        .expect("error serializing plaintext");
+
+    let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
+        .expect("Could not deserialize message.");
+
+    let commit_content = if let MlsPlaintextContentType::Commit(commit) = plaintext.content() {
+        commit.clone()
+    } else {
+        panic!("Unexpected content type.");
+    };
+
+    // The commit should contain no proposals.
+    assert_eq!(commit_content.proposals.len(), 0);
+
+    let serialized_update = commit
+        .tls_serialize_detached()
+        .expect("Could not serialize message.");
+
+    let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+        .expect("Could not deserialize message.");
+
+    // Keep the original plaintext for positive test later.
+    let original_plaintext = plaintext.clone();
+
+    // Let's insert the proposal into the commit.
+    let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
+        backend,
+        ProposalOrRef::Proposal(update_proposal.clone()),
+        plaintext,
+        original_plaintext,
+        &alice_group,
+    );
+
+    let update_message_in = MlsMessageIn::from(verifiable_plaintext);
+
+    // Have bob process the resulting plaintext
+    let unverified_message = bob_group
+        .parse_message(update_message_in, backend)
+        .expect("Could not parse message.");
+
+    let err = bob_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect_err("Could process unverified message despite modified public key in path.");
+
+    assert_eq!(
+        err,
+        UnverifiedMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+            ProposalValidationError::CommitterIncludedOwnUpdate
+        ))
+    );
+
+    // Now we insert the proposal into Bob's proposal store so we can include it
+    // in the commit by reference.
+    bob_group.store_pending_proposal(
+        QueuedProposal::from_proposal_and_sender(
+            ciphersuite,
+            backend,
+            update_proposal.clone(),
+            &Sender::build_member(
+                alice_group
+                    .key_package_ref()
+                    .expect("error getting key package ref"),
+            ),
+        )
+        .expect("error creating queued proposal"),
+    );
+
+    // Now we can have Alice create a new commit and insert the proposal by
+    // reference.
+
+    // Wipe any pending commit first.
+    alice_group.clear_pending_commit();
+
+    let commit = alice_group
+        .self_update(backend, None)
+        .expect("Error creating self-update");
+
+    let serialized_update = commit
+        .tls_serialize_detached()
+        .expect("Could not serialize message.");
+
+    let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+        .expect("Could not deserialize message.");
+
+    // Keep the original plaintext for positive test later.
+    let original_plaintext = plaintext.clone();
+
+    // Let's insert the proposal into the commit.
+    // Artificially add the proposal.
+    let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
+        backend,
+        ProposalOrRef::Reference(
+            ProposalRef::from_proposal(ciphersuite, backend, &update_proposal)
+                .expect("error creating hash reference"),
+        ),
+        plaintext,
+        original_plaintext,
+        &alice_group,
+    );
+
+    let update_message_in = MlsMessageIn::from(verifiable_plaintext);
+
+    // Have bob process the resulting plaintext
+    let unverified_message = bob_group
+        .parse_message(update_message_in, backend)
+        .expect("Could not parse message.");
+
+    let err = bob_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect_err("Could process unverified message despite modified public key in path.");
+
+    assert_eq!(
+        err,
+        UnverifiedMessageError::InvalidCommit(StageCommitError::ProposalValidationError(
+            ProposalValidationError::CommitterIncludedOwnUpdate
+        ))
+    );
+
+    let original_update_plaintext =
+        VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+            .expect("Could not deserialize message.");
+
+    // Positive case
+    let unverified_message = bob_group
+        .parse_message(MlsMessageIn::from(original_update_plaintext), backend)
+        .expect("Could not parse message.");
+    bob_group
+        .process_unverified_message(unverified_message, None, backend)
+        .expect("Unexpected error.");
+}
+
+/// ValSem112
+/// Update Proposal:
+/// The sender of a standalone update proposal must be of type member
+#[apply(ciphersuites_and_backends)]
+fn test_valsem112(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    // Before we can test creation or reception of (invalid) proposals, we set
+    // up a new group with Alice and Bob.
+    let ProposalValidationTestSetup {
+        mut alice_group,
+        mut bob_group,
+    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+
+    // This can really only be tested by the receiver, as there is no way to
+    // make a client create a proposal with a different sender type than
+    // `member`.
+
+    // However, we can test the receiving side by crafting such a proposal
+    // manually.
+    let commit = alice_group
+        .propose_self_update(backend, None)
+        .expect("Error creating self-update");
+
+    // Check that the sender type is indeed `member`.
+    let serialized_update = commit
+        .tls_serialize_detached()
+        .expect("error serializing plaintext");
+
+    let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+        .expect("Could not deserialize message.");
+
+    assert!(plaintext.sender().is_member());
+
+    let mut plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+        .expect("Could not deserialize message.");
+
+    // Keep the original plaintext for positive test later.
+    let original_plaintext = plaintext.clone();
+
+    // Now let's change the sender type to NewMember.
+    plaintext.set_sender(Sender::NewMember);
+
+    let update_message_in = MlsMessageIn::from(plaintext.clone());
+
+    // Have bob process the resulting plaintext
+    let err = bob_group
+        .parse_message(update_message_in, backend)
+        .expect_err("Could parse unverified message despite modified public key in path.");
+
+    assert_eq!(
+        err,
+        MlsGroupError::Group(CoreGroupError::ValidationError(ValidationError::NotACommit))
+    );
+
+    // We can't test with sender type Preconfigured, since that currently panics
+    // with `unimplemented`.
+    // TODO This test should thus be extended when fixing #106.
+
+    // Positive case
+    let unverified_message = bob_group
+        .parse_message(MlsMessageIn::from(original_plaintext), backend)
         .expect("Could not parse message.");
     bob_group
         .process_unverified_message(unverified_message, None, backend)
