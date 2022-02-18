@@ -137,4 +137,6 @@ Add comments for naked variants:
  $2#[error(transparent)]
  $2$3(#[from] $5)
 
+ The above was tested in VSCode, but should be easily adaptable to other tools.
+
 */
