@@ -673,6 +673,15 @@ impl KeyPackageBundle {
     pub fn unsigned(self) -> KeyPackageBundlePayload {
         self.into()
     }
+
+    /// Separates the bundle into the [`KeyPackage`] and the ([`HpkePrivateKey`],
+    /// [`Secret`]).
+    pub fn into_parts(self) -> (KeyPackage, (Vec<u8>, Secret)) {
+        (
+            self.key_package,
+            (self.private_key.as_slice().to_vec(), self.leaf_secret),
+        )
+    }
 }
 
 /// Crate visible `KeyPackageBundle` functions.
