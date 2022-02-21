@@ -4,8 +4,10 @@ use serde::{
     ser::{SerializeStruct, Serializer},
     Deserialize, Serialize,
 };
+
+/// Helper struct that contains the serializable values of an `MlsGroup.
 #[derive(Serialize, Deserialize)]
-pub struct SerializedMlsGroup {
+pub(crate) struct SerializedMlsGroup {
     mls_group_config: MlsGroupConfig,
     group: CoreGroup,
     proposal_store: ProposalStore,

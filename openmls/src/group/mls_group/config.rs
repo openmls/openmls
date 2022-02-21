@@ -5,7 +5,8 @@ use crate::tree::sender_ratchet::SenderRatchetConfiguration;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 
-/// Specifies the configuration parameters for a [`MlsGroup`]
+/// Specifies the configuration parameters for a [`MlsGroup`]. Refer to
+/// the [User Manual](https://openmls.tech/book/user_manual/group_config.html) for more information about the different configuration values.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct MlsGroupConfig {
     /// Defines the wire format policy for outgoing and incoming handshake messages.
@@ -32,32 +33,32 @@ impl MlsGroupConfig {
         MlsGroupConfigBuilder::new()
     }
 
-    /// Get the [`MlsGroupConfig`] wire format policy.
+    /// Returns the [`MlsGroupConfig`] wire format policy.
     pub fn wire_format_policy(&self) -> WireFormatPolicy {
         self.wire_format_policy
     }
 
-    /// Get the [`MlsGroupConfig`] padding size.
+    /// Returns the [`MlsGroupConfig`] padding size.
     pub fn padding_size(&self) -> usize {
         self.padding_size
     }
 
-    /// Get the [`MlsGroupConfig`] max past epochs.
+    /// Returns the [`MlsGroupConfig`] max past epochs.
     pub fn max_past_epochs(&self) -> usize {
         self.max_past_epochs
     }
 
-    /// Get the [`MlsGroupConfig`] number of resumption secrets.
+    /// Returns the [`MlsGroupConfig`] number of resumption secrets.
     pub fn number_of_resumption_secrets(&self) -> usize {
         self.number_of_resumption_secrets
     }
 
-    /// Get the [`MlsGroupConfig`] boolean flag that indicates whether ratchet_tree_extension should be used.
+    /// Returns the [`MlsGroupConfig`] boolean flag that indicates whether ratchet_tree_extension should be used.
     pub fn use_ratchet_tree_extension(&self) -> bool {
         self.use_ratchet_tree_extension
     }
 
-    /// Get the [`MlsGroupConfig`] sender ratchet configuration.
+    /// Returns the [`MlsGroupConfig`] sender ratchet configuration.
     pub fn sender_ratchet_configuration(&self) -> &SenderRatchetConfiguration {
         &self.sender_ratchet_configuration
     }
@@ -189,12 +190,12 @@ impl WireFormatPolicy {
         Self { outgoing, incoming }
     }
 
-    /// Get a reference to the wire format policy's outgoing wire format policy.
+    /// Returns a reference to the wire format policy's outgoing wire format policy.
     pub fn outgoing(&self) -> OutgoingWireFormatPolicy {
         self.outgoing
     }
 
-    /// Get a reference to the wire format policy's incoming wire format policy.
+    /// Returns a reference to the wire format policy's incoming wire format policy.
     pub fn incoming(&self) -> IncomingWireFormatPolicy {
         self.incoming
     }

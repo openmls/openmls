@@ -50,7 +50,7 @@ pub enum PendingCommitState {
 }
 
 impl PendingCommitState {
-    /// Return a reference to the [`StagedCommit`] contained in the
+    /// Returns a reference to the [`StagedCommit`] contained in the
     /// [`PendingCommitState`] enum.
     pub(crate) fn staged_commit(&self) -> &StagedCommit {
         match self {
@@ -123,21 +123,21 @@ pub enum MlsGroupState {
     Inactive,
 }
 
-/// A `MlsGroup` represents an CoreGroup with
-/// an easier, high-level API designed to be used in production. The API exposes
+/// A `MlsGroup` represents an MLS group with
+/// a high-level API. The API exposes
 /// high level functions to manage a group by adding/removing members, get the
 /// current member list, etc.
 ///
 /// The API is modeled such that it can serve as a direct interface to the
 /// Delivery Service. Functions that modify the public state of the group will
-/// return a `Vec<MLSMessage>` that can be sent to the Delivery
+/// return a `Vec<MLSMessageOut>` that can be sent to the Delivery
 /// Service directly. Conversely, incoming messages from the Delivery Service
 /// can be fed into [parse_message()](`MlsGroup::parse_message()`).
 ///
-/// A `MlsGroup` has an internal queue of pending proposals that builds up
+/// An `MlsGroup` has an internal queue of pending proposals that builds up
 /// as new messages are processed. When creating proposals, those messages are
 /// not automatically appended to this queue, instead they have to be processed
-/// again through [process_message()](`MlsGroup::parse_message()`). This
+/// again through [parse_message()](`MlsGroup::parse_message()`). This
 /// allows the Delivery Service to reject them (e.g. if they reference the wrong
 /// epoch).
 ///
@@ -179,12 +179,12 @@ pub struct MlsGroup {
 impl MlsGroup {
     // === Configuration ===
 
-    /// Gets the configuration
+    /// Returns the configuration.
     pub fn configuration(&self) -> &MlsGroupConfig {
         &self.mls_group_config
     }
 
-    /// Sets the configuration
+    /// Sets the configuration.
     pub fn set_configuration(&mut self, mls_group_config: &MlsGroupConfig) {
         self.mls_group_config = mls_group_config.clone();
 
@@ -192,12 +192,12 @@ impl MlsGroup {
         self.flag_state_change();
     }
 
-    /// Gets the AAD used in the framing
+    /// Returns the AAD used in the framing.
     pub fn aad(&self) -> &[u8] {
         &self.aad
     }
 
-    /// Sets the AAD used in the framing
+    /// Sets the AAD used in the framing.
     pub fn set_aad(&mut self, aad: &[u8]) {
         self.aad = aad.to_vec();
 
@@ -207,7 +207,7 @@ impl MlsGroup {
 
     // === Advanced functions ===
 
-    /// Returns the group's ciphersuite
+    /// Returns the group's ciphersuite.
     pub fn ciphersuite(&self) -> Ciphersuite {
         self.group.ciphersuite()
     }
@@ -232,22 +232,22 @@ impl MlsGroup {
             .credential())
     }
 
-    /// Get the [`KeyPackageRef`] of the client owning this group.
+    /// Returns the [`KeyPackageRef`] of the client owning this group.
     pub fn key_package_ref(&self) -> Option<&KeyPackageRef> {
         self.group.key_package_ref()
     }
 
-    /// Get group ID
+    /// Returns the group ID.
     pub fn group_id(&self) -> &GroupId {
         self.group.group_id()
     }
 
-    /// Return the epoch
+    /// Returns the epoch.
     pub fn epoch(&self) -> GroupEpoch {
         self.group.context().epoch()
     }
 
-    /// Returns an `Iterator` over staged proposals.
+    /// Returns an `Iterator` over pending proposals.
     pub fn pending_proposals(&self) -> impl Iterator<Item = &QueuedProposal> {
         self.proposal_store.proposals()
     }
@@ -289,13 +289,13 @@ impl MlsGroup {
 
     // === Load & save ===
 
-    /// Loads the state from persisted state
+    /// Loads the state from persisted state.
     pub fn load<R: Read>(reader: R) -> Result<MlsGroup, Error> {
         let serialized_mls_group: SerializedMlsGroup = serde_json::from_reader(reader)?;
         Ok(serialized_mls_group.into_mls_group())
     }
 
-    /// Persists the state
+    /// Persists the state.
     pub fn save<W: Write>(&mut self, writer: &mut W) -> Result<(), Error> {
         let serialized_mls_group = serde_json::to_string_pretty(self)?;
         writer.write_all(&serialized_mls_group.into_bytes())?;
@@ -311,36 +311,9 @@ impl MlsGroup {
 
     // === Extensions ===
 
-    /// Export the Ratchet Tree
+    /// Exports the Ratchet Tree.
     pub fn export_ratchet_tree(&self) -> Vec<Option<Node>> {
         self.group.treesync().export_nodes()
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn export_group_context(&self) -> &GroupContext {
-        self.group.context()
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn tree_hash(&self) -> &[u8] {
-        self.group.treesync().tree_hash()
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub fn print_tree(&self, message: &str) {
-        self.group.print_tree(message)
-    }
-
-    /// Get the underlying [CoreGroup].
-    #[cfg(test)]
-    pub(crate) fn group(&self) -> &CoreGroup {
-        &self.group
-    }
-
-    /// Clear the pending proposals.
-    #[cfg(test)]
-    pub(crate) fn clear_pending_proposals(&mut self) {
-        self.proposal_store.empty()
     }
 }
 
@@ -389,6 +362,36 @@ impl MlsGroup {
             MlsGroupState::Inactive => Err(MlsGroupStateError::UseAfterEviction),
             MlsGroupState::Operational => Ok(()),
         }
+    }
+}
+
+// Methods used in tests
+impl MlsGroup {
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn export_group_context(&self) -> &GroupContext {
+        self.group.context()
+    }
+
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn tree_hash(&self) -> &[u8] {
+        self.group.treesync().tree_hash()
+    }
+
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn print_tree(&self, message: &str) {
+        self.group.print_tree(message)
+    }
+
+    /// Returns the underlying [CoreGroup].
+    #[cfg(test)]
+    pub(crate) fn group(&self) -> &CoreGroup {
+        &self.group
+    }
+
+    /// Clear the pending proposals.
+    #[cfg(test)]
+    pub(crate) fn clear_pending_proposals(&mut self) {
+        self.proposal_store.empty()
     }
 }
 
