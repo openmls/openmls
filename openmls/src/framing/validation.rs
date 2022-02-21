@@ -201,20 +201,20 @@ impl DecryptedMessage {
         }
     }
 
-    /// Returns the sender
+    /// Returns the sender.
     pub fn sender(&self) -> &Sender {
         self.plaintext.sender()
     }
 
-    /// Returns the plaintext
+    /// Returns the plaintext.
     pub(crate) fn plaintext(&self) -> &VerifiableMlsPlaintext {
         &self.plaintext
     }
 }
 
-/// Partially checked and potentially decrypted message.
-/// Use this to inspect the [Credential] of the message sender
-/// and the optional `aad` if the original message was an MlsCiphertext.
+/// Partially checked and potentially decrypted message (if it was originally encrypted).
+/// Use this to inspect the [`Credential`] of the message sender
+/// and the optional `aad` if the original message was encrypted.
 #[derive(Debug)]
 pub struct UnverifiedMessage {
     plaintext: VerifiableMlsPlaintext,
@@ -266,10 +266,12 @@ impl UnverifiedMessage {
 /// verifies the membership tag for member messages.  It can be converted to a
 /// verified message by verifying the signature, either with the credential or
 /// an external signature key.
-pub enum UnverifiedContextMessage {
+pub(crate) enum UnverifiedContextMessage {
     /// Unverified message from a group member
     Group(UnverifiedGroupMessage),
     /// Unverfied message from a preconfigured sender
+    /// TODO: #106
+    #[allow(dead_code)]
     Preconfigured(UnverifiedPreconfiguredMessage),
 }
 
@@ -313,7 +315,7 @@ impl UnverifiedContextMessage {
 }
 
 /// Part of [UnverifiedContextMessage].
-pub struct UnverifiedGroupMessage {
+pub(crate) struct UnverifiedGroupMessage {
     plaintext: VerifiableMlsPlaintext,
     credential: Credential,
 }
@@ -346,7 +348,7 @@ impl UnverifiedGroupMessage {
 
 // TODO #151/#106: We don't support preconfigured senders yet
 /// Part of [UnverifiedContextMessage].
-pub struct UnverifiedPreconfiguredMessage {
+pub(crate) struct UnverifiedPreconfiguredMessage {
     plaintext: VerifiableMlsPlaintext,
 }
 
@@ -369,7 +371,7 @@ impl UnverifiedPreconfiguredMessage {
 }
 
 /// Member message, where all semantic checks on the framing have been successfully performed.
-pub struct VerifiedMemberMessage {
+pub(crate) struct VerifiedMemberMessage {
     plaintext: MlsPlaintext,
 }
 
@@ -387,7 +389,7 @@ impl VerifiedMemberMessage {
 
 /// External message, where all semantic checks on the framing have been successfully performed.
 /// Note: External messages are not fully supported yet #106
-pub struct VerifiedExternalMessage {
+pub(crate) struct VerifiedExternalMessage {
     _plaintext: MlsPlaintext,
 }
 
@@ -403,15 +405,27 @@ impl VerifiedExternalMessage {
     }
 }
 
-/// Message that contains messages that are syntactically and semantically correct.
-/// [StagedCommit] and [QueuedProposal] can be inspected for authorization purposes.
+/// Message that has passed all syntax and semantics checks.
+///
+/// See the vriants' documentation for mor information.
+/// [`StagedCommit`] and [`QueuedProposal`] can be inspected for authorization purposes.
 #[derive(Debug)]
 pub enum ProcessedMessage {
-    /// Application message
+    /// An application message.
+    ///
+    /// The [`ApplllicationMessage`] contains a vector of bytes that can be used right-away.
     ApplicationMessage(ApplicationMessage),
-    /// Standalone proposal
+    /// A standalone proposal.
+    ///
+    /// The [`QueuedProposal`] can be inspected for authorization purposes by the application.
+    /// If the proposal is deemed to be allowed, it should be added to the group's proposal
+    /// queue using [`MlsGroup::store_pending_proposal()`].
     ProposalMessage(Box<QueuedProposal>),
-    /// Staged Commit
+    /// A Commit message.
+    ///
+    /// The [`StagedCommit`] can be inspected for authorization purposes by the application.
+    /// If the type of the commit and the proposals it covers aredeemed to be allowed,
+    /// the commit should be merged into the group's state using [`MlsGroup::merge_staged_commit()`].
     StagedCommitMessage(Box<StagedCommit>),
 }
 
