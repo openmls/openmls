@@ -3,7 +3,10 @@ use std::io::Read;
 use openmls_traits::types::Ciphersuite;
 use tls_codec::{TlsSerialize, TlsSize, TlsVecU8};
 
-use super::{CapabilitiesExtensionError, Deserialize, ExtensionType, Serialize};
+use super::{
+    CapabilitiesExtensionError, Deserialize, ExtensionType, RequiredCapabilitiesExtension,
+    Serialize,
+};
 use crate::messages::proposals::ProposalType;
 use crate::versions::ProtocolVersion;
 
@@ -106,6 +109,35 @@ impl CapabilitiesExtension {
     /// Get a reference to the list of supported extensions.
     pub fn extensions(&self) -> &[ExtensionType] {
         self.extensions.as_slice()
+    }
+    /// Get a reference to the list of supported proposals.
+    pub fn proposals(&self) -> &[ProposalType] {
+        self.proposals.as_slice()
+    }
+    /// Check if this [`CapabilitiesExtension`] supports all the capabilities
+    /// required by the given [`RequiredCapabilities`] extension. Returns
+    /// `true` if that is the case and `false` otherwise.
+    pub(crate) fn supports_required_capabilities(
+        &self,
+        required_capabilities: &RequiredCapabilitiesExtension,
+    ) -> bool {
+        // Check if all required extensions are supported.
+        if required_capabilities
+            .extensions()
+            .iter()
+            .any(|e| !self.extensions().contains(e))
+        {
+            return false;
+        }
+        // Check if all required proposals are supported.
+        if required_capabilities
+            .proposals()
+            .iter()
+            .any(|p| !self.proposals().contains(p))
+        {
+            return false;
+        }
+        true
     }
 }
 
