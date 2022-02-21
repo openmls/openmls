@@ -1,14 +1,20 @@
 # OpenMLS [![OpenMLS Chat][chat-image]][chat-link]
 
 [![Tests & Checks](https://github.com/openmls/openmls/actions/workflows/tests.yml/badge.svg)](https://github.com/openmls/openmls/actions/workflows/tests.yml)
-[![ARM64 Build Status](https://cloud.drone.io/api/badges/openmls/openmls/status.svg?ref=refs/heads/main)](https://cloud.drone.io/openmls/openmls)
+[![ARM64 Build Status][drone-image]](https://cloud.drone.io/openmls/openmls)
 [![Deploy Docs](https://github.com/openmls/openmls/workflows/Deploy%20Docs/badge.svg)][docs-main-link]
-[![codecov](https://codecov.io/gh/openmls/openmls/branch/main/graph/badge.svg?token=5SDRDRTZI0)](https://codecov.io/gh/openmls/openmls)
+[![codecov][codecov-image]](https://codecov.io/gh/openmls/openmls)
 [![OpenMLS List][list-image]][list-link]
 [![Docs][docs-main-badge]][docs-main-link]
 ![Rust Version][rustc-image]
 
 A WIP Rust implementation of [Messaging Layer Security](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md) based on draft 12+.
+
+### Documentation
+
+A user manual detailing how basic MLS operations can be performed using OpenMLS
+can be found [here][book-link]. More detailed documentation on OpenMLS' public
+API can be found [here][docs-main-link].
 
 ### Supported ciphersuites
 
@@ -44,11 +50,11 @@ OpenMLS only supports 32 and 64 bit platforms.
 
 #### Cryptography
 
-OpenMLS does not implement its own cryptographic primitives.
-Instead, it relies on existing implementations of the cryptographic primitives used.
-There are two different cryptography backends implemented right now.
-But consumers can bring their own implementation.
-See [traits](./traits/Readme.md) for more details.
+OpenMLS does not implement its own cryptographic primitives.  Instead, it relies
+on existing implementations of the cryptographic primitives used by MLS.  There
+are two different cryptography backends implemented right now.  But consumers
+can bring their own implementation.  See [traits](./traits/Readme.md) for more
+details.
 
 ## Development
 
@@ -103,10 +109,13 @@ You can start by looking at the [open issues](https://github.com/openmls/openmls
 
 OpenMLS adheres to the [Contributor Covenant](https://www.contributor-covenant.org/) Code of Coduct. Please read the [Code of Conduct](CODE_OF_CONDUCT.md) carefully.
 
-[chat-image]: https://img.shields.io/badge/zulip-join_chat-blue.svg
+[chat-image]: https://img.shields.io/badge/zulip-join_chat-blue.svg?style=flat&logo=appveyor
 [chat-link]: https://openmls.zulipchat.com
-[list-image]: https://img.shields.io/badge/mailing-list-blue.svg
+[list-image]: https://img.shields.io/badge/mailing-list-blue.svg?style=flat&logo=appveyor
 [list-link]: https://groups.google.com/u/0/g/openmls-dev
-[rustc-image]: https://img.shields.io/badge/rustc-1.56+-blue.svg
-[docs-main-badge]: https://img.shields.io/badge/docs-main-blue.svg
+[rustc-image]: https://img.shields.io/badge/rustc-1.56+-blue.svg?style=flat&logo=appveyor
+[docs-main-badge]: https://img.shields.io/badge/docs-main-blue.svg?style=flat&logo=appveyor
 [docs-main-link]: https://openmls.tech/openmls/doc/openmls/index.html
+[book-link]: https://openmls.tech/openmls/book
+[drone-image]: https://img.shields.io/drone/build/openmls/openmls/main?label=ARM64%20Build%20Status
+[codecov-image]: https://img.shields.io/codecov/c/github/openmls/openmls/main?logo=codecov
