@@ -233,6 +233,11 @@ impl CredentialBundle {
         &self.credential
     }
 
+    /// Separates the bundle into the [`Credential`] and the [`SignaturePrivateKey`].
+    pub fn into_parts(self) -> (Credential, SignaturePrivateKey) {
+        (self.credential, self.signature_private_key)
+    }
+
     /// Sign a `msg` using the private key of the credential bundle.
     pub(crate) fn sign(
         &self,
