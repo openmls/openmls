@@ -1,6 +1,6 @@
 //! # MlsGroup errors
 //!
-//! This module defines the public errors that can be returned from various calls
+//! This module defines the public errors that can be returned from all calls
 //! to methods of [`MlsGroup`].
 
 use crate::error::LibraryError;
