@@ -73,8 +73,8 @@ This repository is a cargo workspace with the OpenMLS library as the main compon
 In order to use OpenMLS an implementation of the [traits](./traits/Readme.md) is required.
 This repository provides two default implementations
 
-- [Rust Crypto](./openmls_rust_crypto/Readme.md)
-- [Evercrypt](./evercrypt_backend/Readme.md)
+- [Rust Crypto](./openmls_rust_crypto/README.md)
+- [Evercrypt](./openmls/evercrypt_backend/README.md)
 
 It further holds the following crates that are used for testing.
 
@@ -92,7 +92,7 @@ Note that this is a PoC for testing and must not be used for anything else.
 
 ## License
 
-OpenMLS is licensed under the MIT license. The license can be found [here](https://github.com/openmls/openmls/LICENSE).
+OpenMLS is licensed under the MIT license. The license can be found [here](./LICENSE).
 
 ## Contributing
 
