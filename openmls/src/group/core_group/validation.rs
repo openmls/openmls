@@ -170,6 +170,8 @@ impl CoreGroup {
             if add_proposal.add_proposal().key_package().ciphersuite() != self.ciphersuite()
                 || add_proposal.add_proposal().key_package().protocol_version() != self.version()
             {
+                log::error!("Tried to commit an Add proposal, where either the `Ciphersuite` or the `ProtocolVersion` is not compatible with the group.");
+
                 return Err(ProposalValidationError::InsufficientCapabilities);
             }
 
@@ -191,6 +193,7 @@ impl CoreGroup {
             if !capabilities.ciphersuites().contains(&self.ciphersuite())
                 || !capabilities.versions().contains(&self.version())
             {
+                log::error!("Tried to commit an Add proposal, where either the group's `Ciphersuite` or the group's `ProtocolVersion` is not in the `KeyPackage`'s `Capabilities`.");
                 return Err(ProposalValidationError::InsufficientCapabilities);
             }
             // If there is a required capabilities extension, check if that one
@@ -211,6 +214,7 @@ impl CoreGroup {
                     })?;
                 // Check if all required capabilities are supported.
                 if !capabilities.supports_required_capabilities(required_capabilities) {
+                    log::error!("Tried to commit an Add proposal, where the `Capabilities` of the given `KeyPackage` do not fulfill the `RequiredCapabilities` of the group.");
                     return Err(ProposalValidationError::InsufficientCapabilities);
                 }
             }
