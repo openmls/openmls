@@ -297,6 +297,9 @@ pub enum ProposalValidationError {
     /// The Commit includes update proposals from the committer.
     #[error("The Commit includes update proposals from the committer.")]
     CommitterIncludedOwnUpdate,
+    /// The capabilities of the add proposal are insufficient for this group.
+    #[error("The capabilities of the add proposal are insufficient for this group.")]
+    InsufficientCapabilities,
 }
 
 /// External Commit validaton error

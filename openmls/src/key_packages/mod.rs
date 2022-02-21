@@ -172,6 +172,16 @@ impl KeyPackagePayload {
     pub fn exchange_public_key(&mut self, public_key: HpkePublicKey) {
         self.hpke_init_key = public_key
     }
+    /// Replace the version in the KeyPackage.
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn set_version(&mut self, version: ProtocolVersion) {
+        self.protocol_version = version
+    }
+    /// Replace the ciphersuite in the KeyPackage.
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn set_ciphersuite(&mut self, ciphersuite: Ciphersuite) {
+        self.ciphersuite = ciphersuite
+    }
 }
 
 /// The key package struct.
@@ -478,6 +488,16 @@ impl KeyPackageBundlePayload {
     #[cfg(any(feature = "test-utils", test))]
     pub fn exchange_public_key(&mut self, public_key: HpkePublicKey) {
         self.key_package_payload.exchange_public_key(public_key)
+    }
+    /// Replace the version in the KeyPackage.
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn set_version(&mut self, version: ProtocolVersion) {
+        self.key_package_payload.set_version(version)
+    }
+    /// Replace the ciphersuite in the KeyPackage.
+    #[cfg(any(feature = "test-utils", test))]
+    pub fn set_ciphersuite(&mut self, ciphersuite: Ciphersuite) {
+        self.key_package_payload.set_ciphersuite(ciphersuite)
     }
 }
 

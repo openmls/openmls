@@ -5,6 +5,8 @@ use std::collections::HashSet;
 
 use crate::{
     ciphersuite::hash_ref::HashReference,
+    error::LibraryError,
+    extensions::ExtensionType,
     framing::Sender,
     group::errors::ExternalCommitValidationError,
     group::errors::ValidationError,
@@ -113,7 +115,7 @@ impl CoreGroup {
     ///  - ValSem103
     ///  - ValSem104
     ///  - ValSem105
-    ///  - TODO: ValSem106
+    ///  - ValSem106
     pub(crate) fn validate_add_proposals(
         &self,
         proposal_queue: &ProposalQueue,
@@ -155,6 +157,63 @@ impl CoreGroup {
             if !public_key_set.insert(public_key) {
                 return Err(ProposalValidationError::DuplicatePublicKeyAddProposal);
             }
+
+            // ValSem106: Check the required capabilities of the add proposals
+            // This includes the following checks:
+            // - Do ciphersuite and version match that of the group?
+            // - Are the two listed in the `Capabilities` Extension?
+            // - If a `RequiredCapabilitiesExtension` is present in the group:
+            //   Does the key package advertise the capabilities required by that
+            //   extension?
+
+            // Check if ciphersuite and version of the group are correct.
+            if add_proposal.add_proposal().key_package().ciphersuite() != self.ciphersuite()
+                || add_proposal.add_proposal().key_package().protocol_version() != self.version()
+            {
+                return Err(ProposalValidationError::InsufficientCapabilities);
+            }
+
+            // Check if the ciphersuite and the version of the group are
+            // supported.
+            let capabilities = add_proposal
+                .add_proposal()
+                .key_package()
+                .extension_with_type(ExtensionType::Capabilities)
+                .ok_or(ProposalValidationError::InsufficientCapabilities)?
+                .as_capabilities_extension()
+                .map_err(|_| {
+                    // Mismatches between Extensions and ExtensionTypes should be
+                    // caught when constructing KeyPackages.
+                    ProposalValidationError::LibraryError(LibraryError::custom(
+                        "ExtensionType didn't match extension content.",
+                    ))
+                })?;
+            if !capabilities.ciphersuites().contains(&self.ciphersuite())
+                || !capabilities.versions().contains(&self.version())
+            {
+                return Err(ProposalValidationError::InsufficientCapabilities);
+            }
+            // If there is a required capabilities extension, check if that one
+            // is supported.
+            if let Some(required_capabilities_extension) = self
+                .group_context_extensions()
+                .iter()
+                .find(|&e| e.extension_type() == ExtensionType::RequiredCapabilities)
+            {
+                let required_capabilities = required_capabilities_extension
+                    .as_required_capabilities_extension()
+                    .map_err(|_| {
+                        // Mismatches between Extensions and ExtensionTypes should be
+                        // caught when constructing KeyPackages.
+                        ProposalValidationError::LibraryError(LibraryError::custom(
+                            "ExtensionType didn't match extension content.",
+                        ))
+                    })?;
+                // Check if all required capabilities are supported.
+                if !capabilities.supports_required_capabilities(required_capabilities) {
+                    return Err(ProposalValidationError::InsufficientCapabilities);
+                }
+            }
         }
 
         for (_index, key_package) in self.treesync().full_leaves()? {
@@ -174,7 +233,6 @@ impl CoreGroup {
                 return Err(ProposalValidationError::ExistingPublicKeyAddProposal);
             }
         }
-        // TODO #538: ValSem106: Check the required capabilities of the add proposals
         Ok(())
     }
 
