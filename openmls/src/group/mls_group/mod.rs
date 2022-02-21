@@ -124,7 +124,7 @@ pub enum MlsGroupState {
 }
 
 /// A `MlsGroup` represents an MLS group with
-/// an easy, high-level API designed to be used in production. The API exposes
+/// a high-level API. The API exposes
 /// high level functions to manage a group by adding/removing members, get the
 /// current member list, etc.
 ///
