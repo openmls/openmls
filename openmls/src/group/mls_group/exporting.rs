@@ -7,7 +7,11 @@ use super::*;
 impl MlsGroup {
     // === Export secrets ===
 
-    /// Exports a secret from the current epoch
+    /// Exports a secret from the current epoch.
+    /// Returns [`ExportSecretError::KeyLengthTooLong`] if the requested
+    /// key length is too long.
+    /// Returns [`ExportSecretError::GroupStateError(MlsGroupStateError::UseAfterEviction)`](MlsGroupStateError::UseAfterEviction)
+    /// if the group is not active.
     pub fn export_secret(
         &self,
         backend: &impl OpenMlsCryptoProvider,
@@ -30,13 +34,13 @@ impl MlsGroup {
         }
     }
 
-    /// Returns the authentication secret
+    /// Returns the authentication secret of the current epoch.
     pub fn authentication_secret(&self) -> Vec<u8> {
         self.group.authentication_secret()
     }
 
     /// Returns a resumption secret for a given epoch. If no resumption secret
-    /// is available `None` is returned.
+    /// is available for that epoch,  `None` is returned.
     pub fn get_resumption_secret(&self, epoch: GroupEpoch) -> Option<&ResumptionSecret> {
         self.resumption_secret_store.get(epoch)
     }

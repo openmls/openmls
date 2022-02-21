@@ -4,7 +4,7 @@ use tls_codec::Serialize;
 use super::*;
 
 impl MlsGroup {
-    /// Updates the own leaf node
+    /// Updates the own leaf node.
     ///
     /// A [`KeyPackageBundle`](crate::key_packages::KeyPackageBundle) can optionally
     /// be provided. If not, a new one will be created on the fly.
@@ -72,7 +72,7 @@ impl MlsGroup {
         Ok((mls_message, create_commit_result.welcome_option))
     }
 
-    /// Creates a proposal to update the own leaf node
+    /// Creates a proposal to update the own leaf node.
     pub fn propose_self_update(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,

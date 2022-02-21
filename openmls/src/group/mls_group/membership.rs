@@ -12,9 +12,7 @@ use super::{
 };
 
 impl MlsGroup {
-    // === Membership management ===
-
-    /// Adds members to the group
+    /// Adds members to the group.
     ///
     /// New members are added by providing a `KeyPackage` for each member.
     ///
@@ -89,7 +87,7 @@ impl MlsGroup {
         Ok((mls_messages, welcome))
     }
 
-    /// Removes members from the group
+    /// Removes members from the group.
     ///
     /// Members are removed by providing the index of their leaf in the tree.
     ///
@@ -153,7 +151,7 @@ impl MlsGroup {
         Ok((mls_message, create_commit_result.welcome_option))
     }
 
-    /// Creates proposals to add members to the group
+    /// Creates proposals to add members to the group.
     ///
     /// Returns an error if there is a pending commit.
     pub fn propose_add_member(
@@ -204,7 +202,7 @@ impl MlsGroup {
         Ok(mls_message)
     }
 
-    /// Creates proposals to remove members from the group
+    /// Creates proposals to remove members from the group.
     ///
     /// Returns an error if there is a pending commit.
     pub fn propose_remove_member(
@@ -246,7 +244,10 @@ impl MlsGroup {
         Ok(mls_message)
     }
 
-    /// Leave the group
+    /// Leave the group.
+    ///
+    /// Creates a Remove Proposal that needs to be covered by a Commit from a different member.
+    /// The Remove Proposal is returned as a [`MlsMessageOut`].
     ///
     /// Returns an error if there is a pending commit.
     pub fn leave_group(
@@ -289,7 +290,7 @@ impl MlsGroup {
         Ok(self.plaintext_to_mls_message(remove_proposal, backend)?)
     }
 
-    /// Gets a list of [`KeyPackage`]s of the current group members.
+    /// Returns a list of [`KeyPackage`]s of the current group members.
     pub fn members(&self) -> Vec<&KeyPackage> {
         match self.group.treesync().full_leaves() {
             Ok(leaves) => leaves.iter().map(|(_, &kp)| kp).collect(),
@@ -301,7 +302,7 @@ impl MlsGroup {
         }
     }
 
-    /// Get the [`KeyPackage`] of a member corresponding to the given
+    /// Returns the [`KeyPackage`] of a member corresponding to the given
     /// [`KeyPackageRef`]. Returns `None` if no matching [`KeyPackage`] can be
     /// found in this group.
     pub fn member(&self, key_package_ref: &KeyPackageRef) -> Option<&KeyPackage> {
@@ -315,7 +316,7 @@ impl MlsGroup {
             .map(|leaf| leaf.key_package())
     }
 
-    /// Gets the current list of members, indexed with the leaf index.
+    /// Returns the current list of members, indexed with the leaf index.
     /// This should go away in future when all tests are rewritten to use key
     /// package references instead of leaf indices.
     #[cfg(any(feature = "test-utils", test))]
@@ -348,7 +349,7 @@ pub enum RemoveOperation {
 }
 
 impl RemoveOperation {
-    /// Construct a new [`RemoveOperation`] from a [`QueuedRemoveProposal`] and the
+    /// Constructs a new [`RemoveOperation`] from a [`QueuedRemoveProposal`] and the
     /// corresponding [`MlsGroup`].
     pub fn new(
         queued_remove_proposal: QueuedRemoveProposal,

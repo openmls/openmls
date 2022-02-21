@@ -1,7 +1,6 @@
-//! # MLS CoreGroup errors
+//! # MLS group errors
 //!
-//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and
-//! `CreateCommitError`.
+//! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.
 
 use crate::{
     error::LibraryError,
@@ -44,9 +43,6 @@ pub enum WelcomeError {
     /// We don't support the version of the group we are trying to join.
     #[error("We don't support the version of the group we are trying to join.")]
     UnsupportedMlsVersion,
-    /// We don't support the ciphersuite of the group we are trying to join.
-    #[error("We don't support the ciphersuite of the group we are trying to join.")]
-    UnsupportedCiphersuite,
     /// We don't support all capabilities of the group.
     #[error("We don't support all capabilities of the group.")]
     UnsupportedCapability,
