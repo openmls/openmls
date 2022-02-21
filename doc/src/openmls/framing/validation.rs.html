@@ -436,6 +436,20 @@
 <span id="435">435</span>
 <span id="436">436</span>
 <span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ```text</span>
@@ -642,20 +656,20 @@
         }
     }
 
-    <span class="doccomment">/// Returns the sender</span>
+    <span class="doccomment">/// Returns the sender.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sender</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Sender</span> {
         <span class="self">self</span>.<span class="ident">plaintext</span>.<span class="ident">sender</span>()
     }
 
-    <span class="doccomment">/// Returns the plaintext</span>
+    <span class="doccomment">/// Returns the plaintext.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">plaintext</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">VerifiableMlsPlaintext</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">plaintext</span>
     }
 }
 
-<span class="doccomment">/// Partially checked and potentially decrypted message.</span>
-<span class="doccomment">/// Use this to inspect the [Credential] of the message sender</span>
-<span class="doccomment">/// and the optional `aad` if the original message was an MlsCiphertext.</span>
+<span class="doccomment">/// Partially checked and potentially decrypted message (if it was originally encrypted).</span>
+<span class="doccomment">/// Use this to inspect the [`Credential`] of the message sender</span>
+<span class="doccomment">/// and the optional `aad` if the original message was encrypted.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UnverifiedMessage</span> {
     <span class="ident">plaintext</span>: <span class="ident">VerifiableMlsPlaintext</span>,
@@ -707,10 +721,12 @@
 <span class="doccomment">/// verifies the membership tag for member messages.  It can be converted to a</span>
 <span class="doccomment">/// verified message by verifying the signature, either with the credential or</span>
 <span class="doccomment">/// an external signature key.</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">UnverifiedContextMessage</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">UnverifiedContextMessage</span> {
     <span class="doccomment">/// Unverified message from a group member</span>
     <span class="ident">Group</span>(<span class="ident">UnverifiedGroupMessage</span>),
     <span class="doccomment">/// Unverfied message from a preconfigured sender</span>
+    <span class="doccomment">/// TODO: #106</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
     <span class="ident">Preconfigured</span>(<span class="ident">UnverifiedPreconfiguredMessage</span>),
 }
 
@@ -754,7 +770,7 @@
 }
 
 <span class="doccomment">/// Part of [UnverifiedContextMessage].</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UnverifiedGroupMessage</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">UnverifiedGroupMessage</span> {
     <span class="ident">plaintext</span>: <span class="ident">VerifiableMlsPlaintext</span>,
     <span class="ident">credential</span>: <span class="ident">Credential</span>,
 }
@@ -787,7 +803,7 @@
 
 <span class="comment">// TODO #151/#106: We don&#39;t support preconfigured senders yet</span>
 <span class="doccomment">/// Part of [UnverifiedContextMessage].</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UnverifiedPreconfiguredMessage</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">UnverifiedPreconfiguredMessage</span> {
     <span class="ident">plaintext</span>: <span class="ident">VerifiableMlsPlaintext</span>,
 }
 
@@ -810,7 +826,7 @@
 }
 
 <span class="doccomment">/// Member message, where all semantic checks on the framing have been successfully performed.</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">VerifiedMemberMessage</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">VerifiedMemberMessage</span> {
     <span class="ident">plaintext</span>: <span class="ident">MlsPlaintext</span>,
 }
 
@@ -828,7 +844,7 @@
 
 <span class="doccomment">/// External message, where all semantic checks on the framing have been successfully performed.</span>
 <span class="doccomment">/// Note: External messages are not fully supported yet #106</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">VerifiedExternalMessage</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">VerifiedExternalMessage</span> {
     <span class="ident">_plaintext</span>: <span class="ident">MlsPlaintext</span>,
 }
 
@@ -844,15 +860,27 @@
     }
 }
 
-<span class="doccomment">/// Message that contains messages that are syntactically and semantically correct.</span>
-<span class="doccomment">/// [StagedCommit] and [QueuedProposal] can be inspected for authorization purposes.</span>
+<span class="doccomment">/// A message that has passed all syntax and semantics checks.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// See the variants&#39; documentation for more information.</span>
+<span class="doccomment">/// [`StagedCommit`] and [`QueuedProposal`] can be inspected for authorization purposes.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProcessedMessage</span> {
-    <span class="doccomment">/// Application message</span>
+    <span class="doccomment">/// An application message.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// The [`ApplicationMessage`] contains a vector of bytes that can be used right-away.</span>
     <span class="ident">ApplicationMessage</span>(<span class="ident">ApplicationMessage</span>),
-    <span class="doccomment">/// Standalone proposal</span>
+    <span class="doccomment">/// A standalone proposal.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// The [`QueuedProposal`] can be inspected for authorization purposes by the application.</span>
+    <span class="doccomment">/// If the proposal is deemed to be allowed, it should be added to the group&#39;s proposal</span>
+    <span class="doccomment">/// queue using [`MlsGroup::store_pending_proposal()`].</span>
     <span class="ident">ProposalMessage</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">QueuedProposal</span><span class="op">&gt;</span>),
-    <span class="doccomment">/// Staged Commit</span>
+    <span class="doccomment">/// A Commit message.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// The [`StagedCommit`] can be inspected for authorization purposes by the application.</span>
+    <span class="doccomment">/// If the type of the commit and the proposals it covers are deemed to be allowed,</span>
+    <span class="doccomment">/// the commit should be merged into the group&#39;s state using [`MlsGroup::merge_staged_commit()`].</span>
     <span class="ident">StagedCommitMessage</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">StagedCommit</span><span class="op">&gt;</span>),
 }
 
