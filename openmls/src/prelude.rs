@@ -55,4 +55,7 @@ pub use tls_codec::{
 pub use crate::error::*;
 
 // OpenMLS traits
-pub use openmls_traits::{types::*, OpenMlsCryptoProvider};
+pub use openmls_traits::{
+    crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore, random::OpenMlsRand, types::*,
+    OpenMlsCryptoProvider,
+};

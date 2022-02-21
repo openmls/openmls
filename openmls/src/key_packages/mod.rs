@@ -163,13 +163,13 @@ impl KeyPackagePayload {
 
     /// Replace the credential in the KeyPackage.
     #[cfg(any(feature = "test-utils", test))]
-    pub fn exchange_credential(&mut self, credential: Credential) {
+    pub fn set_credential(&mut self, credential: Credential) {
         self.credential = credential
     }
 
     /// Replace the public key in the KeyPackage.
     #[cfg(any(feature = "test-utils", test))]
-    pub fn exchange_public_key(&mut self, public_key: HpkePublicKey) {
+    pub fn set_public_key(&mut self, public_key: HpkePublicKey) {
         self.hpke_init_key = public_key
     }
     /// Replace the version in the KeyPackage.
@@ -481,13 +481,13 @@ impl KeyPackageBundlePayload {
 
     /// Replace the credential in the KeyPackage.
     #[cfg(any(feature = "test-utils", test))]
-    pub fn exchange_credential(&mut self, credential: Credential) {
-        self.key_package_payload.exchange_credential(credential)
+    pub fn set_credential(&mut self, credential: Credential) {
+        self.key_package_payload.set_credential(credential)
     }
     /// Replace the public key in the KeyPackage.
     #[cfg(any(feature = "test-utils", test))]
-    pub fn exchange_public_key(&mut self, public_key: HpkePublicKey) {
-        self.key_package_payload.exchange_public_key(public_key)
+    pub fn set_public_key(&mut self, public_key: HpkePublicKey) {
+        self.key_package_payload.set_public_key(public_key)
     }
     /// Replace the version in the KeyPackage.
     #[cfg(any(feature = "test-utils", test))]
@@ -716,6 +716,15 @@ impl KeyPackageBundle {
     /// Get a reference to the public part of this bundle, i.e. the [`KeyPackage`].
     pub fn key_package(&self) -> &KeyPackage {
         &self.key_package
+    }
+
+    /// Separates the bundle into the [`KeyPackage`] and the ([`HpkePrivateKey`],
+    /// [`Secret`]).
+    pub fn into_parts(self) -> (KeyPackage, (Vec<u8>, Secret)) {
+        (
+            self.key_package,
+            (self.private_key.as_slice().to_vec(), self.leaf_secret),
+        )
     }
 
     /// Get the unsigned payload version of this key package bundle for modificaiton.

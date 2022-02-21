@@ -458,7 +458,7 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         CredentialBundle::from_parts("Dave".into(), charlie_credential_bundle.key_pair());
 
     let mut kpb_payload = KeyPackageBundlePayload::from(charlie_key_package_bundle);
-    kpb_payload.exchange_credential(dave_credential_bundle.credential().clone());
+    kpb_payload.set_credential(dave_credential_bundle.credential().clone());
     let dave_key_package_bundle = kpb_payload
         .sign(backend, &dave_credential_bundle)
         .expect("error signing credential bundle");
@@ -619,7 +619,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let (dave_credential_bundle, _) =
         generate_credential_bundle_and_key_package_bundle("Dave".into(), ciphersuite, backend);
     let mut kpb_payload = KeyPackageBundlePayload::from(charlie_key_package_bundle);
-    kpb_payload.exchange_credential(dave_credential_bundle.credential().clone());
+    kpb_payload.set_credential(dave_credential_bundle.credential().clone());
     let dave_key_package_bundle = kpb_payload
         .sign(backend, &dave_credential_bundle)
         .expect("error signing credential bundle");
@@ -1067,7 +1067,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         generate_credential_bundle_and_key_package_bundle("Dave".into(), ciphersuite, backend);
     let mut kpb_payload = KeyPackageBundlePayload::from(dave_kpb);
     // Insert Bob's public key into Dave's KPB and resign.
-    kpb_payload.exchange_public_key(bob_public_key);
+    kpb_payload.set_public_key(bob_public_key);
     let dave_key_package_bundle = kpb_payload
         .sign(backend, &dave_credential_bundle)
         .expect("error signing credential bundle");
@@ -1401,10 +1401,10 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // We first go the manual route
     let _remove_proposal1 = alice_group
-        .propose_remove_member(backend, &bob_kp_ref)
+        .propose_remove_member(backend, bob_kp_ref)
         .expect("error while creating remove proposal");
     let _remove_proposal2 = alice_group
-        .propose_remove_member(backend, &bob_kp_ref)
+        .propose_remove_member(backend, bob_kp_ref)
         .expect("error while creating remove proposal");
     // While this shouldn't fail, it should produce a valid commit, i.e. one
     // that contains only one remove proposal.
@@ -1416,11 +1416,11 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     alice_group.clear_pending_commit();
 
     let (combined_commit, _welcome) = alice_group
-        .remove_members(backend, &[bob_kp_ref.clone(), bob_kp_ref.clone()])
+        .remove_members(backend, &[*bob_kp_ref, *bob_kp_ref])
         .expect("error while trying to remove the same member twice");
 
     // Now let's verify that both commits only contain one proposal.
-    for commit in [manual_commit, combined_commit.clone()] {
+    for commit in [manual_commit, combined_commit] {
         let serialized_message = commit
             .tls_serialize_detached()
             .expect("error serializing plaintext");
@@ -1441,7 +1441,7 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         // Depending on the commit, the proposal is either inline or it's a
         // reference.
         let expected_inline_proposal = Proposal::Remove(RemoveProposal {
-            removed: bob_kp_ref.clone(),
+            removed: *bob_kp_ref,
         });
         let expected_reference_proposal =
             ProposalRef::from_proposal(ciphersuite, backend, &expected_inline_proposal)
@@ -1486,7 +1486,7 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // There are two ways in which we could use the MlsGroup API to commit to
     // remove proposals: Create the proposals and then commit them manually or
     // use the `remove_members` endpoint.
-    let fake_kp_ref = hash_ref::HashReference::from_slice(&vec![0u8; 16]);
+    let fake_kp_ref = hash_ref::HashReference::from_slice(&[0u8; 16]);
 
     // We first go the manual route
     let _remove_proposal1 = alice_group
@@ -1511,7 +1511,7 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     alice_group.clear_pending_proposals();
 
     let err = alice_group
-        .remove_members(backend, &[fake_kp_ref.clone()])
+        .remove_members(backend, &[fake_kp_ref])
         .expect_err("no error while trying to remove non-group-member");
 
     assert_eq!(
@@ -1620,7 +1620,7 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let mut update_kpb_payload =
         KeyPackageBundlePayload::from_rekeyed_key_package(&bob_kp, backend)
             .expect("error creating kpb payload");
-    update_kpb_payload.exchange_credential(new_cb.credential().clone());
+    update_kpb_payload.set_credential(new_cb.credential().clone());
     let update_kpb = update_kpb_payload
         .sign(backend, &new_cb)
         .expect("error signing kpb");
@@ -1663,7 +1663,7 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     alice_group.clear_pending_proposals();
 
     // We now have Alice create a commit. Then we artificially add a
-    // update proposal that changes the updaters identity.
+    // update proposal that changes the updater's identity.
 
     // Create the Commit.
     let serialized_update = alice_group
@@ -1775,7 +1775,7 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         )
         .expect("An unexpected error occurred.");
 
-    update_kpb_payload.exchange_public_key(alice_kp.hpke_init_key().clone());
+    update_kpb_payload.set_public_key(alice_kp.hpke_init_key().clone());
 
     let update_kpb = update_kpb_payload
         .sign(backend, &bob_credential_bundle)
@@ -1904,14 +1904,14 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // We begin by creating an update proposal for alice.
     let update_kpb = generate_key_package_bundle(
         &[ciphersuite],
-        &alice_group.credential().expect("error fetching credential"),
+        alice_group.credential().expect("error fetching credential"),
         vec![],
         backend,
     )
     .expect("error creating kpb");
 
     let update_proposal = Proposal::Update(UpdateProposal {
-        key_package: update_kpb.clone(),
+        key_package: update_kpb,
     });
 
     // We now have Alice create a commit. That commit should not contain any
