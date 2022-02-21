@@ -170,6 +170,8 @@
 <span id="169">169</span>
 <span id="170">170</span>
 <span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Processing functions of an [`MlsGroup`] for incoming messages.</span>
 
 <span class="kw">use</span> <span class="ident">std::mem</span>;
@@ -183,9 +185,9 @@
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">errors::UnverifiedMessageError</span>, <span class="kw-2">*</span>};
 
 <span class="kw">impl</span> <span class="ident">MlsGroup</span> {
-    <span class="doccomment">/// This function is used to parse messages from the DS.</span>
-    <span class="doccomment">/// It checks for syntactic errors and makes some semantic checks as well.</span>
-    <span class="doccomment">/// If the input is a `MlsCiphertext` message, it will be decrypted.</span>
+    <span class="doccomment">/// Parses incoming messages from the DS.</span>
+    <span class="doccomment">/// Checks for syntactic errors and makes some semantic checks as well.</span>
+    <span class="doccomment">/// If the input is an encrypted message, it will be decrypted.</span>
     <span class="doccomment">/// Returns an [`UnverifiedMessage`] that can be inspected and later processed in</span>
     <span class="doccomment">/// [`Self::process_unverified_message()`].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">parse_message</span>(
@@ -224,6 +226,8 @@
 
     <span class="doccomment">/// This processing function does most of the semantic verifications.</span>
     <span class="doccomment">/// It returns a [ProcessedMessage] enum.</span>
+    <span class="doccomment">/// Returns an [`UnverifiedMessageError`] when the validation checks fail</span>
+    <span class="doccomment">/// with the exact reason of the failure.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">process_unverified_message</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">unverified_message</span>: <span class="ident">UnverifiedMessage</span>,
@@ -248,7 +252,7 @@
         <span class="self">self</span>.<span class="ident">flag_state_change</span>();
     }
 
-    <span class="doccomment">/// Create a Commit message that covers the pending proposals that are</span>
+    <span class="doccomment">/// Creates a Commit message that covers the pending proposals that are</span>
     <span class="doccomment">/// currently stored in the group&#39;s [ProposalStore].</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Returns an error if there is a pending commit.</span>

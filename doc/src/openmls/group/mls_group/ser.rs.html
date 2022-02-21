@@ -47,14 +47,18 @@
 <span id="46">46</span>
 <span id="47">47</span>
 <span id="48">48</span>
+<span id="49">49</span>
+<span id="50">50</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use</span> <span class="ident">serde</span>::{
     <span class="ident">ser</span>::{<span class="ident">SerializeStruct</span>, <span class="ident">Serializer</span>},
     <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>,
 };
+
+<span class="doccomment">/// Helper struct that contains the serializable values of an `MlsGroup.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SerializedMlsGroup</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">SerializedMlsGroup</span> {
     <span class="ident">mls_group_config</span>: <span class="ident">MlsGroupConfig</span>,
     <span class="ident">group</span>: <span class="ident">CoreGroup</span>,
     <span class="ident">proposal_store</span>: <span class="ident">ProposalStore</span>,

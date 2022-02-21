@@ -272,16 +272,22 @@
 <span id="271">271</span>
 <span id="272">272</span>
 <span id="273">273</span>
-</pre><pre class="rust"><code><span class="doccomment">//! # MLS MlsGroup errors</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+</pre><pre class="rust"><code><span class="doccomment">//! # MlsGroup errors</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
-<span class="doccomment">//! `CreateCommitError`.</span>
+<span class="doccomment">//! This module defines the public errors that can be returned from all calls</span>
+<span class="doccomment">//! to methods of [`MlsGroup`].</span>
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">error::LibraryError</span>,
-    <span class="ident">group::errors</span>::{<span class="ident">CreateCommitError</span>, <span class="ident">StageCommitError</span>, <span class="ident">ValidationError</span>},
-};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::LibraryError</span>;
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+
+<span class="comment">// Re-export errors from the CoreGroup level</span>
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::errors</span>::{
+    <span class="ident">CreateCommitError</span>, <span class="ident">ExternalCommitError</span>, <span class="ident">ExternalCommitValidationError</span>, <span class="ident">ProposalValidationError</span>,
+    <span class="ident">StageCommitError</span>, <span class="ident">ValidationError</span>, <span class="ident">WelcomeError</span>,
+};
 
 <span class="doccomment">/// New group error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>

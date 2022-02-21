@@ -447,14 +447,9 @@
 <span id="446">446</span>
 <span id="447">447</span>
 <span id="448">448</span>
-<span id="449">449</span>
-<span id="450">450</span>
-<span id="451">451</span>
-<span id="452">452</span>
-</pre><pre class="rust"><code><span class="doccomment">//! # MLS CoreGroup errors</span>
+</pre><pre class="rust"><code><span class="doccomment">//! # MLS group errors</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and</span>
-<span class="doccomment">//! `CreateCommitError`.</span>
+<span class="doccomment">//! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">error::LibraryError</span>,
@@ -497,9 +492,6 @@
     <span class="doccomment">/// We don&#39;t support the version of the group we are trying to join.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;We don&#39;t support the version of the group we are trying to join.&quot;</span>)]</span>
     <span class="ident">UnsupportedMlsVersion</span>,
-    <span class="doccomment">/// We don&#39;t support the ciphersuite of the group we are trying to join.</span>
-    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;We don&#39;t support the ciphersuite of the group we are trying to join.&quot;</span>)]</span>
-    <span class="ident">UnsupportedCiphersuite</span>,
     <span class="doccomment">/// We don&#39;t support all capabilities of the group.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;We don&#39;t support all capabilities of the group.&quot;</span>)]</span>
     <span class="ident">UnsupportedCapability</span>,

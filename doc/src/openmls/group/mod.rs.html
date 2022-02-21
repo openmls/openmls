@@ -115,15 +115,9 @@
 <span id="114">114</span>
 <span id="115">115</span>
 <span id="116">116</span>
-<span id="117">117</span>
-<span id="118">118</span>
-<span id="119">119</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Group APIs for MLS</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Group API for MLS</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! This file contains the API to interact with groups.</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! The low-level standard API is described in the `Api` trait.\</span>
-<span class="doccomment">//! The high-level API is exposed in `MlsGroup`.</span>
+<span class="doccomment">//! This module contains the API to interact with groups.</span>
 
 <span class="kw">mod</span> <span class="ident">group_context</span>;
 <span class="kw">mod</span> <span class="ident">mls_group</span>;
@@ -141,9 +135,9 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">core_group</span>::<span class="kw-2">*</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>)))]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">group_context</span>::<span class="kw-2">*</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">errors</span>;
 
 <span class="comment">// Public</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">errors</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">core_group::proposals</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">core_group::staged_commit::StagedCommit</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">mls_group</span>::<span class="kw-2">*</span>;
