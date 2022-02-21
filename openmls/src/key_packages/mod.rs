@@ -687,6 +687,15 @@ impl KeyPackageBundle {
         &self.key_package
     }
 
+    /// Separates the bundle into the [`KeyPackage`] and the ([`HpkePrivateKey`],
+    /// [`Secret`]).
+    pub fn into_parts(self) -> (KeyPackage, (Vec<u8>, Secret)) {
+        (
+            self.key_package,
+            (self.private_key.as_slice().to_vec(), self.leaf_secret),
+        )
+    }
+
     /// Get the unsigned payload version of this key package bundle for modificaiton.
     #[cfg(feature = "test-utils")]
     pub fn unsigned(self) -> KeyPackageBundlePayload {
