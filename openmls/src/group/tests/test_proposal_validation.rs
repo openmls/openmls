@@ -1407,7 +1407,7 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     alice_group.clear_pending_proposals();
 
     // We now have Alice create a commit. Then we artificially add a
-    // update proposal that changes the updaters identity.
+    // update proposal that changes the updater's identity.
 
     // Create the Commit.
     let serialized_update = alice_group
