@@ -762,6 +762,17 @@
 <span id="761">761</span>
 <span id="762">762</span>
 <span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
+<span id="774">774</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Packages.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Key packages are pre-published public keys that provide some information</span>
@@ -927,8 +938,14 @@
 
     <span class="doccomment">/// Replace the credential in the KeyPackage.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">exchange_credential</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">credential</span>: <span class="ident">Credential</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_credential</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">credential</span>: <span class="ident">Credential</span>) {
         <span class="self">self</span>.<span class="ident">credential</span> <span class="op">=</span> <span class="ident">credential</span>
+    }
+
+    <span class="doccomment">/// Replace the public key in the KeyPackage.</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_public_key</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">public_key</span>: <span class="ident">HpkePublicKey</span>) {
+        <span class="self">self</span>.<span class="ident">hpke_init_key</span> <span class="op">=</span> <span class="ident">public_key</span>
     }
 }
 
@@ -1229,8 +1246,13 @@
 
     <span class="doccomment">/// Replace the credential in the KeyPackage.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">exchange_credential</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">credential</span>: <span class="ident">Credential</span>) {
-        <span class="self">self</span>.<span class="ident">key_package_payload</span>.<span class="ident">exchange_credential</span>(<span class="ident">credential</span>)
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_credential</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">credential</span>: <span class="ident">Credential</span>) {
+        <span class="self">self</span>.<span class="ident">key_package_payload</span>.<span class="ident">set_credential</span>(<span class="ident">credential</span>)
+    }
+    <span class="doccomment">/// Replace the public key in the KeyPackage.</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_public_key</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">public_key</span>: <span class="ident">HpkePublicKey</span>) {
+        <span class="self">self</span>.<span class="ident">key_package_payload</span>.<span class="ident">set_public_key</span>(<span class="ident">public_key</span>)
     }
 }
 

@@ -433,6 +433,9 @@
 <span id="432">432</span>
 <span id="433">433</span>
 <span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ```text</span>
@@ -587,6 +590,7 @@
 
     <span class="doccomment">/// Gets the correct credential from the message depending on the sender type.</span>
     <span class="doccomment">/// Checks the following semantic validation:</span>
+    <span class="doccomment">///  - ValSem112</span>
     <span class="doccomment">///  - ValSem246</span>
     <span class="doccomment">///  - Prepares ValSem247 by setting the right credential. The remainder</span>
     <span class="doccomment">///    of ValSem247 is validated as part of ValSem010.</span>
@@ -623,6 +627,8 @@
             <span class="comment">// Preconfigured senders are not supported yet #106/#151.</span>
             <span class="ident">Sender::Preconfigured</span>(<span class="kw">_</span>) =&gt; <span class="macro">unimplemented!</span>(),
             <span class="ident">Sender::NewMember</span> =&gt; {
+                <span class="comment">// Since this allows only commits to have a sender type `Member`, it checks</span>
+                <span class="comment">// ValSem112</span>
                 <span class="kw">if</span> <span class="kw">let</span> <span class="ident">MlsPlaintextContentType::Commit</span>(<span class="ident">commit</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext</span>().<span class="ident">content</span>() {
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">path</span>) <span class="op">=</span> <span class="ident">commit</span>.<span class="ident">path</span>() {
                         <span class="prelude-val">Ok</span>(<span class="ident">path</span>.<span class="ident">leaf_key_package</span>().<span class="ident">credential</span>().<span class="ident">clone</span>())

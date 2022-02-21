@@ -242,6 +242,8 @@
 <span id="241">241</span>
 <span id="242">242</span>
 <span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">core_group</span>::{<span class="ident">proposals::QueuedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group</span>::{<span class="ident">errors::ValidationError</span>, <span class="ident">mls_group::errors::UnverifiedMessageError</span>};
@@ -262,6 +264,7 @@
     <span class="doccomment">///  - ValSem006</span>
     <span class="doccomment">///  - ValSem007</span>
     <span class="doccomment">///  - ValSem009</span>
+    <span class="doccomment">///  - ValSem112</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">parse_message</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
@@ -297,6 +300,7 @@
 
         <span class="comment">// Extract the credential if the sender is a member or a new member.</span>
         <span class="comment">// Checks the following semantic validation:</span>
+        <span class="comment">//  - ValSem112</span>
         <span class="comment">//  - ValSem245</span>
         <span class="comment">//  - ValSem246</span>
         <span class="comment">//  - Prepares ValSem247 by setting the right credential. The remainder</span>
