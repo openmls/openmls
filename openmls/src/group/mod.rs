@@ -1,9 +1,6 @@
-//! Group APIs for MLS
+//! Group API for MLS
 //!
-//! This file contains the API to interact with groups.
-//!
-//! The low-level standard API is described in the `Api` trait.\
-//! The high-level API is exposed in `MlsGroup`.
+//! This module contains the API to interact with groups.
 
 mod group_context;
 mod mls_group;
@@ -21,9 +18,9 @@ pub(crate) mod core_group;
 pub(crate) use core_group::*;
 #[cfg(not(any(feature = "test-utils", test)))]
 pub(crate) use group_context::*;
+pub(crate) mod errors;
 
 // Public
-pub mod errors;
 pub use core_group::proposals::*;
 pub use core_group::staged_commit::StagedCommit;
 pub use mls_group::*;

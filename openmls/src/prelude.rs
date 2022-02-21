@@ -4,9 +4,6 @@
 // MlsGroup
 pub use crate::group::*;
 
-// Group errors
-pub use crate::group::errors::*;
-
 // Indexes
 pub use crate::binary_tree::LeafIndex;
 

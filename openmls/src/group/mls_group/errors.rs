@@ -1,13 +1,16 @@
-//! # MLS MlsGroup errors
+//! # MlsGroup errors
 //!
-//! `WelcomeError`, `StageCommitError`, `DecryptionError`, and
-//! `CreateCommitError`.
+//! This module defines the public errors that can be returned from various calls
+//! to methods of [`MlsGroup`].
 
-use crate::{
-    error::LibraryError,
-    group::errors::{CreateCommitError, StageCommitError, ValidationError},
-};
+use crate::error::LibraryError;
 use thiserror::Error;
+
+// Re-export errors from the CoreGroup level
+pub use crate::group::errors::{
+    CreateCommitError, ExternalCommitError, ExternalCommitValidationError, ProposalValidationError,
+    StageCommitError, ValidationError, WelcomeError,
+};
 
 /// New group error
 #[derive(Error, Debug, PartialEq, Clone)]
