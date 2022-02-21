@@ -13,7 +13,7 @@ use super::{errors::UnverifiedMessageError, *};
 impl MlsGroup {
     /// Parses incoming messages from the DS.
     /// Checks for syntactic errors and makes some semantic checks as well.
-    /// If the input is a `MlsCiphertext` message, it will be decrypted.
+    /// If the input is an encrypted message, it will be decrypted.
     /// Returns an [`UnverifiedMessage`] that can be inspected and later processed in
     /// [`Self::process_unverified_message()`].
     pub fn parse_message(

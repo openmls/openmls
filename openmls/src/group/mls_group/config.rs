@@ -6,7 +6,7 @@ use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 
 /// Specifies the configuration parameters for a [`MlsGroup`]. Refer to
-/// the user manual for more information about the different configuration values.
+/// the [User Manual](https://openmls.tech/book/user_manual/group_config.html) for more information about the different configuration values.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct MlsGroupConfig {
     /// Defines the wire format policy for outgoing and incoming handshake messages.
