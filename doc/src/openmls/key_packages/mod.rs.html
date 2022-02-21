@@ -753,6 +753,15 @@
 <span id="752">752</span>
 <span id="753">753</span>
 <span id="754">754</span>
+<span id="755">755</span>
+<span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
+<span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Packages.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Key packages are pre-published public keys that provide some information</span>
@@ -1440,6 +1449,15 @@
     <span class="doccomment">/// Get a reference to the public part of this bundle, i.e. the [`KeyPackage`].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">key_package</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">KeyPackage</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">key_package</span>
+    }
+
+    <span class="doccomment">/// Separates the bundle into the [`KeyPackage`] and the ([`HpkePrivateKey`],</span>
+    <span class="doccomment">/// [`Secret`]).</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_parts</span>(<span class="self">self</span>) -&gt; (<span class="ident">KeyPackage</span>, (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Secret</span>)) {
+        (
+            <span class="self">self</span>.<span class="ident">key_package</span>,
+            (<span class="self">self</span>.<span class="ident">private_key</span>.<span class="ident">as_slice</span>().<span class="ident">to_vec</span>(), <span class="self">self</span>.<span class="ident">leaf_secret</span>),
+        )
     }
 
     <span class="doccomment">/// Get the unsigned payload version of this key package bundle for modificaiton.</span>

@@ -57,6 +57,9 @@
 <span id="56">56</span>
 <span id="57">57</span>
 <span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Prelude for OpenMLS.</span>
 <span class="doccomment">//! Include this to get access to all the public functions of OpenMLS.</span>
 
@@ -114,7 +117,10 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error</span>::<span class="kw-2">*</span>;
 
 <span class="comment">// OpenMLS traits</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">types</span>::<span class="kw-2">*</span>, <span class="ident">OpenMlsCryptoProvider</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">openmls_traits</span>::{
+    <span class="ident">crypto::OpenMlsCrypto</span>, <span class="ident">key_store::OpenMlsKeyStore</span>, <span class="ident">random::OpenMlsRand</span>, <span class="ident">types</span>::<span class="kw-2">*</span>,
+    <span class="ident">OpenMlsCryptoProvider</span>,
+};
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="openmls" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div>
 </body></html>
