@@ -164,7 +164,7 @@
 <tr><td><code>ValSem103</code></td><td>Add Proposal: Identity in proposals must be unique among existing group members</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem104</code></td><td>Add Proposal: Signature public key in proposals must be unique among existing group members</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem105</code></td><td>Add Proposal: HPKE init key in proposals must be unique among existing group members</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
-<tr><td><code>ValSem106</code></td><td>Add Proposal: required capabilities</td><td>❌<sup>1</sup></td><td>❌</td><td>TBD</td></tr>
+<tr><td><code>ValSem106</code></td><td>Add Proposal: required capabilities</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem107</code></td><td>Remove Proposal: Removed member must be unique among proposals</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem108</code></td><td>Remove Proposal: Removed member must be an existing group member</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem109</code></td><td>Update Proposal: Identity must be unchanged between existing member and new proposal</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
@@ -172,16 +172,15 @@
 <tr><td><code>ValSem111</code></td><td>Update Proposal: The sender of a full Commit must not include own update proposals</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem112</code></td><td>Update Proposal: The sender of a standalone update proposal must be of type member</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 </tbody></table>
-<p><sup>1</sup> Partly implemented, see <code>TODO</code>s in <code>openmls/src/group/core_group/validation.rs</code>.</p>
 <h3 id="commit-message-validation"><a class="header" href="#commit-message-validation">Commit message validation</a></h3>
 <table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
 <tr><td><code>ValSem200</code></td><td>Commit must not cover inline self Remove proposal</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem201</code></td><td>Path must be present, if Commit contains Removes or Updates</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem202</code></td><td>Path must be the right length</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem203</code></td><td>Path secrets must decrypt correctly</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
+<tr><td><code>ValSem204</code></td><td>Public keys from Path must be verified and match the private keys from the direct path</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
+<tr><td><code>ValSem205</code></td><td>Confirmation tag must be successfully verified</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 </tbody></table>
-<p>| <code>ValSem204</code>    | Public keys from Path must be verified and match the private keys from the direct path | ✅          | ✅     | <code>openmls/src/group/tests/test_commit_validation.rs</code>       |
-| <code>ValSem205</code>    | Confirmation tag must be successfully verified                                         | ✅          | ✅     | <code>openmls/src/group/tests/test_commit_validation.rs</code>       |</p>
 <h3 id="external-commit-message-validation"><a class="header" href="#external-commit-message-validation">External Commit message validation</a></h3>
 <table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
 <tr><td><code>ValSem240</code></td><td>External Commit must cover at least one inline ExternalInit proposal</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>

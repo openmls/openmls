@@ -369,6 +369,68 @@
 <span id="368">368</span>
 <span id="369">369</span>
 <span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains validation functions for incoming messages</span>
 <span class="doccomment">//! as defined in &lt;https://github.com/openmls/openmls/wiki/Message-validation&gt;</span>
 
@@ -376,6 +438,8 @@
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite::hash_ref::HashReference</span>,
+    <span class="ident">error::LibraryError</span>,
+    <span class="ident">extensions::ExtensionType</span>,
     <span class="ident">framing::Sender</span>,
     <span class="ident">group::errors::ExternalCommitValidationError</span>,
     <span class="ident">group::errors::ValidationError</span>,
@@ -484,7 +548,7 @@
     <span class="doccomment">///  - ValSem103</span>
     <span class="doccomment">///  - ValSem104</span>
     <span class="doccomment">///  - ValSem105</span>
-    <span class="doccomment">///  - TODO: ValSem106</span>
+    <span class="doccomment">///  - ValSem106</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">validate_add_proposals</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">proposal_queue</span>: <span class="kw-2">&amp;</span><span class="ident">ProposalQueue</span>,
@@ -526,6 +590,67 @@
             <span class="kw">if</span> <span class="op">!</span><span class="ident">public_key_set</span>.<span class="ident">insert</span>(<span class="ident">public_key</span>) {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::DuplicatePublicKeyAddProposal</span>);
             }
+
+            <span class="comment">// ValSem106: Check the required capabilities of the add proposals</span>
+            <span class="comment">// This includes the following checks:</span>
+            <span class="comment">// - Do ciphersuite and version match that of the group?</span>
+            <span class="comment">// - Are the two listed in the `Capabilities` Extension?</span>
+            <span class="comment">// - If a `RequiredCapabilitiesExtension` is present in the group:</span>
+            <span class="comment">//   Does the key package advertise the capabilities required by that</span>
+            <span class="comment">//   extension?</span>
+
+            <span class="comment">// Check if ciphersuite and version of the group are correct.</span>
+            <span class="kw">if</span> <span class="ident">add_proposal</span>.<span class="ident">add_proposal</span>().<span class="ident">key_package</span>().<span class="ident">ciphersuite</span>() <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">ciphersuite</span>()
+                <span class="op">|</span><span class="op">|</span> <span class="ident">add_proposal</span>.<span class="ident">add_proposal</span>().<span class="ident">key_package</span>().<span class="ident">protocol_version</span>() <span class="op">!</span><span class="op">=</span> <span class="self">self</span>.<span class="ident">version</span>()
+            {
+                <span class="macro">log::error!</span>(<span class="string">&quot;Tried to commit an Add proposal, where either the `Ciphersuite` or the `ProtocolVersion` is not compatible with the group.&quot;</span>);
+
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::InsufficientCapabilities</span>);
+            }
+
+            <span class="comment">// Check if the ciphersuite and the version of the group are</span>
+            <span class="comment">// supported.</span>
+            <span class="kw">let</span> <span class="ident">capabilities</span> <span class="op">=</span> <span class="ident">add_proposal</span>
+                .<span class="ident">add_proposal</span>()
+                .<span class="ident">key_package</span>()
+                .<span class="ident">extension_with_type</span>(<span class="ident">ExtensionType::Capabilities</span>)
+                .<span class="ident">ok_or</span>(<span class="ident">ProposalValidationError::InsufficientCapabilities</span>)<span class="question-mark">?</span>
+                .<span class="ident">as_capabilities_extension</span>()
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                    <span class="comment">// Mismatches between Extensions and ExtensionTypes should be</span>
+                    <span class="comment">// caught when constructing KeyPackages.</span>
+                    <span class="ident">ProposalValidationError::LibraryError</span>(<span class="ident">LibraryError::custom</span>(
+                        <span class="string">&quot;ExtensionType didn&#39;t match extension content.&quot;</span>,
+                    ))
+                })<span class="question-mark">?</span>;
+            <span class="kw">if</span> <span class="op">!</span><span class="ident">capabilities</span>.<span class="ident">ciphersuites</span>().<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ciphersuite</span>())
+                <span class="op">|</span><span class="op">|</span> <span class="op">!</span><span class="ident">capabilities</span>.<span class="ident">versions</span>().<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">version</span>())
+            {
+                <span class="macro">log::error!</span>(<span class="string">&quot;Tried to commit an Add proposal, where either the group&#39;s `Ciphersuite` or the group&#39;s `ProtocolVersion` is not in the `KeyPackage`&#39;s `Capabilities`.&quot;</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::InsufficientCapabilities</span>);
+            }
+            <span class="comment">// If there is a required capabilities extension, check if that one</span>
+            <span class="comment">// is supported.</span>
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">required_capabilities_extension</span>) <span class="op">=</span> <span class="self">self</span>
+                .<span class="ident">group_context_extensions</span>()
+                .<span class="ident">iter</span>()
+                .<span class="ident">find</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">extension_type</span>() <span class="op">==</span> <span class="ident">ExtensionType::RequiredCapabilities</span>)
+            {
+                <span class="kw">let</span> <span class="ident">required_capabilities</span> <span class="op">=</span> <span class="ident">required_capabilities_extension</span>
+                    .<span class="ident">as_required_capabilities_extension</span>()
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                        <span class="comment">// Mismatches between Extensions and ExtensionTypes should be</span>
+                        <span class="comment">// caught when constructing KeyPackages.</span>
+                        <span class="ident">ProposalValidationError::LibraryError</span>(<span class="ident">LibraryError::custom</span>(
+                            <span class="string">&quot;ExtensionType didn&#39;t match extension content.&quot;</span>,
+                        ))
+                    })<span class="question-mark">?</span>;
+                <span class="comment">// Check if all required capabilities are supported.</span>
+                <span class="kw">if</span> <span class="op">!</span><span class="ident">capabilities</span>.<span class="ident">supports_required_capabilities</span>(<span class="ident">required_capabilities</span>) {
+                    <span class="macro">log::error!</span>(<span class="string">&quot;Tried to commit an Add proposal, where the `Capabilities` of the given `KeyPackage` do not fulfill the `RequiredCapabilities` of the group.&quot;</span>);
+                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::InsufficientCapabilities</span>);
+                }
+            }
         }
 
         <span class="kw">for</span> (<span class="ident">_index</span>, <span class="ident">key_package</span>) <span class="kw">in</span> <span class="self">self</span>.<span class="ident">treesync</span>().<span class="ident">full_leaves</span>()<span class="question-mark">?</span> {
@@ -545,7 +670,6 @@
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ProposalValidationError::ExistingPublicKeyAddProposal</span>);
             }
         }
-        <span class="comment">// TODO #538: ValSem106: Check the required capabilities of the add proposals</span>
         <span class="prelude-val">Ok</span>(())
     }
 

@@ -773,6 +773,26 @@
 <span id="772">772</span>
 <span id="773">773</span>
 <span id="774">774</span>
+<span id="775">775</span>
+<span id="776">776</span>
+<span id="777">777</span>
+<span id="778">778</span>
+<span id="779">779</span>
+<span id="780">780</span>
+<span id="781">781</span>
+<span id="782">782</span>
+<span id="783">783</span>
+<span id="784">784</span>
+<span id="785">785</span>
+<span id="786">786</span>
+<span id="787">787</span>
+<span id="788">788</span>
+<span id="789">789</span>
+<span id="790">790</span>
+<span id="791">791</span>
+<span id="792">792</span>
+<span id="793">793</span>
+<span id="794">794</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Packages.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Key packages are pre-published public keys that provide some information</span>
@@ -946,6 +966,16 @@
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_public_key</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">public_key</span>: <span class="ident">HpkePublicKey</span>) {
         <span class="self">self</span>.<span class="ident">hpke_init_key</span> <span class="op">=</span> <span class="ident">public_key</span>
+    }
+    <span class="doccomment">/// Replace the version in the KeyPackage.</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_version</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>) {
+        <span class="self">self</span>.<span class="ident">protocol_version</span> <span class="op">=</span> <span class="ident">version</span>
+    }
+    <span class="doccomment">/// Replace the ciphersuite in the KeyPackage.</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_ciphersuite</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>) {
+        <span class="self">self</span>.<span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">ciphersuite</span>
     }
 }
 
@@ -1253,6 +1283,16 @@
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_public_key</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">public_key</span>: <span class="ident">HpkePublicKey</span>) {
         <span class="self">self</span>.<span class="ident">key_package_payload</span>.<span class="ident">set_public_key</span>(<span class="ident">public_key</span>)
+    }
+    <span class="doccomment">/// Replace the version in the KeyPackage.</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_version</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>) {
+        <span class="self">self</span>.<span class="ident">key_package_payload</span>.<span class="ident">set_version</span>(<span class="ident">version</span>)
+    }
+    <span class="doccomment">/// Replace the ciphersuite in the KeyPackage.</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_ciphersuite</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>) {
+        <span class="self">self</span>.<span class="ident">key_package_payload</span>.<span class="ident">set_ciphersuite</span>(<span class="ident">ciphersuite</span>)
     }
 }
 
