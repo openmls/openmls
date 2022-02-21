@@ -11,7 +11,7 @@ pub(crate) struct ResumptionSecretStore {
 }
 
 impl ResumptionSecretStore {
-    /// Create e new store with a given maximum size of `number_of_secrets`.
+    /// Creates a new store with a given maximum size of `number_of_secrets`.
     pub(crate) fn new(number_of_secrets: usize) -> Self {
         Self {
             number_of_secrets,
@@ -20,7 +20,7 @@ impl ResumptionSecretStore {
         }
     }
 
-    /// Add a new entry to the store.
+    /// Adds a new entry to the store.
     pub(crate) fn add(&mut self, epoch: GroupEpoch, resumption_secret: ResumptionSecret) {
         if self.number_of_secrets == 0 {
             return;
@@ -36,8 +36,8 @@ impl ResumptionSecretStore {
         }
     }
 
-    /// Find an entry for a give epoch number and optionally return the
-    /// corresponding secret.
+    /// Searches an entry for a given epoch number and if found, returns the
+    /// corresponding resumption secret.
     pub(crate) fn get(&self, epoch: GroupEpoch) -> Option<&ResumptionSecret> {
         self.resumption_secrets
             .iter()

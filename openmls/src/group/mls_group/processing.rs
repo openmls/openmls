@@ -11,8 +11,8 @@ use tls_codec::Serialize;
 use super::{errors::UnverifiedMessageError, *};
 
 impl MlsGroup {
-    /// This function is used to parse messages from the DS.
-    /// It checks for syntactic errors and makes some semantic checks as well.
+    /// Parses incoming messages from the DS.
+    /// Checks for syntactic errors and makes some semantic checks as well.
     /// If the input is a `MlsCiphertext` message, it will be decrypted.
     /// Returns an [`UnverifiedMessage`] that can be inspected and later processed in
     /// [`Self::process_unverified_message()`].
@@ -52,6 +52,8 @@ impl MlsGroup {
 
     /// This processing function does most of the semantic verifications.
     /// It returns a [ProcessedMessage] enum.
+    /// Returns an [`UnverifiedMessageError`] when the validation checks fail
+    /// with the exact reason of the failure.
     pub fn process_unverified_message(
         &mut self,
         unverified_message: UnverifiedMessage,
@@ -76,7 +78,7 @@ impl MlsGroup {
         self.flag_state_change();
     }
 
-    /// Create a Commit message that covers the pending proposals that are
+    /// Creates a Commit message that covers the pending proposals that are
     /// currently stored in the group's [ProposalStore].
     ///
     /// Returns an error if there is a pending commit.

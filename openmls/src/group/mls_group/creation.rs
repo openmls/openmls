@@ -13,7 +13,8 @@ impl MlsGroup {
 
     /// Creates a new group from scratch with only the creator as a member. This
     /// function removes the `KeyPackageBundle` corresponding to the
-    /// `key_package_hash` from the `backend`. Throws an error if no
+    /// `key_package_hash` from the key store. Returns an error
+    /// (`NewGroupError::NoMatchingKeyPackageBundle`) if no
     /// `KeyPackageBundle` can be found.
     pub fn new(
         backend: &impl OpenMlsCryptoProvider,
@@ -71,7 +72,9 @@ impl MlsGroup {
         Ok(mls_group)
     }
 
-    /// Creates a new group from a `Welcome` message
+    /// Creates a new group from a `Welcome` message. Returns an error
+    /// (`WelcomeError::NoMatchingKeyPackageBundle`) if no
+    /// `KeyPackageBundle` can be found.
     pub fn new_from_welcome(
         backend: &impl OpenMlsCryptoProvider,
         mls_group_config: &MlsGroupConfig,
