@@ -408,9 +408,9 @@ impl VerifiedExternalMessage {
     }
 }
 
-/// Message that has passed all syntax and semantics checks.
+/// A message that has passed all syntax and semantics checks.
 ///
-/// See the vriants' documentation for mor information.
+/// See the variants' documentation for more information.
 /// [`StagedCommit`] and [`QueuedProposal`] can be inspected for authorization purposes.
 #[derive(Debug)]
 pub enum ProcessedMessage {
@@ -427,7 +427,7 @@ pub enum ProcessedMessage {
     /// A Commit message.
     ///
     /// The [`StagedCommit`] can be inspected for authorization purposes by the application.
-    /// If the type of the commit and the proposals it covers aredeemed to be allowed,
+    /// If the type of the commit and the proposals it covers are deemed to be allowed,
     /// the commit should be merged into the group's state using [`MlsGroup::merge_staged_commit()`].
     StagedCommitMessage(Box<StagedCommit>),
 }
