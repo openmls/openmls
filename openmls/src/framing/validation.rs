@@ -152,6 +152,7 @@ impl DecryptedMessage {
 
     /// Gets the correct credential from the message depending on the sender type.
     /// Checks the following semantic validation:
+    ///  - ValSem112
     ///  - ValSem246
     ///  - Prepares ValSem247 by setting the right credential. The remainder
     ///    of ValSem247 is validated as part of ValSem010.
@@ -188,6 +189,8 @@ impl DecryptedMessage {
             // Preconfigured senders are not supported yet #106/#151.
             Sender::Preconfigured(_) => unimplemented!(),
             Sender::NewMember => {
+                // Since this allows only commits to have a sender type `Member`, it checks
+                // ValSem112
                 if let MlsPlaintextContentType::Commit(commit) = self.plaintext().content() {
                     if let Some(path) = commit.path() {
                         Ok(path.leaf_key_package().credential().clone())
