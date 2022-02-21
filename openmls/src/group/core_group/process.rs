@@ -18,6 +18,7 @@ impl CoreGroup {
     ///  - ValSem006
     ///  - ValSem007
     ///  - ValSem009
+    ///  - ValSem112
     pub(crate) fn parse_message(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -53,6 +54,7 @@ impl CoreGroup {
 
         // Extract the credential if the sender is a member or a new member.
         // Checks the following semantic validation:
+        //  - ValSem112
         //  - ValSem245
         //  - ValSem246
         //  - Prepares ValSem247 by setting the right credential. The remainder
