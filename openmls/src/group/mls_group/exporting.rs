@@ -8,9 +8,9 @@ impl MlsGroup {
     // === Export secrets ===
 
     /// Exports a secret from the current epoch.
-    /// Returns `ExportSecretError::KeyLengthTooLong` if the requested
+    /// Returns [`ExportSecretError::KeyLengthTooLong`] if the requested
     /// key length is too long.
-    /// Returns `ExportSecretError::GroupStateError(MlsGroupStateError::UseAfterEviction)`
+    /// Returns [`ExportSecretError::GroupStateError(MlsGroupStateError::UseAfterEviction)`](MlsGroupStateError::UseAfterEviction)
     /// if the group is not active.
     pub fn export_secret(
         &self,
