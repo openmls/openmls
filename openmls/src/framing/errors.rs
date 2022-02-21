@@ -1,7 +1,6 @@
 //! # Framing errors.
 //!
-//! `MlsPlaintextError` and `MlsCiphertextError` are thrown on errors
-//! handling `MlsPlaintext` and `MlsCiphertext`.
+//! This module contains errors related to message framing operations.
 
 use crate::error::LibraryError;
 use thiserror::Error;
