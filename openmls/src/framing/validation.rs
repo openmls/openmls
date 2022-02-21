@@ -413,7 +413,7 @@ impl VerifiedExternalMessage {
 pub enum ProcessedMessage {
     /// An application message.
     ///
-    /// The [`ApplllicationMessage`] contains a vector of bytes that can be used right-away.
+    /// The [`ApplicationMessage`] contains a vector of bytes that can be used right-away.
     ApplicationMessage(ApplicationMessage),
     /// A standalone proposal.
     ///
