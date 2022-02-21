@@ -19,6 +19,7 @@ use crate::{
     group::*,
     key_packages::*,
     messages::{AddProposal, Proposal, ProposalOrRef, RemoveProposal, UpdateProposal, Welcome},
+    versions::ProtocolVersion,
 };
 
 use super::utils::{generate_credential_bundle, generate_key_package_bundle};
@@ -165,7 +166,7 @@ fn insert_proposal_and_resign(
     backend: &impl OpenMlsCryptoProvider,
     proposal_or_ref: ProposalOrRef,
     mut plaintext: VerifiableMlsPlaintext,
-    original_plaintext: VerifiableMlsPlaintext,
+    original_plaintext: &VerifiableMlsPlaintext,
     committer_group: &MlsGroup,
 ) -> VerifiableMlsPlaintext {
     let mut commit_content = if let MlsPlaintextContentType::Commit(commit) = plaintext.content() {
@@ -315,7 +316,7 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         backend,
         ProposalOrRef::Proposal(second_add_proposal),
         plaintext,
-        original_plaintext,
+        &original_plaintext,
         &alice_group,
     );
 
@@ -469,7 +470,7 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         backend,
         ProposalOrRef::Proposal(second_add_proposal),
         plaintext,
-        original_plaintext,
+        &original_plaintext,
         &alice_group,
     );
 
@@ -630,7 +631,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         backend,
         ProposalOrRef::Proposal(second_add_proposal),
         plaintext,
-        original_plaintext,
+        &original_plaintext,
         &alice_group,
     );
 
@@ -742,7 +743,7 @@ fn test_valsem103(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         backend,
         ProposalOrRef::Proposal(add_proposal),
         plaintext,
-        original_plaintext,
+        &original_plaintext,
         &alice_group,
     );
 
@@ -914,7 +915,7 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         backend,
         ProposalOrRef::Proposal(add_proposal),
         plaintext,
-        original_plaintext,
+        &original_plaintext,
         &alice_group,
     );
 
@@ -1082,7 +1083,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         backend,
         ProposalOrRef::Proposal(add_proposal),
         plaintext,
-        original_plaintext,
+        &original_plaintext,
         &alice_group,
     );
 
@@ -1117,7 +1118,262 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .expect("Unexpected error.");
 }
 
-// ValSem106: Not implemented yet, see TODO #580.
+#[derive(Debug)]
+enum KeyPackageTestVersion {
+    WrongVersion,
+    WrongCiphersuite,
+    UnsupportedVersion,
+    UnsupportedCiphersuite,
+    ValidTestCase,
+}
+
+enum ProposalInclusion {
+    ByValue,
+    ByReference,
+}
+
+/// ValSem106:
+/// Add Proposal:
+/// Required capabilities
+#[apply(ciphersuites_and_backends)]
+fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
+    // Let's set up a group with Alice and Bob as members.
+    let ProposalValidationTestSetup {
+        mut alice_group,
+        mut bob_group,
+    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+
+    // Required capabilities validation includes two types of checks on the
+    // capabilities of the `KeyPackage` in the Add proposal: One against the
+    // ciphersuite and the version of the group and one against a potential
+    // RequiredCapabilities extension present in the group.
+
+    // Since RequiredCapabilities can only contain non-MTI extensions and
+    // proposals and OpenMLS doesn't support any of those, we can't test
+    // conformance of a given KeyPackage with those yet.
+
+    // We now create a bunch of KeyPackages for Charly:
+    // - one that matches all requirements (positive test)
+    // - one that doesn't support the version of the group
+    // - one that doesn't support the ciphersuite of the group
+
+    // We then subsequently try to have Alice commit them, once by value and
+    // once by reference.
+
+    // We then have Alice create a self-update commit and insert the Add
+    // proposal with the relevant KeyPackage artificially afterwards, so that we
+    // can have Bob try to process it.
+
+    // We begin with the creation of KeyPackages
+    for key_package_version in [
+        KeyPackageTestVersion::WrongCiphersuite,
+        KeyPackageTestVersion::WrongVersion,
+        KeyPackageTestVersion::UnsupportedVersion,
+        KeyPackageTestVersion::UnsupportedCiphersuite,
+        KeyPackageTestVersion::ValidTestCase,
+    ] {
+        let (charlie_credential_bundle, charlie_key_package_bundle) =
+            generate_credential_bundle_and_key_package_bundle(
+                "Charlie".into(),
+                ciphersuite,
+                backend,
+            );
+        let mut test_kpb_payload = KeyPackageBundlePayload::from(charlie_key_package_bundle);
+
+        // Let's just pick a ciphersuite that's not the one we're testing right now.
+        let wrong_ciphersuite = match ciphersuite {
+            Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 => {
+                Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256
+            }
+            _ => Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+        };
+        // A version that's not considered valid
+        let wrong_version = ProtocolVersion::Reserved;
+        match key_package_version {
+            KeyPackageTestVersion::WrongVersion => test_kpb_payload.set_version(wrong_version),
+            KeyPackageTestVersion::WrongCiphersuite => {
+                test_kpb_payload.set_ciphersuite(wrong_ciphersuite)
+            }
+            KeyPackageTestVersion::UnsupportedVersion => {
+                test_kpb_payload.add_extension(Extension::Capabilities(CapabilitiesExtension::new(
+                    Some(&[wrong_version]),
+                    // None gives you the default ciphersuites/extensions/proposals.
+                    None,
+                    None,
+                    None,
+                )))
+            }
+            KeyPackageTestVersion::UnsupportedCiphersuite => {
+                test_kpb_payload.add_extension(Extension::Capabilities(CapabilitiesExtension::new(
+                    None,
+                    // None gives you the default ciphersuites/extensions/proposals.
+                    Some(&[wrong_ciphersuite]),
+                    None,
+                    None,
+                )))
+            }
+            KeyPackageTestVersion::ValidTestCase => (),
+        };
+        let test_kpb = test_kpb_payload
+            .sign(backend, &charlie_credential_bundle)
+            .expect("error signing key package");
+
+        // Try to have Alice commit an Add with the test KeyPackage.
+        for proposal_inclusion in [ProposalInclusion::ByReference, ProposalInclusion::ByValue] {
+            match proposal_inclusion {
+                ProposalInclusion::ByReference => {
+                    let _proposal = alice_group
+                        .propose_add_member(backend, &test_kpb.key_package().clone())
+                        .expect("error proposing test add");
+
+                    let result = alice_group.commit_to_pending_proposals(backend);
+
+                    // The error types differ, so we have to check the error inside the `match`.
+                    match key_package_version {
+                        KeyPackageTestVersion::ValidTestCase => {
+                            assert!(result.is_ok())
+                        }
+                        _ => {
+                            assert_eq!(
+                                result.expect_err(
+                                    "no error when committing add with key package with insufficient capabilities",
+                                ),
+                                CommitToPendingProposalsError::CreateCommitError(
+                                    CreateCommitError::ProposalValidationError(
+                                        ProposalValidationError::InsufficientCapabilities
+                                    )
+                                )
+                            )
+                        }
+                    }
+                }
+                ProposalInclusion::ByValue => {
+                    let result = alice_group
+                        .add_members(backend, &[test_kpb.key_package().clone()])
+                        .map(|(msg, welcome)| (msg, Some(welcome)));
+
+                    match key_package_version {
+                        KeyPackageTestVersion::ValidTestCase => {
+                            assert!(result.is_ok())
+                        }
+                        _ => {
+                            assert_eq!(
+                                result.expect_err(
+                                    "no error when committing add with key package with insufficient capabilities",
+                                ),
+                                AddMembersError::CreateCommitError(
+                                    CreateCommitError::ProposalValidationError(
+                                        ProposalValidationError::InsufficientCapabilities
+                                    )
+                                )
+                            )
+                        }
+                    }
+                }
+            };
+            // Reset alice's group state for the next test case.
+            alice_group.clear_pending_commit();
+        }
+        // Now we create a valid commit and add the proposal afterwards. Once by value, once by reference.
+        alice_group.clear_pending_proposals();
+
+        // Create the Commit.
+        let serialized_update = alice_group
+            .self_update(backend, None)
+            .expect("Error creating self-update")
+            .tls_serialize_detached()
+            .expect("Could not serialize message.");
+
+        let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+            .expect("Could not deserialize message.");
+
+        // Keep the original plaintext for positive test later.
+        let original_plaintext = plaintext.clone();
+
+        // Create a proposal from the test KPB.
+        let add_proposal = Proposal::Add(AddProposal {
+            key_package: test_kpb.key_package().clone(),
+        });
+
+        for proposal_inclusion in [ProposalInclusion::ByValue, ProposalInclusion::ByReference] {
+            let proposal_or_ref = match proposal_inclusion {
+                ProposalInclusion::ByValue => ProposalOrRef::Proposal(add_proposal.clone()),
+                ProposalInclusion::ByReference => ProposalOrRef::Reference(
+                    ProposalRef::from_proposal(ciphersuite, backend, &add_proposal)
+                        .expect("error creating hash reference"),
+                ),
+            };
+            // Artificially add the proposal.
+            let verifiable_plaintext: VerifiableMlsPlaintext = insert_proposal_and_resign(
+                backend,
+                proposal_or_ref,
+                plaintext.clone(),
+                &original_plaintext,
+                &alice_group,
+            );
+
+            let update_message_in = MlsMessageIn::from(verifiable_plaintext);
+
+            // If we're including by reference, we have to sneak the proposal
+            // into Bob's queue.
+            if matches!(proposal_inclusion, ProposalInclusion::ByReference) {
+                bob_group.store_pending_proposal(
+                    QueuedProposal::from_proposal_and_sender(
+                        ciphersuite,
+                        backend,
+                        add_proposal.clone(),
+                        &Sender::build_member(
+                            alice_group
+                                .key_package_ref()
+                                .expect("error getting key package ref"),
+                        ),
+                    )
+                    .expect("error creating queued proposal"),
+                )
+            }
+
+            // Have bob process the resulting plaintext
+            let unverified_message = bob_group
+                .parse_message(update_message_in, backend)
+                .expect("Could not parse message.");
+
+            let err = bob_group
+                .process_unverified_message(unverified_message, None, backend)
+                .expect_err("Could process unverified message despite injected add proposal.");
+
+            let expected_error = match key_package_version {
+                // We get an error even if the key package is valid. This is
+                // because Bob would expect the encrypted path in the commit to
+                // be longer due to the included Add proposal. Since we added
+                // the Add artificially, we thus have a path length mismatch.
+                KeyPackageTestVersion::ValidTestCase => UnverifiedMessageError::InvalidCommit(
+                    StageCommitError::UpdatePathError(ApplyUpdatePathError::PathLengthMismatch),
+                ),
+                _ => UnverifiedMessageError::InvalidCommit(
+                    StageCommitError::ProposalValidationError(
+                        ProposalValidationError::InsufficientCapabilities,
+                    ),
+                ),
+            };
+
+            assert_eq!(err, expected_error);
+
+            let original_update_plaintext =
+                VerifiableMlsPlaintext::tls_deserialize(&mut serialized_update.as_slice())
+                    .expect("Could not deserialize message.");
+
+            // Positive case
+            let unverified_message = bob_group
+                .parse_message(MlsMessageIn::from(original_update_plaintext), backend)
+                .expect("Could not parse message.");
+            bob_group
+                .process_unverified_message(unverified_message, None, backend)
+                .expect("Unexpected error.");
+        }
+
+        alice_group.clear_pending_commit();
+    }
+}
 
 /// ValSem107:
 /// Remove Proposal:
@@ -1292,7 +1548,7 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         backend,
         ProposalOrRef::Proposal(remove_proposal),
         plaintext,
-        original_plaintext,
+        &original_plaintext,
         &alice_group,
     );
 
@@ -1434,7 +1690,7 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 .expect("error creating hash reference"),
         ),
         plaintext,
-        original_plaintext,
+        &original_plaintext,
         &alice_group,
     );
 
@@ -1590,7 +1846,7 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 .expect("error creating hash reference"),
         ),
         plaintext,
-        original_plaintext,
+        &original_plaintext,
         &alice_group,
     );
 
@@ -1696,7 +1952,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         backend,
         ProposalOrRef::Proposal(update_proposal.clone()),
         plaintext,
-        original_plaintext,
+        &original_plaintext,
         &alice_group,
     );
 
@@ -1763,7 +2019,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 .expect("error creating hash reference"),
         ),
         plaintext,
-        original_plaintext,
+        &original_plaintext,
         &alice_group,
     );
 

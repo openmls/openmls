@@ -34,15 +34,13 @@
 | `ValSem103`    | Add Proposal: Identity in proposals must be unique among existing group members             | ✅             | ✅ | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem104`    | Add Proposal: Signature public key in proposals must be unique among existing group members | ✅             | ✅ | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem105`    | Add Proposal: HPKE init key in proposals must be unique among existing group members        | ✅             | ✅ | `openmls/src/group/tests/test_proposal_validation.rs` |
-| `ValSem106`    | Add Proposal: required capabilities                                                         | ❌<sup>1</sup> | ❌             | TBD                                                   |
+| `ValSem106`    | Add Proposal: required capabilities                                                         | ✅             | ✅ | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem107`    | Remove Proposal: Removed member must be unique among proposals                              | ✅             | ✅ | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem108`    | Remove Proposal: Removed member must be an existing group member                            | ✅             | ✅ | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem109`    | Update Proposal: Identity must be unchanged between existing member and new proposal        | ✅             | ✅ | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem110`    | Update Proposal: HPKE init key must be unique among existing members                        | ✅             | ✅ | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem111`    | Update Proposal: The sender of a full Commit must not include own update proposals          | ✅             | ✅ | `openmls/src/group/tests/test_proposal_validation.rs` |
 | `ValSem112`    | Update Proposal: The sender of a standalone update proposal must be of type member          | ✅             | ✅ | `openmls/src/group/tests/test_proposal_validation.rs` |
-
-<sup>1</sup> Partly implemented, see `TODO`s in `openmls/src/group/core_group/validation.rs`.
 
 ### Commit message validation
 
@@ -52,7 +50,6 @@
 | `ValSem201`    | Path must be present, if Commit contains Removes or Updates                            | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs`       |
 | `ValSem202`    | Path must be the right length                                                          | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs`       |
 | `ValSem203`    | Path secrets must decrypt correctly                                                    | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs`       |
-
 | `ValSem204`    | Public keys from Path must be verified and match the private keys from the direct path | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs`       |
 | `ValSem205`    | Confirmation tag must be successfully verified                                         | ✅          | ✅     | `openmls/src/group/tests/test_commit_validation.rs`       |
 
