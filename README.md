@@ -113,17 +113,17 @@ You can start by looking at the [open issues](https://github.com/openmls/openmls
 
 OpenMLS adheres to the [Contributor Covenant](https://www.contributor-covenant.org/) Code of Coduct. Please read the [Code of Conduct](CODE_OF_CONDUCT.md) carefully.
 
-[chat-image]: https://img.shields.io/badge/zulip-join_chat-blue.svg?style=flat&logo=zulip
+[chat-image]: https://img.shields.io/badge/zulip-join_chat-blue.svg?style=for-the-badge&logo=zulip
 [chat-link]: https://openmls.zulipchat.com
-[list-image]: https://img.shields.io/badge/mailing-list-blue.svg?style=flat
+[list-image]: https://img.shields.io/badge/mailing-list-blue.svg?style=for-the-badge
 [list-link]: https://groups.google.com/u/0/g/openmls-dev
-[rustc-image]: https://img.shields.io/badge/rustc-1.56+-blue.svg?style=flat&logo=rust
-[docs-main-badge]: https://img.shields.io/badge/docs-main-blue.svg?style=flat
+[rustc-image]: https://img.shields.io/badge/rustc-1.56+-blue.svg?style=for-the-badge&logo=rust
+[docs-main-badge]: https://img.shields.io/badge/docs-main-blue.svg?style=for-the-badge
 [docs-release-link]: https://docs.rs/crate/openmls/latest
 [docs-main-link]: https://openmls.tech/openmls/doc/openmls/index.html
 [book-release-link]: https://openmls.tech/book
 [book-main-link]: https://openmls.tech/openmls/book
-[drone-image]: https://img.shields.io/drone/build/openmls/openmls/main?label=ARM64%20Build%20Status&logo=drone
-[codecov-image]: https://img.shields.io/codecov/c/github/openmls/openmls/main?logo=codecov
-[gh-tests-image]: https://img.shields.io/github/workflow/status/openmls/openmls/Tests/main?label=Tests&style=flat&logo=github
-[gh-deploy-docs-image]: https://img.shields.io/github/workflow/status/openmls/openmls/Deploy%20Docs/main?label=Deploy%20Docs&logo=github
+[drone-image]: https://img.shields.io/drone/build/openmls/openmls/main?label=ARM64%20Build%20Status&logo=drone&style=for-the-badge
+[codecov-image]: https://img.shields.io/codecov/c/github/openmls/openmls/main?logo=codecov&style=for-the-badge
+[gh-tests-image]: https://img.shields.io/github/workflow/status/openmls/openmls/Tests/main?label=Tests&style=for-the-badge&logo=github
+[gh-deploy-docs-image]: https://img.shields.io/github/workflow/status/openmls/openmls/Deploy%20Docs/main?label=Deploy%20Docs&logo=github&style=for-the-badge
