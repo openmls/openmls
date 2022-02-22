@@ -1,33 +1,4 @@
-//! # The sender of a message
-//!
-//! Section  9. Message Framing
-//!
-//! ```text
-//! enum {
-//!     reserved(0),
-//!     application(1),
-//!     proposal(2),
-//!     commit(3),
-//!     (255)
-//! } ContentType;
-//!
-//! enum {
-//!     reserved(0),
-//!     member(1),
-//!     preconfigured(2),
-//!     new_member(3),
-//!     (255)
-//! } SenderType;
-//!
-//! struct {
-//!     SenderType sender_type;
-//!     switch (sender_type) {
-//!         case member:        KeyPackageRef member;
-//!         case preconfigured: opaque external_key_id<0..255>;
-//!         case new_member:    struct{};
-//!     }
-//! } Sender;
-//! ```
+//! # The sender of a message.
 
 use super::*;
 use crate::ciphersuite::hash_ref::KeyPackageRef;

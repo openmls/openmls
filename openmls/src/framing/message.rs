@@ -1,10 +1,10 @@
 //! MLS Message types
 //!
 //! This module defines two opaque message types that are used by the [`MlsGroup`] API.
-//! [`MlsMessageIn`] is used for messages between the DS and the client. It can be instantiated
+//! [`MlsMessageIn`] is used for messages between the Delivery Service and the client. It can be instantiated
 //! from a byte slice.
 //! [`MlsMessageOut`] is returned by various functions of the [`MlsGroup`] API. It is to be used between
-//! the client and the DS. It can be serialized to a byte vector.
+//! the client and the Delivery Service. It can be serialized to a byte vector.
 //!
 //! Both messages have the same API. The framing part of the message can be inspected through it. In particular,
 //! it is important to look at [`MlsMessageIn::group_id()`] to determine in which [`MlsGroup`] it should be processed.
@@ -30,7 +30,7 @@ pub(crate) enum MlsMessage {
 }
 
 impl MlsMessage {
-    /// Get the wire format
+    /// Returns the wire format.
     fn wire_format(&self) -> WireFormat {
         match self {
             MlsMessage::Ciphertext(_) => WireFormat::MlsCiphertext,
@@ -38,7 +38,7 @@ impl MlsMessage {
         }
     }
 
-    /// Get the group ID
+    /// Returns the group ID.
     fn group_id(&self) -> &GroupId {
         match self {
             MlsMessage::Ciphertext(m) => m.group_id(),
@@ -46,7 +46,7 @@ impl MlsMessage {
         }
     }
 
-    /// Get the epoch
+    /// Returns the epoch.
     fn epoch(&self) -> GroupEpoch {
         match self {
             MlsMessage::Ciphertext(m) => m.epoch(),
@@ -54,7 +54,7 @@ impl MlsMessage {
         }
     }
 
-    /// Get the content type
+    /// Returns the content type.
     fn content_type(&self) -> ContentType {
         match self {
             MlsMessage::Ciphertext(m) => m.content_type(),
@@ -87,22 +87,22 @@ pub struct MlsMessageIn {
 }
 
 impl MlsMessageIn {
-    /// Get the wire format
+    /// Returns the wire format.
     pub fn wire_format(&self) -> WireFormat {
         self.mls_message.wire_format()
     }
 
-    /// Get the group ID
+    /// Returns the group ID.
     pub fn group_id(&self) -> &GroupId {
         self.mls_message.group_id()
     }
 
-    /// Get the epoch
+    /// Returns the epoch.
     pub fn epoch(&self) -> GroupEpoch {
         self.mls_message.epoch()
     }
 
-    /// Get the content type
+    /// Returns the content type.
     pub fn content_type(&self) -> ContentType {
         self.mls_message.content_type()
     }
@@ -158,22 +158,22 @@ impl From<MlsCiphertext> for MlsMessageOut {
 }
 
 impl MlsMessageOut {
-    /// Get the wire format
+    /// Returns the wire format.
     pub fn wire_format(&self) -> WireFormat {
         self.mls_message.wire_format()
     }
 
-    /// Get the group ID
+    /// Returns the group ID.
     pub fn group_id(&self) -> &GroupId {
         self.mls_message.group_id()
     }
 
-    /// Get the epoch
+    /// Returns the epoch.
     pub fn epoch(&self) -> GroupEpoch {
         self.mls_message.epoch()
     }
 
-    /// Get the content type
+    /// Returns the content type.
     pub fn content_type(&self) -> ContentType {
         self.mls_message.content_type()
     }

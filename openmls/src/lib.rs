@@ -211,13 +211,13 @@ pub mod extensions;
 pub mod framing;
 pub mod group;
 pub mod key_packages;
-pub mod key_store;
 pub mod messages;
 pub mod schedule;
 pub mod versions;
 
 // Private
 mod binary_tree;
+mod key_store;
 mod tree;
 mod treesync;
 
