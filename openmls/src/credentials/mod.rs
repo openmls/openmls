@@ -272,7 +272,7 @@ impl CredentialBundle {
         (self.credential, self.signature_private_key)
     }
 
-    /// Signs the given `msg` using the private key of the credential bundle.
+    /// Signs the given message `msg` using the private key of the credential bundle.
     pub(crate) fn sign(
         &self,
         backend: &impl OpenMlsCryptoProvider,
