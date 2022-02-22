@@ -74,10 +74,10 @@ impl TryFrom<u16> for CredentialType {
     }
 }
 
-/// X509 Certificate.
+/// X.509 Certificate.
 ///
-/// This struct contains an X509 certificate chain.  Note, that X509
-/// certificates are not supported yet by OpenMLS.
+/// This struct contains an X.509 certificate chain.  Note that X.509
+/// certificates are not yet supported by OpenMLS.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 pub struct Certificate {
     cert_data: Vec<u8>,
