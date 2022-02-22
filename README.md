@@ -1,8 +1,8 @@
 # OpenMLS [![OpenMLS Chat][chat-image]][chat-link]
 
-[![Tests & Checks](https://github.com/openmls/openmls/actions/workflows/tests.yml/badge.svg)](https://github.com/openmls/openmls/actions/workflows/tests.yml)
+[![Tests & Checks][gh-tests-image]](https://github.com/openmls/openmls/actions/workflows/tests.yml)
 [![ARM64 Build Status][drone-image]](https://cloud.drone.io/openmls/openmls)
-[![Deploy Docs](https://github.com/openmls/openmls/workflows/Deploy%20Docs/badge.svg)][docs-main-link]
+[![Deploy Docs][gh-deploy-docs-image]][docs-main-link]
 [![codecov][codecov-image]](https://codecov.io/gh/openmls/openmls)
 [![OpenMLS List][list-image]][list-link]
 [![Docs][docs-main-badge]][docs-main-link]
@@ -12,9 +12,13 @@ A WIP Rust implementation of [Messaging Layer Security](https://github.com/mlswg
 
 ### Documentation
 
+We publish documentation both for the latest release of OpenMLS, as well as for
+the current state of `main`.
+
 A user manual detailing how basic MLS operations can be performed using OpenMLS
-can be found [here][book-link]. More detailed documentation on OpenMLS' public
-API can be found [here][docs-main-link].
+can be found [here (latest release)][book-release-link] or [here (`main`)][book-main-link].
+More detailed documentation on OpenMLS' public API
+can be found [here (latest release)][docs-release-link] or [here (`main`)][docs-main-link].
 
 ### Supported ciphersuites
 
@@ -115,7 +119,11 @@ OpenMLS adheres to the [Contributor Covenant](https://www.contributor-covenant.o
 [list-link]: https://groups.google.com/u/0/g/openmls-dev
 [rustc-image]: https://img.shields.io/badge/rustc-1.56+-blue.svg?style=flat&logo=rust
 [docs-main-badge]: https://img.shields.io/badge/docs-main-blue.svg?style=flat
+[docs-release-link]: https://docs.rs/crate/openmls/latest
 [docs-main-link]: https://openmls.tech/openmls/doc/openmls/index.html
-[book-link]: https://openmls.tech/openmls/book
+[book-release-link]: https://openmls.tech/book
+[book-main-link]: https://openmls.tech/openmls/book
 [drone-image]: https://img.shields.io/drone/build/openmls/openmls/main?label=ARM64%20Build%20Status&logo=drone
 [codecov-image]: https://img.shields.io/codecov/c/github/openmls/openmls/main?logo=codecov
+[gh-tests-image]: https://img.shields.io/github/workflow/status/openmls/openmls/Tests/main?label=Tests&style=flat&logo=github
+[gh-deploy-docs-image]: https://img.shields.io/github/workflow/status/openmls/openmls/Deploy%20Docs/main?label=Deploy%20Docs&logo=github
