@@ -213,6 +213,7 @@ pub struct WireFormatPolicy {
 impl WireFormatPolicy {
     /// Creates a new wire format policy from an [`OutgoingWireFormatPolicy`]
     /// and an [`IncomingWireFormatPolicy`].
+    #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn new(
         outgoing: OutgoingWireFormatPolicy,
         incoming: IncomingWireFormatPolicy,

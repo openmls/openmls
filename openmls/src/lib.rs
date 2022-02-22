@@ -223,8 +223,5 @@ mod key_store;
 mod tree;
 mod treesync;
 
-// Re-export items from private modules.
-pub use treesync::errors::{ApplyUpdatePathError, PublicTreeError};
-
 /// Single place, re-exporting the most used public functions.
 pub mod prelude;
