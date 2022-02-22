@@ -1,14 +1,24 @@
 # OpenMLS [![OpenMLS Chat][chat-image]][chat-link]
 
-[![Tests & Checks](https://github.com/openmls/openmls/actions/workflows/tests.yml/badge.svg)](https://github.com/openmls/openmls/actions/workflows/tests.yml)
-[![ARM64 Build Status](https://cloud.drone.io/api/badges/openmls/openmls/status.svg?ref=refs/heads/main)](https://cloud.drone.io/openmls/openmls)
-[![Deploy Docs](https://github.com/openmls/openmls/workflows/Deploy%20Docs/badge.svg)][docs-main-link]
-[![codecov](https://codecov.io/gh/openmls/openmls/branch/main/graph/badge.svg?token=5SDRDRTZI0)](https://codecov.io/gh/openmls/openmls)
+[![Tests & Checks][gh-tests-image]](https://github.com/openmls/openmls/actions/workflows/tests.yml)
+[![ARM64 Build Status][drone-image]](https://cloud.drone.io/openmls/openmls)
+[![codecov][codecov-image]](https://codecov.io/gh/openmls/openmls)
 [![OpenMLS List][list-image]][list-link]
-[![Docs][docs-main-badge]][docs-main-link]
+[![Docs][docs-release-badge]][docs-release-link]
+[![Book][book-release-badge]][book-release-link]
 ![Rust Version][rustc-image]
 
 A WIP Rust implementation of [Messaging Layer Security](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md) based on draft 12+.
+
+### Documentation
+
+We publish documentation both for the latest release of OpenMLS, as well as for
+the current state of `main`.
+
+A user manual detailing how basic MLS operations can be performed using OpenMLS
+can be found [here (latest release)][book-release-link] or [here (`main`)][book-main-link].
+More detailed documentation on OpenMLS' public API
+can be found [here (latest release)][docs-release-link] or [here (`main`)][docs-main-link].
 
 ### Supported ciphersuites
 
@@ -44,11 +54,11 @@ OpenMLS only supports 32 and 64 bit platforms.
 
 #### Cryptography
 
-OpenMLS does not implement its own cryptographic primitives.
-Instead, it relies on existing implementations of the cryptographic primitives used.
-There are two different cryptography backends implemented right now.
-But consumers can bring their own implementation.
-See [traits](./traits/Readme.md) for more details.
+OpenMLS does not implement its own cryptographic primitives.  Instead, it relies
+on existing implementations of the cryptographic primitives used by MLS.  There
+are two different cryptography backends implemented right now.  But consumers
+can bring their own implementation.  See [traits](./traits/Readme.md) for more
+details.
 
 ## Development
 
@@ -73,8 +83,8 @@ This repository is a cargo workspace with the OpenMLS library as the main compon
 In order to use OpenMLS an implementation of the [traits](./traits/Readme.md) is required.
 This repository provides two default implementations
 
-- [Rust Crypto](./openmls_rust_crypto/Readme.md)
-- [Evercrypt](./evercrypt_backend/Readme.md)
+- [Rust Crypto](./openmls_rust_crypto/README.md)
+- [Evercrypt](./openmls/evercrypt_backend/README.md)
 
 It further holds the following crates that are used for testing.
 
@@ -92,7 +102,7 @@ Note that this is a PoC for testing and must not be used for anything else.
 
 ## License
 
-OpenMLS is licensed under the MIT license. The license can be found [here](https://github.com/openmls/openmls/LICENSE).
+OpenMLS is licensed under the MIT license. The license can be found [here](./LICENSE).
 
 ## Contributing
 
@@ -103,10 +113,18 @@ You can start by looking at the [open issues](https://github.com/openmls/openmls
 
 OpenMLS adheres to the [Contributor Covenant](https://www.contributor-covenant.org/) Code of Coduct. Please read the [Code of Conduct](CODE_OF_CONDUCT.md) carefully.
 
-[chat-image]: https://img.shields.io/badge/zulip-join_chat-blue.svg
+[chat-image]: https://img.shields.io/badge/zulip-join_chat-blue.svg?style=for-the-badge&logo=zulip
 [chat-link]: https://openmls.zulipchat.com
-[list-image]: https://img.shields.io/badge/mailing-list-blue.svg
+[list-image]: https://img.shields.io/badge/mailing-list-blue.svg?style=for-the-badge
 [list-link]: https://groups.google.com/u/0/g/openmls-dev
-[rustc-image]: https://img.shields.io/badge/rustc-1.56+-blue.svg
-[docs-main-badge]: https://img.shields.io/badge/docs-main-blue.svg
+[rustc-image]: https://img.shields.io/badge/rustc-1.56+-blue.svg?style=for-the-badge&logo=rust
+[docs-release-badge]: https://img.shields.io/badge/docs-release-blue.svg?style=for-the-badge
+[docs-release-link]: https://docs.rs/crate/openmls/latest
 [docs-main-link]: https://openmls.tech/openmls/doc/openmls/index.html
+[book-release-badge]: https://img.shields.io/badge/book-release-blue.svg?style=for-the-badge
+[book-release-link]: https://openmls.tech/book
+[book-main-link]: https://openmls.tech/openmls/book
+[drone-image]: https://img.shields.io/drone/build/openmls/openmls/main?label=ARM64%20Build%20Status&logo=drone&style=for-the-badge
+[codecov-image]: https://img.shields.io/codecov/c/github/openmls/openmls/main?logo=codecov&style=for-the-badge
+[gh-tests-image]: https://img.shields.io/github/workflow/status/openmls/openmls/Tests/main?label=Tests&style=for-the-badge&logo=github
+[gh-deploy-docs-image]: https://img.shields.io/github/workflow/status/openmls/openmls/Deploy%20Docs/main?label=Deploy%20Docs&logo=github&style=for-the-badge
