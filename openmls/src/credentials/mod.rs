@@ -2,17 +2,21 @@
 //!
 //! A [`Credential`] contains identifying information about the client that
 //! created it, as well as a signature public key and the corresponding
-//! signature scheme. Each [`KeyPackage`](crate::key_packages::KeyPackage)
-//! contains such a [`Credential`].  Clients can create a [`CredentialBundle`]
-//! which contains a [`Credential`], as well as the corresponding private key
+//! signature scheme. [`Credential`]s represent clients in MLS groups and are
+//! used to authenticate their messages. Each
+//! [`KeyPackage`](crate::key_packages::KeyPackage) that is either
+//! pre-published, or that represents a client in a group contains a
+//! [`Credential`] and is authenticated by it.
+//!
+//! Clients can create a [`Credential`] by creating a [`CredentialBundle`] which
+//! contains the [`Credential`], as well as the corresponding private key
 //! material. The [`CredentialBundle`] can in turn be used to generate a
 //! [`KeyPackageBundle`](crate::key_packages::KeyPackageBundle).
 //!
-//! The MLS protocol spec allows the credential that represents a client in a
-//! group to change over time. Concretely, members can issue an Update proposal
-//! or a Full Commit to update their
-//! [`KeyPackage`](crate::key_packages::KeyPackage), as well as the
-//! [`Credential`] in it. Note, that the Update has to be authenticated by the
+//! The MLS protocol spec allows the that represents a client in a group to
+//! change over time. Concretely, members can issue an Update proposal or a Full
+//! Commit to update their [`KeyPackage`](crate::key_packages::KeyPackage), as
+//! well as the [`Credential`] in it. The Update has to be authenticated by the
 //! signature public key contained in the old [`Credential`].
 //!
 //! When receiving a credential update from another member, applications must
@@ -22,6 +26,9 @@
 //! ciphersuite of the [`KeyPackage`](crate::key_packages::KeyPackage) that it
 //! is embedded in. Clients can use different credentials, potentially with
 //! different signature schemes in different groups.
+//!
+//! There are multiple [`CredentialType`]s, although OpenMLS currently only
+//! supports the [`BasicCredential`].
 
 mod codec;
 mod errors;
