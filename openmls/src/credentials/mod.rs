@@ -48,9 +48,9 @@ use tls_codec::{TlsByteVecU16, TlsDeserialize, TlsSerialize, TlsSize};
 
 use crate::{ciphersuite::*, error::LibraryError};
 
-/// CredentialType
+/// CredentialType.
 ///
-/// This enum contains variants for Credential Types.
+/// This enum contains variants for the different Credential Types.
 #[derive(
     Copy, Clone, Debug, PartialEq, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
@@ -74,7 +74,7 @@ impl TryFrom<u16> for CredentialType {
     }
 }
 
-/// X509 Certificate
+/// X509 Certificate.
 ///
 /// This struct contains an X509 certificate chain.
 /// TODO: #134 X509 certificates are not supported yet by OpenMLS.
@@ -83,7 +83,7 @@ pub struct Certificate {
     cert_data: Vec<u8>,
 }
 
-/// MlsCredentialType
+/// MlsCredentialType.
 ///
 /// This enum contains variants containing the different available credentials.
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
@@ -94,7 +94,7 @@ pub enum MlsCredentialType {
     X509(Certificate),
 }
 
-/// Credential
+/// Credential.
 ///
 /// This struct contains MLS credential data, where the data depends on the
 /// type. The [`CredentialType`] always matches the [`MlsCredentialType`].
@@ -163,7 +163,7 @@ impl From<MlsCredentialType> for Credential {
     }
 }
 
-/// Basic Credential
+/// Basic Credential.
 ///
 /// A `BasicCredential` as defined in the MLS protocol spec. It exposes an
 /// `identity` to represent the client, as well as a signature public key, along
@@ -197,7 +197,7 @@ impl PartialEq for BasicCredential {
     }
 }
 
-/// Credential Bundle
+/// Credential Bundle.
 ///
 /// This struct contains a [`Credential`] and the private key corresponding to
 /// the signature key it contains.
