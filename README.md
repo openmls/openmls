@@ -2,10 +2,10 @@
 
 [![Tests & Checks][gh-tests-image]](https://github.com/openmls/openmls/actions/workflows/tests.yml)
 [![ARM64 Build Status][drone-image]](https://cloud.drone.io/openmls/openmls)
-[![Deploy Docs][gh-deploy-docs-image]][docs-main-link]
 [![codecov][codecov-image]](https://codecov.io/gh/openmls/openmls)
 [![OpenMLS List][list-image]][list-link]
-[![Docs][docs-main-badge]][docs-main-link]
+[![Docs][docs-release-badge]][docs-release-link]
+[![Book][book-release-badge]][book-release-link]
 ![Rust Version][rustc-image]
 
 A WIP Rust implementation of [Messaging Layer Security](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md) based on draft 12+.
@@ -118,9 +118,10 @@ OpenMLS adheres to the [Contributor Covenant](https://www.contributor-covenant.o
 [list-image]: https://img.shields.io/badge/mailing-list-blue.svg?style=for-the-badge
 [list-link]: https://groups.google.com/u/0/g/openmls-dev
 [rustc-image]: https://img.shields.io/badge/rustc-1.56+-blue.svg?style=for-the-badge&logo=rust
-[docs-main-badge]: https://img.shields.io/badge/docs-main-blue.svg?style=for-the-badge
+[docs-release-badge]: https://img.shields.io/badge/docs-release-blue.svg?style=for-the-badge
 [docs-release-link]: https://docs.rs/crate/openmls/latest
 [docs-main-link]: https://openmls.tech/openmls/doc/openmls/index.html
+[book-release-badge]: https://img.shields.io/badge/book-release-blue.svg?style=for-the-badge
 [book-release-link]: https://openmls.tech/book
 [book-main-link]: https://openmls.tech/openmls/book
 [drone-image]: https://img.shields.io/drone/build/openmls/openmls/main?label=ARM64%20Build%20Status&logo=drone&style=for-the-badge
