@@ -1,7 +1,7 @@
 [package]
 name = "mls-ds"
 version = "0.1.0"
-authors = ["Franziskus Kiefer <franziskuskiefer@gmail.com>"]
+authors = ["OpenMLS Authors"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -21,7 +21,7 @@ base64 = "0.13"
 tls_codec = "0.2.0"
 
 openmls = {features = ["test-utils"], version = "0.4.0-pre.2" }
-openmls_traits = "0.1.0-pre.2" 
+openmls_traits = "0.1.0-pre.2"
 openmls_rust_crypto = "0.1.0-pre.2"
 
 ds-lib = { path = "../ds-lib/" }
