@@ -229,6 +229,7 @@
 <span id="228">228</span>
 <span id="229">229</span>
 <span id="230">230</span>
+<span id="231">231</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains the types and implementations for the</span>
 <span class="doccomment">//! `PublicGroupState` and `PublicGroupStateTbs` structs of the MLS spec. The</span>
 <span class="doccomment">//! `PublicGroupState` implements type-enforced verification in the same way as</span>
@@ -286,13 +287,14 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">signature</span>: <span class="ident">Signature</span>,
 }
 
-<span class="doccomment">/// The `VerifiablePublicGroupState` represents a `PublicGroupState` of which</span>
-<span class="doccomment">/// the signature has not been verified. It implements the `Verifiable` trait</span>
-<span class="doccomment">/// and can thus be turned into a `PublicGroupState` by calling `verify(...)`</span>
-<span class="doccomment">/// with the `Credential` corresponding to the `CredentialBundle` of the signer.</span>
-<span class="doccomment">/// When receiving a serialized &quot;PublicGroupState&quot;, it can thus only be</span>
-<span class="doccomment">/// deserialized into a `VerifiablePublicGroupState`, which can then be turned</span>
-<span class="doccomment">/// into a `PublicGroupState` as described above.</span>
+<span class="doccomment">/// The [`VerifiablePublicGroupState`] represents a [`PublicGroupState`] of which</span>
+<span class="doccomment">/// the signature has not been verified. It implements the [`Verifiable`] trait</span>
+<span class="doccomment">/// and can thus be turned into a [`PublicGroupState`] by calling `verify(...)`</span>
+<span class="doccomment">/// with the [`Credential`](crate::credentials::Credential) corresponding</span>
+<span class="doccomment">/// to the [`CredentialBundle`](crate::credentials::CredentialBundle) of the signer.</span>
+<span class="doccomment">/// When receiving a serialized [`PublicGroupState`], it can thus only be</span>
+<span class="doccomment">/// deserialized into a [`VerifiablePublicGroupState`], which can then be turned</span>
+<span class="doccomment">/// into a [`PublicGroupState`] as described above.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">VerifiablePublicGroupState</span> {
     <span class="ident">tbs</span>: <span class="ident">PublicGroupStateTbs</span>,
@@ -300,30 +302,30 @@
 }
 
 <span class="kw">impl</span> <span class="ident">VerifiablePublicGroupState</span> {
-    <span class="doccomment">/// Get the `ProtocolVersion` of the unverified</span>
+    <span class="doccomment">/// Returns the `ProtocolVersion` of the unverified</span>
     <span class="doccomment">/// `PublicGroupState`.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">version</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ProtocolVersion</span> {
         <span class="self">self</span>.<span class="ident">tbs</span>.<span class="ident">version</span>
     }
 
-    <span class="doccomment">/// Get a reference to the `Ciphersuite` of the unverified</span>
+    <span class="doccomment">/// Returns a reference to the `Ciphersuite` of the unverified</span>
     <span class="doccomment">/// `PublicGroupState`.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ciphersuite</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Ciphersuite</span> {
         <span class="self">self</span>.<span class="ident">tbs</span>.<span class="ident">ciphersuite</span>
     }
 
-    <span class="doccomment">/// Get a reference to the `tree_hash` of the unverified</span>
+    <span class="doccomment">/// Returns a reference to the `tree_hash` of the unverified</span>
     <span class="doccomment">/// `PublicGroupState`.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">tree_hash</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="self">self</span>.<span class="ident">tbs</span>.<span class="ident">tree_hash</span>.<span class="ident">as_slice</span>()
     }
 
-    <span class="doccomment">/// Get a reference to the [`KeyPackageRef`] of the signer.</span>
+    <span class="doccomment">/// Returns a reference to the [`KeyPackageRef`] of the signer.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">signer</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">KeyPackageRef</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">tbs</span>.<span class="ident">signer</span>
     }
 
-    <span class="doccomment">/// Get a reference to the non [`GroupContext`] extensions of the unverified</span>
+    <span class="doccomment">/// Returns a reference to the non [`GroupContext`] extensions of the unverified</span>
     <span class="doccomment">/// `PublicGroupState`.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">other_extensions</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">Extension</span>] {
         <span class="self">self</span>.<span class="ident">tbs</span>.<span class="ident">other_extensions</span>.<span class="ident">as_slice</span>()
