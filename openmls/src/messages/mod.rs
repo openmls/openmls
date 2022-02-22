@@ -110,7 +110,7 @@ impl Welcome {
 /// This is part of a [`Welcome`] message. It can be used to correlate the correct secrets with each new member.
 #[derive(Clone, Debug, PartialEq, TlsDeserialize, TlsSerialize, TlsSize)]
 pub struct EncryptedGroupSecrets {
-    /// Key package refrence of the new member
+    /// Key package reference of the new member
     new_member: KeyPackageRef,
     /// Ciphertext of the encrypted group secret
     encrypted_group_secrets: HpkeCiphertext,
@@ -125,12 +125,12 @@ impl EncryptedGroupSecrets {
         }
     }
 
-    /// Returns the encrypted group secrets's new member [`KeyPackageRef`].
+    /// Returns the encrypted group secrets' new [`KeyPackageRef`].
     pub fn new_member(&self) -> KeyPackageRef {
         self.new_member
     }
 
-    /// Returns a reference to the encrypted group secrets's encrypted group secrets.
+    /// Returns a reference to the encrypted group secrets' encrypted group secrets.
     pub(crate) fn encrypted_group_secrets(&self) -> &HpkeCiphertext {
         &self.encrypted_group_secrets
     }

@@ -309,7 +309,7 @@ pub(crate) enum ProposalOrRefType {
     Reference = 2,
 }
 
-/// Type of Proposal, either by value or by reference
+/// Type of Proposal, either by value or by reference.
 #[derive(
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
