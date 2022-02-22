@@ -166,7 +166,7 @@ pub(crate) use psk::*;
 
 // Public types
 
-/// A group secret that can be used among members to prove that a member was part of a group.
+/// A group secret that can be used among members to prove that a member was part of a group in a given epoch.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
 pub struct ResumptionSecret {
