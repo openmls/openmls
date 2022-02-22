@@ -55,13 +55,14 @@ pub struct PublicGroupState {
     pub(crate) signature: Signature,
 }
 
-/// The `VerifiablePublicGroupState` represents a `PublicGroupState` of which
-/// the signature has not been verified. It implements the `Verifiable` trait
-/// and can thus be turned into a `PublicGroupState` by calling `verify(...)`
-/// with the `Credential` corresponding to the `CredentialBundle` of the signer.
-/// When receiving a serialized "PublicGroupState", it can thus only be
-/// deserialized into a `VerifiablePublicGroupState`, which can then be turned
-/// into a `PublicGroupState` as described above.
+/// The [`VerifiablePublicGroupState`] represents a [`PublicGroupState`] of which
+/// the signature has not been verified. It implements the [`Verifiable`] trait
+/// and can thus be turned into a [`PublicGroupState`] by calling `verify(...)`
+/// with the [`Credential`](crate::credentials::Credential) corresponding
+/// to the [`CredentialBundle`](crate::credentials::CredentialBundle) of the signer.
+/// When receiving a serialized [`PublicGroupState`], it can thus only be
+/// deserialized into a [`VerifiablePublicGroupState`], which can then be turned
+/// into a [`PublicGroupState`] as described above.
 #[derive(Debug, Clone, TlsSize, TlsDeserialize, TlsSerialize)]
 pub struct VerifiablePublicGroupState {
     tbs: PublicGroupStateTbs,
@@ -69,30 +70,30 @@ pub struct VerifiablePublicGroupState {
 }
 
 impl VerifiablePublicGroupState {
-    /// Get the `ProtocolVersion` of the unverified
+    /// Returns the `ProtocolVersion` of the unverified
     /// `PublicGroupState`.
     pub(crate) fn version(&self) -> ProtocolVersion {
         self.tbs.version
     }
 
-    /// Get a reference to the `Ciphersuite` of the unverified
+    /// Returns a reference to the `Ciphersuite` of the unverified
     /// `PublicGroupState`.
     pub(crate) fn ciphersuite(&self) -> Ciphersuite {
         self.tbs.ciphersuite
     }
 
-    /// Get a reference to the `tree_hash` of the unverified
+    /// Returns a reference to the `tree_hash` of the unverified
     /// `PublicGroupState`.
     pub(crate) fn tree_hash(&self) -> &[u8] {
         self.tbs.tree_hash.as_slice()
     }
 
-    /// Get a reference to the [`KeyPackageRef`] of the signer.
+    /// Returns a reference to the [`KeyPackageRef`] of the signer.
     pub(crate) fn signer(&self) -> &KeyPackageRef {
         &self.tbs.signer
     }
 
-    /// Get a reference to the non [`GroupContext`] extensions of the unverified
+    /// Returns a reference to the non [`GroupContext`] extensions of the unverified
     /// `PublicGroupState`.
     pub(crate) fn other_extensions(&self) -> &[Extension] {
         self.tbs.other_extensions.as_slice()

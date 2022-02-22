@@ -1,4 +1,9 @@
-//! # Proposal errors
+//! # Proposals
+//!
+//! This module defines all the different types of Proposals.
+//!
+//! To find out if a specific proposal type is supported,
+//! [`ProposalType::is_supported()`] can be used.
 
 use crate::{
     ciphersuite::{
@@ -19,6 +24,8 @@ use std::convert::TryFrom;
 use tls_codec::{
     Serialize as TlsSerializeTrait, TlsByteVecU16, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32,
 };
+
+// Public types
 
 /// ## MLS Proposal Types
 ///
@@ -49,6 +56,23 @@ pub enum ProposalType {
     GroupContextExtensions = 8,
 }
 
+impl ProposalType {
+    /// Check whether a proposal type is supported or not. Returns `true`
+    /// if a proposal is supported and `false` otherwise.
+    pub fn is_supported(&self) -> bool {
+        match self {
+            ProposalType::Add
+            | ProposalType::Update
+            | ProposalType::Remove
+            | ProposalType::Presharedkey
+            | ProposalType::Reinit
+            | ProposalType::ExternalInit => true,
+            ProposalType::AppAck => false,
+            ProposalType::GroupContextExtensions => true,
+        }
+    }
+}
+
 impl TryFrom<u16> for ProposalType {
     type Error = &'static str;
     fn try_from(value: u16) -> Result<Self, Self::Error> {
@@ -66,49 +90,9 @@ impl TryFrom<u16> for ProposalType {
     }
 }
 
-/// 11.2 Commit
+/// Proposal.
 ///
-/// enum {
-///   reserved(0),
-///   proposal(1)
-///   reference(2),
-///   (255)
-/// } ProposalOrRefType;
-///
-/// struct {
-///   ProposalOrRefType type;
-///   select (ProposalOrRef.type) {
-///     case proposal:  Proposal proposal;
-///     case reference: opaque hash<0..255>;
-///   }
-/// } ProposalOrRef;
-///
-/// Type of Proposal, either by value or by reference
-/// We only implement the values (1, 2), other values are not valid
-/// and will yield `ProposalOrRefTypeError::UnknownValue` when decoded.
-#[derive(
-    PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize, Serialize, Deserialize,
-)]
-#[repr(u8)]
-#[allow(missing_docs)]
-pub(crate) enum ProposalOrRefType {
-    Proposal = 1,
-    Reference = 2,
-}
-
-/// Type of Proposal, either by value or by reference
-#[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
-)]
-#[repr(u8)]
-#[allow(missing_docs)]
-pub enum ProposalOrRef {
-    #[tls_codec(discriminant = 1)]
-    Proposal(Proposal),
-    Reference(ProposalRef),
-}
-
-/// Proposal
+/// This `enum` contains the different proposals in its variants.
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[allow(missing_docs)]
@@ -141,20 +125,6 @@ impl Proposal {
     }
 }
 
-impl ProposalRef {
-    pub(crate) fn from_proposal(
-        ciphersuite: Ciphersuite,
-        backend: &impl OpenMlsCryptoProvider,
-        proposal: &Proposal,
-    ) -> Result<Self, LibraryError> {
-        let encoded = proposal
-            .tls_serialize_detached()
-            .map_err(LibraryError::missing_bound_check)?;
-        Self::new(&encoded, ciphersuite, backend.crypto())
-            .map_err(LibraryError::unexpected_crypto_error)
-    }
-}
-
 /// Add Proposal.
 ///
 /// An Add proposal requests that a client with a specified KeyPackage be added to the group.
@@ -166,7 +136,7 @@ pub struct AddProposal {
 }
 
 impl AddProposal {
-    /// Get a reference to the key package in the proposal.
+    /// Returns a reference to the key package in the proposal.
     pub fn key_package(&self) -> &KeyPackage {
         &self.key_package
     }
@@ -184,13 +154,13 @@ pub struct UpdateProposal {
 }
 
 impl UpdateProposal {
-    /// Get a reference to the key package in the proposal.
+    /// Returns a reference to the key package in the proposal.
     pub fn key_package(&self) -> &KeyPackage {
         &self.key_package
     }
 }
 
-/// Remove Proposal
+/// Remove Proposal.
 ///
 /// A Remove proposal requests that the member with KeyPackageRef removed be removed from the group.
 #[derive(
@@ -201,17 +171,13 @@ pub struct RemoveProposal {
 }
 
 impl RemoveProposal {
-    /// Get the [`KeyPackageRef`] index in this proposal.
+    /// Returns the [`KeyPackageRef`] index in this proposal.
     pub fn removed(&self) -> &KeyPackageRef {
         &self.removed
     }
 }
 
-/// Preshared Key proposal
-/// 11.1.4
-/// struct {
-///     PreSharedKeyID psk;
-/// } PreSharedKey;
+/// Preshared Key Proposal.
 #[derive(
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
@@ -226,25 +192,20 @@ impl PreSharedKeyProposal {
         Self { psk }
     }
 
-    /// Get a reference to the [`PreSharedKeyId`] in this proposal.
+    /// Returns a reference to the [`PreSharedKeyId`] in this proposal.
     pub(crate) fn _psk(&self) -> &PreSharedKeyId {
         &self.psk
     }
 
-    /// Get the [`PreSharedKeyId`] and consume this proposal.
+    /// Returns the [`PreSharedKeyId`] and consume this proposal.
     pub(crate) fn into_psk_id(self) -> PreSharedKeyId {
         self.psk
     }
 }
 
-/// ReInit proposal
-/// 11.1.5
-/// struct {
-///     opaque group_id<0..255>;
-///     ProtocolVersion version;
-///     CipherSuite cipher_suite;
-///     Extension extensions<0..2^32-1>;
-/// } ReInit;
+/// ReInit proposal.
+///
+/// This is used to re-initialize a group.
 #[derive(
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
@@ -255,12 +216,9 @@ pub struct ReInitProposal {
     pub(crate) extensions: TlsVecU32<Extension>,
 }
 
+/// ExternalInit Proposal.
 ///
-/// ``` text
-/// struct {
-///     opaque kem_output<0..2^16-1>;
-///   } ExternalInit;
-/// ```
+/// This proposal is used for External Commits only.
 #[derive(
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
@@ -269,7 +227,7 @@ pub struct ExternalInitProposal {
 }
 
 impl ExternalInitProposal {
-    /// Get the `kem_output` contained in the proposal.
+    /// Returns the `kem_output` contained in the proposal.
     pub(crate) fn kem_output(&self) -> &[u8] {
         self.kem_output.as_slice()
     }
@@ -283,30 +241,11 @@ impl From<Vec<u8>> for ExternalInitProposal {
     }
 }
 
-/// TODO: #291 Implement AppAck
-/// ```text
-/// struct {
-///     KeyPackageRef sender;
-///     uint32 first_generation;
-///     uint32 last_generation;
-/// } MessageRange;
-/// ```
-#[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
-)]
-pub struct MessageRange {
-    sender: KeyPackageRef,
-    first_generation: u32,
-    last_generation: u32,
-}
+// TODO: #291 Implement AppAck
 
-/// TODO: #291 Implement AppAck
+/// AppAck Proposal.
 ///
-/// ```text
-/// struct {
-///     MessageRange received_ranges<0..2^32-1>;
-/// } AppAck;
-/// ```
+/// This is not yet supported.
 #[derive(
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
@@ -339,17 +278,76 @@ impl GroupContextExtensionProposal {
     }
 }
 
-impl ProposalType {
-    /// Check whether a proposal type is supported or not.
-    pub fn is_supported(&self) -> bool {
-        match self {
-            ProposalType::Add
-            | ProposalType::Update
-            | ProposalType::Remove
-            | ProposalType::Presharedkey
-            | ProposalType::Reinit => true,
-            ProposalType::ExternalInit | ProposalType::AppAck => false,
-            ProposalType::GroupContextExtensions => true,
-        }
+// Crate-only types
+
+/// 11.2 Commit
+///
+/// enum {
+///   reserved(0),
+///   proposal(1)
+///   reference(2),
+///   (255)
+/// } ProposalOrRefType;
+///
+/// struct {
+///   ProposalOrRefType type;
+///   select (ProposalOrRef.type) {
+///     case proposal:  Proposal proposal;
+///     case reference: opaque hash<0..255>;
+///   }
+/// } ProposalOrRef;
+///
+/// Type of Proposal, either by value or by reference
+/// We only implement the values (1, 2), other values are not valid
+/// and will yield `ProposalOrRefTypeError::UnknownValue` when decoded.
+#[derive(
+    PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize, Serialize, Deserialize,
+)]
+#[repr(u8)]
+pub(crate) enum ProposalOrRefType {
+    Proposal = 1,
+    Reference = 2,
+}
+
+/// Type of Proposal, either by value or by reference.
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
+#[repr(u8)]
+#[allow(missing_docs)]
+pub(crate) enum ProposalOrRef {
+    #[tls_codec(discriminant = 1)]
+    Proposal(Proposal),
+    Reference(ProposalRef),
+}
+
+impl ProposalRef {
+    pub(crate) fn from_proposal(
+        ciphersuite: Ciphersuite,
+        backend: &impl OpenMlsCryptoProvider,
+        proposal: &Proposal,
+    ) -> Result<Self, LibraryError> {
+        let encoded = proposal
+            .tls_serialize_detached()
+            .map_err(LibraryError::missing_bound_check)?;
+        Self::new(&encoded, ciphersuite, backend.crypto())
+            .map_err(LibraryError::unexpected_crypto_error)
     }
+}
+
+/// TODO: #291 Implement AppAck
+/// ```text
+/// struct {
+///     KeyPackageRef sender;
+///     uint32 first_generation;
+///     uint32 last_generation;
+/// } MessageRange;
+/// ```
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
+pub(crate) struct MessageRange {
+    sender: KeyPackageRef,
+    first_generation: u32,
+    last_generation: u32,
 }
