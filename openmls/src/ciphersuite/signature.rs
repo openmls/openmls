@@ -185,4 +185,9 @@ impl SignaturePrivateKey {
     pub fn signature_scheme(&self) -> SignatureScheme {
         self.signature_scheme
     }
+
+    /// Returns the raw private key bytes as slice.
+    pub(crate) fn as_slice(&self) -> &[u8] {
+        &self.value
+    }
 }

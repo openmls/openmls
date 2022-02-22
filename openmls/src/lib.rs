@@ -181,7 +181,9 @@
 //! [user Manual]: https://openmls.tech/book
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(not(test), forbid(unsafe_code))]
-#![cfg_attr(not(feature = "test-utils"), warn(missing_docs))]
+#![cfg_attr(not(feature = "test-utils"), deny(missing_docs))]
+#![deny(rustdoc::broken_intra_doc_links)]
+#![deny(rustdoc::private_intra_doc_links)]
 
 // === Testing ===
 
@@ -220,6 +222,9 @@ mod binary_tree;
 mod key_store;
 mod tree;
 mod treesync;
+
+// Re-export items from private modules.
+pub use treesync::errors::{PublicTreeError, ApplyUpdatePathError};
 
 /// Single place, re-exporting the most used public functions.
 pub mod prelude;
