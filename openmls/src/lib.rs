@@ -212,14 +212,17 @@ pub mod framing;
 pub mod group;
 pub mod key_packages;
 pub mod messages;
-pub mod schedule;
 pub mod versions;
 
 // Private
 mod binary_tree;
 mod key_store;
+mod schedule;
 mod tree;
 mod treesync;
 
 /// Single place, re-exporting the most used public functions.
 pub mod prelude;
+
+// Re-export types from Key Schedule
+pub use crate::schedule::{AuthenticationSecret, ResumptionSecret};
