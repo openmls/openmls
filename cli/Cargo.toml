@@ -13,14 +13,8 @@ pretty_env_logger = "0.4"
 termion = "1.5"
 tls_codec = "0.2.0"
 
-openmls = {features = ["test-utils"], version = "0.4.0-pre.2" }
-openmls_traits = "0.1.0-pre.2"
-openmls_rust_crypto = "0.1.0-pre.2"
-
-ds-lib = { path = "../delivery-service/ds-lib/" }
-
-[patch.crates-io]
-openmls = { path = "../openmls" }
+openmls = { path = "../openmls", features = ["test-utils"] }
+ds-lib = { path = "../delivery-service/ds-lib" }
 openmls_traits = { path = "../traits" }
 openmls_rust_crypto = { path = "../openmls_rust_crypto" }
 openmls_memory_keystore = { path = "../memory_keystore" }
