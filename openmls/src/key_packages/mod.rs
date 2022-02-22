@@ -718,12 +718,15 @@ impl KeyPackageBundle {
         &self.key_package
     }
 
-    /// Separates the bundle into the [`KeyPackage`] and the ([`HpkePrivateKey`],
-    /// [`Secret`]).
-    pub fn into_parts(self) -> (KeyPackage, (Vec<u8>, Secret)) {
+    /// Separates the bundle into the [`KeyPackage`] and the HPKE private key and
+    /// leaf secret as raw byte vectors.
+    pub fn into_parts(self) -> (KeyPackage, (Vec<u8>, Vec<u8>)) {
         (
             self.key_package,
-            (self.private_key.as_slice().to_vec(), self.leaf_secret),
+            (
+                self.private_key.as_slice().to_vec(),
+                self.leaf_secret.as_slice().to_vec(),
+            ),
         )
     }
 

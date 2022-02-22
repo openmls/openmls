@@ -76,7 +76,7 @@ fn generate_key_package_bundle(
 ///  - Test saving the group state
 #[apply(ciphersuites_and_backends)]
 fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    for wire_format_policy in ALL_VALID_WIRE_FORMAT_POLICIES.iter() {
+    for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
 
         // Generate credential bundles
@@ -969,7 +969,7 @@ fn mls_group_ratchet_tree_extension(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
-    for wire_format_policy in ALL_VALID_WIRE_FORMAT_POLICIES.iter() {
+    for wire_format_policy in WIRE_FORMAT_POLICIES.iter() {
         let group_id = GroupId::from_slice(b"Test Group");
 
         // === Positive case: using the ratchet tree extension ===

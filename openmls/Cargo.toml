@@ -12,7 +12,6 @@ readme = "../README.md"
 [dependencies]
 openmls_traits = { version = "0.1.0-pre.2" }
 uuid = { version = "0.8", features = ["v4"] }
-lazy_static = "1.4"
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = "^1.0"
 log = { version = "0.4", features = ["std"] }
@@ -50,6 +49,7 @@ tempfile = "3"
 rstest = "^0.12"
 rstest_reuse = "^0.1"
 backtrace = "0.3"
+lazy_static = "1.4"
 
 # x64 targets get evercrypt compiled into dev-dependencies.
 [target.'cfg(target_arch = "x86_64")'.dev-dependencies.openmls]

@@ -35,7 +35,10 @@ pub use crate::key_store::*;
 pub use crate::tree::SenderRatchetConfiguration;
 
 // TreeSync
-pub use crate::treesync::node::Node;
+pub use crate::treesync::{
+    errors::{ApplyUpdatePathError, PublicTreeError},
+    node::Node,
+};
 
 // PSKs
 // TODO #751
