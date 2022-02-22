@@ -572,7 +572,9 @@ impl MlsClient for MlsClientImpl {
 
         let state_auth_secret = interop_group.group.authentication_secret();
 
-        Ok(Response::new(StateAuthResponse { state_auth_secret }))
+        Ok(Response::new(StateAuthResponse {
+            state_auth_secret: state_auth_secret.as_slice().to_vec(),
+        }))
     }
 
     async fn export(

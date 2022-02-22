@@ -216,8 +216,8 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     // Make sure that both groups have the same authentication secret
     assert_eq!(
-        alice_group.authentication_secret(),
-        bob_group.authentication_secret()
+        alice_group.authentication_secret().as_slice(),
+        bob_group.authentication_secret().as_slice()
     );
 
     // === Alice sends a message to Bob ===
