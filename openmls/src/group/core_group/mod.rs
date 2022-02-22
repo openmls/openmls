@@ -491,8 +491,13 @@ impl CoreGroup {
     }
 
     /// Returns the authentication secret
-    pub(crate) fn authentication_secret(&self) -> Vec<u8> {
-        self.group_epoch_secrets().authentication_secret().export()
+    pub(crate) fn authentication_secret(&self) -> &AuthenticationSecret {
+        self.group_epoch_secrets().authentication_secret()
+    }
+
+    /// Returns the resumption secret
+    pub(crate) fn resumption_secret(&self) -> &ResumptionSecret {
+        self.group_epoch_secrets().resumption_secret()
     }
 
     /// Loads the state from persisted state

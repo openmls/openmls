@@ -1,6 +1,8 @@
 use tls_codec::Serialize;
 
-use crate::{group::errors::ExporterError, messages::PublicGroupState};
+use crate::{
+    group::errors::ExporterError, messages::PublicGroupState, schedule::AuthenticationSecret,
+};
 
 use super::*;
 
@@ -35,13 +37,18 @@ impl MlsGroup {
     }
 
     /// Returns the authentication secret of the current epoch.
-    pub fn authentication_secret(&self) -> Vec<u8> {
+    pub fn authentication_secret(&self) -> &AuthenticationSecret {
         self.group.authentication_secret()
+    }
+
+    /// Returns the resumption secret of the current epoch.
+    pub fn resumptionn_secret(&self) -> &ResumptionSecret {
+        self.group.resumption_secret()
     }
 
     /// Returns a resumption secret for a given epoch. If no resumption secret
     /// is available for that epoch,  `None` is returned.
-    pub fn get_resumption_secret(&self, epoch: GroupEpoch) -> Option<&ResumptionSecret> {
+    pub fn get_past_resumption_secret(&self, epoch: GroupEpoch) -> Option<&ResumptionSecret> {
         self.resumption_secret_store.get(epoch)
     }
 
