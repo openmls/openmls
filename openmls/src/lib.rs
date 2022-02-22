@@ -227,4 +227,4 @@ mod treesync;
 pub mod prelude;
 
 // Re-export types from Key Schedule
-pub use crate::schedule::{AuthenticationSecret, ResumptionSecret};
+pub use crate::schedule::{errors::PskError, AuthenticationSecret, ResumptionSecret};
