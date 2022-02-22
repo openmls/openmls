@@ -226,6 +226,9 @@
 <span id="225">225</span>
 <span id="226">226</span>
 <span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # OpenMLS</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! OpenMLS is an implementation of the proposed [MLS protocol].</span>
@@ -442,17 +445,20 @@
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">group</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">key_packages</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">messages</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">schedule</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">versions</span>;
 
 <span class="comment">// Private</span>
 <span class="kw">mod</span> <span class="ident">binary_tree</span>;
 <span class="kw">mod</span> <span class="ident">key_store</span>;
+<span class="kw">mod</span> <span class="ident">schedule</span>;
 <span class="kw">mod</span> <span class="ident">tree</span>;
 <span class="kw">mod</span> <span class="ident">treesync</span>;
 
 <span class="doccomment">/// Single place, re-exporting the most used public functions.</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">prelude</span>;
+
+<span class="comment">// Re-export types from Key Schedule</span>
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schedule</span>::{<span class="ident">errors::PskError</span>, <span class="ident">AuthenticationSecret</span>, <span class="ident">ResumptionSecret</span>};
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="openmls" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div>
 </body></html>

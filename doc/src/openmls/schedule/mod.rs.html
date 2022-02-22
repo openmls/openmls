@@ -1265,11 +1265,17 @@
 <span id="1264">1264</span>
 <span id="1265">1265</span>
 <span id="1266">1266</span>
-</pre><pre class="rust"><code><span class="doccomment">//! This module represents the key schedule as introduced in Section 8 of the</span>
+<span id="1267">1267</span>
+</pre><pre class="rust"><code><span class="doccomment">//! # Key schedule</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! This module contains the types and implementations for key schedule operations.</span>
+<span class="doccomment">//! It exposes the [`AuthenticationSecret`] &amp; [`ResumptionSecret`].</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! The key schedule is introduced in Section 9 of the</span>
 <span class="doccomment">//! MLS specification. The key schedule evolves in epochs, where in each epoch</span>
 <span class="doccomment">//! new key material is injected.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! The flow of the key schedule is as follows (from Section 8 of the MLS</span>
+<span class="doccomment">//! The flow of the key schedule is as follows (from Section 9 of the MLS</span>
 <span class="doccomment">//! specification):</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ```text</span>
@@ -1419,12 +1425,65 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">kat_key_schedule</span>;
 
-<span class="comment">//Public</span>
+<span class="comment">// Public</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
 
 <span class="comment">// Crate</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">message_secrets</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">psk</span>::<span class="kw-2">*</span>;
+
+<span class="comment">// Public types</span>
+
+<span class="doccomment">/// A group secret that can be used among members to prove that a member was part of a group in a given epoch.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ResumptionSecret</span> {
+    <span class="ident">secret</span>: <span class="ident">Secret</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">ResumptionSecret</span> {
+    <span class="doccomment">/// Derive an `ResumptionSecret` from an `EpochSecret`.</span>
+    <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;resumption&quot;</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span> { <span class="ident">secret</span> })
+    }
+
+    <span class="doccomment">/// Returns the secret as a slice.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
+        <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">as_slice</span>()
+    }
+}
+
+<span class="doccomment">/// A secret that can be used among members to make sure everyone has the same</span>
+<span class="doccomment">/// group state.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AuthenticationSecret</span> {
+    <span class="ident">secret</span>: <span class="ident">Secret</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">AuthenticationSecret</span> {
+    <span class="doccomment">/// Derive an `AuthenticationSecret` from an `EpochSecret`.</span>
+    <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>
+            .<span class="ident">secret</span>
+            .<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;authentication&quot;</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span> { <span class="ident">secret</span> })
+    }
+
+    <span class="doccomment">/// Returns the secret as a slice.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
+        <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">as_slice</span>()
+    }
+}
+
+<span class="comment">// Crate-only types</span>
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Default</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
@@ -1962,37 +2021,6 @@
     }
 }
 
-<span class="doccomment">/// A secret that can be used among members to make sure everyone has the same</span>
-<span class="doccomment">/// group state.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">AuthenticationSecret</span> {
-    <span class="ident">secret</span>: <span class="ident">Secret</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">AuthenticationSecret</span> {
-    <span class="doccomment">/// Derive an `AuthenticationSecret` from an `EpochSecret`.</span>
-    <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>
-            .<span class="ident">secret</span>
-            .<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;authentication&quot;</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="self">Self</span> { <span class="ident">secret</span> })
-    }
-
-    <span class="doccomment">/// ☣️ Get a copy of the secret bytes.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">export</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">as_slice</span>().<span class="ident">to_vec</span>()
-    }
-
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
-        <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">as_slice</span>()
-    }
-}
-
 <span class="doccomment">/// A secret used when joining a group with an external Commit.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
@@ -2028,7 +2056,7 @@
 <span class="doccomment">/// The confirmation key is used to calculate the `ConfirmationTag`.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConfirmationKey</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ConfirmationKey</span> {
     <span class="ident">secret</span>: <span class="ident">Secret</span>,
 }
 
@@ -2081,9 +2109,8 @@
         <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">as_slice</span>()
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">random</span>(<span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>, <span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) -&gt; <span class="self">Self</span> {
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random</span>(<span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>, <span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">secret</span>: <span class="ident">Secret::random</span>(<span class="ident">ciphersuite</span>, <span class="ident">rng</span>, <span class="prelude-val">None</span> <span class="comment">/* MLS version */</span>)
                 .<span class="ident">expect</span>(<span class="string">&quot;Not enough randomness.&quot;</span>),
@@ -2094,7 +2121,7 @@
 <span class="doccomment">/// The membership key is used to calculate the `MembershipTag`.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MembershipKey</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">MembershipKey</span> {
     <span class="ident">secret</span>: <span class="ident">Secret</span>,
 }
 
@@ -2142,36 +2169,12 @@
         <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">as_slice</span>()
     }
 
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">random</span>(<span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>, <span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) -&gt; <span class="self">Self</span> {
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random</span>(<span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>, <span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">secret</span>: <span class="ident">Secret::random</span>(<span class="ident">ciphersuite</span>, <span class="ident">rng</span>, <span class="prelude-val">None</span> <span class="comment">/* MLS version */</span>)
                 .<span class="ident">expect</span>(<span class="string">&quot;Not enough randomness.&quot;</span>),
         }
-    }
-}
-
-<span class="doccomment">/// A secret used in cross-group operations.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ResumptionSecret</span> {
-    <span class="ident">secret</span>: <span class="ident">Secret</span>,
-}
-
-<span class="kw">impl</span> <span class="ident">ResumptionSecret</span> {
-    <span class="doccomment">/// Derive an `ResumptionSecret` from an `EpochSecret`.</span>
-    <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="ident">epoch_secret</span>.<span class="ident">secret</span>.<span class="ident">derive_secret</span>(<span class="ident">backend</span>, <span class="string">&quot;resumption&quot;</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="self">Self</span> { <span class="ident">secret</span> })
-    }
-
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
-        <span class="self">self</span>.<span class="ident">secret</span>.<span class="ident">as_slice</span>()
     }
 }
 
@@ -2189,7 +2192,7 @@
 <span class="doccomment">/// A key that can be used to derive an `AeadKey` and an `AeadNonce`.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SenderDataSecret</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">SenderDataSecret</span> {
     <span class="ident">secret</span>: <span class="ident">Secret</span>,
 }
 
@@ -2245,8 +2248,7 @@
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="attribute">#[<span class="ident">doc</span>(<span class="ident">hidden</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">random</span>(<span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>, <span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random</span>(<span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>, <span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> {
             <span class="ident">secret</span>: <span class="ident">Secret::random</span>(<span class="ident">ciphersuite</span>, <span class="ident">rng</span>, <span class="prelude-val">None</span> <span class="comment">/* MLS version */</span>)
                 .<span class="ident">expect</span>(<span class="string">&quot;Not enough randomness.&quot;</span>),
