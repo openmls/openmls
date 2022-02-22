@@ -5,6 +5,8 @@
 use std::fmt::Display;
 
 use backtrace::Backtrace;
+// Re-export errors.
+pub use crate::treesync::errors::{ApplyUpdatePathError, PublicTreeError};
 use openmls_traits::types::CryptoError;
 use thiserror::Error;
 use tls_codec::Error as TlsCodecError;

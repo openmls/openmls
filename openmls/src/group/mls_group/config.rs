@@ -1,8 +1,34 @@
 //! Configuration module for [`MlsGroup`] configurations.
+//!
+//! ## Building an MlsGroupConfig
+//! The [`MlsGroupConfigBuilder`] makes it easy to build configurations for the
+//! [`MlsGroup`].
+//!
+//! ```
+//! use openmls::prelude::*;
+//!
+//! let group_config = MlsGroupConfig::builder()
+//!     .use_ratchet_tree_extension(true)
+//!     .build();
+//! ```
+//!
+//! See [`MlsGroupConfigBuilder`](MlsGroupConfigBuilder#implementations) for
+//! all options that can be configured.
+//!
+//! ### Wire format policies
+//! Only some combination of possible wire formats are valid within OpenMLS.
+//! The [`WIRE_FORMAT_POLICIES`] lists all valid options that can be set.
+//!
+//! ```
+//! use openmls::prelude::*;
+//!
+//! let group_config = MlsGroupConfig::builder()
+//!     .wire_format_policy(MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY)
+//!     .build();
+//! ```
 
 use super::*;
 use crate::tree::sender_ratchet::SenderRatchetConfiguration;
-use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 
 /// Specifies the configuration parameters for a [`MlsGroup`]. Refer to
@@ -105,7 +131,7 @@ impl MlsGroupConfigBuilder {
     /// **WARNING**
     ///
     /// This feature enables the storage of message secrets from past epochs.
-    /// It is a tradeoff between functionality and forward secrecy and should only be enabled
+    /// It is a trade-off between functionality and forward secrecy and should only be enabled
     /// if the Delivery Service cannot guarantee that application messages will be sent in
     /// the same epoch in which they were generated. The number for `max_epochs` should be
     /// as low as possible.
@@ -185,8 +211,13 @@ pub struct WireFormatPolicy {
 }
 
 impl WireFormatPolicy {
-    /// Creates a new wire format policy from an [`OutgoingWireFormatPolicy`] and an [`IncomingWireFormatPolicy`].
-    pub fn new(outgoing: OutgoingWireFormatPolicy, incoming: IncomingWireFormatPolicy) -> Self {
+    /// Creates a new wire format policy from an [`OutgoingWireFormatPolicy`]
+    /// and an [`IncomingWireFormatPolicy`].
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn new(
+        outgoing: OutgoingWireFormatPolicy,
+        incoming: IncomingWireFormatPolicy,
+    ) -> Self {
         Self { outgoing, incoming }
     }
 
@@ -199,21 +230,11 @@ impl WireFormatPolicy {
     pub fn incoming(&self) -> IncomingWireFormatPolicy {
         self.incoming
     }
-
-    /// Set the wire format policy's outgoing wire format policy.
-    pub fn set_outgoing(&mut self, outgoing: OutgoingWireFormatPolicy) {
-        self.outgoing = outgoing;
-    }
-
-    /// Set the wire format policy's incoming wire format policy.
-    pub fn set_incoming(&mut self, incoming: IncomingWireFormatPolicy) {
-        self.incoming = incoming;
-    }
 }
 
 impl Default for WireFormatPolicy {
     fn default() -> Self {
-        *PURE_CIPHERTEXT_WIRE_FORMAT_POLICY
+        PURE_CIPHERTEXT_WIRE_FORMAT_POLICY
     }
 }
 
@@ -226,44 +247,40 @@ impl From<OutgoingWireFormatPolicy> for WireFormat {
     }
 }
 
-lazy_static! {
-    /// All valid wire format policy combinations
-    pub static ref ALL_VALID_WIRE_FORMAT_POLICIES: Vec<WireFormatPolicy> = vec![
-        *PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
-        *PURE_CIPHERTEXT_WIRE_FORMAT_POLICY,
-        *MIXED_PLAINTEXT_WIRE_FORMAT_POLICY,
-        *MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY,
-    ];
-}
+/// All valid wire format policy combinations.
+/// - [`PURE_PLAINTEXT_WIRE_FORMAT_POLICY`]
+/// - [`PURE_CIPHERTEXT_WIRE_FORMAT_POLICY`]
+/// - [`MIXED_PLAINTEXT_WIRE_FORMAT_POLICY`]
+/// - [`MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY`]
+pub const WIRE_FORMAT_POLICIES: [WireFormatPolicy; 4] = [
+    PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+    PURE_CIPHERTEXT_WIRE_FORMAT_POLICY,
+    MIXED_PLAINTEXT_WIRE_FORMAT_POLICY,
+    MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY,
+];
 
-lazy_static! {
-    /// Pure plaintext wire format policy.
-    pub static ref PURE_PLAINTEXT_WIRE_FORMAT_POLICY: WireFormatPolicy = WireFormatPolicy::new(
-        OutgoingWireFormatPolicy::AlwaysPlaintext,
-        IncomingWireFormatPolicy::AlwaysPlaintext,
-    );
-}
+/// Incoming and outgoing wire formats are always plaintext.
+pub const PURE_PLAINTEXT_WIRE_FORMAT_POLICY: WireFormatPolicy = WireFormatPolicy {
+    outgoing: OutgoingWireFormatPolicy::AlwaysPlaintext,
+    incoming: IncomingWireFormatPolicy::AlwaysPlaintext,
+};
 
-lazy_static! {
-    /// Pure ciphertext wire format policy.
-    pub static ref PURE_CIPHERTEXT_WIRE_FORMAT_POLICY: WireFormatPolicy = WireFormatPolicy::new(
-        OutgoingWireFormatPolicy::AlwaysCiphertext,
-        IncomingWireFormatPolicy::AlwaysCiphertext,
-    );
-}
+/// Incoming and outgoing wire formats are always ciphertext.
+pub const PURE_CIPHERTEXT_WIRE_FORMAT_POLICY: WireFormatPolicy = WireFormatPolicy {
+    outgoing: OutgoingWireFormatPolicy::AlwaysCiphertext,
+    incoming: IncomingWireFormatPolicy::AlwaysCiphertext,
+};
 
-lazy_static! {
-    /// Mixed plaintext wire format policy combination.
-    pub static ref MIXED_PLAINTEXT_WIRE_FORMAT_POLICY: WireFormatPolicy = WireFormatPolicy::new(
-        OutgoingWireFormatPolicy::AlwaysPlaintext,
-        IncomingWireFormatPolicy::Mixed,
-    );
-}
+/// Incoming wire formats can be mixed while outgoing wire formats are always
+/// plaintext.
+pub const MIXED_PLAINTEXT_WIRE_FORMAT_POLICY: WireFormatPolicy = WireFormatPolicy {
+    outgoing: OutgoingWireFormatPolicy::AlwaysPlaintext,
+    incoming: IncomingWireFormatPolicy::Mixed,
+};
 
-lazy_static! {
-    /// Mixed ciphertext wire format policy combination.
-    pub static ref MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY: WireFormatPolicy = WireFormatPolicy::new(
-        OutgoingWireFormatPolicy::AlwaysCiphertext,
-        IncomingWireFormatPolicy::Mixed,
-    );
-}
+/// Incoming wire formats can be mixed while outgoing wire formats are always
+/// ciphertext.
+pub const MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY: WireFormatPolicy = WireFormatPolicy {
+    outgoing: OutgoingWireFormatPolicy::AlwaysCiphertext,
+    incoming: IncomingWireFormatPolicy::Mixed,
+};
