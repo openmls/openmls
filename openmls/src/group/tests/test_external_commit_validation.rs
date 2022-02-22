@@ -140,7 +140,7 @@ fn test_valsem240(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         bob_credential_bundle,
         mut plaintext,
         original_plaintext,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let mut content = if let MlsPlaintextContentType::Commit(commit) = plaintext.content() {
         commit.clone()
@@ -218,7 +218,7 @@ fn test_valsem241(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         bob_credential_bundle,
         mut plaintext,
         original_plaintext,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let mut content = if let MlsPlaintextContentType::Commit(commit) = plaintext.content() {
         commit.clone()
@@ -292,7 +292,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         bob_credential_bundle,
         mut plaintext,
         original_plaintext,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let mut content = if let MlsPlaintextContentType::Commit(commit) = plaintext.content() {
         commit.clone()
@@ -373,7 +373,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         bob_credential_bundle,
         plaintext: _,
         original_plaintext: _,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // Alice has to add Bob first, so that in the external commit, we can have
     // an update proposal that comes from a leaf that's actually inside of the
@@ -507,7 +507,7 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         bob_credential_bundle,
         plaintext: _,
         original_plaintext: _,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // Alice has to add Bob first, so that Bob actually creates a remove
     // proposal to remove his former self.
@@ -646,7 +646,7 @@ fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         bob_credential_bundle,
         mut plaintext,
         original_plaintext,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let mut content = if let MlsPlaintextContentType::Commit(commit) = plaintext.content() {
         commit.clone()
@@ -733,7 +733,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         bob_credential_bundle,
         mut plaintext,
         original_plaintext,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let mut content = if let MlsPlaintextContentType::Commit(commit) = plaintext.content() {
         commit.clone()
@@ -794,7 +794,7 @@ fn test_valsem247(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         bob_credential_bundle,
         mut plaintext,
         original_plaintext,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let mut content = if let MlsPlaintextContentType::Commit(commit) = plaintext.content() {
         commit.clone()

@@ -125,14 +125,8 @@ pub fn write(file_name: &str, payload: &[u8]) {
 // A helper function translating the bool in the protobuf to OpenMLS' WireFormat
 pub fn wire_format_policy(encrypt: bool) -> WireFormatPolicy {
     match encrypt {
-        false => WireFormatPolicy::new(
-            OutgoingWireFormatPolicy::AlwaysPlaintext,
-            IncomingWireFormatPolicy::AlwaysPlaintext,
-        ),
-        true => WireFormatPolicy::new(
-            OutgoingWireFormatPolicy::AlwaysCiphertext,
-            IncomingWireFormatPolicy::AlwaysCiphertext,
-        ),
+        false => PURE_PLAINTEXT_WIRE_FORMAT_POLICY,
+        true => PURE_CIPHERTEXT_WIRE_FORMAT_POLICY,
     }
 }
 
