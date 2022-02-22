@@ -107,7 +107,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let CommitValidationTestSetup {
         mut alice_group,
         mut bob_group,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     let alice_hash_ref = *alice_group
         .key_package_ref()
@@ -232,7 +232,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 // ValSem201: Path must be present, if Commit contains Removes or Updates
 #[apply(ciphersuites_and_backends)]
 fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
-    let wire_format_policy = *PURE_PLAINTEXT_WIRE_FORMAT_POLICY;
+    let wire_format_policy = PURE_PLAINTEXT_WIRE_FORMAT_POLICY;
     // Test with MlsPlaintext
     let CommitValidationTestSetup {
         mut alice_group,
@@ -509,7 +509,7 @@ fn test_valsem202(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let CommitValidationTestSetup {
         mut alice_group,
         mut bob_group,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // Have Alice generate a self-updating commit, remove a node from the path,
     // re-sign and have Bob process it.
@@ -617,7 +617,7 @@ fn test_valsem203(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let CommitValidationTestSetup {
         mut alice_group,
         mut bob_group,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // Have Alice generate a self-updating commit, scramble some ciphertexts and
     // have Bob process the resulting commit.
@@ -727,7 +727,7 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let CommitValidationTestSetup {
         mut alice_group,
         mut bob_group,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // Have Alice generate a self-updating commit, flip the last byte of one of
     // the public keys in the path and have Bob process the commit.
@@ -837,7 +837,7 @@ fn test_valsem205(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let CommitValidationTestSetup {
         mut alice_group,
         mut bob_group,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // Have Alice generate a self-updating commit, flip the last bit of the
     // confirmation tag and have Bob process the commit.

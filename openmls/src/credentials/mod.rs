@@ -233,9 +233,13 @@ impl CredentialBundle {
         &self.credential
     }
 
-    /// Separates the bundle into the [`Credential`] and the [`SignaturePrivateKey`].
-    pub fn into_parts(self) -> (Credential, SignaturePrivateKey) {
-        (self.credential, self.signature_private_key)
+    /// Separates the bundle into the [`Credential`] and the signature private
+    /// key as raw byte vector.
+    pub fn into_parts(self) -> (Credential, Vec<u8>) {
+        (
+            self.credential,
+            self.signature_private_key.as_slice().to_vec(),
+        )
     }
 
     /// Sign a `msg` using the private key of the credential bundle.
