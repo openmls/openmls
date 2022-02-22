@@ -1,5 +1,7 @@
-//! MLS messages and message framing.
-// TODO: #774
+//! # Messages
+//!
+//! This module contains the types and implementations for Commit & Welcome messages,
+//! as well as Proposals & the public group state used for External Commits.
 
 use crate::{
     ciphersuite::hash_ref::KeyPackageRef,
@@ -38,69 +40,25 @@ mod tests;
 
 #[cfg(test)]
 use crate::credentials::CredentialBundle;
-
 #[cfg(any(feature = "test-utils", test))]
 use crate::schedule::{
     psk::{ExternalPsk, Psk},
     PreSharedKeyId,
 };
 
-/// Welcome Messages
+// Public types
+
+/// Welcome message
 ///
-/// > 11.2.2. Welcoming New Members
-///
-/// ```text
-/// struct {
-///   ProtocolVersion version = mls10;
-///   CipherSuite cipher_suite;
-///   EncryptedGroupSecrets secrets<0..2^32-1>;
-///   opaque encrypted_group_info<1..2^32-1>;
-/// } Welcome;
-/// ```
+/// This message is generated when a new member is added to a group.
+/// The invited member can use this message to join the group using
+/// [`MlsGroup::new_from_welcome()`].
 #[derive(Clone, Debug, PartialEq, TlsDeserialize, TlsSerialize, TlsSize)]
 pub struct Welcome {
     version: ProtocolVersion,
     cipher_suite: Ciphersuite,
-    pub(crate) secrets: TlsVecU32<EncryptedGroupSecrets>,
-    pub(crate) encrypted_group_info: TlsByteVecU32,
-}
-
-/// EncryptedGroupSecrets
-///
-/// > 11.2.2. Welcoming New Members
-///
-/// ```text
-/// struct {
-///   opaque key_package_hash<1..255>;
-///   HPKECiphertext encrypted_group_secrets;
-/// } EncryptedGroupSecrets;
-/// ```
-#[derive(Clone, Debug, PartialEq, TlsDeserialize, TlsSerialize, TlsSize)]
-pub struct EncryptedGroupSecrets {
-    /// Key package refrence of the new member
-    new_member: KeyPackageRef,
-    /// Ciphertext of the encrypted group secret
-    encrypted_group_secrets: HpkeCiphertext,
-}
-
-impl EncryptedGroupSecrets {
-    /// Build a new [`EncryptedGroupSecrets`].
-    pub fn new(new_member: KeyPackageRef, encrypted_group_secrets: HpkeCiphertext) -> Self {
-        Self {
-            new_member,
-            encrypted_group_secrets,
-        }
-    }
-
-    /// Get the encrypted group secrets's new member [`KeyPackageRef`].
-    pub fn new_member(&self) -> KeyPackageRef {
-        self.new_member
-    }
-
-    /// Get a reference to the encrypted group secrets's encrypted group secrets.
-    pub fn encrypted_group_secrets(&self) -> &HpkeCiphertext {
-        &self.encrypted_group_secrets
-    }
+    secrets: TlsVecU32<EncryptedGroupSecrets>,
+    encrypted_group_info: TlsByteVecU32,
 }
 
 impl Welcome {
@@ -120,22 +78,22 @@ impl Welcome {
         }
     }
 
-    /// Get a reference to the ciphersuite in this Welcome message.
+    /// Returns a reference to the ciphersuite in this Welcome message.
     pub(crate) fn ciphersuite(&self) -> Ciphersuite {
         self.cipher_suite
     }
 
-    /// Get a reference to the encrypted group secrets in this Welcome message.
+    /// Returns a reference to the encrypted group secrets in this Welcome message.
     pub fn secrets(&self) -> &[EncryptedGroupSecrets] {
         self.secrets.as_slice()
     }
 
-    /// Get a reference to the encrypted group info.
+    /// Returns a reference to the encrypted group info.
     pub(crate) fn encrypted_group_info(&self) -> &[u8] {
         self.encrypted_group_info.as_slice()
     }
 
-    /// Get a reference to the protocol version in the `Welcome`.
+    /// Returns a reference to the protocol version in the `Welcome`.
     pub(crate) fn version(&self) -> &ProtocolVersion {
         &self.version
     }
@@ -147,6 +105,39 @@ impl Welcome {
     }
 }
 
+/// EncryptedGroupSecrets
+///
+/// This is part of a [`Welcome`] message. It can be used to correlate the correct secrets with each new member.
+#[derive(Clone, Debug, PartialEq, TlsDeserialize, TlsSerialize, TlsSize)]
+pub struct EncryptedGroupSecrets {
+    /// Key package reference of the new member
+    new_member: KeyPackageRef,
+    /// Ciphertext of the encrypted group secret
+    encrypted_group_secrets: HpkeCiphertext,
+}
+
+impl EncryptedGroupSecrets {
+    /// Build a new [`EncryptedGroupSecrets`].
+    pub fn new(new_member: KeyPackageRef, encrypted_group_secrets: HpkeCiphertext) -> Self {
+        Self {
+            new_member,
+            encrypted_group_secrets,
+        }
+    }
+
+    /// Returns the encrypted group secrets' new [`KeyPackageRef`].
+    pub fn new_member(&self) -> KeyPackageRef {
+        self.new_member
+    }
+
+    /// Returns a reference to the encrypted group secrets' encrypted group secrets.
+    pub(crate) fn encrypted_group_secrets(&self) -> &HpkeCiphertext {
+        &self.encrypted_group_secrets
+    }
+}
+
+// Crate-only types
+
 /// Commit.
 ///
 /// A Commit message initiates a new epoch for the group,
@@ -157,19 +148,20 @@ impl Welcome {
 #[derive(
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
-pub struct Commit {
+pub(crate) struct Commit {
     pub(crate) proposals: TlsVecU32<ProposalOrRef>,
     pub(crate) path: Option<UpdatePath>,
 }
 
 impl Commit {
     /// Returns `true` if the commit contains an update path. `false` otherwise.
+    #[cfg(test)]
     pub fn has_path(&self) -> bool {
         self.path.is_some()
     }
 
     /// Returns the update path of the Commit if it has one.
-    pub fn path(&self) -> &Option<UpdatePath> {
+    pub(crate) fn path(&self) -> &Option<UpdatePath> {
         &self.path
     }
 }
@@ -252,37 +244,37 @@ pub(crate) struct GroupInfo {
 }
 
 impl GroupInfo {
-    /// Get the signer.
+    /// Returns the signer.
     pub(crate) fn signer(&self) -> &KeyPackageRef {
         &self.payload.signer
     }
 
-    /// Get the group ID.
+    /// Returns the group ID.
     pub(crate) fn group_id(&self) -> &GroupId {
         &self.payload.group_id
     }
 
-    /// Get the epoch.
+    /// Returns the epoch.
     pub(crate) fn epoch(&self) -> GroupEpoch {
         self.payload.epoch
     }
 
-    /// Get the confirmed transcript hash.
+    /// Returns the confirmed transcript hash.
     pub(crate) fn confirmed_transcript_hash(&self) -> &[u8] {
         self.payload.confirmed_transcript_hash.as_slice()
     }
 
-    /// Get the confirmed tag.
+    /// Returns the confirmed tag.
     pub(crate) fn confirmation_tag(&self) -> &ConfirmationTag {
         &self.payload.confirmation_tag
     }
 
-    /// Get other application extensions.
+    /// Returns other application extensions.
     pub(crate) fn other_extensions(&self) -> &[Extension] {
         self.payload.other_extensions.as_slice()
     }
 
-    /// Get the [`GroupContext`] extensions.
+    /// Returns the [`GroupContext`] extensions.
     pub(crate) fn group_context_extensions(&self) -> &[Extension] {
         self.payload.group_context_extensions.as_slice()
     }
@@ -331,7 +323,7 @@ impl SignedStruct<GroupInfoPayload> for GroupInfo {
 /// ```
 #[derive(Debug, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize)]
 #[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
-pub struct PathSecret {
+pub(crate) struct PathSecret {
     pub(crate) path_secret: Secret,
 }
 
