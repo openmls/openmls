@@ -1,14 +1,14 @@
 [package]
 name = "ds-lib"
 version = "0.1.0"
-authors = ["Franziskus Kiefer <franziskuskiefer@gmail.com>"]
+authors = ["OpenMLS Authors"]
 edition = "2018"
 description = "Types to interact with the OpenMLS DS."
 
 [dependencies]
 tls_codec = "0.2.0"
 openmls = {features = ["test-utils"], version = "0.4.0-pre.2" }
-openmls_traits = "0.1.0-pre.2" 
+openmls_traits = "0.1.0-pre.2"
 openmls_rust_crypto = "0.1.0-pre.2"
 
 [patch.crates-io]
