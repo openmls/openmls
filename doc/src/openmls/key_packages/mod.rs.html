@@ -793,6 +793,9 @@
 <span id="792">792</span>
 <span id="793">793</span>
 <span id="794">794</span>
+<span id="795">795</span>
+<span id="796">796</span>
+<span id="797">797</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Packages.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Key packages are pre-published public keys that provide some information</span>
@@ -1513,12 +1516,15 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">key_package</span>
     }
 
-    <span class="doccomment">/// Separates the bundle into the [`KeyPackage`] and the ([`HpkePrivateKey`],</span>
-    <span class="doccomment">/// [`Secret`]).</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_parts</span>(<span class="self">self</span>) -&gt; (<span class="ident">KeyPackage</span>, (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Secret</span>)) {
+    <span class="doccomment">/// Separates the bundle into the [`KeyPackage`] and the HPKE private key and</span>
+    <span class="doccomment">/// leaf secret as raw byte vectors.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">into_parts</span>(<span class="self">self</span>) -&gt; (<span class="ident">KeyPackage</span>, (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>)) {
         (
             <span class="self">self</span>.<span class="ident">key_package</span>,
-            (<span class="self">self</span>.<span class="ident">private_key</span>.<span class="ident">as_slice</span>().<span class="ident">to_vec</span>(), <span class="self">self</span>.<span class="ident">leaf_secret</span>),
+            (
+                <span class="self">self</span>.<span class="ident">private_key</span>.<span class="ident">as_slice</span>().<span class="ident">to_vec</span>(),
+                <span class="self">self</span>.<span class="ident">leaf_secret</span>.<span class="ident">as_slice</span>().<span class="ident">to_vec</span>(),
+            ),
         )
     }
 

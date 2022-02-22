@@ -268,11 +268,54 @@
 <span id="267">267</span>
 <span id="268">268</span>
 <span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Configuration module for [`MlsGroup`] configurations.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ## Building an MlsGroupConfig</span>
+<span class="doccomment">//! The [`MlsGroupConfigBuilder`] makes it easy to build configurations for the</span>
+<span class="doccomment">//! [`MlsGroup`].</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ```</span>
+<span class="doccomment">//! use openmls::prelude::*;</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! let group_config = MlsGroupConfig::builder()</span>
+<span class="doccomment">//!     .use_ratchet_tree_extension(true)</span>
+<span class="doccomment">//!     .build();</span>
+<span class="doccomment">//! ```</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! See [`MlsGroupConfigBuilder`](MlsGroupConfigBuilder#implementations) for</span>
+<span class="doccomment">//! all options that can be configured.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ### Wire format policies</span>
+<span class="doccomment">//! Only some combination of possible wire formats are valid within OpenMLS.</span>
+<span class="doccomment">//! The [`WIRE_FORMAT_POLICIES`] lists all valid options that can be set.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! ```</span>
+<span class="doccomment">//! use openmls::prelude::*;</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! let group_config = MlsGroupConfig::builder()</span>
+<span class="doccomment">//!     .wire_format_policy(MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY)</span>
+<span class="doccomment">//!     .build();</span>
+<span class="doccomment">//! ```</span>
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree::sender_ratchet::SenderRatchetConfiguration</span>;
-<span class="kw">use</span> <span class="ident">lazy_static::lazy_static</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="doccomment">/// Specifies the configuration parameters for a [`MlsGroup`]. Refer to</span>
@@ -375,7 +418,7 @@
     <span class="doccomment">/// **WARNING**</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// This feature enables the storage of message secrets from past epochs.</span>
-    <span class="doccomment">/// It is a tradeoff between functionality and forward secrecy and should only be enabled</span>
+    <span class="doccomment">/// It is a trade-off between functionality and forward secrecy and should only be enabled</span>
     <span class="doccomment">/// if the Delivery Service cannot guarantee that application messages will be sent in</span>
     <span class="doccomment">/// the same epoch in which they were generated. The number for `max_epochs` should be</span>
     <span class="doccomment">/// as low as possible.</span>
@@ -455,8 +498,13 @@
 }
 
 <span class="kw">impl</span> <span class="ident">WireFormatPolicy</span> {
-    <span class="doccomment">/// Creates a new wire format policy from an [`OutgoingWireFormatPolicy`] and an [`IncomingWireFormatPolicy`].</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">outgoing</span>: <span class="ident">OutgoingWireFormatPolicy</span>, <span class="ident">incoming</span>: <span class="ident">IncomingWireFormatPolicy</span>) -&gt; <span class="self">Self</span> {
+    <span class="doccomment">/// Creates a new wire format policy from an [`OutgoingWireFormatPolicy`]</span>
+    <span class="doccomment">/// and an [`IncomingWireFormatPolicy`].</span>
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
+        <span class="ident">outgoing</span>: <span class="ident">OutgoingWireFormatPolicy</span>,
+        <span class="ident">incoming</span>: <span class="ident">IncomingWireFormatPolicy</span>,
+    ) -&gt; <span class="self">Self</span> {
         <span class="self">Self</span> { <span class="ident">outgoing</span>, <span class="ident">incoming</span> }
     }
 
@@ -469,21 +517,11 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">incoming</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">IncomingWireFormatPolicy</span> {
         <span class="self">self</span>.<span class="ident">incoming</span>
     }
-
-    <span class="doccomment">/// Set the wire format policy&#39;s outgoing wire format policy.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_outgoing</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">outgoing</span>: <span class="ident">OutgoingWireFormatPolicy</span>) {
-        <span class="self">self</span>.<span class="ident">outgoing</span> <span class="op">=</span> <span class="ident">outgoing</span>;
-    }
-
-    <span class="doccomment">/// Set the wire format policy&#39;s incoming wire format policy.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_incoming</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">incoming</span>: <span class="ident">IncomingWireFormatPolicy</span>) {
-        <span class="self">self</span>.<span class="ident">incoming</span> <span class="op">=</span> <span class="ident">incoming</span>;
-    }
 }
 
 <span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">WireFormatPolicy</span> {
     <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-        <span class="kw-2">*</span><span class="ident">PURE_CIPHERTEXT_WIRE_FORMAT_POLICY</span>
+        <span class="ident">PURE_CIPHERTEXT_WIRE_FORMAT_POLICY</span>
     }
 }
 
@@ -496,47 +534,43 @@
     }
 }
 
-<span class="macro">lazy_static!</span> {
-    <span class="doccomment">/// All valid wire format policy combinations</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">ALL_VALID_WIRE_FORMAT_POLICIES</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">WireFormatPolicy</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[
-        <span class="kw-2">*</span><span class="ident">PURE_PLAINTEXT_WIRE_FORMAT_POLICY</span>,
-        <span class="kw-2">*</span><span class="ident">PURE_CIPHERTEXT_WIRE_FORMAT_POLICY</span>,
-        <span class="kw-2">*</span><span class="ident">MIXED_PLAINTEXT_WIRE_FORMAT_POLICY</span>,
-        <span class="kw-2">*</span><span class="ident">MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY</span>,
-    ];
-}
+<span class="doccomment">/// All valid wire format policy combinations.</span>
+<span class="doccomment">/// - [`PURE_PLAINTEXT_WIRE_FORMAT_POLICY`]</span>
+<span class="doccomment">/// - [`PURE_CIPHERTEXT_WIRE_FORMAT_POLICY`]</span>
+<span class="doccomment">/// - [`MIXED_PLAINTEXT_WIRE_FORMAT_POLICY`]</span>
+<span class="doccomment">/// - [`MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY`]</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">WIRE_FORMAT_POLICIES</span>: [<span class="ident">WireFormatPolicy</span>; <span class="number">4</span>] <span class="op">=</span> [
+    <span class="ident">PURE_PLAINTEXT_WIRE_FORMAT_POLICY</span>,
+    <span class="ident">PURE_CIPHERTEXT_WIRE_FORMAT_POLICY</span>,
+    <span class="ident">MIXED_PLAINTEXT_WIRE_FORMAT_POLICY</span>,
+    <span class="ident">MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY</span>,
+];
 
-<span class="macro">lazy_static!</span> {
-    <span class="doccomment">/// Pure plaintext wire format policy.</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PURE_PLAINTEXT_WIRE_FORMAT_POLICY</span>: <span class="ident">WireFormatPolicy</span> <span class="op">=</span> <span class="ident">WireFormatPolicy::new</span>(
-        <span class="ident">OutgoingWireFormatPolicy::AlwaysPlaintext</span>,
-        <span class="ident">IncomingWireFormatPolicy::AlwaysPlaintext</span>,
-    );
-}
+<span class="doccomment">/// Incoming and outgoing wire formats are always plaintext.</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PURE_PLAINTEXT_WIRE_FORMAT_POLICY</span>: <span class="ident">WireFormatPolicy</span> <span class="op">=</span> <span class="ident">WireFormatPolicy</span> {
+    <span class="ident">outgoing</span>: <span class="ident">OutgoingWireFormatPolicy::AlwaysPlaintext</span>,
+    <span class="ident">incoming</span>: <span class="ident">IncomingWireFormatPolicy::AlwaysPlaintext</span>,
+};
 
-<span class="macro">lazy_static!</span> {
-    <span class="doccomment">/// Pure ciphertext wire format policy.</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PURE_CIPHERTEXT_WIRE_FORMAT_POLICY</span>: <span class="ident">WireFormatPolicy</span> <span class="op">=</span> <span class="ident">WireFormatPolicy::new</span>(
-        <span class="ident">OutgoingWireFormatPolicy::AlwaysCiphertext</span>,
-        <span class="ident">IncomingWireFormatPolicy::AlwaysCiphertext</span>,
-    );
-}
+<span class="doccomment">/// Incoming and outgoing wire formats are always ciphertext.</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">PURE_CIPHERTEXT_WIRE_FORMAT_POLICY</span>: <span class="ident">WireFormatPolicy</span> <span class="op">=</span> <span class="ident">WireFormatPolicy</span> {
+    <span class="ident">outgoing</span>: <span class="ident">OutgoingWireFormatPolicy::AlwaysCiphertext</span>,
+    <span class="ident">incoming</span>: <span class="ident">IncomingWireFormatPolicy::AlwaysCiphertext</span>,
+};
 
-<span class="macro">lazy_static!</span> {
-    <span class="doccomment">/// Mixed plaintext wire format policy combination.</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">MIXED_PLAINTEXT_WIRE_FORMAT_POLICY</span>: <span class="ident">WireFormatPolicy</span> <span class="op">=</span> <span class="ident">WireFormatPolicy::new</span>(
-        <span class="ident">OutgoingWireFormatPolicy::AlwaysPlaintext</span>,
-        <span class="ident">IncomingWireFormatPolicy::Mixed</span>,
-    );
-}
+<span class="doccomment">/// Incoming wire formats can be mixed while outgoing wire formats are always</span>
+<span class="doccomment">/// plaintext.</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MIXED_PLAINTEXT_WIRE_FORMAT_POLICY</span>: <span class="ident">WireFormatPolicy</span> <span class="op">=</span> <span class="ident">WireFormatPolicy</span> {
+    <span class="ident">outgoing</span>: <span class="ident">OutgoingWireFormatPolicy::AlwaysPlaintext</span>,
+    <span class="ident">incoming</span>: <span class="ident">IncomingWireFormatPolicy::Mixed</span>,
+};
 
-<span class="macro">lazy_static!</span> {
-    <span class="doccomment">/// Mixed ciphertext wire format policy combination.</span>
-    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY</span>: <span class="ident">WireFormatPolicy</span> <span class="op">=</span> <span class="ident">WireFormatPolicy::new</span>(
-        <span class="ident">OutgoingWireFormatPolicy::AlwaysCiphertext</span>,
-        <span class="ident">IncomingWireFormatPolicy::Mixed</span>,
-    );
-}
+<span class="doccomment">/// Incoming wire formats can be mixed while outgoing wire formats are always</span>
+<span class="doccomment">/// ciphertext.</span>
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">MIXED_CIPHERTEXT_WIRE_FORMAT_POLICY</span>: <span class="ident">WireFormatPolicy</span> <span class="op">=</span> <span class="ident">WireFormatPolicy</span> {
+    <span class="ident">outgoing</span>: <span class="ident">OutgoingWireFormatPolicy::AlwaysCiphertext</span>,
+    <span class="ident">incoming</span>: <span class="ident">IncomingWireFormatPolicy::Mixed</span>,
+};
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="openmls" data-search-index-js="../../../../search-index.js" data-search-js="../../../../search.js"></div>
 </body></html>

@@ -141,6 +141,8 @@
 <span id="140">140</span>
 <span id="141">141</span>
 <span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # OpenMLS Errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Each module has their own errors it is returning. This module will defines</span>
@@ -148,6 +150,8 @@
 <span class="kw">use</span> <span class="ident">std::fmt::Display</span>;
 
 <span class="kw">use</span> <span class="ident">backtrace::Backtrace</span>;
+<span class="comment">// Re-export errors.</span>
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::errors</span>::{<span class="ident">ApplyUpdatePathError</span>, <span class="ident">PublicTreeError</span>};
 <span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 <span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
