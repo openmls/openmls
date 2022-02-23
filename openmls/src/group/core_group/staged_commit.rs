@@ -35,6 +35,7 @@ impl CoreGroup {
     ///  - ValSem110
     ///  - ValSem111
     ///  - ValSem112
+    ///  - ValSem200
     ///  - ValSem201
     ///  - ValSem202: Path must be the right length
     ///  - ValSem203: Path secrets must decrypt correctly
