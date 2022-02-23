@@ -1,5 +1,32 @@
 //! This module defines traits used for signing and verifying
 //! structs from the MLS protocol spec.
+//!
+//! # Type-Enforced Verification
+//!
+//! This module contains four traits, each describing the property they enable
+//! upon implementation: [`Signable`], [`SignedStruct`], [`Verifiable`] and
+//! [`VerifiedStruct`].
+//!
+//! Each trait represents the state of a struct in a sender-receiver flow with
+//! the following transitions.
+//!
+//! * the signer creates an instance of a struct that implements [`Signable`]
+//! * the signer signs it, consuming the [`Signable`] struct and producing a [`SignedStruct`]
+//! * the signer serializes the struct and sends it to the verifier
+//! * the verifier deserializes the byte-string into a struct implementing [`Verifiable`]
+//! * the verifier verifies the struct, consuming the [`Verifiable`] struct and producing a [`VerifiedStruct`]
+//!
+//! Using this process, we can ensure that only structs implementing
+//! [`SignedStruct`] are sent over the wire and only structs implementing
+//! [`VerifiedStruct`] are used on the verifier side as input for further
+//! processing functions.
+//!
+//! For the type-safety to work, it is important that [`Signable`] and
+//! [`SignedStruct`] are implemented by distinct structs. The same goes for
+//! [`Verifiable`] and [`VerifiedStruct`]. In addition, only the
+//! [`SignedStruct`] should implement the [`tls_codec::Serialize`] trait.
+//! Similarly, only the [`Verifiable`] struct should implement the
+//! [`tls_codec::Deserialize`] trait.
 
 use openmls_traits::OpenMlsCryptoProvider;
 
