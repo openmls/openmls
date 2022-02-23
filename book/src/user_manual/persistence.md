@@ -6,7 +6,7 @@ Since some group operations might or might not change the `MlsGroup` state depen
 
 ## Group Lockout Upon State Loss
 
-MLS provides strong Post-Compromise Security properties, which means that key material is regularly refreshed and old key material becomes stale very quickly. As a consequence, regularly persisting state is important, especially after the client has created a commit or issued an Update proposal, thus introducing new key material into the group. A loss of state in such a situation is only recoverable in specific cases, where the commit was rejected by the Distribution Service or if the proposed Update was not committed. To continue participating in a group after a loss of group state, a re-join is required in most cases. To avoid a loss of state and the associated re-join, persisting `MlsGroup` state after each state-changing group operation is highly recommended.
+MLS provides strong Post-Compromise Security properties, which means that key material is regularly refreshed and old key material becomes stale very quickly. As a consequence, regularly persisting state is important, especially after the client has created a commit or issued an Update proposal, thus introducing new key material into the group. A loss of state in such a situation is only recoverable in specific cases, where the commit was rejected by the Delivery Service or if the proposed Update was not committed. To continue participating in a group after a loss of group state, a re-join is required in most cases. To avoid a loss of state and the associated re-join, persisting `MlsGroup` state after each state-changing group operation is mandatory.
 
 ## Forward-Secrecy Considerations
 
