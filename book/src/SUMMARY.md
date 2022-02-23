@@ -20,7 +20,6 @@
   - [Traits](./traits/traits.md)
   - [Types](./traits/types.md)
 - [Message Validation](./message_validation.md)
-- [Type-Enforced Verification](./type_enfored_verification.md)
 - [Performance](./performance.md)
 - [Forward Secrecy](./forward_secrecy.md)
 - [Release management](./release_management.md)
