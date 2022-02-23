@@ -9,10 +9,11 @@ Validation is enforced using Rust's type system. The chain of functions used to 
 ### Syntax validation
 
 Incoming messages in the shape of a byte string can only be deserialized into a `MlsMessageIn` struct. Deserialization ensures that the message is a syntactically correct MLS message, i.e. either an MLSPlaintext or an MLSCiphertext.
+For the latter case, further syntax checks are applied once the message is decrypted.
 
 ### Semantic validation
 
-Every function in the processing chain performs a number of semantic validation steps. For a list of these steps, see [below][message_validation.md#detailed-list-of-validation-steps]. In the following, we will give a brief overview over which function performs which category of checks.
+Every function in the processing chain performs a number of semantic validation steps. For a list of these steps, see [below](message_validation.md#detailed-list-of-validation-steps). In the following, we will give a brief overview over which function performs which category of checks.
 
 #### Wire format policy and basic message consistency validation
 
@@ -33,7 +34,7 @@ After performing these steps, messages are returned as `ProcessedMessage`s that 
 
 ## Detailed list of validation steps
 
-The following is a list of the individual semantic validation steps performed by OpenMLS.
+The following is a list of the individual semantic validation steps performed by OpenMLS, including the location of the tests.
 
 ### Semantic validation of message framing
 
