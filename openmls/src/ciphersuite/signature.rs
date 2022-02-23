@@ -182,6 +182,7 @@ impl SignaturePrivateKey {
     }
 
     /// Get the signature scheme of the private key
+    #[cfg(test)]
     pub fn signature_scheme(&self) -> SignatureScheme {
         self.signature_scheme
     }
