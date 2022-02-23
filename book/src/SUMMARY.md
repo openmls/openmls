@@ -17,6 +17,5 @@
   - [Traits](./traits/traits.md)
   - [Types](./traits/types.md)
 - [Message Validation](./message_validation.md)
-- [Tree Rewrite Project](./tree_rewrite.md)
 - [Performance](./performance.md)
 - [Forward Secrecy](./forward_secrecy.md)
