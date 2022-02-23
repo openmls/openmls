@@ -5,7 +5,7 @@ use super::*;
 use crate::tree::index::SecretTreeLeafIndex;
 /// Combined message secrets that need to be stored for later decryption/verification
 #[derive(Debug, Serialize, Deserialize)]
-pub struct MessageSecrets {
+pub(crate) struct MessageSecrets {
     sender_data_secret: SenderDataSecret,
     membership_key: MembershipKey,
     confirmation_key: ConfirmationKey,
@@ -16,7 +16,7 @@ pub struct MessageSecrets {
 // Public functions
 impl MessageSecrets {
     ///Create new `MessageSecrets`
-    pub fn new(
+    pub(crate) fn new(
         sender_data_secret: SenderDataSecret,
         membership_key: MembershipKey,
         confirmation_key: ConfirmationKey,
@@ -33,27 +33,27 @@ impl MessageSecrets {
     }
 
     /// Get a reference to the message secrets's sender data secret.
-    pub fn sender_data_secret(&self) -> &SenderDataSecret {
+    pub(crate) fn sender_data_secret(&self) -> &SenderDataSecret {
         &self.sender_data_secret
     }
 
     /// Get a reference to the message secrets's membership key.
-    pub fn membership_key(&self) -> &MembershipKey {
+    pub(crate) fn membership_key(&self) -> &MembershipKey {
         &self.membership_key
     }
 
     /// Get a reference to the message secrets's confirmation key.
-    pub fn confirmation_key(&self) -> &ConfirmationKey {
+    pub(crate) fn confirmation_key(&self) -> &ConfirmationKey {
         &self.confirmation_key
     }
 
     /// Get a reference to the message secrets's serialized context.
-    pub fn serialized_context(&self) -> &[u8] {
+    pub(crate) fn serialized_context(&self) -> &[u8] {
         self.serialized_context.as_ref()
     }
 
     /// Get a mutable reference to the message secrets's secret tree.
-    pub fn secret_tree_mut(&mut self) -> &mut SecretTree {
+    pub(crate) fn secret_tree_mut(&mut self) -> &mut SecretTree {
         &mut self.secret_tree
     }
 }
@@ -61,12 +61,12 @@ impl MessageSecrets {
 // Test functions
 impl MessageSecrets {
     #[cfg(any(feature = "test-utils", test))]
-    pub fn sender_data_secret_mut(&mut self) -> &mut SenderDataSecret {
+    pub(crate) fn sender_data_secret_mut(&mut self) -> &mut SenderDataSecret {
         &mut self.sender_data_secret
     }
 
     #[cfg(test)]
-    pub fn random(
+    pub(crate) fn random(
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         own_index: u32,
@@ -90,7 +90,7 @@ impl MessageSecrets {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    pub fn replace_secret_tree(&mut self, secret_tree: SecretTree) -> SecretTree {
+    pub(crate) fn replace_secret_tree(&mut self, secret_tree: SecretTree) -> SecretTree {
         std::mem::replace(&mut self.secret_tree, secret_tree)
     }
 }
