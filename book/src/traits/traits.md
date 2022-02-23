@@ -66,7 +66,7 @@ Instead entries must be deleted and newly stored.
 ```
 
 **NOTE:** Right now key material needs to be extractable from the key store.
-This will most likely change in future.
+This will most likely change in the future.
 
 ### OpenMlsCryptoProvider
 
