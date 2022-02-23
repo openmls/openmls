@@ -203,7 +203,6 @@ pub mod test_utils;
 #[macro_use]
 mod utils;
 
-#[macro_use]
 pub mod error;
 
 // Public
@@ -228,3 +227,5 @@ pub mod prelude;
 
 // Re-export types from Key Schedule
 pub use crate::schedule::{errors::PskError, AuthenticationSecret, ResumptionSecret};
+// Re-export types from TreeSync
+pub use crate::treesync::errors::{ApplyUpdatePathError, PublicTreeError};

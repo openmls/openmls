@@ -4,7 +4,9 @@ use openmls_traits::random::OpenMlsRand;
 use crate::{
     schedule::EncryptionSecret,
     test_utils::*,
-    tree::{index::SecretTreeLeafIndex, secret_tree::*, *},
+    tree::{
+        index::SecretTreeLeafIndex, secret_tree::*, sender_ratchet::SenderRatchetConfiguration,
+    },
     versions::ProtocolVersion,
 };
 use std::collections::HashMap;

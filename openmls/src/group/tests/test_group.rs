@@ -5,7 +5,7 @@ use crate::{
     group::{tests::tree_printing::print_tree, *},
     key_packages::*,
     test_utils::*,
-    tree::*,
+    tree::sender_ratchet::SenderRatchetConfiguration,
     *,
 };
 use openmls_rust_crypto::OpenMlsRustCrypto;

@@ -2,12 +2,9 @@
 //!
 //! Each module has their own errors it is returning. This module will defines
 //! helper macros and functions to define OpenMLS errors.
-use std::fmt::Display;
-
 use backtrace::Backtrace;
-// Re-export errors.
-pub use crate::treesync::errors::{ApplyUpdatePathError, PublicTreeError};
 use openmls_traits::types::CryptoError;
+use std::fmt::Display;
 use thiserror::Error;
 use tls_codec::Error as TlsCodecError;
 

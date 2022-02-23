@@ -31,7 +31,7 @@ use openmls_traits::{types::CryptoError, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    binary_tree::{MlsBinaryTree, MlsBinaryTreeError},
+    binary_tree::{LeafIndex, MlsBinaryTree, MlsBinaryTreeError},
     ciphersuite::hash_ref::KeyPackageRef,
     ciphersuite::Ciphersuite,
     error::LibraryError,
@@ -47,16 +47,20 @@ use self::{
     treesync_node::{TreeSyncNode, TreeSyncNodeError},
 };
 
-pub(crate) mod diff;
-pub mod errors;
+// Private
 mod hashes;
-pub mod node;
+
+// Crate
+pub(crate) mod diff;
+pub(crate) mod errors;
+pub(crate) mod node;
 pub(crate) mod treekem;
 pub(crate) mod treesync_node;
 
-pub use crate::binary_tree::LeafIndex;
-pub use errors::*;
+// Crate re-exports
+pub(crate) use errors::*;
 
+// Tests
 #[cfg(any(feature = "test-utils", test))]
 pub mod tests_and_kats;
 

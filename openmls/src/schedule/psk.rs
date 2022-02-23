@@ -113,18 +113,19 @@ impl ExternalPsk {
 /// Contains the secret part of the PSK as well as the
 /// public part that is used as a marker for injection into the key schedule.
 #[derive(Serialize, Deserialize)]
-pub struct PskBundle {
+pub(crate) struct PskBundle {
     secret: Secret,
 }
 
 impl PskBundle {
     /// Create a new bundle
-    pub fn new(secret: Secret) -> Result<Self, CryptoError> {
+    #[cfg(any(feature = "test-utils", test))]
+    pub(crate) fn new(secret: Secret) -> Result<Self, CryptoError> {
         Ok(Self { secret })
     }
 
     /// Return the secret
-    pub fn secret(&self) -> &Secret {
+    pub(crate) fn secret(&self) -> &Secret {
         &self.secret
     }
 }
@@ -340,7 +341,7 @@ impl PskSecret {
     }
 
     /// Return the inner secret
-    pub fn secret(&self) -> &Secret {
+    pub(crate) fn secret(&self) -> &Secret {
         &self.secret
     }
 

@@ -20,19 +20,16 @@ use super::*;
     TlsDeserialize,
     TlsSize,
 )]
-pub struct SecretTreeNodeIndex(u32);
+pub(crate) struct SecretTreeNodeIndex(u32);
 
 impl SecretTreeNodeIndex {
-    pub fn as_u32(self) -> u32 {
+    pub(crate) fn as_u32(self) -> u32 {
         self.0
     }
-    pub fn as_usize(self) -> usize {
+    pub(crate) fn as_usize(self) -> usize {
         self.0 as usize
     }
-    pub fn is_leaf(&self) -> bool {
-        self.0 % 2 == 0
-    }
-    pub fn is_parent(&self) -> bool {
+    pub(crate) fn is_parent(&self) -> bool {
         self.0 % 2 == 1
     }
 }
@@ -72,13 +69,13 @@ impl From<SecretTreeLeafIndex> for SecretTreeNodeIndex {
     TlsSerialize,
     TlsSize,
 )]
-pub struct SecretTreeLeafIndex(pub(crate) u32);
+pub(crate) struct SecretTreeLeafIndex(pub(crate) u32);
 
 impl SecretTreeLeafIndex {
-    pub fn as_u32(self) -> u32 {
+    pub(crate) fn as_u32(self) -> u32 {
         self.0
     }
-    pub fn as_usize(self) -> usize {
+    pub(crate) fn as_usize(self) -> usize {
         self.0 as usize
     }
 }

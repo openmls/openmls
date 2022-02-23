@@ -44,7 +44,7 @@ use crate::{
     key_packages::*,
     messages::{proposals::*, *},
     schedule::{psk::*, *},
-    tree::{secret_tree::SecretTreeError, SenderRatchetConfiguration},
+    tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
     treesync::*,
     versions::ProtocolVersion,
 };

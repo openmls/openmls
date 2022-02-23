@@ -16,13 +16,15 @@
 //! return a [`Result`] since they may throw a
 //! [`LibraryError`](ABinaryTreeError::LibraryError).
 
-use std::convert::{TryFrom, TryInto};
-use std::fmt::Debug;
-
 use serde::{Deserialize, Serialize};
+use std::{
+    convert::{TryFrom, TryInto},
+    fmt::Debug,
+};
 use thiserror::Error;
 
 use super::diff::{AbDiff, StagedAbDiff};
+
 use crate::{
     binary_tree::{LeafIndex, TreeSize},
     error::LibraryError,

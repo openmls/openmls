@@ -7,8 +7,7 @@ use super::{
     CapabilitiesExtensionError, Deserialize, ExtensionType, RequiredCapabilitiesExtension,
     Serialize,
 };
-use crate::messages::proposals::ProposalType;
-use crate::versions::ProtocolVersion;
+use crate::{messages::proposals::ProposalType, versions::ProtocolVersion};
 
 /// # Capabilities Extension
 ///

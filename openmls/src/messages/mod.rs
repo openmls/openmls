@@ -13,7 +13,6 @@ use crate::{
     treesync::treekem::UpdatePath,
     versions::ProtocolVersion,
 };
-
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     types::{CryptoError, HpkeCiphertext},
@@ -30,14 +29,16 @@ use tls_codec::{Serialize as TlsSerializeTrait, *};
 pub mod proposals;
 pub mod public_group_state;
 
+// Public re-exports
 pub use codec::*;
-pub use proposals::*;
-pub use public_group_state::*;
+
+// Crate-only re-exports
+pub(crate) use proposals::*;
+pub(crate) use public_group_state::*;
 
 // Tests
 #[cfg(test)]
 mod tests;
-
 #[cfg(test)]
 use crate::credentials::CredentialBundle;
 #[cfg(any(feature = "test-utils", test))]

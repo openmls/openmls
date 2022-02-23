@@ -21,24 +21,24 @@
 //! - [`RatchetTreeExtension`] (GroupInfo extension)
 //! - [`RequiredCapabilitiesExtension`] (GroupContext extension)
 
+use openmls_traits::crypto::OpenMlsCrypto;
+pub(crate) use serde::{Deserialize, Serialize};
 use std::{
     convert::TryFrom,
     fmt::Debug,
     io::{Read, Write},
 };
-
-use openmls_traits::crypto::OpenMlsCrypto;
-pub(crate) use serde::{Deserialize, Serialize};
+use tls_codec::*;
 
 mod capabilities_extension;
-pub mod errors;
+mod errors;
 mod external_key_id_extension;
 mod life_time_extension;
 mod parent_hash_extension;
 mod ratchet_tree_extension;
 mod required_capabilities;
-use tls_codec::*;
 
+// Public re-exports
 pub use capabilities_extension::CapabilitiesExtension;
 pub use errors::*;
 pub use external_key_id_extension::ExternalKeyIdExtension;

@@ -38,7 +38,7 @@ impl Mac {
     }
 
     #[cfg(test)]
-    pub fn flip_last_byte(&mut self) {
+    pub(crate) fn flip_last_byte(&mut self) {
         let mut last_bits = self.mac_value.pop().expect("An unexpected error occurred.");
         last_bits ^= 0xff;
         self.mac_value.push(last_bits);

@@ -127,19 +127,15 @@
 //! error, will still return a `Result` since they may throw a `LibraryError`.
 
 use crate::{
+    binary_tree::LeafIndex,
     ciphersuite::{AeadKey, AeadNonce, Ciphersuite, HpkePrivateKey, Mac, Secret},
     error::LibraryError,
     framing::{MembershipTag, MlsPlaintextTbmPayload},
     messages::{ConfirmationTag, PathSecret, PublicGroupState},
     tree::secret_tree::SecretTree,
-    treesync::LeafIndex,
     versions::ProtocolVersion,
 };
-
-use openmls_traits::{types::*, OpenMlsCryptoProvider};
-
-use openmls_traits::crypto::OpenMlsCrypto;
-
+use openmls_traits::{crypto::OpenMlsCrypto, types::*, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
@@ -151,16 +147,18 @@ pub mod errors;
 pub(crate) mod message_secrets;
 pub(crate) mod psk;
 
+// Private
 #[cfg(test)]
 mod unit_tests;
 
+// Tests
 #[cfg(any(feature = "test-utils", test))]
 pub mod kat_key_schedule;
 
-// Public
+// Public re-exports
 pub use errors::*;
 
-// Crate
+// Crate re-exports
 pub(crate) use message_secrets::*;
 pub(crate) use psk::*;
 
@@ -414,6 +412,7 @@ impl JoinerSecret {
     }
 }
 
+// Different states of the key schedule
 #[derive(Debug, PartialEq)]
 enum State {
     Initial,
