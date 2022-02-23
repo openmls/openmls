@@ -1,13 +1,39 @@
 # Message Validation
 
+OpenMLS implements a variety of syntactical and semantical checks, both when parsing and processing incoming commits and when creating own commits.
+
 ## Validation steps
 
-- Syntax validation: This should be mostly covered by the decoding
-- Semantic validation: Checks to make sure a message is valid in a given context (signature verification, epoch number check, etc.)
-- Group policy validation: checks about handshake type, etc.
-- AS/policy validation: Checks to see whether syntactically and semantically correct messages should be adopted or dropped (Is a member allowed to add another member? Is a member allowed to remove another member?)
+Validation is enforced using Rust's type system. The chain of functions used to process incoming messages is described in the chapter on [Processing incoming messages](user_manual/processing.md), where each function takes a distinct type as input and produces a distinct type as output, thus ensuring that the individual steps can't be skipped. We now detail which step performs which validation checks.
+
+### Syntax validation
+
+Incoming messages in the shape of a byte string can only be deserialized into a `MlsMessageIn` struct. Deserialization ensures that the message is a syntactically correct MLS message, i.e. either an MLSPlaintext or an MLSCiphertext.
+
+### Semantic validation
+
+Every function in the processing chain performs a number of semantic validation steps. For a list of these steps, see [below][message_validation.md#detailed-list-of-validation-steps]. In the following, we will give a brief overview over which function performs which category of checks.
+
+#### Wire format policy and basic message consistency validation
+
+`MlsMessageIn` struct instances can be passed into the `.parse_message()` function of the `MlsGroup` API, which validates that the message conforms to the group's [wire format policy](user_manual/group_config.md) (`ValSem001`). The function also performs a number of basic semantic validation steps, such as consistency of Group id, Epoch and Sender data between message and group (`ValSem002`-`ValSem007` and `ValSem109`). It also checks if the sender type (e.g. `Member`, `NewMember`, etc.) matches the type of the message (`ValSem112`), as well as the presence of a path in case of an External Commit (`ValSem246`).
+
+`.parse_message()` then returns an `UnverifiedMessage` struct instance, which can in turn be used as input for `.process_unverified_message()`.
+
+#### Message-specific semantic validation
+
+`.process_unverified_message()` performs all other semantic validation steps. In particular, it ensures that
+
+* the message is properly authenticated by signature (`ValSem010`), membership tag (`ValSem008`) and confirmation tag (`ValSem205`),
+* proposals are valid relative to one-another and the current group state, e.g. no redundant adds or removes targeting non-members (`ValSem100`-`ValSem112`),
+* commits are valid relative to the group state and the proposals it covers (`ValSem200`-`ValSem205`) and
+* external commits are valid according to the spec (`ValSem240`-`ValSem245`, `ValSem247` is checked as part of `ValSem010`).
+
+After performing these steps, messages are returned as `ProcessedMessage`s that the application can either use immediately (application messages) or inspect and decide if they find them valid according to the application's own policy (proposals and commits). Proposals can then be stored in the proposal queue via `.store_pending_proposal()`, while commits can be merged into the group state via `.merge_staged_commit()`.
 
 ## Detailed list of validation steps
+
+The following is a list of the individual semantic validation steps performed by OpenMLS.
 
 ### Semantic validation of message framing
 
