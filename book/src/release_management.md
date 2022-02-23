@@ -12,7 +12,7 @@ Release notes are published on Github with a full changelog and a discussion in
 the "Release" section.
 In addition the release notes are prepended to the CHANGELOG file in each crate's
 root folder.
-The entries in the CHANGELOG file should follow the [keep changelog guide].
+The entries in the CHANGELOG file should follow the [keep a changelog guide].
 
 ## Pre-release strategy
 
@@ -77,4 +77,4 @@ It is important that the crates are publish in the order below.
 - [ ] Publish the crates to crates.io
 
 [versioning guidelines]: https://semver.org
-[keep changelog guide]: https://keepachangelog.com/en/1.0.0/
+[keep a changelog guide]: https://keepachangelog.com/en/1.0.0/
