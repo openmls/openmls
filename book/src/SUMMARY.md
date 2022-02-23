@@ -1,5 +1,7 @@
 # Summary
 
+[Introduction](../../README.md)
+
 - [User manual](user_manual/README.md)
   - [Creating identity keys](user_manual/identity.md)
   - [Creating key packges](user_manual/create_key_package.md)
