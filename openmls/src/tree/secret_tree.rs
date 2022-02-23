@@ -1,13 +1,12 @@
+use super::*;
+use crate::{
+    framing::*,
+    schedule::*,
+    tree::{index::*, sender_ratchet::*, treemath::*},
+};
 use openmls_traits::types::CryptoError;
 use thiserror::Error;
 use tls_codec::{Error as TlsCodecError, TlsSerialize, TlsSize};
-
-use crate::ciphersuite::*;
-use crate::framing::*;
-use crate::schedule::*;
-use crate::tree::{index::*, sender_ratchet::*, treemath::*};
-
-use super::*;
 
 /// Secret tree error
 #[derive(Error, Debug, PartialEq, Clone)]
@@ -42,7 +41,7 @@ pub enum SecretTreeError {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum SecretType {
+pub(crate) enum SecretType {
     HandshakeSecret,
     ApplicationSecret,
 }
@@ -84,7 +83,7 @@ pub(crate) fn derive_tree_secret(
 }
 
 #[derive(Debug, TlsSerialize, TlsSize)]
-pub struct TreeContext {
+pub(crate) struct TreeContext {
     pub(crate) node: u32,
     pub(crate) generation: u32,
 }
@@ -97,7 +96,7 @@ pub(crate) struct SecretTreeNode {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Clone))]
-pub struct SecretTree {
+pub(crate) struct SecretTree {
     own_index: SecretTreeLeafIndex,
     nodes: Vec<Option<SecretTreeNode>>,
     handshake_sender_ratchets: Vec<Option<SenderRatchet>>,

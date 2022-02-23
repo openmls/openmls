@@ -71,15 +71,6 @@
 //! ```
 //!
 //! See [`KeyPackage`] for more details on how to use key packages.
-use log::error;
-use openmls_traits::crypto::OpenMlsCrypto;
-use openmls_traits::types::CryptoError;
-use openmls_traits::types::HpkeKeyPair;
-use openmls_traits::types::SignatureScheme;
-use openmls_traits::OpenMlsCryptoProvider;
-use tls_codec::{
-    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsSize, TlsVecU32,
-};
 
 use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, signable::*, *},
@@ -91,15 +82,29 @@ use crate::{
     },
     versions::ProtocolVersion,
 };
-
+use log::error;
+use openmls_traits::{
+    crypto::OpenMlsCrypto,
+    types::{CryptoError, HpkeKeyPair, SignatureScheme},
+    OpenMlsCryptoProvider,
+};
 use serde::{Deserialize, Serialize};
+use tls_codec::{
+    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsSize, TlsVecU32,
+};
 
+// Private
 mod codec;
-pub mod errors;
+mod errors;
+
+// Public re-exports
 pub use errors::*;
 
+// Tests
 #[cfg(test)]
 mod test_key_packages;
+
+// Public types
 
 /// The unsigned payload of a key package.
 /// Any modification must happen on this unsigned struct. Use `sign` to get a
@@ -441,7 +446,7 @@ impl KeyPackageBundlePayload {
     /// Creates a new `KeyPackageBundlePayload` from a given `KeyPackage` and a leaf
     /// secret.
     /// To get a key package bundle sign the `KeyPackageBundlePayload`.
-    pub fn from_key_package_and_leaf_secret(
+    pub(crate) fn from_key_package_and_leaf_secret(
         leaf_secret: Secret,
         key_package: &KeyPackage,
         backend: &impl OpenMlsCryptoProvider,
@@ -623,7 +628,7 @@ impl KeyPackageBundle {
     /// contains multiple extensions of the same type.
     ///
     /// Returns a new [`KeyPackageBundle`].
-    pub fn new_with_keypair(
+    pub(crate) fn new_with_keypair(
         ciphersuites: &[Ciphersuite],
         backend: &impl OpenMlsCryptoProvider,
         credential_bundle: &CredentialBundle,

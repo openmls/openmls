@@ -13,7 +13,7 @@ pub struct AeadKey {
 
 /// AEAD Nonce
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
-pub struct AeadNonce {
+pub(crate) struct AeadNonce {
     // TODO: Use const generics here
     value: [u8; NONCE_BYTES],
 }
@@ -31,7 +31,7 @@ impl AeadKey {
 
     #[cfg(test)]
     /// Generate a random AEAD Key
-    pub fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsRand) -> Self {
+    pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsRand) -> Self {
         AeadKey {
             aead_mode: ciphersuite.aead_algorithm(),
             value: aead_key_gen(ciphersuite.aead_algorithm(), rng),
@@ -40,7 +40,7 @@ impl AeadKey {
 
     #[cfg(any(feature = "test-utils", test))]
     /// Get a slice to the key value.
-    pub fn as_slice(&self) -> &[u8] {
+    pub(crate) fn as_slice(&self) -> &[u8] {
         &self.value
     }
 
@@ -88,7 +88,7 @@ impl AeadKey {
 impl AeadNonce {
     /// Create an `AeadNonce` from a `Secret`. TODO: This function should
     /// disappear when tackling issue #103.
-    pub fn from_secret(secret: Secret) -> Self {
+    pub(crate) fn from_secret(secret: Secret) -> Self {
         let mut nonce = [0u8; NONCE_BYTES];
         nonce.clone_from_slice(&secret.value);
         AeadNonce { value: nonce }
@@ -99,7 +99,7 @@ impl AeadNonce {
     /// **NOTE: This has to wait until it can acquire the lock to get randomness!**
     /// TODO: This panics if another thread holding the rng panics.
     #[cfg(test)]
-    pub fn random(rng: &impl OpenMlsCryptoProvider) -> Self {
+    pub(crate) fn random(rng: &impl OpenMlsCryptoProvider) -> Self {
         AeadNonce {
             value: rng.rand().random_array().expect("Not enough entropy."),
         }

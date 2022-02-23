@@ -3,6 +3,7 @@
 //! This file contains the API to interact with ciphersuites.
 //! See `codec.rs` and `ciphersuites.rs` for internals.
 
+use self::signable::SignedStruct;
 use crate::versions::ProtocolVersion;
 use ::tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 pub use openmls_traits::types::Ciphersuite;
@@ -37,8 +38,6 @@ pub(crate) use mac::*;
 pub(crate) use reuse_guard::*;
 pub(crate) use secret::*;
 pub(crate) use signature::*;
-
-use self::signable::SignedStruct;
 
 #[cfg(test)]
 mod tests;

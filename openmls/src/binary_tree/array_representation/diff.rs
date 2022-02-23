@@ -16,11 +16,8 @@
 //! return a [`Result`] since they may throw a
 //! [`LibraryError`](ABinaryTreeDiffError::LibraryError).
 
-use std::{collections::BTreeMap, convert::TryFrom};
-
-use std::fmt::Debug;
-
 use serde::{Deserialize, Serialize};
+use std::{collections::BTreeMap, convert::TryFrom, fmt::Debug};
 use thiserror::Error;
 
 use crate::{
@@ -28,11 +25,12 @@ use crate::{
     error::LibraryError,
 };
 
-use super::treemath::parent;
 use super::{
     tree::{to_node_index, ABinaryTree, ABinaryTreeError, NodeIndex},
-    treemath::{direct_path, left, lowest_common_ancestor, right, root, TreeMathError},
+    treemath::{direct_path, left, lowest_common_ancestor, parent, right, root, TreeMathError},
 };
+
+// Crate types
 
 /// The [`StagedAbDiff`] can be created from an [`AbDiff`] instance. It's sole
 /// purpose is to be subsequently merged into an existing [`ABinaryTree`]
@@ -586,7 +584,10 @@ impl<'a, T: Clone + Debug> AbDiff<'a, T> {
     }
 
     #[cfg(test)]
-    pub fn deref_vec(&self, node_ref_vec: Vec<NodeId>) -> Result<Vec<&T>, ABinaryTreeDiffError> {
+    pub(crate) fn deref_vec(
+        &self,
+        node_ref_vec: Vec<NodeId>,
+    ) -> Result<Vec<&T>, ABinaryTreeDiffError> {
         let mut node_vec = Vec::new();
         for node_ref in node_ref_vec {
             let node = self.node(node_ref)?;

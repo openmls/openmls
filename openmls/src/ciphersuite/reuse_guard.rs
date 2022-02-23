@@ -11,7 +11,9 @@ pub struct ReuseGuard {
 
 impl ReuseGuard {
     /// Samples a fresh reuse guard uniformly at random.
-    pub fn try_from_random(crypto: &impl OpenMlsCryptoProvider) -> Result<Self, CryptoError> {
+    pub(crate) fn try_from_random(
+        crypto: &impl OpenMlsCryptoProvider,
+    ) -> Result<Self, CryptoError> {
         Ok(Self {
             value: crypto
                 .rand()

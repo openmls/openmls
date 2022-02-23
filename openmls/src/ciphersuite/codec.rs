@@ -2,9 +2,7 @@
 //! Provides encoding and decoding functionality.
 
 use crate::ciphersuite::*;
-
 use std::io::{Read, Write};
-
 use tls_codec::{TlsSliceU16, TlsSliceU8, TlsVecU8};
 
 impl tls_codec::Serialize for SignaturePublicKey {

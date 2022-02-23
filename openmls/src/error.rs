@@ -35,12 +35,10 @@
 //!
 //! All errors derive [`thiserror::Error`](https://docs.rs/thiserror/latest/thiserror/) as well as
 //! [`Debug`](`std::fmt::Debug`), [`PartialEq`](`std::cmp::PartialEq`), and [`Clone`](`std::clone::Clone`).
-use std::fmt::Display;
 
 use backtrace::Backtrace;
-// Re-export errors.
-pub use crate::treesync::errors::{ApplyUpdatePathError, PublicTreeError};
 use openmls_traits::types::CryptoError;
+use std::fmt::Display;
 use thiserror::Error;
 use tls_codec::Error as TlsCodecError;
 
@@ -54,7 +52,7 @@ use tls_codec::Error as TlsCodecError;
 /// MLS structs. In particular, when element lists contain more elements than the theoretical maximum
 /// defined in the spec, the serialization will fail. This should not happen when all input values are checked.
 ///
-/// **CryptoEror**
+/// **CryptoError**
 ///
 /// This error is returned if the underlying crypto provider encountered an unexpected error. Possible reasons
 /// for this could be: the implementation of the crypto provider is not correct, the key material is not correct,

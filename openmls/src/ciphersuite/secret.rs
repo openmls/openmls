@@ -5,7 +5,7 @@ use super::*;
 /// and how secrets are used and to avoid passing secrets in their raw
 /// representation.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Secret {
+pub(crate) struct Secret {
     pub(in crate::ciphersuite) ciphersuite: Ciphersuite,
     pub(in crate::ciphersuite) value: Vec<u8>,
     pub(in crate::ciphersuite) mls_version: ProtocolVersion,
@@ -209,7 +209,7 @@ impl Secret {
     }
 
     /// Returns the inner bytes of a secret
-    pub fn as_slice(&self) -> &[u8] {
+    pub(crate) fn as_slice(&self) -> &[u8] {
         &self.value
     }
 

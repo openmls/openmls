@@ -4,14 +4,11 @@
 // MlsGroup
 pub use crate::group::*;
 
-// Indexes
-pub use crate::binary_tree::LeafIndex;
-
 // Ciphersuite
 pub use crate::ciphersuite::{hash_ref::KeyPackageRef, signable::*, *};
 
 // Messages
-pub use crate::messages::*;
+pub use crate::messages::{proposals::*, public_group_state::*, *};
 
 // Credentials
 pub use crate::credentials::{CredentialError, *};
@@ -32,7 +29,7 @@ pub use crate::key_packages::*;
 pub use crate::key_store::*;
 
 // Tree
-pub use crate::tree::SenderRatchetConfiguration;
+pub use crate::tree::sender_ratchet::SenderRatchetConfiguration;
 
 // TreeSync
 pub use crate::treesync::{
@@ -42,9 +39,9 @@ pub use crate::treesync::{
 
 // PSKs
 // TODO #751
-pub use crate::schedule::psk::{
-    BranchPsk, ExternalPsk, PreSharedKeyId, PreSharedKeys, Psk, PskBundle, PskType, ReinitPsk,
-};
+// pub use crate::schedule::psk::{
+//    BranchPsk, ExternalPsk, PreSharedKeyId, PreSharedKeys, Psk, PskBundle, PskType, ReinitPsk,
+// };
 
 // TLS codec traits
 pub use tls_codec::{

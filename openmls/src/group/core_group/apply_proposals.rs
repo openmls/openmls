@@ -8,10 +8,7 @@ use crate::{
     framing::Sender,
     group::errors::ApplyProposalsError,
     key_packages::KeyPackageBundle,
-    messages::{
-        proposals::{AddProposal, ProposalType},
-        Proposal,
-    },
+    messages::proposals::{AddProposal, Proposal, ProposalType},
     schedule::{InitSecret, PreSharedKeyId, PreSharedKeys},
     treesync::{diff::TreeSyncDiff, node::leaf_node::LeafNode},
 };

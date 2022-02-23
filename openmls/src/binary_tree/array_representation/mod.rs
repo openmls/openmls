@@ -10,10 +10,13 @@
 //! of the contained modules (especially [`tree`] and [`diff`]) for more
 //! information.
 
-#[cfg(any(feature = "test-utils", test))]
-pub mod kat_treemath;
-
+// Crate
 pub(crate) mod diff;
 pub(crate) mod tree;
 
 pub(super) mod treemath;
+
+// Tests
+
+#[cfg(any(feature = "test-utils", test))]
+pub mod kat_treemath;

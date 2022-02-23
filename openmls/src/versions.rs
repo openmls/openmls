@@ -4,9 +4,10 @@
 
 use serde::{Deserialize, Serialize};
 use std::{convert::TryFrom, fmt};
+use thiserror::Error;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
-use thiserror::Error;
+// Public types
 
 /// # Protocol Version
 ///

@@ -30,12 +30,6 @@
 //! There are multiple [`CredentialType`]s, although OpenMLS currently only
 //! supports the [`BasicCredential`].
 
-mod codec;
-mod errors;
-pub use errors::*;
-#[cfg(test)]
-mod tests;
-
 use openmls_traits::{
     types::{CryptoError, SignatureScheme},
     OpenMlsCryptoProvider,
@@ -47,6 +41,15 @@ use tls_codec::Serialize as TlsSerializeTrait;
 use tls_codec::{TlsByteVecU16, TlsDeserialize, TlsSerialize, TlsSize};
 
 use crate::{ciphersuite::*, error::LibraryError};
+
+// Private
+mod codec;
+mod errors;
+#[cfg(test)]
+mod tests;
+
+// Public re-exports
+pub use errors::*;
 
 /// CredentialType.
 ///

@@ -4,7 +4,7 @@
 
 use crate::{
     error::LibraryError,
-    extensions::errors::ExtensionError,
+    extensions::ExtensionError,
     framing::errors::{MessageDecryptionError, SenderError},
     key_packages::KeyPackageExtensionSupportError,
     schedule::PskError,
