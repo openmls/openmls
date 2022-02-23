@@ -281,7 +281,7 @@ fn test_valsem100(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let ProposalValidationTestSetup {
         mut alice_group,
         mut bob_group,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // We now have alice create a commit with an add proposal. Then we
     // artificially add another add proposal with the same identity.
@@ -430,7 +430,7 @@ fn test_valsem101(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let ProposalValidationTestSetup {
         mut alice_group,
         mut bob_group,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // We now have alice create a commit with an add proposal. Then we
     // artificially add another add proposal with a different identity,
@@ -590,7 +590,7 @@ fn test_valsem102(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let ProposalValidationTestSetup {
         mut alice_group,
         mut bob_group,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // We now have alice create a commit with an add proposal. Then we
     // artificially add another add proposal with a different identity,
@@ -713,7 +713,7 @@ fn test_valsem103(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let ProposalValidationTestSetup {
         mut alice_group,
         mut bob_group,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // We now have alice create a commit. Then we artificially add an Add
     // proposal with an existing identity (Bob).
@@ -869,7 +869,7 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let ProposalValidationTestSetup {
         mut alice_group,
         mut bob_group,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // We now have alice create a commit. Then we artificially add an Add
     // proposal with a different identity, but with the same signature public
@@ -1035,7 +1035,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let ProposalValidationTestSetup {
         mut alice_group,
         mut bob_group,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // We now have alice create a commit. Then we artificially add an Add
     // proposal with an existing HPKE public key.
@@ -1141,7 +1141,7 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let ProposalValidationTestSetup {
         mut alice_group,
         mut bob_group,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // Required capabilities validation includes two types of checks on the
     // capabilities of the `KeyPackage` in the Add proposal: One against the
@@ -1385,7 +1385,7 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let ProposalValidationTestSetup {
         mut alice_group,
         bob_group,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // We first try to make Alice create a commit with two remove proposals for
     // Bob.
@@ -1478,7 +1478,7 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let ProposalValidationTestSetup {
         mut alice_group,
         mut bob_group,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // We first try to make Alice create a commit with a proposal targeting a
     // non-existing group member.
@@ -1593,7 +1593,7 @@ fn test_valsem109(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let ProposalValidationTestSetup {
         mut alice_group,
         mut bob_group,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // We can't test this by having Alice propose an update herself, so we have
     // to have Bob propose the update. This is due to the commit logic filtering
@@ -1735,7 +1735,7 @@ fn test_valsem110(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let ProposalValidationTestSetup {
         mut alice_group,
         mut bob_group,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // We can't test this by having Alice propose an update herself, so we have
     // to have Bob propose the update. This is due to the commit logic filtering
@@ -1891,7 +1891,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let ProposalValidationTestSetup {
         mut alice_group,
         mut bob_group,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // We can't test this by having Alice propose an update herself. This is due
     // to the commit logic filtering out own proposals and just including a path
@@ -2064,7 +2064,7 @@ fn test_valsem112(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let ProposalValidationTestSetup {
         mut alice_group,
         mut bob_group,
-    } = validation_test_setup(*PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
+    } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
     // This can really only be tested by the receiver, as there is no way to
     // make a client create a proposal with a different sender type than
