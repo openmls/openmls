@@ -19,6 +19,7 @@ impl CoreGroup {
     ///  - ValSem007
     ///  - ValSem009
     ///  - ValSem112
+    ///  - ValSem246
     pub(crate) fn parse_message(
         &mut self,
         backend: &impl OpenMlsCryptoProvider,
@@ -55,7 +56,6 @@ impl CoreGroup {
         // Extract the credential if the sender is a member or a new member.
         // Checks the following semantic validation:
         //  - ValSem112
-        //  - ValSem245
         //  - ValSem246
         //  - Prepares ValSem247 by setting the right credential. The remainder
         //    of ValSem247 is validated as part of ValSem010.
@@ -90,6 +90,7 @@ impl CoreGroup {
     ///  - ValSem110
     ///  - ValSem111
     ///  - ValSem112
+    ///  - ValSem200
     ///  - ValSem201
     ///  - ValSem202: Path must be the right length
     ///  - ValSem203: Path secrets must decrypt correctly
@@ -102,6 +103,7 @@ impl CoreGroup {
     ///  - ValSem243
     ///  - ValSem244
     ///  - ValSem245
+    ///  - ValSem247 (as part of ValSem010)
     pub(crate) fn process_unverified_message(
         &mut self,
         unverified_message: UnverifiedMessage,
@@ -132,6 +134,7 @@ impl CoreGroup {
             UnverifiedContextMessage::Group(unverified_message) => {
                 // Checks the following semantic validation:
                 //  - ValSem010
+                //  - ValSem247 (as part of ValSem010)
                 let verified_member_message = unverified_message
                     .into_verified(backend, signature_key)
                     .map_err(|_| UnverifiedMessageError::InvalidSignature)?;
@@ -165,6 +168,7 @@ impl CoreGroup {
                         //  - ValSem110
                         //  - ValSem111
                         //  - ValSem112
+                        //  - ValSem200
                         //  - ValSem201
                         //  - ValSem202: Path must be the right length
                         //  - ValSem203: Path secrets must decrypt correctly

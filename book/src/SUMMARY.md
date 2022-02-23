@@ -1,5 +1,7 @@
 # Summary
 
+[Introduction](../../README.md)
+
 - [User manual](user_manual/README.md)
   - [Creating identity keys](user_manual/identity.md)
   - [Creating key packges](user_manual/create_key_package.md)
@@ -13,11 +15,11 @@
   - [Creating application messages](user_manual/application_messages.md)
   - [Committing to pending proposals](user_manual/commit_to_proposals.md)
   - [Processing incoming messages](user_manual/processing.md)
+  - [Persistenc of group state](user_manual/persistence.md)
 - [Traits & External Types](./traits/README.md)
   - [Traits](./traits/traits.md)
   - [Types](./traits/types.md)
 - [Message Validation](./message_validation.md)
-- [Tree Rewrite Project](./tree_rewrite.md)
-- [Type-Enforced Verification](./type_enfored_verification.md)
 - [Performance](./performance.md)
 - [Forward Secrecy](./forward_secrecy.md)
+- [Release management](./release_management.md)
