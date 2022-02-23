@@ -5,14 +5,14 @@
 > Please ensure you know what you're doing when implementing your own versions.**
 
 Because implementing the `OpenMLSCryptoProvider` is challenging, requires
-tremendous care, and the average OpenMLS consumer does not want (or should) do,
+tremendous care, and is not what the average OpenMLS consumer wants to (or should) do,
 we provide two implementations that can be used.
 
 - [Rust Crypto]
 - [Evercrypt]
 
 **Rust Crypto Provider**
-The go-to default at the moment is an implementation using common, native Rust
+The go-to default at the moment is an implementation using commonly used, native Rust
 crypto implementations.
 
 **Evercrypt Provider**
@@ -28,8 +28,8 @@ There are 4 different traits defined in the [OpenMLS traits crate].
 
 This trait defines two functions to generate arrays and vectors, and is used by
 OpenMLS to generate randomness for key generation and random identifiers.
-While there is the commonly used [rand crate] not all implementation use it.
-OpenMLS therefore defines it's own randomness trait that needs to be implemented
+While there is the commonly used [rand crate] not all implementations use it.
+OpenMLS therefore defines its own randomness trait that needs to be implemented
 by an OpenMLS crypto provider.
 It simply needs to implement two functions to generate cryptographically secure
 randomness and store it into an array or vector.
@@ -65,7 +65,7 @@ Instead entries must be deleted and newly stored.
 {{#include ../../../traits/src/key_store.rs:15:40}}
 ```
 
-**NOTE:** Right now key material need to be extractable from the key store.
+**NOTE:** Right now key material needs to be extractable from the key store.
 This will most likely change in future.
 
 ### OpenMlsCryptoProvider
