@@ -531,7 +531,11 @@ In case the Commit message also covers Add Proposals that were previously receiv
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="traits--external-types"><a class="header" href="#traits--external-types">Traits &amp; External Types</a></h1>
 <p>OpenMLS defines a number of traits that have to be implemented in order to use
-OpenMLS.</p>
+OpenMLS.
+The main goal is to allow OpenMLS to use different implementations for its
+cryptographic primitives, persistence and random number generation.
+This should make it possible to plug in anything from <a href="https://www.w3.org/TR/WebCryptoAPI/">WebCrypto</a> to secure
+enclaves.</p>
 <ul>
 <li><a href="traits/./traits.html">Traits</a></li>
 <li><a href="traits/./types.html">External Types</a></li>
@@ -543,7 +547,10 @@ See the <a href="traits/./traits.html#openmlskeystore">OpenMlsKeyStore trait</a>
 but note that the key used to store, read, and delete values in the key store has
 to be provided as a byte slice.</p>
 <p>In the following examples we have a <code>ciphersuite</code> and a <code>backend</code> (<code>OpenMlsCryptoProvider</code>).</p>
-<pre><code class="language-rust no_run noplayground">        CredentialType::Basic,
+<pre><code class="language-rust no_run noplayground">    // First we generate a credential and key package for our user.
+    let credential_bundle = CredentialBundle::new(
+        b&quot;User ID&quot;.to_vec(),
+        CredentialType::Basic,
         SignatureScheme::from(ciphersuite),
         backend,
     )
@@ -564,43 +571,59 @@ to be provided as a byte slice.</p>
         .key_store()
         .store(id.as_slice(), &amp;key_package_bundle)
         .expect(&quot;Failed to store key package bundle in keystore.&quot;);
-
-    // Delete the key package bundle.
 </code></pre>
 <p>In order to delete a value the <code>delete</code> is called with the identifier.</p>
-<pre><code class="language-rust no_run noplayground">        .expect(&quot;Error deleting key package bundle&quot;);
-}
-
-#[apply(ciphersuites_and_backends)]
+<pre><code class="language-rust no_run noplayground">    // Delete the key package bundle.
+    backend
+        .key_store()
+        .delete(id.as_slice())
+        .expect(&quot;Error deleting key package bundle&quot;);
 </code></pre>
 <p>Retrieving a value from the key store is as simple as calling <code>read</code>.
 In this example we assume that we got a <code>credential</code> where we want to retrieve
 the credential bundle for, i.e. the private key material.</p>
-<pre><code class="language-rust no_run noplayground">
+<pre><code class="language-rust no_run noplayground">    // In order to read something from the key store we need to define an ID.
+    // Here we simply take the serialized public key of the credential.
+    let id = credential
+        .signature_key()
+        .tls_serialize_detached()
+        .expect(&quot;Error serializing the credential's public key.&quot;);
+
     let credential_bundle: CredentialBundle = backend
         .key_store()
         .read(&amp;id)
         .expect(&quot;Error retrieving the credential bundle&quot;);
-
-    assert_eq!(credential_bundle, credential_bundle_to_store);
-}
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="openmls-traits"><a class="header" href="#openmls-traits">OpenMLS Traits</a></h1>
-<p>The OpenMLS project provides two default implementations for these traits</p>
+<blockquote>
+<p><strong>⚠️  These traits are responsible for all cryptographic operations and randomness
+within OpenMLS.
+Please ensure you know what you're doing when implementing your own versions.</strong></p>
+</blockquote>
+<p>Because implementing the <code>OpenMLSCryptoProvider</code> is challenging, requires
+tremendous care, and is not what the average OpenMLS consumer wants to (or should) do,
+we provide two implementations that can be used.</p>
 <ul>
 <li><a href="https://crates.io/crates/openmls_rust_crypto">Rust Crypto</a></li>
 <li><a href="https://crates.io/crates/openmls_evercrypt_backend">Evercrypt</a></li>
 </ul>
-<blockquote>
-<p><strong>⚠️☣️  These traits are responsible for all cryptographic operations and randomness
-within OpenMLS.
-Please ensure you know what you're doing when implementing your own versions.</strong></p>
-</blockquote>
+<p><strong>Rust Crypto Provider</strong>
+The go-to default at the moment is an implementation using commonly used, native Rust
+crypto implementations.</p>
+<p><strong>Evercrypt Provider</strong>
+In addition to the Rust Crypto Provider there's the Evercrypt provider that uses
+the formally verified HACL*/Evercrypt library.
+Note that this provider does not work equally well on all platforms yet.</p>
 <h2 id="the-traits"><a class="header" href="#the-traits">The Traits</a></h2>
 <p>There are 4 different traits defined in the <a href="https://crates.io/crates/openmls_traits">OpenMLS traits crate</a>.</p>
 <h3 id="openmlsrand"><a class="header" href="#openmlsrand">OpenMlsRand</a></h3>
 <p>This trait defines two functions to generate arrays and vectors, and is used by
-OpenMLS to generate randomness.</p>
+OpenMLS to generate randomness for key generation and random identifiers.
+While there is the commonly used <a href="https://crates.io/crates/rand">rand crate</a> not all implementations use it.
+OpenMLS therefore defines its own randomness trait that needs to be implemented
+by an OpenMLS crypto provider.
+It simply needs to implement two functions to generate cryptographically secure
+randomness and store it into an array or vector.</p>
 <pre><code class="language-rust no_run noplayground">pub trait OpenMlsRand {
     type Error: Debug + Clone + PartialEq + Into&lt;String&gt;;
 
@@ -655,9 +678,12 @@ pub trait OpenMlsKeyStore: Send + Sync {
     fn delete(&amp;self, k: &amp;[u8]) -&gt; Result&lt;(), Self::Error&gt;;
 }
 </code></pre>
+<p><strong>NOTE:</strong> Right now key material needs to be extractable from the key store.
+This will most likely change in the future.</p>
 <h3 id="openmlscryptoprovider"><a class="header" href="#openmlscryptoprovider">OpenMlsCryptoProvider</a></h3>
 <p>Additionally, there's a wrapper trait defined that is expected to be passed into
-the public OpenMLS API.</p>
+the public OpenMLS API.
+Some OpenMLS APIs require only one of the sub-traits though.</p>
 <pre><code class="language-rust no_run noplayground">pub trait OpenMlsCryptoProvider: Send + Sync {
     type CryptoProvider: crypto::OpenMlsCrypto;
     type RandProvider: random::OpenMlsRand;
@@ -673,6 +699,9 @@ the public OpenMLS API.</p>
     fn key_store(&amp;self) -&gt; &amp;Self::KeyStoreProvider;
 }
 </code></pre>
+<h2 id="implementation-notes"><a class="header" href="#implementation-notes">Implementation Notes</a></h2>
+<p>It is not necessary to implement all sub-traits if one functionality is missing.
+If you want to use a persisting key store for example, it is sufficient to do a new implementation of the key store trait and combine it with one of the provided crypto and randomness trait implementations.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="external-types"><a class="header" href="#external-types">External Types</a></h1>
 <p>For interoperability this crate also defines a number of types and algorithm
 identifiers.</p>

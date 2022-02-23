@@ -136,7 +136,11 @@
                     <main>
                         <h1 id="traits--external-types"><a class="header" href="#traits--external-types">Traits &amp; External Types</a></h1>
 <p>OpenMLS defines a number of traits that have to be implemented in order to use
-OpenMLS.</p>
+OpenMLS.
+The main goal is to allow OpenMLS to use different implementations for its
+cryptographic primitives, persistence and random number generation.
+This should make it possible to plug in anything from <a href="https://www.w3.org/TR/WebCryptoAPI/">WebCrypto</a> to secure
+enclaves.</p>
 <ul>
 <li><a href="./traits.html">Traits</a></li>
 <li><a href="./types.html">External Types</a></li>
@@ -148,7 +152,10 @@ See the <a href="./traits.html#openmlskeystore">OpenMlsKeyStore trait</a> descri
 but note that the key used to store, read, and delete values in the key store has
 to be provided as a byte slice.</p>
 <p>In the following examples we have a <code>ciphersuite</code> and a <code>backend</code> (<code>OpenMlsCryptoProvider</code>).</p>
-<pre><code class="language-rust no_run noplayground">        CredentialType::Basic,
+<pre><code class="language-rust no_run noplayground">    // First we generate a credential and key package for our user.
+    let credential_bundle = CredentialBundle::new(
+        b&quot;User ID&quot;.to_vec(),
+        CredentialType::Basic,
         SignatureScheme::from(ciphersuite),
         backend,
     )
@@ -169,26 +176,28 @@ to be provided as a byte slice.</p>
         .key_store()
         .store(id.as_slice(), &amp;key_package_bundle)
         .expect(&quot;Failed to store key package bundle in keystore.&quot;);
-
-    // Delete the key package bundle.
 </code></pre>
 <p>In order to delete a value the <code>delete</code> is called with the identifier.</p>
-<pre><code class="language-rust no_run noplayground">        .expect(&quot;Error deleting key package bundle&quot;);
-}
-
-#[apply(ciphersuites_and_backends)]
+<pre><code class="language-rust no_run noplayground">    // Delete the key package bundle.
+    backend
+        .key_store()
+        .delete(id.as_slice())
+        .expect(&quot;Error deleting key package bundle&quot;);
 </code></pre>
 <p>Retrieving a value from the key store is as simple as calling <code>read</code>.
 In this example we assume that we got a <code>credential</code> where we want to retrieve
 the credential bundle for, i.e. the private key material.</p>
-<pre><code class="language-rust no_run noplayground">
+<pre><code class="language-rust no_run noplayground">    // In order to read something from the key store we need to define an ID.
+    // Here we simply take the serialized public key of the credential.
+    let id = credential
+        .signature_key()
+        .tls_serialize_detached()
+        .expect(&quot;Error serializing the credential's public key.&quot;);
+
     let credential_bundle: CredentialBundle = backend
         .key_store()
         .read(&amp;id)
         .expect(&quot;Error retrieving the credential bundle&quot;);
-
-    assert_eq!(credential_bundle, credential_bundle_to_store);
-}
 </code></pre>
 
                     </main>
