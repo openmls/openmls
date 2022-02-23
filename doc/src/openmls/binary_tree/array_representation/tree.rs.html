@@ -204,6 +204,8 @@
 <span id="203">203</span>
 <span id="204">204</span>
 <span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
 </pre><pre class="rust"><code><span class="doccomment">//! A binary tree implementation for use with MLS.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -222,13 +224,15 @@
 <span class="doccomment">//! return a [`Result`] since they may throw a</span>
 <span class="doccomment">//! [`LibraryError`](ABinaryTreeError::LibraryError).</span>
 
-<span class="kw">use</span> <span class="ident">std::convert</span>::{<span class="ident">TryFrom</span>, <span class="ident">TryInto</span>};
-<span class="kw">use</span> <span class="ident">std::fmt::Debug</span>;
-
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use</span> <span class="ident">std</span>::{
+    <span class="ident">convert</span>::{<span class="ident">TryFrom</span>, <span class="ident">TryInto</span>},
+    <span class="ident">fmt::Debug</span>,
+};
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::diff</span>::{<span class="ident">AbDiff</span>, <span class="ident">StagedAbDiff</span>};
+
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">binary_tree</span>::{<span class="ident">LeafIndex</span>, <span class="ident">TreeSize</span>},
     <span class="ident">error::LibraryError</span>,

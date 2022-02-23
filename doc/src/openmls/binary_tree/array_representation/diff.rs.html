@@ -661,6 +661,7 @@
 <span id="660">660</span>
 <span id="661">661</span>
 <span id="662">662</span>
+<span id="663">663</span>
 </pre><pre class="rust"><code><span class="doccomment">//! An implementation of a diff functionality for the [`ABinaryTree`] struct.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -679,11 +680,8 @@
 <span class="doccomment">//! return a [`Result`] since they may throw a</span>
 <span class="doccomment">//! [`LibraryError`](ABinaryTreeDiffError::LibraryError).</span>
 
-<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::BTreeMap</span>, <span class="ident">convert::TryFrom</span>};
-
-<span class="kw">use</span> <span class="ident">std::fmt::Debug</span>;
-
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::BTreeMap</span>, <span class="ident">convert::TryFrom</span>, <span class="ident">fmt::Debug</span>};
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -691,11 +689,12 @@
     <span class="ident">error::LibraryError</span>,
 };
 
-<span class="kw">use</span> <span class="ident"><span class="kw">super</span>::treemath::parent</span>;
 <span class="kw">use</span> <span class="kw">super</span>::{
     <span class="ident">tree</span>::{<span class="ident">to_node_index</span>, <span class="ident">ABinaryTree</span>, <span class="ident">ABinaryTreeError</span>, <span class="ident">NodeIndex</span>},
-    <span class="ident">treemath</span>::{<span class="ident">direct_path</span>, <span class="ident">left</span>, <span class="ident">lowest_common_ancestor</span>, <span class="ident">right</span>, <span class="ident">root</span>, <span class="ident">TreeMathError</span>},
+    <span class="ident">treemath</span>::{<span class="ident">direct_path</span>, <span class="ident">left</span>, <span class="ident">lowest_common_ancestor</span>, <span class="ident">parent</span>, <span class="ident">right</span>, <span class="ident">root</span>, <span class="ident">TreeMathError</span>},
 };
+
+<span class="comment">// Crate types</span>
 
 <span class="doccomment">/// The [`StagedAbDiff`] can be created from an [`AbDiff`] instance. It&#39;s sole</span>
 <span class="doccomment">/// purpose is to be subsequently merged into an existing [`ABinaryTree`]</span>
@@ -1249,7 +1248,10 @@
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">deref_vec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">node_ref_vec</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">T</span><span class="op">&gt;</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">deref_vec</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">node_ref_vec</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">NodeId</span><span class="op">&gt;</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">T</span><span class="op">&gt;</span>, <span class="ident">ABinaryTreeDiffError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">node_vec</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
         <span class="kw">for</span> <span class="ident">node_ref</span> <span class="kw">in</span> <span class="ident">node_ref_vec</span> {
             <span class="kw">let</span> <span class="ident">node</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">node</span>(<span class="ident">node_ref</span>)<span class="question-mark">?</span>;

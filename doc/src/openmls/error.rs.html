@@ -174,8 +174,6 @@
 <span id="173">173</span>
 <span id="174">174</span>
 <span id="175">175</span>
-<span id="176">176</span>
-<span id="177">177</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # OpenMLS Errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Each module has their own errors it is returning. This module will defines</span>
@@ -213,12 +211,10 @@
 <span class="doccomment">//!</span>
 <span class="doccomment">//! All errors derive [`thiserror::Error`](https://docs.rs/thiserror/latest/thiserror/) as well as</span>
 <span class="doccomment">//! [`Debug`](`std::fmt::Debug`), [`PartialEq`](`std::cmp::PartialEq`), and [`Clone`](`std::clone::Clone`).</span>
-<span class="kw">use</span> <span class="ident">std::fmt::Display</span>;
 
 <span class="kw">use</span> <span class="ident">backtrace::Backtrace</span>;
-<span class="comment">// Re-export errors.</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::errors</span>::{<span class="ident">ApplyUpdatePathError</span>, <span class="ident">PublicTreeError</span>};
 <span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
+<span class="kw">use</span> <span class="ident">std::fmt::Display</span>;
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 <span class="kw">use</span> <span class="ident">tls_codec::Error</span> <span class="kw">as</span> <span class="ident">TlsCodecError</span>;
 
@@ -232,7 +228,7 @@
 <span class="doccomment">/// MLS structs. In particular, when element lists contain more elements than the theoretical maximum</span>
 <span class="doccomment">/// defined in the spec, the serialization will fail. This should not happen when all input values are checked.</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// **CryptoEror**</span>
+<span class="doccomment">/// **CryptoError**</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// This error is returned if the underlying crypto provider encountered an unexpected error. Possible reasons</span>
 <span class="doccomment">/// for this could be: the implementation of the crypto provider is not correct, the key material is not correct,</span>

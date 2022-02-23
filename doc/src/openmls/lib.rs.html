@@ -183,6 +183,7 @@
 <span id="182">182</span>
 <span id="183">183</span>
 <span id="184">184</span>
+<span id="185">185</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">doc</span> <span class="op">=</span> <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]</span>
 <span class="doccomment">//! ## Quick Start</span>
 <span class="doccomment">//! For a quick start to learn how OpenMLS works here&#39;s the basic code to set</span>
@@ -342,7 +343,6 @@
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">mod</span> <span class="ident">utils</span>;
 
-<span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">error</span>;
 
 <span class="comment">// Public</span>
@@ -367,6 +367,8 @@
 
 <span class="comment">// Re-export types from Key Schedule</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schedule</span>::{<span class="ident">errors::PskError</span>, <span class="ident">AuthenticationSecret</span>, <span class="ident">ResumptionSecret</span>};
+<span class="comment">// Re-export types from TreeSync</span>
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::errors</span>::{<span class="ident">ApplyUpdatePathError</span>, <span class="ident">PublicTreeError</span>};
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="openmls" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div>
 </body></html>

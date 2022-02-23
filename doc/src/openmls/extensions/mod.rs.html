@@ -411,24 +411,24 @@
 <span class="doccomment">//! - [`RatchetTreeExtension`] (GroupInfo extension)</span>
 <span class="doccomment">//! - [`RequiredCapabilitiesExtension`] (GroupContext extension)</span>
 
+<span class="kw">use</span> <span class="ident">openmls_traits::crypto::OpenMlsCrypto</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{
     <span class="ident">convert::TryFrom</span>,
     <span class="ident">fmt::Debug</span>,
     <span class="ident">io</span>::{<span class="ident">Read</span>, <span class="ident">Write</span>},
 };
-
-<span class="kw">use</span> <span class="ident">openmls_traits::crypto::OpenMlsCrypto</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use</span> <span class="ident">tls_codec</span>::<span class="kw-2">*</span>;
 
 <span class="kw">mod</span> <span class="ident">capabilities_extension</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">errors</span>;
+<span class="kw">mod</span> <span class="ident">errors</span>;
 <span class="kw">mod</span> <span class="ident">external_key_id_extension</span>;
 <span class="kw">mod</span> <span class="ident">life_time_extension</span>;
 <span class="kw">mod</span> <span class="ident">parent_hash_extension</span>;
 <span class="kw">mod</span> <span class="ident">ratchet_tree_extension</span>;
 <span class="kw">mod</span> <span class="ident">required_capabilities</span>;
-<span class="kw">use</span> <span class="ident">tls_codec</span>::<span class="kw-2">*</span>;
 
+<span class="comment">// Public re-exports</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">capabilities_extension::CapabilitiesExtension</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">external_key_id_extension::ExternalKeyIdExtension</span>;

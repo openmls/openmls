@@ -28,32 +28,38 @@
 <span id="27">27</span>
 <span id="28">28</span>
 <span id="29">29</span>
+<span id="30">30</span>
+<span id="31">31</span>
+<span id="32">32</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module defines the binary tree implementation used by OpenMLS.</span>
 
+<span class="kw">use</span> <span class="ident">array_representation</span>::{
+    <span class="ident">diff</span>::{<span class="ident">ABinaryTreeDiffError</span>, <span class="ident">AbDiff</span>, <span class="ident">StagedAbDiff</span>},
+    <span class="ident">tree</span>::{<span class="ident">ABinaryTree</span>, <span class="ident">ABinaryTreeError</span>},
+};
+
+<span class="comment">// Crate</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident"><span class="self">self</span>::array_representation::diff::OutOfBoundsError</span>;
+
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">array_representation</span>;
+
+<span class="comment">// Tests</span>
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">test_binary_tree</span>;
 
-<span class="kw">use</span> <span class="ident">array_representation::diff::ABinaryTreeDiffError</span>;
-<span class="kw">use</span> <span class="ident">array_representation::tree</span>::{<span class="ident">ABinaryTree</span>, <span class="ident">ABinaryTreeError</span>};
-
-<span class="kw">use</span> <span class="ident"><span class="self">self</span>::array_representation::diff</span>::{<span class="ident">AbDiff</span>, <span class="ident">StagedAbDiff</span>};
+<span class="comment">// Crate types</span>
 
 <span class="doccomment">/// We use this type alias as a convenience, so we can later swap out the tree</span>
 <span class="doccomment">/// representation with a feature-flag.</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type</span> <span class="ident">MlsBinaryTree</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">ABinaryTree</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span>;
-
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident"><span class="self">self</span>::array_representation::diff::OutOfBoundsError</span>;
-
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type</span> <span class="ident">MlsBinaryTreeDiff</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Node</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">AbDiff</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Node</span><span class="op">&gt;</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type</span> <span class="ident">StagedMlsBinaryTreeDiff</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">StagedAbDiff</span><span class="op">&lt;</span><span class="ident">Node</span><span class="op">&gt;</span>;
-
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type</span> <span class="ident">MlsBinaryTreeError</span> <span class="op">=</span> <span class="ident">ABinaryTreeError</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type</span> <span class="ident">MlsBinaryTreeDiffError</span> <span class="op">=</span> <span class="ident">ABinaryTreeDiffError</span>;
 
 <span class="doccomment">/// Index type to index the leaves in the binary tree</span>
-<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">LeafIndex</span> <span class="op">=</span> <span class="ident">u32</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type</span> <span class="ident">LeafIndex</span> <span class="op">=</span> <span class="ident">u32</span>;
 
 <span class="doccomment">/// A tree can be at most `2^32 - 1` nodes big.</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">type</span> <span class="ident">TreeSize</span> <span class="op">=</span> <span class="ident">u32</span>;

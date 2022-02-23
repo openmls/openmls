@@ -167,7 +167,6 @@
 <span id="166">166</span>
 <span id="167">167</span>
 <span id="168">168</span>
-<span id="169">169</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::io::Read</span>;
 
 <span class="kw">use</span> <span class="ident">openmls_traits::types::Ciphersuite</span>;
@@ -177,8 +176,7 @@
     <span class="ident">CapabilitiesExtensionError</span>, <span class="ident">Deserialize</span>, <span class="ident">ExtensionType</span>, <span class="ident">RequiredCapabilitiesExtension</span>,
     <span class="ident">Serialize</span>,
 };
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::proposals::ProposalType</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::versions::ProtocolVersion</span>;
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">messages::proposals::ProposalType</span>, <span class="ident">versions::ProtocolVersion</span>};
 
 <span class="doccomment">/// # Capabilities Extension</span>
 <span class="doccomment">///</span>

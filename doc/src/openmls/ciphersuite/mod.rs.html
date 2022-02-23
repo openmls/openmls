@@ -53,12 +53,12 @@
 <span id="52">52</span>
 <span id="53">53</span>
 <span id="54">54</span>
-<span id="55">55</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Ciphersuites for MLS</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This file contains the API to interact with ciphersuites.</span>
 <span class="doccomment">//! See `codec.rs` and `ciphersuites.rs` for internals.</span>
 
+<span class="kw">use</span> <span class="ident"><span class="self">self</span>::signable::SignedStruct</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::versions::ProtocolVersion</span>;
 <span class="kw">use</span> <span class="ident">::tls_codec</span>::{<span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">openmls_traits::types::Ciphersuite</span>;
@@ -93,8 +93,6 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">reuse_guard</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">secret</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">signature</span>::<span class="kw-2">*</span>;
-
-<span class="kw">use</span> <span class="ident"><span class="self">self</span>::signable::SignedStruct</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span>;

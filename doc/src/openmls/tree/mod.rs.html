@@ -13,23 +13,17 @@
 <span id="12">12</span>
 <span id="13">13</span>
 <span id="14">14</span>
-<span id="15">15</span>
-<span id="16">16</span>
-<span id="17">17</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 
 <span class="comment">// Tree modules</span>
 <span class="comment">// Public</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">sender_ratchet</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">sender_ratchet::SenderRatchetConfiguration</span>;
 
 <span class="comment">// Crate</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">index</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">secret_tree</span>;
-
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">treemath</span>;
-
-<span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">tests_and_kats</span>;

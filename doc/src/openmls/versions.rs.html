@@ -81,15 +81,17 @@
 <span id="80">80</span>
 <span id="81">81</span>
 <span id="82">82</span>
+<span id="83">83</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS versions</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Only MLS 1.0 is currently supported.</span>
 
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">convert::TryFrom</span>, <span class="ident">fmt</span>};
+<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
 
-<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+<span class="comment">// Public types</span>
 
 <span class="doccomment">/// # Protocol Version</span>
 <span class="doccomment">///</span>

@@ -40,15 +40,11 @@
 <span id="39">39</span>
 <span id="40">40</span>
 <span id="41">41</span>
-<span id="42">42</span>
-<span id="43">43</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Tls serialization implementations for the ciphersuites.</span>
 <span class="doccomment">//! Provides encoding and decoding functionality.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite</span>::<span class="kw-2">*</span>;
-
 <span class="kw">use</span> <span class="ident">std::io</span>::{<span class="ident">Read</span>, <span class="ident">Write</span>};
-
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">TlsSliceU16</span>, <span class="ident">TlsSliceU8</span>, <span class="ident">TlsVecU8</span>};
 
 <span class="kw">impl</span> <span class="ident">tls_codec::Serialize</span> <span class="kw">for</span> <span class="ident">SignaturePublicKey</span> {

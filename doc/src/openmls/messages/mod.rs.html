@@ -512,6 +512,7 @@
 <span id="511">511</span>
 <span id="512">512</span>
 <span id="513">513</span>
+<span id="514">514</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Messages</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module contains the types and implementations for Commit &amp; Welcome messages,</span>
@@ -527,7 +528,6 @@
     <span class="ident">treesync::treekem::UpdatePath</span>,
     <span class="ident">versions::ProtocolVersion</span>,
 };
-
 <span class="kw">use</span> <span class="ident">openmls_traits</span>::{
     <span class="ident">crypto::OpenMlsCrypto</span>,
     <span class="ident">types</span>::{<span class="ident">CryptoError</span>, <span class="ident">HpkeCiphertext</span>},
@@ -544,14 +544,16 @@
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">proposals</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">public_group_state</span>;
 
+<span class="comment">// Public re-exports</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">codec</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">proposals</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">public_group_state</span>::<span class="kw-2">*</span>;
+
+<span class="comment">// Crate-only re-exports</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">proposals</span>::<span class="kw-2">*</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">public_group_state</span>::<span class="kw-2">*</span>;
 
 <span class="comment">// Tests</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span>;
-
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credentials::CredentialBundle</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>

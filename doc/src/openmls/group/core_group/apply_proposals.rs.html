@@ -198,9 +198,6 @@
 <span id="197">197</span>
 <span id="198">198</span>
 <span id="199">199</span>
-<span id="200">200</span>
-<span id="201">201</span>
-<span id="202">202</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::HashSet</span>;
 
 <span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
@@ -211,10 +208,7 @@
     <span class="ident">framing::Sender</span>,
     <span class="ident">group::errors::ApplyProposalsError</span>,
     <span class="ident">key_packages::KeyPackageBundle</span>,
-    <span class="ident">messages</span>::{
-        <span class="ident">proposals</span>::{<span class="ident">AddProposal</span>, <span class="ident">ProposalType</span>},
-        <span class="ident">Proposal</span>,
-    },
+    <span class="ident">messages::proposals</span>::{<span class="ident">AddProposal</span>, <span class="ident">Proposal</span>, <span class="ident">ProposalType</span>},
     <span class="ident">schedule</span>::{<span class="ident">InitSecret</span>, <span class="ident">PreSharedKeyId</span>, <span class="ident">PreSharedKeys</span>},
     <span class="ident">treesync</span>::{<span class="ident">diff::TreeSyncDiff</span>, <span class="ident">node::leaf_node::LeafNode</span>},
 };

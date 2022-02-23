@@ -57,23 +57,17 @@
 <span id="56">56</span>
 <span id="57">57</span>
 <span id="58">58</span>
-<span id="59">59</span>
-<span id="60">60</span>
-<span id="61">61</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Prelude for OpenMLS.</span>
 <span class="doccomment">//! Include this to get access to all the public functions of OpenMLS.</span>
 
 <span class="comment">// MlsGroup</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group</span>::<span class="kw-2">*</span>;
 
-<span class="comment">// Indexes</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::binary_tree::LeafIndex</span>;
-
 <span class="comment">// Ciphersuite</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite</span>::{<span class="ident">hash_ref::KeyPackageRef</span>, <span class="ident">signable</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 
 <span class="comment">// Messages</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages</span>::<span class="kw-2">*</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages</span>::{<span class="ident">proposals</span>::<span class="kw-2">*</span>, <span class="ident">public_group_state</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 
 <span class="comment">// Credentials</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credentials</span>::{<span class="ident">CredentialError</span>, <span class="kw-2">*</span>};
@@ -94,7 +88,7 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::key_store</span>::<span class="kw-2">*</span>;
 
 <span class="comment">// Tree</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree::SenderRatchetConfiguration</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree::sender_ratchet::SenderRatchetConfiguration</span>;
 
 <span class="comment">// TreeSync</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync</span>::{
@@ -104,9 +98,9 @@
 
 <span class="comment">// PSKs</span>
 <span class="comment">// TODO #751</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schedule::psk</span>::{
-    <span class="ident">BranchPsk</span>, <span class="ident">ExternalPsk</span>, <span class="ident">PreSharedKeyId</span>, <span class="ident">PreSharedKeys</span>, <span class="ident">Psk</span>, <span class="ident">PskBundle</span>, <span class="ident">PskType</span>, <span class="ident">ReinitPsk</span>,
-};
+<span class="comment">// pub use crate::schedule::psk::{</span>
+<span class="comment">//    BranchPsk, ExternalPsk, PreSharedKeyId, PreSharedKeys, Psk, PskBundle, PskType, ReinitPsk,</span>
+<span class="comment">// };</span>
 
 <span class="comment">// TLS codec traits</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">tls_codec</span>::{

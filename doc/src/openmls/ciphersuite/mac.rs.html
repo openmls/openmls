@@ -85,7 +85,7 @@
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">flip_last_byte</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">flip_last_byte</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">last_bits</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">mac_value</span>.<span class="ident">pop</span>().<span class="ident">expect</span>(<span class="string">&quot;An unexpected error occurred.&quot;</span>);
         <span class="ident">last_bits</span> <span class="op">^</span><span class="op">=</span> <span class="number">0xff</span>;
         <span class="self">self</span>.<span class="ident">mac_value</span>.<span class="ident">push</span>(<span class="ident">last_bits</span>);
