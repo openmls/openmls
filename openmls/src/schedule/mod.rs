@@ -1,8 +1,13 @@
-//! This module represents the key schedule as introduced in Section 8 of the
+//! # Key schedule
+//!
+//! This module contains the types and implementations for key schedule operations.
+//! It exposes the [`AuthenticationSecret`] & [`ResumptionSecret`].
+//!
+//! The key schedule is introduced in Section 9 of the
 //! MLS specification. The key schedule evolves in epochs, where in each epoch
 //! new key material is injected.
 //!
-//! The flow of the key schedule is as follows (from Section 8 of the MLS
+//! The flow of the key schedule is as follows (from Section 9 of the MLS
 //! specification):
 //!
 //! ```text
@@ -152,12 +157,65 @@ mod unit_tests;
 #[cfg(any(feature = "test-utils", test))]
 pub mod kat_key_schedule;
 
-//Public
+// Public
 pub use errors::*;
 
 // Crate
 pub(crate) use message_secrets::*;
 pub(crate) use psk::*;
+
+// Public types
+
+/// A group secret that can be used among members to prove that a member was part of a group in a given epoch.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct ResumptionSecret {
+    secret: Secret,
+}
+
+impl ResumptionSecret {
+    /// Derive an `ResumptionSecret` from an `EpochSecret`.
+    fn new(
+        backend: &impl OpenMlsCryptoProvider,
+        epoch_secret: &EpochSecret,
+    ) -> Result<Self, CryptoError> {
+        let secret = epoch_secret.secret.derive_secret(backend, "resumption")?;
+        Ok(Self { secret })
+    }
+
+    /// Returns the secret as a slice.
+    pub fn as_slice(&self) -> &[u8] {
+        self.secret.as_slice()
+    }
+}
+
+/// A secret that can be used among members to make sure everyone has the same
+/// group state.
+#[derive(Debug, Serialize, Deserialize)]
+#[cfg_attr(test, derive(PartialEq))]
+pub struct AuthenticationSecret {
+    secret: Secret,
+}
+
+impl AuthenticationSecret {
+    /// Derive an `AuthenticationSecret` from an `EpochSecret`.
+    fn new(
+        backend: &impl OpenMlsCryptoProvider,
+        epoch_secret: &EpochSecret,
+    ) -> Result<Self, CryptoError> {
+        let secret = epoch_secret
+            .secret
+            .derive_secret(backend, "authentication")?;
+        Ok(Self { secret })
+    }
+
+    /// Returns the secret as a slice.
+    pub fn as_slice(&self) -> &[u8] {
+        self.secret.as_slice()
+    }
+}
+
+// Crate-only types
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -695,37 +753,6 @@ impl ExporterSecret {
     }
 }
 
-/// A secret that can be used among members to make sure everyone has the same
-/// group state.
-#[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
-pub(crate) struct AuthenticationSecret {
-    secret: Secret,
-}
-
-impl AuthenticationSecret {
-    /// Derive an `AuthenticationSecret` from an `EpochSecret`.
-    fn new(
-        backend: &impl OpenMlsCryptoProvider,
-        epoch_secret: &EpochSecret,
-    ) -> Result<Self, CryptoError> {
-        let secret = epoch_secret
-            .secret
-            .derive_secret(backend, "authentication")?;
-        Ok(Self { secret })
-    }
-
-    /// ☣️ Get a copy of the secret bytes.
-    pub(crate) fn export(&self) -> Vec<u8> {
-        self.secret.as_slice().to_vec()
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.as_slice()
-    }
-}
-
 /// A secret used when joining a group with an external Commit.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
@@ -761,7 +788,7 @@ impl ExternalSecret {
 /// The confirmation key is used to calculate the `ConfirmationTag`.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct ConfirmationKey {
+pub(crate) struct ConfirmationKey {
     secret: Secret,
 }
 
@@ -814,9 +841,8 @@ impl ConfirmationKey {
         self.secret.as_slice()
     }
 
-    #[cfg(any(feature = "test-utils", test))]
-    #[doc(hidden)]
-    pub fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
+    #[cfg(test)]
+    pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
         Self {
             secret: Secret::random(ciphersuite, rng, None /* MLS version */)
                 .expect("Not enough randomness."),
@@ -827,7 +853,7 @@ impl ConfirmationKey {
 /// The membership key is used to calculate the `MembershipTag`.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct MembershipKey {
+pub(crate) struct MembershipKey {
     secret: Secret,
 }
 
@@ -875,36 +901,12 @@ impl MembershipKey {
         self.secret.as_slice()
     }
 
-    #[cfg(any(feature = "test-utils", test))]
-    #[doc(hidden)]
-    pub fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
+    #[cfg(test)]
+    pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
         Self {
             secret: Secret::random(ciphersuite, rng, None /* MLS version */)
                 .expect("Not enough randomness."),
         }
-    }
-}
-
-/// A secret used in cross-group operations.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[cfg_attr(test, derive(PartialEq))]
-pub struct ResumptionSecret {
-    secret: Secret,
-}
-
-impl ResumptionSecret {
-    /// Derive an `ResumptionSecret` from an `EpochSecret`.
-    fn new(
-        backend: &impl OpenMlsCryptoProvider,
-        epoch_secret: &EpochSecret,
-    ) -> Result<Self, CryptoError> {
-        let secret = epoch_secret.secret.derive_secret(backend, "resumption")?;
-        Ok(Self { secret })
-    }
-
-    #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn as_slice(&self) -> &[u8] {
-        self.secret.as_slice()
     }
 }
 
@@ -922,7 +924,7 @@ fn ciphertext_sample(ciphersuite: Ciphersuite, ciphertext: &[u8]) -> &[u8] {
 /// A key that can be used to derive an `AeadKey` and an `AeadNonce`.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct SenderDataSecret {
+pub(crate) struct SenderDataSecret {
     secret: Secret,
 }
 
@@ -978,8 +980,7 @@ impl SenderDataSecret {
     }
 
     #[cfg(any(feature = "test-utils", test))]
-    #[doc(hidden)]
-    pub fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
+    pub(crate) fn random(ciphersuite: Ciphersuite, rng: &impl OpenMlsCryptoProvider) -> Self {
         Self {
             secret: Secret::random(ciphersuite, rng, None /* MLS version */)
                 .expect("Not enough randomness."),
