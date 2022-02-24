@@ -3,7 +3,7 @@
 [Introduction](../../README.md)
 
 - [User manual](user_manual/README.md)
-  - [Creating identity keys](user_manual/identity.md)
+  - [Credentials](user_manual/identity.md)
   - [Creating key packges](user_manual/create_key_package.md)
   - [Group configuration](user_manual/group_config.md)
   - [Creating groups](user_manual/create_group.md)
