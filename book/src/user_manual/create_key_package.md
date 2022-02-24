@@ -7,7 +7,8 @@ To enable asynchronous establishment of groups through pre-publishing key materi
 * information about the client's capabilities (i.e. which features of MLS it supports)
 * any extension that the client wants to include
 * one of the client's [credentials](./identity.md), as well as a signature over the whole key package using the private key corresponding to the credential's signature public key
-## Creating key packges
+
+## Creating key packages
 
 Before clients can communicate with each other using OpenMLS they need to generate key packages and publish them with the Delivery Service. Clients can generate an arbitrary number of key packages ahead of time.
 
@@ -32,5 +33,5 @@ After creating the key package bundle, clients should store it in the key store 
 {{#include ../../../openmls/tests/book_code.rs:store_key_package_bundle}}
 ```
 
-All functions and structs related to key package can be found in the [`key_packages`](https://docs.rs/crate/openmls/latest/key_packages/index.html) module.
+All functions and structs related to key packages can be found in the [`key_packages`](https://docs.rs/crate/openmls/latest/key_packages/index.html) module.
 

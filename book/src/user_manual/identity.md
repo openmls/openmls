@@ -1,6 +1,6 @@
 # Credentials
 
-MLS relies on credentials to encode the identity of clients in the context of a group. There are different types of credential, with the OpenMLS currently only supporting the `BasicCredential` credential type (see below). All credentials have in common that they contain a signature public key (with the owner of the credential holding the corresponding private key) which is used to authenticate messages by the owner in the context of one or more groups.
+MLS relies on credentials to encode the identity of clients in the context of a group. There are different types of credentials, with the OpenMLS library currently only supporting the `BasicCredential` credential type (see below). All credentials have in common that they contain a signature public key (with the owner of the credential holding the corresponding private key) which is used to authenticate messages by the owner in the context of one or more groups.
 
 A credential is always embedded in a [key package](./create_key_package.md), which is ultimately used to represent a client in a group and which is signed by the private key corresponding to the signature public key of the credential it contains. Clients can decide to use the same credential in multiple key packages (and thus multiple groups) or to use distinct credential per key package.
 
