@@ -1,29 +1,23 @@
 //! This module implements the ratchet tree component of MLS.
 //!
-//! # About
-//!
-//! This module provides the [`TreeSync`] struct, which contains the state
-//! shared between a group of MLS clients in the shape of a tree, where each
-//! non-blank leaf corresponds to one group member. The functions provided by
-//! its implementation allow the creation of a [`TreeSyncDiff`] instance, which
-//! in turn can be mutably operated on and merged back into the original
-//! [`TreeSync`] instance.
-//!
-//! The submodules of this module define the nodes of the tree (`nodes`),
-//! helper functions and structs for the algorithms used to sync the tree across
-//! the group ([`hashes`]) and the diff functionality ([`diff`]).
-//!
-//! Finally, this module contains the [`treekem`] module, which allows the
-//! encryption and decryption of updates to the tree.
-//!
-//! # Don't Panic!
-//!
-//! Functions in this module should never panic. However, if there is a bug in
-//! the implementation, a function will return an unrecoverable
-//! [`LibraryError`](TreeSyncError::LibraryError). This means that some
-//! functions that are not expected to fail and throw an error, will still
-//! return a [`Result`] since they may throw a
-//! [`LibraryError`](TreeSyncError::LibraryError).
+//! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`],
+//! as well as the following error types: [`ApplyUpdatePathError`], and [`PublicTreeError`].
+
+// # Internal documentation
+//
+// This module provides the [`TreeSync`] struct, which contains the state
+// shared between a group of MLS clients in the shape of a tree, where each
+// non-blank leaf corresponds to one group member. The functions provided by
+// its implementation allow the creation of a [`TreeSyncDiff`] instance, which
+// in turn can be mutably operated on and merged back into the original
+// [`TreeSync`] instance.
+//
+// The submodules of this module define the nodes of the tree (`nodes`),
+// helper functions and structs for the algorithms used to sync the tree across
+// the group ([`hashes`]) and the diff functionality ([`diff`]).
+//
+// Finally, this module contains the [`treekem`] module, which allows the
+// encryption and decryption of updates to the tree.
 
 use std::collections::BTreeMap;
 
@@ -43,7 +37,6 @@ use crate::{
 
 use self::{
     diff::{StagedTreeSyncDiff, TreeSyncDiff},
-    node::{leaf_node::LeafNode, Node},
     treesync_node::{TreeSyncNode, TreeSyncNodeError},
 };
 
@@ -57,8 +50,9 @@ pub(crate) mod node;
 pub(crate) mod treekem;
 pub(crate) mod treesync_node;
 
-// Crate re-exports
-pub(crate) use errors::*;
+// Public re-exports
+pub use errors::*;
+pub use node::{leaf_node::LeafNode, parent_node::ParentNode, Node};
 
 // Tests
 #[cfg(any(feature = "test-utils", test))]

@@ -55,7 +55,6 @@
 //!     // Create the key package bundle
 //!     let key_package_bundle =
 //!         KeyPackageBundle::new(ciphersuites, &credential_bundle, backend, vec![])?;
-//!     // let key_package = key_package_bundle.key_package().clone();
 //!
 //!     // Store it in the key store
 //!     let key_package_id = key_package_bundle.key_package()
@@ -167,19 +166,14 @@ pub mod framing;
 pub mod group;
 pub mod key_packages;
 pub mod messages;
+pub mod schedule;
+pub mod treesync;
 pub mod versions;
 
 // Private
 mod binary_tree;
 mod key_store;
-mod schedule;
 mod tree;
-mod treesync;
 
 /// Single place, re-exporting the most used public functions.
 pub mod prelude;
-
-// Re-export types from Key Schedule
-pub use crate::schedule::{errors::PskError, AuthenticationSecret, ResumptionSecret};
-// Re-export types from TreeSync
-pub use crate::treesync::errors::{ApplyUpdatePathError, PublicTreeError};
