@@ -1,5 +1,7 @@
 use std::io::Read;
 
+use openmls_traits::types::Ciphersuite;
+
 use crate::key_packages::*;
 use crate::versions::ProtocolVersion;
 

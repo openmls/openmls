@@ -5,7 +5,7 @@ use crate::{
         proposals::{ExternalInitProposal, Proposal},
         public_group_state::{PublicGroupState, VerifiablePublicGroupState},
     },
-    treesync::node::Node,
+    treesync::{errors::TreeSyncFromNodesError, node::Node},
 };
 
 use super::{

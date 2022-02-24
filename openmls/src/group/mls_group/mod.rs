@@ -1,42 +1,47 @@
-mod application;
-pub mod config;
-mod creation;
-pub mod errors;
-mod exporting;
-mod membership;
-pub mod processing;
-mod resumption;
-mod ser;
-#[cfg(test)]
-mod test_mls_group;
-mod updates;
+//! MLS Group
+//!
+//! This module contains [`MlsGroup`] and its submodules.
 
-use crate::{ciphersuite::hash_ref::KeyPackageRef, credentials::CredentialBundle};
-
-use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
-
-use super::proposals::{ProposalStore, QueuedProposal};
-use super::staged_commit::StagedCommit;
+use super::{
+    proposals::{ProposalStore, QueuedProposal},
+    staged_commit::StagedCommit,
+};
 use crate::{
-    ciphersuite::signable::Signable,
-    credentials::Credential,
+    ciphersuite::{hash_ref::KeyPackageRef, signable::Signable},
+    credentials::{Credential, CredentialBundle},
     error::LibraryError,
     framing::*,
     group::*,
-    key_packages::KeyPackageBundlePayload,
-    key_packages::{KeyPackage, KeyPackageBundle},
+    key_packages::{KeyPackage, KeyPackageBundle, KeyPackageBundlePayload},
     messages::{proposals::*, Welcome},
     schedule::ResumptionSecret,
     treesync::Node,
 };
-use ser::*;
+use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
 use std::io::{Error, Read, Write};
 
-// Crate exports
-pub(crate) use resumption::ResumptionSecretStore;
+// Private
+mod application;
+mod creation;
+mod exporting;
+mod resumption;
+mod ser;
+mod updates;
 
-// Public exports
-pub use {config::*, errors::*, membership::RemoveOperation};
+use config::*;
+use errors::*;
+use resumption::*;
+use ser::*;
+
+// Public
+pub mod config;
+pub mod errors;
+pub mod membership;
+pub mod processing;
+
+// Tests
+#[cfg(test)]
+mod test_mls_group;
 
 /// Pending Commit state. Differentiates between Commits issued by group members
 /// and External Commits.

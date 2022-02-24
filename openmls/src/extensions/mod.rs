@@ -22,7 +22,7 @@
 //! - [`RequiredCapabilitiesExtension`] (GroupContext extension)
 
 use openmls_traits::crypto::OpenMlsCrypto;
-pub(crate) use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::{
     convert::TryFrom,
     fmt::Debug,
@@ -30,17 +30,20 @@ use std::{
 };
 use tls_codec::*;
 
+// Private
 mod capabilities_extension;
-mod errors;
 mod external_key_id_extension;
 mod life_time_extension;
 mod parent_hash_extension;
 mod ratchet_tree_extension;
 mod required_capabilities;
+use errors::*;
+
+// Public
+pub mod errors;
 
 // Public re-exports
 pub use capabilities_extension::CapabilitiesExtension;
-pub use errors::*;
 pub use external_key_id_extension::ExternalKeyIdExtension;
 pub use life_time_extension::LifetimeExtension;
 pub use parent_hash_extension::ParentHashExtension;

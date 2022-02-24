@@ -4,17 +4,15 @@
 
 use crate::{
     error::LibraryError,
-    extensions::ExtensionError,
+    extensions::errors::ExtensionError,
     framing::errors::{MessageDecryptionError, SenderError},
-    key_packages::KeyPackageExtensionSupportError,
-    schedule::PskError,
+    key_packages::errors::KeyPackageExtensionSupportError,
+    schedule::errors::PskError,
+    treesync::errors::*,
 };
 use thiserror::Error;
 
 // === Public errors ===
-
-// Re-export errors
-pub use crate::treesync::errors::{ApplyUpdatePathError, PublicTreeError};
 
 /// Welcome error
 #[derive(Error, Debug, PartialEq, Clone)]

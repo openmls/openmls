@@ -36,32 +36,29 @@ mod test_proposals;
 use super::errors::CreateGroupContextExtProposalError;
 
 use crate::{
-    ciphersuite::hash_ref::KeyPackageRef,
+    ciphersuite::{hash_ref::KeyPackageRef, signable::*},
     credentials::*,
     error::LibraryError,
+    extensions::errors::*,
     framing::*,
     group::*,
-    key_packages::*,
-    messages::{proposals::*, *},
-    schedule::{psk::*, *},
+    key_packages::{errors::KeyPackageExtensionSupportError, *},
+    messages::{proposals::*, public_group_state::*, *},
+    schedule::{message_secrets::*, psk::*, *},
     tree::{secret_tree::SecretTreeError, sender_ratchet::SenderRatchetConfiguration},
-    treesync::*,
+    treesync::{errors::TreeSyncError, *},
     versions::ProtocolVersion,
 };
 
-use crate::{ciphersuite::signable::*, messages::public_group_state::*};
-
+use self::{past_secrets::MessageSecretsStore, staged_commit::StagedCommit};
 use log::{debug, trace};
-use openmls_traits::crypto::OpenMlsCrypto;
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite};
 use serde::{Deserialize, Serialize};
 #[cfg(test)]
 use std::convert::TryFrom;
 #[cfg(test)]
 use std::io::{Error, Read, Write};
-
 use tls_codec::Serialize as TlsSerializeTrait;
-
-use self::{past_secrets::MessageSecretsStore, staged_commit::StagedCommit};
 
 use super::{
     errors::{CoreGroupBuildError, CreateAddProposalError, ExporterError, ProposalValidationError},

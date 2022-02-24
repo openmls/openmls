@@ -14,7 +14,7 @@ use crate::{
     messages::public_group_state::*,
     messages::*,
     prelude_test::{hash_ref::KeyPackageRef, signable::Verifiable},
-    schedule::*,
+    schedule::psk::*,
     test_utils::*,
     tree::sender_ratchet::*,
     treesync::node::Node,

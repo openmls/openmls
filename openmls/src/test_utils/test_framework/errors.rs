@@ -2,7 +2,7 @@ use thiserror::Error;
 
 use crate::{
     error::LibraryError,
-    group::{errors::WelcomeError, *},
+    group::{errors::WelcomeError, mls_group::errors::*},
 };
 
 /// Setup error

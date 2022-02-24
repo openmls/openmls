@@ -7,6 +7,8 @@
 
 use std::collections::VecDeque;
 
+use openmls_traits::types::Ciphersuite;
+
 use crate::ciphersuite::{AeadNonce, *};
 use crate::tree::secret_tree::*;
 

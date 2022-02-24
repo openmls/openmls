@@ -32,7 +32,7 @@ use openmls_traits::OpenMlsCryptoProvider;
 
 use crate::{
     ciphersuite::Signature,
-    credentials::{Credential, CredentialBundle, CredentialError},
+    credentials::{errors::CredentialError, Credential, CredentialBundle},
     error::LibraryError,
 };
 

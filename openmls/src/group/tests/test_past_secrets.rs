@@ -1,17 +1,20 @@
 //! This module contains tests regarding the use of [`MessageSecretsStore`] in [`MlsGroup`]
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
+use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
 use tls_codec::Serialize;
 
 use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::{
-    ciphersuite::Ciphersuite,
     credentials::{CredentialBundle, CredentialType},
     framing::{MessageDecryptionError, ProcessedMessage},
-    group::{errors::ValidationError, GroupId, MlsGroup, MlsGroupConfig, ParseMessageError},
+    group::{
+        errors::*,
+        mls_group::{config::*, errors::*, *},
+        GroupId,
+    },
     key_packages::KeyPackageBundle,
 };
 

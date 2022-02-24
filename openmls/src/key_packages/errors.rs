@@ -5,7 +5,7 @@
 
 use thiserror::Error;
 
-use crate::{error::LibraryError, extensions::ExtensionError};
+use crate::{error::LibraryError, extensions::errors::ExtensionError};
 
 /// KeyPackage verify error
 #[derive(Error, Debug, PartialEq, Clone)]

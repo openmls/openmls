@@ -4,12 +4,22 @@
 use std::{collections::HashMap, sync::RwLock};
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
+use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
 use tls_codec::Serialize;
 
 use crate::{
-    ciphersuite::*, credentials::*, extensions::*, framing::MlsMessageIn, framing::*, group::*,
-    key_packages::*, messages::*, prelude_test::hash_ref::KeyPackageRef, treesync::node::Node,
+    credentials::*,
+    extensions::*,
+    framing::MlsMessageIn,
+    framing::*,
+    group::{
+        mls_group::{config::*, *},
+        *,
+    },
+    key_packages::*,
+    messages::*,
+    prelude_test::hash_ref::KeyPackageRef,
+    treesync::node::Node,
 };
 
 use super::{errors::ClientError, ActionType};

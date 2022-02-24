@@ -3,18 +3,16 @@
 //! This file contains the API to interact with ciphersuites.
 //! See `codec.rs` and `ciphersuites.rs` for internals.
 
-use self::signable::SignedStruct;
 use crate::versions::ProtocolVersion;
 use ::tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
-pub use openmls_traits::types::Ciphersuite;
-use openmls_traits::types::CryptoError;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     random::OpenMlsRand,
-    types::{AeadType, SignatureScheme},
+    types::{AeadType, Ciphersuite, CryptoError, SignatureScheme},
     OpenMlsCryptoProvider,
 };
-pub(crate) use serde::{Deserialize, Serialize};
+use signable::SignedStruct;
+
 use std::hash::Hash;
 use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8};
 
@@ -38,6 +36,8 @@ pub(crate) use mac::*;
 pub(crate) use reuse_guard::*;
 pub(crate) use secret::*;
 pub(crate) use signature::*;
+
+pub(crate) use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
 mod tests;

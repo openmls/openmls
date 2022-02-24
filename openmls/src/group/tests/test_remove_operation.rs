@@ -1,7 +1,16 @@
 //! This module tests the classification of remove operations with RemoveOperation
 
 use super::utils::{generate_credential_bundle, generate_key_package_bundle};
-use crate::{credentials::*, framing::*, group::*, test_utils::*, *};
+use crate::{
+    credentials::*,
+    framing::*,
+    group::{
+        mls_group::{config::*, membership::*, *},
+        *,
+    },
+    test_utils::*,
+    *,
+};
 use openmls_rust_crypto::OpenMlsRustCrypto;
 
 // Tests the differen variants of the RemoveOperation enum.

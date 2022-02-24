@@ -1,4 +1,4 @@
-//! # Key Packages.
+//! # Key Packages
 //!
 //! Key packages are pre-published public keys that provide some information
 //! about a user in order to facilitate the asynchronous addition of clients to
@@ -77,7 +77,7 @@ use crate::{
     credentials::*,
     error::LibraryError,
     extensions::{
-        CapabilitiesExtension, Extension, ExtensionError, ExtensionType, LifetimeExtension,
+        errors::ExtensionError, CapabilitiesExtension, Extension, ExtensionType, LifetimeExtension,
         ParentHashExtension, RequiredCapabilitiesExtension,
     },
     versions::ProtocolVersion,
@@ -85,7 +85,7 @@ use crate::{
 use log::error;
 use openmls_traits::{
     crypto::OpenMlsCrypto,
-    types::{CryptoError, HpkeKeyPair, SignatureScheme},
+    types::{Ciphersuite, CryptoError, HpkeKeyPair, SignatureScheme},
     OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
@@ -95,10 +95,10 @@ use tls_codec::{
 
 // Private
 mod codec;
-mod errors;
+use errors::*;
 
-// Public re-exports
-pub use errors::*;
+// Public
+pub mod errors;
 
 // Tests
 #[cfg(test)]

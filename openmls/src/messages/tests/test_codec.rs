@@ -1,5 +1,3 @@
-use crate::ciphersuite::Ciphersuite;
-use crate::test_utils::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use tls_codec::{Deserialize, Serialize};
 
@@ -7,6 +5,7 @@ use crate::{
     group::GroupId,
     messages::{PreSharedKeyProposal, ProtocolVersion, ReInitProposal},
     schedule::psk::{BranchPsk, ExternalPsk, PreSharedKeyId, Psk, PskType, ReinitPsk},
+    test_utils::*,
 };
 
 /// Test the encoding for PreSharedKeyProposal, that also covers some of the

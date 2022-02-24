@@ -9,11 +9,11 @@ use crate::{
     group::errors::ApplyProposalsError,
     key_packages::KeyPackageBundle,
     messages::proposals::{AddProposal, Proposal, ProposalType},
-    schedule::{InitSecret, PreSharedKeyId, PreSharedKeys},
+    schedule::{psk::*, InitSecret},
     treesync::{diff::TreeSyncDiff, node::leaf_node::LeafNode},
 };
 
-use super::{proposals::ProposalQueue, CoreGroup};
+use super::*;
 
 /// This struct contain the return values of the `apply_proposals()` function
 pub(crate) struct ApplyProposalsValues {

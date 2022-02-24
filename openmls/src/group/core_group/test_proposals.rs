@@ -1,11 +1,11 @@
 use crate::test_utils::*;
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 
 use crate::{
     ciphersuite::{
         hash_ref::{KeyPackageRef, ProposalRef},
-        Ciphersuite, Secret,
+        Secret,
     },
     credentials::{CredentialBundle, CredentialType},
     extensions::{Extension, ExtensionType, ExternalKeyIdExtension, RequiredCapabilitiesExtension},
@@ -17,7 +17,7 @@ use crate::{
         proposals::{ProposalQueue, ProposalStore, QueuedProposal},
         GroupContext, GroupId,
     },
-    key_packages::{KeyPackageBundle, KeyPackageExtensionSupportError},
+    key_packages::{errors::KeyPackageExtensionSupportError, KeyPackageBundle},
     messages::proposals::{AddProposal, Proposal, ProposalOrRef, ProposalType},
     schedule::MembershipKey,
 };
