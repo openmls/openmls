@@ -24,4 +24,4 @@ After creating the credential bundle, clients should store it in the key store s
 {{#include ../../../openmls/tests/book_code.rs:store_credential_bundle}}
 ```
 
-All functions and structs related to credentials can be found in the [`credentials`](https://openmls.tech/openmls/doc/openmls/credentials/index.html) module.
+All functions and structs related to credentials can be found in the [`credentials`](https://docs.rs/crate/openmls/latest/credentials/index.html) module.

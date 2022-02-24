@@ -32,5 +32,5 @@ After creating the key package bundle, clients should store it in the key store 
 {{#include ../../../openmls/tests/book_code.rs:store_key_package_bundle}}
 ```
 
-All functions and structs related to key package can be found in the [`key_packages`](https://openmls.tech/openmls/doc/openmls/key_packages/index.html) module.
+All functions and structs related to key package can be found in the [`key_packages`](https://docs.rs/crate/openmls/latest/key_packages/index.html) module.
 
