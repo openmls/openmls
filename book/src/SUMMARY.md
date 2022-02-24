@@ -4,7 +4,7 @@
 
 - [User manual](user_manual/README.md)
   - [Credentials](user_manual/identity.md)
-  - [Creating key packges](user_manual/create_key_package.md)
+  - [Key packges](user_manual/create_key_package.md)
   - [Group configuration](user_manual/group_config.md)
   - [Creating groups](user_manual/create_group.md)
   - [Join a group from a Welcome message](user_manual/join_from_welcome.md)
