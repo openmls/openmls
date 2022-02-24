@@ -1,6 +1,6 @@
 //! This module implements the ratchet tree component of MLS.
 //!
-//! Ite exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`],
+//! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`],
 //! as well as the following error types: [`ApplyUpdatePathError`], and [`PublicTreeError`].
 
 // # Internal documentation
