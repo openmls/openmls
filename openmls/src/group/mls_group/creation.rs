@@ -3,7 +3,7 @@ use crate::{
         core_group::create_commit_params::CreateCommitParams,
         errors::{CoreGroupBuildError, ExternalCommitError, WelcomeError},
     },
-    messages::VerifiablePublicGroupState,
+    messages::public_group_state::VerifiablePublicGroupState,
 };
 
 use super::*;

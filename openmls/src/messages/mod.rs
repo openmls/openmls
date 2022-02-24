@@ -15,26 +15,20 @@ use crate::{
 };
 use openmls_traits::{
     crypto::OpenMlsCrypto,
-    types::{CryptoError, HpkeCiphertext},
+    types::{Ciphersuite, CryptoError, HpkeCiphertext},
     OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 // Private
-mod codec;
+use proposals::*;
 use tls_codec::{Serialize as TlsSerializeTrait, *};
 
 // Public
+pub mod codec;
 pub mod proposals;
 pub mod public_group_state;
-
-// Public re-exports
-pub use codec::*;
-
-// Crate-only re-exports
-pub(crate) use proposals::*;
-pub(crate) use public_group_state::*;
 
 // Tests
 #[cfg(test)]
@@ -42,10 +36,7 @@ mod tests;
 #[cfg(test)]
 use crate::credentials::CredentialBundle;
 #[cfg(any(feature = "test-utils", test))]
-use crate::schedule::{
-    psk::{ExternalPsk, Psk},
-    PreSharedKeyId,
-};
+use crate::schedule::psk::{ExternalPsk, PreSharedKeyId, Psk};
 
 // Public types
 
@@ -53,7 +44,7 @@ use crate::schedule::{
 ///
 /// This message is generated when a new member is added to a group.
 /// The invited member can use this message to join the group using
-/// [`MlsGroup::new_from_welcome()`].
+/// [`MlsGroup::new_from_welcome()`](crate::group::mls_group::MlsGroup::new_from_welcome()).
 #[derive(Clone, Debug, PartialEq, TlsDeserialize, TlsSerialize, TlsSize)]
 pub struct Welcome {
     version: ProtocolVersion,

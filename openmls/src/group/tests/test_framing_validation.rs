@@ -2,14 +2,21 @@
 //! https://openmls.tech/book/message_validation.html#semantic-validation-of-message-framing
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{random::OpenMlsRand, types::Ciphersuite, OpenMlsCryptoProvider};
 use tls_codec::{Deserialize, Serialize};
 
 use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::{
-    ciphersuite::hash_ref::KeyPackageRef, credentials::*, framing::*, group::errors::*, group::*,
+    ciphersuite::{hash_ref::KeyPackageRef, *},
+    credentials::*,
+    framing::*,
+    group::{
+        errors::*,
+        mls_group::{config::*, errors::*, *},
+        GroupId,
+    },
     key_packages::*,
 };
 

@@ -4,7 +4,7 @@ use crate::{
     schedule::*,
     tree::{index::*, sender_ratchet::*, treemath::*},
 };
-use openmls_traits::types::CryptoError;
+use openmls_traits::types::{Ciphersuite, CryptoError};
 use thiserror::Error;
 use tls_codec::{Error as TlsCodecError, TlsSerialize, TlsSize};
 

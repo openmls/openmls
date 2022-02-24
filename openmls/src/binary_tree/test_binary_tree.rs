@@ -1,8 +1,7 @@
 use std::collections::HashSet;
 
-use crate::{
-    binary_tree::{MlsBinaryTree, MlsBinaryTreeDiffError, MlsBinaryTreeError},
-    prelude_test::OutOfBoundsError,
+use crate::binary_tree::{
+    MlsBinaryTree, MlsBinaryTreeDiffError, MlsBinaryTreeError, OutOfBoundsError,
 };
 
 use super::array_representation::{tree::NodeIndex, treemath::TreeMathError};

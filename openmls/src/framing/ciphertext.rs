@@ -1,4 +1,4 @@
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use tls_codec::{
     Deserialize, Serialize, Size, TlsByteSliceU16, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8,
     TlsDeserialize, TlsSerialize, TlsSize,
@@ -6,7 +6,7 @@ use tls_codec::{
 
 use crate::{
     ciphersuite::hash_ref::{HashReference, KeyPackageRef},
-    prelude::LibraryError,
+    error::LibraryError,
     tree::{
         index::SecretTreeLeafIndex, secret_tree::SecretType,
         sender_ratchet::SenderRatchetConfiguration,

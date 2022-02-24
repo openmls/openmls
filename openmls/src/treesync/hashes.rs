@@ -1,13 +1,9 @@
 //! This module contains helper structs and functions related to parent hashing
 //! and tree hashing.
-use openmls_traits::{crypto::OpenMlsCrypto, OpenMlsCryptoProvider};
+use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
 use tls_codec::{Serialize, TlsSerialize, TlsSize, TlsSliceU32, TlsSliceU8};
 
-use crate::{
-    binary_tree::LeafIndex,
-    ciphersuite::{Ciphersuite, HpkePublicKey},
-    error::LibraryError,
-};
+use crate::{binary_tree::LeafIndex, ciphersuite::HpkePublicKey, error::LibraryError};
 
 use super::node::parent_node::ParentNode;
 use crate::key_packages::KeyPackage;

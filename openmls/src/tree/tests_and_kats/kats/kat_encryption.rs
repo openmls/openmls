@@ -78,7 +78,9 @@
 //! section of the specification.
 
 use crate::{
-    ciphersuite::Ciphersuite,
+    ciphersuite::Secret, messages::proposals::RemoveProposal, tree::index::SecretTreeLeafIndex,
+};
+use crate::{
     credentials::{CredentialBundle, CredentialType},
     framing::*,
     group::*,
@@ -93,9 +95,6 @@ use crate::{
     },
     utils::random_u64,
     versions::ProtocolVersion,
-};
-use crate::{
-    ciphersuite::Secret, messages::proposals::RemoveProposal, tree::index::SecretTreeLeafIndex,
 };
 
 use openmls_traits::{types::SignatureScheme, OpenMlsCryptoProvider};

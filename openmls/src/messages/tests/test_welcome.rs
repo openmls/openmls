@@ -2,7 +2,7 @@
 
 use crate::{
     ciphersuite::hash_ref::KeyPackageRef,
-    ciphersuite::{signable::Signable, AeadKey, AeadNonce, Ciphersuite, Mac, Secret},
+    ciphersuite::{signable::Signable, AeadKey, AeadNonce, Mac, Secret},
     credentials::{CredentialBundle, CredentialType},
     group::GroupId,
     messages::{ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload, Welcome},
@@ -13,7 +13,9 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{crypto::OpenMlsCrypto, random::OpenMlsRand, OpenMlsCryptoProvider};
+use openmls_traits::{
+    crypto::OpenMlsCrypto, random::OpenMlsRand, types::Ciphersuite, OpenMlsCryptoProvider,
+};
 use tls_codec::{Deserialize, Serialize};
 
 #[apply(ciphersuites_and_backends)]

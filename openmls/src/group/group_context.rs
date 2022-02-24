@@ -2,6 +2,8 @@
 //!
 //! TODO: #779
 
+use openmls_traits::types::Ciphersuite;
+
 use super::*;
 
 #[derive(

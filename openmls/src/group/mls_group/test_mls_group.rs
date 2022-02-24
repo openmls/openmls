@@ -4,12 +4,9 @@ use tls_codec::Serialize;
 
 use crate::{
     ciphersuite::hash_ref::KeyPackageRef,
-    credentials::*,
-    framing::*,
-    group::errors::ValidationError,
-    group::*,
-    key_packages::*,
-    messages::proposals::*,
+    credentials::{errors::CredentialError, *},
+    group::{errors::ValidationError, mls_group::*},
+    key_packages::{errors::*, *},
     test_utils::test_framework::{
         errors::ClientError, ActionType::Commit, CodecUse, MlsGroupTestSetup,
     },

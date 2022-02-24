@@ -10,7 +10,7 @@ use crate::ciphersuite::*;
 use crate::credentials::*;
 use crate::group::*;
 use crate::messages::{proposals::*, *};
-use crate::schedule::*;
+use crate::schedule::{message_secrets::*, *};
 pub(crate) use serde::{Deserialize, Serialize};
 use tls_codec::*;
 

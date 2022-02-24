@@ -1,16 +1,17 @@
-use crate::group::GroupId;
-use crate::messages::ProposalType;
 use crate::{
-    ciphersuite::Ciphersuite,
     credentials::{CredentialBundle, CredentialType},
     framing::{FramingParameters, WireFormat},
+    group::GroupId,
     key_packages::KeyPackageBundle,
-    messages::public_group_state::VerifiablePublicGroupState,
+    messages::{
+        proposals::{ProposalOrRef, ProposalType},
+        public_group_state::VerifiablePublicGroupState,
+    },
     test_utils::*,
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use tls_codec::{Deserialize, Serialize};
 
 use super::{
@@ -217,9 +218,7 @@ fn test_external_init(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
             .as_slice()
             .iter()
             .find(|&proposal| match proposal {
-                crate::messages::ProposalOrRef::Proposal(proposal) => {
-                    proposal.is_type(ProposalType::Remove)
-                }
+                ProposalOrRef::Proposal(proposal) => proposal.is_type(ProposalType::Remove),
                 _ => false,
             }),
         _ => panic!("Wrong content type."),

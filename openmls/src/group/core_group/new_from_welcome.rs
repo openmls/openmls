@@ -8,8 +8,8 @@ use crate::{
     group::{core_group::*, errors::WelcomeError, *},
     key_packages::*,
     messages::*,
-    schedule::*,
-    treesync::node::Node,
+    schedule::{errors::PskError, *},
+    treesync::{errors::TreeSyncFromNodesError, node::Node},
 };
 
 impl CoreGroup {

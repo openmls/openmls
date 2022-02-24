@@ -2,23 +2,30 @@
 //! https://openmls.tech/book/message_validation.html#semantic-validation-of-proposals-covered-by-a-commit
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::{key_store::OpenMlsKeyStore, OpenMlsCryptoProvider};
+use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
 
 use rstest::*;
 use rstest_reuse::{self, *};
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
-    ciphersuite::{hash_ref::ProposalRef, signable::Signable},
+    ciphersuite::{hash_ref::ProposalRef, signable::Signable, *},
     credentials::*,
     framing::{
         MlsMessageIn, MlsMessageOut, MlsPlaintext, MlsPlaintextContentType, ProcessedMessage,
         Sender, VerifiableMlsPlaintext,
     },
-    group::errors::*,
-    group::*,
+    group::{
+        errors::*,
+        mls_group::{config::*, errors::*, *},
+        *,
+    },
     key_packages::*,
-    messages::{AddProposal, Proposal, ProposalOrRef, RemoveProposal, UpdateProposal, Welcome},
+    messages::{
+        proposals::{AddProposal, Proposal, ProposalOrRef, RemoveProposal, UpdateProposal},
+        Welcome,
+    },
+    treesync::errors::ApplyUpdatePathError,
     versions::ProtocolVersion,
 };
 

@@ -8,16 +8,20 @@ use rayon::prelude::*;
 use std::collections::HashSet;
 use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
-use openmls_traits::{crypto::OpenMlsCrypto, types::HpkeCiphertext, OpenMlsCryptoProvider};
+use openmls_traits::{
+    crypto::OpenMlsCrypto,
+    types::{Ciphersuite, HpkeCiphertext},
+    OpenMlsCryptoProvider,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::{LeafIndex, OutOfBoundsError},
-    ciphersuite::{hash_ref::KeyPackageRef, Ciphersuite, HpkePublicKey},
+    ciphersuite::{hash_ref::KeyPackageRef, HpkePublicKey},
     error::LibraryError,
     key_packages::KeyPackage,
     messages::{proposals::AddProposal, EncryptedGroupSecrets, GroupSecrets, PathSecret},
-    schedule::{CommitSecret, JoinerSecret, PreSharedKeys},
+    schedule::{psk::PreSharedKeys, CommitSecret, JoinerSecret},
     versions::ProtocolVersion,
 };
 

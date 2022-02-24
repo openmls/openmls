@@ -128,10 +128,10 @@
 
 use crate::{
     binary_tree::LeafIndex,
-    ciphersuite::{AeadKey, AeadNonce, Ciphersuite, HpkePrivateKey, Mac, Secret},
+    ciphersuite::{AeadKey, AeadNonce, HpkePrivateKey, Mac, Secret},
     error::LibraryError,
     framing::{MembershipTag, MlsPlaintextTbmPayload},
-    messages::{ConfirmationTag, PathSecret, PublicGroupState},
+    messages::{public_group_state::PublicGroupState, ConfirmationTag, PathSecret},
     tree::secret_tree::SecretTree,
     versions::ProtocolVersion,
 };
@@ -148,19 +148,15 @@ pub(crate) mod message_secrets;
 pub(crate) mod psk;
 
 // Private
-#[cfg(test)]
-mod unit_tests;
+use errors::*;
+use message_secrets::MessageSecrets;
+use psk::*;
 
 // Tests
 #[cfg(any(feature = "test-utils", test))]
 pub mod kat_key_schedule;
-
-// Public re-exports
-pub use errors::*;
-
-// Crate re-exports
-pub(crate) use message_secrets::*;
-pub(crate) use psk::*;
+#[cfg(test)]
+mod unit_tests;
 
 // Public types
 

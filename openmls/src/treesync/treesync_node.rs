@@ -1,13 +1,12 @@
 //! This module contains the [`TreeSyncNode`] struct and its implementation.
 
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tls_codec::TlsSliceU8;
 
 use crate::{
     binary_tree::{LeafIndex, MlsBinaryTreeDiffError},
-    ciphersuite::Ciphersuite,
     error::LibraryError,
     treesync::hashes::{LeafNodeHashInput, ParentNodeTreeHashInput},
 };

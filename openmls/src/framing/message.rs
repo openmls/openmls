@@ -1,13 +1,14 @@
 //! MLS Message types
 //!
-//! This module defines two opaque message types that are used by the [`MlsGroup`] API.
+//! This module defines two opaque message types that are used by the [`MlsGroup`](crate::group::mls_group::MlsGroup) API.
 //! [`MlsMessageIn`] is used for messages between the Delivery Service and the client. It can be instantiated
 //! from a byte slice.
-//! [`MlsMessageOut`] is returned by various functions of the [`MlsGroup`] API. It is to be used between
-//! the client and the Delivery Service. It can be serialized to a byte vector.
+//! [`MlsMessageOut`] is returned by various functions of the [`MlsGroup`](crate::group::mls_group::MlsGroup) API.
+//! It is to be used between the client and the Delivery Service. It can be serialized to a byte vector.
 //!
 //! Both messages have the same API. The framing part of the message can be inspected through it. In particular,
-//! it is important to look at [`MlsMessageIn::group_id()`] to determine in which [`MlsGroup`] it should be processed.
+//! it is important to look at [`MlsMessageIn::group_id()`] to determine in which
+//! [`MlsGroup`](crate::group::mls_group::MlsGroup) it should be processed.
 
 use tls_codec::{Deserialize, Serialize};
 

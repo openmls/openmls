@@ -1,3 +1,4 @@
+use crate::treesync::errors::TreeSyncAddLeaf;
 use crate::treesync::{diff::StagedTreeSyncDiff, treekem::DecryptPathParams};
 
 use super::proposals::{

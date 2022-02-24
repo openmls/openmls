@@ -1,3 +1,7 @@
+//! MLS group membership
+//!
+//! This module contains membership-related operations and exposes [`RemoveOperation`].
+
 #[cfg(any(feature = "test-utils", test))]
 use std::collections::BTreeMap;
 

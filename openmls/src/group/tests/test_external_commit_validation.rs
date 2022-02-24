@@ -3,7 +3,7 @@
 //! https://github.com/openmls/openmls/wiki/Message-validation
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::key_store::OpenMlsKeyStore;
+use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
 use tls_codec::{Deserialize, Serialize};
 
 use rstest::*;
@@ -11,13 +11,19 @@ use rstest_reuse::{self, *};
 
 use crate::{
     ciphersuite::signable::{Signable, Verifiable},
-    credentials::*,
+    credentials::{errors::*, *},
     framing::*,
-    group::errors::{ExternalCommitValidationError, StageCommitError, ValidationError},
-    group::*,
+    group::{
+        errors::{ExternalCommitValidationError, StageCommitError, ValidationError},
+        mls_group::{config::*, errors::*, *},
+        *,
+    },
     messages::{
-        public_group_state::VerifiablePublicGroupState, AddProposal, ExternalInitProposal,
-        Proposal, ProposalOrRef, ProposalType, RemoveProposal, UpdateProposal,
+        proposals::{
+            AddProposal, ExternalInitProposal, Proposal, ProposalOrRef, ProposalType,
+            RemoveProposal, UpdateProposal,
+        },
+        public_group_state::VerifiablePublicGroupState,
     },
 };
 
@@ -153,10 +159,8 @@ fn test_valsem240(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .proposals
         .iter()
         .position(|proposal| match proposal {
-            crate::messages::ProposalOrRef::Proposal(proposal) => {
-                proposal.is_type(ProposalType::ExternalInit)
-            }
-            crate::messages::ProposalOrRef::Reference(_) => false,
+            ProposalOrRef::Proposal(proposal) => proposal.is_type(ProposalType::ExternalInit),
+            ProposalOrRef::Reference(_) => false,
         })
         .expect("Couldn't find external init proposal.");
 
@@ -573,10 +577,8 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .proposals
         .iter()
         .position(|proposal| match proposal {
-            crate::messages::ProposalOrRef::Proposal(proposal) => {
-                proposal.is_type(ProposalType::Remove)
-            }
-            crate::messages::ProposalOrRef::Reference(_) => false,
+            ProposalOrRef::Proposal(proposal) => proposal.is_type(ProposalType::Remove),
+            ProposalOrRef::Reference(_) => false,
         })
         .expect("Couldn't find remove proposal.");
 

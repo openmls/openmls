@@ -6,10 +6,7 @@
 //! [`ProposalType::is_supported()`] can be used.
 
 use crate::{
-    ciphersuite::{
-        hash_ref::{KeyPackageRef, ProposalRef},
-        *,
-    },
+    ciphersuite::hash_ref::{KeyPackageRef, ProposalRef},
     error::LibraryError,
     extensions::Extension,
     group::GroupId,
@@ -18,7 +15,7 @@ use crate::{
     versions::ProtocolVersion,
 };
 
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use tls_codec::{
