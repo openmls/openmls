@@ -27,6 +27,7 @@ use crate::{
     key_packages::{KeyPackage, KeyPackageBundle},
     messages::{proposals::*, Welcome},
     schedule::ResumptionSecret,
+    treesync::Node,
 };
 use ser::*;
 use std::io::{Error, Read, Write};
@@ -35,8 +36,6 @@ use std::io::{Error, Read, Write};
 pub(crate) use resumption::ResumptionSecretStore;
 
 // Public exports
-pub use crate::treesync::node::Node;
-pub use crate::treesync::node::{leaf_node::LeafNode, parent_node::ParentNode};
 pub use {config::*, errors::*, membership::RemoveOperation};
 
 /// Pending Commit state. Differentiates between Commits issued by group members
