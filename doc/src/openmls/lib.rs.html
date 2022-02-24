@@ -178,12 +178,6 @@
 <span id="177">177</span>
 <span id="178">178</span>
 <span id="179">179</span>
-<span id="180">180</span>
-<span id="181">181</span>
-<span id="182">182</span>
-<span id="183">183</span>
-<span id="184">184</span>
-<span id="185">185</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">doc</span> <span class="op">=</span> <span class="macro">include_str!</span>(<span class="string">&quot;../../README.md&quot;</span>)]</span>
 <span class="doccomment">//! ## Quick Start</span>
 <span class="doccomment">//! For a quick start to learn how OpenMLS works here&#39;s the basic code to set</span>
@@ -241,7 +235,6 @@
 <span class="doccomment">//!     // Create the key package bundle</span>
 <span class="doccomment">//!     let key_package_bundle =</span>
 <span class="doccomment">//!         KeyPackageBundle::new(ciphersuites, &amp;credential_bundle, backend, vec![])?;</span>
-<span class="doccomment">//!     // let key_package = key_package_bundle.key_package().clone();</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//!     // Store it in the key store</span>
 <span class="doccomment">//!     let key_package_id = key_package_bundle.key_package()</span>
@@ -353,22 +346,17 @@
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">group</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">key_packages</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">messages</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">schedule</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">treesync</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">versions</span>;
 
 <span class="comment">// Private</span>
 <span class="kw">mod</span> <span class="ident">binary_tree</span>;
 <span class="kw">mod</span> <span class="ident">key_store</span>;
-<span class="kw">mod</span> <span class="ident">schedule</span>;
 <span class="kw">mod</span> <span class="ident">tree</span>;
-<span class="kw">mod</span> <span class="ident">treesync</span>;
 
 <span class="doccomment">/// Single place, re-exporting the most used public functions.</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">prelude</span>;
-
-<span class="comment">// Re-export types from Key Schedule</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schedule</span>::{<span class="ident">errors::PskError</span>, <span class="ident">AuthenticationSecret</span>, <span class="ident">ResumptionSecret</span>};
-<span class="comment">// Re-export types from TreeSync</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::errors</span>::{<span class="ident">ApplyUpdatePathError</span>, <span class="ident">PublicTreeError</span>};
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="openmls" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div>
 </body></html>

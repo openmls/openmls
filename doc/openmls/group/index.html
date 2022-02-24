@@ -9,8 +9,6 @@
 <div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.GroupEpoch.html" title="openmls::group::GroupEpoch struct">GroupEpoch</a></div><div class="item-right docblock-short"><p>Group epoch. Internally this is stored as a <code>u64</code>.
 The group epoch is incremented with every valid Commit that is merged into the group state.</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.GroupId.html" title="openmls::group::GroupId struct">GroupId</a></div><div class="item-right docblock-short"><p>A group ID. The group ID is chosen by the creator of the group and should be globally unique.</p>
-</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.LeafNode.html" title="openmls::group::LeafNode struct">LeafNode</a></div><div class="item-right docblock-short"><p>This struct implements the MLS leaf node and contains a <a href="../key_packages/struct.KeyPackage.html" title="KeyPackage"><code>KeyPackage</code></a> and
-potentially a corresponding <code>HpkePrivateKey</code>.</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.MlsGroup.html" title="openmls::group::MlsGroup struct">MlsGroup</a></div><div class="item-right docblock-short"><p>A <code>MlsGroup</code> represents an MLS group with
 a high-level API. The API exposes
 high level functions to manage a group by adding/removing members, get the
@@ -18,9 +16,6 @@ current member list, etc.</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.MlsGroupConfig.html" title="openmls::group::MlsGroupConfig struct">MlsGroupConfig</a></div><div class="item-right docblock-short"><p>Specifies the configuration parameters for a <a href="struct.MlsGroup.html" title="MlsGroup"><code>MlsGroup</code></a>. Refer to
 the <a href="https://openmls.tech/book/user_manual/group_config.html">User Manual</a> for more information about the different configuration values.</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.MlsGroupConfigBuilder.html" title="openmls::group::MlsGroupConfigBuilder struct">MlsGroupConfigBuilder</a></div><div class="item-right docblock-short"><p>Builder for an <a href="config/struct.MlsGroupConfig.html" title="MlsGroupConfig"><code>MlsGroupConfig</code></a>.</p>
-</div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.ParentNode.html" title="openmls::group::ParentNode struct">ParentNode</a></div><div class="item-right docblock-short"><p>This struct implements the MLS parent node. It contains its public key,
-parent hash and unmerged leaves. Additionally, it may contain the private
-key corresponding to the public key.</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.ProposalStore.html" title="openmls::group::ProposalStore struct">ProposalStore</a></div><div class="item-right docblock-short"><p>A <a href="struct.ProposalStore.html" title="ProposalStore">ProposalStore</a> can store the standalone proposals that are received from the DS
 in between two commit messages.</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.QueuedAddProposal.html" title="openmls::group::QueuedAddProposal struct">QueuedAddProposal</a></div><div class="item-right docblock-short"><p>A queued Add proposal</p>
@@ -52,7 +47,6 @@ Note that application messages must always be encrypted.</p>
 states and their transitions are as follows:</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.MlsGroupStateError.html" title="openmls::group::MlsGroupStateError enum">MlsGroupStateError</a></div><div class="item-right docblock-short"><p>Group state error</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.NewGroupError.html" title="openmls::group::NewGroupError enum">NewGroupError</a></div><div class="item-right docblock-short"><p>New group error</p>
-</div></div><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.Node.html" title="openmls::group::Node enum">Node</a></div><div class="item-right docblock-short"><p>Container enum for leaf and parent nodes.</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.OutgoingWireFormatPolicy.html" title="openmls::group::OutgoingWireFormatPolicy enum">OutgoingWireFormatPolicy</a></div><div class="item-right docblock-short"><p>Defines what wire format should be used for outgoing handshake messages.
 Note that application messages must always be encrypted.</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="enum" href="enum.ParseMessageError.html" title="openmls::group::ParseMessageError enum">ParseMessageError</a></div><div class="item-right docblock-short"><p>Parse message error</p>

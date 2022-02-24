@@ -405,7 +405,6 @@
 <span id="404">404</span>
 <span id="405">405</span>
 <span id="406">406</span>
-<span id="407">407</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">application</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
 <span class="kw">mod</span> <span class="ident">creation</span>;
@@ -435,6 +434,7 @@
     <span class="ident">key_packages</span>::{<span class="ident">KeyPackage</span>, <span class="ident">KeyPackageBundle</span>},
     <span class="ident">messages</span>::{<span class="ident">proposals</span>::<span class="kw-2">*</span>, <span class="ident">Welcome</span>},
     <span class="ident">schedule::ResumptionSecret</span>,
+    <span class="ident">treesync::Node</span>,
 };
 <span class="kw">use</span> <span class="ident">ser</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std::io</span>::{<span class="ident">Error</span>, <span class="ident">Read</span>, <span class="ident">Write</span>};
@@ -443,8 +443,6 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">resumption::ResumptionSecretStore</span>;
 
 <span class="comment">// Public exports</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::node::Node</span>;
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::node</span>::{<span class="ident">leaf_node::LeafNode</span>, <span class="ident">parent_node::ParentNode</span>};
 <span class="kw">pub</span> <span class="kw">use</span> {<span class="ident">config</span>::<span class="kw-2">*</span>, <span class="ident">errors</span>::<span class="kw-2">*</span>, <span class="ident">membership::RemoveOperation</span>};
 
 <span class="doccomment">/// Pending Commit state. Differentiates between Commits issued by group members</span>
