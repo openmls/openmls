@@ -1,4 +1,4 @@
-#![doc = include_str!("../../README.md")]
+#![doc = include_str!("../README.md")]
 //! ## Quick Start
 //! For a quick start to learn how OpenMLS works here's the basic code to set
 //! up to parties and have them create a group.
