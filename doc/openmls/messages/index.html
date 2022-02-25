@@ -8,8 +8,9 @@ as well as Proposals &amp; the public group state used for External Commits.</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="proposals/index.html" title="openmls::messages::proposals mod">proposals</a></div><div class="item-right docblock-short"><p>Proposals</p>
 </div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="public_group_state/index.html" title="openmls::messages::public_group_state mod">public_group_state</a></div><div class="item-right docblock-short"><p>This module contains the types and implementations for the
 <code>PublicGroupState</code> and <code>PublicGroupStateTbs</code> structs of the MLS spec. The
-<code>PublicGroupState</code> implements type-enforced verification in the same way as
-the <code>MlsPlaintext</code> and as described in the <a href="https://github.com/openmls/openmls/wiki/Signable"><code>OpenMLS Wiki</code></a>.</p>
+<code>PublicGroupState</code> implements type-enforced verification using the set of
+traits defined in the <a href="../ciphersuite/signable/index.html"><code>signable</code></a> module in
+the same way as the <code>MlsPlaintext</code>.</p>
 </div></div></div><h2 id="structs" class="small-section-header"><a href="#structs">Structs</a></h2>
 <div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="struct" href="struct.ConfirmationTag.html" title="openmls::messages::ConfirmationTag struct">ConfirmationTag</a></div><div class="item-right docblock-short"><p>Confirmation tag field of MlsPlaintext. For type safety this is a wrapper
 around a <code>Mac</code>.</p>
