@@ -9,14 +9,10 @@ use rstest::*;
 use rstest_reuse::{self, *};
 
 use crate::{
-    ciphersuite::{hash_ref::KeyPackageRef, *},
+    ciphersuite::hash_ref::KeyPackageRef,
     credentials::*,
     framing::*,
-    group::{
-        errors::*,
-        mls_group::{config::*, errors::*, *},
-        GroupId,
-    },
+    group::{errors::*, *},
     key_packages::*,
 };
 

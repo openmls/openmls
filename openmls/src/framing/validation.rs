@@ -303,7 +303,7 @@ impl UnverifiedContextMessage {
                     plaintext,
                     // If the message type is `Sender` or `NewMember`, the
                     // message always contains a credential.
-                    credential: credential_option.ok_or({
+                    credential: credential_option.ok_or_else(|| {
                         ValidationError::from(LibraryError::custom("Expected credential"))
                     })?,
                 }))

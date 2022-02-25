@@ -14,6 +14,8 @@ use thiserror::Error;
 
 // === Public errors ===
 
+pub use super::mls_group::errors::*;
+
 /// Welcome error
 #[derive(Error, Debug, PartialEq, Clone)]
 pub enum WelcomeError {

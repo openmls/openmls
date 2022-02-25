@@ -1,9 +1,6 @@
 use thiserror::Error;
 
-use crate::{
-    error::LibraryError,
-    group::{errors::WelcomeError, mls_group::errors::*},
-};
+use crate::{error::LibraryError, group::errors::*};
 
 /// Setup error
 #[derive(Error, Debug, PartialEq, Clone)]

@@ -440,8 +440,7 @@ impl TreeSync {
                 Ok(leaf) => leaf
                     .node()
                     .as_ref()
-                    .map(|node| node.as_leaf_node().ok())
-                    .flatten(),
+                    .and_then(|node| node.as_leaf_node().ok()),
                 Err(_) => None,
             },
             Err(_) => None,

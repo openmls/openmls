@@ -33,11 +33,11 @@ use errors::*;
 use resumption::*;
 use ser::*;
 
-// Public
-pub mod config;
-pub mod errors;
-pub mod membership;
-pub mod processing;
+// Crate
+pub(crate) mod config;
+pub(crate) mod errors;
+pub(crate) mod membership;
+pub(crate) mod processing;
 
 // Tests
 #[cfg(test)]
