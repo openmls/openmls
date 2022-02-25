@@ -3,6 +3,7 @@
 
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::key_store::OpenMlsKeyStore;
+use openmls_traits::types::Ciphersuite;
 use tls_codec::{Deserialize, Serialize};
 
 use rstest::*;
@@ -13,10 +14,9 @@ use crate::{
     ciphersuite::signable::{Signable, Verifiable},
     credentials::*,
     framing::*,
-    group::errors::StageCommitError,
-    group::mls_group::UnverifiedMessageError,
-    messages::ProposalOrRef,
-    treesync::ApplyUpdatePathError,
+    group::errors::*,
+    messages::proposals::ProposalOrRef,
+    treesync::errors::ApplyUpdatePathError,
 };
 
 use super::utils::{generate_credential_bundle, generate_key_package_bundle};

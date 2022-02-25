@@ -34,10 +34,7 @@
 //! ProcessedMessage (Application, Proposal, ExternalProposal, Commit, External Commit)
 //! ```
 
-use crate::{
-    group::errors::ValidationError, schedule::MessageSecrets, tree::index::SecretTreeLeafIndex,
-    treesync::TreeSync,
-};
+use crate::{group::errors::ValidationError, tree::index::SecretTreeLeafIndex, treesync::TreeSync};
 use core_group::{proposals::QueuedProposal, staged_commit::StagedCommit};
 use openmls_traits::OpenMlsCryptoProvider;
 
@@ -306,7 +303,7 @@ impl UnverifiedContextMessage {
                     plaintext,
                     // If the message type is `Sender` or `NewMember`, the
                     // message always contains a credential.
-                    credential: credential_option.ok_or({
+                    credential: credential_option.ok_or_else(|| {
                         ValidationError::from(LibraryError::custom("Expected credential"))
                     })?,
                 }))
@@ -422,13 +419,14 @@ pub enum ProcessedMessage {
     ///
     /// The [`QueuedProposal`] can be inspected for authorization purposes by the application.
     /// If the proposal is deemed to be allowed, it should be added to the group's proposal
-    /// queue using [`MlsGroup::store_pending_proposal()`].
+    /// queue using [`MlsGroup::store_pending_proposal()`](crate::group::mls_group::MlsGroup::store_pending_proposal()).
     ProposalMessage(Box<QueuedProposal>),
     /// A Commit message.
     ///
     /// The [`StagedCommit`] can be inspected for authorization purposes by the application.
     /// If the type of the commit and the proposals it covers are deemed to be allowed,
-    /// the commit should be merged into the group's state using [`MlsGroup::merge_staged_commit()`].
+    /// the commit should be merged into the group's state using
+    /// [`MlsGroup::merge_staged_commit()`](crate::group::mls_group::MlsGroup::merge_staged_commit()).
     StagedCommitMessage(Box<StagedCommit>),
 }
 

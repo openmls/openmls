@@ -1,9 +1,3 @@
-use crate::group::errors::*;
-
-use crate::messages::proposals::{
-    AddProposal, PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalOrRefType, ProposalType,
-    RemoveProposal, UpdateProposal,
-};
 use crate::{
     ciphersuite::{
         hash_ref::{KeyPackageRef, ProposalRef},
@@ -11,12 +5,16 @@ use crate::{
     },
     error::LibraryError,
     framing::*,
+    group::errors::*,
+    messages::proposals::{
+        AddProposal, PreSharedKeyProposal, Proposal, ProposalOrRef, ProposalOrRefType,
+        ProposalType, RemoveProposal, UpdateProposal,
+    },
 };
 
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
-use std::collections::{hash_map::Entry, HashMap};
+use std::collections::{hash_map::Entry, HashMap, HashSet};
 
 /// A [ProposalStore] can store the standalone proposals that are received from the DS
 /// in between two commit messages.

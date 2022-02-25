@@ -10,7 +10,7 @@ use crate::{
     framing::Sender,
     group::errors::ExternalCommitValidationError,
     group::errors::ValidationError,
-    messages::{Proposal, ProposalOrRefType, ProposalType},
+    messages::proposals::{Proposal, ProposalOrRefType, ProposalType},
 };
 
 use super::{

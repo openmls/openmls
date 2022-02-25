@@ -2,6 +2,8 @@
 //!
 //! TODO: #779
 
+use openmls_traits::types::Ciphersuite;
+
 use super::*;
 
 #[derive(
@@ -76,8 +78,7 @@ impl GroupContext {
         self.extensions
             .iter()
             .find(|e| e.extension_type() == ExtensionType::RequiredCapabilities)
-            .map(|e| e.as_required_capabilities_extension().ok())
-            .flatten()
+            .and_then(|e| e.as_required_capabilities_extension().ok())
     }
 
     /// Return the confirmed transcript hash

@@ -2,136 +2,131 @@
 //!
 //! This module contains the types and implementations for key schedule operations.
 //! It exposes the [`AuthenticationSecret`] & [`ResumptionSecret`].
-//!
-//! The key schedule is introduced in Section 9 of the
-//! MLS specification. The key schedule evolves in epochs, where in each epoch
-//! new key material is injected.
-//!
-//! The flow of the key schedule is as follows (from Section 9 of the MLS
-//! specification):
-//!
-//! ```text
-//!                  init_secret_[n-1]
-//!                         |
-//!                         V
-//!    commit_secret -> KDF.Extract
-//!                         |
-//!                         V
-//!                   DeriveSecret(., "joiner")
-//!                         |
-//!                         V
-//!                    joiner_secret
-//!                         |
-//!                         V
-//! psk_secret (or 0) -> KDF.Extract (= intermediary_secret)
-//!                         |
-//!                         +--> DeriveSecret(., "welcome")
-//!                         |    = welcome_secret
-//!                         |
-//!                         V
-//!                   ExpandWithLabel(., "epoch", GroupContext_[n], KDF.Nh)
-//!                         |
-//!                         V
-//!                    epoch_secret
-//!                         |
-//!                         +--> DeriveSecret(., <label>)
-//!                         |    = <secret>
-//!                         |
-//!                         V
-//!                   DeriveSecret(., "init")
-//!                         |
-//!                         V
-//!                   init_secret_[n]
-//! ```
-//!
-//! Each of the secrets in the key schedule (with exception of the
-//! welcome_secret) is represented by its own struct to ensure that the keys are
-//! not confused with one-another and/or that the schedule is not derived
-//! out-of-order.
-//!
-//! ## The real key schedules
-//! The key schedule as described in the spec isn't really one key schedule.
-//! The `joiner_secret` is an intermediate value *and* an output value. This
-//! must never be the case within a key schedule. The actual key schedule is
-//! therefore only the second half starting with the `joiner_secret`, which
-//! indeed is what happens when starting a group from a welcome message.
-//!
-//! The `joiner_secret` is computed as
-//!
-//! ```text
-//!     DeriveSecret(KDF.Extract(init_secret_[n-1], commit_secret), "joiner")
-//! ```
-//!
-//! or
-//!
-//! ```text
-//!                  init_secret_[n-1]
-//!                         |
-//!                         V
-//!    commit_secret -> KDF.Extract
-//!                         |
-//!                         V
-//!                   DeriveSecret(., "joiner")
-//!                         |
-//!                         V
-//!                    joiner_secret
-//! ```
-//!
-//! The remainder of the key schedule then starts with the `joiner_secret` and
-//! `psk_secret`. Note that the following graph also adds the `GroupContext_[n]`
-//! as input, which is omitted in the spec.
-//! Further note that the derivation of the secrets from the `epoch_secret` is
-//! simplified here.
-//!
-//! ```text
-//!                    joiner_secret
-//!                         |
-//!                         V
-//! psk_secret (or 0) -> KDF.Extract
-//!                         |
-//!                         +--> DeriveSecret(., "welcome")
-//!                         |    = welcome_secret
-//!                         |
-//!                         V
-//! GroupContext_[n] -> ExpandWithLabel(., "epoch", GroupContext_[n], KDF.Nh)
-//!                         |
-//!                         V
-//!                    epoch_secret
-//!                         |
-//!                         v
-//!                 DeriveSecret(., <label>)
-//!                     = <secret>
-//! ```
-//!
-//! with
-//!
-//! ```text
-//! | secret                  | label           |
-//! |:------------------------|:----------------|
-//! | `init_secret`           | "init"          |
-//! | `sender_data_secret`    | "sender data"   |
-//! | `encryption_secret`     | "encryption"    |
-//! | `exporter_secret`       | "exporter"      |
-//! | `authentication_secret` | "authentication"|
-//! | `external_secret`       | "external"      |
-//! | `confirmation_key`      | "confirm"       |
-//! | `membership_key`        | "membership"    |
-//! | `resumption_secret`     | "resumption"    |
-//! ```
-//!
-//! ### Don't Panic!
-//!
-//! Functions in this module should never panic. However, if there is a bug in
-//! the implementation, a function will return an unrecoverable `LibraryError`.
-//! This means that some functions that are not expected to fail and throw an
-//! error, will still return a `Result` since they may throw a `LibraryError`.
+
+// Internal documentation
+//
+// The key schedule is introduced in Section 9 of the
+// MLS specification. The key schedule evolves in epochs, where in each epoch
+// new key material is injected.
+//
+// The flow of the key schedule is as follows (from Section 9 of the MLS
+// specification):
+//
+// ```text
+//                  init_secret_[n-1]
+//                         |
+//                         V
+//    commit_secret -> KDF.Extract
+//                         |
+//                         V
+//                   DeriveSecret(., "joiner")
+//                         |
+//                         V
+//                    joiner_secret
+//                         |
+//                         V
+// psk_secret (or 0) -> KDF.Extract (= intermediary_secret)
+//                         |
+//                         +--> DeriveSecret(., "welcome")
+//                         |    = welcome_secret
+//                         |
+//                         V
+//                   ExpandWithLabel(., "epoch", GroupContext_[n], KDF.Nh)
+//                         |
+//                         V
+//                    epoch_secret
+//                         |
+//                         +--> DeriveSecret(., <label>)
+//                         |    = <secret>
+//                         |
+//                         V
+//                   DeriveSecret(., "init")
+//                         |
+//                         V
+//                   init_secret_[n]
+// ```
+//
+// Each of the secrets in the key schedule (with exception of the
+// welcome_secret) is represented by its own struct to ensure that the keys are
+// not confused with one-another and/or that the schedule is not derived
+// out-of-order.
+//
+// ## The real key schedules
+// The key schedule as described in the spec isn't really one key schedule.
+// The `joiner_secret` is an intermediate value *and* an output value. This
+// must never be the case within a key schedule. The actual key schedule is
+// therefore only the second half starting with the `joiner_secret`, which
+// indeed is what happens when starting a group from a welcome message.
+//
+// The `joiner_secret` is computed as
+//
+// ```text
+//     DeriveSecret(KDF.Extract(init_secret_[n-1], commit_secret), "joiner")
+// ```
+//
+// or
+//
+// ```text
+//                  init_secret_[n-1]
+//                         |
+//                         V
+//    commit_secret -> KDF.Extract
+//                         |
+//                         V
+//                   DeriveSecret(., "joiner")
+//                         |
+//                         V
+//                    joiner_secret
+// ```
+//
+// The remainder of the key schedule then starts with the `joiner_secret` and
+// `psk_secret`. Note that the following graph also adds the `GroupContext_[n]`
+// as input, which is omitted in the spec.
+// Further note that the derivation of the secrets from the `epoch_secret` is
+// simplified here.
+//
+// ```text
+//                    joiner_secret
+//                         |
+//                         V
+// psk_secret (or 0) -> KDF.Extract
+//                         |
+//                         +--> DeriveSecret(., "welcome")
+//                         |    = welcome_secret
+//                         |
+//                         V
+// GroupContext_[n] -> ExpandWithLabel(., "epoch", GroupContext_[n], KDF.Nh)
+//                         |
+//                         V
+//                    epoch_secret
+//                         |
+//                         v
+//                 DeriveSecret(., <label>)
+//                     = <secret>
+// ```
+//
+// with
+//
+// ```text
+// | secret                  | label           |
+// |:------------------------|:----------------|
+// | `init_secret`           | "init"          |
+// | `sender_data_secret`    | "sender data"   |
+// | `encryption_secret`     | "encryption"    |
+// | `exporter_secret`       | "exporter"      |
+// | `authentication_secret` | "authentication"|
+// | `external_secret`       | "external"      |
+// | `confirmation_key`      | "confirm"       |
+// | `membership_key`        | "membership"    |
+// | `resumption_secret`     | "resumption"    |
+// ```
 
 use crate::{
     binary_tree::LeafIndex,
-    ciphersuite::{AeadKey, AeadNonce, Ciphersuite, HpkePrivateKey, Mac, Secret},
+    ciphersuite::{AeadKey, AeadNonce, HpkePrivateKey, Mac, Secret},
     error::LibraryError,
     framing::{MembershipTag, MlsPlaintextTbmPayload},
-    messages::{ConfirmationTag, PathSecret, PublicGroupState},
+    messages::{public_group_state::PublicGroupState, ConfirmationTag, PathSecret},
     tree::secret_tree::SecretTree,
     versions::ProtocolVersion,
 };
@@ -148,19 +143,15 @@ pub(crate) mod message_secrets;
 pub(crate) mod psk;
 
 // Private
-#[cfg(test)]
-mod unit_tests;
+use errors::*;
+use message_secrets::MessageSecrets;
+use psk::*;
 
 // Tests
 #[cfg(any(feature = "test-utils", test))]
 pub mod kat_key_schedule;
-
-// Public re-exports
-pub use errors::*;
-
-// Crate re-exports
-pub(crate) use message_secrets::*;
-pub(crate) use psk::*;
+#[cfg(test)]
+mod unit_tests;
 
 // Public types
 

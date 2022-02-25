@@ -1,7 +1,6 @@
 //! This module implements the ratchet tree component of MLS.
 //!
-//! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`],
-//! as well as the following error types: [`ApplyUpdatePathError`], and [`PublicTreeError`].
+//! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].
 
 // # Internal documentation
 //
@@ -21,13 +20,15 @@
 
 use std::collections::BTreeMap;
 
-use openmls_traits::{types::CryptoError, OpenMlsCryptoProvider};
+use openmls_traits::{
+    types::{Ciphersuite, CryptoError},
+    OpenMlsCryptoProvider,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
     binary_tree::{LeafIndex, MlsBinaryTree, MlsBinaryTreeError},
     ciphersuite::hash_ref::KeyPackageRef,
-    ciphersuite::Ciphersuite,
     error::LibraryError,
     framing::SenderError,
     key_packages::{KeyPackage, KeyPackageBundle},
@@ -42,16 +43,18 @@ use self::{
 
 // Private
 mod hashes;
+use errors::*;
 
 // Crate
 pub(crate) mod diff;
-pub(crate) mod errors;
 pub(crate) mod node;
 pub(crate) mod treekem;
 pub(crate) mod treesync_node;
 
+// Public
+pub mod errors;
+
 // Public re-exports
-pub use errors::*;
 pub use node::{leaf_node::LeafNode, parent_node::ParentNode, Node};
 
 // Tests
@@ -437,8 +440,7 @@ impl TreeSync {
                 Ok(leaf) => leaf
                     .node()
                     .as_ref()
-                    .map(|node| node.as_leaf_node().ok())
-                    .flatten(),
+                    .and_then(|node| node.as_leaf_node().ok()),
                 Err(_) => None,
             },
             Err(_) => None,

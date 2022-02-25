@@ -44,12 +44,12 @@ use crate::{ciphersuite::*, error::LibraryError};
 
 // Private
 mod codec;
-mod errors;
 #[cfg(test)]
 mod tests;
+use errors::*;
 
-// Public re-exports
-pub use errors::*;
+// Public
+pub mod errors;
 
 /// CredentialType.
 ///

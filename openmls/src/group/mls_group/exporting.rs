@@ -1,7 +1,8 @@
 use tls_codec::Serialize;
 
 use crate::{
-    group::errors::ExporterError, messages::PublicGroupState, schedule::AuthenticationSecret,
+    group::errors::ExporterError, messages::public_group_state::PublicGroupState,
+    schedule::AuthenticationSecret,
 };
 
 use super::*;

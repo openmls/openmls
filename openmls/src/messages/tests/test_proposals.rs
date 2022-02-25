@@ -3,10 +3,7 @@ use openmls_traits::random::OpenMlsRand;
 use tls_codec::{Deserialize, Serialize};
 
 use crate::{
-    ciphersuite::{
-        hash_ref::{KeyPackageRef, ProposalRef},
-        Ciphersuite,
-    },
+    ciphersuite::hash_ref::{KeyPackageRef, ProposalRef},
     messages::proposals::{Proposal, ProposalOrRef, RemoveProposal},
     test_utils::*,
 };

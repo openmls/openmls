@@ -32,12 +32,14 @@ use crate::{
 };
 use ::rand::{rngs::OsRng, RngCore};
 use openmls_rust_crypto::OpenMlsRustCrypto;
-use openmls_traits::types::SignatureScheme;
-use openmls_traits::OpenMlsCryptoProvider;
-use openmls_traits::{crypto::OpenMlsCrypto, key_store::OpenMlsKeyStore};
+use openmls_traits::{
+    crypto::OpenMlsCrypto,
+    key_store::OpenMlsKeyStore,
+    types::{Ciphersuite, SignatureScheme},
+    OpenMlsCryptoProvider,
+};
 use rayon::prelude::*;
-use std::collections::HashMap;
-use std::sync::RwLock;
+use std::{collections::HashMap, sync::RwLock};
 use tls_codec::*;
 
 pub mod client;

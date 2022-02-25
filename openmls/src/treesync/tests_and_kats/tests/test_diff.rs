@@ -1,12 +1,11 @@
-use openmls_traits::OpenMlsCryptoProvider;
+use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use rstest::*;
 use rstest_reuse::apply;
 
 use crate::{
-    ciphersuite::Ciphersuite,
     credentials::{CredentialBundle, CredentialType},
-    prelude::KeyPackageBundle,
-    prelude_test::{node::Node, TreeSync},
+    key_packages::KeyPackageBundle,
+    treesync::{node::Node, TreeSync},
 };
 
 use openmls_rust_crypto::OpenMlsRustCrypto;

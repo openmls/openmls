@@ -1,6 +1,9 @@
-use thiserror::Error;
+//! Credential errors
+//!
+//! This module exposes [`CredentialError`].
 
 use crate::error::LibraryError;
+use thiserror::Error;
 
 /// An error that occurs in methods of a [`super::Credential`].
 #[derive(Error, Debug, PartialEq, Clone)]

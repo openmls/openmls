@@ -7,7 +7,14 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 
-use crate::{credentials::*, framing::*, group::*, key_packages::*, test_utils::*, *};
+use crate::{
+    credentials::{errors::*, *},
+    framing::*,
+    group::*,
+    key_packages::{errors::*, *},
+    test_utils::*,
+    *,
+};
 use ::rand::rngs::OsRng;
 use ::rand::RngCore;
 use openmls_traits::key_store::OpenMlsKeyStore;

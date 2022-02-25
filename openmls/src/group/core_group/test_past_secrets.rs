@@ -1,6 +1,9 @@
 //! This module contains tests regarding the use of [`MessageSecretsStore`]
 
-use crate::{group::past_secrets::MessageSecretsStore, schedule::MessageSecrets, test_utils::*};
+use crate::{
+    group::past_secrets::MessageSecretsStore, schedule::message_secrets::MessageSecrets,
+    test_utils::*,
+};
 
 #[apply(ciphersuites_and_backends)]
 fn test_secret_tree_store(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {

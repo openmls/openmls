@@ -2,7 +2,7 @@
 //! Include this to get access to all the public functions of OpenMLS.
 
 // MlsGroup
-pub use crate::group::*;
+pub use crate::group::{errors::*, *};
 
 // Ciphersuite
 pub use crate::ciphersuite::{hash_ref::KeyPackageRef, signable::*, *};
@@ -11,19 +11,19 @@ pub use crate::ciphersuite::{hash_ref::KeyPackageRef, signable::*, *};
 pub use crate::messages::{proposals::*, public_group_state::*, *};
 
 // Credentials
-pub use crate::credentials::{CredentialError, *};
+pub use crate::credentials::{errors::*, *};
 
 // MLS Versions
 pub use crate::versions::*;
 
 // Extensions
-pub use crate::extensions::*;
+pub use crate::extensions::{errors::*, *};
 
 // Framing
 pub use crate::framing::{message::*, sender::*, validation::*};
 
 // Key packages
-pub use crate::key_packages::*;
+pub use crate::key_packages::{errors::*, *};
 
 // Key store
 pub use crate::key_store::*;
@@ -34,6 +34,8 @@ pub use crate::tree::sender_ratchet::SenderRatchetConfiguration;
 // TreeSync
 pub use crate::treesync::{
     errors::{ApplyUpdatePathError, PublicTreeError},
+    node::leaf_node::LeafNode,
+    node::parent_node::ParentNode,
     node::Node,
 };
 

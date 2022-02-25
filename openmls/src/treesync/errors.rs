@@ -1,3 +1,7 @@
+//! TreeSync errors
+//!
+//! This module exposes [`ApplyUpdatePathError`] and [`PublicTreeError`].
+
 use thiserror::Error;
 
 use super::*;
