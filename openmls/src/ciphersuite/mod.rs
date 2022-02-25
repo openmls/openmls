@@ -1,7 +1,6 @@
-//! Ciphersuites for MLS
+//! # The MLS Ciphersuites
 //!
-//! This file contains the API to interact with ciphersuites.
-//! See `codec.rs` and `ciphersuites.rs` for internals.
+//! The MLS ciphersuites and hash references.
 
 use crate::versions::ProtocolVersion;
 use ::tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
@@ -25,9 +24,8 @@ mod reuse_guard;
 mod secret;
 mod signature;
 
-// Public
-pub mod hash_ref;
-pub mod signable;
+// Public re-export
+pub use hash_ref::*;
 
 // Crate
 pub(crate) use aead::*;
@@ -36,6 +34,8 @@ pub(crate) use mac::*;
 pub(crate) use reuse_guard::*;
 pub(crate) use secret::*;
 pub(crate) use signature::*;
+pub(crate) mod hash_ref;
+pub(crate) mod signable;
 
 pub(crate) use serde::{Deserialize, Serialize};
 
