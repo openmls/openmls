@@ -1,9 +1,8 @@
 //! This module contains the types and implementations for the
 //! `PublicGroupState` and `PublicGroupStateTbs` structs of the MLS spec. The
-//! `PublicGroupState` implements type-enforced verification in the same way as
-//! the `MlsPlaintext` and as described in the [`OpenMLS Wiki`].
-//!
-//! [`OpenMLS Wiki`]: https://github.com/openmls/openmls/wiki/Signable
+//! `PublicGroupState` implements type-enforced verification using the set of
+//! traits defined in the [`signable`](crate::ciphersuite::signable) module in
+//! the same way as the `MlsPlaintext`.
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use tls_codec::{Serialize, TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
 
