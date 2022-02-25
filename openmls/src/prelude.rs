@@ -2,11 +2,7 @@
 //! Include this to get access to all the public functions of OpenMLS.
 
 // MlsGroup
-pub use crate::group::{
-    errors::*,
-    mls_group::{config::*, errors::*, membership::*, *},
-    *,
-};
+pub use crate::group::{errors::*, *};
 
 // Ciphersuite
 pub use crate::ciphersuite::{hash_ref::KeyPackageRef, signable::*, *};
