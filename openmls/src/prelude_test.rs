@@ -3,8 +3,6 @@
 
 pub use crate::ciphersuite::{signable::Verifiable, *};
 pub use crate::framing::{plaintext::*, *};
-pub use crate::schedule::*;
-pub use crate::treesync::*;
 
 // KATs
 pub use crate::binary_tree::array_representation::kat_treemath;

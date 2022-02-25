@@ -10,11 +10,7 @@ use rstest_reuse::{self, *};
 use crate::{
     credentials::{CredentialBundle, CredentialType},
     framing::{MessageDecryptionError, ProcessedMessage},
-    group::{
-        errors::*,
-        mls_group::{config::*, errors::*, *},
-        GroupId,
-    },
+    group::{errors::*, *},
     key_packages::KeyPackageBundle,
 };
 

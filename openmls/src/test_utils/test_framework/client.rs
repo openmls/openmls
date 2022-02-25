@@ -8,18 +8,8 @@ use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryp
 use tls_codec::Serialize;
 
 use crate::{
-    credentials::*,
-    extensions::*,
-    framing::MlsMessageIn,
-    framing::*,
-    group::{
-        mls_group::{config::*, *},
-        *,
-    },
-    key_packages::*,
-    messages::*,
-    prelude_test::hash_ref::KeyPackageRef,
-    treesync::node::Node,
+    ciphersuite::hash_ref::KeyPackageRef, credentials::*, extensions::*, framing::MlsMessageIn,
+    framing::*, group::*, key_packages::*, messages::*, treesync::node::Node,
 };
 
 use super::{errors::ClientError, ActionType};

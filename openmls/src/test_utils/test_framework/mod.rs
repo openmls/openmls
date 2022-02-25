@@ -25,7 +25,7 @@ use crate::{
     ciphersuite::{hash_ref::KeyPackageRef, *},
     credentials::*,
     framing::*,
-    group::{mls_group::config::*, *},
+    group::*,
     key_packages::*,
     messages::*,
     treesync::node::Node,

@@ -15,14 +15,19 @@ use tls_codec::*;
 // Crate
 pub(crate) mod core_group;
 pub(crate) use core_group::*;
+pub(crate) mod mls_group;
 #[cfg(not(any(feature = "test-utils", test)))]
 pub(crate) use group_context::*;
 
 // Public
 pub mod errors;
-pub mod mls_group;
+
 pub use core_group::proposals::*;
 pub use core_group::staged_commit::StagedCommit;
+pub use mls_group::config::*;
+pub use mls_group::membership::*;
+pub use mls_group::processing::*;
+pub use mls_group::*;
 
 // Tests
 #[cfg(any(feature = "test-utils", test))]

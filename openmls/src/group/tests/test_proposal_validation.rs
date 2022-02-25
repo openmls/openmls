@@ -15,11 +15,7 @@ use crate::{
         MlsMessageIn, MlsMessageOut, MlsPlaintext, MlsPlaintextContentType, ProcessedMessage,
         Sender, VerifiableMlsPlaintext,
     },
-    group::{
-        errors::*,
-        mls_group::{config::*, errors::*, *},
-        *,
-    },
+    group::{errors::*, *},
     key_packages::*,
     messages::{
         proposals::{AddProposal, Proposal, ProposalOrRef, RemoveProposal, UpdateProposal},

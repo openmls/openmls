@@ -11,24 +11,25 @@ use crate::credentials::*;
 use crate::group::*;
 use crate::messages::{proposals::*, *};
 use crate::schedule::{message_secrets::*, *};
-pub(crate) use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use tls_codec::*;
 
 pub(crate) mod ciphertext;
 pub(crate) mod codec;
-pub(crate) mod errors;
 pub(crate) mod message;
 pub(crate) mod plaintext;
 pub(crate) mod sender;
 pub(crate) mod validation;
 pub(crate) use ciphertext::*;
+pub(crate) use errors::*;
 pub(crate) use plaintext::*;
 
 // Crate
 pub(crate) use sender::*;
 
 // Public
-pub use errors::*;
+pub mod errors;
+
 pub use message::*;
 pub use sender::*;
 pub use validation::*;
