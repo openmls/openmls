@@ -88,7 +88,6 @@
 <span id="86">86</span>
 <span id="87">87</span>
 <span id="88">88</span>
-<span id="89">89</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Group Context</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! TODO: #779</span>
@@ -169,8 +168,7 @@
         <span class="self">self</span>.<span class="ident">extensions</span>
             .<span class="ident">iter</span>()
             .<span class="ident">find</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">extension_type</span>() <span class="op">==</span> <span class="ident">ExtensionType::RequiredCapabilities</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">as_required_capabilities_extension</span>().<span class="ident">ok</span>())
-            .<span class="ident">flatten</span>()
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">as_required_capabilities_extension</span>().<span class="ident">ok</span>())
     }
 
     <span class="doccomment">/// Return the confirmed transcript hash</span>

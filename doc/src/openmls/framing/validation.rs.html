@@ -754,7 +754,7 @@
                     <span class="ident">plaintext</span>,
                     <span class="comment">// If the message type is `Sender` or `NewMember`, the</span>
                     <span class="comment">// message always contains a credential.</span>
-                    <span class="ident">credential</span>: <span class="ident">credential_option</span>.<span class="ident">ok_or</span>({
+                    <span class="ident">credential</span>: <span class="ident">credential_option</span>.<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                         <span class="ident">ValidationError::from</span>(<span class="ident">LibraryError::custom</span>(<span class="string">&quot;Expected credential&quot;</span>))
                     })<span class="question-mark">?</span>,
                 }))

@@ -446,11 +446,11 @@
 <span class="kw">use</span> <span class="ident">resumption</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">ser</span>::<span class="kw-2">*</span>;
 
-<span class="comment">// Public</span>
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">config</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">errors</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">membership</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">processing</span>;
+<span class="comment">// Crate</span>
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">config</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">errors</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">membership</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">processing</span>;
 
 <span class="comment">// Tests</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
