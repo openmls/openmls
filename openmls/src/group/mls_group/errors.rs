@@ -3,7 +3,7 @@
 //! This module defines the public errors that can be returned from all calls
 //! to methods of [`MlsGroup`](super::MlsGroup).
 
-// These errors are exposed through `crate::group::group::errors`.
+// These errors are exposed through `crate::group::errors`.
 
 use crate::{
     error::LibraryError,
