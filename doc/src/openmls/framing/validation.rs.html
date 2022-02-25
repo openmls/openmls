@@ -449,8 +449,6 @@
 <span id="447">447</span>
 <span id="448">448</span>
 <span id="449">449</span>
-<span id="450">450</span>
-<span id="451">451</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Validation steps for incoming messages</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ```text</span>
@@ -487,10 +485,7 @@
 <span class="doccomment">//! ProcessedMessage (Application, Proposal, ExternalProposal, Commit, External Commit)</span>
 <span class="doccomment">//! ```</span>
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">group::errors::ValidationError</span>, <span class="ident">schedule::MessageSecrets</span>, <span class="ident">tree::index::SecretTreeLeafIndex</span>,
-    <span class="ident">treesync::TreeSync</span>,
-};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">group::errors::ValidationError</span>, <span class="ident">tree::index::SecretTreeLeafIndex</span>, <span class="ident">treesync::TreeSync</span>};
 <span class="kw">use</span> <span class="ident">core_group</span>::{<span class="ident">proposals::QueuedProposal</span>, <span class="ident">staged_commit::StagedCommit</span>};
 <span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 
@@ -875,13 +870,14 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// The [`QueuedProposal`] can be inspected for authorization purposes by the application.</span>
     <span class="doccomment">/// If the proposal is deemed to be allowed, it should be added to the group&#39;s proposal</span>
-    <span class="doccomment">/// queue using [`MlsGroup::store_pending_proposal()`].</span>
+    <span class="doccomment">/// queue using [`MlsGroup::store_pending_proposal()`](crate::group::mls_group::MlsGroup::store_pending_proposal()).</span>
     <span class="ident">ProposalMessage</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">QueuedProposal</span><span class="op">&gt;</span>),
     <span class="doccomment">/// A Commit message.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// The [`StagedCommit`] can be inspected for authorization purposes by the application.</span>
     <span class="doccomment">/// If the type of the commit and the proposals it covers are deemed to be allowed,</span>
-    <span class="doccomment">/// the commit should be merged into the group&#39;s state using [`MlsGroup::merge_staged_commit()`].</span>
+    <span class="doccomment">/// the commit should be merged into the group&#39;s state using</span>
+    <span class="doccomment">/// [`MlsGroup::merge_staged_commit()`](crate::group::mls_group::MlsGroup::merge_staged_commit()).</span>
     <span class="ident">StagedCommitMessage</span>(<span class="ident">Box</span><span class="op">&lt;</span><span class="ident">StagedCommit</span><span class="op">&gt;</span>),
 }
 

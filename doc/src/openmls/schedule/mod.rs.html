@@ -1262,10 +1262,6 @@
 <span id="1260">1260</span>
 <span id="1261">1261</span>
 <span id="1262">1262</span>
-<span id="1263">1263</span>
-<span id="1264">1264</span>
-<span id="1265">1265</span>
-<span id="1266">1266</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key schedule</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module contains the types and implementations for key schedule operations.</span>
@@ -1396,10 +1392,10 @@
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">binary_tree::LeafIndex</span>,
-    <span class="ident">ciphersuite</span>::{<span class="ident">AeadKey</span>, <span class="ident">AeadNonce</span>, <span class="ident">Ciphersuite</span>, <span class="ident">HpkePrivateKey</span>, <span class="ident">Mac</span>, <span class="ident">Secret</span>},
+    <span class="ident">ciphersuite</span>::{<span class="ident">AeadKey</span>, <span class="ident">AeadNonce</span>, <span class="ident">HpkePrivateKey</span>, <span class="ident">Mac</span>, <span class="ident">Secret</span>},
     <span class="ident">error::LibraryError</span>,
     <span class="ident">framing</span>::{<span class="ident">MembershipTag</span>, <span class="ident">MlsPlaintextTbmPayload</span>},
-    <span class="ident">messages</span>::{<span class="ident">ConfirmationTag</span>, <span class="ident">PathSecret</span>, <span class="ident">PublicGroupState</span>},
+    <span class="ident">messages</span>::{<span class="ident">public_group_state::PublicGroupState</span>, <span class="ident">ConfirmationTag</span>, <span class="ident">PathSecret</span>},
     <span class="ident">tree::secret_tree::SecretTree</span>,
     <span class="ident">versions::ProtocolVersion</span>,
 };
@@ -1416,19 +1412,15 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">psk</span>;
 
 <span class="comment">// Private</span>
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">unit_tests</span>;
+<span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">message_secrets::MessageSecrets</span>;
+<span class="kw">use</span> <span class="ident">psk</span>::<span class="kw-2">*</span>;
 
 <span class="comment">// Tests</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">kat_key_schedule</span>;
-
-<span class="comment">// Public re-exports</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
-
-<span class="comment">// Crate re-exports</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">message_secrets</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">psk</span>::<span class="kw-2">*</span>;
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+<span class="kw">mod</span> <span class="ident">unit_tests</span>;
 
 <span class="comment">// Public types</span>
 

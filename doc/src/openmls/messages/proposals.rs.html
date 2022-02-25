@@ -350,9 +350,6 @@
 <span id="348">348</span>
 <span id="349">349</span>
 <span id="350">350</span>
-<span id="351">351</span>
-<span id="352">352</span>
-<span id="353">353</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Proposals</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module defines all the different types of Proposals.</span>
@@ -361,10 +358,7 @@
 <span class="doccomment">//! [`ProposalType::is_supported()`] can be used.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">ciphersuite</span>::{
-        <span class="ident">hash_ref</span>::{<span class="ident">KeyPackageRef</span>, <span class="ident">ProposalRef</span>},
-        <span class="kw-2">*</span>,
-    },
+    <span class="ident">ciphersuite::hash_ref</span>::{<span class="ident">KeyPackageRef</span>, <span class="ident">ProposalRef</span>},
     <span class="ident">error::LibraryError</span>,
     <span class="ident">extensions::Extension</span>,
     <span class="ident">group::GroupId</span>,
@@ -373,7 +367,7 @@
     <span class="ident">versions::ProtocolVersion</span>,
 };
 
-<span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
+<span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">types::Ciphersuite</span>, <span class="ident">OpenMlsCryptoProvider</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{

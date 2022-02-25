@@ -443,7 +443,7 @@
 <span id="441">441</span>
 <span id="442">442</span>
 <span id="443">443</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">types::Ciphersuite</span>, <span class="ident">OpenMlsCryptoProvider</span>};
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{
     <span class="ident">Deserialize</span>, <span class="ident">Serialize</span>, <span class="ident">Size</span>, <span class="ident">TlsByteSliceU16</span>, <span class="ident">TlsByteVecU16</span>, <span class="ident">TlsByteVecU32</span>, <span class="ident">TlsByteVecU8</span>,
     <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
@@ -451,7 +451,7 @@
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite::hash_ref</span>::{<span class="ident">HashReference</span>, <span class="ident">KeyPackageRef</span>},
-    <span class="ident">prelude::LibraryError</span>,
+    <span class="ident">error::LibraryError</span>,
     <span class="ident">tree</span>::{
         <span class="ident">index::SecretTreeLeafIndex</span>, <span class="ident">secret_tree::SecretType</span>,
         <span class="ident">sender_ratchet::SenderRatchetConfiguration</span>,

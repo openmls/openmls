@@ -953,7 +953,6 @@
 <span id="951">951</span>
 <span id="952">952</span>
 <span id="953">953</span>
-<span id="954">954</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module provides the diff functionality for [`TreeSync`].</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -973,7 +972,7 @@
 <span class="doccomment">//! functions that are not expected to fail and throw an error, will still</span>
 <span class="doccomment">//! return a [`Result`] since they may throw a</span>
 <span class="doccomment">//! [`LibraryError`](TreeSyncDiffError::LibraryError).</span>
-<span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">crypto::OpenMlsCrypto</span>, <span class="ident">OpenMlsCryptoProvider</span>};
+<span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">crypto::OpenMlsCrypto</span>, <span class="ident">types::Ciphersuite</span>, <span class="ident">OpenMlsCryptoProvider</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::HashSet</span>, <span class="ident">convert::TryFrom</span>};
@@ -994,8 +993,7 @@
         <span class="ident">array_representation::diff::NodeId</span>, <span class="ident">LeafIndex</span>, <span class="ident">MlsBinaryTreeDiff</span>, <span class="ident">StagedMlsBinaryTreeDiff</span>,
     },
     <span class="ident">ciphersuite</span>::{
-        <span class="ident">hash_ref::KeyPackageRef</span>, <span class="ident">signable::Signable</span>, <span class="ident">Ciphersuite</span>, <span class="ident">HpkePrivateKey</span>, <span class="ident">HpkePublicKey</span>,
-        <span class="ident">Secret</span>,
+        <span class="ident">hash_ref::KeyPackageRef</span>, <span class="ident">signable::Signable</span>, <span class="ident">HpkePrivateKey</span>, <span class="ident">HpkePublicKey</span>, <span class="ident">Secret</span>,
     },
     <span class="ident">credentials::CredentialBundle</span>,
     <span class="ident">error::LibraryError</span>,

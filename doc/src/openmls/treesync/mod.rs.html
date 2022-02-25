@@ -478,10 +478,12 @@
 <span id="476">476</span>
 <span id="477">477</span>
 <span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the ratchet tree component of MLS.</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`],</span>
-<span class="doccomment">//! as well as the following error types: [`ApplyUpdatePathError`], and [`PublicTreeError`].</span>
+<span class="doccomment">//! It exposes the [`Node`] enum that can contain either a [`LeafNode`] or a [`ParentNode`].</span>
 
 <span class="comment">// # Internal documentation</span>
 <span class="comment">//</span>
@@ -501,13 +503,15 @@
 
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
 
-<span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">types::CryptoError</span>, <span class="ident">OpenMlsCryptoProvider</span>};
+<span class="kw">use</span> <span class="ident">openmls_traits</span>::{
+    <span class="ident">types</span>::{<span class="ident">Ciphersuite</span>, <span class="ident">CryptoError</span>},
+    <span class="ident">OpenMlsCryptoProvider</span>,
+};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">binary_tree</span>::{<span class="ident">LeafIndex</span>, <span class="ident">MlsBinaryTree</span>, <span class="ident">MlsBinaryTreeError</span>},
     <span class="ident">ciphersuite::hash_ref::KeyPackageRef</span>,
-    <span class="ident">ciphersuite::Ciphersuite</span>,
     <span class="ident">error::LibraryError</span>,
     <span class="ident">framing::SenderError</span>,
     <span class="ident">key_packages</span>::{<span class="ident">KeyPackage</span>, <span class="ident">KeyPackageBundle</span>},
@@ -522,16 +526,18 @@
 
 <span class="comment">// Private</span>
 <span class="kw">mod</span> <span class="ident">hashes</span>;
+<span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
 
 <span class="comment">// Crate</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">diff</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">errors</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">node</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">treekem</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">treesync_node</span>;
 
+<span class="comment">// Public</span>
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">errors</span>;
+
 <span class="comment">// Public re-exports</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">node</span>::{<span class="ident">leaf_node::LeafNode</span>, <span class="ident">parent_node::ParentNode</span>, <span class="ident">Node</span>};
 
 <span class="comment">// Tests</span>

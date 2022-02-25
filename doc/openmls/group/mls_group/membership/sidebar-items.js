@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["RemoveOperation","Helper `enum` that classifies the kind of remove operation. This can be used to better interpret the semantic value of a remove proposal that is covered in a Commit message."]]});

@@ -121,20 +121,12 @@
 <span id="119">119</span>
 <span id="120">120</span>
 <span id="121">121</span>
-<span id="122">122</span>
-<span id="123">123</span>
-<span id="124">124</span>
-<span id="125">125</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains helper structs and functions related to parent hashing</span>
 <span class="doccomment">//! and tree hashing.</span>
-<span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">crypto::OpenMlsCrypto</span>, <span class="ident">OpenMlsCryptoProvider</span>};
+<span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">crypto::OpenMlsCrypto</span>, <span class="ident">types::Ciphersuite</span>, <span class="ident">OpenMlsCryptoProvider</span>};
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Serialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsSliceU32</span>, <span class="ident">TlsSliceU8</span>};
 
-<span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">binary_tree::LeafIndex</span>,
-    <span class="ident">ciphersuite</span>::{<span class="ident">Ciphersuite</span>, <span class="ident">HpkePublicKey</span>},
-    <span class="ident">error::LibraryError</span>,
-};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">binary_tree::LeafIndex</span>, <span class="ident">ciphersuite::HpkePublicKey</span>, <span class="ident">error::LibraryError</span>};
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::node::parent_node::ParentNode</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::key_packages::KeyPackage</span>;

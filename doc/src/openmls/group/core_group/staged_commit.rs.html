@@ -484,7 +484,9 @@
 <span id="482">482</span>
 <span id="483">483</span>
 <span id="484">484</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync</span>::{<span class="ident">diff::StagedTreeSyncDiff</span>, <span class="ident">treekem::DecryptPathParams</span>};
+<span id="485">485</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::errors::TreeSyncAddLeaf</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync</span>::{<span class="ident">diff::StagedTreeSyncDiff</span>, <span class="ident">treekem::DecryptPathParams</span>};
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::proposals</span>::{
     <span class="ident">ProposalQueue</span>, <span class="ident">ProposalStore</span>, <span class="ident">QueuedAddProposal</span>, <span class="ident">QueuedPskProposal</span>, <span class="ident">QueuedRemoveProposal</span>,

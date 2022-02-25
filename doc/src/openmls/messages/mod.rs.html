@@ -505,15 +505,6 @@
 <span id="503">503</span>
 <span id="504">504</span>
 <span id="505">505</span>
-<span id="506">506</span>
-<span id="507">507</span>
-<span id="508">508</span>
-<span id="509">509</span>
-<span id="510">510</span>
-<span id="511">511</span>
-<span id="512">512</span>
-<span id="513">513</span>
-<span id="514">514</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Messages</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module contains the types and implementations for Commit &amp; Welcome messages,</span>
@@ -531,26 +522,20 @@
 };
 <span class="kw">use</span> <span class="ident">openmls_traits</span>::{
     <span class="ident">crypto::OpenMlsCrypto</span>,
-    <span class="ident">types</span>::{<span class="ident">CryptoError</span>, <span class="ident">HpkeCiphertext</span>},
+    <span class="ident">types</span>::{<span class="ident">Ciphersuite</span>, <span class="ident">CryptoError</span>, <span class="ident">HpkeCiphertext</span>},
     <span class="ident">OpenMlsCryptoProvider</span>,
 };
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
 <span class="comment">// Private</span>
-<span class="kw">mod</span> <span class="ident">codec</span>;
+<span class="kw">use</span> <span class="ident">proposals</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>, <span class="kw-2">*</span>};
 
 <span class="comment">// Public</span>
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">codec</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">proposals</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">public_group_state</span>;
-
-<span class="comment">// Public re-exports</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">codec</span>::<span class="kw-2">*</span>;
-
-<span class="comment">// Crate-only re-exports</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">proposals</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">public_group_state</span>::<span class="kw-2">*</span>;
 
 <span class="comment">// Tests</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
@@ -558,10 +543,7 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credentials::CredentialBundle</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schedule</span>::{
-    <span class="ident">psk</span>::{<span class="ident">ExternalPsk</span>, <span class="ident">Psk</span>},
-    <span class="ident">PreSharedKeyId</span>,
-};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::schedule::psk</span>::{<span class="ident">ExternalPsk</span>, <span class="ident">PreSharedKeyId</span>, <span class="ident">Psk</span>};
 
 <span class="comment">// Public types</span>
 
@@ -569,7 +551,7 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// This message is generated when a new member is added to a group.</span>
 <span class="doccomment">/// The invited member can use this message to join the group using</span>
-<span class="doccomment">/// [`MlsGroup::new_from_welcome()`].</span>
+<span class="doccomment">/// [`MlsGroup::new_from_welcome()`](crate::group::mls_group::MlsGroup::new_from_welcome()).</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Welcome</span> {
     <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>,

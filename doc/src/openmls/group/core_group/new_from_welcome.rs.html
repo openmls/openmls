@@ -239,8 +239,8 @@
     <span class="ident">group</span>::{<span class="ident">core_group</span>::<span class="kw-2">*</span>, <span class="ident">errors::WelcomeError</span>, <span class="kw-2">*</span>},
     <span class="ident">key_packages</span>::<span class="kw-2">*</span>,
     <span class="ident">messages</span>::<span class="kw-2">*</span>,
-    <span class="ident">schedule</span>::<span class="kw-2">*</span>,
-    <span class="ident">treesync::node::Node</span>,
+    <span class="ident">schedule</span>::{<span class="ident">errors::PskError</span>, <span class="kw-2">*</span>},
+    <span class="ident">treesync</span>::{<span class="ident">errors::TreeSyncFromNodesError</span>, <span class="ident">node::Node</span>},
 };
 
 <span class="kw">impl</span> <span class="ident">CoreGroup</span> {

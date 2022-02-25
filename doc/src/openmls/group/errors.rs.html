@@ -449,25 +449,21 @@
 <span id="447">447</span>
 <span id="448">448</span>
 <span id="449">449</span>
-<span id="450">450</span>
-<span id="451">451</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS group errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">error::LibraryError</span>,
-    <span class="ident">extensions::ExtensionError</span>,
+    <span class="ident">extensions::errors::ExtensionError</span>,
     <span class="ident">framing::errors</span>::{<span class="ident">MessageDecryptionError</span>, <span class="ident">SenderError</span>},
-    <span class="ident">key_packages::KeyPackageExtensionSupportError</span>,
-    <span class="ident">schedule::PskError</span>,
+    <span class="ident">key_packages::errors::KeyPackageExtensionSupportError</span>,
+    <span class="ident">schedule::errors::PskError</span>,
+    <span class="ident">treesync::errors</span>::<span class="kw-2">*</span>,
 };
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
 <span class="comment">// === Public errors ===</span>
-
-<span class="comment">// Re-export errors</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::errors</span>::{<span class="ident">ApplyUpdatePathError</span>, <span class="ident">PublicTreeError</span>};
 
 <span class="doccomment">/// Welcome error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>

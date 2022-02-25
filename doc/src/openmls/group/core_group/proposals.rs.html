@@ -563,27 +563,23 @@
 <span id="561">561</span>
 <span id="562">562</span>
 <span id="563">563</span>
-<span id="564">564</span>
-<span id="565">565</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group::errors</span>::<span class="kw-2">*</span>;
-
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages::proposals</span>::{
-    <span class="ident">AddProposal</span>, <span class="ident">PreSharedKeyProposal</span>, <span class="ident">Proposal</span>, <span class="ident">ProposalOrRef</span>, <span class="ident">ProposalOrRefType</span>, <span class="ident">ProposalType</span>,
-    <span class="ident">RemoveProposal</span>, <span class="ident">UpdateProposal</span>,
-};
-<span class="kw">use</span> <span class="kw">crate</span>::{
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite</span>::{
         <span class="ident">hash_ref</span>::{<span class="ident">KeyPackageRef</span>, <span class="ident">ProposalRef</span>},
         <span class="kw-2">*</span>,
     },
     <span class="ident">error::LibraryError</span>,
     <span class="ident">framing</span>::<span class="kw-2">*</span>,
+    <span class="ident">group::errors</span>::<span class="kw-2">*</span>,
+    <span class="ident">messages::proposals</span>::{
+        <span class="ident">AddProposal</span>, <span class="ident">PreSharedKeyProposal</span>, <span class="ident">Proposal</span>, <span class="ident">ProposalOrRef</span>, <span class="ident">ProposalOrRefType</span>,
+        <span class="ident">ProposalType</span>, <span class="ident">RemoveProposal</span>, <span class="ident">UpdateProposal</span>,
+    },
 };
 
-<span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
+<span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">types::Ciphersuite</span>, <span class="ident">OpenMlsCryptoProvider</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">std::collections::HashSet</span>;
-<span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">hash_map::Entry</span>, <span class="ident">HashMap</span>};
+<span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">hash_map::Entry</span>, <span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
 
 <span class="doccomment">/// A [ProposalStore] can store the standalone proposals that are received from the DS</span>
 <span class="doccomment">/// in between two commit messages.</span>

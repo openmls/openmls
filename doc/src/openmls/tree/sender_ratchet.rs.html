@@ -263,6 +263,8 @@
 <span id="261">261</span>
 <span id="262">262</span>
 <span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Functions in this module should never panic. However, if there is a bug in</span>
@@ -271,6 +273,8 @@
 <span class="doccomment">//! error, will still return a `Result` since they may throw a `LibraryError`.</span>
 
 <span class="kw">use</span> <span class="ident">std::collections::VecDeque</span>;
+
+<span class="kw">use</span> <span class="ident">openmls_traits::types::Ciphersuite</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite</span>::{<span class="ident">AeadNonce</span>, <span class="kw-2">*</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tree::secret_tree</span>::<span class="kw-2">*</span>;

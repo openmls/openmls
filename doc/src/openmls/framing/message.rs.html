@@ -223,16 +223,18 @@
 <span id="221">221</span>
 <span id="222">222</span>
 <span id="223">223</span>
+<span id="224">224</span>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS Message types</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! This module defines two opaque message types that are used by the [`MlsGroup`] API.</span>
+<span class="doccomment">//! This module defines two opaque message types that are used by the [`MlsGroup`](crate::group::mls_group::MlsGroup) API.</span>
 <span class="doccomment">//! [`MlsMessageIn`] is used for messages between the Delivery Service and the client. It can be instantiated</span>
 <span class="doccomment">//! from a byte slice.</span>
-<span class="doccomment">//! [`MlsMessageOut`] is returned by various functions of the [`MlsGroup`] API. It is to be used between</span>
-<span class="doccomment">//! the client and the Delivery Service. It can be serialized to a byte vector.</span>
+<span class="doccomment">//! [`MlsMessageOut`] is returned by various functions of the [`MlsGroup`](crate::group::mls_group::MlsGroup) API.</span>
+<span class="doccomment">//! It is to be used between the client and the Delivery Service. It can be serialized to a byte vector.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Both messages have the same API. The framing part of the message can be inspected through it. In particular,</span>
-<span class="doccomment">//! it is important to look at [`MlsMessageIn::group_id()`] to determine in which [`MlsGroup`] it should be processed.</span>
+<span class="doccomment">//! it is important to look at [`MlsMessageIn::group_id()`] to determine in which</span>
+<span class="doccomment">//! [`MlsGroup`](crate::group::mls_group::MlsGroup) it should be processed.</span>
 
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 

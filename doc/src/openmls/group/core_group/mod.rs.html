@@ -725,9 +725,6 @@
 <span id="723">723</span>
 <span id="724">724</span>
 <span id="725">725</span>
-<span id="726">726</span>
-<span id="727">727</span>
-<span id="728">728</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Functions in this module should never panic. However, if there is a bug in</span>
@@ -766,32 +763,29 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::errors::CreateGroupContextExtProposalError</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">ciphersuite::hash_ref::KeyPackageRef</span>,
+    <span class="ident">ciphersuite</span>::{<span class="ident">hash_ref::KeyPackageRef</span>, <span class="ident">signable</span>::<span class="kw-2">*</span>},
     <span class="ident">credentials</span>::<span class="kw-2">*</span>,
     <span class="ident">error::LibraryError</span>,
+    <span class="ident">extensions::errors</span>::<span class="kw-2">*</span>,
     <span class="ident">framing</span>::<span class="kw-2">*</span>,
     <span class="ident">group</span>::<span class="kw-2">*</span>,
-    <span class="ident">key_packages</span>::<span class="kw-2">*</span>,
-    <span class="ident">messages</span>::{<span class="ident">proposals</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>},
-    <span class="ident">schedule</span>::{<span class="ident">psk</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>},
+    <span class="ident">key_packages</span>::{<span class="ident">errors::KeyPackageExtensionSupportError</span>, <span class="kw-2">*</span>},
+    <span class="ident">messages</span>::{<span class="ident">proposals</span>::<span class="kw-2">*</span>, <span class="ident">public_group_state</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>},
+    <span class="ident">schedule</span>::{<span class="ident">message_secrets</span>::<span class="kw-2">*</span>, <span class="ident">psk</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>},
     <span class="ident">tree</span>::{<span class="ident">secret_tree::SecretTreeError</span>, <span class="ident">sender_ratchet::SenderRatchetConfiguration</span>},
-    <span class="ident">treesync</span>::<span class="kw-2">*</span>,
+    <span class="ident">treesync</span>::{<span class="ident">errors::TreeSyncError</span>, <span class="kw-2">*</span>},
     <span class="ident">versions::ProtocolVersion</span>,
 };
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ciphersuite::signable</span>::<span class="kw-2">*</span>, <span class="ident">messages::public_group_state</span>::<span class="kw-2">*</span>};
-
+<span class="kw">use</span> <span class="self">self</span>::{<span class="ident">past_secrets::MessageSecretsStore</span>, <span class="ident">staged_commit::StagedCommit</span>};
 <span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">trace</span>};
-<span class="kw">use</span> <span class="ident">openmls_traits::crypto::OpenMlsCrypto</span>;
+<span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">crypto::OpenMlsCrypto</span>, <span class="ident">types::Ciphersuite</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">use</span> <span class="ident">std::io</span>::{<span class="ident">Error</span>, <span class="ident">Read</span>, <span class="ident">Write</span>};
-
 <span class="kw">use</span> <span class="ident">tls_codec::Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>;
-
-<span class="kw">use</span> <span class="self">self</span>::{<span class="ident">past_secrets::MessageSecretsStore</span>, <span class="ident">staged_commit::StagedCommit</span>};
 
 <span class="kw">use</span> <span class="kw">super</span>::{
     <span class="ident">errors</span>::{<span class="ident">CoreGroupBuildError</span>, <span class="ident">CreateAddProposalError</span>, <span class="ident">ExporterError</span>, <span class="ident">ProposalValidationError</span>},

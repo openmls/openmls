@@ -58,11 +58,21 @@
 <span id="56">56</span>
 <span id="57">57</span>
 <span id="58">58</span>
+<span id="59">59</span>
+<span id="60">60</span>
+<span id="61">61</span>
+<span id="62">62</span>
+<span id="63">63</span>
+<span id="64">64</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Prelude for OpenMLS.</span>
 <span class="doccomment">//! Include this to get access to all the public functions of OpenMLS.</span>
 
 <span class="comment">// MlsGroup</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group</span>::<span class="kw-2">*</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::group</span>::{
+    <span class="ident">errors</span>::<span class="kw-2">*</span>,
+    <span class="ident">mls_group</span>::{<span class="ident">config</span>::<span class="kw-2">*</span>, <span class="ident">errors</span>::<span class="kw-2">*</span>, <span class="ident">membership</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>},
+    <span class="kw-2">*</span>,
+};
 
 <span class="comment">// Ciphersuite</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ciphersuite</span>::{<span class="ident">hash_ref::KeyPackageRef</span>, <span class="ident">signable</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
@@ -71,19 +81,19 @@
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::messages</span>::{<span class="ident">proposals</span>::<span class="kw-2">*</span>, <span class="ident">public_group_state</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 
 <span class="comment">// Credentials</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credentials</span>::{<span class="ident">CredentialError</span>, <span class="kw-2">*</span>};
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credentials</span>::{<span class="ident">errors</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 
 <span class="comment">// MLS Versions</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::versions</span>::<span class="kw-2">*</span>;
 
 <span class="comment">// Extensions</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::extensions</span>::<span class="kw-2">*</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::extensions</span>::{<span class="ident">errors</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 
 <span class="comment">// Framing</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::framing</span>::{<span class="ident">message</span>::<span class="kw-2">*</span>, <span class="ident">sender</span>::<span class="kw-2">*</span>, <span class="ident">validation</span>::<span class="kw-2">*</span>};
 
 <span class="comment">// Key packages</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::key_packages</span>::<span class="kw-2">*</span>;
+<span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::key_packages</span>::{<span class="ident">errors</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
 
 <span class="comment">// Key store</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::key_store</span>::<span class="kw-2">*</span>;
@@ -94,6 +104,8 @@
 <span class="comment">// TreeSync</span>
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync</span>::{
     <span class="ident">errors</span>::{<span class="ident">ApplyUpdatePathError</span>, <span class="ident">PublicTreeError</span>},
+    <span class="ident">node::leaf_node::LeafNode</span>,
+    <span class="ident">node::parent_node::ParentNode</span>,
     <span class="ident">node::Node</span>,
 };
 

@@ -59,18 +59,16 @@
 <span class="doccomment">//! This file contains the API to interact with ciphersuites.</span>
 <span class="doccomment">//! See `codec.rs` and `ciphersuites.rs` for internals.</span>
 
-<span class="kw">use</span> <span class="ident"><span class="self">self</span>::signable::SignedStruct</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::versions::ProtocolVersion</span>;
 <span class="kw">use</span> <span class="ident">::tls_codec</span>::{<span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">openmls_traits::types::Ciphersuite</span>;
-<span class="kw">use</span> <span class="ident">openmls_traits::types::CryptoError</span>;
 <span class="kw">use</span> <span class="ident">openmls_traits</span>::{
     <span class="ident">crypto::OpenMlsCrypto</span>,
     <span class="ident">random::OpenMlsRand</span>,
-    <span class="ident">types</span>::{<span class="ident">AeadType</span>, <span class="ident">SignatureScheme</span>},
+    <span class="ident">types</span>::{<span class="ident">AeadType</span>, <span class="ident">Ciphersuite</span>, <span class="ident">CryptoError</span>, <span class="ident">SignatureScheme</span>},
     <span class="ident">OpenMlsCryptoProvider</span>,
 };
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+<span class="kw">use</span> <span class="ident">signable::SignedStruct</span>;
+
 <span class="kw">use</span> <span class="ident">std::hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>, <span class="ident">TlsByteVecU16</span>, <span class="ident">TlsByteVecU32</span>, <span class="ident">TlsByteVecU8</span>};
 
@@ -94,6 +92,8 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">reuse_guard</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">secret</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">signature</span>::<span class="kw-2">*</span>;
+
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span>;

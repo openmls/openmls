@@ -80,10 +80,12 @@
 <span id="78">78</span>
 <span id="79">79</span>
 <span id="80">80</span>
+<span id="81">81</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">tls_codec::Serialize</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">group::errors::ExporterError</span>, <span class="ident">messages::PublicGroupState</span>, <span class="ident">schedule::AuthenticationSecret</span>,
+    <span class="ident">group::errors::ExporterError</span>, <span class="ident">messages::public_group_state::PublicGroupState</span>,
+    <span class="ident">schedule::AuthenticationSecret</span>,
 };
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;

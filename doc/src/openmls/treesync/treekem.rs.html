@@ -377,6 +377,10 @@
 <span id="375">375</span>
 <span id="376">376</span>
 <span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Module to encrypt and decrypt update paths for a [`TreeSyncDiff`] instance.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! # About</span>
@@ -387,16 +391,20 @@
 <span class="kw">use</span> <span class="ident">std::collections::HashSet</span>;
 <span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsVecU32</span>};
 
-<span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">crypto::OpenMlsCrypto</span>, <span class="ident">types::HpkeCiphertext</span>, <span class="ident">OpenMlsCryptoProvider</span>};
+<span class="kw">use</span> <span class="ident">openmls_traits</span>::{
+    <span class="ident">crypto::OpenMlsCrypto</span>,
+    <span class="ident">types</span>::{<span class="ident">Ciphersuite</span>, <span class="ident">HpkeCiphertext</span>},
+    <span class="ident">OpenMlsCryptoProvider</span>,
+};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">binary_tree</span>::{<span class="ident">LeafIndex</span>, <span class="ident">OutOfBoundsError</span>},
-    <span class="ident">ciphersuite</span>::{<span class="ident">hash_ref::KeyPackageRef</span>, <span class="ident">Ciphersuite</span>, <span class="ident">HpkePublicKey</span>},
+    <span class="ident">ciphersuite</span>::{<span class="ident">hash_ref::KeyPackageRef</span>, <span class="ident">HpkePublicKey</span>},
     <span class="ident">error::LibraryError</span>,
     <span class="ident">key_packages::KeyPackage</span>,
     <span class="ident">messages</span>::{<span class="ident">proposals::AddProposal</span>, <span class="ident">EncryptedGroupSecrets</span>, <span class="ident">GroupSecrets</span>, <span class="ident">PathSecret</span>},
-    <span class="ident">schedule</span>::{<span class="ident">CommitSecret</span>, <span class="ident">JoinerSecret</span>, <span class="ident">PreSharedKeys</span>},
+    <span class="ident">schedule</span>::{<span class="ident">psk::PreSharedKeys</span>, <span class="ident">CommitSecret</span>, <span class="ident">JoinerSecret</span>},
     <span class="ident">versions::ProtocolVersion</span>,
 };
 

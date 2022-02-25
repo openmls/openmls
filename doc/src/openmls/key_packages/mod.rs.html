@@ -802,7 +802,7 @@
 <span id="800">800</span>
 <span id="801">801</span>
 <span id="802">802</span>
-</pre><pre class="rust"><code><span class="doccomment">//! # Key Packages.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! # Key Packages</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Key packages are pre-published public keys that provide some information</span>
 <span class="doccomment">//! about a user in order to facilitate the asynchronous addition of clients to</span>
@@ -881,7 +881,7 @@
     <span class="ident">credentials</span>::<span class="kw-2">*</span>,
     <span class="ident">error::LibraryError</span>,
     <span class="ident">extensions</span>::{
-        <span class="ident">CapabilitiesExtension</span>, <span class="ident">Extension</span>, <span class="ident">ExtensionError</span>, <span class="ident">ExtensionType</span>, <span class="ident">LifetimeExtension</span>,
+        <span class="ident">errors::ExtensionError</span>, <span class="ident">CapabilitiesExtension</span>, <span class="ident">Extension</span>, <span class="ident">ExtensionType</span>, <span class="ident">LifetimeExtension</span>,
         <span class="ident">ParentHashExtension</span>, <span class="ident">RequiredCapabilitiesExtension</span>,
     },
     <span class="ident">versions::ProtocolVersion</span>,
@@ -889,7 +889,7 @@
 <span class="kw">use</span> <span class="ident">log::error</span>;
 <span class="kw">use</span> <span class="ident">openmls_traits</span>::{
     <span class="ident">crypto::OpenMlsCrypto</span>,
-    <span class="ident">types</span>::{<span class="ident">CryptoError</span>, <span class="ident">HpkeKeyPair</span>, <span class="ident">SignatureScheme</span>},
+    <span class="ident">types</span>::{<span class="ident">Ciphersuite</span>, <span class="ident">CryptoError</span>, <span class="ident">HpkeKeyPair</span>, <span class="ident">SignatureScheme</span>},
     <span class="ident">OpenMlsCryptoProvider</span>,
 };
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -899,10 +899,10 @@
 
 <span class="comment">// Private</span>
 <span class="kw">mod</span> <span class="ident">codec</span>;
-<span class="kw">mod</span> <span class="ident">errors</span>;
+<span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
 
-<span class="comment">// Public re-exports</span>
-<span class="kw">pub</span> <span class="kw">use</span> <span class="ident">errors</span>::<span class="kw-2">*</span>;
+<span class="comment">// Public</span>
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">errors</span>;
 
 <span class="comment">// Tests</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>

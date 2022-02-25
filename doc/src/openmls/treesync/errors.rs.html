@@ -201,7 +201,15 @@
 <span id="199">199</span>
 <span id="200">200</span>
 <span id="201">201</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">thiserror::Error</span>;
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+</pre><pre class="rust"><code><span class="doccomment">//! TreeSync errors</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! This module exposes [`ApplyUpdatePathError`] and [`PublicTreeError`].</span>
+
+<span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">binary_tree::MlsBinaryTreeDiffError</span>, <span class="ident">error::LibraryError</span>};

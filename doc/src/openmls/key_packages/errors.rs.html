@@ -74,7 +74,7 @@
 
 <span class="kw">use</span> <span class="ident">thiserror::Error</span>;
 
-<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">error::LibraryError</span>, <span class="ident">extensions::ExtensionError</span>};
+<span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">error::LibraryError</span>, <span class="ident">extensions::errors::ExtensionError</span>};
 
 <span class="doccomment">/// KeyPackage verify error</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
