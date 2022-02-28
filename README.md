@@ -12,7 +12,10 @@
 ![Rust Version][rustc-image]
 
 *OpenMLS* is a Rust implementation of [Messaging Layer Security](https://github.com/mlswg/mls-protocol/blob/master/draft-ietf-mls-protocol.md) based on draft 12+.
-<!-- The introduction of the book imports the lines up until here (line 14), excluding the headline and separately the lines below (starting from line 17). If the line numbers change here, please modify the imported lines in the book.-->
+<!-- The introduction of the book imports the lines up until here (line 14), excluding the headline and separately the lines below (starting from line 20). If the line numbers change here, please modify the imported lines in the book.-->
+
+It is a software library that can serve as a building block in applications that require end-to-end encryption of messages.
+It has a safe and easy-to-use interface that hides the complexity of the underlying cryptographic operations.
 
 ## Supported ciphersuites
 
