@@ -44,6 +44,9 @@ The Github CI also builds (but doesn't test) the following rust targets.
 - aarch64-apple-ios
 - aarch64-apple-ios-sim
 - wasm32-unknown-unknown
+- armv7-linux-androideabi
+- x86_64-linux-android
+- i686-linux-android
 
 OpenMLS supports 32 bit platforms and above.
 
