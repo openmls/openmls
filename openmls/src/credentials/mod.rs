@@ -247,8 +247,7 @@ impl CredentialBundle {
     /// Creates a new [`CredentialBundle`] from an identity and a
     /// [`SignatureKeypair`]. Note that only [`BasicCredential`] is currently
     /// supported.
-    #[cfg(test)]
-    pub(crate) fn from_parts(identity: Vec<u8>, keypair: SignatureKeypair) -> Self {
+    pub fn from_parts(identity: Vec<u8>, keypair: SignatureKeypair) -> Self {
         let (signature_private_key, public_key) = keypair.into_tuple();
         let basic_credential = BasicCredential {
             identity: identity.into(),
@@ -270,13 +269,9 @@ impl CredentialBundle {
         &self.credential
     }
 
-    /// Separates the bundle into the [`Credential`] and the signature private
-    /// key as raw byte vector.
-    pub fn into_parts(self) -> (Credential, Vec<u8>) {
-        (
-            self.credential,
-            self.signature_private_key.as_slice().to_vec(),
-        )
+    /// Separates the bundle into the [`Credential`] and the [`SignaturePrivateKey`].
+    pub fn into_parts(self) -> (Credential, SignaturePrivateKey) {
+        (self.credential, self.signature_private_key)
     }
 
     /// Signs the given message `msg` using the private key of the credential bundle.

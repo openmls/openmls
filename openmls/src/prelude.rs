@@ -5,7 +5,7 @@
 pub use crate::group::{errors::*, *};
 
 // Ciphersuite
-pub use crate::ciphersuite::{hash_ref::KeyPackageRef, signable::*, *};
+pub use crate::ciphersuite::{hash_ref::KeyPackageRef, signable::*, signature::*, *};
 
 // Messages
 pub use crate::messages::{proposals::*, public_group_state::*, *};
