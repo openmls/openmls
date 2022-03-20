@@ -1,5 +1,10 @@
+//! Signatures.
+//!
+//! This module contains structs for creating signature keys, issuing signatures and verifying them.
+
 use super::*;
 
+/// Signature.
 #[derive(
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
@@ -7,6 +12,7 @@ pub struct Signature {
     value: TlsByteVecU16,
 }
 
+/// A private signature key.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(any(feature = "test-utils", test), derive(PartialEq))]
 pub struct SignaturePrivateKey {
@@ -14,12 +20,14 @@ pub struct SignaturePrivateKey {
     value: Vec<u8>,
 }
 
+/// A public signature key.
 #[derive(Eq, PartialEq, Hash, Debug, Clone, Serialize, Deserialize)]
 pub struct SignaturePublicKey {
     signature_scheme: SignatureScheme,
     pub(in crate::ciphersuite) value: Vec<u8>,
 }
 
+/// A signature keypair.
 #[derive(Debug, Clone)]
 pub struct SignatureKeypair {
     private_key: SignaturePrivateKey,
@@ -95,6 +103,7 @@ impl SignatureKeypair {
 }
 
 impl SignatureKeypair {
+    /// Generates a fres signature keypair using a specific [`SignatureScheme`].
     pub fn new(
         signature_scheme: SignatureScheme,
         backend: &impl OpenMlsCryptoProvider,
@@ -135,7 +144,7 @@ impl SignaturePublicKey {
         })
     }
 
-    /// Verify a `Signature` on the `payload` byte slice with the key pair's
+    /// Verify a `Signature` on the `payload` byte slice with the keypair's
     /// public key.
     pub fn verify(
         &self,
@@ -154,7 +163,7 @@ impl SignaturePublicKey {
             .map_err(|_| CryptoError::InvalidSignature)
     }
 
-    /// Get the signature scheme of the public key
+    /// Get the signature scheme of the public key.
     pub fn signature_scheme(&self) -> SignatureScheme {
         self.signature_scheme
     }
@@ -188,7 +197,8 @@ impl SignaturePrivateKey {
     }
 
     /// Returns the raw private key bytes as slice.
-    pub(crate) fn as_slice(&self) -> &[u8] {
+    #[cfg(feature = "crypto-subtle")]
+    pub fn as_slice(&self) -> &[u8] {
         &self.value
     }
 }
