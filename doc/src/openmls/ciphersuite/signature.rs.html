@@ -194,8 +194,25 @@
 <span id="192">192</span>
 <span id="193">193</span>
 <span id="194">194</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Signatures.</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! This module contains structs for creating signature keys, issuing signatures and verifying them.</span>
 
+<span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
+
+<span class="doccomment">/// Signature.</span>
 <span class="attribute">#[<span class="ident">derive</span>(
     <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
 )]</span>
@@ -203,6 +220,7 @@
     <span class="ident">value</span>: <span class="ident">TlsByteVecU16</span>,
 }
 
+<span class="doccomment">/// A private signature key.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>), <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SignaturePrivateKey</span> {
@@ -210,12 +228,14 @@
     <span class="ident">value</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
 }
 
+<span class="doccomment">/// A public signature key.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Hash</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SignaturePublicKey</span> {
     <span class="ident">signature_scheme</span>: <span class="ident">SignatureScheme</span>,
     <span class="kw">pub</span>(<span class="kw">in</span> <span class="ident"><span class="kw">crate</span>::ciphersuite</span>) <span class="ident">value</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
 }
 
+<span class="doccomment">/// A signature keypair.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SignatureKeypair</span> {
     <span class="ident">private_key</span>: <span class="ident">SignaturePrivateKey</span>,
@@ -240,6 +260,7 @@
 
 <span class="kw">impl</span> <span class="ident">SignatureKeypair</span> {
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;crypto-subtle&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">docsrs</span>, <span class="ident">doc</span>(<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;crypto-subtle&quot;</span>)))]</span>
     <span class="doccomment">/// Construct a new [`SignatureKeypair`] from bytes of a private and a public key.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// **NO CHECKS ARE PERFORMED ON THE KEYS. USE AT YOUR OWN RISK.**</span>
@@ -291,6 +312,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">SignatureKeypair</span> {
+    <span class="doccomment">/// Generates a fresh signature keypair using a specific [`SignatureScheme`].</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">signature_scheme</span>: <span class="ident">SignatureScheme</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
@@ -331,7 +353,7 @@
         })
     }
 
-    <span class="doccomment">/// Verify a `Signature` on the `payload` byte slice with the key pair&#39;s</span>
+    <span class="doccomment">/// Verify a `Signature` on the `payload` byte slice with the keypair&#39;s</span>
     <span class="doccomment">/// public key.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -350,7 +372,7 @@
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">CryptoError::InvalidSignature</span>)
     }
 
-    <span class="doccomment">/// Get the signature scheme of the public key</span>
+    <span class="doccomment">/// Get the signature scheme of the public key.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">signature_scheme</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">SignatureScheme</span> {
         <span class="self">self</span>.<span class="ident">signature_scheme</span>
     }
@@ -384,7 +406,9 @@
     }
 
     <span class="doccomment">/// Returns the raw private key bytes as slice.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;crypto-subtle&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">docsrs</span>, <span class="ident">doc</span>(<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;crypto-subtle&quot;</span>)))]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">value</span>
     }
 }
