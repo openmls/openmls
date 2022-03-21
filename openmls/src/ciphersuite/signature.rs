@@ -52,6 +52,7 @@ impl<T> SignedStruct<T> for Signature {
 
 impl SignatureKeypair {
     #[cfg(feature = "crypto-subtle")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "crypto-subtle")))]
     /// Construct a new [`SignatureKeypair`] from bytes of a private and a public key.
     ///
     /// **NO CHECKS ARE PERFORMED ON THE KEYS. USE AT YOUR OWN RISK.**
@@ -198,6 +199,7 @@ impl SignaturePrivateKey {
 
     /// Returns the raw private key bytes as slice.
     #[cfg(feature = "crypto-subtle")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "crypto-subtle")))]
     pub fn as_slice(&self) -> &[u8] {
         &self.value
     }
