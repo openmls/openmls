@@ -104,7 +104,7 @@ impl SignatureKeypair {
 }
 
 impl SignatureKeypair {
-    /// Generates a fres signature keypair using a specific [`SignatureScheme`].
+    /// Generates a fresh signature keypair using a specific [`SignatureScheme`].
     pub fn new(
         signature_scheme: SignatureScheme,
         backend: &impl OpenMlsCryptoProvider,
