@@ -94,10 +94,12 @@ pub use openmls_rust_crypto::OpenMlsRustCrypto;
     not(feature = "evercrypt")
 ))]
 #[template]
+#[export]
 #[rstest(backend,
     case::rust_crypto(&OpenMlsRustCrypto::default()),
   )
 ]
+#[allow(non_snake_case)]
 pub fn backends(backend: &impl OpenMlsCryptoProvider) {}
 
 // For now we only use Evercrypt on specific platforms and only if the feature was enabled
@@ -109,19 +111,21 @@ pub fn backends(backend: &impl OpenMlsCryptoProvider) {}
     feature = "evercrypt",
 ))]
 #[template]
+#[export]
 #[rstest(backend,
     case::rust_crypto(&OpenMlsRustCrypto::default()),
     case::evercrypt(&openmls_evercrypt::OpenMlsEvercrypt::default()),
   )
 ]
+#[allow(non_snake_case)]
 pub fn backends(backend: &impl OpenMlsCryptoProvider) {}
 
 // === Ciphersuites ===
 
 // For now we support all ciphersuites, regardless of the backend
 
-#[allow(non_snake_case)]
 #[template]
+#[export]
 #[rstest(
     ciphersuite,
     case::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(
@@ -134,6 +138,7 @@ pub fn backends(backend: &impl OpenMlsCryptoProvider) {}
         Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
     )
 )]
+#[allow(non_snake_case)]
 pub fn ciphersuites(ciphersuite: Ciphersuite) {}
 
 // === Ciphersuites & backends ===
@@ -144,14 +149,15 @@ pub fn ciphersuites(ciphersuite: Ciphersuite) {}
     target_family = "wasm",
     not(feature = "evercrypt"),
 ))]
-#[allow(non_snake_case)]
 #[template]
+#[export]
 #[rstest(ciphersuite, backend,
     case::rust_crypto_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
     case::rust_crypto_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &OpenMlsRustCrypto::default()),
     case::rust_crypto_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
   )
 ]
+#[allow(non_snake_case)]
 pub fn ciphersuites_and_backends(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {}
 
 // For now we only use Evercrypt on specific platforms and only if the feature was enabled
@@ -162,8 +168,8 @@ pub fn ciphersuites_and_backends(ciphersuite: Ciphersuite, backend: &impl OpenMl
     not(target_family = "wasm"),
     feature = "evercrypt",
 ))]
-#[allow(non_snake_case)]
 #[template]
+#[export]
 #[rstest(ciphersuite, backend,
     case::rust_crypto_MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519, &OpenMlsRustCrypto::default()),
     case::rust_crypto_MLS_128_DHKEMP256_AES128GCM_SHA256_P256(Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256, &OpenMlsRustCrypto::default()),
@@ -173,4 +179,5 @@ pub fn ciphersuites_and_backends(ciphersuite: Ciphersuite, backend: &impl OpenMl
     case::evercrypt_MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519(Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519, &openmls_evercrypt::OpenMlsEvercrypt::default()),
   )
 ]
+#[allow(non_snake_case)]
 pub fn ciphersuites_and_backends(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {}
