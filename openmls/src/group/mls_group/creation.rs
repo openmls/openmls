@@ -137,7 +137,6 @@ impl MlsGroup {
         mls_group_config: &MlsGroupConfig,
         aad: &[u8],
         credential_bundle: &CredentialBundle,
-        proposal_store: ProposalStore,
     ) -> Result<(Self, MlsMessageOut), ExternalCommitError> {
         let resumption_secret_store =
             ResumptionSecretStore::new(mls_group_config.number_of_resumption_secrets);
@@ -146,6 +145,7 @@ impl MlsGroup {
         let framing_parameters =
             FramingParameters::new(aad, mls_group_config.wire_format_policy().outgoing());
 
+        let proposal_store = ProposalStore::new();
         let params = CreateCommitParams::builder()
             .framing_parameters(framing_parameters)
             .credential_bundle(credential_bundle)

@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Signature keys can be imported and exported with the crypto-subtle feature.
  - BasicCredentials can now be created from existing signature keys.
 
+### Changed
+ -  [#890:](https://github.com/openmls/openmls/pull/890) Join group by external commit API does not expect proposal store.
+
 ## 0.4.0 (2022-02-28)
 
 * initial release
