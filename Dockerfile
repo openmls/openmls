@@ -13,7 +13,8 @@ WORKDIR /openmls
 
 ## TODO: ADD YOUR BUILD INSTRUCTIONS HERE.
 # RUN ${HOME}/.cargo/bin/cargo build --all
-RUN cd fuzz && ${HOME}/.cargo/bin/cargo fuzz build
+RUN cd openmls && \
+    cd fuzz && ${HOME}/.cargo/bin/cargo fuzz build
 
 # Package Stage
 FROM ubuntu:20.04
