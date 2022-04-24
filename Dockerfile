@@ -21,7 +21,6 @@ FROM ubuntu:20.04
 
 ## TODO: Change <Path in Builder Stage>
 COPY --from=builder openmls/openmls/fuzz/target/x86_64-unknown-linux-gnu/release/key_package_decode /
-COPY --from=builder openmls/openmls/fuzz/target/x86_64-unknown-linux-gnu/release/mls_ciphertext_decode /
-COPY --from=builder openmls/openmls/fuzz/target/x86_64-unknown-linux-gnu/release/mls_plaintext_decode /
+COPY --from=builder openmls/openmls/fuzz/target/x86_64-unknown-linux-gnu/release/mls_message_decode /
 COPY --from=builder openmls/openmls/fuzz/target/x86_64-unknown-linux-gnu/release/proposal_decode /
 COPY --from=builder openmls/openmls/fuzz/target/x86_64-unknown-linux-gnu/release/welcome_decode /
