@@ -104,7 +104,6 @@ fn validation_test_setup(
             .expect("Error deserializing PGS");
     let tree_option = alice_group.export_ratchet_tree();
 
-    let proposal_store = ProposalStore::new();
     let (_bob_group, message) = MlsGroup::join_by_external_commit(
         backend,
         Some(&tree_option),
@@ -112,7 +111,6 @@ fn validation_test_setup(
         alice_group.configuration(),
         &[],
         &bob_credential_bundle,
-        proposal_store,
     )
     .expect("Error initializing group externally.");
 
@@ -409,7 +407,6 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .expect("Error deserializing PGS");
     let tree_option = alice_group.export_ratchet_tree();
 
-    let proposal_store = ProposalStore::new();
     let (_bob_group, message) = MlsGroup::join_by_external_commit(
         backend,
         Some(&tree_option), // Note that this isn't actually used.
@@ -417,7 +414,6 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         alice_group.configuration(),
         &[],
         &bob_credential_bundle,
-        proposal_store,
     )
     .expect("Error initializing group externally.");
 
@@ -541,7 +537,6 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             .expect("Error deserializing PGS");
     let tree_option = alice_group.export_ratchet_tree();
 
-    let proposal_store = ProposalStore::new();
     let (_bob_group, message) = MlsGroup::join_by_external_commit(
         backend,
         Some(&tree_option),
@@ -549,7 +544,6 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         alice_group.configuration(),
         &[],
         &bob_credential_bundle,
-        proposal_store,
     )
     .expect("Error initializing group externally.");
 
