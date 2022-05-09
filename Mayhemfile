@@ -1,9 +1,6 @@
 
 project: openml
-target: openml
+target: welcome_decode
 
 cmds:
     - cmd: /welcome_decode
-    - cmd: /key_package_decode
-    - cmd: /mls_message_decode
-    - cmd: /proposal_decode
