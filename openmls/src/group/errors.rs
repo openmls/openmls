@@ -158,6 +158,9 @@ pub enum StageCommitError {
     /// The sender is of type external, which is not valid.
     #[error("The sender is of type external, which is not valid.")]
     SenderTypeExternal,
+    /// The sender is of type `NewMemberProposal`, which is not valid.
+    #[error("The sender is of type NewMemberProposal, which is not valid.")]
+    SenderTypeNewMemberProposal,
     /// Too many new members: the tree is full.
     #[error("Too many new members: the tree is full.")]
     TooManyNewMembers,
@@ -213,11 +216,14 @@ pub enum ValidationError {
     /// Message epoch differs from the group's epoch.
     #[error("Message epoch differs from the group's epoch.")]
     WrongEpoch,
-    /// The MlsPlaintext is not a Commit despite the sender begin of type NewMember.
-    #[error("The MlsPlaintext is not a Commit despite the sender begin of type NewMember.")]
+    /// The MlsPlaintext is not a Commit despite the sender begin of type [NewMemberCommit](crate::prelude::Sender::NewMemberCommit).
+    #[error("The MlsPlaintext is not a Commit despite the sender begin of type NewMemberCommit.")]
     NotACommit,
-    /// The Commit doesn't have a path despite the sender being of type NewMember.
-    #[error("The Commit doesn't have a path despite the sender being of type NewMember.")]
+    /// The MlsPlaintext is not an External Add Proposal despite the sender begin of type [NewMemberProposal](crate::prelude::Sender::NewMemberProposal).
+    #[error("The MlsPlaintext is not an external Add proposal despite the sender begin of type NewMemberProposal.")]
+    NotAnExternalAddProposal,
+    /// The Commit doesn't have a path despite the sender being of type NewMemberCommit.
+    #[error("The Commit doesn't have a path despite the sender being of type NewMemberCommit.")]
     NoPath,
     /// The MlsPlaintext contains an application message but was not encrypted.
     #[error("The MlsPlaintext contains an application message but was not encrypted.")]

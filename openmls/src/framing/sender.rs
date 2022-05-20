@@ -41,8 +41,12 @@ pub enum Sender {
     Member(KeyPackageRef),
     /// The sender is not a member of the group and has an external value instead
     External(TlsByteVecU8),
-    /// The sender is a new member of the group that joins through an External Commit
-    NewMember,
+    /// The sender is a new member of the group that joins itself through
+    /// an [External Add proposal](crate::messages::external_proposals::ExternalProposal::Join)
+    NewMemberProposal,
+    /// The sender is a new member of the group that joins itself through
+    /// an [External Commit](crate::group::mls_group::MlsGroup::join_by_external_commit)
+    NewMemberCommit,
 }
 
 impl Sender {
@@ -54,11 +58,6 @@ impl Sender {
     /// Create a member sender.
     pub(crate) fn build_member(kpr: &KeyPackageRef) -> Self {
         Self::Member(kpr.clone())
-    }
-
-    /// Create a new member sender.
-    pub(crate) fn build_new_member() -> Self {
-        Self::NewMember
     }
 
     /// Returns true if this [`Sender`] has [`SenderType::Member`].

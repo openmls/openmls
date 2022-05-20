@@ -91,22 +91,48 @@ struct ProposalValidationTestSetup {
     bob_group: MlsGroup,
 }
 
+// Creates a standalone group
+fn new_test_group(
+    identity: &str,
+    wire_format_policy: WireFormatPolicy,
+    ciphersuite: Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+) -> MlsGroup {
+    let group_id = GroupId::from_slice(b"Test Group");
+
+    // Generate credential bundles
+    let credential = generate_credential_bundle(
+        identity.into(),
+        CredentialType::Basic,
+        ciphersuite.signature_algorithm(),
+        backend,
+    )
+    .unwrap();
+
+    // Generate KeyPackages
+    let key_package =
+        generate_key_package_bundle(&[ciphersuite], &credential, vec![], backend).unwrap();
+
+    // Define the MlsGroup configuration
+    let mls_group_config = MlsGroupConfig::builder()
+        .wire_format_policy(wire_format_policy)
+        .build();
+
+    let kpr = key_package
+        .hash_ref(backend.crypto())
+        .expect("Could not hash KeyPackage.");
+
+    MlsGroup::new(backend, &mls_group_config, group_id, kpr.as_slice()).unwrap()
+}
+
 // Validation test setup
 fn validation_test_setup(
     wire_format_policy: WireFormatPolicy,
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) -> ProposalValidationTestSetup {
-    let group_id = GroupId::from_slice(b"Test Group");
-
-    // Generate credential bundles
-    let alice_credential = generate_credential_bundle(
-        "Alice".into(),
-        CredentialType::Basic,
-        ciphersuite.signature_algorithm(),
-        backend,
-    )
-    .expect("An unexpected error occurred.");
+    // === Alice creates a group ===
+    let mut alice_group = new_test_group("Alice", wire_format_policy, ciphersuite, backend);
 
     let bob_credential = generate_credential_bundle(
         "Bob".into(),
@@ -116,32 +142,9 @@ fn validation_test_setup(
     )
     .expect("An unexpected error occurred.");
 
-    // Generate KeyPackages
-    let alice_key_package =
-        generate_key_package_bundle(&[ciphersuite], &alice_credential, vec![], backend)
-            .expect("An unexpected error occurred.");
-
     let bob_key_package =
         generate_key_package_bundle(&[ciphersuite], &bob_credential, vec![], backend)
             .expect("An unexpected error occurred.");
-
-    // Define the MlsGroup configuration
-
-    let mls_group_config = MlsGroupConfig::builder()
-        .wire_format_policy(wire_format_policy)
-        .build();
-
-    // === Alice creates a group ===
-    let mut alice_group = MlsGroup::new(
-        backend,
-        &mls_group_config,
-        group_id,
-        alice_key_package
-            .hash_ref(backend.crypto())
-            .expect("Could not hash KeyPackage.")
-            .as_slice(),
-    )
-    .expect("An unexpected error occurred.");
 
     let (_message, welcome) = alice_group
         .add_members(backend, &[bob_key_package])
@@ -150,6 +153,11 @@ fn validation_test_setup(
     alice_group
         .merge_pending_commit()
         .expect("error merging pending commit");
+
+    // Define the MlsGroup configuration
+    let mls_group_config = MlsGroupConfig::builder()
+        .wire_format_policy(wire_format_policy)
+        .build();
 
     let bob_group = MlsGroup::new_from_welcome(
         backend,
@@ -2090,8 +2098,8 @@ fn test_valsem112(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
 
-    // Now let's change the sender type to NewMember.
-    plaintext.set_sender(Sender::NewMember);
+    // Now let's change the sender type to NewMemberCommit.
+    plaintext.set_sender(Sender::NewMemberCommit);
 
     let update_message_in = MlsMessageIn::from(plaintext.clone());
 

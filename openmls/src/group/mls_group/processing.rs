@@ -29,7 +29,8 @@ impl MlsGroup {
         }
 
         // Check that handshake messages are compatible with the incoming wire format policy
-        if message.is_handshake_message()
+        if !message.is_external()
+            && message.is_handshake_message()
             && !self
                 .configuration()
                 .wire_format_policy()

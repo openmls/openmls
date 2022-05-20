@@ -188,6 +188,9 @@ impl User {
                         ProcessedMessage::ProposalMessage(_proposal_ptr) => {
                             // intentionally left blank.
                         }
+                        ProcessedMessage::ExternalJoinProposalMessage(_external_proposal_ptr) => {
+                            // intentionally left blank.
+                        }
                         ProcessedMessage::StagedCommitMessage(commit_ptr) => {
                             mls_group
                                 .merge_staged_commit(*commit_ptr)

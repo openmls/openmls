@@ -185,17 +185,23 @@ impl DecryptedMessage {
             }
             // External senders are not supported yet #106/#151.
             Sender::External(_) => unimplemented!(),
-            Sender::NewMember => {
-                // Since this allows only commits to have a sender type `Member`, it checks
-                // ValSem112
-                if let MlsContentBody::Commit(commit) = self.plaintext().content() {
-                    if let Some(path) = commit.path() {
-                        Ok(path.leaf_key_package().credential().clone())
-                    } else {
-                        Err(ValidationError::NoPath)
+            Sender::NewMemberCommit => {
+                // only external commits can have a sender type `NewMemberCommit`
+                match self.plaintext().content() {
+                    MlsContentBody::Commit(Commit { path, .. }) => path
+                        .as_ref()
+                        .map(|p| p.leaf_key_package().credential().clone())
+                        .ok_or(ValidationError::NoPath),
+                    _ => Err(ValidationError::NotACommit),
+                }
+            }
+            Sender::NewMemberProposal => {
+                // only External Add proposals can have a sender type `NewMemberProposal`
+                match self.plaintext().content() {
+                    MlsContentBody::Proposal(Proposal::Add(AddProposal { key_package })) => {
+                        Ok(key_package.credential().clone())
                     }
-                } else {
-                    Err(ValidationError::NotACommit)
+                    _ => Err(ValidationError::NotAnExternalAddProposal),
                 }
             }
         }
@@ -215,7 +221,7 @@ impl DecryptedMessage {
 /// Partially checked and potentially decrypted message (if it was originally encrypted).
 /// Use this to inspect the [`Credential`] of the message sender
 /// and the optional `aad` if the original message was encrypted.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct UnverifiedMessage {
     plaintext: VerifiableMlsPlaintext,
     credential: Option<Credential>,
@@ -262,13 +268,15 @@ impl UnverifiedMessage {
 }
 
 /// Contains an VerifiableMlsPlaintext and a [Credential] if it is a message
-/// from a `Member` or a `NewMember`.  It sets the serialized group context and
-/// verifies the membership tag for member messages.  It can be converted to a
-/// verified message by verifying the signature, either with the credential or
-/// an external signature key.
+/// from a `Member`, a `Preconfigured`, a `NewMemberProposal` or a `NewMemberCommit`. It sets the
+/// serialized group context and verifies the membership tag for member messages. It can be
+/// converted to a verified message by verifying the signature, either with the credential or an
+/// external signature key.
 pub(crate) enum UnverifiedContextMessage {
     /// Unverified message from a group member
     Group(UnverifiedGroupMessage),
+    /// Unverified message from either a `NewMemberProposal` or a `NewMemberCommit`
+    NewMember(UnverifiedNewMemberMessage),
     /// Unverified message from an external sender
     /// TODO: #106
     #[allow(dead_code)]
@@ -298,11 +306,10 @@ impl UnverifiedContextMessage {
             }
         }
         match plaintext.sender() {
-            Sender::Member(_) | Sender::NewMember => {
+            Sender::Member(_) => {
                 Ok(UnverifiedContextMessage::Group(UnverifiedGroupMessage {
                     plaintext,
-                    // If the message type is `Sender` or `NewMember`, the
-                    // message always contains a credential.
+                    // If the message type is `Member` it always contains credentials
                     credential: credential_option.ok_or_else(|| {
                         ValidationError::from(LibraryError::custom("Expected credential"))
                     })?,
@@ -310,6 +317,17 @@ impl UnverifiedContextMessage {
             }
             // TODO #151/#106: We don't support external senders yet
             Sender::External(_) => unimplemented!(),
+            Sender::NewMemberProposal | Sender::NewMemberCommit => {
+                Ok(UnverifiedContextMessage::NewMember(
+                    UnverifiedNewMemberMessage {
+                        plaintext,
+                        // If the message type is `NewMemberCommit` or `NewMemberProposal` it always contains credentials
+                        credential: credential_option.ok_or_else(|| {
+                            ValidationError::from(LibraryError::custom("Expected credential"))
+                        })?,
+                    },
+                ))
+            }
         }
     }
 }
@@ -346,6 +364,37 @@ impl UnverifiedGroupMessage {
     }
 }
 
+/// Part of [UnverifiedContextMessage].
+pub(crate) struct UnverifiedNewMemberMessage {
+    plaintext: VerifiableMlsPlaintext,
+    credential: Credential,
+}
+
+impl UnverifiedNewMemberMessage {
+    /// Verifies the signature of an [UnverifiedNewMemberMessage] and returns a
+    /// [VerifiedExternalMessage] if the verification is successful.
+    /// This function implements the following checks:
+    /// - ValSem010
+    pub(crate) fn into_verified(
+        self,
+        backend: &impl OpenMlsCryptoProvider,
+        signature_key: Option<&SignaturePublicKey>,
+    ) -> Result<VerifiedExternalMessage, ValidationError> {
+        // If a signature key is provided it will be used, otherwise we take it from the credential
+        let verified_external_message = if let Some(signature_public_key) = signature_key {
+            // ValSem010
+            self.plaintext
+                .verify_with_key(backend, signature_public_key)
+        } else {
+            // ValSem010
+            self.plaintext.verify(backend, &self.credential)
+        }
+        .map(|plaintext| VerifiedExternalMessage { plaintext })
+        .map_err(|_| ValidationError::InvalidSignature)?;
+        Ok(verified_external_message)
+    }
+}
+
 // TODO #151/#106: We don't support external senders yet
 /// Part of [UnverifiedContextMessage].
 pub(crate) struct UnverifiedExternalMessage {
@@ -365,7 +414,7 @@ impl UnverifiedExternalMessage {
         // ValSem010
         self.plaintext
             .verify_with_key(backend, signature_key)
-            .map(|_plaintext| VerifiedExternalMessage { _plaintext })
+            .map(|plaintext| VerifiedExternalMessage { plaintext })
             .map_err(|_| ValidationError::InvalidSignature)
     }
 }
@@ -390,18 +439,18 @@ impl VerifiedMemberMessage {
 /// External message, where all semantic checks on the framing have been successfully performed.
 /// Note: External messages are not fully supported yet #106
 pub(crate) struct VerifiedExternalMessage {
-    _plaintext: MlsPlaintext,
+    plaintext: MlsPlaintext,
 }
 
 impl VerifiedExternalMessage {
     /// Returns a reference to the inner [MlsPlaintext].
-    pub(crate) fn _plaintext(&self) -> &MlsPlaintext {
-        &self._plaintext
+    pub(crate) fn plaintext(&self) -> &MlsPlaintext {
+        &self.plaintext
     }
 
     /// Consumes the message and returns the inner [MlsPlaintext].
-    pub(crate) fn _take_plaintext(self) -> MlsPlaintext {
-        self._plaintext
+    pub(crate) fn take_plaintext(self) -> MlsPlaintext {
+        self.plaintext
     }
 }
 
@@ -421,6 +470,14 @@ pub enum ProcessedMessage {
     /// If the proposal is deemed to be allowed, it should be added to the group's proposal
     /// queue using [`MlsGroup::store_pending_proposal()`](crate::group::mls_group::MlsGroup::store_pending_proposal()).
     ProposalMessage(Box<QueuedProposal>),
+    /// An [external join proposal](crate::prelude::JoinProposal) sent by a
+    /// [NewMemberProposal](crate::prelude::Sender::NewMemberProposal) sender which is outside the group.
+    ///
+    /// Since this originates from a party outside the group, the [`QueuedProposal`] SHOULD be
+    /// inspected for authorization purposes by the application. If the proposal is deemed to be
+    /// allowed, it should be added to the group's proposal queue using
+    /// [`MlsGroup::store_pending_proposal()`](crate::group::mls_group::MlsGroup::store_pending_proposal()).
+    ExternalJoinProposalMessage(Box<QueuedProposal>),
     /// A Commit message.
     ///
     /// The [`StagedCommit`] can be inspected for authorization purposes by the application.

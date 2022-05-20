@@ -328,8 +328,8 @@ impl MlsClient for MlsClientImpl {
             }
             Ok(TestVectorType::Treekem) => {
                 todo!("#624: See TreeKEM is currently not working. See https://github.com/openmls/openmls/issues/624");
-                // let kat_tree_kem: TreeKemTestVector = match serde_json::from_slice(&obj.test_vector)
-                // {
+                // let kat_tree_kem: TreeKemTestVector = match
+                // serde_json::from_slice(&obj.test_vector) {
                 //     Ok(test_vector) => test_vector,
                 //     Err(_) => {
                 //         return Err(tonic::Status::new(
@@ -339,15 +339,17 @@ impl MlsClient for MlsClientImpl {
                 //     }
                 // };
                 // write(
-                //     &format!("mlspp_tree_kem_{}.json", kat_tree_kem.cipher_suite),
+                //     &format!("mlspp_tree_kem_{}.json",
+                // kat_tree_kem.cipher_suite),
                 //     &obj.test_vector,
                 // );
                 // match kat_tree_kem::run_test_vector(kat_tree_kem, backend) {
                 //     Ok(result) => ("TreeKEM", result),
                 //     Err(e) => {
-                //         let message = "Error while running TreeKEM test vector: ".to_string()
-                //             + &e.to_string();
-                //         return Err(tonic::Status::new(tonic::Code::Aborted, message));
+                //         let message = "Error while running TreeKEM test
+                // vector: ".to_string()             +
+                // &e.to_string();         return
+                // Err(tonic::Status::new(tonic::Code::Aborted, message));
                 //     }
                 // }
             }
@@ -640,6 +642,7 @@ impl MlsClient for MlsClientImpl {
                 application_message.into_bytes()
             }
             ProcessedMessage::ProposalMessage(_) => unreachable!(),
+            ProcessedMessage::ExternalJoinProposalMessage(_) => unreachable!(),
             ProcessedMessage::StagedCommitMessage(_) => unreachable!(),
         };
 
@@ -778,7 +781,8 @@ impl MlsClient for MlsClientImpl {
             .get_mut(commit_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
 
-        // Proposals by reference. These proposals are standalone proposals. They should be appended to the proposal store.
+        // Proposals by reference. These proposals are standalone proposals. They should
+        // be appended to the proposal store.
 
         for proposal in &commit_request.by_reference {
             let message = MlsMessageIn::tls_deserialize(&mut proposal.as_slice())
@@ -796,11 +800,13 @@ impl MlsClient for MlsClientImpl {
                 ProcessedMessage::ProposalMessage(proposal) => {
                     interop_group.group.store_pending_proposal(*proposal);
                 }
+                ProcessedMessage::ExternalJoinProposalMessage(_) => unreachable!(),
                 ProcessedMessage::StagedCommitMessage(_) => unreachable!(),
             }
         }
 
-        // Proposals by value. These proposals are inline proposals. They should be converted into group operations.
+        // Proposals by value. These proposals are inline proposals. They should be
+        // converted into group operations.
 
         // TODO #692: The interop client cannot process these proposals yet.
 
@@ -849,6 +855,7 @@ impl MlsClient for MlsClientImpl {
                 ProcessedMessage::ProposalMessage(proposal) => {
                     interop_group.group.store_pending_proposal(*proposal);
                 }
+                ProcessedMessage::ExternalJoinProposalMessage(_) => unreachable!(),
                 ProcessedMessage::StagedCommitMessage(_) => unreachable!(),
             }
         }
@@ -866,6 +873,7 @@ impl MlsClient for MlsClientImpl {
         match processed_message {
             ProcessedMessage::ApplicationMessage(_) => unreachable!(),
             ProcessedMessage::ProposalMessage(_) => unreachable!(),
+            ProcessedMessage::ExternalJoinProposalMessage(_) => unreachable!(),
             ProcessedMessage::StagedCommitMessage(_) => {
                 interop_group
                     .group

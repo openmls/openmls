@@ -170,6 +170,9 @@ impl Client {
                 ProcessedMessage::ProposalMessage(staged_proposal) => {
                     group_state.store_pending_proposal(*staged_proposal);
                 }
+                ProcessedMessage::ExternalJoinProposalMessage(staged_proposal) => {
+                    group_state.store_pending_proposal(*staged_proposal);
+                }
                 ProcessedMessage::StagedCommitMessage(staged_commit) => {
                     group_state.merge_staged_commit(*staged_commit)?;
                 }
