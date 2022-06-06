@@ -231,7 +231,7 @@ impl MlsClient for MlsClientImpl {
         let obj = request.get_ref();
         let (type_msg, _result) = match TestVectorType::try_from(obj.test_vector_type) {
             Ok(TestVectorType::TreeMath) => {
-                write(&"mlspp_treemath.json".to_string(), &obj.test_vector);
+                write("mlspp_treemath.json", &obj.test_vector);
                 let kat_treemath = match serde_json::from_slice(&obj.test_vector) {
                     Ok(test_vector) => test_vector,
                     Err(_) => {
