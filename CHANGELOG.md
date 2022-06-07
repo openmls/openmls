@@ -6,13 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## 0.4.1 (2022-06-07)
+
 ### Added
- - Signature sub-module of the ciphersuite module is now public.
- - Signature keys can be imported and exported with the crypto-subtle feature.
- - BasicCredentials can now be created from existing signature keys.
+ - [#873:](https://github.com/openmls/openmls/pull/873) Signature sub-module of the ciphersuite module is now public.
+ - [#873:](https://github.com/openmls/openmls/pull/873) Signature keys can be imported and exported with the crypto-subtle feature.
+ - [#873:](https://github.com/openmls/openmls/pull/873) BasicCredentials can now be created from existing signature keys.
 
 ### Changed
- -  [#890:](https://github.com/openmls/openmls/pull/890) Join group by external commit API does not expect proposal store.
+ -  [#890:](https://github.com/openmls/openmls/pull/890) Join group by External Commit API does not expect proposal store.
 
 ## 0.4.0 (2022-02-28)
 
