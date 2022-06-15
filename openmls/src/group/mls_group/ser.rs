@@ -6,8 +6,12 @@ use serde::{
 };
 
 /// Helper struct that contains the serializable values of an `MlsGroup.
+#[deprecated(
+    since = "0.4.1",
+    note = "It is temporarily exposed, it will be private again after #245"
+)]
 #[derive(Serialize, Deserialize)]
-pub(crate) struct SerializedMlsGroup {
+pub struct SerializedMlsGroup {
     mls_group_config: MlsGroupConfig,
     group: CoreGroup,
     proposal_store: ProposalStore,
@@ -18,7 +22,8 @@ pub(crate) struct SerializedMlsGroup {
 }
 
 impl SerializedMlsGroup {
-    pub(crate) fn into_mls_group(self) -> MlsGroup {
+    /// Helper method that converts the SerializedMlsGroup to MlsGroup.
+    pub fn into_mls_group(self) -> MlsGroup {
         MlsGroup {
             mls_group_config: self.mls_group_config,
             group: self.group,

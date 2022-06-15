@@ -25,7 +25,6 @@ mod application;
 mod creation;
 mod exporting;
 mod resumption;
-mod ser;
 mod updates;
 
 use config::*;
@@ -38,6 +37,7 @@ pub(crate) mod config;
 pub(crate) mod errors;
 pub(crate) mod membership;
 pub(crate) mod processing;
+pub(crate) mod ser;
 
 // Tests
 #[cfg(test)]
