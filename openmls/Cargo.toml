@@ -26,7 +26,7 @@ getrandom = { version = "0.2", features = ["js"] }
 itertools = { version = "0.10", optional = true }
 openmls_rust_crypto = { version = "0.1.0", path = "../openmls_rust_crypto", optional = true }
 openmls_evercrypt = { version = "0.1.0", path = "../evercrypt_backend", optional = true }
-rstest = {version = "^0.13", optional = true}
+rstest = {version = "^0.14", optional = true}
 rstest_reuse = {version = "0.3", optional = true}
 rayon = "^1.5.0"
 thiserror = "^1.0"
@@ -46,7 +46,7 @@ pretty_env_logger = "0.4"
 itertools = "0.10"
 openmls = { path = ".", features = ["test-utils"] }
 tempfile = "3"
-rstest = "^0.13"
+rstest = "^0.14"
 rstest_reuse = "0.3"
 backtrace = "0.3"
 lazy_static = "1.4"
