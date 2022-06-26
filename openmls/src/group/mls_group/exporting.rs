@@ -43,7 +43,7 @@ impl MlsGroup {
     }
 
     /// Returns the resumption secret of the current epoch.
-    pub fn resumptionn_secret(&self) -> &ResumptionSecret {
+    pub fn resumption_secret(&self) -> &ResumptionSecret {
         self.group.resumption_secret()
     }
 
