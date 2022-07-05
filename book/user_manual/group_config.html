@@ -137,7 +137,7 @@
                         <h1 id="group-configuration"><a class="header" href="#group-configuration">Group configuration</a></h1>
 <p>The group configuration can be specified by building a <code>MlsGroupConfig</code> object or choosing the default value. The default velaue contains safe values for all parameters and is suitable for scenarios whithout particular requirements.</p>
 <p>The following parameters can be set:</p>
-<table><thead><tr><th>Name</th><th>Type</th><th>Explanation</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Explanation</th></tr></thead><tbody>
 <tr><td><code>wire_format_policy</code></td><td><code>WireFormatPolicy</code></td><td>Defines the wire format policy for outgoing and incoming handshake messages.</td></tr>
 <tr><td><code>padding_size</code></td><td><code>usize</code></td><td>Size of padding in bytes. The default is 0.</td></tr>
 <tr><td><code>max_past_epochs</code></td><td><code>usize</code></td><td>Maximum number of past epochs for which application messages can be decrypted. The default is 0.</td></tr>
@@ -146,6 +146,7 @@
 <tr><td><code>required_capabilities</code></td><td><code>RequiredCapabilitiesExtension</code></td><td>Required capabilities (extensions and proposal types).</td></tr>
 <tr><td><code>sender_ratchet_configuration</code></td><td><code>SenderRatchetConfiguration</code></td><td>Sender ratchet configuration.</td></tr>
 </tbody></table>
+</div>
 <p>Example configuration:</p>
 <pre><code class="language-rust no_run noplayground">    let mls_group_config = MlsGroupConfig::builder()
         .padding_size(100)

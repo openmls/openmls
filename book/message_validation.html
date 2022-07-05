@@ -158,7 +158,7 @@ For the latter case, further syntax checks are applied once the message is decry
 <h2 id="detailed-list-of-validation-steps"><a class="header" href="#detailed-list-of-validation-steps">Detailed list of validation steps</a></h2>
 <p>The following is a list of the individual semantic validation steps performed by OpenMLS, including the location of the tests.</p>
 <h3 id="semantic-validation-of-message-framing"><a class="header" href="#semantic-validation-of-message-framing">Semantic validation of message framing</a></h3>
-<table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
 <tr><td><code>ValSem001</code></td><td>Wire format</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
 <tr><td><code>ValSem002</code></td><td>Group id</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
 <tr><td><code>ValSem003</code></td><td>Epoch</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
@@ -170,8 +170,9 @@ For the latter case, further syntax checks are applied once the message is decry
 <tr><td><code>ValSem009</code></td><td>Confirmation tag presence</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
 <tr><td><code>ValSem010</code></td><td>Signature verification</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
 </tbody></table>
+</div>
 <h3 id="semantic-validation-of-proposals-covered-by-a-commit"><a class="header" href="#semantic-validation-of-proposals-covered-by-a-commit">Semantic validation of proposals covered by a Commit</a></h3>
-<table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
 <tr><td><code>ValSem100</code></td><td>Add Proposal: Identity in proposals must be unique among proposals</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem101</code></td><td>Add Proposal: Signature public key in proposals must be unique among proposals</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem102</code></td><td>Add Proposal: HPKE init key in proposals must be unique among proposals</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
@@ -186,8 +187,9 @@ For the latter case, further syntax checks are applied once the message is decry
 <tr><td><code>ValSem111</code></td><td>Update Proposal: The sender of a full Commit must not include own update proposals</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem112</code></td><td>Update Proposal: The sender of a standalone update proposal must be of type member</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 </tbody></table>
+</div>
 <h3 id="commit-message-validation"><a class="header" href="#commit-message-validation">Commit message validation</a></h3>
-<table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
 <tr><td><code>ValSem200</code></td><td>Commit must not cover inline self Remove proposal</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem201</code></td><td>Path must be present, if Commit contains Removes or Updates</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem202</code></td><td>Path must be the right length</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
@@ -195,8 +197,9 @@ For the latter case, further syntax checks are applied once the message is decry
 <tr><td><code>ValSem204</code></td><td>Public keys from Path must be verified and match the private keys from the direct path</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem205</code></td><td>Confirmation tag must be successfully verified</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 </tbody></table>
+</div>
 <h3 id="external-commit-message-validation"><a class="header" href="#external-commit-message-validation">External Commit message validation</a></h3>
-<table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
 <tr><td><code>ValSem240</code></td><td>External Commit must cover at least one inline ExternalInit proposal</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem241</code></td><td>External Commit must cover at most one inline ExternalInit proposal</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem242</code></td><td>External Commit must not cover any inline Add proposals</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
@@ -206,7 +209,7 @@ For the latter case, further syntax checks are applied once the message is decry
 <tr><td><code>ValSem246</code></td><td>External Commit must contain a path</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem247</code></td><td>External Commit signature must be verified using the credential in the path KeyPackage</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
 </tbody></table>
-
+</div>
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">

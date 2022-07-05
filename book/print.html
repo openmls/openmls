@@ -275,7 +275,7 @@ details.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="group-configuration"><a class="header" href="#group-configuration">Group configuration</a></h1>
 <p>The group configuration can be specified by building a <code>MlsGroupConfig</code> object or choosing the default value. The default velaue contains safe values for all parameters and is suitable for scenarios whithout particular requirements.</p>
 <p>The following parameters can be set:</p>
-<table><thead><tr><th>Name</th><th>Type</th><th>Explanation</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>Name</th><th>Type</th><th>Explanation</th></tr></thead><tbody>
 <tr><td><code>wire_format_policy</code></td><td><code>WireFormatPolicy</code></td><td>Defines the wire format policy for outgoing and incoming handshake messages.</td></tr>
 <tr><td><code>padding_size</code></td><td><code>usize</code></td><td>Size of padding in bytes. The default is 0.</td></tr>
 <tr><td><code>max_past_epochs</code></td><td><code>usize</code></td><td>Maximum number of past epochs for which application messages can be decrypted. The default is 0.</td></tr>
@@ -284,6 +284,7 @@ details.</p>
 <tr><td><code>required_capabilities</code></td><td><code>RequiredCapabilitiesExtension</code></td><td>Required capabilities (extensions and proposal types).</td></tr>
 <tr><td><code>sender_ratchet_configuration</code></td><td><code>SenderRatchetConfiguration</code></td><td>Sender ratchet configuration.</td></tr>
 </tbody></table>
+</div>
 <p>Example configuration:</p>
 <pre><code class="language-rust no_run noplayground">    let mls_group_config = MlsGroupConfig::builder()
         .padding_size(100)
@@ -937,7 +938,7 @@ For the latter case, further syntax checks are applied once the message is decry
 <h2 id="detailed-list-of-validation-steps"><a class="header" href="#detailed-list-of-validation-steps">Detailed list of validation steps</a></h2>
 <p>The following is a list of the individual semantic validation steps performed by OpenMLS, including the location of the tests.</p>
 <h3 id="semantic-validation-of-message-framing"><a class="header" href="#semantic-validation-of-message-framing">Semantic validation of message framing</a></h3>
-<table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
 <tr><td><code>ValSem001</code></td><td>Wire format</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
 <tr><td><code>ValSem002</code></td><td>Group id</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
 <tr><td><code>ValSem003</code></td><td>Epoch</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
@@ -949,8 +950,9 @@ For the latter case, further syntax checks are applied once the message is decry
 <tr><td><code>ValSem009</code></td><td>Confirmation tag presence</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
 <tr><td><code>ValSem010</code></td><td>Signature verification</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_framing_validation.rs</code></td></tr>
 </tbody></table>
+</div>
 <h3 id="semantic-validation-of-proposals-covered-by-a-commit"><a class="header" href="#semantic-validation-of-proposals-covered-by-a-commit">Semantic validation of proposals covered by a Commit</a></h3>
-<table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
 <tr><td><code>ValSem100</code></td><td>Add Proposal: Identity in proposals must be unique among proposals</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem101</code></td><td>Add Proposal: Signature public key in proposals must be unique among proposals</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem102</code></td><td>Add Proposal: HPKE init key in proposals must be unique among proposals</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
@@ -965,8 +967,9 @@ For the latter case, further syntax checks are applied once the message is decry
 <tr><td><code>ValSem111</code></td><td>Update Proposal: The sender of a full Commit must not include own update proposals</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 <tr><td><code>ValSem112</code></td><td>Update Proposal: The sender of a standalone update proposal must be of type member</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_proposal_validation.rs</code></td></tr>
 </tbody></table>
+</div>
 <h3 id="commit-message-validation"><a class="header" href="#commit-message-validation">Commit message validation</a></h3>
-<table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
 <tr><td><code>ValSem200</code></td><td>Commit must not cover inline self Remove proposal</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem201</code></td><td>Path must be present, if Commit contains Removes or Updates</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem202</code></td><td>Path must be the right length</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
@@ -974,8 +977,9 @@ For the latter case, further syntax checks are applied once the message is decry
 <tr><td><code>ValSem204</code></td><td>Public keys from Path must be verified and match the private keys from the direct path</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem205</code></td><td>Confirmation tag must be successfully verified</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_commit_validation.rs</code></td></tr>
 </tbody></table>
+</div>
 <h3 id="external-commit-message-validation"><a class="header" href="#external-commit-message-validation">External Commit message validation</a></h3>
-<table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
+<div class="table-wrapper"><table><thead><tr><th>ValidationStep</th><th>Description</th><th>Implemented</th><th>Tested</th><th>Test File</th></tr></thead><tbody>
 <tr><td><code>ValSem240</code></td><td>External Commit must cover at least one inline ExternalInit proposal</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem241</code></td><td>External Commit must cover at most one inline ExternalInit proposal</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem242</code></td><td>External Commit must not cover any inline Add proposals</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
@@ -985,7 +989,7 @@ For the latter case, further syntax checks are applied once the message is decry
 <tr><td><code>ValSem246</code></td><td>External Commit must contain a path</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
 <tr><td><code>ValSem247</code></td><td>External Commit signature must be verified using the credential in the path KeyPackage</td><td>✅</td><td>✅</td><td><code>openmls/src/group/tests/test_external_commit_validation.rs</code></td></tr>
 </tbody></table>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="performance"><a class="header" href="#performance">Performance</a></h1>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="performance"><a class="header" href="#performance">Performance</a></h1>
 <p>How does OpenMLS (and MLS in general) perform in different settings?</p>
 <p>Performance measurements are implemented <a href="https://github.com/openmls/openmls/blob/franziskus/benchmarks/benches/group.rs">here</a> and can be run with <code>cargo bench --bench group</code>.
 Make sure that check in the code which scenarios and group sizes are enabled.</p>
