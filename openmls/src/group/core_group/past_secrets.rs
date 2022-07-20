@@ -93,6 +93,21 @@ impl MessageSecretsStore {
         None
     }
 
+    /// Get a reference to a secret tree for a given epoch `group_epoch`.
+    /// If no message secrets are found for that epoch, `None` is returned.
+    pub(crate) fn secrets_for_epoch(
+        &self,
+        group_epoch: impl Into<GroupEpoch>,
+    ) -> Option<&MessageSecrets> {
+        let epoch = group_epoch.into().as_u64();
+        for epoch_tree in self.past_epoch_trees.iter() {
+            if epoch_tree.epoch == epoch {
+                return Some(&epoch_tree.message_secrets);
+            }
+        }
+        None
+    }
+
     /// Get a mutable reference to a secret tree for a given epoch `group_epoch`.
     /// Return a vector with the key package references and leaf indices of the
     /// epoch.

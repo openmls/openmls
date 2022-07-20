@@ -105,7 +105,7 @@ impl CoreGroup {
     ///  - ValSem245
     ///  - ValSem247 (as part of ValSem010)
     pub(crate) fn process_unverified_message(
-        &mut self,
+        &self,
         unverified_message: UnverifiedMessage,
         signature_key: Option<&SignaturePublicKey>,
         proposal_store: &ProposalStore,
@@ -115,7 +115,7 @@ impl CoreGroup {
         // Add the context to the message and verify the membership tag if necessary.
         // If the message is older than the current epoch, we need to fetch the correct secret tree first.
         let message_secrets = self
-            .message_secrets_mut(unverified_message.epoch())
+            .message_secrets_for_epoch(unverified_message.epoch())
             .map_err(|e| match e {
                 SecretTreeError::TooDistantInThePast => UnverifiedMessageError::NoPastEpochData,
                 _ => LibraryError::custom("Unexpected return value").into(),

@@ -627,7 +627,7 @@ fn test_own_commit_processing(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
     .expect("An unexpected error occurred.");
 
     // === Alice creates a group ===
-    let mut alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
+    let alice_group = CoreGroup::builder(GroupId::random(backend), alice_key_package_bundle)
         .build(backend)
         .expect("Error creating group.");
 

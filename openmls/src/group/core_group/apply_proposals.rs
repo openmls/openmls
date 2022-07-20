@@ -9,7 +9,7 @@ use crate::{
     group::errors::ApplyProposalsError,
     key_packages::KeyPackageBundle,
     messages::proposals::{AddProposal, Proposal, ProposalType},
-    schedule::{psk::*, InitSecret},
+    schedule::InitSecret,
     treesync::{diff::TreeSyncDiff, node::leaf_node::LeafNode},
 };
 

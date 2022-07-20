@@ -55,7 +55,7 @@ impl MlsGroup {
     /// Returns an [`UnverifiedMessageError`] when the validation checks fail
     /// with the exact reason of the failure.
     pub fn process_unverified_message(
-        &mut self,
+        &self,
         unverified_message: UnverifiedMessage,
         signature_key: Option<&SignaturePublicKey>,
         backend: &impl OpenMlsCryptoProvider,

@@ -52,7 +52,7 @@ impl CoreGroup {
     /// Returns an error if the given commit was sent by the owner of this
     /// group.
     pub(crate) fn stage_commit(
-        &mut self,
+        &self,
         mls_plaintext: &MlsPlaintext,
         proposal_store: &ProposalStore,
         own_key_packages: &[KeyPackageBundle],
