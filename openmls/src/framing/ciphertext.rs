@@ -156,7 +156,7 @@ impl MlsCiphertext {
     /// Decrypt the sender data from this [`MlsCiphertext`].
     pub(crate) fn sender_data(
         &self,
-        message_secrets: &mut MessageSecrets,
+        message_secrets: &MessageSecrets,
         backend: &impl OpenMlsCryptoProvider,
         ciphersuite: Ciphersuite,
     ) -> Result<MlsSenderData, MessageDecryptionError> {
