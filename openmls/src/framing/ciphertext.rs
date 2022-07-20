@@ -87,14 +87,14 @@ impl MlsCiphertext {
             .map_err(LibraryError::missing_bound_check)?;
         // Extract generation and key material for encryption
         let secret_type = SecretType::from(&mls_plaintext.content_type());
-        let (generation, (ratchet_key, mut ratchet_nonce)) = message_secrets
+        let (generation, (ratchet_key, ratchet_nonce)) = message_secrets
             .secret_tree_mut()
             .secret_for_encryption(ciphersuite, backend, header.sender, secret_type)?;
         // Sample reuse guard uniformly at random.
         let reuse_guard: ReuseGuard =
             ReuseGuard::try_from_random(backend).map_err(LibraryError::unexpected_crypto_error)?;
         // Prepare the nonce by xoring with the reuse guard.
-        ratchet_nonce.xor_with_reuse_guard(&reuse_guard);
+        let prepared_nonce = ratchet_nonce.xor_with_reuse_guard(&reuse_guard);
         // Encrypt the payload
         let ciphertext = ratchet_key
             .aead_seal(
@@ -106,7 +106,7 @@ impl MlsCiphertext {
                 )
                 .map_err(LibraryError::missing_bound_check)?,
                 &mls_ciphertext_content_aad_bytes,
-                &ratchet_nonce,
+                &prepared_nonce,
             )
             .map_err(LibraryError::unexpected_crypto_error)?;
         // Derive the sender data key from the key schedule using the ciphertext.
@@ -252,7 +252,7 @@ impl MlsCiphertext {
     ) -> Result<VerifiableMlsPlaintext, MessageDecryptionError> {
         let secret_type = SecretType::from(&self.content_type);
         // Extract generation and key material for encryption
-        let (ratchet_key, mut ratchet_nonce) = message_secrets
+        let (ratchet_key, ratchet_nonce) = message_secrets
             .secret_tree_mut()
             .secret_for_decryption(
                 ciphersuite,
@@ -267,8 +267,8 @@ impl MlsCiphertext {
                 MessageDecryptionError::GenerationOutOfBound
             })?;
         // Prepare the nonce by xoring with the reuse guard.
-        ratchet_nonce.xor_with_reuse_guard(&sender_data.reuse_guard);
-        let mls_ciphertext_content = self.decrypt(backend, ratchet_key, &ratchet_nonce)?;
+        let prepared_nonce = ratchet_nonce.xor_with_reuse_guard(&sender_data.reuse_guard);
+        let mls_ciphertext_content = self.decrypt(backend, ratchet_key, &prepared_nonce)?;
 
         // Extract sender. The sender type is always of type Member for MlsCiphertext.
         let sender = Sender::from_sender_data(sender_data);
