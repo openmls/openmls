@@ -32,6 +32,7 @@ mod test_external_init;
 mod test_past_secrets;
 #[cfg(test)]
 mod test_proposals;
+
 #[cfg(test)]
 use super::errors::CreateGroupContextExtProposalError;
 
@@ -624,6 +625,20 @@ impl CoreGroup {
                 .ok_or(SecretTreeError::TooDistantInThePast)
         } else {
             Ok(self.message_secrets_store.message_secrets_mut())
+        }
+    }
+
+    /// Get the message secrets. Either from the secrets store or from the group.
+    pub(crate) fn message_secrets_for_epoch<'secret, 'group: 'secret>(
+        &'group self,
+        epoch: GroupEpoch,
+    ) -> Result<&'secret MessageSecrets, SecretTreeError> {
+        if epoch < self.context().epoch() {
+            self.message_secrets_store
+                .secrets_for_epoch(epoch)
+                .ok_or(SecretTreeError::TooDistantInThePast)
+        } else {
+            Ok(self.message_secrets_store.message_secrets())
         }
     }
 

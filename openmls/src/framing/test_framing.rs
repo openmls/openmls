@@ -645,7 +645,7 @@ fn confirmation_tag_presence(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
 
     // We have to create Bob's group so he can process the commit with the
     // broken confirmation tag, because Alice can't process her own commit.
-    let mut group_bob = CoreGroup::new_from_welcome(
+    let group_bob = CoreGroup::new_from_welcome(
         create_commit_result
             .welcome_option
             .expect("commit didn't return a welcome as expected"),
