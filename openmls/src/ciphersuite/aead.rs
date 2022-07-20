@@ -13,10 +13,7 @@ pub struct AeadKey {
 
 /// AEAD Nonce
 #[derive(Clone, PartialEq, Debug, Serialize, Deserialize)]
-pub(crate) struct AeadNonce {
-    // TODO: Use const generics here
-    value: [u8; NONCE_BYTES],
-}
+pub(crate) struct AeadNonce([u8; NONCE_BYTES]);
 
 impl AeadKey {
     /// Create an `AeadKey` from a `Secret`. TODO: This function should
@@ -54,13 +51,7 @@ impl AeadKey {
     ) -> Result<Vec<u8>, CryptoError> {
         backend
             .crypto()
-            .aead_encrypt(
-                self.aead_mode,
-                self.value.as_slice(),
-                msg,
-                &nonce.value,
-                aad,
-            )
+            .aead_encrypt(self.aead_mode, self.value.as_slice(), msg, &nonce.0, aad)
             .map_err(|_| CryptoError::CryptoLibraryError)
     }
 
@@ -78,7 +69,7 @@ impl AeadKey {
                 self.aead_mode,
                 self.value.as_slice(),
                 ciphertext,
-                &nonce.value,
+                &nonce.0,
                 aad,
             )
             .map_err(|_| CryptoError::AeadDecryptionError)
@@ -91,7 +82,7 @@ impl AeadNonce {
     pub(crate) fn from_secret(secret: Secret) -> Self {
         let mut nonce = [0u8; NONCE_BYTES];
         nonce.clone_from_slice(&secret.value);
-        AeadNonce { value: nonce }
+        Self(nonce)
     }
 
     /// Generate a new random nonce.
@@ -100,29 +91,28 @@ impl AeadNonce {
     /// TODO: This panics if another thread holding the rng panics.
     #[cfg(test)]
     pub(crate) fn random(rng: &impl OpenMlsCryptoProvider) -> Self {
-        AeadNonce {
-            value: rng.rand().random_array().expect("Not enough entropy."),
-        }
+        Self(rng.rand().random_array().expect("Not enough entropy."))
     }
 
     /// Get a slice to the nonce value.
     #[cfg(any(feature = "test-utils", test))]
     pub(crate) fn as_slice(&self) -> &[u8] {
-        &self.value
+        &self.0
     }
 
     /// Xor the first bytes of the nonce with the reuse_guard.
-    pub(crate) fn xor_with_reuse_guard(&mut self, reuse_guard: &ReuseGuard) {
+    pub(crate) fn xor_with_reuse_guard(mut self, reuse_guard: &ReuseGuard) -> Self {
         log_crypto!(
             trace,
             "  XOR re-use guard {:x?}^{:x?}",
-            self.value,
+            self.0,
             reuse_guard.value
         );
         for i in 0..REUSE_GUARD_BYTES {
-            self.value[i] ^= reuse_guard.value[i]
+            self.0[i] ^= reuse_guard.value[i]
         }
-        log_crypto!(trace, "    = {:x?}", self.value);
+        log_crypto!(trace, "    = {:x?}", self.0);
+        self
     }
 }
 
@@ -144,8 +134,9 @@ pub(crate) fn aead_key_gen(
 
 #[cfg(test)]
 mod unit_tests {
-    use super::*;
     use crate::test_utils::*;
+
+    use super::*;
 
     /// Make sure that xoring works by xoring a nonce with a reuse guard, testing if
     /// it has changed, xoring it again and testing that it's back in its original
@@ -155,15 +146,14 @@ mod unit_tests {
         let reuse_guard: ReuseGuard =
             ReuseGuard::try_from_random(backend).expect("An unexpected error occurred.");
         let original_nonce = AeadNonce::random(backend);
-        let mut nonce = original_nonce.clone();
-        nonce.xor_with_reuse_guard(&reuse_guard);
+        let xored_once = original_nonce.clone().xor_with_reuse_guard(&reuse_guard);
         assert_ne!(
-            original_nonce, nonce,
+            original_nonce, xored_once,
             "xoring with reuse_guard did not change the nonce"
         );
-        nonce.xor_with_reuse_guard(&reuse_guard);
+        let xored_twice = xored_once.xor_with_reuse_guard(&reuse_guard);
         assert_eq!(
-            original_nonce, nonce,
+            original_nonce, xored_twice,
             "xoring twice changed the original value"
         );
     }
