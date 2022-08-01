@@ -410,7 +410,7 @@ impl<'a> TreeSyncDiff<'a> {
                 // then we should have the secret for this node.
                 if !pn.unmerged_leaves().contains(&self.own_leaf_index) {
                     let (public_key, private_key) =
-                        path_secret.derive_key_pair(backend, ciphersuite)?;
+                        path_secret.derive_key_pair(backend.crypto(), ciphersuite)?;
                     // The derived public key should match the one in the node.
                     // If not, the tree is corrupt.
                     if pn.public_key() != &public_key {

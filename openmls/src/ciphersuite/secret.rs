@@ -138,12 +138,11 @@ impl Secret {
     /// HKDF expand where `self` is `prk`.
     pub(crate) fn hkdf_expand(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         info: &[u8],
         okm_len: usize,
     ) -> Result<Self, CryptoError> {
-        let key = backend
-            .crypto()
+        let key = crypto
             .hkdf_expand(
                 self.ciphersuite.hash_algorithm(),
                 &self.value,
@@ -165,7 +164,7 @@ impl Secret {
     /// `label` and a `context`.
     pub(crate) fn kdf_expand_label(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         label: &str,
         context: &[u8],
         length: usize,
@@ -180,7 +179,7 @@ impl Secret {
         let info = KdfLabel::serialized_label(context, full_label, length)?;
         log::trace!("  serialized context: {:x?}", info);
         log_crypto!(trace, "  secret: {:x?}", self.value);
-        self.hkdf_expand(backend, &info, length)
+        self.hkdf_expand(crypto, &info, length)
     }
 
     /// Derive a new `Secret` from the this one by expanding it with the given
@@ -197,7 +196,7 @@ impl Secret {
             label,
             self.ciphersuite
         );
-        self.kdf_expand_label(backend, label, &[], self.ciphersuite.hash_length())
+        self.kdf_expand_label(backend.crypto(), label, &[], self.ciphersuite.hash_length())
     }
 
     /// Update the ciphersuite and MLS version of this secret.

@@ -329,16 +329,15 @@ impl PathSecret {
     /// Derives a node secret which in turn is used to derive an HpkeKeyPair.
     pub(crate) fn derive_key_pair(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
     ) -> Result<(HpkePublicKey, HpkePrivateKey), LibraryError> {
         let node_secret = self
             .path_secret
-            .kdf_expand_label(backend, "node", &[], ciphersuite.hash_length())
+            .kdf_expand_label(crypto, "node", &[], ciphersuite.hash_length())
             .map_err(LibraryError::unexpected_crypto_error)?;
-        let key_pair = backend
-            .crypto()
-            .derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice());
+        let key_pair =
+            crypto.derive_hpke_keypair(ciphersuite.hpke_config(), node_secret.as_slice());
 
         Ok((
             HpkePublicKey::from(key_pair.public),
@@ -354,7 +353,7 @@ impl PathSecret {
     ) -> Result<Self, LibraryError> {
         let path_secret = self
             .path_secret
-            .kdf_expand_label(backend, "path", &[], ciphersuite.hash_length())
+            .kdf_expand_label(backend.crypto(), "path", &[], ciphersuite.hash_length())
             .map_err(LibraryError::unexpected_crypto_error)?;
         Ok(Self { path_secret })
     }
@@ -363,12 +362,12 @@ impl PathSecret {
     /// `group_context`.
     pub(crate) fn encrypt(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         public_key: &HpkePublicKey,
         group_context: &[u8],
     ) -> HpkeCiphertext {
-        backend.crypto().hpke_seal(
+        crypto.hpke_seal(
             ciphersuite.hpke_config(),
             public_key.as_slice(),
             group_context,

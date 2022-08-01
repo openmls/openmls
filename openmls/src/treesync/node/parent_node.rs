@@ -3,7 +3,7 @@
 //! [`UpdatePathNode`] instances.
 use openmls_traits::{
     types::{Ciphersuite, HpkeCiphertext},
-    OpenMlsCryptoProvider,
+    OpenMlsCryptoProvider, crypto::OpenMlsCrypto,
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -59,7 +59,7 @@ impl PlainUpdatePathNode {
     /// Encrypt this node and return the resulting [`UpdatePathNode`].
     pub(in crate::treesync) fn encrypt(
         &self,
-        backend: &impl OpenMlsCryptoProvider,
+        crypto: &impl OpenMlsCrypto,
         ciphersuite: Ciphersuite,
         public_keys: &[HpkePublicKey],
         group_context: &[u8],
@@ -68,7 +68,7 @@ impl PlainUpdatePathNode {
             .par_iter()
             .map(|pk| {
                 self.path_secret
-                    .encrypt(backend, ciphersuite, pk, group_context)
+                    .encrypt(crypto, ciphersuite, pk, group_context)
             })
             .collect();
 
@@ -127,13 +127,14 @@ impl ParentNode {
         }
 
         // Iterate over the path secrets and derive a key pair
+        let crypto = backend.crypto();
         let (path, update_path_nodes) = path_secrets
             .into_par_iter()
             .map(|path_secret| {
                 // Derive a key pair from the path secret. This includes the
                 // intermediate derivation of a node secret.
                 let (public_key, private_key) =
-                    path_secret.derive_key_pair(backend, ciphersuite)?;
+                    path_secret.derive_key_pair(crypto, ciphersuite)?;
                 let parent_node = ParentNode::from((public_key.clone(), private_key));
                 // Store the current path secret and the derived public key for
                 // later encryption.

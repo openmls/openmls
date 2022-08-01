@@ -327,7 +327,7 @@ impl PskSecret {
 
             let psk_input = psk_extracted
                 .kdf_expand_label(
-                    backend,
+                    backend.crypto(),
                     "derived psk",
                     &psk_label,
                     ciphersuite.hash_length(),

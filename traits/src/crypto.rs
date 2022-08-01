@@ -7,7 +7,7 @@ use crate::types::{
     HpkeKeyPair, KemOutput, SignatureScheme,
 };
 
-pub trait OpenMlsCrypto {
+pub trait OpenMlsCrypto: Send + Sync {
     /// Check whether the [`Ciphersuite`] is supported by the backend or not.
     ///
     /// Returns a [`CryptoError::UnsupportedCiphersuite`] if the ciphersuite is not supported.

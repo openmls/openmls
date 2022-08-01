@@ -56,10 +56,11 @@ impl<'a> TreeSyncDiff<'a> {
         debug_assert_eq!(copath_resolutions.len(), path.len());
 
         // Encrypt the secrets
+        let crypto = backend.crypto();
         let update_path_nodes = path
             .par_iter()
             .zip(copath_resolutions.par_iter())
-            .map(|(node, resolution)| node.encrypt(backend, ciphersuite, resolution, group_context))
+            .map(|(node, resolution)| node.encrypt(crypto, ciphersuite, resolution, group_context))
             .collect::<Vec<UpdatePathNode>>();
 
         Ok(UpdatePath {

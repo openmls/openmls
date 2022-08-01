@@ -79,7 +79,7 @@ pub(crate) fn derive_tree_secret(
         length
     );
     log_crypto!(trace, "Input secret {:x?}", secret.as_slice());
-    Ok(secret.kdf_expand_label(backend, label, &generation.to_be_bytes(), length)?)
+    Ok(secret.kdf_expand_label(backend.crypto(), label, &generation.to_be_bytes(), length)?)
 }
 
 #[derive(Debug, TlsSerialize, TlsSize)]
@@ -213,8 +213,12 @@ impl SecretTree {
             None => return Err(SecretTreeError::LibraryError),
         };
 
-        let handshake_ratchet_secret =
-            node_secret.kdf_expand_label(backend, "handshake", b"", ciphersuite.hash_length())?;
+        let handshake_ratchet_secret = node_secret.kdf_expand_label(
+            backend.crypto(),
+            "handshake",
+            b"",
+            ciphersuite.hash_length(),
+        )?;
         let application_ratchet_secret = derive_tree_secret(
             node_secret,
             "application",
@@ -360,8 +364,10 @@ impl SecretTree {
             left(index_in_tree).expect("derive_down: Error while computing left child.");
         let right_index = right(index_in_tree, self.size)
             .expect("derive_down: Error while computing right child.");
-        let left_secret = node_secret.kdf_expand_label(backend, "tree", b"left", hash_len)?;
-        let right_secret = node_secret.kdf_expand_label(backend, "tree", b"right", hash_len)?;
+        let left_secret =
+            node_secret.kdf_expand_label(backend.crypto(), "tree", b"left", hash_len)?;
+        let right_secret =
+            node_secret.kdf_expand_label(backend.crypto(), "tree", b"right", hash_len)?;
         log_crypto!(
             trace,
             "Left node ({}) secret: {:x?}",

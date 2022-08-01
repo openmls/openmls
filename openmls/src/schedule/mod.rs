@@ -588,7 +588,7 @@ impl WelcomeSecret {
             self.secret.ciphersuite()
         );
         let aead_secret = self.secret.hkdf_expand(
-            backend,
+            backend.crypto(),
             b"key",
             self.secret.ciphersuite().aead_key_length(),
         )?;
@@ -601,7 +601,7 @@ impl WelcomeSecret {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<AeadNonce, CryptoError> {
         let nonce_secret = self.secret.hkdf_expand(
-            backend,
+            backend.crypto(),
             b"nonce",
             self.secret.ciphersuite().aead_nonce_length(),
         )?;
@@ -630,7 +630,7 @@ impl EpochSecret {
         serialized_group_context: &[u8],
     ) -> Result<Self, CryptoError> {
         let secret = intermediate_secret.secret.kdf_expand_label(
-            backend,
+            backend.crypto(),
             "epoch",
             serialized_group_context,
             ciphersuite.hash_length(),
@@ -737,7 +737,7 @@ impl ExporterSecret {
         Ok(self
             .secret
             .derive_secret(backend, label)?
-            .kdf_expand_label(backend, label, context_hash, key_length)?
+            .kdf_expand_label(backend.crypto(), label, context_hash, key_length)?
             .as_slice()
             .to_vec())
     }
@@ -940,7 +940,7 @@ impl SenderDataSecret {
             ciphertext_sample
         );
         let secret = self.secret.kdf_expand_label(
-            backend,
+            backend.crypto(),
             "key",
             ciphertext_sample,
             self.secret.ciphersuite().aead_key_length(),
@@ -961,7 +961,7 @@ impl SenderDataSecret {
             ciphertext_sample
         );
         let nonce_secret = self.secret.kdf_expand_label(
-            backend,
+            backend.crypto(),
             "nonce",
             ciphertext_sample,
             ciphersuite.aead_nonce_length(),
