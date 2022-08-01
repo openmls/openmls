@@ -11,3 +11,4 @@ readme = "README.md"
 
 [dependencies]
 openmls_traits = { version = "0.1.0", path = "../traits" }
+thiserror = "1.0"

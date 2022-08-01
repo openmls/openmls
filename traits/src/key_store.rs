@@ -3,19 +3,19 @@
 use std::fmt::Debug;
 
 pub trait FromKeyStoreValue: Sized {
-    type Error: Debug + Clone + PartialEq + Into<String>;
+    type Error: std::error::Error + Debug;
     fn from_key_store_value(ksv: &[u8]) -> Result<Self, Self::Error>;
 }
 
 pub trait ToKeyStoreValue {
-    type Error: Debug + Clone + PartialEq + Into<String>;
+    type Error: std::error::Error + Debug;
     fn to_key_store_value(&self) -> Result<Vec<u8>, Self::Error>;
 }
 
 /// The Key Store trait
 pub trait OpenMlsKeyStore: Send + Sync {
     /// The error type returned by the [`OpenMlsKeyStore`].
-    type Error: Debug + Clone + PartialEq + Into<String>;
+    type Error: std::error::Error + Debug;
 
     /// Store a value `v` that implements the [`ToKeyStoreValue`] trait for
     /// serialization for ID `k`.

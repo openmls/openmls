@@ -6,7 +6,7 @@
 use std::fmt::Debug;
 
 pub trait OpenMlsRand {
-    type Error: Debug + Clone + PartialEq + Into<String>;
+    type Error: std::error::Error + Debug + Clone + PartialEq;
 
     /// Fill an array with random bytes.
     fn random_array<const N: usize>(&self) -> Result<[u8; N], Self::Error>;

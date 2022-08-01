@@ -54,21 +54,12 @@ impl OpenMlsKeyStore for MemoryKeyStore {
 }
 
 /// Errors thrown by the key store.
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(thiserror::Error, Debug, Copy, Clone, PartialEq)]
 pub enum Error {
+    #[error("The key store does not allow storing serialized values.")]
     UnsupportedValueTypeBytes,
+    #[error("Updating is not supported by this key store.")]
     UnsupportedMethod,
+    #[error("Error serializing value.")]
     SerializationError,
-}
-
-impl From<Error> for String {
-    fn from(val: Error) -> Self {
-        match val {
-            Error::UnsupportedValueTypeBytes => {
-                "The key store does not allow storing serialized values.".to_string()
-            }
-            Error::UnsupportedMethod => "Updating is not supported by this key store.".to_string(),
-            Error::SerializationError => "Error serializing value.".to_string(),
-        }
-    }
 }
