@@ -26,6 +26,7 @@ rand_chacha = { version = "0.3" }
 hpke = { version = "0.1.0", package = "hpke-rs", default-features = false, features = ["hazmat", "serialization"] }
 hpke-rs-crypto = { version = "0.1.1" }
 hpke-rs-rust-crypto = { version = "0.1.1" }
+thiserror = "1.0"
 
 [patch.crates-io]
 openmls_traits = { path = "../traits" }

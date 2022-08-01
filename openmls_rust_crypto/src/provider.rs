@@ -398,21 +398,29 @@ fn hpke_from_config(config: HpkeConfig) -> Hpke<HpkeRustCrypto> {
 }
 
 impl OpenMlsRand for RustCrypto {
-    type Error = &'static str;
+    type Error = RandError;
 
     fn random_array<const N: usize>(&self) -> Result<[u8; N], Self::Error> {
-        let mut rng = self.rng.write().map_err(|_| "Rng lock is poisoned.")?;
+        let mut rng = self.rng.write().map_err(|_| Self::Error::LockPoisoned)?;
         let mut out = [0u8; N];
         rng.try_fill_bytes(&mut out)
-            .map_err(|_| "Unable to collect enough randomness.")?;
+            .map_err(|_| Self::Error::NotEnoughRandomness)?;
         Ok(out)
     }
 
     fn random_vec(&self, len: usize) -> Result<Vec<u8>, Self::Error> {
-        let mut rng = self.rng.write().map_err(|_| "Rng lock is poisoned.")?;
+        let mut rng = self.rng.write().map_err(|_| Self::Error::LockPoisoned)?;
         let mut out = vec![0u8; len];
         rng.try_fill_bytes(&mut out)
-            .map_err(|_| "Unable to collect enough randomness.")?;
+            .map_err(|_| Self::Error::NotEnoughRandomness)?;
         Ok(out)
     }
+}
+
+#[derive(thiserror::Error, Debug, Copy, Clone, PartialEq)]
+pub enum RandError {
+    #[error("Rng lock is poisoned.")]
+    LockPoisoned,
+    #[error("Unable to collect enough randomness.")]
+    NotEnoughRandomness,
 }
