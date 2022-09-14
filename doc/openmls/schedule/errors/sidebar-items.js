@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["PskError","PSK secret error"]]});
+window.SIDEBAR_ITEMS = {"enum":[["PskError","PSK secret error"]]};

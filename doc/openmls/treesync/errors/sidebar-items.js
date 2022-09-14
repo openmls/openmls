@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["ApplyUpdatePathError","Apply update path error"],["PublicTreeError","Public tree error"]]});
+window.SIDEBAR_ITEMS = {"enum":[["ApplyUpdatePathError","Apply update path error"],["PublicTreeError","Public tree error"]]};

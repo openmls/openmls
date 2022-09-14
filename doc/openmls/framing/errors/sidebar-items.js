@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["MessageDecryptionError","Message decryption error"],["MlsMessageError","MlsMessage error"],["SecretTreeError","Secret tree error"],["SenderError","Sender error"]]});
+window.SIDEBAR_ITEMS = {"enum":[["MessageDecryptionError","Message decryption error"],["MlsMessageError","MlsMessage error"],["SecretTreeError","Secret tree error"],["SenderError","Sender error"]]};

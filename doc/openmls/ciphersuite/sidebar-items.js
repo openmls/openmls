@@ -1,1 +1,1 @@
-initSidebarItems({"mod":[["hash_ref","Hash References"],["signable","This module defines traits used for signing and verifying structs from the MLS protocol spec."],["signature","Signatures."]]});
+window.SIDEBAR_ITEMS = {"mod":[["hash_ref","Hash References"],["signable","This module defines traits used for signing and verifying structs from the MLS protocol spec."],["signature","Signatures."]]};
