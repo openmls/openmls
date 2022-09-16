@@ -165,7 +165,7 @@ by an OpenMLS crypto provider.
 It simply needs to implement two functions to generate cryptographically secure
 randomness and store it into an array or vector.</p>
 <pre><code class="language-rust no_run noplayground">pub trait OpenMlsRand {
-    type Error: Debug + Clone + PartialEq + Into&lt;String&gt;;
+    type Error: std::error::Error + Debug + Clone + PartialEq;
 
     /// Fill an array with random bytes.
     fn random_array&lt;const N: usize&gt;(&amp;self) -&gt; Result&lt;[u8; N], Self::Error&gt;;
@@ -194,7 +194,7 @@ Instead entries must be deleted and newly stored.</p>
 <pre><code class="language-rust no_run noplayground">/// The Key Store trait
 pub trait OpenMlsKeyStore: Send + Sync {
     /// The error type returned by the [`OpenMlsKeyStore`].
-    type Error: Debug + Clone + PartialEq + Into&lt;String&gt;;
+    type Error: std::error::Error + Debug;
 
     /// Store a value `v` that implements the [`ToKeyStoreValue`] trait for
     /// serialization for ID `k`.
