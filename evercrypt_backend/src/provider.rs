@@ -843,7 +843,7 @@ impl OpenMlsRand for EvercryptProvider {
     }
 }
 
-#[derive(thiserror::Error, Debug, Copy, Clone, PartialEq)]
+#[derive(thiserror::Error, Debug, Copy, Clone, PartialEq, Eq)]
 pub enum RandError {
     #[error("Rng lock is poisoned.")]
     LockPoisoned,

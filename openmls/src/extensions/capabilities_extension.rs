@@ -18,7 +18,7 @@ use crate::{messages::proposals::ProposalType, versions::ProtocolVersion};
 /// be listed.
 ///
 /// This extension is always present in a KeyPackage.
-#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, TlsSize, TlsSerialize)]
+#[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSize, TlsSerialize)]
 pub struct CapabilitiesExtension {
     versions: TlsVecU8<ProtocolVersion>,
     ciphersuites: TlsVecU8<Ciphersuite>,

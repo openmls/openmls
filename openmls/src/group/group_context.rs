@@ -7,7 +7,7 @@ use openmls_traits::types::Ciphersuite;
 use super::*;
 
 #[derive(
-    Debug, Clone, PartialEq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 pub struct GroupContext {
     group_id: GroupId,

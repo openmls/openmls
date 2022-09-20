@@ -25,7 +25,7 @@ pub enum KeyPackageVerifyError {
 }
 
 /// KeyPackage extension support error
-#[derive(Error, Debug, PartialEq, Clone)]
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum KeyPackageExtensionSupportError {
     /// The key package does not support all required extensions.
     #[error("The key package does not support all required extensions.")]

@@ -38,7 +38,7 @@ use tls_codec::{
 /// | 0x0007           | app_ack                  | Y           | RFC XXXX  |
 /// | 0xff00  - 0xffff | Reserved for Private Use | N/A         | RFC XXXX  |
 #[derive(
-    PartialEq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize, Serialize, Deserialize,
+    PartialEq, Eq, Clone, Copy, Debug, TlsSerialize, TlsDeserialize, TlsSize, Serialize, Deserialize,
 )]
 #[repr(u16)]
 #[allow(missing_docs)]
@@ -161,7 +161,7 @@ impl UpdateProposal {
 ///
 /// A Remove proposal requests that the member with KeyPackageRef removed be removed from the group.
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct RemoveProposal {
     pub(crate) removed: KeyPackageRef,
@@ -176,7 +176,7 @@ impl RemoveProposal {
 
 /// Preshared Key Proposal.
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct PreSharedKeyProposal {
     psk: PreSharedKeyId,
@@ -204,7 +204,7 @@ impl PreSharedKeyProposal {
 ///
 /// This is used to re-initialize a group.
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct ReInitProposal {
     pub(crate) group_id: GroupId,
@@ -217,7 +217,7 @@ pub struct ReInitProposal {
 ///
 /// This proposal is used for External Commits only.
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct ExternalInitProposal {
     kem_output: TlsByteVecU16,
@@ -259,7 +259,7 @@ pub struct AppAckProposal {
 /// struct { Extension extensions<0..2^32-1>; } GroupContextExtensions;
 /// ```
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct GroupContextExtensionProposal {
     extensions: TlsVecU32<Extension>,

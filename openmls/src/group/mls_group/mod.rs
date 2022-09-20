@@ -295,6 +295,8 @@ impl MlsGroup {
 
     /// Loads the state from persisted state.
     pub fn load<R: Read>(reader: R) -> Result<MlsGroup, Error> {
+        // TODO #245: Remove this once we have a proper serialization format
+        #[allow(deprecated)]
         let serialized_mls_group: SerializedMlsGroup = serde_json::from_reader(reader)?;
         Ok(serialized_mls_group.into_mls_group())
     }
@@ -402,7 +404,7 @@ impl MlsGroup {
 /// `Enum` that indicates whether the inner group state has been modified since the last time it was persisted.
 /// `InnerState::Changed` indicates that the state has changed and that [`.save()`] should be called.
 /// `InnerState::Persisted` indicates that the state has not been modified and therefore doesn't need to be persisted.
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum InnerState {
     /// The inner group state has changed and needs to be persisted.
     Changed,

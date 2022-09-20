@@ -24,14 +24,6 @@ pub(crate) fn zero(length: usize) -> Vec<u8> {
     vec![0u8; length]
 }
 
-fn _bytes_to_hex(bytes: &[u8]) -> String {
-    let mut hex = String::new();
-    for b in bytes {
-        hex += &format!("{:02X}", *b);
-    }
-    hex
-}
-
 // With the crypto-debug feature enabled sensitive crypto parts can be logged.
 #[cfg(feature = "crypto-debug")]
 macro_rules! log_crypto {

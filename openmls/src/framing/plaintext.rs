@@ -318,7 +318,7 @@ impl MlsPlaintext {
 // === Helper structs ===
 
 #[derive(
-    PartialEq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 #[repr(u8)]
 pub enum ContentType {

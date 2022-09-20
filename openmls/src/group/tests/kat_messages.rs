@@ -713,7 +713,7 @@ fn read_test_vectors_messages() {
 }
 
 /// Messages test vector error
-#[derive(Error, Debug, PartialEq, Clone)]
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum MessagesTestVectorError {
     /// Lifetime encodings don't match.
     #[error("Lifetime encodings don't match.")]

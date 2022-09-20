@@ -79,8 +79,7 @@ fn lifetime() {
         .tls_serialize_detached()
         .expect("error encoding life time extension");
     let ext_deserialized = LifetimeExtension::tls_deserialize(&mut serialized.as_slice())
-        .err()
-        .expect("Didn't get an error deserializing invalid life time extension");
+        .expect_err("Didn't get an error deserializing invalid life time extension");
     assert_eq!(
         ext_deserialized,
         tls_codec::Error::DecodingError("Invalid".to_string()),

@@ -112,7 +112,7 @@ impl User {
 
         let msg = GroupMessage::new(message_out.into(), &self.recipients(group));
         log::debug!(" >>> send: {:?}", msg);
-        let _response = self.backend.send_msg(&msg)?;
+        self.backend.send_msg(&msg)?;
 
         // XXX: Need to update the client's local view of the conversation to include
         // the message they sent.

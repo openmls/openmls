@@ -6,7 +6,7 @@ use super::*;
 
 /// Signature.
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct Signature {
     value: TlsByteVecU16,
@@ -14,7 +14,7 @@ pub struct Signature {
 
 /// A private signature key.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg_attr(any(feature = "test-utils", test), derive(PartialEq))]
+#[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Eq))]
 pub struct SignaturePrivateKey {
     signature_scheme: SignatureScheme,
     value: Vec<u8>,

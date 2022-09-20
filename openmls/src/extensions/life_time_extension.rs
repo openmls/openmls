@@ -25,7 +25,7 @@ const DEFAULT_KEY_PACKAGE_LIFETIME_MARGIN: u64 = 60 * 60; // in Seconds
 /// Applications MUST define a maximum total lifetime that is acceptable for a
 /// KeyPackage, and reject any KeyPackage where the total lifetime is longer
 /// than this duration.This extension MUST always be present in a KeyPackage.
-#[derive(PartialEq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsSize)]
+#[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub struct LifetimeExtension {
     not_before: u64,
     not_after: u64,

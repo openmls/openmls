@@ -5,7 +5,7 @@ pub(crate) const NONCE_BYTES: usize = 12;
 
 /// AEAD keys holding the plain key value and the AEAD algorithm type.
 #[derive(Debug, Serialize, Deserialize)]
-#[cfg_attr(any(feature = "test-utils", test), derive(Clone, PartialEq))]
+#[cfg_attr(any(feature = "test-utils", test), derive(Clone, PartialEq, Eq))]
 pub struct AeadKey {
     aead_mode: AeadType,
     value: Vec<u8>,

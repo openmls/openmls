@@ -55,7 +55,7 @@ pub mod errors;
 ///
 /// This enum contains variants for the different Credential Types.
 #[derive(
-    Copy, Clone, Debug, PartialEq, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 #[repr(u16)]
 pub enum CredentialType {
@@ -81,7 +81,7 @@ impl TryFrom<u16> for CredentialType {
 ///
 /// This struct contains an X.509 certificate chain.  Note that X.509
 /// certificates are not yet supported by OpenMLS.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub struct Certificate {
     cert_data: Vec<u8>,
 }

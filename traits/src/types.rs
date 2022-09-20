@@ -115,13 +115,13 @@ impl TryFrom<u16> for SignatureScheme {
 }
 
 /// Trait errors.
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Error {
     CryptoError(CryptoError),
 }
 
 /// Crypto errors.
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum CryptoError {
     CryptoLibraryError,
     AeadDecryptionError,
@@ -159,7 +159,7 @@ impl std::error::Error for CryptoError {}
 pub struct HpkeConfig(pub HpkeKemType, pub HpkeKdfType, pub HpkeAeadType);
 
 /// KEM Types for HPKE
-#[derive(PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
 #[repr(u16)]
 pub enum HpkeKemType {
     /// DH KEM on P256
@@ -179,7 +179,7 @@ pub enum HpkeKemType {
 }
 
 /// KDF Types for HPKE
-#[derive(PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
 #[repr(u16)]
 pub enum HpkeKdfType {
     /// HKDF SHA 256
@@ -193,7 +193,7 @@ pub enum HpkeKdfType {
 }
 
 /// AEAD Types for HPKE.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(u16)]
 pub enum HpkeAeadType {
     /// AES GCM 128
@@ -218,7 +218,7 @@ pub enum HpkeAeadType {
 /// } HPKECiphertext;
 /// ```
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 pub struct HpkeCiphertext {
     pub kem_output: TlsByteVecU16,
@@ -437,9 +437,7 @@ impl Ciphersuite {
             }
             Ciphersuite::MLS_128_DHKEMP256_AES128GCM_SHA256_P256 => HpkeKemType::DhKemP256,
             Ciphersuite::MLS_256_DHKEMX448_AES256GCM_SHA512_Ed448
-            | Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => {
-                HpkeKemType::DhKem448
-            }
+            | Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 => HpkeKemType::DhKem448,
             Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384 => HpkeKemType::DhKemP384,
             Ciphersuite::MLS_256_DHKEMP521_AES256GCM_SHA512_P521 => HpkeKemType::DhKemP521,
         }

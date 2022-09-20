@@ -506,7 +506,7 @@ impl<'a> QueuedAddProposal<'a> {
 }
 
 /// A queued Remove proposal
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Eq, Debug)]
 pub struct QueuedRemoveProposal<'a> {
     remove_proposal: &'a RemoveProposal,
     sender: &'a Sender,
@@ -544,7 +544,7 @@ impl<'a> QueuedUpdateProposal<'a> {
 }
 
 /// A queued PresharedKey proposal
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Eq, Debug)]
 pub struct QueuedPskProposal<'a> {
     psk_proposal: &'a PreSharedKeyProposal,
     sender: &'a Sender,

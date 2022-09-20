@@ -118,7 +118,7 @@ enum InternalLibraryError {
 
 /// A wrapper struct for an error string. This can be used when no complex error
 /// variant is needed.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ErrorString(String);
 
 impl From<String> for ErrorString {

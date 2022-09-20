@@ -38,7 +38,7 @@ use crate::{
 ///
 /// A `PublicGroupState` can be created by verifying a
 /// `VerifiablePublicGroupState`.
-#[derive(PartialEq, Debug, TlsSerialize, TlsSize)]
+#[derive(PartialEq, Eq, Debug, TlsSerialize, TlsSize)]
 pub struct PublicGroupState {
     pub(crate) version: ProtocolVersion,
     pub(crate) ciphersuite: Ciphersuite,
@@ -144,7 +144,7 @@ impl SignedStruct<PublicGroupStateTbs> for PublicGroupState {
     }
 }
 
-impl<'a> Verifiable for VerifiablePublicGroupState {
+impl Verifiable for VerifiablePublicGroupState {
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
         self.tbs.tls_serialize_detached()
     }

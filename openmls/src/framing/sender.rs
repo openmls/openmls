@@ -6,7 +6,7 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 /// All possible sender types according to the MLS protocol spec.
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 #[repr(u8)]
 pub enum Sender {

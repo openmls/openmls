@@ -33,7 +33,7 @@ use serde::{Deserialize, Serialize};
 
 /// Specifies the configuration parameters for a [`MlsGroup`]. Refer to
 /// the [User Manual](https://openmls.tech/book/user_manual/group_config.html) for more information about the different configuration values.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MlsGroupConfig {
     /// Defines the wire format policy for outgoing and incoming handshake messages.
     /// Application are always encrypted regardless.
@@ -170,7 +170,7 @@ impl MlsGroupConfigBuilder {
 
 /// Defines what wire format is acceptable for incoming handshake messages.
 /// Note that application messages must always be encrypted.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum IncomingWireFormatPolicy {
     /// Handshake messages must always be MlsCiphertext
     AlwaysCiphertext,
@@ -194,7 +194,7 @@ impl IncomingWireFormatPolicy {
 
 /// Defines what wire format should be used for outgoing handshake messages.
 /// Note that application messages must always be encrypted.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OutgoingWireFormatPolicy {
     /// Handshake messages must always be MlsCiphertext
     AlwaysCiphertext,
@@ -204,7 +204,7 @@ pub enum OutgoingWireFormatPolicy {
 
 /// Defines what wire format is desired for outgoing handshake messages.
 /// Note that application messages must always be encrypted.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WireFormatPolicy {
     outgoing: OutgoingWireFormatPolicy,
     incoming: IncomingWireFormatPolicy,
