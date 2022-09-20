@@ -150,7 +150,7 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
 <span class="doccomment">/// KeySchedule test vector error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KsTestVectorError</span> {
     <span class="doccomment">/// The computed joiner secret doesn&#39;t match the one in the test vector.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The computed joiner secret doesn&#39;t match the one in the test vector.&quot;</span>)]</span>

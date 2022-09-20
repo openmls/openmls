@@ -325,7 +325,7 @@
 
 <span class="doccomment">/// Specifies the configuration parameters for a [`MlsGroup`]. Refer to</span>
 <span class="doccomment">/// the [User Manual](https://openmls.tech/book/user_manual/group_config.html) for more information about the different configuration values.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Default</span>, <span class="ident">PartialEq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Default</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MlsGroupConfig</span> {
     <span class="doccomment">/// Defines the wire format policy for outgoing and incoming handshake messages.</span>
     <span class="doccomment">/// Application are always encrypted regardless.</span>
@@ -462,7 +462,7 @@
 
 <span class="doccomment">/// Defines what wire format is acceptable for incoming handshake messages.</span>
 <span class="doccomment">/// Note that application messages must always be encrypted.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">IncomingWireFormatPolicy</span> {
     <span class="doccomment">/// Handshake messages must always be MlsCiphertext</span>
     <span class="ident">AlwaysCiphertext</span>,
@@ -486,7 +486,7 @@
 
 <span class="doccomment">/// Defines what wire format should be used for outgoing handshake messages.</span>
 <span class="doccomment">/// Note that application messages must always be encrypted.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">OutgoingWireFormatPolicy</span> {
     <span class="doccomment">/// Handshake messages must always be MlsCiphertext</span>
     <span class="ident">AlwaysCiphertext</span>,
@@ -496,7 +496,7 @@
 
 <span class="doccomment">/// Defines what wire format is desired for outgoing handshake messages.</span>
 <span class="doccomment">/// Note that application messages must always be encrypted.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Copy</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">WireFormatPolicy</span> {
     <span class="ident">outgoing</span>: <span class="ident">OutgoingWireFormatPolicy</span>,
     <span class="ident">incoming</span>: <span class="ident">IncomingWireFormatPolicy</span>,

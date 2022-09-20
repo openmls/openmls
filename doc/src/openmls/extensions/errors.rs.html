@@ -169,7 +169,7 @@
 }
 
 <span class="doccomment">/// Lifetime extension error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">LifetimeExtensionError</span> {
     <span class="doccomment">/// Invalid lifetime extensions.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Invalid lifetime extensions.&quot;</span>)]</span>
@@ -180,7 +180,7 @@
 }
 
 <span class="doccomment">/// Capabilities extension error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CapabilitiesExtensionError</span> {
     <span class="doccomment">/// Invalid capabilities extensions.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Invalid capabilities extensions.&quot;</span>)]</span>
@@ -194,7 +194,7 @@
 }
 
 <span class="doccomment">/// KeyPackage Id error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KeyPackageIdError</span> {
     <span class="doccomment">/// Invalid key package ID extensions.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Invalid key package ID extensions.&quot;</span>)]</span>
@@ -202,7 +202,7 @@
 }
 
 <span class="doccomment">/// Parent hash error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ParentHashError</span> {
     <span class="doccomment">/// Invalid parent hash extensions.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Invalid parent hash extensions.&quot;</span>)]</span>
@@ -210,7 +210,7 @@
 }
 
 <span class="doccomment">/// Ratchet tree error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">RatchetTreeError</span> {
     <span class="doccomment">/// Invalid ratchet tree extensions.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Invalid ratchet tree extensions.&quot;</span>)]</span>
@@ -218,7 +218,7 @@
 }
 
 <span class="doccomment">/// Invalid extension error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">InvalidExtensionError</span> {
     <span class="doccomment">/// The provided extension list contains duplicate extensions.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The provided extension list contains duplicate extensions.&quot;</span>)]</span>

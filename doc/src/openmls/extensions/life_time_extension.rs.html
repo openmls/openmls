@@ -121,7 +121,7 @@
 <span class="doccomment">/// Applications MUST define a maximum total lifetime that is acceptable for a</span>
 <span class="doccomment">/// KeyPackage, and reject any KeyPackage where the total lifetime is longer</span>
 <span class="doccomment">/// than this duration.This extension MUST always be present in a KeyPackage.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LifetimeExtension</span> {
     <span class="ident">not_before</span>: <span class="ident">u64</span>,
     <span class="ident">not_after</span>: <span class="ident">u64</span>,

@@ -366,6 +366,7 @@
 <span id="360">360</span>
 <span id="361">361</span>
 <span id="362">362</span>
+<span id="363">363</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Pre shared keys.</span>
 <span class="doccomment">//! ```text</span>
 <span class="doccomment">//! enum {</span>
@@ -418,6 +419,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(
     <span class="ident">Debug</span>,
     <span class="ident">PartialEq</span>,
+    <span class="ident">Eq</span>,
     <span class="ident">Clone</span>,
     <span class="ident">Copy</span>,
     <span class="ident">Hash</span>,
@@ -459,7 +461,7 @@
 
 <span class="doccomment">/// External PSK.</span>
 <span class="attribute">#[<span class="ident">derive</span>(
-    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
+    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
 )]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ExternalPsk</span> {
     <span class="ident">psk_id</span>: <span class="ident">TlsByteVecU8</span>,
@@ -499,7 +501,7 @@
 }
 <span class="doccomment">/// ReInit PSK.</span>
 <span class="attribute">#[<span class="ident">derive</span>(
-    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
+    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
 )]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ReinitPsk</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">psk_group_id</span>: <span class="ident">GroupId</span>,
@@ -519,7 +521,7 @@
 
 <span class="doccomment">/// Branch PSK</span>
 <span class="attribute">#[<span class="ident">derive</span>(
-    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
+    <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
 )]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BranchPsk</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">psk_group_id</span>: <span class="ident">GroupId</span>,
@@ -538,7 +540,7 @@
 }
 
 <span class="doccomment">/// PSK enum that can contain the different PSK types</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">missing_docs</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Psk</span> {
     <span class="ident">External</span>(<span class="ident">ExternalPsk</span>),
@@ -566,7 +568,7 @@
 <span class="doccomment">///   opaque psk_nonce&lt;0..255&gt;;</span>
 <span class="doccomment">/// } PreSharedKeyID;</span>
 <span class="doccomment">/// ```</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Hash</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PreSharedKeyId</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">psk_type</span>: <span class="ident">PskType</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">psk</span>: <span class="ident">Psk</span>,

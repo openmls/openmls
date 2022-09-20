@@ -299,7 +299,7 @@
 <span class="doccomment">///  - maximum_forward_distance:</span>
 <span class="doccomment">/// This parameter defines how many incoming messages can be skipped. This is useful if the DS</span>
 <span class="doccomment">/// drops application messages. The default value is 1000.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SenderRatchetConfiguration</span> {
     <span class="ident">out_of_order_tolerance</span>: <span class="ident">Generation</span>,
     <span class="ident">maximum_forward_distance</span>: <span class="ident">Generation</span>,

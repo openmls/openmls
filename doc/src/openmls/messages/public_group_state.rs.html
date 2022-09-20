@@ -274,7 +274,7 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// A `PublicGroupState` can be created by verifying a</span>
 <span class="doccomment">/// `VerifiablePublicGroupState`.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Debug</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Debug</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PublicGroupState</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">version</span>: <span class="ident">ProtocolVersion</span>,
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
@@ -380,7 +380,7 @@
     }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Verifiable</span> <span class="kw">for</span> <span class="ident">VerifiablePublicGroupState</span> {
+<span class="kw">impl</span> <span class="ident">Verifiable</span> <span class="kw">for</span> <span class="ident">VerifiablePublicGroupState</span> {
     <span class="kw">fn</span> <span class="ident">unsigned_payload</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">tbs</span>.<span class="ident">tls_serialize_detached</span>()
     }

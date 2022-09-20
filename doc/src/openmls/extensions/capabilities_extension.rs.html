@@ -192,7 +192,7 @@
 <span class="doccomment">/// be listed.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// This extension is always present in a KeyPackage.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsSerialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsSerialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CapabilitiesExtension</span> {
     <span class="ident">versions</span>: <span class="ident">TlsVecU8</span><span class="op">&lt;</span><span class="ident">ProtocolVersion</span><span class="op">&gt;</span>,
     <span class="ident">ciphersuites</span>: <span class="ident">TlsVecU8</span><span class="op">&lt;</span><span class="ident">Ciphersuite</span><span class="op">&gt;</span>,

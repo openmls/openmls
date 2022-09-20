@@ -98,7 +98,7 @@
 }
 
 <span class="doccomment">/// KeyPackage extension support error</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Error</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KeyPackageExtensionSupportError</span> {
     <span class="doccomment">/// The key package does not support all required extensions.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;The key package does not support all required extensions.&quot;</span>)]</span>
