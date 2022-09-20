@@ -431,7 +431,7 @@ pub enum ProcessedMessage {
 }
 
 /// Application message received through a [ProcessedMessage].
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ApplicationMessage {
     bytes: Vec<u8>,
 }

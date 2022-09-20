@@ -13,7 +13,7 @@ use crate::{binary_tree::MlsBinaryTreeDiffError, error::LibraryError};
 pub(crate) use crate::binary_tree::OutOfBoundsError;
 
 /// Public tree error
-#[derive(Error, Debug, PartialEq, Clone)]
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum PublicTreeError {
     /// The derived public key doesn't match the one in the tree.
     #[error("The derived public key doesn't match the one in the tree.")]

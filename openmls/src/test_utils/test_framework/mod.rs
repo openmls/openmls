@@ -79,7 +79,7 @@ pub enum ActionType {
     Proposal,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum CodecUse {
     SerializedMessages,
     StructMessages,

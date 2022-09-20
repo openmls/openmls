@@ -53,7 +53,7 @@ pub enum ExtensionError {
 }
 
 /// Lifetime extension error
-#[derive(Error, Debug, PartialEq, Clone)]
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum LifetimeExtensionError {
     /// Invalid lifetime extensions.
     #[error("Invalid lifetime extensions.")]
@@ -64,7 +64,7 @@ pub enum LifetimeExtensionError {
 }
 
 /// Capabilities extension error
-#[derive(Error, Debug, PartialEq, Clone)]
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum CapabilitiesExtensionError {
     /// Invalid capabilities extensions.
     #[error("Invalid capabilities extensions.")]
@@ -78,7 +78,7 @@ pub enum CapabilitiesExtensionError {
 }
 
 /// KeyPackage Id error
-#[derive(Error, Debug, PartialEq, Clone)]
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum KeyPackageIdError {
     /// Invalid key package ID extensions.
     #[error("Invalid key package ID extensions.")]
@@ -86,7 +86,7 @@ pub enum KeyPackageIdError {
 }
 
 /// Parent hash error
-#[derive(Error, Debug, PartialEq, Clone)]
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum ParentHashError {
     /// Invalid parent hash extensions.
     #[error("Invalid parent hash extensions.")]
@@ -94,7 +94,7 @@ pub enum ParentHashError {
 }
 
 /// Ratchet tree error
-#[derive(Error, Debug, PartialEq, Clone)]
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum RatchetTreeError {
     /// Invalid ratchet tree extensions.
     #[error("Invalid ratchet tree extensions.")]
@@ -102,7 +102,7 @@ pub enum RatchetTreeError {
 }
 
 /// Invalid extension error
-#[derive(Error, Debug, PartialEq, Clone)]
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum InvalidExtensionError {
     /// The provided extension list contains duplicate extensions.
     #[error("The provided extension list contains duplicate extensions.")]

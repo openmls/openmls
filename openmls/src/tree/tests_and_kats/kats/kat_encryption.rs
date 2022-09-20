@@ -808,7 +808,7 @@ fn read_test_vectors_encryption(backend: &impl OpenMlsCryptoProvider) {
 
 #[cfg(any(feature = "test-utils", test))]
 /// Encryotion test vector error
-#[derive(Error, Debug, PartialEq, Clone)]
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum EncTestVectorError {
     /// The test vector does not contain as many leaves as advertised.
     #[error("The test vector does not contain as many leaves as advertised.")]

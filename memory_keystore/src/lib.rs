@@ -54,7 +54,7 @@ impl OpenMlsKeyStore for MemoryKeyStore {
 }
 
 /// Errors thrown by the key store.
-#[derive(thiserror::Error, Debug, Copy, Clone, PartialEq)]
+#[derive(thiserror::Error, Debug, Copy, Clone, PartialEq, Eq)]
 pub enum Error {
     #[error("The key store does not allow storing serialized values.")]
     UnsupportedValueTypeBytes,

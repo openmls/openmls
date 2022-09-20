@@ -28,7 +28,7 @@ pub(crate) type Generation = u32;
 ///  - maximum_forward_distance:
 /// This parameter defines how many incoming messages can be skipped. This is useful if the DS
 /// drops application messages. The default value is 1000.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SenderRatchetConfiguration {
     out_of_order_tolerance: Generation,
     maximum_forward_distance: Generation,

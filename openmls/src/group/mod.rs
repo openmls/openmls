@@ -84,6 +84,7 @@ impl GroupId {
 #[derive(
     Debug,
     PartialEq,
+    Eq,
     Copy,
     Clone,
     Hash,

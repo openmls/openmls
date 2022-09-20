@@ -19,7 +19,16 @@ use super::{Deserialize, ExtensionError, ExtensionType, Serialize};
 /// contains a required capabilities extension that requires capabilities not
 /// supported by all current members.
 #[derive(
-    PartialEq, Clone, Debug, Default, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    PartialEq,
+    Eq,
+    Clone,
+    Debug,
+    Default,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsSize,
 )]
 pub struct RequiredCapabilitiesExtension {
     extensions: TlsVecU8<ExtensionType>,

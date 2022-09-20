@@ -1,3 +1,6 @@
+// TODO #245: Remove this once we have a proper serialization format
+#![allow(deprecated)]
+
 use super::*;
 
 use serde::{

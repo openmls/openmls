@@ -50,7 +50,7 @@ pub(crate) enum KeyScheduleError {
 
 #[cfg(any(feature = "test-utils", test))]
 /// KeySchedule test vector error
-#[derive(Error, Debug, PartialEq, Clone)]
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum KsTestVectorError {
     /// The computed joiner secret doesn't match the one in the test vector.
     #[error("The computed joiner secret doesn't match the one in the test vector.")]

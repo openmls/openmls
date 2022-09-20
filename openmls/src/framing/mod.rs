@@ -40,7 +40,7 @@ mod test_framing;
 
 /// Wire format of MLS messages.
 #[derive(
-    PartialEq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 #[repr(u8)]
 pub enum WireFormat {

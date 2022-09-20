@@ -32,7 +32,7 @@ pub enum NewGroupError {
 }
 
 /// EmptyInput error
-#[derive(Error, Debug, PartialEq, Clone)]
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum EmptyInputError {
     /// An empty list of KeyPackages was provided.
     #[error("An empty list of KeyPackages was provided.")]

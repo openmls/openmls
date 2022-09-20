@@ -1,5 +1,6 @@
 //! Test utilities
 #![allow(dead_code)]
+#![allow(unused_imports)]
 
 pub use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 pub use rstest::*;
@@ -8,6 +9,7 @@ pub use rstest_reuse::{self, *};
 pub use crate::utils::*;
 
 use serde::{self, de::DeserializeOwned, Serialize};
+use std::fmt::Write as FmtWrite;
 use std::{
     fs::File,
     io::{BufReader, Write},
@@ -44,7 +46,7 @@ pub(crate) fn read<T: DeserializeOwned>(file_name: &str) -> T {
 pub fn bytes_to_hex(bytes: &[u8]) -> String {
     let mut hex = String::new();
     for &b in bytes {
-        hex += &format!("{:02X}", b);
+        write!(&mut hex, "{:02X}", b).expect("Unable to write to string");
     }
     hex
 }

@@ -347,7 +347,7 @@ fn read_test_vectors_transcript(backend: &impl OpenMlsCryptoProvider) {
 }
 
 /// Transcript test vector error
-#[derive(Error, Debug, PartialEq, Clone)]
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum TranscriptTestVectorError {
     /// Membership tag could not be verified.
     #[error("Membership tag could not be verified.")]

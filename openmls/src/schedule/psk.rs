@@ -50,6 +50,7 @@ use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU8, TlsVecU16};
 #[derive(
     Debug,
     PartialEq,
+    Eq,
     Clone,
     Copy,
     Hash,
@@ -91,7 +92,7 @@ impl From<&Psk> for PskType {
 
 /// External PSK.
 #[derive(
-    Debug, PartialEq, Clone, Hash, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct ExternalPsk {
     psk_id: TlsByteVecU8,
@@ -131,7 +132,7 @@ impl PskBundle {
 }
 /// ReInit PSK.
 #[derive(
-    Debug, PartialEq, Clone, Hash, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct ReinitPsk {
     pub(crate) psk_group_id: GroupId,
@@ -151,7 +152,7 @@ impl ReinitPsk {
 
 /// Branch PSK
 #[derive(
-    Debug, PartialEq, Clone, Hash, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct BranchPsk {
     pub(crate) psk_group_id: GroupId,
@@ -170,7 +171,7 @@ impl BranchPsk {
 }
 
 /// PSK enum that can contain the different PSK types
-#[derive(Debug, PartialEq, Clone, Hash, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
 #[allow(missing_docs)]
 pub enum Psk {
     External(ExternalPsk),
@@ -198,7 +199,7 @@ pub enum Psk {
 ///   opaque psk_nonce<0..255>;
 /// } PreSharedKeyID;
 /// ```
-#[derive(Debug, PartialEq, Clone, Hash, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash, Serialize, Deserialize)]
 pub struct PreSharedKeyId {
     pub(crate) psk_type: PskType,
     pub(crate) psk: Psk,

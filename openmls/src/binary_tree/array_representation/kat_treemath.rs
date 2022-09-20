@@ -140,7 +140,7 @@ fn read_test_vectors_tm() {
 
 #[cfg(any(feature = "test-utils", test))]
 /// TreeMath test vector error
-#[derive(Error, Debug, PartialEq, Clone)]
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum TmTestVectorError {
     /// The computed tree size doesn't match the one in the test vector.
     #[error("The computed tree size doesn't match the one in the test vector.")]

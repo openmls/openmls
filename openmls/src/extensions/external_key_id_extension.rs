@@ -10,7 +10,16 @@ use super::{Deserialize, Serialize};
 ///
 /// A byte vector of length at most 2^16-1.
 #[derive(
-    PartialEq, Clone, Debug, Default, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+    PartialEq,
+    Eq,
+    Clone,
+    Debug,
+    Default,
+    Serialize,
+    Deserialize,
+    TlsSerialize,
+    TlsDeserialize,
+    TlsSize,
 )]
 pub struct ExternalKeyIdExtension {
     key_id: TlsByteVecU16,

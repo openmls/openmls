@@ -75,7 +75,7 @@ impl fmt::Display for ProtocolVersion {
 }
 
 /// Version Error
-#[derive(Error, Debug, PartialEq, Clone)]
+#[derive(Error, Debug, PartialEq, Eq, Clone)]
 pub enum VersionError {
     /// Unsupported MLS version.
     #[error("Unsupported MLS version.")]
