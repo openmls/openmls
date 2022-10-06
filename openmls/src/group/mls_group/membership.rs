@@ -115,7 +115,11 @@ impl MlsGroup {
         // Create inline remove proposals
         let inline_proposals = members
             .iter()
-            .map(|member| Proposal::Remove(RemoveProposal { removed: *member }))
+            .map(|member| {
+                Proposal::Remove(RemoveProposal {
+                    removed: member.clone(),
+                })
+            })
             .collect::<Vec<Proposal>>();
 
         let credential = self.credential()?;
@@ -375,13 +379,13 @@ impl RemoveOperation {
                     return Ok(Self::WeLeft);
                 } else {
                     // We removed another member
-                    return Ok(Self::WeRemovedThem(*removed));
+                    return Ok(Self::WeRemovedThem(removed.clone()));
                 }
             }
 
             // Another member left
             if removed == hash_ref {
-                return Ok(Self::TheyLeft(*removed));
+                return Ok(Self::TheyLeft(removed.clone()));
             }
         }
 
@@ -393,7 +397,7 @@ impl RemoveOperation {
             Ok(Self::WeWereRemovedBy(sender.clone()))
         } else {
             // Another member was removed
-            Ok(Self::TheyWereRemovedBy((*removed, sender.clone())))
+            Ok(Self::TheyWereRemovedBy((removed.clone(), sender.clone())))
         }
     }
 }

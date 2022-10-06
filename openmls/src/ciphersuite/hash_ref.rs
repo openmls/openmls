@@ -6,35 +6,39 @@
 //! to Proposals they cover.  These identifiers are computed as follows:
 //!
 //! ```text
-//! opaque HashReference[16];
+//! opaque HashReference<V>;
 //!
-//! MakeHashRef(value) = KDF.expand(KDF.extract("", value), "MLS 1.0 ref", 16)
+//! MakeKeyPackageRef(value) = RefHash("MLS 1.0 KeyPackage Reference", value)
+//! MakeProposalRef(value)   = RefHash("MLS 1.0 Proposal Reference", value)
 //!
-//! HashReference KeyPackageRef;
-//! HashReference ProposalRef;
+//! RefHash(label, value) = Hash(RefHashInput)
+//!
+//! Where RefHashInput is defined as:
+//!
+//! struct {
+//!  opaque label<V> = label;
+//!  opaque value<V> = value;
+//! } RefHashInput;
 //! ```
 //!
 //! For a KeyPackageRef, the `value` input is the encoded KeyPackage, and the
-//! ciphersuite specified in the KeyPackage determines the KDF used.  For a
+//! ciphersuite specified in the KeyPackage determines the hash function used.  For a
 //! ProposalRef, the `value` input is the MLSPlaintext carrying the proposal, and
-//! the KDF is determined by the group's ciphersuite.
-
-use std::convert::TryInto;
+//! the hash function is determined by the group's ciphersuite.
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::CryptoError};
 use serde::{Deserialize, Serialize};
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{
+    Serialize as TlsSerialize, TlsDeserialize, TlsSerialize, TlsSize, TlsSliceU8, VLBytes,
+};
 
 use super::Ciphersuite;
 
-const LABEL: &[u8; 11] = b"MLS 1.0 ref";
-const VALUE_LEN: usize = 16;
-type Value = [u8; VALUE_LEN];
+const KEY_PACKAGE_REF_LABEL: &[u8; 22] = b"MLS 1.0 KeyPackage ref";
+const PROPOSAL_REF_LABEL: &[u8; 20] = b"MLS 1.0 Proposal ref";
 
-/// A reference to an MLS object computed as an HKDF of the value.
 #[derive(
     Clone,
-    Copy,
     Hash,
     PartialEq,
     Eq,
@@ -43,8 +47,24 @@ type Value = [u8; VALUE_LEN];
     TlsDeserialize,
     TlsSerialize,
     TlsSize,
-    PartialOrd,
     Ord,
+    PartialOrd,
+)]
+struct Value(VLBytes);
+
+/// A reference to an MLS object computed as a hash of the value.
+#[derive(
+    Clone,
+    Hash,
+    PartialEq,
+    Eq,
+    Serialize,
+    Ord,
+    PartialOrd,
+    Deserialize,
+    TlsDeserialize,
+    TlsSerialize,
+    TlsSize,
 )]
 pub struct HashReference {
     value: Value,
@@ -58,45 +78,73 @@ pub type KeyPackageRef = HashReference;
 /// This value uniquely identifies a proposal.
 pub type ProposalRef = HashReference;
 
+#[derive(TlsSerialize, TlsSize)]
+struct HashReferenceInput<'a> {
+    label: TlsSliceU8<'a, u8>,
+    value: VLBytes,
+}
+
+/// Compute a new [`ProposalRef`] value for a `value`.
+pub fn make_proposal_ref(
+    value: &[u8],
+    ciphersuite: Ciphersuite,
+    backend: &impl OpenMlsCrypto,
+) -> Result<ProposalRef, CryptoError> {
+    HashReference::new(value, ciphersuite, backend, PROPOSAL_REF_LABEL)
+}
+
+/// Compute a new [`KeyPackageRef`] value for a `value`.
+pub fn make_key_package_ref(
+    value: &[u8],
+    ciphersuite: Ciphersuite,
+    backend: &impl OpenMlsCrypto,
+) -> Result<KeyPackageRef, CryptoError> {
+    HashReference::new(value, ciphersuite, backend, KEY_PACKAGE_REF_LABEL)
+}
+
 impl HashReference {
     /// Compute a new [`HashReference`] value for a `value`.
     pub fn new(
         value: &[u8],
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCrypto,
+        label: &[u8],
     ) -> Result<Self, CryptoError> {
-        let okm = backend.hkdf_expand(
-            ciphersuite.hash_algorithm(),
-            &backend.hkdf_extract(ciphersuite.hash_algorithm(), &[], value)?,
-            LABEL,
-            VALUE_LEN,
-        )?;
-        let value: Value = okm.try_into().map_err(|_| CryptoError::InvalidLength)?;
-        Ok(Self { value })
+        let input = HashReferenceInput {
+            label: TlsSliceU8(label),
+            value: VLBytes::new(value.to_vec()),
+        };
+        let payload = input
+            .tls_serialize_detached()
+            .map_err(|_| CryptoError::TlsSerializationError)?;
+        let value = backend.hash(ciphersuite.hash_algorithm(), &payload)?;
+        Ok(Self {
+            value: Value(VLBytes::new(value)),
+        })
     }
 
     /// Get a reference to the hash reference's value.
-    pub fn value(&self) -> &[u8; 16] {
-        &self.value
+    pub fn value(&self) -> &[u8] {
+        self.as_slice()
     }
 
     /// Get a reference to the hash reference's value as slice.
     pub fn as_slice(&self) -> &[u8] {
-        &self.value
+        self.value.0.as_slice()
     }
 
     #[cfg(any(feature = "test-utils", test))]
     pub fn from_slice(slice: &[u8]) -> Self {
-        let mut value = [0u8; VALUE_LEN];
-        value.clone_from_slice(slice);
-        Self { value }
+        Self {
+            value: Value(VLBytes::from(slice)),
+        }
     }
 }
 
 impl core::fmt::Display for HashReference {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "HashReference: ")?;
-        for b in self.value {
+        for b in self.value.0.as_slice() {
             write!(f, "{:02X}", b)?;
         }
         Ok(())

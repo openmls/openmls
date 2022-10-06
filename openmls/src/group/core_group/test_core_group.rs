@@ -5,7 +5,7 @@ use openmls_traits::{
 use tls_codec::Serialize;
 
 use crate::{
-    ciphersuite::{hash_ref::KeyPackageRef, signable::Signable, AeadNonce},
+    ciphersuite::{hash_ref::make_key_package_ref, signable::Signable, AeadNonce},
     credentials::*,
     framing::*,
     group::{errors::*, *},
@@ -106,7 +106,7 @@ fn test_failed_groupinfo_decryption(
             group_context,
             &extensions,
             confirmation_tag,
-            &KeyPackageRef::new(
+            &make_key_package_ref(
                 &key_package_bundle
                     .key_package()
                     .tls_serialize_detached()
