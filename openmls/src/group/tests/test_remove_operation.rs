@@ -95,18 +95,20 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
 
         // === Remove operation ===
 
-        let alice_kpr = *alice_group
+        let alice_kpr = alice_group
             .key_package_ref()
+            .cloned()
             .expect("An unexpected error occurred.");
-        let bob_kpr = *bob_group
+        let bob_kpr = bob_group
             .key_package_ref()
+            .cloned()
             .expect("An unexpected error occurred.");
 
         // We differentiate between the two test cases here
         let (message, _welcome) = match test_case {
             // Alice removes Bob
             TestCase::Remove => alice_group
-                .remove_members(backend, &[bob_kpr])
+                .remove_members(backend, &[bob_kpr.clone()])
                 .expect("Could not remove members."),
             // Bob leaves
             TestCase::Leave => {
@@ -157,7 +159,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
                 match remove_operation {
                     RemoveOperation::WeRemovedThem(removed) => {
                         // Check that it was indeed Bob who was removed
-                        assert_eq!(removed, bob_kpr);
+                        assert_eq!(removed, bob_kpr.clone());
                     }
                     _ => unreachable!(),
                 }
@@ -167,7 +169,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
                 match remove_operation {
                     RemoveOperation::TheyLeft(removed) => {
                         // Check that it was indeed Bob who left
-                        assert_eq!(removed, bob_kpr);
+                        assert_eq!(removed, bob_kpr.clone());
                     }
                     _ => unreachable!(),
                 }
@@ -205,7 +207,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
                                 match sender {
                                     Sender::Member(member) => {
                                         // Check that it was Alice who removed Bob
-                                        assert_eq!(member, alice_kpr);
+                                        assert_eq!(member, alice_kpr.clone());
                                     }
                                     _ => unreachable!(),
                                 }
@@ -255,11 +257,11 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
                                 // Make sure Alice is indeed a member
                                 assert!(sender.is_member());
                                 // Check that it was indeed Bob who was removed
-                                assert_eq!(removed, bob_kpr);
+                                assert_eq!(removed, bob_kpr.clone());
                                 match sender {
                                     Sender::Member(member) => {
                                         // Check that it was Alice who removed Bob
-                                        assert_eq!(member, alice_kpr);
+                                        assert_eq!(member, alice_kpr.clone());
                                     }
                                     _ => unreachable!(),
                                 }
@@ -272,7 +274,7 @@ fn test_remove_operation_variants(ciphersuite: Ciphersuite, backend: &impl OpenM
                         match remove_operation {
                             RemoveOperation::TheyLeft(removed) => {
                                 // Check that it was indeed Bob who left
-                                assert_eq!(removed, bob_kpr);
+                                assert_eq!(removed, bob_kpr.clone());
                             }
                             _ => unreachable!(),
                         }

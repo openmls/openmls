@@ -27,7 +27,7 @@ impl Sender {
 
     /// Create a member sender.
     pub(crate) fn build_member(kpr: &KeyPackageRef) -> Self {
-        Self::Member(*kpr)
+        Self::Member(kpr.clone())
     }
 
     /// Create a new member sender.

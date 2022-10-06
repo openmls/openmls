@@ -178,8 +178,10 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     assert!(!own_update);
 
     // Test if proposals are all covered
-    let valid_proposal_reference_list =
-        &[proposal_reference_add_alice1, proposal_reference_add_alice2];
+    let valid_proposal_reference_list = &[
+        proposal_reference_add_alice1.clone(),
+        proposal_reference_add_alice2.clone(),
+    ];
     assert!(proposal_queue.contains(valid_proposal_reference_list));
 
     let invalid_proposal_reference_list = &[

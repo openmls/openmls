@@ -99,7 +99,7 @@ impl QueuedProposal {
     }
     /// Returns the `ProposalRef`.
     pub(crate) fn proposal_reference(&self) -> ProposalRef {
-        self.proposal_reference
+        self.proposal_reference.clone()
     }
     /// Returns the `ProposalOrRefType`.
     pub(crate) fn proposal_or_ref_type(&self) -> ProposalOrRefType {
@@ -208,9 +208,9 @@ impl ProposalQueue {
     pub(crate) fn add(&mut self, queued_proposal: QueuedProposal) {
         let proposal_reference = queued_proposal.proposal_reference();
         // Only add the proposal if it's not already there
-        if let Entry::Vacant(entry) = self.queued_proposals.entry(proposal_reference) {
+        if let Entry::Vacant(entry) = self.queued_proposals.entry(proposal_reference.clone()) {
             // Add the proposal reference to ensure the correct order
-            self.proposal_references.push(proposal_reference);
+            self.proposal_references.push(proposal_reference.clone());
             // Add the proposal to the queue
             entry.insert(queued_proposal);
         }
@@ -380,13 +380,13 @@ impl ProposalQueue {
                     })?;
                     // Only members can send update proposals
                     // ValSem112
-                    let hash_ref = match queued_proposal.sender {
-                        Sender::Member(hash_ref) => hash_ref,
+                    let hash_ref = match queued_proposal.sender.clone() {
+                        Sender::Member(hash_ref) => hash_ref.clone(),
                         _ => return Err(ProposalQueueError::SenderError(SenderError::NotAMember)),
                     };
                     if &hash_ref != own_kpr {
                         members
-                            .entry(hash_ref)
+                            .entry(hash_ref.clone())
                             .or_insert_with(Member::default)
                             .updates
                             .push(queued_proposal.clone());
@@ -399,7 +399,7 @@ impl ProposalQueue {
                 Proposal::Remove(ref remove_proposal) => {
                     let removed = remove_proposal.removed();
                     members
-                        .entry(*removed)
+                        .entry(removed.clone())
                         .or_insert_with(Member::default)
                         .updates
                         .push(queued_proposal.clone());
@@ -478,7 +478,7 @@ impl ProposalQueue {
                         ProposalOrRef::Proposal(queued_proposal.proposal.clone())
                     }
                     ProposalOrRefType::Reference => {
-                        ProposalOrRef::Reference(queued_proposal.proposal_reference)
+                        ProposalOrRef::Reference(queued_proposal.proposal_reference.clone())
                     }
                 }
             })

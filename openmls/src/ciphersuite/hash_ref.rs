@@ -19,22 +19,40 @@
 //! ProposalRef, the `value` input is the MLSPlaintext carrying the proposal, and
 //! the KDF is determined by the group's ciphersuite.
 
-use std::convert::TryInto;
+use std::{cmp::Ordering, convert::TryInto};
 
 use openmls_traits::{crypto::OpenMlsCrypto, types::CryptoError};
 use serde::{Deserialize, Serialize};
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize};
 
 use super::Ciphersuite;
 
 const LABEL: &[u8; 11] = b"MLS 1.0 ref";
 const VALUE_LEN: usize = 16;
-type Value = [u8; VALUE_LEN];
+
+#[derive(
+    Clone, Hash, PartialEq, Eq, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+)]
+struct Value(TlsByteVecU8);
+
+impl PartialOrd for Value {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.0
+            .as_slice()
+            .to_vec()
+            .partial_cmp(&other.0.as_slice().to_vec())
+    }
+}
+
+impl Ord for Value {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0.as_slice().to_vec().cmp(&other.0.as_slice().to_vec())
+    }
+}
 
 /// A reference to an MLS object computed as an HKDF of the value.
 #[derive(
     Clone,
-    Copy,
     Hash,
     PartialEq,
     Eq,
@@ -65,38 +83,43 @@ impl HashReference {
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCrypto,
     ) -> Result<Self, CryptoError> {
-        let okm = backend.hkdf_expand(
-            ciphersuite.hash_algorithm(),
-            &backend.hkdf_extract(ciphersuite.hash_algorithm(), &[], value)?,
-            LABEL,
-            VALUE_LEN,
-        )?;
-        let value: Value = okm.try_into().map_err(|_| CryptoError::InvalidLength)?;
-        Ok(Self { value })
+        // let okm = backend.hkdf_expand(
+        //     ciphersuite.hash_algorithm(),
+        //     &backend.hkdf_extract(ciphersuite.hash_algorithm(), &[], value)?,
+        //     LABEL,
+        //     VALUE_LEN,
+        // )?;
+        // let value = okm.try_into().map_err(|_| CryptoError::InvalidLength)?;
+        let value = backend.hash(ciphersuite.hash_algorithm(), value)?;
+        Ok(Self {
+            value: Value(TlsByteVecU8::new(value)),
+        })
     }
 
     /// Get a reference to the hash reference's value.
-    pub fn value(&self) -> &[u8; 16] {
-        &self.value
+    pub fn value(&self) -> &[u8] {
+        &self.as_slice()
     }
 
     /// Get a reference to the hash reference's value as slice.
     pub fn as_slice(&self) -> &[u8] {
-        &self.value
+        &self.value.0.as_slice()
     }
 
     #[cfg(any(feature = "test-utils", test))]
     pub fn from_slice(slice: &[u8]) -> Self {
-        let mut value = [0u8; VALUE_LEN];
-        value.clone_from_slice(slice);
-        Self { value }
+        //let mut value = [0u8; VALUE_LEN];
+        //value.clone_from_slice(slice);
+        Self {
+            value: Value(TlsByteVecU8::new(slice.to_vec())),
+        }
     }
 }
 
 impl core::fmt::Display for HashReference {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "HashReference: ")?;
-        for b in self.value {
+        for b in self.value.0.as_slice() {
             write!(f, "{:02X}", b)?;
         }
         Ok(())

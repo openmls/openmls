@@ -498,15 +498,17 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         );
 
         // === Charlie removes Bob ===
-        let bob_kpr = *bob_group
+        let bob_kpr = bob_group
             .key_package_ref()
+            .cloned()
             .expect("An unexpected error occurred.");
-        let charlie_kpr = *charlie_group
+        let charlie_kpr = charlie_group
             .key_package_ref()
+            .cloned()
             .expect("An unexpected error occurred.");
         println!(" >>> Charlie is removing bob");
         let (queued_message, welcome_option) = charlie_group
-            .remove_members(backend, &[bob_kpr])
+            .remove_members(backend, &[bob_kpr.clone()])
             .expect("Could not remove member from group.");
 
         // Check that Bob's group is still active
@@ -535,7 +537,7 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
                 .next()
                 .expect("Expected a proposal.");
             // Check that Bob was removed
-            assert_eq!(remove.remove_proposal().removed(), &bob_kpr);
+            assert_eq!(remove.remove_proposal().removed(), &bob_kpr.clone());
             // Check that Charlie removed Bob
             assert!(matches!(remove.sender(), Sender::Member(member) if member == &charlie_kpr));
 
@@ -602,11 +604,13 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
             .expect("Couldn't get the key package reference for Bob.");
 
         // Create RemoveProposal and process it
-        let alice_kpr = *alice_group
+        let alice_kpr = alice_group
             .key_package_ref()
+            .cloned()
             .expect("An unexpected error occurred.");
-        let charlie_kpr = *charlie_group
+        let charlie_kpr = charlie_group
             .key_package_ref()
+            .cloned()
             .expect("An unexpected error occurred.");
         let queued_message = alice_group
             .propose_remove_member(backend, &charlie_kpr)

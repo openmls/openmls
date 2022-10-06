@@ -119,7 +119,7 @@ impl EncryptedGroupSecrets {
 
     /// Returns the encrypted group secrets' new [`KeyPackageRef`].
     pub fn new_member(&self) -> KeyPackageRef {
-        self.new_member
+        self.new_member.clone()
     }
 
     /// Returns a reference to the encrypted group secrets' encrypted group secrets.
@@ -198,7 +198,7 @@ impl GroupInfoPayload {
             group_context_extensions: group_context_extensions.into(),
             other_extensions: other_extensions.into(),
             confirmation_tag,
-            signer: *signer,
+            signer: signer.clone(),
         }
     }
 }

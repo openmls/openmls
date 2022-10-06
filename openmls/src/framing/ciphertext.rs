@@ -402,7 +402,7 @@ impl MlsSenderData {
         reuse_guard: ReuseGuard,
     ) -> Self {
         MlsSenderData {
-            sender: *hash_ref,
+            sender: hash_ref.clone(),
             generation,
             reuse_guard,
         }
