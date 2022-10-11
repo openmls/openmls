@@ -269,7 +269,7 @@ impl OpenMlsCrypto for RustCrypto {
                 }
                 let mut sig = [0u8; ed25519_dalek::SIGNATURE_LENGTH];
                 sig.clone_from_slice(signature);
-                k.verify_strict(data, &ed25519_dalek::Signature::new(sig))
+                k.verify_strict(data, &ed25519_dalek::Signature::from(sig))
                     .map_err(|_| CryptoError::InvalidSignature)
             }
             _ => Err(CryptoError::UnsupportedSignatureScheme),
