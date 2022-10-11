@@ -167,35 +167,22 @@ pub struct ConfirmationTag(pub(crate) Mac);
 
 #[derive(TlsDeserialize, TlsSerialize, TlsSize)]
 pub(crate) struct GroupInfoPayload {
-    group_id: GroupId,
-    epoch: GroupEpoch,
-    tree_hash: TlsByteVecU8,
-    confirmed_transcript_hash: TlsByteVecU8,
-    group_context_extensions: TlsVecU32<Extension>,
+    group_context: GroupContext,
     extensions: TlsVecU32<Extension>,
     confirmation_tag: ConfirmationTag,
     signer: KeyPackageRef,
 }
 
 impl GroupInfoPayload {
-    #[allow(clippy::too_many_arguments)] // TODO: #569 refactor GroupInfoPayload
     /// Create a new group info payload struct.
     pub(crate) fn new(
-        group_id: GroupId,
-        epoch: impl Into<GroupEpoch>,
-        tree_hash: Vec<u8>,
-        confirmed_transcript_hash: Vec<u8>,
-        group_context_extensions: &[Extension],
+        group_context: GroupContext,
         extensions: &[Extension],
         confirmation_tag: ConfirmationTag,
         signer: &KeyPackageRef,
     ) -> Self {
         Self {
-            group_id,
-            epoch: epoch.into(),
-            tree_hash: tree_hash.into(),
-            confirmed_transcript_hash: confirmed_transcript_hash.into(),
-            group_context_extensions: group_context_extensions.into(),
+            group_context: group_context.into(),
             extensions: extensions.into(),
             confirmation_tag,
             signer: *signer,
@@ -236,45 +223,30 @@ pub(crate) struct GroupInfo {
 }
 
 impl GroupInfo {
-    /// Returns the signer.
-    pub(crate) fn signer(&self) -> &KeyPackageRef {
-        &self.payload.signer
+    /// Returns the group context.
+    pub(crate) fn group_context(&self) -> &GroupContext {
+        &self.payload.group_context
     }
 
-    /// Returns the group ID.
-    pub(crate) fn group_id(&self) -> &GroupId {
-        &self.payload.group_id
-    }
-
-    /// Returns the epoch.
-    pub(crate) fn epoch(&self) -> GroupEpoch {
-        self.payload.epoch
-    }
-
-    /// Returns the confirmed transcript hash.
-    pub(crate) fn confirmed_transcript_hash(&self) -> &[u8] {
-        self.payload.confirmed_transcript_hash.as_slice()
-    }
-
-    /// Returns the confirmed tag.
-    pub(crate) fn confirmation_tag(&self) -> &ConfirmationTag {
-        &self.payload.confirmation_tag
-    }
-
-    /// Returns other application extensions.
+    /// Returns the extensions.
     pub(crate) fn extensions(&self) -> &[Extension] {
         self.payload.extensions.as_slice()
     }
 
-    /// Returns the [`GroupContext`] extensions.
-    pub(crate) fn group_context_extensions(&self) -> &[Extension] {
-        self.payload.group_context_extensions.as_slice()
+    /// Set the extensions.
+    #[cfg(test)]
+    pub(crate) fn set_extensions(&mut self, extensions: Vec<Extension>) {
+        self.payload.extensions = extensions.into();
     }
 
-    /// Set the group info's other extensions.
-    #[cfg(test)]
-    pub(crate) fn set_other_extensions(&mut self, extensions: Vec<Extension>) {
-        self.payload.extensions = extensions.into();
+    /// Returns the confirmation tag.
+    pub(crate) fn confirmation_tag(&self) -> &ConfirmationTag {
+        &self.payload.confirmation_tag
+    }
+
+    /// Returns the signer.
+    pub(crate) fn signer(&self) -> &KeyPackageRef {
+        &self.payload.signer
     }
 
     /// Re-sign the group info.

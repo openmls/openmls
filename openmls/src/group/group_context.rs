@@ -58,17 +58,22 @@ impl GroupContext {
         )
     }
 
-    /// Return the group ID
+    /// Return the group ID.
     pub(crate) fn group_id(&self) -> &GroupId {
         &self.group_id
     }
 
-    /// Return the epoch
+    /// Return the epoch.
     pub(crate) fn epoch(&self) -> GroupEpoch {
         self.epoch
     }
 
-    /// Return the extensions of the context
+    /// Return the confirmed transcript hash.
+    pub(crate) fn confirmed_transcript_hash(&self) -> &[u8] {
+        self.confirmed_transcript_hash.as_slice()
+    }
+
+    /// Return the extensions.
     pub(crate) fn extensions(&self) -> &[Extension] {
         self.extensions.as_slice()
     }
@@ -79,10 +84,5 @@ impl GroupContext {
             .iter()
             .find(|e| e.extension_type() == ExtensionType::RequiredCapabilities)
             .and_then(|e| e.as_required_capabilities_extension().ok())
-    }
-
-    /// Return the confirmed transcript hash
-    pub(crate) fn confirmed_transcript_hash(&self) -> &[u8] {
-        self.confirmed_transcript_hash.as_slice()
     }
 }

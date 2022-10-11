@@ -93,24 +93,30 @@ fn test_failed_groupinfo_decryption(
         KeyPackageBundle::new(&[ciphersuite], &alice_credential_bundle, backend, vec![])
             .expect("An unexpected error occurred.");
 
-    let group_info = GroupInfoPayload::new(
-        group_id,
-        epoch,
-        tree_hash,
-        confirmed_transcript_hash,
-        &Vec::new(),
-        &extensions,
-        confirmation_tag,
-        &KeyPackageRef::new(
-            &key_package_bundle
-                .key_package()
-                .tls_serialize_detached()
-                .expect("An unexpected error occurred."),
-            ciphersuite,
-            backend.crypto(),
+    let group_info_tbs = {
+        let group_context = GroupContext::new(
+            group_id,
+            epoch,
+            tree_hash,
+            confirmed_transcript_hash,
+            &Vec::new(),
+        );
+
+        GroupInfoPayload::new(
+            group_context,
+            &extensions,
+            confirmation_tag,
+            &KeyPackageRef::new(
+                &key_package_bundle
+                    .key_package()
+                    .tls_serialize_detached()
+                    .expect("An unexpected error occurred."),
+                ciphersuite,
+                backend.crypto(),
+            )
+            .expect("An unexpected error occurred."),
         )
-        .expect("An unexpected error occurred."),
-    );
+    };
 
     // Generate key and nonce for the symmetric cipher.
     let welcome_key = AeadKey::random(ciphersuite, backend.rand());
@@ -134,7 +140,7 @@ fn test_failed_groupinfo_decryption(
         hpke_input,
     );
 
-    let group_info = group_info
+    let group_info = group_info_tbs
         .sign(backend, &alice_credential_bundle)
         .expect("Error signing group info");
 

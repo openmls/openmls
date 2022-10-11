@@ -81,38 +81,44 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     let ratchet_tree: Vec<Option<Node>> = group.treesync().export_nodes();
 
     // We can't easily get a "natural" GroupInfo, so we just create one here.
-    let group_info = GroupInfoPayload::new(
-        group.group_id().clone(),
-        0,
-        crypto
-            .rand()
-            .random_vec(ciphersuite.hash_length())
-            .expect("An unexpected error occurred."),
-        crypto
-            .rand()
-            .random_vec(ciphersuite.hash_length())
-            .expect("An unexpected error occurred."),
-        &[Extension::RequiredCapabilities(
-            RequiredCapabilitiesExtension::default(),
-        )],
-        &[Extension::RatchetTree(RatchetTreeExtension::new(
-            ratchet_tree.clone(),
-        ))],
-        ConfirmationTag(Mac {
-            mac_value: crypto
+    let group_info_tbs = {
+        let group_context = GroupContext::new(
+            group.group_id().clone(),
+            0,
+            crypto
                 .rand()
                 .random_vec(ciphersuite.hash_length())
-                .expect("An unexpected error occurred.")
-                .into(),
-        }),
-        &KeyPackageRef::from_slice(
-            &crypto
+                .expect("An unexpected error occurred."),
+            crypto
                 .rand()
-                .random_vec(16)
-                .expect("Error getting randomnes"),
-        ),
-    );
-    let group_info = group_info
+                .random_vec(ciphersuite.hash_length())
+                .expect("An unexpected error occurred."),
+            &[Extension::RequiredCapabilities(
+                RequiredCapabilitiesExtension::default(),
+            )],
+        );
+
+        GroupInfoPayload::new(
+            group_context,
+            &[Extension::RatchetTree(RatchetTreeExtension::new(
+                ratchet_tree.clone(),
+            ))],
+            ConfirmationTag(Mac {
+                mac_value: crypto
+                    .rand()
+                    .random_vec(ciphersuite.hash_length())
+                    .expect("An unexpected error occurred.")
+                    .into(),
+            }),
+            &KeyPackageRef::from_slice(
+                &crypto
+                    .rand()
+                    .random_vec(16)
+                    .expect("Error getting randomnes"),
+            ),
+        )
+    };
+    let group_info = group_info_tbs
         .sign(&crypto, &credential_bundle)
         .expect("An unexpected error occurred.");
     let group_secrets =
