@@ -172,7 +172,7 @@ pub(crate) struct GroupInfoPayload {
     tree_hash: TlsByteVecU8,
     confirmed_transcript_hash: TlsByteVecU8,
     group_context_extensions: TlsVecU32<Extension>,
-    other_extensions: TlsVecU32<Extension>,
+    extensions: TlsVecU32<Extension>,
     confirmation_tag: ConfirmationTag,
     signer: KeyPackageRef,
 }
@@ -186,7 +186,7 @@ impl GroupInfoPayload {
         tree_hash: Vec<u8>,
         confirmed_transcript_hash: Vec<u8>,
         group_context_extensions: &[Extension],
-        other_extensions: &[Extension],
+        extensions: &[Extension],
         confirmation_tag: ConfirmationTag,
         signer: &KeyPackageRef,
     ) -> Self {
@@ -196,7 +196,7 @@ impl GroupInfoPayload {
             tree_hash: tree_hash.into(),
             confirmed_transcript_hash: confirmed_transcript_hash.into(),
             group_context_extensions: group_context_extensions.into(),
-            other_extensions: other_extensions.into(),
+            extensions: extensions.into(),
             confirmation_tag,
             signer: *signer,
         }
@@ -262,8 +262,8 @@ impl GroupInfo {
     }
 
     /// Returns other application extensions.
-    pub(crate) fn other_extensions(&self) -> &[Extension] {
-        self.payload.other_extensions.as_slice()
+    pub(crate) fn extensions(&self) -> &[Extension] {
+        self.payload.extensions.as_slice()
     }
 
     /// Returns the [`GroupContext`] extensions.
@@ -274,7 +274,7 @@ impl GroupInfo {
     /// Set the group info's other extensions.
     #[cfg(test)]
     pub(crate) fn set_other_extensions(&mut self, extensions: Vec<Extension>) {
-        self.payload.other_extensions = extensions.into();
+        self.payload.extensions = extensions.into();
     }
 
     /// Re-sign the group info.

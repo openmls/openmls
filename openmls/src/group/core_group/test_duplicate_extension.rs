@@ -143,7 +143,7 @@ fn duplicate_ratchet_tree_extension(
         .expect("Could not decode GroupInfo");
 
     // Duplicate extensions
-    let extensions = group_info.other_extensions();
+    let extensions = group_info.extensions();
     let duplicate_extensions = vec![extensions[0].clone(), extensions[0].clone()];
     group_info.set_other_extensions(duplicate_extensions);
 
