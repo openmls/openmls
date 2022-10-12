@@ -34,6 +34,9 @@ impl CoreGroup {
         // Checks the following semantic validation:
         //  - ValSem006
         let decrypted_message = match message.wire_format() {
+            WireFormat::Reserved => {
+                unimplemented!()
+            }
             WireFormat::MlsPlaintext => DecryptedMessage::from_inbound_plaintext(message)?,
             WireFormat::MlsCiphertext => {
                 // If the message is older than the current epoch, we need to fetch the correct secret tree first
@@ -43,6 +46,15 @@ impl CoreGroup {
                     self,
                     sender_ratchet_configuration,
                 )?
+            }
+            WireFormat::MlsWelcome => {
+                unimplemented!()
+            }
+            WireFormat::MlsGroupInfo => {
+                unimplemented!()
+            }
+            WireFormat::MlsKeyPackage => {
+                unimplemented!()
             }
         };
 

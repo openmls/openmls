@@ -39,15 +39,39 @@ pub use validation::*;
 mod test_framing;
 
 /// Wire format of MLS messages.
+///
+/// # MLS Presentation Language
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+///
+/// enum {
+///   reserved(0),
+///   mls_plaintext(1),
+///   mls_ciphertext(2),
+///   mls_welcome(3),
+///   mls_group_info(4),
+///   mls_key_package(5),
+///   (255)
+/// } WireFormat;
+/// ```
 #[derive(
     PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 #[repr(u8)]
 pub enum WireFormat {
-    /// Plaintext message
+    /// Reserved
+    Reserved = 0,
+    /// MLSPlaintext message
     MlsPlaintext = 1,
-    /// Encrypted message
+    /// MLSCiphertext message
     MlsCiphertext = 2,
+    /// Welcome message
+    MlsWelcome = 3,
+    /// GroupInfo message
+    MlsGroupInfo = 4,
+    /// KeyPackage message
+    MlsKeyPackage = 5,
 }
 
 /// This struct is used to group common framing parameters

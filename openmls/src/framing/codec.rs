@@ -281,6 +281,9 @@ impl tls_codec::Deserialize for MlsMessage {
                 let mut chain = first_byte_buffer.chain(bytes);
                 let wire_format = WireFormat::tls_deserialize(&mut vec![*first_byte].as_slice())?;
                 match wire_format {
+                    WireFormat::Reserved => {
+                        unimplemented!()
+                    }
                     WireFormat::MlsPlaintext => {
                         let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut chain)?;
                         Ok(MlsMessage::Plaintext(Box::new(plaintext)))
@@ -288,6 +291,15 @@ impl tls_codec::Deserialize for MlsMessage {
                     WireFormat::MlsCiphertext => {
                         let ciphertext = MlsCiphertext::tls_deserialize(&mut chain)?;
                         Ok(MlsMessage::Ciphertext(Box::new(ciphertext)))
+                    }
+                    WireFormat::MlsWelcome => {
+                        unimplemented!()
+                    }
+                    WireFormat::MlsGroupInfo => {
+                        unimplemented!()
+                    }
+                    WireFormat::MlsKeyPackage => {
+                        unimplemented!()
                     }
                 }
             }
