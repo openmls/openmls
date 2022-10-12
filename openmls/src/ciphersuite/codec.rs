@@ -3,17 +3,17 @@
 
 use crate::ciphersuite::*;
 use std::io::{Read, Write};
-use tls_codec::{TlsSliceU16, TlsSliceU8, TlsVecU8};
+use tls_codec::{TlsSliceU8, TlsVecU8};
 
 impl tls_codec::Serialize for SignaturePublicKey {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        TlsSliceU16(&self.value).tls_serialize(writer)
+        self.value.tls_serialize(writer)
     }
 }
 
 impl tls_codec::Size for SignaturePublicKey {
     fn tls_serialized_len(&self) -> usize {
-        TlsSliceU16(&self.value).tls_serialized_len()
+        self.value.tls_serialized_len()
     }
 }
 
