@@ -165,6 +165,18 @@ impl Commit {
 )]
 pub struct ConfirmationTag(pub(crate) Mac);
 
+/// GroupInfo (To Be Signed)
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+///
+/// struct {
+///     GroupContext group_context;
+///     Extension extensions<V>;
+///     MAC confirmation_tag;
+///     uint32 signer;
+/// } GroupInfoTBS;
+/// ```
 #[derive(TlsDeserialize, TlsSerialize, TlsSize)]
 pub(crate) struct GroupInfoTBS {
     group_context: GroupContext,
@@ -174,7 +186,7 @@ pub(crate) struct GroupInfoTBS {
 }
 
 impl GroupInfoTBS {
-    /// Create a new group info payload struct.
+    /// Create a new to-be-signed group info.
     pub(crate) fn new(
         group_context: GroupContext,
         extensions: &[Extension],
@@ -200,21 +212,18 @@ impl Signable for GroupInfoTBS {
 
 /// GroupInfo
 ///
-/// The struct is split into the payload and the signature.
-/// `GroupInfoPayload` holds the actual values, stored in `payload` here.
+/// Note: The struct is split into a `GroupInfoTBS` payload and a signature.
 ///
-/// > 11.2.2. Welcoming New Members
+/// ```c
+/// // draft-ietf-mls-protocol-16
 ///
-/// ```text
 /// struct {
-///   opaque group_id<0..255>;
-///   uint64 epoch;
-///   opaque tree_hash<0..255>;
-///   opaque confirmed_transcript_hash<0..255>;
-///   Extension extensions<0..2^32-1>;
-///   MAC confirmation_tag;
-///   KeyPackageRef signer;
-///   opaque signature<0..2^16-1>;
+///     GroupContext group_context;
+///     Extension extensions<V>;
+///     MAC confirmation_tag;
+///     uint32 signer;
+///     // SignWithLabel(., "GroupInfoTBS", GroupInfoTBS)
+///     opaque signature<V>;
 /// } GroupInfo;
 /// ```
 pub(crate) struct GroupInfo {
