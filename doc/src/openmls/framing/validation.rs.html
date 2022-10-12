@@ -470,7 +470,7 @@
 <span class="doccomment">//! | (sender is member)     | (sender is not member)</span>
 <span class="doccomment">//! |                        |</span>
 <span class="doccomment">//! V                        V</span>
-<span class="doccomment">//! UnverifiedMemberMessage  UnverifiedExternalMessage</span>
+<span class="doccomment">//! UnverifiedGroupMessage   UnverifiedPreconfiguredMessage</span>
 <span class="doccomment">//! |                        |</span>
 <span class="doccomment">//! | (verify signature)     | (verify signature)</span>
 <span class="doccomment">//! |                        |</span>
@@ -770,7 +770,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">UnverifiedGroupMessage</span> {
-    <span class="doccomment">/// Verifies the signature on an [UnverifiedMemberMessage] and returns a [VerifiedMemberMessage] if the</span>
+    <span class="doccomment">/// Verifies the signature on an [UnverifiedGroupMessage] and returns a [VerifiedMemberMessage] if the</span>
     <span class="doccomment">/// verification is successful.</span>
     <span class="doccomment">/// This function implements the following checks:</span>
     <span class="doccomment">///  - ValSem010</span>
@@ -802,7 +802,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">UnverifiedPreconfiguredMessage</span> {
-    <span class="doccomment">/// Verifies the signature on an [UnverifiedExternalMessage] and returns a [VerifiedExternalMessage] if the</span>
+    <span class="doccomment">/// Verifies the signature on an [UnverifiedPreconfiguredMessage] and returns a [VerifiedExternalMessage] if the</span>
     <span class="doccomment">/// verification is successful.</span>
     <span class="doccomment">/// This function implements the following checks:</span>
     <span class="doccomment">///  - ValSem010</span>
