@@ -21,7 +21,7 @@
 //! | (sender is member)     | (sender is not member)
 //! |                        |
 //! V                        V
-//! UnverifiedMemberMessage  UnverifiedExternalMessage
+//! UnverifiedGroupMessage   UnverifiedPreconfiguredMessage
 //! |                        |
 //! | (verify signature)     | (verify signature)
 //! |                        |
@@ -321,7 +321,7 @@ pub(crate) struct UnverifiedGroupMessage {
 }
 
 impl UnverifiedGroupMessage {
-    /// Verifies the signature on an [UnverifiedMemberMessage] and returns a [VerifiedMemberMessage] if the
+    /// Verifies the signature on an [UnverifiedGroupMessage] and returns a [VerifiedMemberMessage] if the
     /// verification is successful.
     /// This function implements the following checks:
     ///  - ValSem010
@@ -353,7 +353,7 @@ pub(crate) struct UnverifiedPreconfiguredMessage {
 }
 
 impl UnverifiedPreconfiguredMessage {
-    /// Verifies the signature on an [UnverifiedExternalMessage] and returns a [VerifiedExternalMessage] if the
+    /// Verifies the signature on an [UnverifiedPreconfiguredMessage] and returns a [VerifiedExternalMessage] if the
     /// verification is successful.
     /// This function implements the following checks:
     ///  - ValSem010
