@@ -102,7 +102,7 @@ fn test_failed_groupinfo_decryption(
             &Vec::new(),
         );
 
-        GroupInfoPayload::new(
+        GroupInfoTBS::new(
             group_context,
             &extensions,
             confirmation_tag,

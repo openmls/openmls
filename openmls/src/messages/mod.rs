@@ -166,14 +166,14 @@ impl Commit {
 pub struct ConfirmationTag(pub(crate) Mac);
 
 #[derive(TlsDeserialize, TlsSerialize, TlsSize)]
-pub(crate) struct GroupInfoPayload {
+pub(crate) struct GroupInfoTBS {
     group_context: GroupContext,
     extensions: TlsVecU32<Extension>,
     confirmation_tag: ConfirmationTag,
     signer: KeyPackageRef,
 }
 
-impl GroupInfoPayload {
+impl GroupInfoTBS {
     /// Create a new group info payload struct.
     pub(crate) fn new(
         group_context: GroupContext,
@@ -190,7 +190,7 @@ impl GroupInfoPayload {
     }
 }
 
-impl Signable for GroupInfoPayload {
+impl Signable for GroupInfoTBS {
     type SignedOutput = GroupInfo;
 
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
@@ -218,7 +218,7 @@ impl Signable for GroupInfoPayload {
 /// } GroupInfo;
 /// ```
 pub(crate) struct GroupInfo {
-    payload: GroupInfoPayload,
+    payload: GroupInfoTBS,
     signature: Signature,
 }
 
@@ -270,8 +270,8 @@ impl Verifiable for GroupInfo {
     }
 }
 
-impl SignedStruct<GroupInfoPayload> for GroupInfo {
-    fn from_payload(payload: GroupInfoPayload, signature: Signature) -> Self {
+impl SignedStruct<GroupInfoTBS> for GroupInfo {
+    fn from_payload(payload: GroupInfoTBS, signature: Signature) -> Self {
         Self { payload, signature }
     }
 }

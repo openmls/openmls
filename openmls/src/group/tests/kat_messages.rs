@@ -98,7 +98,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
             )],
         );
 
-        GroupInfoPayload::new(
+        GroupInfoTBS::new(
             group_context,
             &[Extension::RatchetTree(RatchetTreeExtension::new(
                 ratchet_tree.clone(),
