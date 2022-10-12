@@ -5,7 +5,7 @@ use crate::{
     ciphersuite::{signable::Signable, AeadKey, AeadNonce, Mac, Secret},
     credentials::{CredentialBundle, CredentialType},
     group::GroupId,
-    messages::{ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload, Welcome},
+    messages::{ConfirmationTag, EncryptedGroupSecrets, GroupInfoTBS, Welcome},
     versions::ProtocolVersion,
 };
 
@@ -39,7 +39,7 @@ fn test_welcome_message_with_version(
             &Vec::new(),
         );
 
-        GroupInfoPayload::new(
+        GroupInfoTBS::new(
             group_context,
             &Vec::new(),
             ConfirmationTag(Mac {

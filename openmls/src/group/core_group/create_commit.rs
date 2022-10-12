@@ -322,7 +322,7 @@ impl CoreGroup {
                     self.group_context_extensions(),
                 );
 
-                GroupInfoPayload::new(
+                GroupInfoTBS::new(
                     group_context,
                     &other_extensions,
                     confirmation_tag.clone(),
