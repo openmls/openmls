@@ -4,7 +4,7 @@
 //! See `codec.rs` and `ciphersuites.rs` for internals.
 
 use crate::versions::ProtocolVersion;
-use ::tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
+use ::tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 use openmls_traits::{
     crypto::OpenMlsCrypto,
     random::OpenMlsRand,
@@ -18,7 +18,6 @@ use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU16, TlsByteVecU32, Tl
 
 mod aead;
 mod codec;
-mod hpke;
 mod kdf_label;
 mod mac;
 mod reuse_guard;
@@ -31,7 +30,6 @@ pub mod signature;
 
 // Crate
 pub(crate) use aead::*;
-pub(crate) use hpke::*;
 pub(crate) use mac::*;
 pub(crate) use reuse_guard::*;
 pub(crate) use secret::*;
@@ -41,6 +39,12 @@ pub(crate) use serde::{Deserialize, Serialize};
 
 #[cfg(test)]
 mod tests;
+
+/// A simple type for HPKE public keys using [`VLBytes`] for (de)serializing.
+pub type HpkePublicKey = VLBytes;
+
+/// A simple type for HPKE private keys using [`VLBytes`] for (de)serializing.
+pub type HpkePrivateKey = VLBytes;
 
 /// Compare two byte slices in a way that's hopefully not optimised out by the
 /// compiler.
