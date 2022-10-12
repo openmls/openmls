@@ -24,7 +24,7 @@ pub struct SignaturePrivateKey {
 #[derive(Eq, PartialEq, Hash, Debug, Clone, Serialize, Deserialize)]
 pub struct SignaturePublicKey {
     signature_scheme: SignatureScheme,
-    pub(in crate::ciphersuite) value: Vec<u8>,
+    pub(in crate::ciphersuite) value: VLBytes,
 }
 
 /// A signature keypair.
@@ -120,7 +120,7 @@ impl SignatureKeypair {
                 signature_scheme,
             },
             public_key: SignaturePublicKey {
-                value: pk,
+                value: pk.into(),
                 signature_scheme,
             },
         })
@@ -138,9 +138,9 @@ impl SignatureKeypair {
 
 impl SignaturePublicKey {
     /// Create a new signature public key from raw key bytes.
-    pub fn new(bytes: Vec<u8>, signature_scheme: SignatureScheme) -> Result<Self, CryptoError> {
+    pub fn new(value: VLBytes, signature_scheme: SignatureScheme) -> Result<Self, CryptoError> {
         Ok(Self {
-            value: bytes,
+            value,
             signature_scheme,
         })
     }
@@ -158,7 +158,7 @@ impl SignaturePublicKey {
             .verify_signature(
                 self.signature_scheme,
                 payload,
-                &self.value,
+                self.value.as_ref(),
                 signature.value.as_slice(),
             )
             .map_err(|_| CryptoError::InvalidSignature)
@@ -170,7 +170,7 @@ impl SignaturePublicKey {
     }
     /// Returns the bytes of the signature public key.
     pub fn as_slice(&self) -> &[u8] {
-        &self.value
+        self.value.as_ref()
     }
 }
 
