@@ -15,3 +15,7 @@ path = "src/traits.rs"
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 tls_codec = { version = "0.2.0", features = ["derive", "serde_serialize"] }
+
+# Patching unreleased crates
+[patch.crates-io]
+tls_codec = { git = "https://github.com/RustCrypto/formats.git", features = ["derive", "serde_serialize"] }
