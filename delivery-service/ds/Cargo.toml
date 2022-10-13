@@ -25,3 +25,7 @@ openmls = { path = "../../openmls" }
 ds-lib = { path = "../ds-lib/" }
 openmls_rust_crypto = { path = "../../openmls_rust_crypto" }
 openmls_traits = { path = "../../traits" }
+
+# Patching unreleased crates
+[patch.crates-io]
+tls_codec = { git = "https://github.com/RustCrypto/formats.git", features = ["derive", "serde_serialize"] }
