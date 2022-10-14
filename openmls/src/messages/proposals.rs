@@ -90,6 +90,23 @@ impl TryFrom<u16> for ProposalType {
 /// Proposal.
 ///
 /// This `enum` contains the different proposals in its variants.
+///
+/// # MLS Presentation Language
+///
+/// ```c
+/// struct {
+///     ProposalType msg_type;
+///     select (Proposal.msg_type) {
+///         case add:                      Add;
+///         case update:                   Update;
+///         case remove:                   Remove;
+///         case psk:                      PreSharedKey;
+///         case reinit:                   ReInit;
+///         case external_init:            ExternalInit;
+///         case group_context_extensions: GroupContextExtensions;
+///     };
+/// } Proposal;
+/// ```
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[allow(missing_docs)]
