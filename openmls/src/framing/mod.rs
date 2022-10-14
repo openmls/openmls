@@ -74,6 +74,35 @@ pub enum WireFormat {
     MlsKeyPackage = 5,
 }
 
+impl TryFrom<u8> for WireFormat {
+    type Error = ();
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(WireFormat::Reserved),
+            1 => Ok(WireFormat::MlsPlaintext),
+            2 => Ok(WireFormat::MlsCiphertext),
+            3 => Ok(WireFormat::MlsWelcome),
+            4 => Ok(WireFormat::MlsGroupInfo),
+            5 => Ok(WireFormat::MlsKeyPackage),
+            _ => Err(()),
+        }
+    }
+}
+
+impl Into<u8> for WireFormat {
+    fn into(self) -> u8 {
+        match self {
+            WireFormat::Reserved => 0,
+            WireFormat::MlsPlaintext => 1,
+            WireFormat::MlsCiphertext => 2,
+            WireFormat::MlsWelcome => 3,
+            WireFormat::MlsGroupInfo => 4,
+            WireFormat::MlsKeyPackage => 5,
+        }
+    }
+}
+
 /// This struct is used to group common framing parameters
 /// in order to reduce the number of arguments in function calls.
 #[derive(Clone, Copy, PartialEq, Debug)]
