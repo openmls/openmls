@@ -117,6 +117,7 @@ pub enum Proposal {
     PreSharedKey(PreSharedKeyProposal),
     ReInit(ReInitProposal),
     ExternalInit(ExternalInitProposal),
+    // TODO(#916): `AppAck` is not in draft-ietf-mls-protocol-16.
     AppAck(AppAckProposal),
     GroupContextExtensions(GroupContextExtensionProposal),
 }
