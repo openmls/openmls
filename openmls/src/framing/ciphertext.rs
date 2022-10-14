@@ -33,8 +33,6 @@ use super::*;
 /// ```
 #[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize)]
 pub(crate) struct MlsCiphertext {
-    // TODO: `wire_format` is not in draft-ietf-mls-protocol-16.
-    wire_format: WireFormat,
     group_id: GroupId,
     epoch: GroupEpoch,
     content_type: ContentType,
@@ -51,7 +49,6 @@ pub(crate) struct MlsMessageHeader {
 
 impl MlsCiphertext {
     pub(crate) fn new(
-        wire_format: WireFormat,
         group_id: GroupId,
         epoch: GroupEpoch,
         content_type: ContentType,
@@ -60,7 +57,6 @@ impl MlsCiphertext {
         ciphertext: TlsByteVecU32,
     ) -> Self {
         Self {
-            wire_format,
             group_id,
             epoch,
             content_type,
@@ -157,7 +153,6 @@ impl MlsCiphertext {
             )
             .map_err(LibraryError::unexpected_crypto_error)?;
         Ok(MlsCiphertext {
-            wire_format: WireFormat::MlsCiphertext,
             group_id: header.group_id,
             epoch: header.epoch,
             content_type: mls_plaintext.content_type(),
@@ -294,7 +289,6 @@ impl MlsCiphertext {
 
         let verifiable = VerifiableMlsPlaintext::new(
             MlsPlaintextTbs::new(
-                self.wire_format,
                 self.group_id.clone(),
                 self.epoch,
                 sender,
@@ -383,12 +377,6 @@ impl MlsCiphertext {
     /// Get the `content_type` in the `MlsCiphertext`.
     pub(crate) fn content_type(&self) -> ContentType {
         self.content_type
-    }
-
-    /// Set the wire format.
-    #[cfg(test)]
-    pub(super) fn set_wire_format(&mut self, wire_format: WireFormat) {
-        self.wire_format = wire_format;
     }
 
     /// Set the ciphertext.

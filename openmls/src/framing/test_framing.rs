@@ -50,7 +50,6 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
     let signature_input = MlsPlaintextTbs::new(
-        WireFormat::MlsPlaintext,
         GroupId::random(backend),
         1,
         sender,
@@ -100,7 +99,6 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .tls_serialize_detached()
         .expect("An unexpected error occurred.");
     let signature_input = MlsPlaintextTbs::new(
-        WireFormat::MlsCiphertext,
         GroupId::random(backend),
         1,
         sender,

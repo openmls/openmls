@@ -15,7 +15,7 @@ use crate::{
 
 use super::{
     proposals::ProposalQueue, ContentType, CoreGroup, KeyPackage, MlsMessageIn,
-    ProposalValidationError, VerifiableMlsPlaintext, WireFormat,
+    ProposalValidationError, VerifiableMlsPlaintext,
 };
 
 impl CoreGroup {

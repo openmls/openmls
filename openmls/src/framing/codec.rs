@@ -6,7 +6,6 @@ use std::io::{Read, Write};
 
 impl tls_codec::Deserialize for VerifiableMlsPlaintext {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
-        let wire_format = WireFormat::tls_deserialize(bytes)?;
         let group_id = GroupId::tls_deserialize(bytes)?;
         let epoch = GroupEpoch::tls_deserialize(bytes)?;
         let sender = Sender::tls_deserialize(bytes)?;
@@ -26,7 +25,6 @@ impl tls_codec::Deserialize for VerifiableMlsPlaintext {
 
         let verifiable = VerifiableMlsPlaintext::new(
             MlsPlaintextTbs::new(
-                wire_format,
                 group_id,
                 epoch,
                 sender,
@@ -48,8 +46,7 @@ impl tls_codec::Deserialize for VerifiableMlsPlaintext {
 impl tls_codec::Size for VerifiableMlsPlaintext {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
-        self.tbs.wire_format.tls_serialized_len()
-            + self.tbs.group_id.tls_serialized_len()
+        self.tbs.group_id.tls_serialized_len()
             + self.tbs.epoch.tls_serialized_len()
             + self.tbs.sender.tls_serialized_len()
             + self.tbs.authenticated_data.tls_serialized_len()
@@ -63,8 +60,7 @@ impl tls_codec::Size for VerifiableMlsPlaintext {
 
 impl tls_codec::Serialize for VerifiableMlsPlaintext {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        let mut written = self.tbs.wire_format.tls_serialize(writer)?;
-        written += self.tbs.group_id.tls_serialize(writer)?;
+        let mut written = self.tbs.group_id.tls_serialize(writer)?;
         written += self.tbs.epoch.tls_serialize(writer)?;
         written += self.tbs.sender.tls_serialize(writer)?;
         written += self.tbs.authenticated_data.tls_serialize(writer)?;
@@ -139,7 +135,6 @@ impl MlsPlaintextContentType {
 #[allow(clippy::too_many_arguments)]
 pub(super) fn serialize_plaintext_tbs<'a, W: Write>(
     serialized_context: impl Into<Option<&'a [u8]>>,
-    wire_format: WireFormat,
     group_id: &GroupId,
     epoch: &GroupEpoch,
     sender: &Sender,
@@ -155,7 +150,6 @@ pub(super) fn serialize_plaintext_tbs<'a, W: Write>(
     } else {
         0
     };
-    written += wire_format.tls_serialize(buffer)?;
     written += group_id.tls_serialize(buffer)?;
     written += epoch.tls_serialize(buffer)?;
     written += sender.tls_serialize(buffer)?;
@@ -173,7 +167,6 @@ impl tls_codec::Size for MlsPlaintextTbs {
             0
         };
         context_len
-            + self.wire_format.tls_serialized_len()
             + self.group_id.tls_serialized_len()
             + self.epoch.tls_serialized_len()
             + self.sender.tls_serialized_len()
@@ -187,7 +180,6 @@ impl tls_codec::Serialize for MlsPlaintextTbs {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         serialize_plaintext_tbs(
             self.serialized_context.as_deref(),
-            self.wire_format,
             &self.group_id,
             &self.epoch,
             &self.sender,
@@ -201,7 +193,6 @@ impl tls_codec::Serialize for MlsPlaintextTbs {
 
 impl tls_codec::Deserialize for MlsCiphertext {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
-        let wire_format = WireFormat::tls_deserialize(bytes)?;
         let group_id = GroupId::tls_deserialize(bytes)?;
         let epoch = GroupEpoch::tls_deserialize(bytes)?;
         let content_type = ContentType::tls_deserialize(bytes)?;
@@ -217,7 +208,6 @@ impl tls_codec::Deserialize for MlsCiphertext {
         }
 
         let mls_ciphertext = MlsCiphertext::new(
-            wire_format,
             group_id,
             epoch,
             content_type,
@@ -265,8 +255,14 @@ impl tls_codec::Serialize for MlsMessage {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         self.version.tls_serialize(writer)?;
         match self.body {
-            MlsMessageBody::Ciphertext(ref m) => m.tls_serialize(writer),
-            MlsMessageBody::Plaintext(ref m) => m.tls_serialize(writer),
+            MlsMessageBody::Ciphertext(ref m) => {
+                WireFormat::MlsCiphertext.tls_serialize(writer)?;
+                m.tls_serialize(writer)
+            }
+            MlsMessageBody::Plaintext(ref m) => {
+                WireFormat::MlsPlaintext.tls_serialize(writer)?;
+                m.tls_serialize(writer)
+            }
         }
     }
 }

@@ -42,9 +42,6 @@ pub(crate) enum MessageEncryptionError {
     /// See [`LibraryError`] for more details.
     #[error(transparent)]
     LibraryError(#[from] LibraryError),
-    /// The WireFormat was not MLSCiphertext.
-    #[error("The WireFormat was not MLSCiphertext.")]
-    WrongWireFormat,
     /// See [`SecretTreeError`] for more details.
     #[error(transparent)]
     SecretTreeError(#[from] SecretTreeError),

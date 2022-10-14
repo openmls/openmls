@@ -42,7 +42,6 @@ use tls_codec::{Serialize, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize}
 /// ```
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub(crate) struct MlsContent {
-    wire_format: WireFormat,
     group_id: GroupId,
     epoch: GroupEpoch,
     sender: Sender,
@@ -65,10 +64,6 @@ impl MlsContent {
         &self.signature
     }
 
-    pub(super) fn wire_format(&self) -> WireFormat {
-        self.wire_format
-    }
-
     #[cfg(test)]
     pub(super) fn unset_confirmation_tag(&mut self) {
         self.confirmation_tag = None;
@@ -89,11 +84,6 @@ impl MlsContent {
     // pub(super) fn set_membership_tag_test(&mut self, tag: MembershipTag) {
     //     self.membership_tag = Some(tag);
     // }
-
-    #[cfg(test)]
-    pub(super) fn set_wire_format(&mut self, wire_format: WireFormat) {
-        self.wire_format = wire_format;
-    }
 }
 
 impl MlsContent {
@@ -108,7 +98,6 @@ impl MlsContent {
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<Self, LibraryError> {
         let mut mls_plaintext = MlsPlaintextTbs::new(
-            framing_parameters.wire_format(),
             context.group_id().clone(),
             context.epoch(),
             sender.clone(),
@@ -412,7 +401,6 @@ pub(crate) struct MembershipTag(pub(crate) Mac);
 #[derive(PartialEq, Debug, Clone)]
 pub(crate) struct MlsPlaintextTbs {
     pub(super) serialized_context: Option<Vec<u8>>,
-    pub(super) wire_format: WireFormat,
     pub(super) group_id: GroupId,
     pub(super) epoch: GroupEpoch,
     pub(super) sender: Sender,
@@ -428,7 +416,6 @@ fn encode_tbs<'a>(
     let mut out = Vec::new();
     codec::serialize_plaintext_tbs(
         serialized_context,
-        plaintext.wire_format,
         &plaintext.group_id,
         &plaintext.epoch,
         &plaintext.sender,
@@ -579,11 +566,6 @@ impl VerifiableMlsPlaintext {
         &self.tbs.payload
     }
 
-    /// Get the wire format.
-    pub(crate) fn wire_format(&self) -> WireFormat {
-        self.tbs.wire_format
-    }
-
     /// Get the membership tag.
     pub(crate) fn membership_tag(&self) -> &Option<MembershipTag> {
         &self.membership_tag
@@ -662,7 +644,6 @@ impl MlsPlaintextTbs {
     /// Note that if you would like to add a serialized context, you
     /// should subsequently call [`with_context`].
     pub(crate) fn new(
-        wire_format: WireFormat,
         group_id: GroupId,
         epoch: impl Into<GroupEpoch>,
         sender: Sender,
@@ -671,7 +652,6 @@ impl MlsPlaintextTbs {
     ) -> Self {
         MlsPlaintextTbs {
             serialized_context: None,
-            wire_format,
             group_id,
             epoch: epoch.into(),
             sender,
@@ -692,7 +672,6 @@ impl MlsPlaintextTbs {
     /// To get the `MlsPlaintext` back use `sign`.
     fn from_plaintext(mls_plaintext: MlsContent) -> Self {
         MlsPlaintextTbs {
-            wire_format: mls_plaintext.wire_format,
             serialized_context: None,
             group_id: mls_plaintext.group_id,
             epoch: mls_plaintext.epoch,
@@ -727,7 +706,6 @@ mod private_mod {
 impl VerifiedStruct<VerifiableMlsPlaintext> for MlsContent {
     fn from_verifiable(v: VerifiableMlsPlaintext, _seal: Self::SealingType) -> Self {
         Self {
-            wire_format: v.tbs.wire_format,
             group_id: v.tbs.group_id,
             epoch: v.tbs.epoch,
             sender: v.tbs.sender,
@@ -746,7 +724,6 @@ impl VerifiedStruct<VerifiableMlsPlaintext> for MlsContent {
 impl SignedStruct<MlsPlaintextTbs> for MlsContent {
     fn from_payload(tbs: MlsPlaintextTbs, signature: Signature) -> Self {
         Self {
-            wire_format: tbs.wire_format,
             group_id: tbs.group_id,
             epoch: tbs.epoch,
             sender: tbs.sender,
@@ -763,7 +740,6 @@ impl SignedStruct<MlsPlaintextTbs> for MlsContent {
 
 #[derive(TlsSerialize, TlsSize)]
 pub(crate) struct MlsPlaintextCommitContent<'a> {
-    pub(super) wire_format: WireFormat,
     pub(super) group_id: &'a GroupId,
     pub(super) epoch: GroupEpoch,
     pub(super) sender: &'a Sender,
@@ -782,7 +758,6 @@ impl<'a> TryFrom<&'a MlsContent> for MlsPlaintextCommitContent<'a> {
             _ => return Err("MlsPlaintext needs to contain a Commit."),
         };
         Ok(MlsPlaintextCommitContent {
-            wire_format: mls_plaintext.wire_format,
             group_id: &mls_plaintext.group_id,
             epoch: mls_plaintext.epoch,
             sender: &mls_plaintext.sender,
