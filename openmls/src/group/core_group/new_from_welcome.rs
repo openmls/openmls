@@ -86,7 +86,7 @@ impl CoreGroup {
             .map_err(|_| WelcomeError::MalformedWelcomeMessage)?;
 
         // Make sure that we can support the required capabilities in the group info.
-        let group_context_extensions = group_info.group_context_extensions();
+        let group_context_extensions = group_info.group_context().extensions();
         let required_capabilities = group_context_extensions
             .iter()
             .find(|&extension| extension.extension_type() == ExtensionType::RequiredCapabilities);
@@ -114,13 +114,14 @@ impl CoreGroup {
         // this group. Note that this is not strictly necessary. But there's
         // currently no other mechanism to enable the extension.
         let (nodes, enable_ratchet_tree_extension) =
-            match try_nodes_from_extensions(group_info.other_extensions(), backend.crypto())
-                .map_err(|e| match e {
+            match try_nodes_from_extensions(group_info.extensions(), backend.crypto()).map_err(
+                |e| match e {
                     ExtensionError::DuplicateRatchetTreeExtension => {
                         WelcomeError::DuplicateRatchetTreeExtension
                     }
                     _ => LibraryError::custom("Unexpected extension error").into(),
-                })? {
+                },
+            )? {
                 Some(nodes) => (nodes, true),
                 None => match nodes_option {
                     Some(n) => (n, false),
@@ -155,10 +156,13 @@ impl CoreGroup {
 
         // Compute state
         let group_context = GroupContext::new(
-            group_info.group_id().clone(),
-            group_info.epoch(),
+            group_info.group_context().group_id().clone(),
+            group_info.group_context().epoch(),
             tree.tree_hash().to_vec(),
-            group_info.confirmed_transcript_hash().to_vec(),
+            group_info
+                .group_context()
+                .confirmed_transcript_hash()
+                .to_vec(),
             group_context_extensions,
         );
 

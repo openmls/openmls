@@ -165,45 +165,44 @@ impl Commit {
 )]
 pub struct ConfirmationTag(pub(crate) Mac);
 
+/// GroupInfo (To Be Signed)
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+///
+/// struct {
+///     GroupContext group_context;
+///     Extension extensions<V>;
+///     MAC confirmation_tag;
+///     uint32 signer;
+/// } GroupInfoTBS;
+/// ```
 #[derive(TlsDeserialize, TlsSerialize, TlsSize)]
-pub(crate) struct GroupInfoPayload {
-    group_id: GroupId,
-    epoch: GroupEpoch,
-    tree_hash: TlsByteVecU8,
-    confirmed_transcript_hash: TlsByteVecU8,
-    group_context_extensions: TlsVecU32<Extension>,
-    other_extensions: TlsVecU32<Extension>,
+pub(crate) struct GroupInfoTBS {
+    group_context: GroupContext,
+    extensions: TlsVecU32<Extension>,
     confirmation_tag: ConfirmationTag,
     signer: KeyPackageRef,
 }
 
-impl GroupInfoPayload {
-    #[allow(clippy::too_many_arguments)] // TODO: #569 refactor GroupInfoPayload
-    /// Create a new group info payload struct.
+impl GroupInfoTBS {
+    /// Create a new to-be-signed group info.
     pub(crate) fn new(
-        group_id: GroupId,
-        epoch: impl Into<GroupEpoch>,
-        tree_hash: Vec<u8>,
-        confirmed_transcript_hash: Vec<u8>,
-        group_context_extensions: &[Extension],
-        other_extensions: &[Extension],
+        group_context: GroupContext,
+        extensions: &[Extension],
         confirmation_tag: ConfirmationTag,
         signer: &KeyPackageRef,
     ) -> Self {
         Self {
-            group_id,
-            epoch: epoch.into(),
-            tree_hash: tree_hash.into(),
-            confirmed_transcript_hash: confirmed_transcript_hash.into(),
-            group_context_extensions: group_context_extensions.into(),
-            other_extensions: other_extensions.into(),
+            group_context: group_context.into(),
+            extensions: extensions.into(),
             confirmation_tag,
             signer: *signer,
         }
     }
 }
 
-impl Signable for GroupInfoPayload {
+impl Signable for GroupInfoTBS {
     type SignedOutput = GroupInfo;
 
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
@@ -213,68 +212,50 @@ impl Signable for GroupInfoPayload {
 
 /// GroupInfo
 ///
-/// The struct is split into the payload and the signature.
-/// `GroupInfoPayload` holds the actual values, stored in `payload` here.
+/// Note: The struct is split into a `GroupInfoTBS` payload and a signature.
 ///
-/// > 11.2.2. Welcoming New Members
+/// ```c
+/// // draft-ietf-mls-protocol-16
 ///
-/// ```text
 /// struct {
-///   opaque group_id<0..255>;
-///   uint64 epoch;
-///   opaque tree_hash<0..255>;
-///   opaque confirmed_transcript_hash<0..255>;
-///   Extension extensions<0..2^32-1>;
-///   MAC confirmation_tag;
-///   KeyPackageRef signer;
-///   opaque signature<0..2^16-1>;
+///     GroupContext group_context;
+///     Extension extensions<V>;
+///     MAC confirmation_tag;
+///     uint32 signer;
+///     // SignWithLabel(., "GroupInfoTBS", GroupInfoTBS)
+///     opaque signature<V>;
 /// } GroupInfo;
 /// ```
 pub(crate) struct GroupInfo {
-    payload: GroupInfoPayload,
+    payload: GroupInfoTBS,
     signature: Signature,
 }
 
 impl GroupInfo {
-    /// Returns the signer.
-    pub(crate) fn signer(&self) -> &KeyPackageRef {
-        &self.payload.signer
+    /// Returns the group context.
+    pub(crate) fn group_context(&self) -> &GroupContext {
+        &self.payload.group_context
     }
 
-    /// Returns the group ID.
-    pub(crate) fn group_id(&self) -> &GroupId {
-        &self.payload.group_id
+    /// Returns the extensions.
+    pub(crate) fn extensions(&self) -> &[Extension] {
+        self.payload.extensions.as_slice()
     }
 
-    /// Returns the epoch.
-    pub(crate) fn epoch(&self) -> GroupEpoch {
-        self.payload.epoch
+    /// Set the extensions.
+    #[cfg(test)]
+    pub(crate) fn set_extensions(&mut self, extensions: Vec<Extension>) {
+        self.payload.extensions = extensions.into();
     }
 
-    /// Returns the confirmed transcript hash.
-    pub(crate) fn confirmed_transcript_hash(&self) -> &[u8] {
-        self.payload.confirmed_transcript_hash.as_slice()
-    }
-
-    /// Returns the confirmed tag.
+    /// Returns the confirmation tag.
     pub(crate) fn confirmation_tag(&self) -> &ConfirmationTag {
         &self.payload.confirmation_tag
     }
 
-    /// Returns other application extensions.
-    pub(crate) fn other_extensions(&self) -> &[Extension] {
-        self.payload.other_extensions.as_slice()
-    }
-
-    /// Returns the [`GroupContext`] extensions.
-    pub(crate) fn group_context_extensions(&self) -> &[Extension] {
-        self.payload.group_context_extensions.as_slice()
-    }
-
-    /// Set the group info's other extensions.
-    #[cfg(test)]
-    pub(crate) fn set_other_extensions(&mut self, extensions: Vec<Extension>) {
-        self.payload.other_extensions = extensions.into();
+    /// Returns the signer.
+    pub(crate) fn signer(&self) -> &KeyPackageRef {
+        &self.payload.signer
     }
 
     /// Re-sign the group info.
@@ -298,8 +279,8 @@ impl Verifiable for GroupInfo {
     }
 }
 
-impl SignedStruct<GroupInfoPayload> for GroupInfo {
-    fn from_payload(payload: GroupInfoPayload, signature: Signature) -> Self {
+impl SignedStruct<GroupInfoTBS> for GroupInfo {
+    fn from_payload(payload: GroupInfoTBS, signature: Signature) -> Self {
         Self { payload, signature }
     }
 }

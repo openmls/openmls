@@ -5,13 +5,14 @@ use crate::{
     ciphersuite::{signable::Signable, AeadKey, AeadNonce, Mac, Secret},
     credentials::{CredentialBundle, CredentialType},
     group::GroupId,
-    messages::{ConfirmationTag, EncryptedGroupSecrets, GroupInfoPayload, Welcome},
+    messages::{ConfirmationTag, EncryptedGroupSecrets, GroupInfoTBS, Welcome},
     versions::ProtocolVersion,
 };
 
 use rstest::*;
 use rstest_reuse::{self, *};
 
+use crate::group::GroupContext;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
     crypto::OpenMlsCrypto, random::OpenMlsRand, types::Ciphersuite, OpenMlsCryptoProvider,
@@ -29,23 +30,29 @@ fn test_welcome_message_with_version(
     version: ProtocolVersion,
 ) {
     // We use this dummy group info in all test cases.
-    let group_info = GroupInfoPayload::new(
-        GroupId::random(backend),
-        123,
-        vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
-        vec![1, 1, 1],
-        &Vec::new(),
-        &Vec::new(),
-        ConfirmationTag(Mac {
-            mac_value: vec![1, 2, 3, 4, 5].into(),
-        }),
-        &KeyPackageRef::from_slice(
-            &backend
-                .rand()
-                .random_vec(16)
-                .expect("An unexpected error occurred."),
-        ),
-    );
+    let group_info_tbs = {
+        let group_context = GroupContext::new(
+            GroupId::random(backend),
+            123,
+            vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
+            vec![1, 1, 1],
+            &Vec::new(),
+        );
+
+        GroupInfoTBS::new(
+            group_context,
+            &Vec::new(),
+            ConfirmationTag(Mac {
+                mac_value: vec![1, 2, 3, 4, 5].into(),
+            }),
+            &KeyPackageRef::from_slice(
+                &backend
+                    .rand()
+                    .random_vec(16)
+                    .expect("An unexpected error occurred."),
+            ),
+        )
+    };
 
     // We need a credential bundle to sign the group info.
     let credential_bundle = CredentialBundle::new(
@@ -55,7 +62,7 @@ fn test_welcome_message_with_version(
         backend,
     )
     .expect("An unexpected error occurred.");
-    let group_info = group_info
+    let group_info = group_info_tbs
         .sign(backend, &credential_bundle)
         .expect("Error signing GroupInfo");
 

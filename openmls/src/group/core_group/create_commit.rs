@@ -312,18 +312,25 @@ impl CoreGroup {
             } else {
                 Vec::new()
             };
-            // Create GroupInfo object
-            let group_info = GroupInfoPayload::new(
-                provisional_group_context.group_id().clone(),
-                provisional_group_context.epoch(),
-                tree_hash,
-                confirmed_transcript_hash.clone(),
-                self.group_context_extensions(),
-                &other_extensions,
-                confirmation_tag.clone(),
-                diff.hash_ref()?,
-            );
-            let group_info = group_info.sign(backend, params.credential_bundle())?;
+            // Create to-be-signed group info.
+            let group_info_tbs = {
+                let group_context = GroupContext::new(
+                    provisional_group_context.group_id().clone(),
+                    provisional_group_context.epoch(),
+                    tree_hash,
+                    confirmed_transcript_hash.clone(),
+                    self.group_context_extensions(),
+                );
+
+                GroupInfoTBS::new(
+                    group_context,
+                    &other_extensions,
+                    confirmation_tag.clone(),
+                    diff.hash_ref()?,
+                )
+            };
+            // Sign to-be-signed group info.
+            let group_info = group_info_tbs.sign(backend, params.credential_bundle())?;
 
             // Encrypt GroupInfo object
             let (welcome_key, welcome_nonce) = welcome_secret
