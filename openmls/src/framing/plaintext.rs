@@ -17,34 +17,28 @@ use openmls_traits::OpenMlsCryptoProvider;
 use std::convert::TryFrom;
 use tls_codec::{Serialize, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize};
 
-/// `MLSPlaintext` is a framing structure for MLS messages. It can contain
+/// `MLSContent` is a framing structure for MLS messages. It can contain
 /// Proposals, Commits and application messages.
 ///
-/// 9. Message framing
+/// # MLS Presentation Language
 ///
 /// ```c
 /// struct {
-///     opaque group_id<0..255>;
+///     opaque group_id<V>;
 ///     uint64 epoch;
 ///     Sender sender;
-///     opaque authenticated_data<0..2^32-1>;
+///     opaque authenticated_data<V>;
 ///
 ///     ContentType content_type;
-///     select (MLSPlaintext.content_type) {
+///     select (MLSContent.content_type) {
 ///         case application:
-///             opaque application_data<0..2^32-1>;
-///
+///           opaque application_data<V>;
 ///         case proposal:
-///             Proposal proposal;
-///
+///           Proposal proposal;
 ///         case commit:
-///             Commit commit;
+///           Commit commit;
 ///     }
-///
-///     opaque signature<0..2^16-1>;
-///     optional<MAC> confirmation_tag;
-///     optional<MAC> membership_tag;
-/// } MLSPlaintext;
+/// } MLSContent;
 /// ```
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub(crate) struct MlsContent {
