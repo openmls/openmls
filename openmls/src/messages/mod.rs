@@ -137,6 +137,15 @@ impl EncryptedGroupSecrets {
 /// members to update their representation of the state of
 /// the group by applying the proposals and advancing the
 /// key schedule.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+///
+/// struct {
+///     ProposalOrRef proposals<V>;
+///     optional<UpdatePath> path;
+/// } Commit;
+/// ```
 #[derive(
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
