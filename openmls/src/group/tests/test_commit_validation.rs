@@ -181,7 +181,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     plaintext.set_context(serialized_context.clone());
 
     // We have to re-sign, since we changed the content.
-    let mut signed_plaintext: MlsContent = plaintext
+    let mut signed_plaintext: MlsPlaintext = plaintext
         .payload()
         .clone()
         .sign(backend, &alice_credential_bundle)
@@ -476,7 +476,7 @@ fn erase_path(
     plaintext.set_context(serialized_context.clone());
 
     // We have to re-sign, since we changed the content.
-    let mut signed_plaintext: MlsContent = plaintext
+    let mut signed_plaintext: MlsPlaintext = plaintext
         .payload()
         .clone()
         .sign(backend, &alice_credential_bundle)
@@ -557,7 +557,7 @@ fn test_valsem202(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     plaintext.set_context(serialized_context.clone());
 
     // We have to re-sign, since we changed the content.
-    let mut signed_plaintext: MlsContent = plaintext
+    let mut signed_plaintext: MlsPlaintext = plaintext
         .payload()
         .clone()
         .sign(backend, &alice_credential_bundle)
@@ -667,7 +667,7 @@ fn test_valsem203(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     plaintext.set_context(serialized_context.clone());
 
     // We have to re-sign, since we changed the content.
-    let mut signed_plaintext: MlsContent = plaintext
+    let mut signed_plaintext: MlsPlaintext = plaintext
         .payload()
         .clone()
         .sign(backend, &alice_credential_bundle)
@@ -777,7 +777,7 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     plaintext.set_context(serialized_context.clone());
 
     // We have to re-sign, since we changed the content.
-    let mut signed_plaintext: MlsContent = plaintext
+    let mut signed_plaintext: MlsPlaintext = plaintext
         .payload()
         .clone()
         .sign(backend, &alice_credential_bundle)
@@ -875,7 +875,7 @@ fn test_valsem205(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Verify the plaintext so we have access to the membership tag computation
     // function.
-    let mut verified_plaintext: MlsContent = plaintext
+    let mut verified_plaintext: MlsPlaintext = plaintext
         .verify(
             backend,
             alice_group

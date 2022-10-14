@@ -47,7 +47,7 @@ use tls_codec::{Serialize, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize}
 /// } MLSPlaintext;
 /// ```
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
-pub(crate) struct MlsContent {
+pub(crate) struct MlsPlaintext {
     group_id: GroupId,
     epoch: GroupEpoch,
     sender: Sender,
@@ -65,7 +65,7 @@ pub(crate) struct Payload {
 }
 
 // This block only has pub(super) getters.
-impl MlsContent {
+impl MlsPlaintext {
     pub(super) fn signature(&self) -> &Signature {
         &self.signature
     }
@@ -92,7 +92,7 @@ impl MlsContent {
     // }
 }
 
-impl MlsContent {
+impl MlsPlaintext {
     /// Convenience function for creating an `MlsPlaintext`.
     #[inline]
     fn new(
@@ -356,8 +356,8 @@ pub(crate) enum MlsPlaintextContentType {
     Commit(Commit),
 }
 
-impl From<MlsContent> for MlsPlaintextContentType {
-    fn from(plaintext: MlsContent) -> Self {
+impl From<MlsPlaintext> for MlsPlaintextContentType {
+    fn from(plaintext: MlsPlaintext) -> Self {
         plaintext.content
     }
 }
@@ -416,7 +416,7 @@ pub(crate) struct MlsPlaintextTbs {
 }
 
 fn encode_tbs<'a>(
-    plaintext: &MlsContent,
+    plaintext: &MlsPlaintext,
     serialized_context: impl Into<Option<&'a [u8]>>,
 ) -> Result<Vec<u8>, tls_codec::Error> {
     let mut out = Vec::new();
@@ -461,7 +461,7 @@ impl VerifiableMlsPlaintext {
     /// Create a [`VerifiableMlsPlaintext`] from an [`MlsPlaintext`] and the
     /// serialized context.
     pub(crate) fn from_plaintext(
-        mls_plaintext: MlsContent,
+        mls_plaintext: MlsPlaintext,
         serialized_context: impl Into<Option<Vec<u8>>>,
     ) -> Self {
         let signature = mls_plaintext.signature.clone();
@@ -638,7 +638,7 @@ impl VerifiableMlsPlaintext {
 }
 
 impl Signable for MlsPlaintextTbs {
-    type SignedOutput = MlsContent;
+    type SignedOutput = MlsPlaintext;
 
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
         self.tls_serialize_detached()
@@ -676,7 +676,7 @@ impl MlsPlaintextTbs {
     /// Create a new signable MlsPlaintext from an existing MlsPlaintext.
     /// This consumes the existing plaintext.
     /// To get the `MlsPlaintext` back use `sign`.
-    fn from_plaintext(mls_plaintext: MlsContent) -> Self {
+    fn from_plaintext(mls_plaintext: MlsPlaintext) -> Self {
         MlsPlaintextTbs {
             serialized_context: None,
             group_id: mls_plaintext.group_id,
@@ -709,7 +709,7 @@ mod private_mod {
     pub(crate) struct Seal;
 }
 
-impl VerifiedStruct<VerifiableMlsPlaintext> for MlsContent {
+impl VerifiedStruct<VerifiableMlsPlaintext> for MlsPlaintext {
     fn from_verifiable(v: VerifiableMlsPlaintext, _seal: Self::SealingType) -> Self {
         Self {
             group_id: v.tbs.group_id,
@@ -727,7 +727,7 @@ impl VerifiedStruct<VerifiableMlsPlaintext> for MlsContent {
     type SealingType = private_mod::Seal;
 }
 
-impl SignedStruct<MlsPlaintextTbs> for MlsContent {
+impl SignedStruct<MlsPlaintextTbs> for MlsPlaintext {
     fn from_payload(tbs: MlsPlaintextTbs, signature: Signature) -> Self {
         Self {
             group_id: tbs.group_id,
@@ -755,10 +755,10 @@ pub(crate) struct MlsPlaintextCommitContent<'a> {
     pub(super) signature: &'a Signature,
 }
 
-impl<'a> TryFrom<&'a MlsContent> for MlsPlaintextCommitContent<'a> {
+impl<'a> TryFrom<&'a MlsPlaintext> for MlsPlaintextCommitContent<'a> {
     type Error = &'static str;
 
-    fn try_from(mls_plaintext: &'a MlsContent) -> Result<Self, Self::Error> {
+    fn try_from(mls_plaintext: &'a MlsPlaintext) -> Result<Self, Self::Error> {
         let commit = match &mls_plaintext.content {
             MlsPlaintextContentType::Commit(commit) => commit,
             _ => return Err("MlsPlaintext needs to contain a Commit."),
@@ -780,10 +780,10 @@ pub(crate) struct MlsPlaintextCommitAuthData<'a> {
     pub(crate) confirmation_tag: Option<&'a ConfirmationTag>,
 }
 
-impl<'a> TryFrom<&'a MlsContent> for MlsPlaintextCommitAuthData<'a> {
+impl<'a> TryFrom<&'a MlsPlaintext> for MlsPlaintextCommitAuthData<'a> {
     type Error = &'static str;
 
-    fn try_from(mls_plaintext: &'a MlsContent) -> Result<Self, Self::Error> {
+    fn try_from(mls_plaintext: &'a MlsPlaintext) -> Result<Self, Self::Error> {
         match mls_plaintext.confirmation_tag.as_ref() {
             Some(confirmation_tag) => Ok(MlsPlaintextCommitAuthData {
                 confirmation_tag: Some(confirmation_tag),

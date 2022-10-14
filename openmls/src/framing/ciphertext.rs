@@ -67,7 +67,7 @@ impl MlsCiphertext {
     }
     /// Try to create a new `MlsCiphertext` from an `MlsPlaintext`
     pub(crate) fn try_from_plaintext(
-        mls_plaintext: &MlsContent,
+        mls_plaintext: &MlsPlaintext,
         ciphersuite: Ciphersuite,
         backend: &impl OpenMlsCryptoProvider,
         header: MlsMessageHeader,
@@ -323,7 +323,7 @@ impl MlsCiphertext {
     /// } MLSCiphertextContent;
     /// ```
     fn encode_padded_ciphertext_content_detached(
-        mls_plaintext: &MlsContent,
+        mls_plaintext: &MlsPlaintext,
         padding_size: usize,
         mac_len: usize,
     ) -> Result<Vec<u8>, tls_codec::Error> {

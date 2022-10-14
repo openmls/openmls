@@ -185,8 +185,8 @@ impl From<VerifiableMlsPlaintext> for MlsMessageOut {
     }
 }
 
-impl From<MlsContent> for MlsMessageOut {
-    fn from(plaintext: MlsContent) -> Self {
+impl From<MlsPlaintext> for MlsMessageOut {
+    fn from(plaintext: MlsPlaintext) -> Self {
         // TODO: Version is fixed for now.
         let version = ProtocolVersion::Mls10;
 

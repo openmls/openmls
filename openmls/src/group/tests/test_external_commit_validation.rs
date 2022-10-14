@@ -163,7 +163,7 @@ fn test_valsem240(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     plaintext.set_content(MlsPlaintextContentType::Commit(content));
 
     // We have to re-sign, since we changed the content.
-    let mut signed_plaintext: MlsContent = plaintext
+    let mut signed_plaintext: MlsPlaintext = plaintext
         .payload()
         .clone()
         .sign(backend, &bob_credential_bundle)
@@ -235,7 +235,7 @@ fn test_valsem241(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     plaintext.set_content(MlsPlaintextContentType::Commit(content));
 
     // We have to re-sign, since we changed the content.
-    let mut signed_plaintext: MlsContent = plaintext
+    let mut signed_plaintext: MlsPlaintext = plaintext
         .payload()
         .clone()
         .sign(backend, &bob_credential_bundle)
@@ -316,7 +316,7 @@ fn test_valsem242(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     plaintext.set_content(MlsPlaintextContentType::Commit(content));
 
     // We have to re-sign, since we changed the content.
-    let mut signed_plaintext: MlsContent = plaintext
+    let mut signed_plaintext: MlsPlaintext = plaintext
         .payload()
         .clone()
         .sign(backend, &bob_credential_bundle)
@@ -450,7 +450,7 @@ fn test_valsem243(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     plaintext.set_content(MlsPlaintextContentType::Commit(content));
 
     // We have to re-sign, since we changed the content.
-    let mut signed_plaintext: MlsContent = plaintext
+    let mut signed_plaintext: MlsPlaintext = plaintext
         .payload()
         .clone()
         .sign(backend, &bob_credential_bundle)
@@ -585,7 +585,7 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     plaintext.set_content(MlsPlaintextContentType::Commit(content));
 
     // We have to re-sign, since we changed the content.
-    let mut signed_plaintext: MlsContent = plaintext
+    let mut signed_plaintext: MlsPlaintext = plaintext
         .payload()
         .clone()
         .sign(backend, &bob_credential_bundle)
@@ -672,7 +672,7 @@ fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     plaintext.set_content(MlsPlaintextContentType::Commit(content));
 
     // We have to re-sign, since we changed the content.
-    let mut signed_plaintext: MlsContent = plaintext
+    let mut signed_plaintext: MlsPlaintext = plaintext
         .payload()
         .clone()
         .sign(backend, &bob_credential_bundle)
@@ -739,7 +739,7 @@ fn test_valsem246(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     plaintext.set_content(MlsPlaintextContentType::Commit(content));
 
     // We have to re-sign, since we changed the content.
-    let mut signed_plaintext: MlsContent = plaintext
+    let mut signed_plaintext: MlsPlaintext = plaintext
         .payload()
         .clone()
         .sign(backend, &bob_credential_bundle)
@@ -817,7 +817,7 @@ fn test_valsem247(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     plaintext.set_content(MlsPlaintextContentType::Commit(content));
 
     // We have to re-sign, since we changed the content.
-    let mut signed_plaintext: MlsContent = plaintext
+    let mut signed_plaintext: MlsPlaintext = plaintext
         .payload()
         .clone()
         .sign(backend, &bob_credential_bundle)
@@ -865,7 +865,7 @@ fn test_valsem247(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     assert_eq!(path_credential, bob_credential_bundle.credential());
 
     // This shows that the message is actually signed using this credential.
-    let verification_result: Result<MlsContent, CredentialError> = original_plaintext
+    let verification_result: Result<MlsPlaintext, CredentialError> = original_plaintext
         .clone()
         .verify(backend, bob_credential_bundle.credential());
     assert!(verification_result.is_ok());

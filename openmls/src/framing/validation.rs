@@ -367,17 +367,17 @@ impl UnverifiedPreconfiguredMessage {
 
 /// Member message, where all semantic checks on the framing have been successfully performed.
 pub(crate) struct VerifiedMemberMessage {
-    plaintext: MlsContent,
+    plaintext: MlsPlaintext,
 }
 
 impl VerifiedMemberMessage {
     /// Returns a reference to the inner [MlsPlaintext].
-    pub(crate) fn plaintext(&self) -> &MlsContent {
+    pub(crate) fn plaintext(&self) -> &MlsPlaintext {
         &self.plaintext
     }
 
     /// Consumes the message and returns the inner [MlsPlaintext].
-    pub(crate) fn take_plaintext(self) -> MlsContent {
+    pub(crate) fn take_plaintext(self) -> MlsPlaintext {
         self.plaintext
     }
 }
@@ -385,17 +385,17 @@ impl VerifiedMemberMessage {
 /// External message, where all semantic checks on the framing have been successfully performed.
 /// Note: External messages are not fully supported yet #106
 pub(crate) struct VerifiedExternalMessage {
-    _plaintext: MlsContent,
+    _plaintext: MlsPlaintext,
 }
 
 impl VerifiedExternalMessage {
     /// Returns a reference to the inner [MlsPlaintext].
-    pub(crate) fn _plaintext(&self) -> &MlsContent {
+    pub(crate) fn _plaintext(&self) -> &MlsPlaintext {
         &self._plaintext
     }
 
     /// Consumes the message and returns the inner [MlsPlaintext].
-    pub(crate) fn _take_plaintext(self) -> MlsContent {
+    pub(crate) fn _take_plaintext(self) -> MlsPlaintext {
         self._plaintext
     }
 }

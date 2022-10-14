@@ -12,7 +12,7 @@ use crate::{
     ciphersuite::{hash_ref::ProposalRef, signable::Signable, *},
     credentials::*,
     framing::{
-        MlsContent, MlsMessageIn, MlsMessageOut, MlsPlaintextContentType, ProcessedMessage, Sender,
+        MlsPlaintext, MlsMessageIn, MlsMessageOut, MlsPlaintextContentType, ProcessedMessage, Sender,
         VerifiableMlsPlaintext,
     },
     group::{errors::*, *},
@@ -201,7 +201,7 @@ fn insert_proposal_and_resign(
     plaintext.set_context(serialized_context.clone());
 
     // We have to re-sign, since we changed the content.
-    let mut signed_plaintext: MlsContent = plaintext
+    let mut signed_plaintext: MlsPlaintext = plaintext
         .payload()
         .clone()
         .sign(backend, &committer_credential_bundle)

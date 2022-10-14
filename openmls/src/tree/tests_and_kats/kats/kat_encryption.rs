@@ -200,7 +200,7 @@ fn build_handshake_messages(
             .expect("Not enough randomness."),
     );
     let framing_parameters = FramingParameters::new(&[1, 2, 3, 4], WireFormat::MlsCiphertext);
-    let mut plaintext = MlsContent::member_proposal(
+    let mut plaintext = MlsPlaintext::member_proposal(
         framing_parameters,
         leaf,
         Proposal::Remove(RemoveProposal {
@@ -257,7 +257,7 @@ fn build_application_messages(
         Secret::random(group.ciphersuite(), backend, None /* MLS version */)
             .expect("Not enough randomness."),
     );
-    let mut plaintext = MlsContent::new_application(
+    let mut plaintext = MlsPlaintext::new_application(
         leaf,
         &[1, 2, 3],
         &[4, 5, 6],
