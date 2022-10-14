@@ -76,10 +76,6 @@ impl MlsCiphertext {
     ) -> Result<MlsCiphertext, MessageEncryptionError> {
         log::debug!("MlsCiphertext::try_from_plaintext");
         log::trace!("  ciphersuite: {}", ciphersuite);
-        // Check the plaintext has the correct wire format
-        if mls_plaintext.wire_format() != WireFormat::MlsCiphertext {
-            return Err(MessageEncryptionError::WrongWireFormat);
-        }
         // Check that the plaintext has the right sender type
         let hash_ref = match mls_plaintext.sender() {
             Sender::Member(hash_ref) => hash_ref,
@@ -170,10 +166,6 @@ impl MlsCiphertext {
         ciphersuite: Ciphersuite,
     ) -> Result<MlsSenderData, MessageDecryptionError> {
         log::debug!("Decrypting MlsCiphertext");
-        // Check the ciphertext has the correct wire format
-        if self.wire_format != WireFormat::MlsCiphertext {
-            return Err(MessageDecryptionError::WrongWireFormat);
-        }
         // Derive key from the key schedule using the ciphertext.
         let sender_data_key = message_secrets
             .sender_data_secret()

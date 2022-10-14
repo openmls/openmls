@@ -16,13 +16,6 @@ impl tls_codec::Deserialize for VerifiableMlsPlaintext {
         let confirmation_tag = Option::<ConfirmationTag>::tls_deserialize(bytes)?;
         let membership_tag = Option::<MembershipTag>::tls_deserialize(bytes)?;
 
-        // ValSem001: Check the wire format
-        if wire_format != WireFormat::MlsPlaintext {
-            return Err(tls_codec::Error::DecodingError(
-                "Wrong wire format.".to_string(),
-            ));
-        }
-
         let verifiable = VerifiableMlsPlaintext::new(
             MlsPlaintextTbs::new(
                 group_id,
@@ -199,13 +192,6 @@ impl tls_codec::Deserialize for MlsCiphertext {
         let authenticated_data = TlsByteVecU32::tls_deserialize(bytes)?;
         let encrypted_sender_data = TlsByteVecU8::tls_deserialize(bytes)?;
         let ciphertext = TlsByteVecU32::tls_deserialize(bytes)?;
-
-        // ValSem001: Check the wire format
-        if wire_format != WireFormat::MlsCiphertext {
-            return Err(tls_codec::Error::DecodingError(
-                "Wrong wire format.".to_string(),
-            ));
-        }
 
         let mls_ciphertext = MlsCiphertext::new(
             group_id,

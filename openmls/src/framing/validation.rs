@@ -124,10 +124,7 @@ impl DecryptedMessage {
     // - Ensures application messages were originally MlsCiphertext messages
     fn from_plaintext(plaintext: VerifiableMlsPlaintext) -> Result<Self, ValidationError> {
         // ValSem007
-        if plaintext.sender().is_member()
-            && plaintext.wire_format() != WireFormat::MlsCiphertext
-            && plaintext.membership_tag().is_none()
-        {
+        if plaintext.sender().is_member() && plaintext.membership_tag().is_none() {
             return Err(ValidationError::MissingMembershipTag);
         }
         // ValSem009
@@ -137,9 +134,7 @@ impl DecryptedMessage {
         }
         // ValSem005
         if plaintext.content_type() == ContentType::Application {
-            if plaintext.wire_format() != WireFormat::MlsCiphertext {
-                return Err(ValidationError::UnencryptedApplicationMessage);
-            } else if !plaintext.sender().is_member() {
+            if !plaintext.sender().is_member() {
                 // This should not happen because the sender of an MlsCiphertext should always be a member
                 return Err(LibraryError::custom("Expected sender to be member.").into());
             }
@@ -292,10 +287,10 @@ impl UnverifiedContextMessage {
             plaintext.set_context(message_secrets.serialized_context().to_vec());
             // Verify the membership tag. This needs to be done explicitly for MlsPlaintext messages,
             // it is implicit for MlsCiphertext messages (because the encryption can only be known by members).
-            if plaintext.wire_format() != WireFormat::MlsCiphertext {
-                // ValSem008
-                plaintext.verify_membership(backend, message_secrets.membership_key())?;
-            }
+            //if plaintext.wire_format() != WireFormat::MlsCiphertext {
+            // ValSem008
+            //plaintext.verify_membership(backend, message_secrets.membership_key())?;
+            //}
         }
         match plaintext.sender() {
             Sender::Member(_) | Sender::NewMember => {

@@ -79,9 +79,7 @@ impl CoreGroup {
         // ValSem005
         // Application messages must always be encrypted
         if plaintext.content_type() == ContentType::Application {
-            if plaintext.wire_format() != WireFormat::MlsCiphertext {
-                return Err(ValidationError::UnencryptedApplicationMessage);
-            } else if !plaintext.sender().is_member() {
+            if !plaintext.sender().is_member() {
                 return Err(ValidationError::NonMemberApplicationMessage);
             }
         }
@@ -90,10 +88,7 @@ impl CoreGroup {
         // If the sender is of type member and the message was not an MlsCiphertext,
         // the member has to prove its ownership by adding a membership tag.
         // The membership tag is checkecked in ValSem008.
-        if plaintext.sender().is_member()
-            && plaintext.wire_format() != WireFormat::MlsCiphertext
-            && plaintext.membership_tag().is_none()
-        {
+        if plaintext.sender().is_member() && plaintext.membership_tag().is_none() {
             return Err(ValidationError::MissingMembershipTag);
         }
 
