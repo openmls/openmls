@@ -78,6 +78,7 @@ impl QueuedProposal {
             proposal_or_ref_type: ProposalOrRefType::Reference,
         })
     }
+
     /// Creates a new [QueuedProposal] from a [Proposal] and [Sender]
     pub(crate) fn from_proposal_and_sender(
         ciphersuite: Ciphersuite,

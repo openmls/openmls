@@ -65,6 +65,7 @@ impl<'a> FramingParameters<'a> {
             wire_format: wire_format.into(),
         }
     }
+
     pub(crate) fn aad(&self) -> &'a [u8] {
         self.aad
     }
