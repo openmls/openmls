@@ -140,8 +140,8 @@ impl From<VerifiableMlsPlaintext> for MlsMessageOut {
     }
 }
 
-impl From<MlsPlaintext> for MlsMessageOut {
-    fn from(plaintext: MlsPlaintext) -> Self {
+impl From<MlsContent> for MlsMessageOut {
+    fn from(plaintext: MlsContent) -> Self {
         Self {
             mls_message: MlsMessage::Plaintext(Box::new(VerifiableMlsPlaintext::from_plaintext(
                 plaintext, None,

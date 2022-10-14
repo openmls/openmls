@@ -210,7 +210,7 @@ impl CoreGroup {
         provisional_epoch.increment();
 
         // Build MlsPlaintext
-        let mut mls_plaintext = MlsPlaintext::commit(
+        let mut mls_plaintext = MlsContent::commit(
             *params.framing_parameters(),
             sender,
             commit,

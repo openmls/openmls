@@ -330,7 +330,7 @@ impl MlsGroup {
     /// MlsCiphertext first.
     fn plaintext_to_mls_message(
         &mut self,
-        plaintext: MlsPlaintext,
+        plaintext: MlsContent,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsMessageOut, LibraryError> {
         let msg = match self.configuration().wire_format_policy().outgoing() {

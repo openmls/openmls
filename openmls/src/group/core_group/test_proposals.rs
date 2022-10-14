@@ -10,7 +10,7 @@ use crate::{
     credentials::{CredentialBundle, CredentialType},
     extensions::{Extension, ExtensionType, ExternalKeyIdExtension, RequiredCapabilitiesExtension},
     framing::sender::Sender,
-    framing::{FramingParameters, MlsPlaintext, WireFormat},
+    framing::{FramingParameters, MlsContent, WireFormat},
     group::{
         create_commit_params::CreateCommitParams,
         errors::*,
@@ -118,7 +118,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     assert!(!proposal_add_alice1.is_type(ProposalType::Remove));
 
     // Frame proposals in MlsPlaintext
-    let mls_plaintext_add_alice1 = MlsPlaintext::member_proposal(
+    let mls_plaintext_add_alice1 = MlsContent::member_proposal(
         framing_parameters,
         &alice_kpr,
         proposal_add_alice1,
@@ -130,7 +130,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         backend,
     )
     .expect("Could not create proposal.");
-    let mls_plaintext_add_alice2 = MlsPlaintext::member_proposal(
+    let mls_plaintext_add_alice2 = MlsContent::member_proposal(
         framing_parameters,
         &bob_kpr,
         proposal_add_alice2,
@@ -142,7 +142,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         backend,
     )
     .expect("Could not create proposal.");
-    let _mls_plaintext_add_bob1 = MlsPlaintext::member_proposal(
+    let _mls_plaintext_add_bob1 = MlsContent::member_proposal(
         framing_parameters,
         &bob_kpr,
         proposal_add_bob1,
@@ -253,7 +253,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     let proposal_add_bob1 = Proposal::Add(add_proposal_bob1);
 
     // Frame proposals in MlsPlaintext
-    let mls_plaintext_add_alice1 = MlsPlaintext::member_proposal(
+    let mls_plaintext_add_alice1 = MlsContent::member_proposal(
         framing_parameters,
         &alice_kpr,
         proposal_add_alice1.clone(),
@@ -266,7 +266,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         backend,
     )
     .expect("Could not create proposal.");
-    let mls_plaintext_add_bob1 = MlsPlaintext::member_proposal(
+    let mls_plaintext_add_bob1 = MlsContent::member_proposal(
         framing_parameters,
         &bob_kpr,
         proposal_add_bob1.clone(),

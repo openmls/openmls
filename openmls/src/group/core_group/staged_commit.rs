@@ -53,7 +53,7 @@ impl CoreGroup {
     /// group.
     pub(crate) fn stage_commit(
         &mut self,
-        mls_plaintext: &MlsPlaintext,
+        mls_plaintext: &MlsContent,
         proposal_store: &ProposalStore,
         own_key_packages: &[KeyPackageBundle],
         backend: &impl OpenMlsCryptoProvider,

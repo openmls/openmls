@@ -88,7 +88,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
             .random_vec(16)
             .expect("Error getting randomnes"),
     ));
-    let mut commit = MlsPlaintext::commit(
+    let mut commit = MlsContent::commit(
         framing_parameters,
         sender,
         Commit {
@@ -252,7 +252,7 @@ pub fn run_test_vector(
         }
         return Err(TranscriptTestVectorError::MembershipTagVerificationError);
     }
-    let commit: MlsPlaintext = commit
+    let commit: MlsContent = commit
         .verify(backend, &credential)
         .expect("Invalid signature on MlsPlaintext commit");
 

@@ -56,8 +56,8 @@ impl From<&ContentType> for SecretType {
     }
 }
 
-impl From<&MlsPlaintext> for SecretType {
-    fn from(mls_plaintext: &MlsPlaintext) -> SecretType {
+impl From<&MlsContent> for SecretType {
+    fn from(mls_plaintext: &MlsContent) -> SecretType {
         SecretType::from(&mls_plaintext.content_type())
     }
 }

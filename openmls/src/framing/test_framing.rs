@@ -61,7 +61,7 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         },
     )
     .with_context(serialized_context.clone());
-    let orig: MlsPlaintext = signature_input
+    let orig: MlsContent = signature_input
         .sign(backend, &credential_bundle)
         .expect("Signing failed.");
 
@@ -111,7 +111,7 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         },
     )
     .with_context(serialized_context);
-    let plaintext: MlsPlaintext = signature_input
+    let plaintext: MlsContent = signature_input
         .sign(backend, &credential_bundle)
         .expect("Signing failed.");
 
@@ -191,7 +191,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         },
     )
     .with_context(serialized_context);
-    let mut plaintext: MlsPlaintext = signature_input
+    let mut plaintext: MlsContent = signature_input
         .sign(backend, &credential_bundle)
         .expect("Signing failed.");
 
@@ -319,7 +319,7 @@ fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         Secret::random(ciphersuite, backend, None /* MLS version */)
             .expect("Not enough randomness."),
     );
-    let mut mls_plaintext = MlsPlaintext::new_application(
+    let mut mls_plaintext = MlsContent::new_application(
         &KeyPackageRef::from_slice(
             &backend
                 .rand()
@@ -534,7 +534,7 @@ fn unknown_sender(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     // Alice sends a message with a sender that is outside of the group
     // Expected result: SenderError::UnknownSender
-    let bogus_sender_message = MlsPlaintext::new_application(
+    let bogus_sender_message = MlsContent::new_application(
         &KeyPackageRef::from_slice(
             &backend
                 .rand()

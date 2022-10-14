@@ -270,7 +270,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
                 .expect("Anunexpected error occured."),
         );
     }
-    let mls_plaintext_application: MlsPlaintext = verifiable_mls_plaintext_application
+    let mls_plaintext_application: MlsContent = verifiable_mls_plaintext_application
         .verify(&crypto, credential)
         .expect("Could not verify MlsPlaintext.");
 
