@@ -53,7 +53,7 @@ pub(crate) struct MlsPlaintext {
     sender: Sender,
     authenticated_data: TlsByteVecU32,
     content_type: ContentType,
-    content: MlsPlaintextContentType,
+    content_type_data: MlsPlaintextContentType,
     signature: Signature,
     confirmation_tag: Option<ConfirmationTag>,
     membership_tag: Option<MembershipTag>,
@@ -77,7 +77,7 @@ impl MlsPlaintext {
 
     #[cfg(test)]
     pub(super) fn set_content(&mut self, content: MlsPlaintextContentType) {
-        self.content = content;
+        self.content_type_data = content;
     }
 
     // TODO: #727 - Remove if not needed.
@@ -231,7 +231,7 @@ impl MlsPlaintext {
 
     /// Returns a reference to the `content` field.
     pub(crate) fn content(&self) -> &MlsPlaintextContentType {
-        &self.content
+        &self.content_type_data
     }
 
     /// Get the content type of this message.
@@ -358,7 +358,7 @@ pub(crate) enum MlsPlaintextContentType {
 
 impl From<MlsPlaintext> for MlsPlaintextContentType {
     fn from(plaintext: MlsPlaintext) -> Self {
-        plaintext.content
+        plaintext.content_type_data
     }
 }
 
@@ -427,7 +427,7 @@ fn encode_tbs<'a>(
         &plaintext.sender,
         &plaintext.authenticated_data,
         &plaintext.content_type,
-        &plaintext.content,
+        &plaintext.content_type_data,
         &mut out,
     )?;
     Ok(out)
@@ -684,7 +684,7 @@ impl MlsPlaintextTbs {
             sender: mls_plaintext.sender,
             authenticated_data: mls_plaintext.authenticated_data,
             content_type: mls_plaintext.content_type,
-            payload: mls_plaintext.content,
+            payload: mls_plaintext.content_type_data,
         }
     }
 
@@ -717,7 +717,7 @@ impl VerifiedStruct<VerifiableMlsPlaintext> for MlsPlaintext {
             sender: v.tbs.sender,
             authenticated_data: v.tbs.authenticated_data,
             content_type: v.tbs.content_type,
-            content: v.tbs.payload,
+            content_type_data: v.tbs.payload,
             signature: v.signature,
             confirmation_tag: v.confirmation_tag,
             membership_tag: v.membership_tag,
@@ -735,7 +735,7 @@ impl SignedStruct<MlsPlaintextTbs> for MlsPlaintext {
             sender: tbs.sender,
             authenticated_data: tbs.authenticated_data,
             content_type: tbs.content_type,
-            content: tbs.payload,
+            content_type_data: tbs.payload,
             signature,
             // Tags must always be added after the signature
             confirmation_tag: None,
@@ -759,7 +759,7 @@ impl<'a> TryFrom<&'a MlsPlaintext> for MlsPlaintextCommitContent<'a> {
     type Error = &'static str;
 
     fn try_from(mls_plaintext: &'a MlsPlaintext) -> Result<Self, Self::Error> {
-        let commit = match &mls_plaintext.content {
+        let commit = match &mls_plaintext.content_type_data {
             MlsPlaintextContentType::Commit(commit) => commit,
             _ => return Err("MlsPlaintext needs to contain a Commit."),
         };
