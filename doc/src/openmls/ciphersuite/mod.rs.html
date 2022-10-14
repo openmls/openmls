@@ -52,13 +52,17 @@
 <span id="52">52</span>
 <span id="53">53</span>
 <span id="54">54</span>
+<span id="55">55</span>
+<span id="56">56</span>
+<span id="57">57</span>
+<span id="58">58</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Ciphersuites for MLS</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This file contains the API to interact with ciphersuites.</span>
 <span class="doccomment">//! See `codec.rs` and `ciphersuites.rs` for internals.</span>
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::versions::ProtocolVersion</span>;
-<span class="kw">use</span> <span class="ident">::tls_codec</span>::{<span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
+<span class="kw">use</span> <span class="ident">::tls_codec</span>::{<span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>, <span class="ident">VLBytes</span>};
 <span class="kw">use</span> <span class="ident">openmls_traits</span>::{
     <span class="ident">crypto::OpenMlsCrypto</span>,
     <span class="ident">random::OpenMlsRand</span>,
@@ -72,7 +76,6 @@
 
 <span class="kw">mod</span> <span class="ident">aead</span>;
 <span class="kw">mod</span> <span class="ident">codec</span>;
-<span class="kw">mod</span> <span class="ident">hpke</span>;
 <span class="kw">mod</span> <span class="ident">kdf_label</span>;
 <span class="kw">mod</span> <span class="ident">mac</span>;
 <span class="kw">mod</span> <span class="ident">reuse_guard</span>;
@@ -85,7 +88,6 @@
 
 <span class="comment">// Crate</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">aead</span>::<span class="kw-2">*</span>;
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">hpke</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">mac</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">reuse_guard</span>::<span class="kw-2">*</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use</span> <span class="ident">secret</span>::<span class="kw-2">*</span>;
@@ -95,6 +97,12 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span>;
+
+<span class="doccomment">/// A simple type for HPKE public keys using [`VLBytes`] for (de)serializing.</span>
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">HpkePublicKey</span> <span class="op">=</span> <span class="ident">VLBytes</span>;
+
+<span class="doccomment">/// A simple type for HPKE private keys using [`VLBytes`] for (de)serializing.</span>
+<span class="kw">pub</span> <span class="kw">type</span> <span class="ident">HpkePrivateKey</span> <span class="op">=</span> <span class="ident">VLBytes</span>;
 
 <span class="doccomment">/// Compare two byte slices in a way that&#39;s hopefully not optimised out by the</span>
 <span class="doccomment">/// compiler.</span>
