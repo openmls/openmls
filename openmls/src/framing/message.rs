@@ -15,51 +15,91 @@ use tls_codec::{Deserialize, Serialize};
 use super::*;
 
 use crate::error::LibraryError;
+use crate::versions::ProtocolVersion;
 
 /// Unified message type for MLS messages.
-/// /// This is only used internally, externally we use either [`MlsMessageIn`] or
+///
+/// This is only used internally, externally we use either [`MlsMessageIn`] or
 /// [`MlsMessageOut`], depending on the context.
+///
+/// TODO: Still true?
 /// Since the memory footprint can differ considerably between [`VerifiableMlsPlaintext`]
 /// and [`MlsCiphertext`], we use `Box<T>` for more efficient memory allocation.
+///
+/// # MLS Presentation Language
+///
+/// Note: Because [MlsMessageBody] already discriminates between
+/// `mls_plaintext`, `mls_ciphertext`, etc., we don't use the
+/// `wire_format` field. This prevents inconsistent assignments
+/// where `wire_format` contradicts the variant given in `body`.
+///
+/// ```c
+/// struct {
+///     ProtocolVersion version = mls10;
+///     WireFormat wire_format;
+///     select (MLSMessage.wire_format) {
+///         case mls_plaintext:
+///             MLSPlaintext plaintext;
+///         case mls_ciphertext:
+///             MLSCiphertext ciphertext;
+///         case mls_welcome:
+///             Welcome welcome;
+///         case mls_group_info:
+///             GroupInfo group_info;
+///         case mls_key_package:
+///             KeyPackage key_package;
+///     }
+/// } MLSMessage;
+/// ```
 #[derive(PartialEq, Debug, Clone)]
-pub(crate) enum MlsMessage {
+pub(crate) struct MlsMessage {
+    pub(crate) version: ProtocolVersion,
+    pub(crate) body: MlsMessageBody,
+}
+
+#[derive(PartialEq, Debug, Clone)]
+pub(crate) enum MlsMessageBody {
     /// Plaintext message
     Plaintext(Box<VerifiableMlsPlaintext>),
 
     /// Ciphertext message
     Ciphertext(Box<MlsCiphertext>),
+    // TODO: Align with draft-ietf-mls-protocol-16.
+    // Welcome
+    // GroupInfo
+    // KeyPackage
 }
 
 impl MlsMessage {
     /// Returns the wire format.
     fn wire_format(&self) -> WireFormat {
-        match self {
-            MlsMessage::Ciphertext(_) => WireFormat::MlsCiphertext,
-            MlsMessage::Plaintext(_) => WireFormat::MlsPlaintext,
+        match self.body {
+            MlsMessageBody::Ciphertext(_) => WireFormat::MlsCiphertext,
+            MlsMessageBody::Plaintext(_) => WireFormat::MlsPlaintext,
         }
     }
 
     /// Returns the group ID.
     fn group_id(&self) -> &GroupId {
-        match self {
-            MlsMessage::Ciphertext(m) => m.group_id(),
-            MlsMessage::Plaintext(m) => m.group_id(),
+        match self.body {
+            MlsMessageBody::Ciphertext(ref m) => m.group_id(),
+            MlsMessageBody::Plaintext(ref m) => m.group_id(),
         }
     }
 
     /// Returns the epoch.
     fn epoch(&self) -> GroupEpoch {
-        match self {
-            MlsMessage::Ciphertext(m) => m.epoch(),
-            MlsMessage::Plaintext(m) => m.epoch(),
+        match self.body {
+            MlsMessageBody::Ciphertext(ref m) => m.epoch(),
+            MlsMessageBody::Plaintext(ref m) => m.epoch(),
         }
     }
 
     /// Returns the content type.
     fn content_type(&self) -> ContentType {
-        match self {
-            MlsMessage::Ciphertext(m) => m.content_type(),
-            MlsMessage::Plaintext(m) => m.content_type(),
+        match self.body {
+            MlsMessageBody::Ciphertext(ref m) => m.content_type(),
+            MlsMessageBody::Plaintext(ref m) => m.content_type(),
         }
     }
 
@@ -134,26 +174,41 @@ pub struct MlsMessageOut {
 
 impl From<VerifiableMlsPlaintext> for MlsMessageOut {
     fn from(plaintext: VerifiableMlsPlaintext) -> Self {
+        // TODO: Version is fixed for now.
+        let version = ProtocolVersion::Mls10;
+
+        let body = MlsMessageBody::Plaintext(Box::new(plaintext));
+
         Self {
-            mls_message: MlsMessage::Plaintext(Box::new(plaintext)),
+            mls_message: MlsMessage { version, body },
         }
     }
 }
 
 impl From<MlsContent> for MlsMessageOut {
     fn from(plaintext: MlsContent) -> Self {
+        // TODO: Version is fixed for now.
+        let version = ProtocolVersion::Mls10;
+
+        let body = MlsMessageBody::Plaintext(Box::new(VerifiableMlsPlaintext::from_plaintext(
+            plaintext, None,
+        )));
+
         Self {
-            mls_message: MlsMessage::Plaintext(Box::new(VerifiableMlsPlaintext::from_plaintext(
-                plaintext, None,
-            ))),
+            mls_message: MlsMessage { version, body },
         }
     }
 }
 
 impl From<MlsCiphertext> for MlsMessageOut {
     fn from(ciphertext: MlsCiphertext) -> Self {
+        // TODO: Version is fixed for now.
+        let version = ProtocolVersion::Mls10;
+
+        let body = MlsMessageBody::Ciphertext(Box::new(ciphertext));
+
         Self {
-            mls_message: MlsMessage::Ciphertext(Box::new(ciphertext)),
+            mls_message: MlsMessage { version, body },
         }
     }
 }
@@ -208,8 +263,12 @@ impl From<MlsMessageOut> for MlsMessageIn {
 #[cfg(any(feature = "test-utils", test))]
 impl From<VerifiableMlsPlaintext> for MlsMessageIn {
     fn from(plaintext: VerifiableMlsPlaintext) -> Self {
+        // TODO: Version is fixed for now.
+        let version = ProtocolVersion::Mls10;
+        let body = MlsMessageBody::Plaintext(Box::new(plaintext));
+
         Self {
-            mls_message: MlsMessage::Plaintext(Box::new(plaintext)),
+            mls_message: MlsMessage { version, body },
         }
     }
 }
@@ -217,8 +276,12 @@ impl From<VerifiableMlsPlaintext> for MlsMessageIn {
 #[cfg(any(feature = "test-utils", test))]
 impl From<MlsCiphertext> for MlsMessageIn {
     fn from(ciphertext: MlsCiphertext) -> Self {
+        // TODO: Version is fixed for now.
+        let version = ProtocolVersion::Mls10;
+        let body = MlsMessageBody::Ciphertext(Box::new(ciphertext));
+
         Self {
-            mls_message: MlsMessage::Ciphertext(Box::new(ciphertext)),
+            mls_message: MlsMessage { version, body },
         }
     }
 }

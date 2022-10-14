@@ -1,6 +1,7 @@
 use tls_codec::{Deserialize, Serialize, Size, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8};
 
 use super::*;
+use crate::versions::ProtocolVersion;
 use std::io::{Read, Write};
 
 impl tls_codec::Deserialize for VerifiableMlsPlaintext {
@@ -262,60 +263,78 @@ impl MlsCiphertextContent {
 
 impl tls_codec::Serialize for MlsMessage {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        match self {
-            MlsMessage::Ciphertext(m) => m.tls_serialize(writer),
-            MlsMessage::Plaintext(m) => m.tls_serialize(writer),
+        self.version.tls_serialize(writer)?;
+        match self.body {
+            MlsMessageBody::Ciphertext(ref m) => m.tls_serialize(writer),
+            MlsMessageBody::Plaintext(ref m) => m.tls_serialize(writer),
         }
     }
 }
 
 impl tls_codec::Deserialize for MlsMessage {
-    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
-        // Determine the wire format by looking at the first byte
-        let mut first_byte_buffer = [0u8];
-        bytes
-            .read_exact(&mut first_byte_buffer)
-            .map_err(|_| tls_codec::Error::EndOfStream)?;
-        match first_byte_buffer.first() {
-            Some(first_byte) => {
-                let mut chain = first_byte_buffer.chain(bytes);
-                let wire_format = WireFormat::tls_deserialize(&mut vec![*first_byte].as_slice())?;
-                match wire_format {
-                    WireFormat::Reserved => {
-                        unimplemented!()
-                    }
-                    WireFormat::MlsPlaintext => {
-                        let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut chain)?;
-                        Ok(MlsMessage::Plaintext(Box::new(plaintext)))
-                    }
-                    WireFormat::MlsCiphertext => {
-                        let ciphertext = MlsCiphertext::tls_deserialize(&mut chain)?;
-                        Ok(MlsMessage::Ciphertext(Box::new(ciphertext)))
-                    }
-                    WireFormat::MlsWelcome => {
-                        unimplemented!()
-                    }
-                    WireFormat::MlsGroupInfo => {
-                        unimplemented!()
-                    }
-                    WireFormat::MlsKeyPackage => {
-                        unimplemented!()
-                    }
+    fn tls_deserialize<R: Read>(reader: &mut R) -> Result<Self, tls_codec::Error> {
+        // Determine the version by looking at the first byte.
+        let version = {
+            let mut tmp = [0u8];
+            reader
+                .read_exact(&mut tmp)
+                .map_err(|_| tls_codec::Error::EndOfStream)?;
+
+            ProtocolVersion::try_from(tmp[0]).map_err(|_| tls_codec::Error::InvalidInput)?
+        };
+
+        // Determine the wire format by looking at the second byte.
+        let wire_format = {
+            let mut tmp = [0u8];
+            reader
+                .read_exact(&mut tmp)
+                .map_err(|_| tls_codec::Error::EndOfStream)?;
+
+            WireFormat::try_from(tmp[0]).map_err(|_| tls_codec::Error::InvalidInput)?
+        };
+
+        let body = {
+            match wire_format {
+                WireFormat::Reserved => {
+                    unimplemented!()
+                }
+                WireFormat::MlsPlaintext => {
+                    let plaintext = VerifiableMlsPlaintext::tls_deserialize(reader)?;
+                    MlsMessageBody::Plaintext(Box::new(plaintext))
+                }
+                WireFormat::MlsCiphertext => {
+                    let ciphertext = MlsCiphertext::tls_deserialize(reader)?;
+                    MlsMessageBody::Ciphertext(Box::new(ciphertext))
+                }
+                WireFormat::MlsWelcome => {
+                    unimplemented!()
+                }
+                WireFormat::MlsGroupInfo => {
+                    unimplemented!()
+                }
+                WireFormat::MlsKeyPackage => {
+                    unimplemented!()
                 }
             }
-            None => Err(tls_codec::Error::EndOfStream),
-        }
+        };
+
+        Ok(MlsMessage { version, body })
     }
 }
 
 impl tls_codec::Size for MlsMessage {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
-        match &self {
-            MlsMessage::Plaintext(plaintext) => {
-                VerifiableMlsPlaintext::tls_serialized_len(plaintext)
+        // TODO: Make this more robust by using something like `ProtocolVersion::tls_serialized_len()`.
+        let version_length = 1;
+
+        match self.body {
+            MlsMessageBody::Plaintext(ref plaintext) => {
+                version_length + VerifiableMlsPlaintext::tls_serialized_len(plaintext) + 1
             }
-            MlsMessage::Ciphertext(ciphertext) => MlsCiphertext::tls_serialized_len(ciphertext),
+            MlsMessageBody::Ciphertext(ref ciphertext) => {
+                version_length + MlsCiphertext::tls_serialized_len(ciphertext)
+            }
         }
     }
 }

@@ -12,8 +12,8 @@ use crate::{
     ciphersuite::{hash_ref::ProposalRef, signable::Signable, *},
     credentials::*,
     framing::{
-        MlsMessageIn, MlsMessageOut, MlsContent, MlsPlaintextContentType, ProcessedMessage,
-        Sender, VerifiableMlsPlaintext,
+        MlsContent, MlsMessageIn, MlsMessageOut, MlsPlaintextContentType, ProcessedMessage, Sender,
+        VerifiableMlsPlaintext,
     },
     group::{errors::*, *},
     key_packages::*,

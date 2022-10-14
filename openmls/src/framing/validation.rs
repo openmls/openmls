@@ -61,7 +61,7 @@ impl DecryptedMessage {
     pub(crate) fn from_inbound_plaintext(
         inbound_message: MlsMessageIn,
     ) -> Result<Self, ValidationError> {
-        if let MlsMessage::Plaintext(plaintext) = inbound_message.mls_message {
+        if let MlsMessageBody::Plaintext(plaintext) = inbound_message.mls_message.body {
             Self::from_plaintext(*plaintext)
         } else {
             Err(ValidationError::WrongWireFormat)
@@ -77,7 +77,7 @@ impl DecryptedMessage {
         sender_ratchet_configuration: &SenderRatchetConfiguration,
     ) -> Result<Self, ValidationError> {
         // This will be refactored with #265.
-        if let MlsMessage::Ciphertext(ciphertext) = inbound_message.mls_message {
+        if let MlsMessageBody::Ciphertext(ciphertext) = inbound_message.mls_message.body {
             let ciphersuite = group.ciphersuite();
             let (message_secrets, old_leaves) = group
                 .message_secrets_and_leaves_mut(ciphertext.epoch())
