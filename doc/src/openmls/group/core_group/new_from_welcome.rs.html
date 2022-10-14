@@ -227,6 +227,10 @@
 <span id="227">227</span>
 <span id="228">228</span>
 <span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">log::debug</span>;
 <span class="kw">use</span> <span class="ident">openmls_traits::crypto::OpenMlsCrypto</span>;
 <span class="kw">use</span> <span class="ident">tls_codec::Deserialize</span>;
@@ -315,7 +319,7 @@
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">WelcomeError::MalformedWelcomeMessage</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Make sure that we can support the required capabilities in the group info.</span>
-        <span class="kw">let</span> <span class="ident">group_context_extensions</span> <span class="op">=</span> <span class="ident">group_info</span>.<span class="ident">group_context_extensions</span>();
+        <span class="kw">let</span> <span class="ident">group_context_extensions</span> <span class="op">=</span> <span class="ident">group_info</span>.<span class="ident">group_context</span>().<span class="ident">extensions</span>();
         <span class="kw">let</span> <span class="ident">required_capabilities</span> <span class="op">=</span> <span class="ident">group_context_extensions</span>
             .<span class="ident">iter</span>()
             .<span class="ident">find</span>(<span class="op">|</span><span class="kw-2">&amp;</span><span class="ident">extension</span><span class="op">|</span> <span class="ident">extension</span>.<span class="ident">extension_type</span>() <span class="op">==</span> <span class="ident">ExtensionType::RequiredCapabilities</span>);
@@ -343,13 +347,14 @@
         <span class="comment">// this group. Note that this is not strictly necessary. But there&#39;s</span>
         <span class="comment">// currently no other mechanism to enable the extension.</span>
         <span class="kw">let</span> (<span class="ident">nodes</span>, <span class="ident">enable_ratchet_tree_extension</span>) <span class="op">=</span>
-            <span class="kw">match</span> <span class="ident">try_nodes_from_extensions</span>(<span class="ident">group_info</span>.<span class="ident">other_extensions</span>(), <span class="ident">backend</span>.<span class="ident">crypto</span>())
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">e</span> {
+            <span class="kw">match</span> <span class="ident">try_nodes_from_extensions</span>(<span class="ident">group_info</span>.<span class="ident">extensions</span>(), <span class="ident">backend</span>.<span class="ident">crypto</span>()).<span class="ident">map_err</span>(
+                <span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">e</span> {
                     <span class="ident">ExtensionError::DuplicateRatchetTreeExtension</span> =&gt; {
                         <span class="ident">WelcomeError::DuplicateRatchetTreeExtension</span>
                     }
                     <span class="kw">_</span> =&gt; <span class="ident">LibraryError::custom</span>(<span class="string">&quot;Unexpected extension error&quot;</span>).<span class="ident">into</span>(),
-                })<span class="question-mark">?</span> {
+                },
+            )<span class="question-mark">?</span> {
                 <span class="prelude-val">Some</span>(<span class="ident">nodes</span>) =&gt; (<span class="ident">nodes</span>, <span class="bool-val">true</span>),
                 <span class="prelude-val">None</span> =&gt; <span class="kw">match</span> <span class="ident">nodes_option</span> {
                     <span class="prelude-val">Some</span>(<span class="ident">n</span>) =&gt; (<span class="ident">n</span>, <span class="bool-val">false</span>),
@@ -384,10 +389,13 @@
 
         <span class="comment">// Compute state</span>
         <span class="kw">let</span> <span class="ident">group_context</span> <span class="op">=</span> <span class="ident">GroupContext::new</span>(
-            <span class="ident">group_info</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
-            <span class="ident">group_info</span>.<span class="ident">epoch</span>(),
+            <span class="ident">group_info</span>.<span class="ident">group_context</span>().<span class="ident">group_id</span>().<span class="ident">clone</span>(),
+            <span class="ident">group_info</span>.<span class="ident">group_context</span>().<span class="ident">epoch</span>(),
             <span class="ident">tree</span>.<span class="ident">tree_hash</span>().<span class="ident">to_vec</span>(),
-            <span class="ident">group_info</span>.<span class="ident">confirmed_transcript_hash</span>().<span class="ident">to_vec</span>(),
+            <span class="ident">group_info</span>
+                .<span class="ident">group_context</span>()
+                .<span class="ident">confirmed_transcript_hash</span>()
+                .<span class="ident">to_vec</span>(),
             <span class="ident">group_context_extensions</span>,
         );
 
