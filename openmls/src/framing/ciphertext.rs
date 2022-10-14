@@ -33,6 +33,7 @@ use super::*;
 /// ```
 #[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize)]
 pub(crate) struct MlsCiphertext {
+    // TODO: `wire_format` is not in draft-ietf-mls-protocol-16.
     wire_format: WireFormat,
     group_id: GroupId,
     epoch: GroupEpoch,
