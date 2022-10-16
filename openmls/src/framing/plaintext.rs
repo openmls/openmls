@@ -290,7 +290,7 @@ impl MlsPlaintext {
         self.confirmation_tag.as_ref()
     }
 
-    /// The the authenticated data of this MlsPlaintext as byte slice.
+    /// The authenticated data of this MlsPlaintext as byte slice.
     pub(crate) fn authenticated_data(&self) -> &[u8] {
         self.authenticated_data.as_slice()
     }
@@ -390,6 +390,7 @@ impl<'a> MlsPlaintextTbmPayload<'a> {
             confirmation_tag,
         })
     }
+
     pub(crate) fn into_bytes(self) -> Result<Vec<u8>, tls_codec::Error> {
         let mut buffer = self.tbs_payload.to_vec();
         self.signature.tls_serialize(&mut buffer)?;
