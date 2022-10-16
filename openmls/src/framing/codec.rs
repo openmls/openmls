@@ -11,7 +11,7 @@ impl tls_codec::Deserialize for VerifiableMlsPlaintext {
         let sender = Sender::tls_deserialize(bytes)?;
         let authenticated_data = TlsByteVecU32::tls_deserialize(bytes)?;
         let content_type = ContentType::tls_deserialize(bytes)?;
-        let payload = MlsPlaintextContentType::deserialize(content_type, bytes)?;
+        let payload = MlsContentBody::deserialize(content_type, bytes)?;
         let signature = Signature::tls_deserialize(bytes)?;
         let confirmation_tag = Option::<ConfirmationTag>::tls_deserialize(bytes)?;
         let membership_tag = Option::<MembershipTag>::tls_deserialize(bytes)?;
@@ -67,33 +67,31 @@ impl tls_codec::Serialize for VerifiableMlsPlaintext {
     }
 }
 
-impl tls_codec::Size for MlsPlaintextContentType {
+impl tls_codec::Size for MlsContentBody {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
         match self {
-            MlsPlaintextContentType::Application(application_data) => {
-                application_data.tls_serialized_len()
-            }
-            MlsPlaintextContentType::Proposal(proposal) => proposal.tls_serialized_len(),
-            MlsPlaintextContentType::Commit(commit) => commit.tls_serialized_len(),
+            MlsContentBody::Application(application_data) => application_data.tls_serialized_len(),
+            MlsContentBody::Proposal(proposal) => proposal.tls_serialized_len(),
+            MlsContentBody::Commit(commit) => commit.tls_serialized_len(),
         }
     }
 }
 
-impl tls_codec::Serialize for MlsPlaintextContentType {
+impl tls_codec::Serialize for MlsContentBody {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         match self {
-            MlsPlaintextContentType::Application(application_data) => {
+            MlsContentBody::Application(application_data) => {
                 let written = application_data.tls_serialize(writer)?;
                 debug_assert_eq!(written, application_data.tls_serialized_len());
                 Ok(written)
             }
-            MlsPlaintextContentType::Proposal(proposal) => {
+            MlsContentBody::Proposal(proposal) => {
                 let written = proposal.tls_serialize(writer)?;
                 debug_assert_eq!(written, proposal.tls_serialized_len());
                 Ok(written)
             }
-            MlsPlaintextContentType::Commit(commit) => {
+            MlsContentBody::Commit(commit) => {
                 let written = commit.tls_serialize(writer)?;
                 debug_assert_eq!(written, commit.tls_serialized_len());
                 Ok(written)
@@ -102,7 +100,7 @@ impl tls_codec::Serialize for MlsPlaintextContentType {
     }
 }
 
-impl MlsPlaintextContentType {
+impl MlsContentBody {
     fn deserialize<R: Read>(
         content_type: ContentType,
         bytes: &mut R,
@@ -110,15 +108,15 @@ impl MlsPlaintextContentType {
         match content_type {
             ContentType::Application => {
                 let application_data = TlsByteVecU32::tls_deserialize(bytes)?;
-                Ok(MlsPlaintextContentType::Application(application_data))
+                Ok(MlsContentBody::Application(application_data))
             }
             ContentType::Proposal => {
                 let proposal = Proposal::tls_deserialize(bytes)?;
-                Ok(MlsPlaintextContentType::Proposal(proposal))
+                Ok(MlsContentBody::Proposal(proposal))
             }
             ContentType::Commit => {
                 let commit = Commit::tls_deserialize(bytes)?;
-                Ok(MlsPlaintextContentType::Commit(commit))
+                Ok(MlsContentBody::Commit(commit))
             }
         }
     }
@@ -133,7 +131,7 @@ pub(super) fn serialize_plaintext_tbs<'a, W: Write>(
     sender: &Sender,
     authenticated_data: &TlsByteVecU32,
     content_type: &ContentType,
-    payload: &MlsPlaintextContentType,
+    payload: &MlsContentBody,
     buffer: &mut W,
 ) -> Result<usize, tls_codec::Error> {
     let mut written = if let Some(serialized_context) = serialized_context.into() {
@@ -214,15 +212,15 @@ impl MlsCiphertextContent {
         let content = match content_type {
             ContentType::Application => {
                 let application_data = TlsByteVecU32::tls_deserialize(bytes)?;
-                MlsPlaintextContentType::Application(application_data)
+                MlsContentBody::Application(application_data)
             }
             ContentType::Proposal => {
                 let proposal = Proposal::tls_deserialize(bytes)?;
-                MlsPlaintextContentType::Proposal(proposal)
+                MlsContentBody::Proposal(proposal)
             }
             ContentType::Commit => {
                 let commit = Commit::tls_deserialize(bytes)?;
-                MlsPlaintextContentType::Commit(commit)
+                MlsContentBody::Commit(commit)
             }
         };
         let signature = Signature::tls_deserialize(bytes)?;

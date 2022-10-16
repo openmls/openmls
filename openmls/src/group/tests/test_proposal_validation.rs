@@ -12,8 +12,8 @@ use crate::{
     ciphersuite::{hash_ref::ProposalRef, signable::Signable, *},
     credentials::*,
     framing::{
-        MlsMessageIn, MlsMessageOut, MlsPlaintext, MlsPlaintextContentType, ProcessedMessage,
-        Sender, VerifiableMlsPlaintext,
+        MlsContentBody, MlsMessageIn, MlsMessageOut, MlsPlaintext, ProcessedMessage, Sender,
+        VerifiableMlsPlaintext,
     },
     group::{errors::*, *},
     key_packages::*,
@@ -172,7 +172,7 @@ fn insert_proposal_and_resign(
     original_plaintext: &VerifiableMlsPlaintext,
     committer_group: &MlsGroup,
 ) -> VerifiableMlsPlaintext {
-    let mut commit_content = if let MlsPlaintextContentType::Commit(commit) = plaintext.content() {
+    let mut commit_content = if let MlsContentBody::Commit(commit) = plaintext.content() {
         commit.clone()
     } else {
         panic!("Unexpected content type.");
@@ -180,7 +180,7 @@ fn insert_proposal_and_resign(
 
     commit_content.proposals.push(proposal_or_ref);
 
-    plaintext.set_content(MlsPlaintextContentType::Commit(commit_content));
+    plaintext.set_content(MlsContentBody::Commit(commit_content));
 
     let committer_credential_bundle = backend
         .key_store()
@@ -1431,7 +1431,7 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
             .expect("Could not deserialize message.");
 
-        let commit_content = if let MlsPlaintextContentType::Commit(commit) = plaintext.content() {
+        let commit_content = if let MlsContentBody::Commit(commit) = plaintext.content() {
             commit.clone()
         } else {
             panic!("Unexpected content type.");
@@ -1931,7 +1931,7 @@ fn test_valsem111(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut serialized_message.as_slice())
         .expect("Could not deserialize message.");
 
-    let commit_content = if let MlsPlaintextContentType::Commit(commit) = plaintext.content() {
+    let commit_content = if let MlsContentBody::Commit(commit) = plaintext.content() {
         commit.clone()
     } else {
         panic!("Unexpected content type.");

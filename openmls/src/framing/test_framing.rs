@@ -56,7 +56,7 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         vec![1, 2, 3].into(),
         Payload {
             content_type: ContentType::Application,
-            payload: MlsPlaintextContentType::Application(vec![4, 5, 6].into()),
+            payload: MlsContentBody::Application(vec![4, 5, 6].into()),
         },
     )
     .with_context(serialized_context.clone());
@@ -104,7 +104,7 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         sender,
         vec![1, 2, 3].into(),
         Payload {
-            payload: MlsPlaintextContentType::Application(vec![4, 5, 6].into()),
+            payload: MlsContentBody::Application(vec![4, 5, 6].into()),
             content_type: ContentType::Application,
         },
     )
@@ -202,7 +202,7 @@ fn membership_tag(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .is_ok());
 
     // Change the content of the plaintext message
-    mls_plaintext.set_content(MlsPlaintextContentType::Application(vec![7, 8, 9].into()));
+    mls_plaintext.set_content(MlsContentBody::Application(vec![7, 8, 9].into()));
     let verifiable_mls_plaintext =
         VerifiableMlsPlaintext::from_plaintext(mls_plaintext.clone(), serialized_context);
 

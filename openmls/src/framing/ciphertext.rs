@@ -422,7 +422,7 @@ impl MlsSenderDataAad {
 
 #[derive(Debug, Clone, TlsSerialize, TlsSize)]
 pub(crate) struct MlsCiphertextContent {
-    pub(crate) content: MlsPlaintextContentType,
+    pub(crate) content: MlsContentBody,
     pub(crate) signature: Signature,
     pub(crate) confirmation_tag: Option<ConfirmationTag>,
     pub(crate) padding: TlsByteVecU16,

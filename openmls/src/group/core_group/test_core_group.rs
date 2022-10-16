@@ -243,7 +243,7 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .expect("Error creating commit");
 
     let commit = match create_commit_result.commit.content() {
-        MlsPlaintextContentType::Commit(commit) => commit,
+        MlsContentBody::Commit(commit) => commit,
         _ => panic!("Wrong content type"),
     };
     assert!(!commit.has_path());
@@ -301,7 +301,7 @@ fn test_update_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     // apart the commit, manipulating the ciphertexts and the piecing it
     // back together.
     let commit = match create_commit_result.commit.content() {
-        MlsPlaintextContentType::Commit(commit) => commit,
+        MlsContentBody::Commit(commit) => commit,
         _ => panic!("Bob created a commit, which does not contain an actual commit."),
     };
 
