@@ -82,6 +82,29 @@ struct MlsContent {
 
 /// ```c
 /// struct {
+///     // ... continued from [MlsContent] ...
+///
+///     ContentType content_type;
+///     select (MLSContent.content_type) {
+///         case application:
+///           opaque application_data<V>;
+///         case proposal:
+///           Proposal proposal;
+///         case commit:
+///           Commit commit;
+///     }
+/// } MLSContent;
+/// ```
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+pub(crate) enum MlsContentBody {
+    Application(TlsByteVecU32),
+    Proposal(Proposal),
+    Commit(Commit),
+}
+
+/// ```c
+/// struct {
 ///     // SignWithLabel(., "MLSContentTBS", MLSContentTBS)
 ///     opaque signature<V>;
 ///
@@ -442,29 +465,6 @@ impl ContentType {
     pub(crate) fn is_handshake_message(&self) -> bool {
         self == &ContentType::Proposal || self == &ContentType::Commit
     }
-}
-
-/// ```c
-/// struct {
-///     // ... continued from [MlsContent] ...
-///
-///     ContentType content_type;
-///     select (MLSContent.content_type) {
-///         case application:
-///           opaque application_data<V>;
-///         case proposal:
-///           Proposal proposal;
-///         case commit:
-///           Commit commit;
-///     }
-/// } MLSContent;
-/// ```
-#[allow(clippy::large_enum_variant)]
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub(crate) enum MlsContentBody {
-    Application(TlsByteVecU32),
-    Proposal(Proposal),
-    Commit(Commit),
 }
 
 impl From<MlsPlaintext> for MlsContentBody {
