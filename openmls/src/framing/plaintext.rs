@@ -375,14 +375,14 @@ impl From<MlsPlaintext> for MlsPlaintextContentType {
 pub(crate) struct MlsPlaintextTbmPayload<'a> {
     tbs_payload: &'a [u8],
     signature: &'a Signature,
-    confirmation_tag: &'a Option<ConfirmationTag>,
+    confirmation_tag: Option<&'a ConfirmationTag>,
 }
 
 impl<'a> MlsPlaintextTbmPayload<'a> {
     pub(crate) fn new(
         tbs_payload: &'a [u8],
         signature: &'a Signature,
-        confirmation_tag: &'a Option<ConfirmationTag>,
+        confirmation_tag: Option<&'a ConfirmationTag>,
     ) -> Result<Self, LibraryError> {
         Ok(Self {
             tbs_payload,
