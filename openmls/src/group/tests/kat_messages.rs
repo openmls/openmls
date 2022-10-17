@@ -219,12 +219,11 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     group
         .merge_staged_commit(create_commit_result.staged_commit, &mut proposal_store)
         .expect("Error processing staged commit.");
-    let commit =
-        if let MlsPlaintextContentType::Commit(commit) = create_commit_result.commit.content() {
-            commit.clone()
-        } else {
-            panic!("Wrong content of MLS plaintext");
-        };
+    let commit = if let MlsContentBody::Commit(commit) = create_commit_result.commit.content() {
+        commit.clone()
+    } else {
+        panic!("Wrong content of MLS plaintext");
+    };
     let welcome = create_commit_result
         .welcome_option
         .expect("An unexpected error occurred.");

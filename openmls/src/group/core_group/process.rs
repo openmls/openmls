@@ -140,21 +140,19 @@ impl CoreGroup {
                     .map_err(|_| UnverifiedMessageError::InvalidSignature)?;
 
                 Ok(match verified_member_message.plaintext().content() {
-                    MlsPlaintextContentType::Application(application_message) => {
+                    MlsContentBody::Application(application_message) => {
                         ProcessedMessage::ApplicationMessage(ApplicationMessage::new(
                             application_message.as_slice().to_vec(),
                         ))
                     }
-                    MlsPlaintextContentType::Proposal(_proposal) => {
-                        ProcessedMessage::ProposalMessage(Box::new(
-                            QueuedProposal::from_mls_plaintext(
-                                self.ciphersuite(),
-                                backend,
-                                verified_member_message.take_plaintext(),
-                            )?,
-                        ))
-                    }
-                    MlsPlaintextContentType::Commit(_commit) => {
+                    MlsContentBody::Proposal(_proposal) => ProcessedMessage::ProposalMessage(
+                        Box::new(QueuedProposal::from_mls_plaintext(
+                            self.ciphersuite(),
+                            backend,
+                            verified_member_message.take_plaintext(),
+                        )?),
+                    ),
+                    MlsContentBody::Commit(_commit) => {
                         //  - ValSem100
                         //  - ValSem101
                         //  - ValSem102

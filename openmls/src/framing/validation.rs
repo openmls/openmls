@@ -188,7 +188,7 @@ impl DecryptedMessage {
             Sender::NewMember => {
                 // Since this allows only commits to have a sender type `Member`, it checks
                 // ValSem112
-                if let MlsPlaintextContentType::Commit(commit) = self.plaintext().content() {
+                if let MlsContentBody::Commit(commit) = self.plaintext().content() {
                     if let Some(path) = commit.path() {
                         Ok(path.leaf_key_package().credential().clone())
                     } else {

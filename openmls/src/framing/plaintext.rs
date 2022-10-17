@@ -54,14 +54,14 @@ pub(crate) struct MlsPlaintext {
     sender: Sender,
     authenticated_data: TlsByteVecU32,
     content_type: ContentType,
-    content: MlsPlaintextContentType,
+    content: MlsContentBody,
     signature: Signature,
     confirmation_tag: Option<ConfirmationTag>,
     membership_tag: Option<MembershipTag>,
 }
 
 pub(crate) struct Payload {
-    pub(crate) payload: MlsPlaintextContentType,
+    pub(crate) payload: MlsContentBody,
     pub(crate) content_type: ContentType,
 }
 
@@ -81,7 +81,7 @@ impl MlsPlaintext {
     }
 
     #[cfg(test)]
-    pub(super) fn set_content(&mut self, content: MlsPlaintextContentType) {
+    pub(super) fn set_content(&mut self, content: MlsContentBody) {
         self.content = content;
     }
 
@@ -177,7 +177,7 @@ impl MlsPlaintext {
             framing_parameters,
             sender_reference,
             Payload {
-                payload: MlsPlaintextContentType::Proposal(proposal),
+                payload: MlsContentBody::Proposal(proposal),
                 content_type: ContentType::Proposal,
             },
             credential_bundle,
@@ -204,7 +204,7 @@ impl MlsPlaintext {
             framing_parameters,
             sender,
             Payload {
-                payload: MlsPlaintextContentType::Commit(commit),
+                payload: MlsContentBody::Commit(commit),
                 content_type: ContentType::Commit,
             },
             credential_bundle,
@@ -230,7 +230,7 @@ impl MlsPlaintext {
             framing_parameters,
             sender_reference,
             Payload {
-                payload: MlsPlaintextContentType::Application(application_message.into()),
+                payload: MlsContentBody::Application(application_message.into()),
                 content_type: ContentType::Application,
             },
             credential_bundle,
@@ -241,7 +241,7 @@ impl MlsPlaintext {
     }
 
     /// Returns a reference to the `content` field.
-    pub(crate) fn content(&self) -> &MlsPlaintextContentType {
+    pub(crate) fn content(&self) -> &MlsContentBody {
         &self.content
     }
 
@@ -345,12 +345,12 @@ impl TryFrom<u8> for ContentType {
     }
 }
 
-impl From<&MlsPlaintextContentType> for ContentType {
-    fn from(value: &MlsPlaintextContentType) -> Self {
+impl From<&MlsContentBody> for ContentType {
+    fn from(value: &MlsContentBody) -> Self {
         match value {
-            MlsPlaintextContentType::Application(_) => ContentType::Application,
-            MlsPlaintextContentType::Proposal(_) => ContentType::Proposal,
-            MlsPlaintextContentType::Commit(_) => ContentType::Commit,
+            MlsContentBody::Application(_) => ContentType::Application,
+            MlsContentBody::Proposal(_) => ContentType::Proposal,
+            MlsContentBody::Commit(_) => ContentType::Commit,
         }
     }
 }
@@ -364,13 +364,13 @@ impl ContentType {
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub(crate) enum MlsPlaintextContentType {
+pub(crate) enum MlsContentBody {
     Application(TlsByteVecU32),
     Proposal(Proposal),
     Commit(Commit),
 }
 
-impl From<MlsPlaintext> for MlsPlaintextContentType {
+impl From<MlsPlaintext> for MlsContentBody {
     fn from(plaintext: MlsPlaintext) -> Self {
         plaintext.content
     }
@@ -428,7 +428,7 @@ pub(crate) struct MlsPlaintextTbs {
     pub(super) sender: Sender,
     pub(super) authenticated_data: TlsByteVecU32,
     pub(super) content_type: ContentType,
-    pub(super) payload: MlsPlaintextContentType,
+    pub(super) payload: MlsContentBody,
 }
 
 fn encode_tbs<'a>(
@@ -588,7 +588,7 @@ impl VerifiableMlsPlaintext {
     }
 
     /// Get the content of the message.
-    pub(crate) fn content(&self) -> &MlsPlaintextContentType {
+    pub(crate) fn content(&self) -> &MlsContentBody {
         &self.tbs.payload
     }
 
@@ -638,7 +638,7 @@ impl VerifiableMlsPlaintext {
 
     /// Set the content.
     #[cfg(test)]
-    pub(crate) fn set_content(&mut self, content: MlsPlaintextContentType) {
+    pub(crate) fn set_content(&mut self, content: MlsContentBody) {
         self.tbs.payload = content;
     }
 
@@ -799,7 +799,7 @@ impl<'a> TryFrom<&'a MlsPlaintext> for MlsPlaintextCommitContent<'a> {
 
     fn try_from(mls_plaintext: &'a MlsPlaintext) -> Result<Self, Self::Error> {
         let commit = match &mls_plaintext.content {
-            MlsPlaintextContentType::Commit(commit) => commit,
+            MlsContentBody::Commit(commit) => commit,
             _ => return Err("MlsPlaintext needs to contain a Commit."),
         };
         Ok(MlsPlaintextCommitContent {

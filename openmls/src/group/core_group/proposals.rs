@@ -67,7 +67,7 @@ impl QueuedProposal {
         mls_plaintext: MlsPlaintext,
     ) -> Result<Self, LibraryError> {
         let proposal = match mls_plaintext.content() {
-            MlsPlaintextContentType::Proposal(p) => p,
+            MlsContentBody::Proposal(p) => p,
             _ => return Err(LibraryError::custom("Wrong content type")),
         };
         let proposal_reference = ProposalRef::from_proposal(ciphersuite, backend, proposal)?;
