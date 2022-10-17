@@ -142,6 +142,7 @@ pub enum CryptoError {
     ReceiverSetupError,
     ExporterError,
     UnsupportedCiphersuite,
+    TlsSerializationError,
 }
 
 impl std::fmt::Display for CryptoError {
