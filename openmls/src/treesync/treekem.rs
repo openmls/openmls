@@ -182,7 +182,7 @@ pub(crate) struct DecryptPathParams<'a> {
 /// } UpdatePathNode;
 /// ```
 #[derive(
-    Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
+    Debug, Eq, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct UpdatePathNode {
     pub(super) public_key: HpkePublicKey,
