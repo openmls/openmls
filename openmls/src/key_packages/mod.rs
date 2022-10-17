@@ -144,7 +144,7 @@ impl Signable for KeyPackageTBS {
     }
 
     fn label(&self) -> &str {
-        "KeyPackageTBS"
+        SIGNATURE_LABEL
     }
 }
 
