@@ -267,8 +267,11 @@ impl MlsPlaintext {
     ) -> Result<(), LibraryError> {
         let tbs_payload =
             encode_tbs(self, serialized_context).map_err(LibraryError::missing_bound_check)?;
-        let tbm_payload =
-            MlsPlaintextTbmPayload::new(&tbs_payload, &self.signature, &self.confirmation_tag)?;
+        let tbm_payload = MlsPlaintextTbmPayload::new(
+            &tbs_payload,
+            &self.signature,
+            self.confirmation_tag.as_ref(),
+        )?;
         let membership_tag = membership_key.tag(backend, tbm_payload)?;
 
         self.membership_tag = Some(membership_tag);
@@ -386,14 +389,14 @@ impl From<MlsPlaintext> for MlsPlaintextContentType {
 pub(crate) struct MlsPlaintextTbmPayload<'a> {
     tbs_payload: &'a [u8],
     signature: &'a Signature,
-    confirmation_tag: &'a Option<ConfirmationTag>,
+    confirmation_tag: Option<&'a ConfirmationTag>,
 }
 
 impl<'a> MlsPlaintextTbmPayload<'a> {
     pub(crate) fn new(
         tbs_payload: &'a [u8],
         signature: &'a Signature,
-        confirmation_tag: &'a Option<ConfirmationTag>,
+        confirmation_tag: Option<&'a ConfirmationTag>,
     ) -> Result<Self, LibraryError> {
         Ok(Self {
             tbs_payload,
@@ -515,8 +518,11 @@ impl VerifiableMlsPlaintext {
             .tbs
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
-        let tbm_payload =
-            MlsPlaintextTbmPayload::new(&tbs_payload, &self.signature, &self.confirmation_tag)?;
+        let tbm_payload = MlsPlaintextTbmPayload::new(
+            &tbs_payload,
+            &self.signature,
+            self.confirmation_tag.as_ref(),
+        )?;
         let expected_membership_tag = &membership_key.tag(backend, tbm_payload)?;
 
         // Verify the membership tag
