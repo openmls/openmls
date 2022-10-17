@@ -21,7 +21,7 @@ use crate::{
 /// This struct implements the MLS parent node. It contains its public key,
 /// parent hash and unmerged leaves. Additionally, it may contain the private
 /// key corresponding to the public key.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ParentNode {
     pub(super) public_key: HpkePublicKey,
     pub(super) parent_hash: TlsByteVecU8,

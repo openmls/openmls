@@ -340,7 +340,7 @@ pub fn generate_test_vector(
         let sender_leaf = leaf;
         // It doesn't matter who the receiver is, as long as it's not the same
         // as the sender, so we don't get into trouble with the secret tree.
-        let receiver_leaf = if leaf == 0 { 1u32 } else { 0u32 };
+        let receiver_leaf = u32::from(leaf == 0);
         let encryption_secret = EncryptionSecret::from_slice(
             &encryption_secret_bytes[..],
             ProtocolVersion::default(),
@@ -511,7 +511,7 @@ pub fn run_test_vector(
     for (leaf_index, leaf) in test_vector.leaves.iter().enumerate() {
         // It doesn't matter who the receiver is, as long as it's not the same
         // as the sender, so we don't get into trouble with the secret tree.
-        let receiver_leaf = if leaf_index == 0 { 1u32 } else { 0u32 };
+        let receiver_leaf = u32::from(leaf_index == 0);
 
         let mut secret_tree = SecretTree::new(
             EncryptionSecret::from_slice(

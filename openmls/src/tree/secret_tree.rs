@@ -9,7 +9,7 @@ use thiserror::Error;
 use tls_codec::{Error as TlsCodecError, TlsSerialize, TlsSize};
 
 /// Secret tree error
-#[derive(Error, Debug, PartialEq, Clone)]
+#[derive(Error, Debug, Eq, PartialEq, Clone)]
 pub enum SecretTreeError {
     /// Generation is too old to be processed.
     #[error("Generation is too old to be processed.")]

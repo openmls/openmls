@@ -45,7 +45,7 @@ use crate::schedule::psk::{ExternalPsk, PreSharedKeyId, Psk};
 /// This message is generated when a new member is added to a group.
 /// The invited member can use this message to join the group using
 /// [`MlsGroup::new_from_welcome()`](crate::group::mls_group::MlsGroup::new_from_welcome()).
-#[derive(Clone, Debug, PartialEq, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(Clone, Debug, Eq, PartialEq, TlsDeserialize, TlsSerialize, TlsSize)]
 pub struct Welcome {
     version: ProtocolVersion,
     cipher_suite: Ciphersuite,
@@ -100,7 +100,7 @@ impl Welcome {
 /// EncryptedGroupSecrets
 ///
 /// This is part of a [`Welcome`] message. It can be used to correlate the correct secrets with each new member.
-#[derive(Clone, Debug, PartialEq, TlsDeserialize, TlsSerialize, TlsSize)]
+#[derive(Clone, Debug, Eq, PartialEq, TlsDeserialize, TlsSerialize, TlsSize)]
 pub struct EncryptedGroupSecrets {
     /// Key package reference of the new member
     new_member: KeyPackageRef,
@@ -194,7 +194,7 @@ impl GroupInfoTBS {
         signer: &KeyPackageRef,
     ) -> Self {
         Self {
-            group_context: group_context.into(),
+            group_context,
             extensions: extensions.into(),
             confirmation_tag,
             signer: *signer,

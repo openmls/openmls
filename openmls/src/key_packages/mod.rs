@@ -399,7 +399,7 @@ impl KeyPackage {
             ciphersuite,
             hpke_init_key,
             credential: credential_bundle.credential().clone(),
-            extensions: extensions.into(),
+            extensions,
         };
         Ok(key_package.sign(backend, credential_bundle)?)
     }
@@ -411,12 +411,11 @@ impl KeyPackage {
     /// Returns `Some(extension)` if present and `None` if the extension is not
     /// present.
     pub(crate) fn extension_with_type(&self, extension_type: ExtensionType) -> Option<&Extension> {
-        for e in self.payload.extensions.as_slice() {
-            if e.extension_type() == extension_type {
-                return Some(e);
-            }
-        }
-        None
+        self.payload
+            .extensions
+            .as_slice()
+            .iter()
+            .find(|&e| e.extension_type() == extension_type)
     }
 
     /// Get a reference to the HPKE init key.
