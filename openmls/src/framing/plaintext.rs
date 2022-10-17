@@ -23,24 +23,10 @@ use tls_codec::{Serialize, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize}
 /// 9. Message framing
 ///
 /// ```c
+/// // draft-ietf-mls-protocol-16
+///
 /// struct {
-///     opaque group_id<0..255>;
-///     uint64 epoch;
-///     Sender sender;
-///     opaque authenticated_data<0..2^32-1>;
-///
-///     ContentType content_type;
-///     select (MLSPlaintext.content_type) {
-///         case application:
-///             opaque application_data<0..2^32-1>;
-///
-///         case proposal:
-///             Proposal proposal;
-///
-///         case commit:
-///             Commit commit;
-///     }
-///
+///     MLSContent content;
 ///     opaque signature<0..2^16-1>;
 ///     optional<MAC> confirmation_tag;
 ///     optional<MAC> membership_tag;
@@ -49,34 +35,82 @@ use tls_codec::{Serialize, TlsByteVecU32, TlsDeserialize, TlsSerialize, TlsSize}
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
 pub(crate) struct MlsPlaintext {
     wire_format: WireFormat,
-    group_id: GroupId,
-    epoch: GroupEpoch,
-    sender: Sender,
-    authenticated_data: TlsByteVecU32,
-    content_type: ContentType,
-    body_content: MlsContentBody,
+    content: MlsContent,
     signature: Signature,
     confirmation_tag: Option<ConfirmationTag>,
     membership_tag: Option<MembershipTag>,
 }
 
-#[allow(clippy::large_enum_variant)]
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+/// ```c
+/// // draft-ietf-mls-protocol-16
+/// struct {
+///     opaque group_id<V>;
+///     uint64 epoch;
+///     Sender sender;
+///     opaque authenticated_data<V>;
+///
+///     // ... continued in [MlsContentBody] ...
+/// } MLSContent;
+/// ```
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
+pub(crate) struct MlsContent {
+    pub(crate) group_id: GroupId,
+    pub(crate) epoch: GroupEpoch,
+    pub(crate) sender: Sender,
+    pub(crate) authenticated_data: TlsByteVecU32,
+
+    pub(crate) body: MlsContentBody,
+}
+
+/// ```c
+/// // draft-ietf-mls-protocol-16
+/// struct {
+///     // ... continued from [MlsContent] ...
+///
+///     ContentType content_type;
+///     select (MLSContent.content_type) {
+///         case application:
+///           opaque application_data<V>;
+///         case proposal:
+///           Proposal proposal;
+///         case commit:
+///           Commit commit;
+///     }
+/// } MLSContent;
+/// ```
+#[derive(
+    Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
+#[repr(u8)]
 pub(crate) enum MlsContentBody {
+    #[tls_codec(discriminant = 1)]
     Application(TlsByteVecU32),
+    #[tls_codec(discriminant = 2)]
     Proposal(Proposal),
+    #[tls_codec(discriminant = 3)]
     Commit(Commit),
+}
+
+impl MlsContentBody {
+    pub(crate) fn content_type(&self) -> ContentType {
+        match self {
+            Self::Application(_) => ContentType::Application,
+            Self::Proposal(_) => ContentType::Proposal,
+            Self::Commit(_) => ContentType::Commit,
+        }
+    }
 }
 
 impl From<MlsPlaintext> for MlsContentBody {
     fn from(plaintext: MlsPlaintext) -> Self {
-        plaintext.body_content
+        plaintext.content.body
     }
 }
 
 pub(crate) struct Payload {
     pub(crate) payload: MlsContentBody,
-    pub(crate) content_type: ContentType,
 }
 
 // This block only has pub(super) getters.
@@ -96,7 +130,7 @@ impl MlsPlaintext {
 
     #[cfg(test)]
     pub(super) fn set_content(&mut self, content: MlsContentBody) {
-        self.body_content = content;
+        self.content.body = content;
     }
 
     // TODO: #727 - Remove if not needed.
@@ -192,7 +226,6 @@ impl MlsPlaintext {
             sender_reference,
             Payload {
                 payload: MlsContentBody::Proposal(proposal),
-                content_type: ContentType::Proposal,
             },
             credential_bundle,
             context,
@@ -219,7 +252,6 @@ impl MlsPlaintext {
             sender,
             Payload {
                 payload: MlsContentBody::Commit(commit),
-                content_type: ContentType::Commit,
             },
             credential_bundle,
             context,
@@ -245,7 +277,6 @@ impl MlsPlaintext {
             sender_reference,
             Payload {
                 payload: MlsContentBody::Application(application_message.into()),
-                content_type: ContentType::Application,
             },
             credential_bundle,
             context,
@@ -256,17 +287,21 @@ impl MlsPlaintext {
 
     /// Returns a reference to the `content` field.
     pub(crate) fn content(&self) -> &MlsContentBody {
-        &self.body_content
+        &self.content.body
     }
 
     /// Get the content type of this message.
     pub(crate) fn content_type(&self) -> ContentType {
-        self.content_type
+        match self.content.body {
+            MlsContentBody::Application(_) => ContentType::Application,
+            MlsContentBody::Proposal(_) => ContentType::Proposal,
+            MlsContentBody::Commit(_) => ContentType::Commit,
+        }
     }
 
     /// Get the sender of this message.
     pub(crate) fn sender(&self) -> &Sender {
-        &self.sender
+        &self.content.sender
     }
 
     /// Adds a membership tag to this `MlsPlaintext`. The membership_tag is
@@ -301,12 +336,12 @@ impl MlsPlaintext {
     /// Returns `true` if this is a handshake message and `false` otherwise.
     #[cfg(test)]
     pub(crate) fn is_handshake_message(&self) -> bool {
-        self.content_type.is_handshake_message()
+        self.content_type().is_handshake_message()
     }
 
     /// Get the group epoch.
     pub(crate) fn epoch(&self) -> GroupEpoch {
-        self.epoch
+        self.content.epoch
     }
 
     /// Set the confirmation tag.
@@ -320,7 +355,7 @@ impl MlsPlaintext {
 
     /// The authenticated data of this MlsPlaintext as byte slice.
     pub(crate) fn authenticated_data(&self) -> &[u8] {
-        self.authenticated_data.as_slice()
+        self.content.authenticated_data.as_slice()
     }
 
     // TODO: #727 - Remove if not needed.
@@ -427,7 +462,6 @@ pub(crate) struct MlsPlaintextTbs {
     pub(super) epoch: GroupEpoch,
     pub(super) sender: Sender,
     pub(super) authenticated_data: TlsByteVecU32,
-    pub(super) content_type: ContentType,
     pub(super) payload: MlsContentBody,
 }
 
@@ -439,12 +473,11 @@ fn encode_tbs<'a>(
     codec::serialize_plaintext_tbs(
         serialized_context,
         plaintext.wire_format,
-        &plaintext.group_id,
-        &plaintext.epoch,
-        &plaintext.sender,
-        &plaintext.authenticated_data,
-        &plaintext.content_type,
-        &plaintext.body_content,
+        &plaintext.content.group_id,
+        &plaintext.content.epoch,
+        &plaintext.content.sender,
+        &plaintext.content.authenticated_data,
+        &plaintext.content.body,
         &mut out,
     )?;
     Ok(out)
@@ -627,13 +660,7 @@ impl VerifiableMlsPlaintext {
 
     /// Get the content type
     pub(crate) fn content_type(&self) -> ContentType {
-        self.tbs.content_type
-    }
-
-    /// Set the content type.
-    #[cfg(test)]
-    pub(crate) fn set_content_type(&mut self, content_type: ContentType) {
-        self.tbs.content_type = content_type;
+        self.tbs.payload.content_type()
     }
 
     /// Set the content.
@@ -693,7 +720,6 @@ impl MlsPlaintextTbs {
             epoch: epoch.into(),
             sender,
             authenticated_data,
-            content_type: payload.content_type,
             payload: payload.payload,
         }
     }
@@ -711,12 +737,11 @@ impl MlsPlaintextTbs {
         MlsPlaintextTbs {
             wire_format: mls_plaintext.wire_format,
             serialized_context: None,
-            group_id: mls_plaintext.group_id,
-            epoch: mls_plaintext.epoch,
-            sender: mls_plaintext.sender,
-            authenticated_data: mls_plaintext.authenticated_data,
-            content_type: mls_plaintext.content_type,
-            payload: mls_plaintext.body_content,
+            group_id: mls_plaintext.content.group_id,
+            epoch: mls_plaintext.content.epoch,
+            sender: mls_plaintext.content.sender,
+            authenticated_data: mls_plaintext.content.authenticated_data,
+            payload: mls_plaintext.content.body,
         }
     }
 
@@ -747,14 +772,17 @@ mod private_mod {
 
 impl VerifiedStruct<VerifiableMlsPlaintext> for MlsPlaintext {
     fn from_verifiable(v: VerifiableMlsPlaintext, _seal: Self::SealingType) -> Self {
-        Self {
-            wire_format: v.tbs.wire_format,
+        let content = MlsContent {
             group_id: v.tbs.group_id,
             epoch: v.tbs.epoch,
             sender: v.tbs.sender,
             authenticated_data: v.tbs.authenticated_data,
-            content_type: v.tbs.content_type,
-            body_content: v.tbs.payload,
+            body: v.tbs.payload,
+        };
+
+        Self {
+            wire_format: v.tbs.wire_format,
+            content,
             signature: v.signature,
             confirmation_tag: v.confirmation_tag,
             membership_tag: v.membership_tag,
@@ -766,14 +794,17 @@ impl VerifiedStruct<VerifiableMlsPlaintext> for MlsPlaintext {
 
 impl SignedStruct<MlsPlaintextTbs> for MlsPlaintext {
     fn from_payload(tbs: MlsPlaintextTbs, signature: Signature) -> Self {
-        Self {
-            wire_format: tbs.wire_format,
+        let content = MlsContent {
             group_id: tbs.group_id,
             epoch: tbs.epoch,
             sender: tbs.sender,
             authenticated_data: tbs.authenticated_data,
-            content_type: tbs.content_type,
-            body_content: tbs.payload,
+            body: tbs.payload,
+        };
+
+        Self {
+            wire_format: tbs.wire_format,
+            content,
             signature,
             // Tags must always be added after the signature
             confirmation_tag: None,
@@ -798,17 +829,17 @@ impl<'a> TryFrom<&'a MlsPlaintext> for MlsPlaintextCommitContent<'a> {
     type Error = &'static str;
 
     fn try_from(mls_plaintext: &'a MlsPlaintext) -> Result<Self, Self::Error> {
-        let commit = match &mls_plaintext.body_content {
+        let commit = match &mls_plaintext.content.body {
             MlsContentBody::Commit(commit) => commit,
             _ => return Err("MlsPlaintext needs to contain a Commit."),
         };
         Ok(MlsPlaintextCommitContent {
             wire_format: mls_plaintext.wire_format,
-            group_id: &mls_plaintext.group_id,
-            epoch: mls_plaintext.epoch,
-            sender: &mls_plaintext.sender,
-            authenticated_data: &mls_plaintext.authenticated_data,
-            content_type: mls_plaintext.content_type,
+            group_id: &mls_plaintext.content.group_id,
+            epoch: mls_plaintext.content.epoch,
+            sender: &mls_plaintext.content.sender,
+            authenticated_data: &mls_plaintext.content.authenticated_data,
+            content_type: mls_plaintext.content_type(),
             commit,
             signature: &mls_plaintext.signature,
         })
