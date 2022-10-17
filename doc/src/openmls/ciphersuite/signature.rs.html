@@ -204,6 +204,76 @@
 <span id="204">204</span>
 <span id="205">205</span>
 <span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Signatures.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module contains structs for creating signature keys, issuing signatures and verifying them.</span>
@@ -216,6 +286,42 @@
 )]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Signature</span> {
     <span class="ident">value</span>: <span class="ident">TlsByteVecU16</span>,
+}
+
+<span class="doccomment">/// Labeled signature content.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// ```text</span>
+<span class="doccomment">/// struct {</span>
+<span class="doccomment">///     opaque label&lt;V&gt; = &quot;MLS 1.0 &quot; + Label;</span>
+<span class="doccomment">///     opaque content&lt;V&gt; = Content;</span>
+<span class="doccomment">/// } SignContent;</span>
+<span class="doccomment">/// ```</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSize</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">SignContent</span> {
+    <span class="ident">label</span>: <span class="ident">VLBytes</span>,
+    <span class="ident">content</span>: <span class="ident">VLBytes</span>,
+}
+
+<span class="kw">const</span> <span class="ident">SIGN_LABEL_PREFIX</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;MLS 1.0&quot;</span>;
+
+<span class="kw">impl</span> <span class="ident">SignContent</span> {
+    <span class="doccomment">/// Create a new [`SignContent`] from a string label and the content bytes.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">content</span>: <span class="ident">VLBytes</span>) -&gt; <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="ident">label_string</span> <span class="op">=</span> <span class="ident">SIGN_LABEL_PREFIX</span>.<span class="ident">to_owned</span>() <span class="op">+</span> <span class="ident">label</span>;
+        <span class="kw">let</span> <span class="ident">label</span> <span class="op">=</span> <span class="ident">label_string</span>.<span class="ident">as_bytes</span>().<span class="ident">into</span>();
+        <span class="self">Self</span> { <span class="ident">label</span>, <span class="ident">content</span> }
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="kw-2">&amp;</span>[<span class="ident">u8</span>])<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">SignContent</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>((<span class="ident">label</span>, <span class="ident">content</span>): (<span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="kw-2">&amp;</span>[<span class="ident">u8</span>])) -&gt; <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="ident">label_string</span> <span class="op">=</span> <span class="ident">SIGN_LABEL_PREFIX</span>.<span class="ident">to_owned</span>() <span class="op">+</span> <span class="ident">label</span>;
+        <span class="kw">let</span> <span class="ident">label</span> <span class="op">=</span> <span class="ident">label_string</span>.<span class="ident">as_bytes</span>().<span class="ident">into</span>();
+        <span class="self">Self</span> {
+            <span class="ident">label</span>,
+            <span class="ident">content</span>: <span class="ident">content</span>.<span class="ident">into</span>(),
+        }
+    }
 }
 
 <span class="doccomment">/// A private signature key.</span>
@@ -287,25 +393,26 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">impl</span> <span class="ident">SignatureKeypair</span> {
-    <span class="doccomment">/// Sign the `payload` byte slice with this signature key.</span>
-    <span class="doccomment">/// Returns a `Result` with a `Signature` or a `CryptoError`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sign</span>(
+    <span class="doccomment">/// Sign the [`SignContent`] with this signature key.</span>
+    <span class="doccomment">/// Returns a `Result` with a [`Signature`] or a [`CryptoError`].</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sign_with_label</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">payload</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
+        <span class="ident">sign_content</span>: <span class="kw-2">&amp;</span><span class="ident">SignContent</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Signature</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">private_key</span>.<span class="ident">sign</span>(<span class="ident">backend</span>, <span class="ident">payload</span>)
+        <span class="self">self</span>.<span class="ident">private_key</span>.<span class="ident">sign_with_label</span>(<span class="ident">backend</span>, <span class="ident">sign_content</span>)
     }
 
-    <span class="doccomment">/// Verify a `Signature` on the `payload` byte slice with the key pair&#39;s</span>
+    <span class="doccomment">/// Verify a [`Signature`] on the [`SignContent`] with the key pair&#39;s</span>
     <span class="doccomment">/// public key.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span>(
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_with_label</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="ident">Signature</span>,
-        <span class="ident">payload</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
+        <span class="ident">sign_content</span>: <span class="kw-2">&amp;</span><span class="ident">SignContent</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CryptoError</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">public_key</span>.<span class="ident">verify</span>(<span class="ident">backend</span>, <span class="ident">signature</span>, <span class="ident">payload</span>)
+        <span class="self">self</span>.<span class="ident">public_key</span>
+            .<span class="ident">verify_with_label</span>(<span class="ident">backend</span>, <span class="ident">signature</span>, <span class="ident">sign_content</span>)
     }
 }
 
@@ -351,6 +458,32 @@
         })
     }
 
+    <span class="doccomment">/// Verify a [`Signature`] on the [`SignContent`] with this public key</span>
+    <span class="doccomment">/// public key.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_with_label</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
+        <span class="ident">signature</span>: <span class="kw-2">&amp;</span><span class="ident">Signature</span>,
+        <span class="ident">sign_content</span>: <span class="kw-2">&amp;</span><span class="ident">SignContent</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">sign_content</span>.<span class="ident">tls_serialize_detached</span>() {
+            <span class="prelude-val">Ok</span>(<span class="ident">p</span>) =&gt; <span class="ident">p</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
+                <span class="macro">log::error!</span>(<span class="string">&quot;Serializing SignContent failed, {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CryptoError::TlsSerializationError</span>);
+            }
+        };
+        <span class="ident">backend</span>
+            .<span class="ident">crypto</span>()
+            .<span class="ident">verify_signature</span>(
+                <span class="self">self</span>.<span class="ident">signature_scheme</span>,
+                <span class="kw-2">&amp;</span><span class="ident">payload</span>,
+                <span class="self">self</span>.<span class="ident">value</span>.<span class="ident">as_ref</span>(),
+                <span class="ident">signature</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>(),
+            )
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">CryptoError::InvalidSignature</span>)
+    }
+
     <span class="doccomment">/// Verify a `Signature` on the `payload` byte slice with the keypair&#39;s</span>
     <span class="doccomment">/// public key.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span>(
@@ -381,16 +514,23 @@
 }
 
 <span class="kw">impl</span> <span class="ident">SignaturePrivateKey</span> {
-    <span class="doccomment">/// Sign the `payload` byte slice with this signature key.</span>
-    <span class="doccomment">/// Returns a `Result` with a `Signature` or a `SignatureError`.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sign</span>(
+    <span class="doccomment">/// Sign the serialization of [`SignContent`] with this signature key.</span>
+    <span class="doccomment">/// Returns a `Result` with a [`Signature`] or an Error.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">sign_with_label</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
-        <span class="ident">payload</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
+        <span class="ident">sign_content</span>: <span class="kw-2">&amp;</span><span class="ident">SignContent</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Signature</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">sign_content</span>.<span class="ident">tls_serialize_detached</span>() {
+            <span class="prelude-val">Ok</span>(<span class="ident">p</span>) =&gt; <span class="ident">p</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
+                <span class="macro">log::error!</span>(<span class="string">&quot;Serializing SignContent failed, {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">CryptoError::TlsSerializationError</span>);
+            }
+        };
         <span class="kw">match</span> <span class="ident">backend</span>
             .<span class="ident">crypto</span>()
-            .<span class="ident">sign</span>(<span class="self">self</span>.<span class="ident">signature_scheme</span>, <span class="ident">payload</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">value</span>)
+            .<span class="ident">sign</span>(<span class="self">self</span>.<span class="ident">signature_scheme</span>, <span class="kw-2">&amp;</span><span class="ident">payload</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">value</span>)
         {
             <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Signature</span> { <span class="ident">value</span>: <span class="ident">s</span>.<span class="ident">into</span>() }),
             <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">CryptoError::CryptoLibraryError</span>),

@@ -177,6 +177,12 @@
 <span id="177">177</span>
 <span id="178">178</span>
 <span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module defines traits used for signing and verifying</span>
 <span class="doccomment">//! structs from the MLS protocol spec.</span>
 <span class="doccomment">//!</span>
@@ -258,6 +264,9 @@
     <span class="doccomment">/// Return the unsigned, serialized payload that should be signed.</span>
     <span class="kw">fn</span> <span class="ident">unsigned_payload</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">tls_codec::Error</span><span class="op">&gt;</span>;
 
+    <span class="doccomment">/// Return the string label used for labeled signing.</span>
+    <span class="kw">fn</span> <span class="ident">label</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span>;
+
     <span class="doccomment">/// Sign the payload with the given `id`.</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Returns a `Signature`.</span>
@@ -273,7 +282,7 @@
             .<span class="ident">unsigned_payload</span>()
             .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">credential_bundle</span>
-            .<span class="ident">sign</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">payload</span>)
+            .<span class="ident">sign</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">payload</span>, <span class="self">self</span>.<span class="ident">label</span>())
             .<span class="ident">map_err</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::SignedOutput::from_payload</span>(<span class="self">self</span>, <span class="ident">signature</span>))
     }
@@ -295,6 +304,9 @@
     <span class="doccomment">/// A reference to the signature to be verified.</span>
     <span class="kw">fn</span> <span class="ident">signature</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Signature</span>;
 
+    <span class="doccomment">/// Return the string label used for labeled verification.</span>
+    <span class="kw">fn</span> <span class="ident">label</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span>;
+
     <span class="doccomment">/// Verifies the payload against the given `credential`.</span>
     <span class="doccomment">/// The signature is fetched via the [`Verifiable::signature()`] function and</span>
     <span class="doccomment">/// the payload via [`Verifiable::unsigned_payload()`].</span>
@@ -312,7 +324,7 @@
         <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">unsigned_payload</span>()
             .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>;
-        <span class="ident">credential</span>.<span class="ident">verify</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">payload</span>, <span class="self">self</span>.<span class="ident">signature</span>())<span class="question-mark">?</span>;
+        <span class="ident">credential</span>.<span class="ident">verify</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">payload</span>, <span class="self">self</span>.<span class="ident">signature</span>(), <span class="self">self</span>.<span class="ident">label</span>())<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(<span class="ident">T::from_verifiable</span>(<span class="self">self</span>, <span class="ident">T::SealingType::default</span>()))
     }
 
@@ -353,7 +365,7 @@
         <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">unsigned_payload</span>()
             .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>;
-        <span class="ident">credential</span>.<span class="ident">verify</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">payload</span>, <span class="self">self</span>.<span class="ident">signature</span>())
+        <span class="ident">credential</span>.<span class="ident">verify</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">payload</span>, <span class="self">self</span>.<span class="ident">signature</span>(), <span class="self">self</span>.<span class="ident">label</span>())
     }
 }
 </code></pre></div>

@@ -102,9 +102,9 @@
         <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">Ciphersuite::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">hpke_init_key</span> <span class="op">=</span> <span class="ident">HpkePublicKey::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="ident">Credential::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">extensions</span> <span class="op">=</span> <span class="ident">TlsVecU32::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">extensions</span> <span class="op">=</span> <span class="ident">Vec</span>::<span class="op">&lt;</span><span class="ident">Extension</span><span class="op">&gt;</span><span class="ident">::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">signature</span> <span class="op">=</span> <span class="ident">Signature::tls_deserialize</span>(<span class="ident">bytes</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="ident">KeyPackagePayload</span> {
+        <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="ident">KeyPackageTBS</span> {
             <span class="ident">protocol_version</span>,
             <span class="ident">ciphersuite</span>,
             <span class="ident">hpke_init_key</span>,

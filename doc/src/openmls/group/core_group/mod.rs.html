@@ -723,6 +723,7 @@
 <span id="723">723</span>
 <span id="724">724</span>
 <span id="725">725</span>
+<span id="726">726</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Functions in this module should never panic. However, if there is a bug in</span>
@@ -1286,6 +1287,7 @@
         <span class="ident">credential_bundle</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialBundle</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PublicGroupState</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">pgs_tbs</span> <span class="op">=</span> <span class="ident">PublicGroupStateTbs::new</span>(<span class="ident">backend</span>, <span class="self">self</span>)<span class="question-mark">?</span>;
+        <span class="comment">// XXX: #719 removes the PublicGroupState</span>
         <span class="ident">pgs_tbs</span>.<span class="ident">sign</span>(<span class="ident">backend</span>, <span class="ident">credential_bundle</span>)
     }
 

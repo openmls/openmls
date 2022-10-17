@@ -233,7 +233,7 @@
 <span class="doccomment">/// This struct implements the MLS parent node. It contains its public key,</span>
 <span class="doccomment">/// parent hash and unmerged leaves. Additionally, it may contain the private</span>
 <span class="doccomment">/// key corresponding to the public key.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ParentNode</span> {
     <span class="kw">pub</span>(<span class="kw">super</span>) <span class="ident">public_key</span>: <span class="ident">HpkePublicKey</span>,
     <span class="kw">pub</span>(<span class="kw">super</span>) <span class="ident">parent_hash</span>: <span class="ident">TlsByteVecU8</span>,
