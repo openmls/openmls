@@ -56,7 +56,6 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         sender,
         vec![1, 2, 3].into(),
         Payload {
-            content_type: ContentType::Application,
             payload: MlsContentBody::Application(vec![4, 5, 6].into()),
         },
     )
@@ -107,7 +106,6 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         vec![1, 2, 3].into(),
         Payload {
             payload: MlsContentBody::Application(vec![4, 5, 6].into()),
-            content_type: ContentType::Application,
         },
     )
     .with_context(serialized_context);
@@ -186,7 +184,6 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         sender,
         vec![1, 2, 3].into(),
         Payload {
-            content_type: ContentType::Application,
             payload: MlsContentBody::Application(vec![4, 5, 6].into()),
         },
     )

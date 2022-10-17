@@ -232,11 +232,8 @@ impl MlsCiphertext {
             "  Successfully decrypted MlsPlaintext bytes: {:x?}",
             mls_ciphertext_content_bytes
         );
-        MlsCiphertextContent::deserialize(
-            self.content_type,
-            &mut mls_ciphertext_content_bytes.as_slice(),
-        )
-        .map_err(|_| MessageDecryptionError::MalformedContent)
+        MlsCiphertextContent::tls_deserialize(&mut mls_ciphertext_content_bytes.as_slice())
+            .map_err(|_| MessageDecryptionError::MalformedContent)
     }
 
     /// This function decrypts an [`MlsCiphertext`] into an [`VerifiableMlsPlaintext`].
@@ -287,7 +284,6 @@ impl MlsCiphertext {
                 self.authenticated_data.clone(),
                 Payload {
                     payload: mls_ciphertext_content.content,
-                    content_type: self.content_type,
                 },
             ),
             mls_ciphertext_content.signature,
@@ -426,7 +422,7 @@ impl MlsSenderDataAad {
     }
 }
 
-#[derive(Debug, Clone, TlsSerialize, TlsSize)]
+#[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
 pub(crate) struct MlsCiphertextContent {
     pub(crate) content: MlsContentBody,
     pub(crate) signature: Signature,
