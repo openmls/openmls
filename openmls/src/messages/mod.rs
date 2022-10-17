@@ -202,11 +202,17 @@ impl GroupInfoTBS {
     }
 }
 
+const SIGNATURE_GROUP_INFO_LABEL: &str = "GroupInfoTBS";
+
 impl Signable for GroupInfoTBS {
     type SignedOutput = GroupInfo;
 
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
         self.tls_serialize_detached()
+    }
+
+    fn label(&self) -> &str {
+        SIGNATURE_GROUP_INFO_LABEL
     }
 }
 
@@ -276,6 +282,10 @@ impl Verifiable for GroupInfo {
 
     fn signature(&self) -> &Signature {
         &self.signature
+    }
+
+    fn label(&self) -> &str {
+        SIGNATURE_GROUP_INFO_LABEL
     }
 }
 

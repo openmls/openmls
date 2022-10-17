@@ -12,6 +12,42 @@ pub struct Signature {
     value: TlsByteVecU16,
 }
 
+/// Labeled signature content.
+///
+/// ```text
+/// struct {
+///     opaque label<V> = "MLS 1.0 " + Label;
+///     opaque content<V> = Content;
+/// } SignContent;
+/// ```
+#[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
+pub struct SignContent {
+    label: VLBytes,
+    content: VLBytes,
+}
+
+const SIGN_LABEL_PREFIX: &str = "MLS 1.0";
+
+impl SignContent {
+    /// Create a new [`SignContent`] from a string label and the content bytes.
+    pub fn new(label: &str, content: VLBytes) -> Self {
+        let label_string = SIGN_LABEL_PREFIX.to_owned() + label;
+        let label = label_string.as_bytes().into();
+        Self { label, content }
+    }
+}
+
+impl From<(&str, &[u8])> for SignContent {
+    fn from((label, content): (&str, &[u8])) -> Self {
+        let label_string = SIGN_LABEL_PREFIX.to_owned() + label;
+        let label = label_string.as_bytes().into();
+        Self {
+            label,
+            content: content.into(),
+        }
+    }
+}
+
 /// A private signature key.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(any(feature = "test-utils", test), derive(PartialEq, Eq))]
@@ -81,25 +117,26 @@ impl SignatureKeypair {
 
 #[cfg(test)]
 impl SignatureKeypair {
-    /// Sign the `payload` byte slice with this signature key.
-    /// Returns a `Result` with a `Signature` or a `CryptoError`.
-    pub fn sign(
+    /// Sign the [`SignContent`] with this signature key.
+    /// Returns a `Result` with a [`Signature`] or a [`CryptoError`].
+    pub fn sign_with_label(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-        payload: &[u8],
+        sign_content: &SignContent,
     ) -> Result<Signature, CryptoError> {
-        self.private_key.sign(backend, payload)
+        self.private_key.sign_with_label(backend, sign_content)
     }
 
-    /// Verify a `Signature` on the `payload` byte slice with the key pair's
+    /// Verify a [`Signature`] on the [`SignContent`] with the key pair's
     /// public key.
-    pub fn verify(
+    pub fn verify_with_label(
         &self,
         backend: &impl OpenMlsCryptoProvider,
         signature: &Signature,
-        payload: &[u8],
+        sign_content: &SignContent,
     ) -> Result<(), CryptoError> {
-        self.public_key.verify(backend, signature, payload)
+        self.public_key
+            .verify_with_label(backend, signature, sign_content)
     }
 }
 
@@ -145,6 +182,32 @@ impl SignaturePublicKey {
         })
     }
 
+    /// Verify a [`Signature`] on the [`SignContent`] with this public key
+    /// public key.
+    pub fn verify_with_label(
+        &self,
+        backend: &impl OpenMlsCryptoProvider,
+        signature: &Signature,
+        sign_content: &SignContent,
+    ) -> Result<(), CryptoError> {
+        let payload = match sign_content.tls_serialize_detached() {
+            Ok(p) => p,
+            Err(e) => {
+                log::error!("Serializing SignContent failed, {:?}", e);
+                return Err(CryptoError::TlsSerializationError);
+            }
+        };
+        backend
+            .crypto()
+            .verify_signature(
+                self.signature_scheme,
+                &payload,
+                self.value.as_ref(),
+                signature.value.as_slice(),
+            )
+            .map_err(|_| CryptoError::InvalidSignature)
+    }
+
     /// Verify a `Signature` on the `payload` byte slice with the keypair's
     /// public key.
     pub fn verify(
@@ -175,16 +238,23 @@ impl SignaturePublicKey {
 }
 
 impl SignaturePrivateKey {
-    /// Sign the `payload` byte slice with this signature key.
-    /// Returns a `Result` with a `Signature` or a `SignatureError`.
-    pub fn sign(
+    /// Sign the serialization of [`SignContent`] with this signature key.
+    /// Returns a `Result` with a [`Signature`] or an Error.
+    pub fn sign_with_label(
         &self,
         backend: &impl OpenMlsCryptoProvider,
-        payload: &[u8],
+        sign_content: &SignContent,
     ) -> Result<Signature, CryptoError> {
+        let payload = match sign_content.tls_serialize_detached() {
+            Ok(p) => p,
+            Err(e) => {
+                log::error!("Serializing SignContent failed, {:?}", e);
+                return Err(CryptoError::TlsSerializationError);
+            }
+        };
         match backend
             .crypto()
-            .sign(self.signature_scheme, payload, &self.value)
+            .sign(self.signature_scheme, &payload, &self.value)
         {
             Ok(s) => Ok(Signature { value: s.into() }),
             Err(_) => Err(CryptoError::CryptoLibraryError),

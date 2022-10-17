@@ -152,6 +152,10 @@ impl Verifiable for VerifiablePublicGroupState {
     fn signature(&self) -> &Signature {
         &self.signature
     }
+
+    fn label(&self) -> &str {
+        "" // TODO: PublicGroupState is being removed in #719.
+    }
 }
 
 /// PublicGroupStateTBS
@@ -226,5 +230,9 @@ impl Signable for PublicGroupStateTbs {
 
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
         self.tls_serialize_detached()
+    }
+
+    fn label(&self) -> &str {
+        "" // TODO: PublicGroupState is being removed in #719.
     }
 }

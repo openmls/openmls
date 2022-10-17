@@ -77,10 +77,13 @@ fn test_sign_verify(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     let keypair = SignatureKeypair::new(ciphersuite.signature_algorithm(), backend)
         .expect("An unexpected error occurred.");
     let payload = &[1, 2, 3];
+    let sign_content = SignContent::new("sign label", payload.into());
     let signature = keypair
-        .sign(backend, payload)
+        .sign_with_label(backend, &sign_content)
         .expect("An unexpected error occurred.");
-    assert!(keypair.verify(backend, &signature, payload).is_ok());
+    assert!(keypair
+        .verify_with_label(backend, &signature, &sign_content)
+        .is_ok());
 }
 
 #[apply(backends)]
@@ -120,14 +123,24 @@ fn test_signatures(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         SignatureScheme::try_from(ciphersuite).expect("error deriving signature scheme");
     let keypair = SignatureKeypair::new(signature_scheme, backend)
         .expect("error generating signature keypair");
+    let sign_content = SignContent::new("sign label", payload.clone().into());
     let mut signature = keypair
-        .sign(backend, &payload)
+        .sign_with_label(backend, &sign_content)
         .expect("error creating signature");
     println!("Done signing payload\n");
     keypair
-        .verify(backend, &signature, &payload)
+        .verify_with_label(backend, &signature, &sign_content)
         .expect("error verifying signature");
     println!("Done verifying payload\n");
+
+    // Try to verify with wrong label.
+    let sign_content = SignContent::new("other label", payload.into());
+    assert_eq!(
+        keypair
+            .verify_with_label(backend, &signature, &sign_content)
+            .expect_err("error verifying signature"),
+        CryptoError::InvalidSignature
+    );
 
     // Tamper with signature such that verification fails. We choose a byte
     // somewhere in the middle to make the verification fail, not the DER
@@ -138,7 +151,7 @@ fn test_signatures(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
 
     assert_eq!(
         keypair
-            .verify(backend, &signature, &payload)
+            .verify_with_label(backend, &signature, &sign_content)
             .expect_err("error verifying signature"),
         CryptoError::InvalidSignature
     );

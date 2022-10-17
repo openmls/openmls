@@ -79,6 +79,9 @@ pub trait Signable: Sized {
     /// Return the unsigned, serialized payload that should be signed.
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error>;
 
+    /// Return the string label used for labeled signing.
+    fn label(&self) -> &str;
+
     /// Sign the payload with the given `id`.
     ///
     /// Returns a `Signature`.
@@ -94,7 +97,7 @@ pub trait Signable: Sized {
             .unsigned_payload()
             .map_err(LibraryError::missing_bound_check)?;
         let signature = credential_bundle
-            .sign(backend, &payload)
+            .sign(backend, &payload, self.label())
             .map_err(LibraryError::unexpected_crypto_error)?;
         Ok(Self::SignedOutput::from_payload(self, signature))
     }
@@ -116,6 +119,9 @@ pub trait Verifiable: Sized {
     /// A reference to the signature to be verified.
     fn signature(&self) -> &Signature;
 
+    /// Return the string label used for labeled verification.
+    fn label(&self) -> &str;
+
     /// Verifies the payload against the given `credential`.
     /// The signature is fetched via the [`Verifiable::signature()`] function and
     /// the payload via [`Verifiable::unsigned_payload()`].
@@ -133,7 +139,7 @@ pub trait Verifiable: Sized {
         let payload = self
             .unsigned_payload()
             .map_err(LibraryError::missing_bound_check)?;
-        credential.verify(backend, &payload, self.signature())?;
+        credential.verify(backend, &payload, self.signature(), self.label())?;
         Ok(T::from_verifiable(self, T::SealingType::default()))
     }
 
@@ -174,6 +180,6 @@ pub trait Verifiable: Sized {
         let payload = self
             .unsigned_payload()
             .map_err(LibraryError::missing_bound_check)?;
-        credential.verify(backend, &payload, self.signature())
+        credential.verify(backend, &payload, self.signature(), self.label())
     }
 }
