@@ -60,6 +60,20 @@ pub(crate) struct MlsPlaintext {
     membership_tag: Option<MembershipTag>,
 }
 
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
+pub(crate) enum MlsContentBody {
+    Application(TlsByteVecU32),
+    Proposal(Proposal),
+    Commit(Commit),
+}
+
+impl From<MlsPlaintext> for MlsContentBody {
+    fn from(plaintext: MlsPlaintext) -> Self {
+        plaintext.content
+    }
+}
+
 pub(crate) struct Payload {
     pub(crate) payload: MlsContentBody,
     pub(crate) content_type: ContentType,
@@ -359,20 +373,6 @@ impl ContentType {
     /// Returns `true` if this is a handshake message and `false` otherwise.
     pub(crate) fn is_handshake_message(&self) -> bool {
         self == &ContentType::Proposal || self == &ContentType::Commit
-    }
-}
-
-#[allow(clippy::large_enum_variant)]
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub(crate) enum MlsContentBody {
-    Application(TlsByteVecU32),
-    Proposal(Proposal),
-    Commit(Commit),
-}
-
-impl From<MlsPlaintext> for MlsContentBody {
-    fn from(plaintext: MlsPlaintext) -> Self {
-        plaintext.content
     }
 }
 
