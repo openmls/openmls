@@ -144,7 +144,7 @@ impl Signable for KeyPackageTBS {
     }
 
     fn label(&self) -> &str {
-        SIGNATURE_LABEL
+        SIGNATURE_KEY_PACKAGE_LABEL
     }
 }
 
@@ -230,7 +230,7 @@ impl SignedStruct<KeyPackageTBS> for KeyPackage {
     }
 }
 
-const SIGNATURE_LABEL: &str = "KeyPackageTBS";
+const SIGNATURE_KEY_PACKAGE_LABEL: &str = "KeyPackageTBS";
 
 impl Verifiable for KeyPackage {
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
@@ -242,7 +242,7 @@ impl Verifiable for KeyPackage {
     }
 
     fn label(&self) -> &str {
-        SIGNATURE_LABEL
+        SIGNATURE_KEY_PACKAGE_LABEL
     }
 }
 
@@ -531,7 +531,7 @@ impl Signable for KeyPackageBundlePayload {
     }
 
     fn label(&self) -> &str {
-        SIGNATURE_LABEL
+        SIGNATURE_KEY_PACKAGE_LABEL
     }
 }
 
