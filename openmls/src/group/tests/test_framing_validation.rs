@@ -373,7 +373,7 @@ fn test_valsem005(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let original_message = plaintext.clone();
 
     plaintext.set_content_type(ContentType::Application);
-    plaintext.set_content(MlsPlaintextContentType::Application(vec![1, 2, 3].into()));
+    plaintext.set_content(MlsContentBody::Application(vec![1, 2, 3].into()));
 
     let message_in = MlsMessageIn::from(plaintext);
 

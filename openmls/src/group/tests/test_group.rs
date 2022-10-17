@@ -98,7 +98,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
             Err(e) => panic!("Error creating commit: {:?}", e),
         };
     let commit = match create_commit_result.commit.content() {
-        MlsPlaintextContentType::Commit(commit) => commit,
+        MlsContentBody::Commit(commit) => commit,
         _ => panic!(),
     };
     assert!(commit.has_path());
@@ -133,7 +133,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         Err(e) => panic!("Error creating commit: {:?}", e),
     };
     let commit = match create_commit_result.commit.content() {
-        MlsPlaintextContentType::Commit(commit) => commit,
+        MlsContentBody::Commit(commit) => commit,
         _ => panic!(),
     };
     assert!(!commit.has_path());
@@ -190,7 +190,7 @@ fn create_commit_optional_path(ciphersuite: Ciphersuite, backend: &impl OpenMlsC
         Err(e) => panic!("Error creating commit: {:?}", e),
     };
     let commit = match create_commit_result.commit.content() {
-        MlsPlaintextContentType::Commit(commit) => commit,
+        MlsContentBody::Commit(commit) => commit,
         _ => panic!(),
     };
     assert!(commit.has_path());
@@ -361,7 +361,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         .create_commit(params, backend)
         .expect("Error creating commit");
     let commit = match create_commit_result.commit.content() {
-        MlsPlaintextContentType::Commit(commit) => commit,
+        MlsContentBody::Commit(commit) => commit,
         _ => panic!("Wrong content type"),
     };
     assert!(!commit.has_path());
@@ -428,7 +428,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     assert!(matches!(
         mls_plaintext_bob.content(), 
-            MlsPlaintextContentType::Application(message) if message.as_slice() == &message_alice[..]));
+            MlsContentBody::Application(message) if message.as_slice() == &message_alice[..]));
 
     // === Bob updates and commits ===
     let bob_update_key_package_bundle = KeyPackageBundle::new(
@@ -467,7 +467,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // Check that there is a path
     let commit = match create_commit_result.commit.content() {
-        MlsPlaintextContentType::Commit(commit) => commit,
+        MlsContentBody::Commit(commit) => commit,
         _ => panic!("Wrong content type"),
     };
     assert!(commit.has_path());
@@ -658,7 +658,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
     // Check there is no path since there are only Add Proposals and no forced
     // self-update
     let commit = match create_commit_result.commit.content() {
-        MlsPlaintextContentType::Commit(commit) => commit,
+        MlsContentBody::Commit(commit) => commit,
         _ => panic!("Wrong content type"),
     };
     assert!(!commit.has_path());
@@ -739,7 +739,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     assert!(matches!(
         mls_plaintext_alice.content(), 
-            MlsPlaintextContentType::Application(message) if message.as_slice() == &message_charlie[..]));
+            MlsContentBody::Application(message) if message.as_slice() == &message_charlie[..]));
 
     // Bob decrypts and verifies
     let mut verifiable_plaintext = group_bob
@@ -769,7 +769,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     assert!(matches!(
         mls_plaintext_bob.content(), 
-        MlsPlaintextContentType::Application(message) if message.as_slice() == &message_charlie[..]));
+        MlsContentBody::Application(message) if message.as_slice() == &message_charlie[..]));
 
     // === Charlie updates and commits ===
     let charlie_update_key_package_bundle = KeyPackageBundle::new(
@@ -808,7 +808,7 @@ fn group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
 
     // Check that there is a new KeyPackageBundle
     let commit = match create_commit_result.commit.content() {
-        MlsPlaintextContentType::Commit(commit) => commit,
+        MlsContentBody::Commit(commit) => commit,
         _ => panic!("Wrong content type"),
     };
     assert!(commit.has_path());

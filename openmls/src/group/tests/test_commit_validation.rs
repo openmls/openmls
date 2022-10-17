@@ -127,7 +127,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         VerifiableMlsPlaintext::tls_deserialize(&mut serialized_proposal_message.as_slice())
             .expect("Could not deserialize message.");
 
-    let proposal = if let MlsPlaintextContentType::Proposal(proposal) = proposal_message.content() {
+    let proposal = if let MlsContentBody::Proposal(proposal) = proposal_message.content() {
         proposal.clone()
     } else {
         panic!("Unexpected content type.");
@@ -150,7 +150,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
 
-    let mut commit_content = if let MlsPlaintextContentType::Commit(commit) = plaintext.content() {
+    let mut commit_content = if let MlsContentBody::Commit(commit) = plaintext.content() {
         commit.clone()
     } else {
         panic!("Unexpected content type.");
@@ -160,7 +160,7 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         .proposals
         .push(ProposalOrRef::Proposal(proposal));
 
-    plaintext.set_content(MlsPlaintextContentType::Commit(commit_content));
+    plaintext.set_content(MlsContentBody::Commit(commit_content));
 
     let alice_credential_bundle = backend
         .key_store()
@@ -256,7 +256,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // The self-update currently contains an update proposal. This should change
     // with a future spec-change issue, but for now, we have to remove it
     // manually to create a completely empty commit.
-    let mut commit_content = if let MlsPlaintextContentType::Commit(commit) = update.content() {
+    let mut commit_content = if let MlsContentBody::Commit(commit) = update.content() {
         commit.clone()
     } else {
         panic!("Unexpected content type.");
@@ -264,7 +264,7 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
     commit_content.proposals = vec![].into();
 
-    update.set_content(MlsPlaintextContentType::Commit(commit_content));
+    update.set_content(MlsContentBody::Commit(commit_content));
 
     let serialized_update = update
         .tls_serialize_detached()
@@ -448,14 +448,14 @@ fn erase_path(
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
 
-    let mut commit_content = if let MlsPlaintextContentType::Commit(commit) = plaintext.content() {
+    let mut commit_content = if let MlsContentBody::Commit(commit) = plaintext.content() {
         commit.clone()
     } else {
         panic!("Unexpected content type.");
     };
     commit_content.path = None;
 
-    plaintext.set_content(MlsPlaintextContentType::Commit(commit_content));
+    plaintext.set_content(MlsContentBody::Commit(commit_content));
 
     let alice_credential_bundle = backend
         .key_store()
@@ -527,7 +527,7 @@ fn test_valsem202(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
 
-    let mut commit_content = if let MlsPlaintextContentType::Commit(commit) = plaintext.content() {
+    let mut commit_content = if let MlsContentBody::Commit(commit) = plaintext.content() {
         commit.clone()
     } else {
         panic!("Unexpected content type.");
@@ -536,7 +536,7 @@ fn test_valsem202(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         path.pop();
     };
 
-    plaintext.set_content(MlsPlaintextContentType::Commit(commit_content));
+    plaintext.set_content(MlsContentBody::Commit(commit_content));
 
     let alice_credential_bundle = backend
         .key_store()
@@ -635,7 +635,7 @@ fn test_valsem203(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
 
-    let mut commit_content = if let MlsPlaintextContentType::Commit(commit) = plaintext.content() {
+    let mut commit_content = if let MlsContentBody::Commit(commit) = plaintext.content() {
         commit.clone()
     } else {
         panic!("Unexpected content type.");
@@ -646,7 +646,7 @@ fn test_valsem203(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         path.flip_eps_bytes();
     };
 
-    plaintext.set_content(MlsPlaintextContentType::Commit(commit_content));
+    plaintext.set_content(MlsContentBody::Commit(commit_content));
 
     let alice_credential_bundle = backend
         .key_store()
@@ -745,7 +745,7 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // Keep the original plaintext for positive test later.
     let original_plaintext = plaintext.clone();
 
-    let mut commit_content = if let MlsPlaintextContentType::Commit(commit) = plaintext.content() {
+    let mut commit_content = if let MlsContentBody::Commit(commit) = plaintext.content() {
         commit.clone()
     } else {
         panic!("Unexpected content type.");
@@ -756,7 +756,7 @@ fn test_valsem204(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         path.flip_node_bytes();
     };
 
-    plaintext.set_content(MlsPlaintextContentType::Commit(commit_content));
+    plaintext.set_content(MlsContentBody::Commit(commit_content));
 
     let alice_credential_bundle = backend
         .key_store()
