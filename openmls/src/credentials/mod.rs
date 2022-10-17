@@ -117,11 +117,12 @@ impl Credential {
         backend: &impl OpenMlsCryptoProvider,
         payload: &[u8],
         signature: &Signature,
+        label: &str,
     ) -> Result<(), CredentialError> {
         match &self.credential {
             MlsCredentialType::Basic(basic_credential) => basic_credential
                 .public_key
-                .verify(backend, signature, payload)
+                .verify_with_label(backend, signature, &SignContent::new(label, payload.into()))
                 .map_err(|_| CredentialError::InvalidSignature),
             // TODO: implement verification for X509 certificates. See issue #134.
             MlsCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
@@ -279,8 +280,10 @@ impl CredentialBundle {
         &self,
         backend: &impl OpenMlsCryptoProvider,
         msg: &[u8],
+        label: &str,
     ) -> Result<Signature, CryptoError> {
-        self.signature_private_key.sign(backend, msg)
+        self.signature_private_key
+            .sign_with_label(backend, &SignContent::new(label, msg.into()))
     }
 
     /// Returns the key pair of the given credential bundle.

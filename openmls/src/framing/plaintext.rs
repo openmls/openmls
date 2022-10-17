@@ -661,6 +661,10 @@ impl Signable for MlsPlaintextTbs {
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
         self.tls_serialize_detached()
     }
+
+    fn label(&self) -> &str {
+        "MLSPlaintextTBS"
+    }
 }
 
 impl MlsPlaintextTbs {
@@ -722,6 +726,10 @@ impl Verifiable for VerifiableMlsPlaintext {
 
     fn signature(&self) -> &Signature {
         &self.signature
+    }
+
+    fn label(&self) -> &str {
+        "MLSPlaintextTBS"
     }
 }
 

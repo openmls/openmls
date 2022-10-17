@@ -561,6 +561,7 @@ impl CoreGroup {
         credential_bundle: &CredentialBundle,
     ) -> Result<PublicGroupState, LibraryError> {
         let pgs_tbs = PublicGroupStateTbs::new(backend, self)?;
+        // XXX: #719 removes the PublicGroupState
         pgs_tbs.sign(backend, credential_bundle)
     }
 

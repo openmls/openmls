@@ -89,9 +89,7 @@ use openmls_traits::{
     OpenMlsCryptoProvider,
 };
 use serde::{Deserialize, Serialize};
-use tls_codec::{
-    Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsSize, TlsVecU32,
-};
+use tls_codec::{Deserialize as TlsDeserializeTrait, Serialize as TlsSerializeTrait, TlsSize};
 
 // Private
 mod codec;
@@ -109,16 +107,26 @@ mod test_key_packages;
 /// The unsigned payload of a key package.
 /// Any modification must happen on this unsigned struct. Use `sign` to get a
 /// signed key package.
+///
+/// ```text
+/// struct {
+///     ProtocolVersion version;
+///     CipherSuite cipher_suite;
+///     HPKEPublicKey init_key;
+///     LeafNode leaf_node;
+///     Extension extensions<V>;
+/// } KeyPackageTBS;
+/// ```
 #[derive(Debug, Clone, PartialEq, TlsSize, Serialize, Deserialize)]
-struct KeyPackagePayload {
+struct KeyPackageTBS {
     protocol_version: ProtocolVersion,
     ciphersuite: Ciphersuite,
     hpke_init_key: HpkePublicKey,
     credential: Credential,
-    extensions: TlsVecU32<Extension>,
+    extensions: Vec<Extension>,
 }
 
-impl tls_codec::Serialize for KeyPackagePayload {
+impl tls_codec::Serialize for KeyPackageTBS {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         let mut written = self.protocol_version.tls_serialize(writer)?;
         written += self.ciphersuite.tls_serialize(writer)?;
@@ -128,21 +136,25 @@ impl tls_codec::Serialize for KeyPackagePayload {
     }
 }
 
-impl Signable for KeyPackagePayload {
+impl Signable for KeyPackageTBS {
     type SignedOutput = KeyPackage;
 
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
         self.tls_serialize_detached()
     }
+
+    fn label(&self) -> &str {
+        "KeyPackageTBS"
+    }
 }
 
-impl From<KeyPackage> for KeyPackagePayload {
+impl From<KeyPackage> for KeyPackageTBS {
     fn from(kp: KeyPackage) -> Self {
         kp.payload
     }
 }
 
-impl KeyPackagePayload {
+impl KeyPackageTBS {
     fn from_key_package(kp: &KeyPackage, hpke_init_key: HpkePublicKey) -> Self {
         Self {
             protocol_version: kp.payload.protocol_version,
@@ -192,7 +204,7 @@ impl KeyPackagePayload {
 /// The key package struct.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KeyPackage {
-    payload: KeyPackagePayload,
+    payload: KeyPackageTBS,
     signature: Signature,
 }
 
@@ -212,11 +224,13 @@ impl PartialEq for KeyPackage {
     }
 }
 
-impl SignedStruct<KeyPackagePayload> for KeyPackage {
-    fn from_payload(payload: KeyPackagePayload, signature: Signature) -> Self {
+impl SignedStruct<KeyPackageTBS> for KeyPackage {
+    fn from_payload(payload: KeyPackageTBS, signature: Signature) -> Self {
         Self { payload, signature }
     }
 }
+
+const SIGNATURE_LABEL: &str = "KeyPackageTBS";
 
 impl Verifiable for KeyPackage {
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
@@ -225,6 +239,10 @@ impl Verifiable for KeyPackage {
 
     fn signature(&self) -> &Signature {
         &self.signature
+    }
+
+    fn label(&self) -> &str {
+        SIGNATURE_LABEL
     }
 }
 
@@ -375,8 +393,8 @@ impl KeyPackage {
         if SignatureScheme::from(ciphersuite) != credential_bundle.credential().signature_scheme() {
             return Err(KeyPackageNewError::CiphersuiteSignatureSchemeMismatch);
         }
-        let key_package = KeyPackagePayload {
-            // TODO: #85 Take from global config.
+        let key_package = KeyPackageTBS {
+            // TODO: #34 Take from global config.
             protocol_version: ProtocolVersion::default(),
             ciphersuite,
             hpke_init_key,
@@ -415,14 +433,14 @@ impl KeyPackage {
 /// Payload of the [`KeyPackageBundle`].
 #[cfg(any(feature = "test-utils", test))]
 pub struct KeyPackageBundlePayload {
-    key_package_payload: KeyPackagePayload,
+    key_package_tbs: KeyPackageTBS,
     private_key: HpkePrivateKey,
     leaf_secret: Secret,
 }
 
 #[cfg(not(any(feature = "test-utils", test)))]
 pub(crate) struct KeyPackageBundlePayload {
-    key_package_payload: KeyPackagePayload,
+    key_package_tbs: KeyPackageTBS,
     private_key: HpkePrivateKey,
     leaf_secret: Secret,
 }
@@ -457,9 +475,9 @@ impl KeyPackageBundlePayload {
             leaf_node_secret?.as_slice(),
         );
         let key_package_payload =
-            KeyPackagePayload::from_key_package(key_package, key_pair.public.into());
+            KeyPackageTBS::from_key_package(key_package, key_pair.public.into());
         Ok(Self {
-            key_package_payload,
+            key_package_tbs: key_package_payload,
             private_key: key_pair.private.into(),
             leaf_secret,
         })
@@ -467,16 +485,16 @@ impl KeyPackageBundlePayload {
 
     /// Update the parent hash extension of this key package.
     pub(crate) fn update_parent_hash(&mut self, parent_hash: &[u8]) {
-        self.key_package_payload
+        self.key_package_tbs
             .remove_extension(ExtensionType::ParentHash);
         let extension = Extension::ParentHash(ParentHashExtension::new(parent_hash));
-        self.key_package_payload.extensions.push(extension);
+        self.key_package_tbs.extensions.push(extension);
     }
 
     /// Add (or replace) an extension to the KeyPackage.
     #[cfg(any(feature = "test-utils", test))]
     pub fn add_extension(&mut self, extension: Extension) {
-        self.key_package_payload.add_extension(extension)
+        self.key_package_tbs.add_extension(extension)
     }
 
     /// Get a reference to the `leaf_secret`.
@@ -487,22 +505,22 @@ impl KeyPackageBundlePayload {
     /// Replace the credential in the KeyPackage.
     #[cfg(any(feature = "test-utils", test))]
     pub fn set_credential(&mut self, credential: Credential) {
-        self.key_package_payload.set_credential(credential)
+        self.key_package_tbs.set_credential(credential)
     }
     /// Replace the public key in the KeyPackage.
     #[cfg(any(feature = "test-utils", test))]
     pub fn set_public_key(&mut self, public_key: HpkePublicKey) {
-        self.key_package_payload.set_public_key(public_key)
+        self.key_package_tbs.set_public_key(public_key)
     }
     /// Replace the version in the KeyPackage.
     #[cfg(any(feature = "test-utils", test))]
     pub fn set_version(&mut self, version: ProtocolVersion) {
-        self.key_package_payload.set_version(version)
+        self.key_package_tbs.set_version(version)
     }
     /// Replace the ciphersuite in the KeyPackage.
     #[cfg(any(feature = "test-utils", test))]
     pub fn set_ciphersuite(&mut self, ciphersuite: Ciphersuite) {
-        self.key_package_payload.set_ciphersuite(ciphersuite)
+        self.key_package_tbs.set_ciphersuite(ciphersuite)
     }
 }
 
@@ -510,13 +528,17 @@ impl Signable for KeyPackageBundlePayload {
     type SignedOutput = KeyPackageBundle;
 
     fn unsigned_payload(&self) -> Result<Vec<u8>, tls_codec::Error> {
-        self.key_package_payload.unsigned_payload()
+        self.key_package_tbs.unsigned_payload()
+    }
+
+    fn label(&self) -> &str {
+        SIGNATURE_LABEL
     }
 }
 
 impl SignedStruct<KeyPackageBundlePayload> for KeyPackageBundle {
     fn from_payload(payload: KeyPackageBundlePayload, signature: Signature) -> Self {
-        let key_package = KeyPackage::from_payload(payload.key_package_payload, signature);
+        let key_package = KeyPackage::from_payload(payload.key_package_tbs, signature);
         Self {
             key_package,
             private_key: payload.private_key,
@@ -538,7 +560,7 @@ pub struct KeyPackageBundle {
 impl From<KeyPackageBundle> for KeyPackageBundlePayload {
     fn from(kpb: KeyPackageBundle) -> Self {
         Self {
-            key_package_payload: kpb.key_package.into(),
+            key_package_tbs: kpb.key_package.into(),
             private_key: kpb.private_key,
             leaf_secret: kpb.leaf_secret,
         }

@@ -285,7 +285,8 @@ impl<'a> TreeSyncDiff<'a> {
             self.process_update_path(backend, ciphersuite, self.own_leaf_index, path)?;
 
         key_package_bundle_payload.update_parent_hash(&parent_hash);
-        let key_package_bundle = key_package_bundle_payload.sign(backend, credential_bundle)?;
+        let key_package_bundle =
+            key_package_bundle_payload.sign(backend, credential_bundle)?;
 
         let key_package = key_package_bundle.key_package().clone();
         let node = Node::LeafNode(LeafNode::new_from_bundle(
