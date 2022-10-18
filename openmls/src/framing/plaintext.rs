@@ -280,15 +280,6 @@ impl MlsPlaintext {
         &self.content.body
     }
 
-    /// Get the content type of this message.
-    pub(crate) fn content_type(&self) -> ContentType {
-        match self.content.body {
-            MlsContentBody::Application(_) => ContentType::Application,
-            MlsContentBody::Proposal(_) => ContentType::Proposal,
-            MlsContentBody::Commit(_) => ContentType::Commit,
-        }
-    }
-
     /// Get the sender of this message.
     pub(crate) fn sender(&self) -> &Sender {
         &self.content.sender
@@ -326,7 +317,7 @@ impl MlsPlaintext {
     /// Returns `true` if this is a handshake message and `false` otherwise.
     #[cfg(test)]
     pub(crate) fn is_handshake_message(&self) -> bool {
-        self.content_type().is_handshake_message()
+        self.content().content_type().is_handshake_message()
     }
 
     /// Get the group epoch.
@@ -829,7 +820,7 @@ impl<'a> TryFrom<&'a MlsPlaintext> for MlsPlaintextCommitContent<'a> {
             epoch: mls_plaintext.content.epoch,
             sender: &mls_plaintext.content.sender,
             authenticated_data: &mls_plaintext.content.authenticated_data,
-            content_type: mls_plaintext.content_type(),
+            content_type: mls_plaintext.content().content_type(),
             commit,
             signature: &mls_plaintext.signature,
         })
