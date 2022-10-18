@@ -55,9 +55,7 @@ fn codec_plaintext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
         1,
         sender,
         vec![1, 2, 3].into(),
-        Payload {
-            payload: MlsContentBody::Application(vec![4, 5, 6].into()),
-        },
+        MlsContentBody::Application(vec![4, 5, 6].into()),
     )
     .with_context(serialized_context.clone());
     let orig: MlsPlaintext = signature_input
@@ -104,9 +102,7 @@ fn codec_ciphertext(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvid
         1,
         sender,
         vec![1, 2, 3].into(),
-        Payload {
-            payload: MlsContentBody::Application(vec![4, 5, 6].into()),
-        },
+        MlsContentBody::Application(vec![4, 5, 6].into()),
     )
     .with_context(serialized_context);
     let plaintext: MlsPlaintext = signature_input
@@ -183,9 +179,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
         1,
         sender,
         vec![1, 2, 3].into(),
-        Payload {
-            payload: MlsContentBody::Application(vec![4, 5, 6].into()),
-        },
+        MlsContentBody::Application(vec![4, 5, 6].into()),
     )
     .with_context(serialized_context);
     let mut plaintext: MlsPlaintext = signature_input

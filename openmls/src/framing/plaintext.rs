@@ -109,10 +109,6 @@ impl From<MlsPlaintext> for MlsContentBody {
     }
 }
 
-pub(crate) struct Payload {
-    pub(crate) payload: MlsContentBody,
-}
-
 // This block only has pub(super) getters.
 impl MlsPlaintext {
     pub(super) fn signature(&self) -> &Signature {
@@ -156,7 +152,7 @@ impl MlsPlaintext {
     fn new(
         framing_parameters: FramingParameters,
         sender: Sender,
-        payload: Payload,
+        body: MlsContentBody,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         backend: &impl OpenMlsCryptoProvider,
@@ -167,7 +163,7 @@ impl MlsPlaintext {
             context.epoch(),
             sender.clone(),
             framing_parameters.aad().into(),
-            payload,
+            body,
         );
 
         if let Sender::Member(_) = sender {
@@ -185,7 +181,7 @@ impl MlsPlaintext {
     fn new_with_membership_tag(
         framing_parameters: FramingParameters,
         sender_reference: &KeyPackageRef,
-        payload: Payload,
+        body: MlsContentBody,
         credential_bundle: &CredentialBundle,
         context: &GroupContext,
         membership_key: &MembershipKey,
@@ -195,7 +191,7 @@ impl MlsPlaintext {
         let mut mls_plaintext = Self::new(
             framing_parameters,
             sender,
-            payload,
+            body,
             credential_bundle,
             context,
             backend,
@@ -224,9 +220,7 @@ impl MlsPlaintext {
         Self::new_with_membership_tag(
             framing_parameters,
             sender_reference,
-            Payload {
-                payload: MlsContentBody::Proposal(proposal),
-            },
+            MlsContentBody::Proposal(proposal),
             credential_bundle,
             context,
             membership_key,
@@ -250,9 +244,7 @@ impl MlsPlaintext {
         Self::new(
             framing_parameters,
             sender,
-            Payload {
-                payload: MlsContentBody::Commit(commit),
-            },
+            MlsContentBody::Commit(commit),
             credential_bundle,
             context,
             backend,
@@ -275,9 +267,7 @@ impl MlsPlaintext {
         Self::new_with_membership_tag(
             framing_parameters,
             sender_reference,
-            Payload {
-                payload: MlsContentBody::Application(application_message.into()),
-            },
+            MlsContentBody::Application(application_message.into()),
             credential_bundle,
             context,
             membership_key,
@@ -462,7 +452,7 @@ pub(crate) struct MlsPlaintextTbs {
     pub(super) epoch: GroupEpoch,
     pub(super) sender: Sender,
     pub(super) authenticated_data: TlsByteVecU32,
-    pub(super) payload: MlsContentBody,
+    pub(super) body: MlsContentBody,
 }
 
 fn encode_tbs<'a>(
@@ -622,7 +612,7 @@ impl VerifiableMlsPlaintext {
 
     /// Get the content of the message.
     pub(crate) fn content(&self) -> &MlsContentBody {
-        &self.tbs.payload
+        &self.tbs.body
     }
 
     /// Get the wire format.
@@ -660,13 +650,13 @@ impl VerifiableMlsPlaintext {
 
     /// Get the content type
     pub(crate) fn content_type(&self) -> ContentType {
-        self.tbs.payload.content_type()
+        self.tbs.body.content_type()
     }
 
     /// Set the content.
     #[cfg(test)]
     pub(crate) fn set_content(&mut self, content: MlsContentBody) {
-        self.tbs.payload = content;
+        self.tbs.body = content;
     }
 
     /// Get the signature.
@@ -711,7 +701,7 @@ impl MlsPlaintextTbs {
         epoch: impl Into<GroupEpoch>,
         sender: Sender,
         authenticated_data: TlsByteVecU32,
-        payload: Payload,
+        body: MlsContentBody,
     ) -> Self {
         MlsPlaintextTbs {
             serialized_context: None,
@@ -720,7 +710,7 @@ impl MlsPlaintextTbs {
             epoch: epoch.into(),
             sender,
             authenticated_data,
-            payload: payload.payload,
+            body,
         }
     }
     /// Adds a serialized context to MlsPlaintextTbs.
@@ -741,7 +731,7 @@ impl MlsPlaintextTbs {
             epoch: mls_plaintext.content.epoch,
             sender: mls_plaintext.content.sender,
             authenticated_data: mls_plaintext.content.authenticated_data,
-            payload: mls_plaintext.content.body,
+            body: mls_plaintext.content.body,
         }
     }
 
@@ -777,7 +767,7 @@ impl VerifiedStruct<VerifiableMlsPlaintext> for MlsPlaintext {
             epoch: v.tbs.epoch,
             sender: v.tbs.sender,
             authenticated_data: v.tbs.authenticated_data,
-            body: v.tbs.payload,
+            body: v.tbs.body,
         };
 
         Self {
@@ -799,7 +789,7 @@ impl SignedStruct<MlsPlaintextTbs> for MlsPlaintext {
             epoch: tbs.epoch,
             sender: tbs.sender,
             authenticated_data: tbs.authenticated_data,
-            body: tbs.payload,
+            body: tbs.body,
         };
 
         Self {
