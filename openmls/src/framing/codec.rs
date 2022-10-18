@@ -25,9 +25,7 @@ impl tls_codec::Deserialize for VerifiableMlsPlaintext {
                 content.epoch,
                 content.sender,
                 content.authenticated_data,
-                Payload {
-                    payload: content.body,
-                },
+                content.body,
             ),
             signature,
             confirmation_tag,
@@ -46,7 +44,7 @@ impl tls_codec::Size for VerifiableMlsPlaintext {
             + self.tbs.epoch.tls_serialized_len()
             + self.tbs.sender.tls_serialized_len()
             + self.tbs.authenticated_data.tls_serialized_len()
-            + self.tbs.payload.tls_serialized_len()
+            + self.tbs.body.tls_serialized_len()
             + self.signature.tls_serialized_len()
             + self.confirmation_tag.tls_serialized_len()
             + self.membership_tag.tls_serialized_len()
@@ -60,7 +58,7 @@ impl tls_codec::Serialize for VerifiableMlsPlaintext {
         written += self.tbs.epoch.tls_serialize(writer)?;
         written += self.tbs.sender.tls_serialize(writer)?;
         written += self.tbs.authenticated_data.tls_serialize(writer)?;
-        written += self.tbs.payload.tls_serialize(writer)?;
+        written += self.tbs.body.tls_serialize(writer)?;
         written += self.signature.tls_serialize(writer)?;
         written += self.confirmation_tag.tls_serialize(writer)?;
         self.membership_tag
@@ -110,7 +108,7 @@ impl tls_codec::Size for MlsPlaintextTbs {
             + self.epoch.tls_serialized_len()
             + self.sender.tls_serialized_len()
             + self.authenticated_data.tls_serialized_len()
-            + self.payload.tls_serialized_len()
+            + self.body.tls_serialized_len()
     }
 }
 
@@ -123,7 +121,7 @@ impl tls_codec::Serialize for MlsPlaintextTbs {
             &self.epoch,
             &self.sender,
             &self.authenticated_data,
-            &self.payload,
+            &self.body,
             writer,
         )
     }
