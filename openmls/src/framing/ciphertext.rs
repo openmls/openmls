@@ -79,14 +79,14 @@ impl MlsCiphertext {
         let mls_ciphertext_content_aad = MlsCiphertextContentAad {
             group_id: header.group_id.clone(),
             epoch: header.epoch,
-            content_type: mls_plaintext.content_type(),
+            content_type: mls_plaintext.content().content_type(),
             authenticated_data: TlsByteSliceU32(mls_plaintext.authenticated_data()),
         };
         let mls_ciphertext_content_aad_bytes = mls_ciphertext_content_aad
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
         // Extract generation and key material for encryption
-        let secret_type = SecretType::from(&mls_plaintext.content_type());
+        let secret_type = SecretType::from(&mls_plaintext.content().content_type());
         let (generation, (ratchet_key, ratchet_nonce)) = message_secrets
             .secret_tree_mut()
             .secret_for_encryption(ciphersuite, backend, header.sender, secret_type)?;
@@ -124,7 +124,7 @@ impl MlsCiphertext {
         let mls_sender_data_aad = MlsSenderDataAad::new(
             header.group_id.clone(),
             header.epoch,
-            mls_plaintext.content_type(),
+            mls_plaintext.content().content_type(),
         );
         // Serialize the sender data AAD
         let mls_sender_data_aad_bytes = mls_sender_data_aad
@@ -146,7 +146,7 @@ impl MlsCiphertext {
             wire_format: WireFormat::MlsCiphertext,
             group_id: header.group_id,
             epoch: header.epoch,
-            content_type: mls_plaintext.content_type(),
+            content_type: mls_plaintext.content().content_type(),
             authenticated_data: mls_plaintext.authenticated_data().into(),
             encrypted_sender_data: encrypted_sender_data.into(),
             ciphertext: ciphertext.into(),
