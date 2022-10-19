@@ -158,6 +158,7 @@ impl tls_codec::Deserialize for MlsCiphertext {
     }
 }
 
+// TODO(#1053): Replace with `derive(TlsSerialize)`.
 impl tls_codec::Serialize for MlsMessage {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
         match self.body {
@@ -167,6 +168,7 @@ impl tls_codec::Serialize for MlsMessage {
     }
 }
 
+// TODO(#1053): Replace with `derive(TlsDeserialize)`.
 impl tls_codec::Deserialize for MlsMessage {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
         // Determine the wire format by looking at the first byte
@@ -196,6 +198,7 @@ impl tls_codec::Deserialize for MlsMessage {
     }
 }
 
+// TODO(#1053): Replace with `derive(Size)`.
 impl tls_codec::Size for MlsMessage {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
