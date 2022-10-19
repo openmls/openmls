@@ -377,11 +377,7 @@ impl TryFrom<u8> for ContentType {
 
 impl From<&MlsContentBody> for ContentType {
     fn from(value: &MlsContentBody) -> Self {
-        match value {
-            MlsContentBody::Application(_) => ContentType::Application,
-            MlsContentBody::Proposal(_) => ContentType::Proposal,
-            MlsContentBody::Commit(_) => ContentType::Commit,
-        }
+        value.content_type()
     }
 }
 
