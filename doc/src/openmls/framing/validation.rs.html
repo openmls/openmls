@@ -637,7 +637,7 @@
             <span class="ident">Sender::NewMember</span> =&gt; {
                 <span class="comment">// Since this allows only commits to have a sender type `Member`, it checks</span>
                 <span class="comment">// ValSem112</span>
-                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">MlsPlaintextContentType::Commit</span>(<span class="ident">commit</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext</span>().<span class="ident">content</span>() {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">MlsContentBody::Commit</span>(<span class="ident">commit</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">plaintext</span>().<span class="ident">content</span>() {
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">path</span>) <span class="op">=</span> <span class="ident">commit</span>.<span class="ident">path</span>() {
                         <span class="prelude-val">Ok</span>(<span class="ident">path</span>.<span class="ident">leaf_key_package</span>().<span class="ident">credential</span>().<span class="ident">clone</span>())
                     } <span class="kw">else</span> {

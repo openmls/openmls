@@ -494,6 +494,15 @@
 <span id="494">494</span>
 <span id="495">495</span>
 <span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Messages</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module contains the types and implementations for Commit &amp; Welcome messages,</span>
@@ -633,6 +642,15 @@
 <span class="doccomment">/// members to update their representation of the state of</span>
 <span class="doccomment">/// the group by applying the proposals and advancing the</span>
 <span class="doccomment">/// key schedule.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// ```c</span>
+<span class="doccomment">/// // draft-ietf-mls-protocol-16</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// struct {</span>
+<span class="doccomment">///     ProposalOrRef proposals&lt;V&gt;;</span>
+<span class="doccomment">///     optional&lt;UpdatePath&gt; path;</span>
+<span class="doccomment">/// } Commit;</span>
+<span class="doccomment">/// ```</span>
 <span class="attribute">#[<span class="ident">derive</span>(
     <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>,
 )]</span>
