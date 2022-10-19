@@ -67,6 +67,7 @@ impl MlsCiphertext {
             ciphertext,
         }
     }
+
     /// Try to create a new `MlsCiphertext` from an `MlsPlaintext`
     pub(crate) fn try_from_plaintext(
         mls_plaintext: &MlsPlaintext,
