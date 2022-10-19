@@ -160,9 +160,9 @@ impl tls_codec::Deserialize for MlsCiphertext {
 
 impl tls_codec::Serialize for MlsMessage {
     fn tls_serialize<W: std::io::Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
-        match self {
-            MlsMessage::Ciphertext(m) => m.tls_serialize(writer),
-            MlsMessage::Plaintext(m) => m.tls_serialize(writer),
+        match self.body {
+            MlsMessageBody::Ciphertext(ref m) => m.tls_serialize(writer),
+            MlsMessageBody::Plaintext(ref m) => m.tls_serialize(writer),
         }
     }
 }
@@ -178,16 +178,18 @@ impl tls_codec::Deserialize for MlsMessage {
             Some(first_byte) => {
                 let mut chain = first_byte_buffer.chain(bytes);
                 let wire_format = WireFormat::tls_deserialize(&mut vec![*first_byte].as_slice())?;
-                match wire_format {
+                let body = match wire_format {
                     WireFormat::MlsPlaintext => {
                         let plaintext = VerifiableMlsPlaintext::tls_deserialize(&mut chain)?;
-                        Ok(MlsMessage::Plaintext(Box::new(plaintext)))
+                        MlsMessageBody::Plaintext(plaintext)
                     }
                     WireFormat::MlsCiphertext => {
                         let ciphertext = MlsCiphertext::tls_deserialize(&mut chain)?;
-                        Ok(MlsMessage::Ciphertext(Box::new(ciphertext)))
+                        MlsMessageBody::Ciphertext(ciphertext)
                     }
-                }
+                };
+
+                Ok(MlsMessage { body })
             }
             None => Err(tls_codec::Error::EndOfStream),
         }
@@ -197,11 +199,11 @@ impl tls_codec::Deserialize for MlsMessage {
 impl tls_codec::Size for MlsMessage {
     #[inline]
     fn tls_serialized_len(&self) -> usize {
-        match &self {
-            MlsMessage::Plaintext(plaintext) => {
+        match &self.body {
+            MlsMessageBody::Plaintext(plaintext) => {
                 VerifiableMlsPlaintext::tls_serialized_len(plaintext)
             }
-            MlsMessage::Ciphertext(ciphertext) => MlsCiphertext::tls_serialized_len(ciphertext),
+            MlsMessageBody::Ciphertext(ciphertext) => MlsCiphertext::tls_serialized_len(ciphertext),
         }
     }
 }
