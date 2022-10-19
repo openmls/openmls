@@ -530,14 +530,14 @@
             .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>;
         <span class="comment">// Extract generation and key material for encryption</span>
         <span class="kw">let</span> <span class="ident">secret_type</span> <span class="op">=</span> <span class="ident">SecretType::from</span>(<span class="kw-2">&amp;</span><span class="ident">mls_plaintext</span>.<span class="ident">content_type</span>());
-        <span class="kw">let</span> (<span class="ident">generation</span>, (<span class="ident">ratchet_key</span>, <span class="kw-2">mut</span> <span class="ident">ratchet_nonce</span>)) <span class="op">=</span> <span class="ident">message_secrets</span>
+        <span class="kw">let</span> (<span class="ident">generation</span>, (<span class="ident">ratchet_key</span>, <span class="ident">ratchet_nonce</span>)) <span class="op">=</span> <span class="ident">message_secrets</span>
             .<span class="ident">secret_tree_mut</span>()
             .<span class="ident">secret_for_encryption</span>(<span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">header</span>.<span class="ident">sender</span>, <span class="ident">secret_type</span>)<span class="question-mark">?</span>;
         <span class="comment">// Sample reuse guard uniformly at random.</span>
         <span class="kw">let</span> <span class="ident">reuse_guard</span>: <span class="ident">ReuseGuard</span> <span class="op">=</span>
             <span class="ident">ReuseGuard::try_from_random</span>(<span class="ident">backend</span>).<span class="ident">map_err</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>)<span class="question-mark">?</span>;
         <span class="comment">// Prepare the nonce by xoring with the reuse guard.</span>
-        <span class="ident">ratchet_nonce</span>.<span class="ident">xor_with_reuse_guard</span>(<span class="kw-2">&amp;</span><span class="ident">reuse_guard</span>);
+        <span class="kw">let</span> <span class="ident">prepared_nonce</span> <span class="op">=</span> <span class="ident">ratchet_nonce</span>.<span class="ident">xor_with_reuse_guard</span>(<span class="kw-2">&amp;</span><span class="ident">reuse_guard</span>);
         <span class="comment">// Encrypt the payload</span>
         <span class="kw">let</span> <span class="ident">ciphertext</span> <span class="op">=</span> <span class="ident">ratchet_key</span>
             .<span class="ident">aead_seal</span>(
@@ -549,7 +549,7 @@
                 )
                 .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>,
                 <span class="kw-2">&amp;</span><span class="ident">mls_ciphertext_content_aad_bytes</span>,
-                <span class="kw-2">&amp;</span><span class="ident">ratchet_nonce</span>,
+                <span class="kw-2">&amp;</span><span class="ident">prepared_nonce</span>,
             )
             .<span class="ident">map_err</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>)<span class="question-mark">?</span>;
         <span class="comment">// Derive the sender data key from the key schedule using the ciphertext.</span>
@@ -599,7 +599,7 @@
     <span class="doccomment">/// Decrypt the sender data from this [`MlsCiphertext`].</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">sender_data</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">message_secrets</span>: <span class="kw-2">&amp;mut</span> <span class="ident">MessageSecrets</span>,
+        <span class="ident">message_secrets</span>: <span class="kw-2">&amp;</span><span class="ident">MessageSecrets</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">MlsSenderData</span>, <span class="ident">MessageDecryptionError</span><span class="op">&gt;</span> {
@@ -695,7 +695,7 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">VerifiableMlsPlaintext</span>, <span class="ident">MessageDecryptionError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">secret_type</span> <span class="op">=</span> <span class="ident">SecretType::from</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">content_type</span>);
         <span class="comment">// Extract generation and key material for encryption</span>
-        <span class="kw">let</span> (<span class="ident">ratchet_key</span>, <span class="kw-2">mut</span> <span class="ident">ratchet_nonce</span>) <span class="op">=</span> <span class="ident">message_secrets</span>
+        <span class="kw">let</span> (<span class="ident">ratchet_key</span>, <span class="ident">ratchet_nonce</span>) <span class="op">=</span> <span class="ident">message_secrets</span>
             .<span class="ident">secret_tree_mut</span>()
             .<span class="ident">secret_for_decryption</span>(
                 <span class="ident">ciphersuite</span>,
@@ -710,8 +710,8 @@
                 <span class="ident">MessageDecryptionError::GenerationOutOfBound</span>
             })<span class="question-mark">?</span>;
         <span class="comment">// Prepare the nonce by xoring with the reuse guard.</span>
-        <span class="ident">ratchet_nonce</span>.<span class="ident">xor_with_reuse_guard</span>(<span class="kw-2">&amp;</span><span class="ident">sender_data</span>.<span class="ident">reuse_guard</span>);
-        <span class="kw">let</span> <span class="ident">mls_ciphertext_content</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">decrypt</span>(<span class="ident">backend</span>, <span class="ident">ratchet_key</span>, <span class="kw-2">&amp;</span><span class="ident">ratchet_nonce</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">prepared_nonce</span> <span class="op">=</span> <span class="ident">ratchet_nonce</span>.<span class="ident">xor_with_reuse_guard</span>(<span class="kw-2">&amp;</span><span class="ident">sender_data</span>.<span class="ident">reuse_guard</span>);
+        <span class="kw">let</span> <span class="ident">mls_ciphertext_content</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">decrypt</span>(<span class="ident">backend</span>, <span class="ident">ratchet_key</span>, <span class="kw-2">&amp;</span><span class="ident">prepared_nonce</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Extract sender. The sender type is always of type Member for MlsCiphertext.</span>
         <span class="kw">let</span> <span class="ident">sender</span> <span class="op">=</span> <span class="ident">Sender::from_sender_data</span>(<span class="ident">sender_data</span>);

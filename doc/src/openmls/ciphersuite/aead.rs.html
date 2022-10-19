@@ -158,16 +158,6 @@
 <span id="158">158</span>
 <span id="159">159</span>
 <span id="160">160</span>
-<span id="161">161</span>
-<span id="162">162</span>
-<span id="163">163</span>
-<span id="164">164</span>
-<span id="165">165</span>
-<span id="166">166</span>
-<span id="167">167</span>
-<span id="168">168</span>
-<span id="169">169</span>
-<span id="170">170</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// The default NONCE size in bytes.</span>
@@ -183,10 +173,7 @@
 
 <span class="doccomment">/// AEAD Nonce</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">AeadNonce</span> {
-    <span class="comment">// TODO: Use const generics here</span>
-    <span class="ident">value</span>: [<span class="ident">u8</span>; <span class="ident">NONCE_BYTES</span>],
-}
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">AeadNonce</span>([<span class="ident">u8</span>; <span class="ident">NONCE_BYTES</span>]);
 
 <span class="kw">impl</span> <span class="ident">AeadKey</span> {
     <span class="doccomment">/// Create an `AeadKey` from a `Secret`. TODO: This function should</span>
@@ -224,13 +211,7 @@
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
         <span class="ident">backend</span>
             .<span class="ident">crypto</span>()
-            .<span class="ident">aead_encrypt</span>(
-                <span class="self">self</span>.<span class="ident">aead_mode</span>,
-                <span class="self">self</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>(),
-                <span class="ident">msg</span>,
-                <span class="kw-2">&amp;</span><span class="ident">nonce</span>.<span class="ident">value</span>,
-                <span class="ident">aad</span>,
-            )
+            .<span class="ident">aead_encrypt</span>(<span class="self">self</span>.<span class="ident">aead_mode</span>, <span class="self">self</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>(), <span class="ident">msg</span>, <span class="kw-2">&amp;</span><span class="ident">nonce</span>.<span class="number">0</span>, <span class="ident">aad</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">CryptoError::CryptoLibraryError</span>)
     }
 
@@ -248,7 +229,7 @@
                 <span class="self">self</span>.<span class="ident">aead_mode</span>,
                 <span class="self">self</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>(),
                 <span class="ident">ciphertext</span>,
-                <span class="kw-2">&amp;</span><span class="ident">nonce</span>.<span class="ident">value</span>,
+                <span class="kw-2">&amp;</span><span class="ident">nonce</span>.<span class="number">0</span>,
                 <span class="ident">aad</span>,
             )
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">CryptoError::AeadDecryptionError</span>)
@@ -261,7 +242,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_secret</span>(<span class="ident">secret</span>: <span class="ident">Secret</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nonce</span> <span class="op">=</span> [<span class="number">0u8</span>; <span class="ident">NONCE_BYTES</span>];
         <span class="ident">nonce</span>.<span class="ident">clone_from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">secret</span>.<span class="ident">value</span>);
-        <span class="ident">AeadNonce</span> { <span class="ident">value</span>: <span class="ident">nonce</span> }
+        <span class="self">Self</span>(<span class="ident">nonce</span>)
     }
 
     <span class="doccomment">/// Generate a new random nonce.</span>
@@ -270,29 +251,28 @@
     <span class="doccomment">/// TODO: This panics if another thread holding the rng panics.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">random</span>(<span class="ident">rng</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">AeadNonce</span> {
-            <span class="ident">value</span>: <span class="ident">rng</span>.<span class="ident">rand</span>().<span class="ident">random_array</span>().<span class="ident">expect</span>(<span class="string">&quot;Not enough entropy.&quot;</span>),
-        }
+        <span class="self">Self</span>(<span class="ident">rng</span>.<span class="ident">rand</span>().<span class="ident">random_array</span>().<span class="ident">expect</span>(<span class="string">&quot;Not enough entropy.&quot;</span>))
     }
 
     <span class="doccomment">/// Get a slice to the nonce value.</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">value</span>
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="number">0</span>
     }
 
     <span class="doccomment">/// Xor the first bytes of the nonce with the reuse_guard.</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">xor_with_reuse_guard</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">reuse_guard</span>: <span class="kw-2">&amp;</span><span class="ident">ReuseGuard</span>) {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">xor_with_reuse_guard</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">reuse_guard</span>: <span class="kw-2">&amp;</span><span class="ident">ReuseGuard</span>) -&gt; <span class="self">Self</span> {
         <span class="macro">log_crypto!</span>(
             <span class="ident">trace</span>,
             <span class="string">&quot;  XOR re-use guard {:x?}^{:x?}&quot;</span>,
-            <span class="self">self</span>.<span class="ident">value</span>,
+            <span class="self">self</span>.<span class="number">0</span>,
             <span class="ident">reuse_guard</span>.<span class="ident">value</span>
         );
         <span class="kw">for</span> <span class="ident">i</span> <span class="kw">in</span> <span class="number">0</span>..<span class="ident">REUSE_GUARD_BYTES</span> {
-            <span class="self">self</span>.<span class="ident">value</span>[<span class="ident">i</span>] <span class="op">^</span><span class="op">=</span> <span class="ident">reuse_guard</span>.<span class="ident">value</span>[<span class="ident">i</span>]
+            <span class="self">self</span>.<span class="number">0</span>[<span class="ident">i</span>] <span class="op">^</span><span class="op">=</span> <span class="ident">reuse_guard</span>.<span class="ident">value</span>[<span class="ident">i</span>]
         }
-        <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;    = {:x?}&quot;</span>, <span class="self">self</span>.<span class="ident">value</span>);
+        <span class="macro">log_crypto!</span>(<span class="ident">trace</span>, <span class="string">&quot;    = {:x?}&quot;</span>, <span class="self">self</span>.<span class="number">0</span>);
+        <span class="self">self</span>
     }
 }
 
@@ -314,8 +294,9 @@
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">unit_tests</span> {
-    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::test_utils</span>::<span class="kw-2">*</span>;
+
+    <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
 
     <span class="doccomment">/// Make sure that xoring works by xoring a nonce with a reuse guard, testing if</span>
     <span class="doccomment">/// it has changed, xoring it again and testing that it&#39;s back in its original</span>
@@ -325,15 +306,14 @@
         <span class="kw">let</span> <span class="ident">reuse_guard</span>: <span class="ident">ReuseGuard</span> <span class="op">=</span>
             <span class="ident">ReuseGuard::try_from_random</span>(<span class="ident">backend</span>).<span class="ident">expect</span>(<span class="string">&quot;An unexpected error occurred.&quot;</span>);
         <span class="kw">let</span> <span class="ident">original_nonce</span> <span class="op">=</span> <span class="ident">AeadNonce::random</span>(<span class="ident">backend</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nonce</span> <span class="op">=</span> <span class="ident">original_nonce</span>.<span class="ident">clone</span>();
-        <span class="ident">nonce</span>.<span class="ident">xor_with_reuse_guard</span>(<span class="kw-2">&amp;</span><span class="ident">reuse_guard</span>);
+        <span class="kw">let</span> <span class="ident">xored_once</span> <span class="op">=</span> <span class="ident">original_nonce</span>.<span class="ident">clone</span>().<span class="ident">xor_with_reuse_guard</span>(<span class="kw-2">&amp;</span><span class="ident">reuse_guard</span>);
         <span class="macro">assert_ne!</span>(
-            <span class="ident">original_nonce</span>, <span class="ident">nonce</span>,
+            <span class="ident">original_nonce</span>, <span class="ident">xored_once</span>,
             <span class="string">&quot;xoring with reuse_guard did not change the nonce&quot;</span>
         );
-        <span class="ident">nonce</span>.<span class="ident">xor_with_reuse_guard</span>(<span class="kw-2">&amp;</span><span class="ident">reuse_guard</span>);
+        <span class="kw">let</span> <span class="ident">xored_twice</span> <span class="op">=</span> <span class="ident">xored_once</span>.<span class="ident">xor_with_reuse_guard</span>(<span class="kw-2">&amp;</span><span class="ident">reuse_guard</span>);
         <span class="macro">assert_eq!</span>(
-            <span class="ident">original_nonce</span>, <span class="ident">nonce</span>,
+            <span class="ident">original_nonce</span>, <span class="ident">xored_twice</span>,
             <span class="string">&quot;xoring twice changed the original value&quot;</span>
         );
     }

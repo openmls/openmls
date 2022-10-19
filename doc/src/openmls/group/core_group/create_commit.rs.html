@@ -475,15 +475,11 @@
 <span id="475">475</span>
 <span id="476">476</span>
 <span id="477">477</span>
-<span id="478">478</span>
-<span id="479">479</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite::signable::Signable</span>,
-    <span class="ident">framing</span>::<span class="kw-2">*</span>,
-    <span class="ident">group</span>::{<span class="ident">core_group</span>::<span class="kw-2">*</span>, <span class="ident">errors::CreateCommitError</span>, <span class="kw-2">*</span>},
-    <span class="ident">messages</span>::<span class="kw-2">*</span>,
+    <span class="ident">group</span>::{<span class="ident">core_group</span>::<span class="kw-2">*</span>, <span class="ident">errors::CreateCommitError</span>},
     <span class="ident">treesync</span>::{
         <span class="ident">diff::TreeSyncDiff</span>,
         <span class="ident">node::parent_node::PlainUpdatePathNode</span>,

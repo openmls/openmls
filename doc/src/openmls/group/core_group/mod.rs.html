@@ -724,6 +724,21 @@
 <span id="724">724</span>
 <span id="725">725</span>
 <span id="726">726</span>
+<span id="727">727</span>
+<span id="728">728</span>
+<span id="729">729</span>
+<span id="730">730</span>
+<span id="731">731</span>
+<span id="732">732</span>
+<span id="733">733</span>
+<span id="734">734</span>
+<span id="735">735</span>
+<span id="736">736</span>
+<span id="737">737</span>
+<span id="738">738</span>
+<span id="739">739</span>
+<span id="740">740</span>
+<span id="741">741</span>
 </pre><pre class="rust"><code><span class="doccomment">//! ### Don&#39;t Panic!</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Functions in this module should never panic. However, if there is a bug in</span>
@@ -758,6 +773,7 @@
 <span class="kw">mod</span> <span class="ident">test_past_secrets</span>;
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">test_proposals</span>;
+
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::errors::CreateGroupContextExtProposalError</span>;
 
@@ -1350,6 +1366,20 @@
                 .<span class="ident">ok_or</span>(<span class="ident">SecretTreeError::TooDistantInThePast</span>)
         } <span class="kw">else</span> {
             <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">message_secrets_store</span>.<span class="ident">message_secrets_mut</span>())
+        }
+    }
+
+    <span class="doccomment">/// Get the message secrets. Either from the secrets store or from the group.</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">message_secrets_for_epoch</span><span class="op">&lt;</span><span class="lifetime">&#39;secret</span>, <span class="lifetime">&#39;group</span>: <span class="lifetime">&#39;secret</span><span class="op">&gt;</span>(
+        <span class="kw-2">&amp;</span><span class="lifetime">&#39;group</span> <span class="self">self</span>,
+        <span class="ident">epoch</span>: <span class="ident">GroupEpoch</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;secret</span> <span class="ident">MessageSecrets</span>, <span class="ident">SecretTreeError</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="ident">epoch</span> <span class="op">&lt;</span> <span class="self">self</span>.<span class="ident">context</span>().<span class="ident">epoch</span>() {
+            <span class="self">self</span>.<span class="ident">message_secrets_store</span>
+                .<span class="ident">secrets_for_epoch</span>(<span class="ident">epoch</span>)
+                .<span class="ident">ok_or</span>(<span class="ident">SecretTreeError::TooDistantInThePast</span>)
+        } <span class="kw">else</span> {
+            <span class="prelude-val">Ok</span>(<span class="self">self</span>.<span class="ident">message_secrets_store</span>.<span class="ident">message_secrets</span>())
         }
     }
 

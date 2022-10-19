@@ -229,8 +229,6 @@
 <span id="229">229</span>
 <span id="230">230</span>
 <span id="231">231</span>
-<span id="232">232</span>
-<span id="233">233</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">log::debug</span>;
 <span class="kw">use</span> <span class="ident">openmls_traits::crypto::OpenMlsCrypto</span>;
 <span class="kw">use</span> <span class="ident">tls_codec::Deserialize</span>;
@@ -238,10 +236,8 @@
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite</span>::{<span class="ident">hash_ref::HashReference</span>, <span class="ident">signable::Verifiable</span>},
     <span class="ident">extensions::ExtensionType</span>,
-    <span class="ident">group</span>::{<span class="ident">core_group</span>::<span class="kw-2">*</span>, <span class="ident">errors::WelcomeError</span>, <span class="kw-2">*</span>},
-    <span class="ident">key_packages</span>::<span class="kw-2">*</span>,
-    <span class="ident">messages</span>::<span class="kw-2">*</span>,
-    <span class="ident">schedule</span>::{<span class="ident">errors::PskError</span>, <span class="kw-2">*</span>},
+    <span class="ident">group</span>::{<span class="ident">core_group</span>::<span class="kw-2">*</span>, <span class="ident">errors::WelcomeError</span>},
+    <span class="ident">schedule::errors::PskError</span>,
     <span class="ident">treesync</span>::{<span class="ident">errors::TreeSyncFromNodesError</span>, <span class="ident">node::Node</span>},
 };
 
