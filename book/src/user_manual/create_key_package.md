@@ -1,27 +1,27 @@
 # Key packages
 
-To enable asynchronous establishment of groups through pre-publishing key material, as well as to represent clients in group, MLS relies on key packages. Key packages hold a number of pieces of information:
+To enable the asynchronous establishment of groups through pre-publishing key material, as well as to represent clients in the group, MLS relies on key packages. Key packages hold several pieces of information:
 
 * a public HPKE encryption key to enable MLS' basic group key distribution feature
-* the life time throughout which the key package is valid
-* information about the client's capabilities (i.e. which features of MLS it supports)
+* the lifetime throughout which the key package is valid
+* information about the client's capabilities (i.e., which features of MLS it supports)
 * any extension that the client wants to include
 * one of the client's [credentials](./identity.md), as well as a signature over the whole key package using the private key corresponding to the credential's signature public key
 
 ## Creating key packages
 
-Before clients can communicate with each other using OpenMLS they need to generate key packages and publish them with the Delivery Service. Clients can generate an arbitrary number of key packages ahead of time.
+Before clients can communicate with each other using OpenMLS, they need to generate key packages and publish them with the Delivery Service. Clients can generate an arbitrary number of key packages ahead of time.
 
 Clients keep the private key material corresponding to a key package locally in the key store and fetch it from there when a key package was used to add them to a new group.
 
 Clients need to choose a few parameters to create a `KeyPackageBundle`:
 
-- `ciphersuites: &[CiphersuiteName]`: A list of ciphersuites supported by the client.
+- `ciphersuites: &[CiphersuiteName]`: A list of cipher suites supported by the client.
 - `extensions: Vec<Extensions>`: A list of supported extensions.
 
-Clients must specify at least one ciphersuite, and must not advertize ciphersuites they do not support.
+Clients must specify at least one cipher suite and not advertise ciphersuites they do not support.
 
-Clients should specify all extensions they support. Mandatory extensions, like the `LifetimeExtension` can be specified here with specific values. If no extensions are specified, mandatory extensions are created on the fly with default values. See the documentation of extensions for more details.
+Clients should specify all extensions they support. Mandatory extensions, like the `LifetimeExtension` can be specified here with specific values. Mandatory extensions are created on the fly with default values if no extensions are specified. See the documentation of extensions for more details.
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/book_code.rs:create_key_package_bundle}}
