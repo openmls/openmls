@@ -493,9 +493,9 @@ impl CoreGroup {
         self.group_epoch_secrets().authentication_code()
     }
 
-    /// Returns the resumption secret
-    pub(crate) fn resumption_secret(&self) -> &ResumptionSecret {
-        self.group_epoch_secrets().resumption_secret()
+    /// Returns the resumption psk
+    pub(crate) fn resumption_psk(&self) -> &ResumptionPsk {
+        self.group_epoch_secrets().resumption_psk()
     }
 
     /// Loads the state from persisted state

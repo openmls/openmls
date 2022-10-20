@@ -48,7 +48,7 @@ struct Epoch {
     external_secret: String,
     confirmation_key: String,
     membership_key: String,
-    resumption_secret: String,
+    resumption_psk: String,
 
     external_pub: String, // TLS serialized HpkePublicKey
 }
@@ -238,7 +238,7 @@ pub fn generate_test_vector(n_epochs: u64, ciphersuite: Ciphersuite) -> KeySched
             external_secret: bytes_to_hex(epoch_secrets.external_secret().as_slice()),
             confirmation_key: bytes_to_hex(epoch_secrets.confirmation_key().as_slice()),
             membership_key: bytes_to_hex(epoch_secrets.membership_key().as_slice()),
-            resumption_secret: bytes_to_hex(epoch_secrets.resumption_secret().as_slice()),
+            resumption_psk: bytes_to_hex(epoch_secrets.resumption_psk().as_slice()),
             external_pub: bytes_to_hex(
                 &HpkePublicKey::from(external_key_pair.public)
                     .tls_serialize_detached()
@@ -471,11 +471,11 @@ pub fn run_test_vector(
             }
             return Err(KsTestVectorError::MembershipKeyMismatch);
         }
-        if hex_to_bytes(&epoch.resumption_secret) != epoch_secrets.resumption_secret().as_slice() {
+        if hex_to_bytes(&epoch.resumption_psk) != epoch_secrets.resumption_psk().as_slice() {
             if cfg!(test) {
-                panic!("Resumption secret mismatch");
+                panic!("Resumption psk mismatch");
             }
-            return Err(KsTestVectorError::ResumptionSecretMismatch);
+            return Err(KsTestVectorError::ResumptionPskMismatch);
         }
 
         // Calculate external HPKE key pair

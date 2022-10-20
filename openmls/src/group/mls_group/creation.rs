@@ -55,8 +55,8 @@ impl MlsGroup {
                 }
             })?;
 
-        let resumption_secret_store =
-            ResumptionSecretStore::new(mls_group_config.number_of_resumption_secrets);
+        let resumption_psk_store =
+            ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
 
         let mls_group = MlsGroup {
             mls_group_config: mls_group_config.clone(),
@@ -64,7 +64,7 @@ impl MlsGroup {
             proposal_store: ProposalStore::new(),
             own_kpbs: vec![],
             aad: vec![],
-            resumption_secret_store,
+            resumption_psk_store,
             group_state: MlsGroupState::Operational,
             state_changed: InnerState::Changed,
         };
@@ -81,8 +81,8 @@ impl MlsGroup {
         welcome: Welcome,
         ratchet_tree: Option<Vec<Option<Node>>>,
     ) -> Result<Self, WelcomeError> {
-        let resumption_secret_store =
-            ResumptionSecretStore::new(mls_group_config.number_of_resumption_secrets);
+        let resumption_psk_store =
+            ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
         let (key_package_bundle, hash_ref) = welcome
             .secrets()
             .iter()
@@ -111,7 +111,7 @@ impl MlsGroup {
             proposal_store: ProposalStore::new(),
             own_kpbs: vec![],
             aad: vec![],
-            resumption_secret_store,
+            resumption_psk_store,
             group_state: MlsGroupState::Operational,
             state_changed: InnerState::Changed,
         };
@@ -138,8 +138,8 @@ impl MlsGroup {
         aad: &[u8],
         credential_bundle: &CredentialBundle,
     ) -> Result<(Self, MlsMessageOut), ExternalCommitError> {
-        let resumption_secret_store =
-            ResumptionSecretStore::new(mls_group_config.number_of_resumption_secrets);
+        let resumption_psk_store =
+            ResumptionPskStore::new(mls_group_config.number_of_resumption_psks);
 
         // Prepare the commit parameters
         let framing_parameters =
@@ -165,7 +165,7 @@ impl MlsGroup {
             proposal_store: ProposalStore::new(),
             own_kpbs: vec![],
             aad: vec![],
-            resumption_secret_store,
+            resumption_psk_store,
             group_state: MlsGroupState::PendingCommit(Box::new(PendingCommitState::External(
                 create_commit_result.staged_commit,
             ))),
