@@ -8,7 +8,7 @@ use tls_codec::TlsSliceU8;
 use crate::{
     binary_tree::{LeafIndex, MlsBinaryTreeDiffError},
     error::LibraryError,
-    treesync::hashes::{LeafNodeHashInput, ParentNodeTreeHashInput},
+    treesync::hashes::{LeafNodeHashInput, ParentNodeHashInput},
 };
 
 use super::{errors::NodeError, node::leaf_node::LeafNode, Node};
@@ -132,7 +132,7 @@ impl TreeSyncNode {
             // FIXME: After PR #507 of the spec is merged, this not include a
             // NodeIndex. To be able to verify against test vectors, we include
             // it here for now.
-            let hash_input = ParentNodeTreeHashInput::new(
+            let hash_input = ParentNodeHashInput::new(
                 node_index,
                 parent_node_option,
                 TlsSliceU8(&left_hash),
