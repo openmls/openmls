@@ -1,7 +1,7 @@
 //! # Key schedule
 //!
 //! This module contains the types and implementations for key schedule operations.
-//! It exposes the [`AuthenticationCode`] & [`ResumptionSecret`].
+//! It exposes the [`AuthenticationCode`] & [`ResumptionPsk`].
 
 // Internal documentation
 //
@@ -118,7 +118,7 @@
 // | `external_secret`       | "external"      |
 // | `confirmation_key`      | "confirm"       |
 // | `membership_key`        | "membership"    |
-// | `resumption_secret`     | "resumption"    |
+// | `resumption_psk`        | "resumption"    |
 // ```
 
 use crate::{
@@ -158,12 +158,12 @@ mod unit_tests;
 /// A group secret that can be used among members to prove that a member was part of a group in a given epoch.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct ResumptionSecret {
+pub struct ResumptionPsk {
     secret: Secret,
 }
 
-impl ResumptionSecret {
-    /// Derive an `ResumptionSecret` from an `EpochSecret`.
+impl ResumptionPsk {
+    /// Derive an `ResumptionPsk` from an `EpochSecret`.
     fn new(
         backend: &impl OpenMlsCryptoProvider,
         epoch_secret: &EpochSecret,
@@ -1010,7 +1010,7 @@ impl SenderDataSecret {
 /// | `external_secret`       | "external"      |
 /// | `confirmation_key`      | "confirm"       |
 /// | `membership_key`        | "membership"    |
-/// | `resumption_secret`     | "resumption"    |
+/// | `resumption_psk`        | "resumption"    |
 pub(crate) struct EpochSecrets {
     init_secret: InitSecret,
     sender_data_secret: SenderDataSecret,
@@ -1020,7 +1020,7 @@ pub(crate) struct EpochSecrets {
     external_secret: ExternalSecret,
     confirmation_key: ConfirmationKey,
     membership_key: MembershipKey,
-    resumption_secret: ResumptionSecret,
+    resumption_psk: ResumptionPsk,
 }
 
 impl std::fmt::Debug for EpochSecrets {
@@ -1046,7 +1046,7 @@ impl PartialEq for EpochSecrets {
             && self.external_secret == other.external_secret
             && self.confirmation_key == other.confirmation_key
             && self.membership_key == other.membership_key
-            && self.resumption_secret == other.resumption_secret
+            && self.resumption_psk == other.resumption_psk
     }
 }
 
@@ -1088,8 +1088,8 @@ impl EpochSecrets {
 
     /// External secret
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn resumption_secret(&self) -> &ResumptionSecret {
-        &self.resumption_secret
+    pub(crate) fn resumption_psk(&self) -> &ResumptionPsk {
+        &self.resumption_psk
     }
 
     /// Init secret
@@ -1127,7 +1127,7 @@ impl EpochSecrets {
         let external_secret = ExternalSecret::new(backend, &epoch_secret)?;
         let confirmation_key = ConfirmationKey::new(backend, &epoch_secret)?;
         let membership_key = MembershipKey::new(backend, &epoch_secret)?;
-        let resumption_secret = ResumptionSecret::new(backend, &epoch_secret)?;
+        let resumption_psk = ResumptionPsk::new(backend, &epoch_secret)?;
 
         log::trace!("  Computing init secret.");
         let init_secret = InitSecret::new(backend, epoch_secret)?;
@@ -1141,7 +1141,7 @@ impl EpochSecrets {
             external_secret,
             confirmation_key,
             membership_key,
-            resumption_secret,
+            resumption_psk,
         })
     }
 
@@ -1183,7 +1183,7 @@ impl EpochSecrets {
                 exporter_secret: self.exporter_secret,
                 authentication_code: self.authentication_code,
                 external_secret: self.external_secret,
-                resumption_secret: self.resumption_secret,
+                resumption_psk: self.resumption_psk,
             },
             MessageSecrets::new(
                 self.sender_data_secret,
@@ -1202,7 +1202,7 @@ pub(crate) struct GroupEpochSecrets {
     exporter_secret: ExporterSecret,
     authentication_code: AuthenticationCode,
     external_secret: ExternalSecret,
-    resumption_secret: ResumptionSecret,
+    resumption_psk: ResumptionPsk,
 }
 
 impl std::fmt::Debug for GroupEpochSecrets {
@@ -1225,7 +1225,7 @@ impl PartialEq for GroupEpochSecrets {
         self.exporter_secret == other.exporter_secret
             && self.authentication_code == other.authentication_code
             && self.external_secret == other.external_secret
-            && self.resumption_secret == other.resumption_secret
+            && self.resumption_psk == other.resumption_psk
     }
 }
 
@@ -1251,7 +1251,7 @@ impl GroupEpochSecrets {
     }
 
     /// External secret
-    pub(crate) fn resumption_secret(&self) -> &ResumptionSecret {
-        &self.resumption_secret
+    pub(crate) fn resumption_psk(&self) -> &ResumptionPsk {
+        &self.resumption_psk
     }
 }
