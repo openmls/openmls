@@ -2,7 +2,7 @@ use tls_codec::Serialize;
 
 use crate::{
     group::errors::ExporterError, messages::public_group_state::PublicGroupState,
-    schedule::AuthenticationSecret,
+    schedule::AuthenticationCode,
 };
 
 use super::*;
@@ -37,9 +37,9 @@ impl MlsGroup {
         }
     }
 
-    /// Returns the authentication secret of the current epoch.
-    pub fn authentication_secret(&self) -> &AuthenticationSecret {
-        self.group.authentication_secret()
+    /// Returns the authentication code of the current epoch.
+    pub fn authentication_code(&self) -> &AuthenticationCode {
+        self.group.authentication_code()
     }
 
     /// Returns the resumption secret of the current epoch.
