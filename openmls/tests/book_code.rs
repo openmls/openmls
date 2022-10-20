@@ -214,10 +214,10 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // Make sure that both groups have the same members
     assert_eq!(alice_group.members(), bob_group.members());
 
-    // Make sure that both groups have the same authentication secret
+    // Make sure that both groups have the same authentication code
     assert_eq!(
-        alice_group.authentication_secret().as_slice(),
-        bob_group.authentication_secret().as_slice()
+        alice_group.authentication_code().as_slice(),
+        bob_group.authentication_code().as_slice()
     );
 
     // === Alice sends a message to Bob ===
