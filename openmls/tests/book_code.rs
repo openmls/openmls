@@ -10,6 +10,30 @@ lazy_static! {
         tempfile::tempdir().expect("Error creating temp directory");
 }
 
+#[allow(dead_code)]
+fn create_backend_rust_crypto() -> impl OpenMlsCryptoProvider {
+    #[allow(unused_imports)]
+    // ANCHOR: create_backend_rust_crypto
+    use openmls_rust_crypto::OpenMlsRustCrypto;
+
+    let backend = OpenMlsRustCrypto::default();
+    // ANCHOR_END: create_backend_rust_crypto
+
+    backend
+}
+
+#[allow(dead_code)]
+fn create_backend_evercrypt() -> impl OpenMlsCryptoProvider {
+    #[allow(unused_imports)]
+    // ANCHOR: create_backend_evercrypt
+    use openmls_evercrypt::OpenMlsEvercrypt;
+
+    let backend = OpenMlsEvercrypt::default();
+    // ANCHOR_END: create_backend_evercrypt
+
+    backend
+}
+
 fn generate_credential_bundle(
     identity: Vec<u8>,
     credential_type: CredentialType,
