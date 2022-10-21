@@ -119,6 +119,15 @@
 <span id="119">119</span>
 <span id="120">120</span>
 <span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module contains helper structs and functions related to parent hashing</span>
 <span class="doccomment">//! and tree hashing.</span>
 <span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">crypto::OpenMlsCrypto</span>, <span class="ident">types::Ciphersuite</span>, <span class="ident">OpenMlsCryptoProvider</span>};
@@ -201,15 +210,24 @@
 }
 
 <span class="doccomment">/// Helper struct that can be serialized in the course of tree hash computation.</span>
+<span class="doccomment">///</span>
+<span class="doccomment">/// ```c</span>
+<span class="doccomment">/// // draft-ietf-mls-protocol-16</span>
+<span class="doccomment">/// struct {</span>
+<span class="doccomment">///     optional&lt;ParentNode&gt; parent_node;</span>
+<span class="doccomment">///     opaque left_hash&lt;V&gt;;</span>
+<span class="doccomment">///     opaque right_hash&lt;V&gt;;</span>
+<span class="doccomment">/// } ParentNodeHashInput;</span>
+<span class="doccomment">/// ```</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct</span> <span class="ident">ParentNodeTreeHashInput</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">struct</span> <span class="ident">ParentNodeHashInput</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="ident">node_index</span>: <span class="ident">LeafIndex</span>,
     <span class="ident">parent_node</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ParentNode</span><span class="op">&gt;</span>,
     <span class="ident">left_hash</span>: <span class="ident">TlsSliceU8</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">u8</span><span class="op">&gt;</span>,
     <span class="ident">right_hash</span>: <span class="ident">TlsSliceU8</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">u8</span><span class="op">&gt;</span>,
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">ParentNodeTreeHashInput</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+<span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">ParentNodeHashInput</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Create a new [`ParentNodeTreeHashInput`] instance.</span>
     <span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">node_index</span>: <span class="ident">LeafIndex</span>,

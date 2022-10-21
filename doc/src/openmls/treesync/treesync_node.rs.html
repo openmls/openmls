@@ -171,7 +171,7 @@
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">binary_tree</span>::{<span class="ident">LeafIndex</span>, <span class="ident">MlsBinaryTreeDiffError</span>},
     <span class="ident">error::LibraryError</span>,
-    <span class="ident">treesync::hashes</span>::{<span class="ident">LeafNodeHashInput</span>, <span class="ident">ParentNodeTreeHashInput</span>},
+    <span class="ident">treesync::hashes</span>::{<span class="ident">LeafNodeHashInput</span>, <span class="ident">ParentNodeHashInput</span>},
 };
 
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">errors::NodeError</span>, <span class="ident">node::leaf_node::LeafNode</span>, <span class="ident">Node</span>};
@@ -295,7 +295,7 @@
             <span class="comment">// FIXME: After PR #507 of the spec is merged, this not include a</span>
             <span class="comment">// NodeIndex. To be able to verify against test vectors, we include</span>
             <span class="comment">// it here for now.</span>
-            <span class="kw">let</span> <span class="ident">hash_input</span> <span class="op">=</span> <span class="ident">ParentNodeTreeHashInput::new</span>(
+            <span class="kw">let</span> <span class="ident">hash_input</span> <span class="op">=</span> <span class="ident">ParentNodeHashInput::new</span>(
                 <span class="ident">node_index</span>,
                 <span class="ident">parent_node_option</span>,
                 <span class="ident">TlsSliceU8</span>(<span class="kw-2">&amp;</span><span class="ident">left_hash</span>),
