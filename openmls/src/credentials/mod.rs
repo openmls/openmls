@@ -27,7 +27,7 @@
 //! is embedded in. Clients can use different credentials, potentially with
 //! different signature schemes in different groups.
 //!
-//! There are multiple [`CredentialType`]s, although OpenMLS currently only
+//! There are multiple [`Credential`] variants, although OpenMLS currently only
 //! supports the [`BasicCredential`].
 
 use openmls_traits::{
@@ -81,30 +81,25 @@ impl TryFrom<u16> for CredentialType {
 ///
 /// This struct contains an X.509 certificate chain.  Note that X.509
 /// certificates are not yet supported by OpenMLS.
-#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+#[derive(
+    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
+)]
 pub struct Certificate {
     cert_data: Vec<u8>,
 }
 
-/// MlsCredentialType.
-///
-/// This enum contains variants containing the different available credentials.
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub enum MlsCredentialType {
-    /// A [`BasicCredential`]
-    Basic(BasicCredential),
-    /// An X.509 [`Certificate`]
-    X509(Certificate),
-}
-
 /// Credential.
 ///
-/// This struct contains MLS credential data, where the data depends on the
-/// type. The [`CredentialType`] always matches the [`MlsCredentialType`].
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
-pub struct Credential {
-    credential_type: CredentialType,
-    credential: MlsCredentialType,
+/// This enum contains a credential variant.
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsSize)]
+#[repr(u16)]
+pub enum Credential {
+    /// A [`BasicCredential`]
+    #[tls_codec(discriminant = 1)]
+    Basic(BasicCredential),
+    /// An X.509 [`Certificate`]
+    #[tls_codec(discriminant = 2)]
+    X509(Certificate),
 }
 
 impl Credential {
@@ -119,50 +114,38 @@ impl Credential {
         signature: &Signature,
         label: &str,
     ) -> Result<(), CredentialError> {
-        match &self.credential {
-            MlsCredentialType::Basic(basic_credential) => basic_credential
+        match self {
+            Credential::Basic(ref basic_credential) => basic_credential
                 .public_key
                 .verify_with_label(backend, signature, &SignContent::new(label, payload.into()))
                 .map_err(|_| CredentialError::InvalidSignature),
             // TODO: implement verification for X509 certificates. See issue #134.
-            MlsCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
+            Credential::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
 
     /// Returns the identity of a given credential.
     pub fn identity(&self) -> &[u8] {
-        match &self.credential {
-            MlsCredentialType::Basic(basic_credential) => basic_credential.identity.as_slice(),
+        match self {
+            Credential::Basic(ref basic_credential) => basic_credential.identity.as_slice(),
             // TODO: implement getter for identity for X509 certificates. See issue #134.
-            MlsCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
+            Credential::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
 
     /// Returns the signature scheme used by the credential.
     pub fn signature_scheme(&self) -> SignatureScheme {
-        match &self.credential {
-            MlsCredentialType::Basic(basic_credential) => basic_credential.signature_scheme,
+        match self {
+            Credential::Basic(ref basic_credential) => basic_credential.signature_scheme,
             // TODO: implement getter for signature scheme for X509 certificates. See issue #134.
-            MlsCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
+            Credential::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
     /// Returns the public key contained in the credential.
     pub fn signature_key(&self) -> &SignaturePublicKey {
-        match &self.credential {
-            MlsCredentialType::Basic(basic_credential) => &basic_credential.public_key,
-            MlsCredentialType::X509(_) => panic!("X509 certificates are not yet implemented."),
-        }
-    }
-}
-
-impl From<MlsCredentialType> for Credential {
-    fn from(mls_credential_type: MlsCredentialType) -> Self {
-        Credential {
-            credential_type: match mls_credential_type {
-                MlsCredentialType::Basic(_) => CredentialType::Basic,
-                MlsCredentialType::X509(_) => CredentialType::X509,
-            },
-            credential: mls_credential_type,
+        match self {
+            Credential::Basic(ref basic_credential) => &basic_credential.public_key,
+            Credential::X509(_) => panic!("X509 certificates are not yet implemented."),
         }
     }
 }
@@ -227,18 +210,15 @@ impl CredentialBundle {
         let (private_key, public_key) = SignatureKeypair::new(signature_scheme, backend)
             .map_err(LibraryError::unexpected_crypto_error)?
             .into_tuple();
-        let mls_credential = match credential_type {
-            CredentialType::Basic => BasicCredential {
+        let credential = match credential_type {
+            CredentialType::Basic => Credential::Basic(BasicCredential {
                 identity: identity.into(),
                 signature_scheme,
                 public_key,
-            },
+            }),
             _ => return Err(CredentialError::UnsupportedCredentialType),
         };
-        let credential = Credential {
-            credential_type,
-            credential: MlsCredentialType::Basic(mls_credential),
-        };
+
         Ok(CredentialBundle {
             credential,
             signature_private_key: private_key,
@@ -250,17 +230,13 @@ impl CredentialBundle {
     /// supported.
     pub fn from_parts(identity: Vec<u8>, keypair: SignatureKeypair) -> Self {
         let (signature_private_key, public_key) = keypair.into_tuple();
-        let basic_credential = BasicCredential {
-            identity: identity.into(),
-            signature_scheme: public_key.signature_scheme(),
-            public_key,
-        };
-        let credential = Credential {
-            credential_type: CredentialType::Basic,
-            credential: MlsCredentialType::Basic(basic_credential),
-        };
+
         Self {
-            credential,
+            credential: Credential::Basic(BasicCredential {
+                identity: identity.into(),
+                signature_scheme: public_key.signature_scheme(),
+                public_key,
+            }),
             signature_private_key,
         }
     }
