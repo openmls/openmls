@@ -78,7 +78,7 @@
     <span class="ident">proposal_store</span>: <span class="ident">ProposalStore</span>,
     <span class="ident">own_kpbs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">KeyPackageBundle</span><span class="op">&gt;</span>,
     <span class="ident">aad</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="ident">resumption_secret_store</span>: <span class="ident">ResumptionSecretStore</span>,
+    <span class="ident">resumption_psk_store</span>: <span class="ident">ResumptionPskStore</span>,
     <span class="ident">group_state</span>: <span class="ident">MlsGroupState</span>,
 }
 
@@ -91,7 +91,7 @@
             <span class="ident">proposal_store</span>: <span class="self">self</span>.<span class="ident">proposal_store</span>,
             <span class="ident">own_kpbs</span>: <span class="self">self</span>.<span class="ident">own_kpbs</span>,
             <span class="ident">aad</span>: <span class="self">self</span>.<span class="ident">aad</span>,
-            <span class="ident">resumption_secret_store</span>: <span class="self">self</span>.<span class="ident">resumption_secret_store</span>,
+            <span class="ident">resumption_psk_store</span>: <span class="self">self</span>.<span class="ident">resumption_psk_store</span>,
             <span class="ident">group_state</span>: <span class="self">self</span>.<span class="ident">group_state</span>,
             <span class="ident">state_changed</span>: <span class="ident">InnerState::Persisted</span>,
         }
@@ -109,7 +109,7 @@
         <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;proposal_store&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">proposal_store</span>)<span class="question-mark">?</span>;
         <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;own_kpbs&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">own_kpbs</span>)<span class="question-mark">?</span>;
         <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;aad&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">aad</span>)<span class="question-mark">?</span>;
-        <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;resumption_secret_store&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">resumption_secret_store</span>)<span class="question-mark">?</span>;
+        <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;resumption_psk_store&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">resumption_psk_store</span>)<span class="question-mark">?</span>;
         <span class="ident">state</span>.<span class="ident">serialize_field</span>(<span class="string">&quot;group_state&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">group_state</span>)<span class="question-mark">?</span>;
         <span class="ident">state</span>.<span class="ident">end</span>()
     }

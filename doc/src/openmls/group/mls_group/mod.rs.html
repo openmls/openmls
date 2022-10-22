@@ -427,7 +427,7 @@
     <span class="ident">group</span>::<span class="kw-2">*</span>,
     <span class="ident">key_packages</span>::{<span class="ident">KeyPackage</span>, <span class="ident">KeyPackageBundle</span>, <span class="ident">KeyPackageBundlePayload</span>},
     <span class="ident">messages</span>::{<span class="ident">proposals</span>::<span class="kw-2">*</span>, <span class="ident">Welcome</span>},
-    <span class="ident">schedule::ResumptionSecret</span>,
+    <span class="ident">schedule::ResumptionPsk</span>,
     <span class="ident">treesync::Node</span>,
 };
 <span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">key_store::OpenMlsKeyStore</span>, <span class="ident">types::Ciphersuite</span>, <span class="ident">OpenMlsCryptoProvider</span>};
@@ -582,8 +582,8 @@
     <span class="comment">// The AAD that is used for all outgoing handshake messages. The AAD can be set through</span>
     <span class="comment">// `set_aad()`.</span>
     <span class="ident">aad</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>,
-    <span class="comment">// Resumption secret store. This is where the resumption secrets are kept in a rollover list.</span>
-    <span class="ident">resumption_secret_store</span>: <span class="ident">ResumptionSecretStore</span>,
+    <span class="comment">// Resumption psk store. This is where the resumption psks are kept in a rollover list.</span>
+    <span class="ident">resumption_psk_store</span>: <span class="ident">ResumptionPskStore</span>,
     <span class="comment">// A variable that indicates the state of the group. See [`MlsGroupState`]</span>
     <span class="comment">// for more information.</span>
     <span class="ident">group_state</span>: <span class="ident">MlsGroupState</span>,

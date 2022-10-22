@@ -330,7 +330,7 @@
     <span class="doccomment">/// can be decrypted. The default is 0.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">max_past_epochs</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// Number of resumtion secrets to keep</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">number_of_resumption_secrets</span>: <span class="ident">usize</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">number_of_resumption_psks</span>: <span class="ident">usize</span>,
     <span class="doccomment">/// Flag to indicate the Ratchet Tree Extension should be used</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">use_ratchet_tree_extension</span>: <span class="ident">bool</span>,
     <span class="doccomment">/// Required capabilities (extensions and proposal types)</span>
@@ -360,9 +360,9 @@
         <span class="self">self</span>.<span class="ident">max_past_epochs</span>
     }
 
-    <span class="doccomment">/// Returns the [`MlsGroupConfig`] number of resumption secrets.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">number_of_resumption_secrets</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
-        <span class="self">self</span>.<span class="ident">number_of_resumption_secrets</span>
+    <span class="doccomment">/// Returns the [`MlsGroupConfig`] number of resumption psks.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">number_of_resumption_psks</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">usize</span> {
+        <span class="self">self</span>.<span class="ident">number_of_resumption_psks</span>
     }
 
     <span class="doccomment">/// Returns the [`MlsGroupConfig`] boolean flag that indicates whether ratchet_tree_extension should be used.</span>
@@ -426,9 +426,9 @@
         <span class="self">self</span>
     }
 
-    <span class="doccomment">/// Sets the `number_of_resumption_secrets` property of the MlsGroupConfig.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">number_of_resumtion_secrets</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">number_of_resumption_secrets</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
-        <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">number_of_resumption_secrets</span> <span class="op">=</span> <span class="ident">number_of_resumption_secrets</span>;
+    <span class="doccomment">/// Sets the `number_of_resumption_psks` property of the MlsGroupConfig.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">number_of_resumption_psks</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">number_of_resumption_psks</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
+        <span class="self">self</span>.<span class="ident">config</span>.<span class="ident">number_of_resumption_psks</span> <span class="op">=</span> <span class="ident">number_of_resumption_psks</span>;
         <span class="self">self</span>
     }
 
