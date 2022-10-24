@@ -150,7 +150,7 @@ impl CoreGroup {
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
         let path_processing_result =
-        // If path is needed, compute path values
+            // If path is needed, compute path values
             if apply_proposals_values.path_required
                 || contains_own_updates
                 || params.force_self_update()

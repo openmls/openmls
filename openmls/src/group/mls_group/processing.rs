@@ -139,10 +139,10 @@ impl MlsGroup {
         self.group
             .merge_staged_commit(staged_commit, &mut self.proposal_store)?;
 
-        // Extract and store the resumption secret for the current epoch
-        let resumption_secret = self.group.group_epoch_secrets().resumption_secret();
-        self.resumption_secret_store
-            .add(self.group.context().epoch(), resumption_secret.clone());
+        // Extract and store the resumption psk for the current epoch
+        let resumption_psk = self.group.group_epoch_secrets().resumption_psk();
+        self.resumption_psk_store
+            .add(self.group.context().epoch(), resumption_psk.clone());
 
         // Delete own KeyPackageBundles
         self.own_kpbs.clear();

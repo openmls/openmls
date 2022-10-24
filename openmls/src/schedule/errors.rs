@@ -73,9 +73,9 @@ pub enum KsTestVectorError {
     /// The computed exporter secret doesn't match the one in the test vector.
     #[error("The computed exporter secret doesn't match the one in the test vector.")]
     ExporterSecretMismatch,
-    /// The computed authentication secret doesn't match the one in the test vector.
-    #[error("The computed authentication secret doesn't match the one in the test vector.")]
-    AuthenticationSecretMismatch,
+    /// The computed authentication code doesn't match the one in the test vector.
+    #[error("The computed authentication code doesn't match the one in the test vector.")]
+    AuthenticationCodeMismatch,
     /// The computed external secret doesn't match the one in the test vector.
     #[error("The computed external secret doesn't match the one in the test vector.")]
     ExternalSecretMismatch,
@@ -85,9 +85,9 @@ pub enum KsTestVectorError {
     /// The computed membership key doesn't match the one in the test vector.
     #[error("The computed membership key doesn't match the one in the test vector.")]
     MembershipKeyMismatch,
-    /// The computed resumption secret doesn't match the one in the test vector.
-    #[error("The computed resumption secret doesn't match the one in the test vector.")]
-    ResumptionSecretMismatch,
+    /// The computed resumption psk doesn't match the one in the test vector.
+    #[error("The computed resumption psk doesn't match the one in the test vector.")]
+    ResumptionPskMismatch,
     /// The computed external public key doesn't match the one in the test vector.
     #[error("The computed external public key doesn't match the one in the test vector.")]
     ExternalPubMismatch,

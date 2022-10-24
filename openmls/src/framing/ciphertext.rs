@@ -18,6 +18,18 @@ use super::*;
 /// `MlsCiphertext` is the framing struct for an encrypted `MlsPlaintext`.
 /// This message format is meant to be sent to and received from the Delivery
 /// Service.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+/// struct {
+///     opaque group_id<V>;
+///     uint64 epoch;
+///     ContentType content_type;
+///     opaque authenticated_data<V>;
+///     opaque encrypted_sender_data<V>;
+///     opaque ciphertext<V>;
+/// } MLSCiphertext;
+/// ```
 #[derive(Debug, PartialEq, Clone, TlsSerialize, TlsSize)]
 pub(crate) struct MlsCiphertext {
     wire_format: WireFormat,
@@ -55,6 +67,7 @@ impl MlsCiphertext {
             ciphertext,
         }
     }
+
     /// Try to create a new `MlsCiphertext` from an `MlsPlaintext`
     pub(crate) fn try_from_plaintext(
         mls_plaintext: &MlsPlaintext,
