@@ -191,6 +191,19 @@ details.</p>
 <p>OpenMLS is maintained and developed by <a href="https://phnx.im">Phoenix R&amp;D</a> and <a href="https://cryspen.com">Cryspen</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="user-manual"><a class="header" href="#user-manual">User manual</a></h1>
 <p>The user manual describes how to use the different parts of the OpenMLS API.</p>
+<h2 id="prerequisites"><a class="header" href="#prerequisites">Prerequisites</a></h2>
+<p>Most operations in OpenMLS require a <code>backend</code> object that provides all required cryptographic algorithms via the <a href="https://docs.rs/openmls/latest/openmls/prelude/trait.OpenMlsCryptoProvider.html"><code>OpenMlsCryptoProvider</code></a> trait.
+Currently, there are two implementations available through the <a href="https://crates.io/crates/openmls_rust_crypto">openmls_rust_crypto</a> and <a href="https://crates.io/crates/openmls_evercrypt">openmls_evercrypt</a> crates.</p>
+<p>Thus, you can create the <code>backend</code> object for the following examples using ...</p>
+<pre><code class="language-rust no_run noplayground">    use openmls_rust_crypto::OpenMlsRustCrypto;
+
+    let backend = OpenMlsRustCrypto::default();
+</code></pre>
+<p>... or ...</p>
+<pre><code class="language-rust no_run noplayground">    use openmls_evercrypt::OpenMlsEvercrypt;
+
+    let backend = OpenMlsEvercrypt::default();
+</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="credentials"><a class="header" href="#credentials">Credentials</a></h1>
 <p>MLS relies on credentials to encode the identity of clients in the context of a group. There are different types of credentials, with the OpenMLS library currently only supporting the <code>BasicCredential</code> credential type (see below). All credentials have in common that they contain a signature public key (with the owner of the credential holding the corresponding private key) which is used to authenticate messages by the owner in the context of one or more groups.</p>
 <p>A credential is always embedded in a <a href="user_manual/./create_key_package.html">key package</a>, which is ultimately used to represent a client in a group and which is signed by the private key corresponding to the signature public key of the credential it contains. Clients can decide to use the same credential in multiple key packages (and thus multiple groups) or to use distinct credential per key package.</p>
