@@ -151,8 +151,8 @@
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span> {
             <span class="ident">ProtocolVersion::Reserved</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">fmt::Error</span>),
-            <span class="ident">ProtocolVersion::Mls10</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;mls10&quot;</span>),
-            <span class="ident">ProtocolVersion::Mls10Draft11</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;mls10-draft11&quot;</span>),
+            <span class="ident">ProtocolVersion::Mls10</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;MLS 1.0&quot;</span>),
+            <span class="ident">ProtocolVersion::Mls10Draft11</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;MLS 1.0 (Draft 11)&quot;</span>),
         }
     }
 }
