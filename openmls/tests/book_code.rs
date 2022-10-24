@@ -10,6 +10,31 @@ lazy_static! {
         tempfile::tempdir().expect("Error creating temp directory");
 }
 
+#[test]
+fn create_backend_rust_crypto() {
+    // ANCHOR: create_backend_rust_crypto
+    use openmls_rust_crypto::OpenMlsRustCrypto;
+
+    let backend = OpenMlsRustCrypto::default();
+    // ANCHOR_END: create_backend_rust_crypto
+
+    // Suppress warning.
+    let _backend = backend;
+}
+
+#[cfg(feature = "evercrypt")]
+#[test]
+fn create_backend_evercrypt() {
+    // ANCHOR: create_backend_evercrypt
+    use openmls_evercrypt::OpenMlsEvercrypt;
+
+    let backend = OpenMlsEvercrypt::default();
+    // ANCHOR_END: create_backend_evercrypt
+
+    // Suppress warning.
+    let _backend = backend;
+}
+
 fn generate_credential_bundle(
     identity: Vec<u8>,
     credential_type: CredentialType,
