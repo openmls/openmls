@@ -44,7 +44,7 @@ pub struct MlsGroupConfig {
     /// can be decrypted. The default is 0.
     pub(crate) max_past_epochs: usize,
     /// Number of resumtion secrets to keep
-    pub(crate) number_of_resumption_secrets: usize,
+    pub(crate) number_of_resumption_psks: usize,
     /// Flag to indicate the Ratchet Tree Extension should be used
     pub(crate) use_ratchet_tree_extension: bool,
     /// Required capabilities (extensions and proposal types)
@@ -74,9 +74,9 @@ impl MlsGroupConfig {
         self.max_past_epochs
     }
 
-    /// Returns the [`MlsGroupConfig`] number of resumption secrets.
-    pub fn number_of_resumption_secrets(&self) -> usize {
-        self.number_of_resumption_secrets
+    /// Returns the [`MlsGroupConfig`] number of resumption psks.
+    pub fn number_of_resumption_psks(&self) -> usize {
+        self.number_of_resumption_psks
     }
 
     /// Returns the [`MlsGroupConfig`] boolean flag that indicates whether ratchet_tree_extension should be used.
@@ -140,9 +140,9 @@ impl MlsGroupConfigBuilder {
         self
     }
 
-    /// Sets the `number_of_resumption_secrets` property of the MlsGroupConfig.
-    pub fn number_of_resumtion_secrets(mut self, number_of_resumption_secrets: usize) -> Self {
-        self.config.number_of_resumption_secrets = number_of_resumption_secrets;
+    /// Sets the `number_of_resumption_psks` property of the MlsGroupConfig.
+    pub fn number_of_resumption_psks(mut self, number_of_resumption_psks: usize) -> Self {
+        self.config.number_of_resumption_psks = number_of_resumption_psks;
         self
     }
 

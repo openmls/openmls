@@ -80,15 +80,24 @@ impl<'a> LeafNodeHashInput<'a> {
 }
 
 /// Helper struct that can be serialized in the course of tree hash computation.
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+/// struct {
+///     optional<ParentNode> parent_node;
+///     opaque left_hash<V>;
+///     opaque right_hash<V>;
+/// } ParentNodeHashInput;
+/// ```
 #[derive(TlsSerialize, TlsSize)]
-pub(super) struct ParentNodeTreeHashInput<'a> {
+pub(super) struct ParentNodeHashInput<'a> {
     node_index: LeafIndex,
     parent_node: Option<&'a ParentNode>,
     left_hash: TlsSliceU8<'a, u8>,
     right_hash: TlsSliceU8<'a, u8>,
 }
 
-impl<'a> ParentNodeTreeHashInput<'a> {
+impl<'a> ParentNodeHashInput<'a> {
     /// Create a new [`ParentNodeTreeHashInput`] instance.
     pub(super) fn new(
         node_index: LeafIndex,

@@ -20,7 +20,7 @@ pub struct SerializedMlsGroup {
     proposal_store: ProposalStore,
     own_kpbs: Vec<KeyPackageBundle>,
     aad: Vec<u8>,
-    resumption_secret_store: ResumptionSecretStore,
+    resumption_psk_store: ResumptionPskStore,
     group_state: MlsGroupState,
 }
 
@@ -33,7 +33,7 @@ impl SerializedMlsGroup {
             proposal_store: self.proposal_store,
             own_kpbs: self.own_kpbs,
             aad: self.aad,
-            resumption_secret_store: self.resumption_secret_store,
+            resumption_psk_store: self.resumption_psk_store,
             group_state: self.group_state,
             state_changed: InnerState::Persisted,
         }
@@ -51,7 +51,7 @@ impl Serialize for MlsGroup {
         state.serialize_field("proposal_store", &self.proposal_store)?;
         state.serialize_field("own_kpbs", &self.own_kpbs)?;
         state.serialize_field("aad", &self.aad)?;
-        state.serialize_field("resumption_secret_store", &self.resumption_secret_store)?;
+        state.serialize_field("resumption_psk_store", &self.resumption_psk_store)?;
         state.serialize_field("group_state", &self.group_state)?;
         state.end()
     }

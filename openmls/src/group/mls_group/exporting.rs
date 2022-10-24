@@ -2,7 +2,7 @@ use tls_codec::Serialize;
 
 use crate::{
     group::errors::ExporterError, messages::public_group_state::PublicGroupState,
-    schedule::AuthenticationSecret,
+    schedule::AuthenticationCode,
 };
 
 use super::*;
@@ -37,20 +37,20 @@ impl MlsGroup {
         }
     }
 
-    /// Returns the authentication secret of the current epoch.
-    pub fn authentication_secret(&self) -> &AuthenticationSecret {
-        self.group.authentication_secret()
+    /// Returns the authentication code of the current epoch.
+    pub fn authentication_code(&self) -> &AuthenticationCode {
+        self.group.authentication_code()
     }
 
-    /// Returns the resumption secret of the current epoch.
-    pub fn resumption_secret(&self) -> &ResumptionSecret {
-        self.group.resumption_secret()
+    /// Returns the resumption psk of the current epoch.
+    pub fn resumption_psk(&self) -> &ResumptionPsk {
+        self.group.resumption_psk()
     }
 
-    /// Returns a resumption secret for a given epoch. If no resumption secret
+    /// Returns a resumption psk for a given epoch. If no resumption psk
     /// is available for that epoch,  `None` is returned.
-    pub fn get_past_resumption_secret(&self, epoch: GroupEpoch) -> Option<&ResumptionSecret> {
-        self.resumption_secret_store.get(epoch)
+    pub fn get_past_resumption_psk(&self, epoch: GroupEpoch) -> Option<&ResumptionPsk> {
+        self.resumption_psk_store.get(epoch)
     }
 
     // === Export public group state ===

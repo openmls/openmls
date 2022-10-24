@@ -44,11 +44,11 @@ struct Epoch {
     sender_data_secret: String,
     encryption_secret: String,
     exporter_secret: String,
-    authentication_secret: String,
+    authentication_code: String,
     external_secret: String,
     confirmation_key: String,
     membership_key: String,
-    resumption_secret: String,
+    resumption_psk: String,
 
     external_pub: String, // TLS serialized HpkePublicKey
 }
@@ -234,11 +234,11 @@ pub fn generate_test_vector(n_epochs: u64, ciphersuite: Ciphersuite) -> KeySched
             sender_data_secret: bytes_to_hex(epoch_secrets.sender_data_secret().as_slice()),
             encryption_secret: bytes_to_hex(epoch_secrets.encryption_secret().as_slice()),
             exporter_secret: bytes_to_hex(epoch_secrets.exporter_secret().as_slice()),
-            authentication_secret: bytes_to_hex(epoch_secrets.authentication_secret().as_slice()),
+            authentication_code: bytes_to_hex(epoch_secrets.authentication_code().as_slice()),
             external_secret: bytes_to_hex(epoch_secrets.external_secret().as_slice()),
             confirmation_key: bytes_to_hex(epoch_secrets.confirmation_key().as_slice()),
             membership_key: bytes_to_hex(epoch_secrets.membership_key().as_slice()),
-            resumption_secret: bytes_to_hex(epoch_secrets.resumption_secret().as_slice()),
+            resumption_psk: bytes_to_hex(epoch_secrets.resumption_psk().as_slice()),
             external_pub: bytes_to_hex(
                 &HpkePublicKey::from(external_key_pair.public)
                     .tls_serialize_detached()
@@ -445,13 +445,13 @@ pub fn run_test_vector(
             }
             return Err(KsTestVectorError::ExporterSecretMismatch);
         }
-        if hex_to_bytes(&epoch.authentication_secret)
-            != epoch_secrets.authentication_secret().as_slice()
+        if hex_to_bytes(&epoch.authentication_code)
+            != epoch_secrets.authentication_code().as_slice()
         {
             if cfg!(test) {
-                panic!("Authentication secret mismatch");
+                panic!("Authentication code mismatch");
             }
-            return Err(KsTestVectorError::AuthenticationSecretMismatch);
+            return Err(KsTestVectorError::AuthenticationCodeMismatch);
         }
         if hex_to_bytes(&epoch.external_secret) != epoch_secrets.external_secret().as_slice() {
             if cfg!(test) {
@@ -471,11 +471,11 @@ pub fn run_test_vector(
             }
             return Err(KsTestVectorError::MembershipKeyMismatch);
         }
-        if hex_to_bytes(&epoch.resumption_secret) != epoch_secrets.resumption_secret().as_slice() {
+        if hex_to_bytes(&epoch.resumption_psk) != epoch_secrets.resumption_psk().as_slice() {
             if cfg!(test) {
-                panic!("Resumption secret mismatch");
+                panic!("Resumption psk mismatch");
             }
-            return Err(KsTestVectorError::ResumptionSecretMismatch);
+            return Err(KsTestVectorError::ResumptionPskMismatch);
         }
 
         // Calculate external HPKE key pair
