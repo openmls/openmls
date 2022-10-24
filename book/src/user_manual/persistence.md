@@ -10,4 +10,4 @@ MLS provides strong Post-Compromise Security properties, which means that key ma
 
 ## Forward-Secrecy Considerations
 
-The `MlsGroup` state that is persisted using the `.save()` function contains private key material. As a consequence, the application needs to delete old group states to achieve Forward-Secrecy w.r.t. that key material. Since, as detailed above, an old group state is stale immediately after most group operations, we recommend deleting old group states as soon as a new one is written.
+The `MlsGroup` state that is persisted using the `.save()` function contains private key material. As a consequence, the application needs to delete old group states to achieve Forward-Secrecy w.r.t. that key material. Since, as detailed above, an old group state is stale immediately after most group operations, we recommend deleting old group states as soon as a new one has been written.
