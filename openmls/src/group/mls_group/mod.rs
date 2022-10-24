@@ -14,7 +14,7 @@ use crate::{
     group::*,
     key_packages::{KeyPackage, KeyPackageBundle, KeyPackageBundlePayload},
     messages::{proposals::*, Welcome},
-    schedule::ResumptionSecret,
+    schedule::ResumptionPsk,
     treesync::Node,
 };
 use openmls_traits::{key_store::OpenMlsKeyStore, types::Ciphersuite, OpenMlsCryptoProvider};
@@ -169,8 +169,8 @@ pub struct MlsGroup {
     // The AAD that is used for all outgoing handshake messages. The AAD can be set through
     // `set_aad()`.
     aad: Vec<u8>,
-    // Resumption secret store. This is where the resumption secrets are kept in a rollover list.
-    resumption_secret_store: ResumptionSecretStore,
+    // Resumption psk store. This is where the resumption psks are kept in a rollover list.
+    resumption_psk_store: ResumptionPskStore,
     // A variable that indicates the state of the group. See [`MlsGroupState`]
     // for more information.
     group_state: MlsGroupState,

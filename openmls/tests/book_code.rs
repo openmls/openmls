@@ -10,6 +10,31 @@ lazy_static! {
         tempfile::tempdir().expect("Error creating temp directory");
 }
 
+#[test]
+fn create_backend_rust_crypto() {
+    // ANCHOR: create_backend_rust_crypto
+    use openmls_rust_crypto::OpenMlsRustCrypto;
+
+    let backend = OpenMlsRustCrypto::default();
+    // ANCHOR_END: create_backend_rust_crypto
+
+    // Suppress warning.
+    let _backend = backend;
+}
+
+#[cfg(feature = "evercrypt")]
+#[test]
+fn create_backend_evercrypt() {
+    // ANCHOR: create_backend_evercrypt
+    use openmls_evercrypt::OpenMlsEvercrypt;
+
+    let backend = OpenMlsEvercrypt::default();
+    // ANCHOR_END: create_backend_evercrypt
+
+    // Suppress warning.
+    let _backend = backend;
+}
+
 fn generate_credential_bundle(
     identity: Vec<u8>,
     credential_type: CredentialType,
@@ -214,10 +239,10 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     // Make sure that both groups have the same members
     assert_eq!(alice_group.members(), bob_group.members());
 
-    // Make sure that both groups have the same authentication secret
+    // Make sure that both groups have the same authentication code
     assert_eq!(
-        alice_group.authentication_secret().as_slice(),
-        bob_group.authentication_secret().as_slice()
+        alice_group.authentication_code().as_slice(),
+        bob_group.authentication_code().as_slice()
     );
 
     // === Alice sends a message to Bob ===
