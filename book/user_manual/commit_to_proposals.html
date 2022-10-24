@@ -136,13 +136,13 @@
                     <main>
                         <h1 id="committing-to-pending-proposals"><a class="header" href="#committing-to-pending-proposals">Committing to pending proposals</a></h1>
 <p>During an epoch, members can create proposals that are not immediately committed. These proposals are called &quot;pending proposals&quot;. They will automatically be covered by any operation that creates a Commit message (like <code>.add_members(),</code> <code>.remove_members()</code>, etc.).</p>
-<p>Some operations, (like creating application messages) are not allowed as long as pending proposals exist for the current epoch. In that case, the application needs to first commit to the pending proposals by creating a Commit message that covers these proposals. This can be done with the <code>commit_to_pending_proposals()</code> function:</p>
+<p>Some operations (like creating application messages) are not allowed as long as pending proposals exist for the current epoch. In that case, the application must first commit to the pending proposals by creating a Commit message that covers these proposals. This can be done with the <code>commit_to_pending_proposals()</code> function:</p>
 <pre><code class="language-rust no_run noplayground">    let (mls_message_out, welcome_option) = alice_group
         .commit_to_pending_proposals(backend)
         .expect(&quot;Could not commit to pending proposals.&quot;);
 </code></pre>
-<p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing members of the group.
-In case the Commit message also covers Add Proposals that were previously received in the epoch, a <code>Welcome</code> message is required to invite the new members. Therefore the function can also optionally return a <code>Welcome</code> message. The <code>Welcome</code> message needs to be sent to the newly added members.</p>
+<p>The function returns the tuple <code>(MlsMessageOut, Option&lt;Welcome&gt;)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members.
+If the Commit message also covers Add Proposals previously received in the epoch, a <code>Welcome</code> message is required to invite the new members. Therefore the function can also optionally return a <code>Welcome</code> message that must be sent to the newly added members.</p>
 
                     </main>
 

@@ -135,24 +135,24 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="key-packages"><a class="header" href="#key-packages">Key packages</a></h1>
-<p>To enable asynchronous establishment of groups through pre-publishing key material, as well as to represent clients in group, MLS relies on key packages. Key packages hold a number of pieces of information:</p>
+<p>To enable the asynchronous establishment of groups through pre-publishing key material, as well as to represent clients in the group, MLS relies on key packages. Key packages hold several pieces of information:</p>
 <ul>
 <li>a public HPKE encryption key to enable MLS' basic group key distribution feature</li>
-<li>the life time throughout which the key package is valid</li>
-<li>information about the client's capabilities (i.e. which features of MLS it supports)</li>
+<li>the lifetime throughout which the key package is valid</li>
+<li>information about the client's capabilities (i.e., which features of MLS it supports)</li>
 <li>any extension that the client wants to include</li>
 <li>one of the client's <a href="./identity.html">credentials</a>, as well as a signature over the whole key package using the private key corresponding to the credential's signature public key</li>
 </ul>
 <h2 id="creating-key-packages"><a class="header" href="#creating-key-packages">Creating key packages</a></h2>
-<p>Before clients can communicate with each other using OpenMLS they need to generate key packages and publish them with the Delivery Service. Clients can generate an arbitrary number of key packages ahead of time.</p>
+<p>Before clients can communicate with each other using OpenMLS, they need to generate key packages and publish them with the Delivery Service. Clients can generate an arbitrary number of key packages ahead of time.</p>
 <p>Clients keep the private key material corresponding to a key package locally in the key store and fetch it from there when a key package was used to add them to a new group.</p>
 <p>Clients need to choose a few parameters to create a <code>KeyPackageBundle</code>:</p>
 <ul>
 <li><code>ciphersuites: &amp;[CiphersuiteName]</code>: A list of ciphersuites supported by the client.</li>
 <li><code>extensions: Vec&lt;Extensions&gt;</code>: A list of supported extensions.</li>
 </ul>
-<p>Clients must specify at least one ciphersuite, and must not advertize ciphersuites they do not support.</p>
-<p>Clients should specify all extensions they support. Mandatory extensions, like the <code>LifetimeExtension</code> can be specified here with specific values. If no extensions are specified, mandatory extensions are created on the fly with default values. See the documentation of extensions for more details.</p>
+<p>Clients must specify at least one ciphersuite and not advertise ciphersuites they do not support.</p>
+<p>Clients should specify all extensions they support. Mandatory extensions, like the <code>LifetimeExtension</code> can be specified here with specific values. Mandatory extensions are created on the fly with default values if no extensions are specified. See the documentation of extensions for more details.</p>
 <pre><code class="language-rust no_run noplayground">    // Define extensions
     let extensions = vec![Extension::LifeTime(LifetimeExtension::new(
         60 * 60 * 24 * 90, // Maximum lifetime of 90 days, expressed in seconds

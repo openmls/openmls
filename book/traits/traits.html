@@ -151,7 +151,7 @@ we provide two implementations that can be used.</p>
 The go-to default at the moment is an implementation using commonly used, native Rust
 crypto implementations.</p>
 <p><strong>Evercrypt Provider</strong>
-In addition to the Rust Crypto Provider there's the Evercrypt provider that uses
+In addition to the Rust Crypto Provider, there's the Evercrypt provider that uses
 the formally verified HACL*/Evercrypt library.
 Note that this provider does not work equally well on all platforms yet.</p>
 <h2 id="the-traits"><a class="header" href="#the-traits">The Traits</a></h2>
@@ -159,11 +159,11 @@ Note that this provider does not work equally well on all platforms yet.</p>
 <h3 id="openmlsrand"><a class="header" href="#openmlsrand">OpenMlsRand</a></h3>
 <p>This trait defines two functions to generate arrays and vectors, and is used by
 OpenMLS to generate randomness for key generation and random identifiers.
-While there is the commonly used <a href="https://crates.io/crates/rand">rand crate</a> not all implementations use it.
-OpenMLS therefore defines its own randomness trait that needs to be implemented
+While there is the commonly used <a href="https://crates.io/crates/rand">rand crate</a>, not all implementations use it.
+OpenMLS, therefore, defines its own randomness trait that needs to be implemented
 by an OpenMLS crypto provider.
 It simply needs to implement two functions to generate cryptographically secure
-randomness and store it into an array or vector.</p>
+randomness and store it in an array or vector.</p>
 <pre><code class="language-rust no_run noplayground">pub trait OpenMlsRand {
     type Error: std::error::Error + Debug + Clone + PartialEq;
 
@@ -175,7 +175,7 @@ randomness and store it into an array or vector.</p>
 }
 </code></pre>
 <h3 id="openmlscrypto"><a class="header" href="#openmlscrypto">OpenMlsCrypto</a></h3>
-<p>This trait defines all cryptographic functions required by OpenMLS, in particular</p>
+<p>This trait defines all cryptographic functions required by OpenMLS. In particular:</p>
 <ul>
 <li>HKDF</li>
 <li>Hashing</li>
@@ -188,9 +188,9 @@ randomness and store it into an array or vector.</p>
 <h3 id="openmlskeystore"><a class="header" href="#openmlskeystore">OpenMlsKeyStore</a></h3>
 <p>This trait defines a CRUD API for a key store that is used to store long-term
 key material from OpenMLS.</p>
-<p>The key store provides functions to <code>store</code>, <code>read</code> and <code>delete</code> values.
-Note that it does not allow to update values.
-Instead entries must be deleted and newly stored.</p>
+<p>The key store provides functions to <code>store</code>, <code>read</code>, and <code>delete</code> values.
+Note that it does not allow updating values.
+Instead, entries must be deleted and newly stored.</p>
 <pre><code class="language-rust no_run noplayground">/// The Key Store trait
 pub trait OpenMlsKeyStore: Send + Sync {
     /// The error type returned by the [`OpenMlsKeyStore`].
@@ -218,12 +218,12 @@ pub trait OpenMlsKeyStore: Send + Sync {
     fn delete(&amp;self, k: &amp;[u8]) -&gt; Result&lt;(), Self::Error&gt;;
 }
 </code></pre>
-<p><strong>NOTE:</strong> Right now key material needs to be extractable from the key store.
+<p><strong>NOTE:</strong> Right now, key material must be extracted from the key store.
 This will most likely change in the future.</p>
 <h3 id="openmlscryptoprovider"><a class="header" href="#openmlscryptoprovider">OpenMlsCryptoProvider</a></h3>
 <p>Additionally, there's a wrapper trait defined that is expected to be passed into
 the public OpenMLS API.
-Some OpenMLS APIs require only one of the sub-traits though.</p>
+Some OpenMLS APIs require only one of the sub-traits, though.</p>
 <pre><code class="language-rust no_run noplayground">pub trait OpenMlsCryptoProvider: Send + Sync {
     type CryptoProvider: crypto::OpenMlsCrypto;
     type RandProvider: random::OpenMlsRand;
@@ -241,7 +241,7 @@ Some OpenMLS APIs require only one of the sub-traits though.</p>
 </code></pre>
 <h2 id="implementation-notes"><a class="header" href="#implementation-notes">Implementation Notes</a></h2>
 <p>It is not necessary to implement all sub-traits if one functionality is missing.
-If you want to use a persisting key store for example, it is sufficient to do a new implementation of the key store trait and combine it with one of the provided crypto and randomness trait implementations.</p>
+Suppose you want to use a persisting key store. In that case, it is sufficient to do a new implementation of the key store trait and combine it with one of the provided crypto and randomness trait implementations.</p>
 
                     </main>
 

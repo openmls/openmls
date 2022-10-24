@@ -136,7 +136,7 @@
                     <main>
                         <h1 id="join-a-group-from-a-welcome-message"><a class="header" href="#join-a-group-from-a-welcome-message">Join a group from a Welcome message</a></h1>
 <p>To join a group from a <code>Welcome</code> message, a new <code>MlsGroup</code> can be instantiated directly from the <code>Welcome</code> message.
-If the group configuration does not use the ratchet tree extension, the ratchet tree needs to be provided as well.</p>
+If the group configuration does not use the ratchet tree extension, the ratchet tree needs to be provided.</p>
 <pre><code class="language-rust no_run noplayground">    let mut bob_group = MlsGroup::new_from_welcome(
         backend,
         &amp;mls_group_config,

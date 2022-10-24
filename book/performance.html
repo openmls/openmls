@@ -137,43 +137,43 @@
                         <h1 id="performance"><a class="header" href="#performance">Performance</a></h1>
 <p>How does OpenMLS (and MLS in general) perform in different settings?</p>
 <p>Performance measurements are implemented <a href="https://github.com/openmls/openmls/blob/franziskus/benchmarks/benches/group.rs">here</a> and can be run with <code>cargo bench --bench group</code>.
-Make sure that check in the code which scenarios and group sizes are enabled.</p>
+Check which scenarios and group sizes are enabled in the code.</p>
 <p><a href="https://docs.google.com/spreadsheets/d/1nZv8lpT28JctDVo4ARBLZCKcIdvo-h8cIyN3_dIedFU">OpenMLS Performance Spreadsheet</a></p>
 <h2 id="real-world-scenarios"><a class="header" href="#real-world-scenarios">Real World Scenarios</a></h2>
 <h3 id="stable-group"><a class="header" href="#stable-group">Stable group</a></h3>
-<p>Many private groups follow this model</p>
+<p>Many private groups follow this model.</p>
 <ul>
 <li>Group is created by user P1</li>
 <li>P1 invites a set of N other users</li>
 <li>The group is used for messaging between the N+1 members</li>
-<li>Every X messages one user in the group sends an update</li>
+<li>Every X messages, one user in the group sends an update</li>
 </ul>
 <h3 id="somewhat-stable-group"><a class="header" href="#somewhat-stable-group">Somewhat stable group</a></h3>
-<p>This can model a company or team wide group where regularly but infrequently users are added and users leave</p>
+<p>This can model a company or team-wide group where regularly but infrequently, users are added, and users leave.</p>
 <ul>
 <li>Group is created by user P1</li>
 <li>P1 invites a set of N other users</li>
 <li>The group is used for messaging between the members</li>
-<li>Every X messages one user in the group sends an update</li>
-<li>Every Y messages Q users are added</li>
-<li>Every Z messages R users are removed</li>
+<li>Every X messages, one user in the group sends an update</li>
+<li>Every Y messages, Q users are added</li>
+<li>Every Z messages, R users are removed</li>
 </ul>
 <h3 id="high-fluctuation-group"><a class="header" href="#high-fluctuation-group">High fluctuation group</a></h3>
 <p>This models public groups where users frequently join and leave.
-Real-time scenarios such as <a href="https://gather.town">gather.town</a> are an example of high fluctuation groups.
-It is the same scenario as the somewhat stable group but with a very small Y, Z.</p>
+Real-time scenarios such as <a href="https://gather.town">gather.town</a> are examples of high-fluctuation groups.
+It is the same scenario as the somewhat stable group but with a very small Y and Z.</p>
 <h2 id="extreme-scenarios"><a class="header" href="#extreme-scenarios">Extreme Scenarios</a></h2>
 <p>In addition to the three scenarios above extreme and corner cases are interesting.</p>
 <h3 id="every-second-leave-is-blank"><a class="header" href="#every-second-leave-is-blank">Every second leave is blank</a></h3>
 <p>Only every second leave in the tree is non-blank.</p>
 <h2 id="use-case-scenarios"><a class="header" href="#use-case-scenarios">Use Case Scenarios</a></h2>
-<p>A collection of common use cases/flows.</p>
+<p>A collection of common use cases/flows from everyday scenarios.</p>
 <h3 id="long-time-offline-device"><a class="header" href="#long-time-offline-device">Long-time offline device</a></h3>
-<p>If a device has been offline for a while, it has to process a large number of application and protocol messages.</p>
+<p>Suppose a device has been offline for a while. In that case, it has to process a large number of application and protocol messages.</p>
 <h2 id="tree-scenarios"><a class="header" href="#tree-scenarios">Tree scenarios</a></h2>
-<p>In addition the scenarios above it is interesting to look at the same scenario but with different states of the tree.
+<p>In addition to the scenarios above, it is interesting to look at the same scenario but with different states of the tree.
 For example, take the stable group with N members messaging each other.
-How is the performance different between a message sent right after group setup, i.e. each member only joined the group without other messages being sent, and a tree where every member has sent an update before the message?</p>
+What is the performance difference between a message sent right after group setup, i.e., each member only joined the group without other messages being sent, and a tree where every member has sent an update before the message?</p>
 <h2 id="measurements"><a class="header" href="#measurements">Measurements</a></h2>
 <ul>
 <li>Group creation

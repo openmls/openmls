@@ -136,8 +136,8 @@
                     <main>
                         <h1 id="crypto-subtle-feature"><a class="header" href="#crypto-subtle-feature">crypto-subtle feature</a></h1>
 <p>This feature of the OpenMLS crate allows importing and exporting private signature keys that can be used with credentials.</p>
-<p>⚠️ Note that no checks are performed on the keys, use this feature at your own risk. If you create a credential from an existing key,
-or if you export key material you are responsible for the deletion of that key. If that key is kept outside of OpenMLS, 
+<p>⚠️ Note that no checks are performed on the keys. Use this feature at your own risk. If you create a credential from an existing key
+or export key material, you are responsible for deleting that key. If that key is kept outside OpenMLS, 
 updating a leaf will not be enough to achieve Forward Secrecy/Post-compromise Security.</p>
 <h2 id="importing-keys"><a class="header" href="#importing-keys">Importing keys</a></h2>
 <p>A signature keypair can be created from existing raw keys with the following function call:</p>

@@ -141,14 +141,14 @@
         .add_members(backend, &amp;[bob_key_package])
         .expect(&quot;Could not add members.&quot;);
 </code></pre>
-<p>The function returns the tuple <code>(MlsMessageOut, Welcome)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing members of the group. The <code>Welcome</code> message needs to be sent to the newly added members.</p>
+<p>The function returns the tuple <code>(MlsMessageOut, Welcome)</code>. The <code>MlsMessageOut</code> contains a Commit message that needs to be fanned out to existing group members. The <code>Welcome</code> message must be sent to the newly added members.</p>
 <h2 id="proposal"><a class="header" href="#proposal">Proposal</a></h2>
 <p>Members can also be added as a proposal (without the corresponding Commit message) by using the <code>.propose_add_member()</code> function:</p>
 <pre><code class="language-rust no_run noplayground">    let mls_message_out = alice_group
         .propose_add_member(backend, &amp;bob_key_package)
         .expect(&quot;Could not create proposal to add Bob&quot;);
 </code></pre>
-<p>In this case the the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
+<p>In this case, the function returns an <code>MlsMessageOut</code> that needs to be fanned out to existing group members.</p>
 
                     </main>
 

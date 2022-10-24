@@ -135,7 +135,7 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="processing-incoming-messages"><a class="header" href="#processing-incoming-messages">Processing incoming messages</a></h1>
-<p>Processing incoming messages happens in different phases:</p>
+<p>Processing of incoming messages happens in different phases:</p>
 <h2 id="deserializing-messages"><a class="header" href="#deserializing-messages">Deserializing messages</a></h2>
 <p>Incoming messages can be deserialized from byte slices into an <code>MlsMessageIn</code>:</p>
 <pre><code class="language-rust no_run noplayground">    let mls_message_in =
@@ -148,9 +148,9 @@
         .parse_message(mls_message_in, backend)
         .expect(&quot;Could not parse message.&quot;);
 </code></pre>
-<p>Parsing can fail, if e.g. dercrypting the message fails. The exact reason for failure is returned in the error.</p>
+<p>Parsing can fail if, e.g., decrypting the message fails. The exact reason for failure is returned in the error value.</p>
 <h2 id="processing-messages"><a class="header" href="#processing-messages">Processing messages</a></h2>
-<p>In the next step the unverified message needs to be processed. This step performs all remaining validity checks and also verifies the message's signature. Optionally, a signature key can be provided to verify the message's signature. This can be used when processing external messages. By default, the sender's credential is used to verify the signature.</p>
+<p>In the next step, the unverified message needs to be processed. This step performs all remaining validity checks and verifies the message's signature. Optionally, a signature key can be provided to verify the message's signature. This can be used when processing external messages. By default, the sender's credential is used to verify the signature.</p>
 <pre><code class="language-rust no_run noplayground">    let processed_message = bob_group
         .process_unverified_message(
             unverified_message,
@@ -169,7 +169,7 @@
     }
 </code></pre>
 <h3 id="proposals"><a class="header" href="#proposals">Proposals</a></h3>
-<p>Standalone proposals are returned as a <code>QueuedProposal</code>, indicating the fact that they are pending proposals. The actual proposal can be inspected through the <code>.proposal()</code> function. After inspection, applications should store the pending proposal in the proposal store of the group:</p>
+<p>Standalone proposals are returned as a <code>QueuedProposal</code>, indicating that they are pending proposals. The proposal can be inspected through the <code>.proposal()</code> function. After inspection, applications should store the pending proposal in the proposal store of the group:</p>
 <pre><code class="language-rust no_run noplayground">    if let ProcessedMessage::ProposalMessage(staged_proposal) = charlie_processed_message {
         // In the case we received an Add Proposal
         if let Proposal::Add(add_proposal) = staged_proposal.proposal() {
@@ -191,7 +191,7 @@
     }
 </code></pre>
 <h3 id="commit-messages"><a class="header" href="#commit-messages">Commit messages</a></h3>
-<p>Commit messages are returned as <code>StagedCommit</code> objects. The proposals they cover can be inspected through different functions, depending on the proposal type. For more details see the <code>StagedCommit</code> documentation. After the application has inspected the <code>StagedCommit</code> and approved all the proposals it covers, the <code>StagedCommit</code> can be merged in the current group state by calling the <code>.merge_staged_commit()</code> function.</p>
+<p>Commit messages are returned as <code>StagedCommit</code> objects. The proposals they cover can be inspected through different functions, depending on the proposal type. After the application has inspected the <code>StagedCommit</code> and approved all the proposals it covers, the <code>StagedCommit</code> can be merged in the current group state by calling the <code>.merge_staged_commit()</code> function. For more details, see the <code>StagedCommit</code> documentation.</p>
 <pre><code class="language-rust no_run noplayground">    if let ProcessedMessage::StagedCommitMessage(staged_commit) = alice_processed_message {
         // We expect a remove proposal
         let remove = staged_commit
@@ -222,10 +222,10 @@
 <li>We left the group (by our own wish)</li>
 <li>We were removed from the group (by another member or a pre-configured sender)</li>
 <li>We removed another member from the group</li>
-<li>Another member left the group (by its own wish)</li>
+<li>Another member left the group (by their own wish)</li>
 <li>Another member was removed from the group (by a member or a pre-configured sender, but not by us)</li>
 </ul>
-<p>Since all remove operations only appear as a <code>QueuedRemoveProposal</code>, the <code>RemoveOperation</code> enum can be constructed from the remove proposal and the current group state to refelect the different scenarios listed above.</p>
+<p>Since all remove operations only appear as a <code>QueuedRemoveProposal</code>, the <code>RemoveOperation</code> enum can be constructed from the remove proposal and the current group state to reflect the scenarios listed above.</p>
 <pre><code class="language-rust no_run noplayground">    if let ProcessedMessage::StagedCommitMessage(staged_commit) = bob_processed_message {
         let remove_proposal = staged_commit
             .remove_proposals()

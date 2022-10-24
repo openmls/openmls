@@ -837,10 +837,10 @@
 <span class="doccomment">//! Key packages are intended to be used only once and SHOULD NOT be reused</span>
 <span class="doccomment">//! except in case of last resort, i.e. if there&#39;s no other key package available.</span>
 <span class="doccomment">//! Clients MAY generate and publish multiple KeyPackages to support multiple</span>
-<span class="doccomment">//! cipher suites.</span>
+<span class="doccomment">//! ciphersuites.</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! The value for HPKE init key MUST be a public key for the asymmetric</span>
-<span class="doccomment">//! encryption scheme defined by cipher suite, and it MUST be unique among the</span>
+<span class="doccomment">//! encryption scheme defined by ciphersuite, and it MUST be unique among the</span>
 <span class="doccomment">//! set of key packages created by this client.</span>
 <span class="doccomment">//! The whole structure is signed using the client&#39;s signature key.</span>
 <span class="doccomment">//! A key package object with an invalid signature field is considered malformed.</span>
@@ -1418,7 +1418,7 @@
     <span class="doccomment">/// Create a new [`KeyPackageBundle`] with</span>
     <span class="doccomment">/// * a fresh key pair</span>
     <span class="doccomment">/// * the provided MLS version</span>
-    <span class="doccomment">/// * the first cipher suite in the `ciphersuites` slice</span>
+    <span class="doccomment">/// * the first ciphersuite in the `ciphersuites` slice</span>
     <span class="doccomment">/// * the provided `extensions`</span>
     <span class="doccomment">///</span>
     <span class="doccomment">/// Note that the capabilities extension gets added automatically, based on</span>

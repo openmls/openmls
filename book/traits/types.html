@@ -135,7 +135,7 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="external-types"><a class="header" href="#external-types">External Types</a></h1>
-<p>For interoperability this crate also defines a number of types and algorithm
+<p>For interoperability, this crate also defines several types and algorithm
 identifiers.</p>
 <p><strong>AEADs</strong></p>
 <p>The following AEADs are defined.</p>
@@ -165,7 +165,7 @@ algorithm.</p>
     Sha2_512 = 0x06,
 }
 </code></pre>
-<p>An hash algorithm provides the following functions to get the according values for each
+<p>A hash algorithm provides the following functions to get the according values for each
 algorithm.</p>
 <ul>
 <li><code>size</code></li>
@@ -187,7 +187,7 @@ algorithm.</p>
 </code></pre>
 <h1 id="hpke-types"><a class="header" href="#hpke-types">HPKE Types</a></h1>
 <p>The HPKE implementation is part of the crypto provider as well.
-The crate therefore defines the necessary types too.</p>
+The crate, therefore, defines the necessary types too.</p>
 <p>The HPKE algorithms are defined as follows.</p>
 <pre><code class="language-rust no_run noplayground">#[derive(PartialEq, Eq, Copy, Clone, Debug, Serialize, Deserialize)]
 #[repr(u16)]
@@ -231,7 +231,7 @@ pub enum HpkeAeadType {
 
     /// Export-only
 </code></pre>
-<p>In addition helper structs for <code>HpkeCiphertext</code> and <code>HpkeKeyPair</code> are defined.</p>
+<p>In addition, helper structs for <code>HpkeCiphertext</code> and <code>HpkeKeyPair</code> are defined.</p>
 <pre><code class="language-rust no_run noplayground">    Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 pub struct HpkeCiphertext {
