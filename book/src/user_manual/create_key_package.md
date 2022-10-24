@@ -19,7 +19,7 @@ Clients need to choose a few parameters to create a `KeyPackageBundle`:
 - `ciphersuites: &[CiphersuiteName]`: A list of ciphersuites supported by the client.
 - `extensions: Vec<Extensions>`: A list of supported extensions.
 
-Clients must specify at least one cipher suite and not advertise ciphersuites they do not support.
+Clients must specify at least one ciphersuite and not advertise ciphersuites they do not support.
 
 Clients should specify all extensions they support. Mandatory extensions, like the `LifetimeExtension` can be specified here with specific values. Mandatory extensions are created on the fly with default values if no extensions are specified. See the documentation of extensions for more details.
 
