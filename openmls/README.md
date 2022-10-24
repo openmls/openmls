@@ -61,6 +61,9 @@ details.
 ## Working on OpenMLS
 For more details when working on OpenMLS itself please see the [Developer.md].
 
+## Maintenance & Support
+OpenMLS is maintained and developed by [Phoenix R&D] and [Cryspen].
+
 [chat-image]: https://img.shields.io/badge/zulip-join_chat-blue.svg?style=for-the-badge&logo=zulip
 [chat-link]: https://openmls.zulipchat.com
 [list-image]: https://img.shields.io/badge/mailing-list-blue.svg?style=for-the-badge
@@ -75,3 +78,5 @@ For more details when working on OpenMLS itself please see the [Developer.md].
 [gh-tests-image]: https://img.shields.io/github/workflow/status/openmls/openmls/Tests/main?label=Tests&style=for-the-badge&logo=github
 [gh-deploy-docs-image]: https://img.shields.io/github/workflow/status/openmls/openmls/Deploy%20Docs/main?label=Deploy%20Docs&logo=github&style=for-the-badge
 [Developer.md]: https://github.com/openmls/openmls/blob/main/Developer.md
+[Phoenix R&D]: https://phnx.im
+[Cryspen]: https://cryspen.com
