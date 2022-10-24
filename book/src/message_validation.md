@@ -8,29 +8,29 @@ Validation is enforced using Rust's type system. The chain of functions used to 
 
 ### Syntax validation
 
-Incoming messages in the shape of a byte string can only be deserialized into a `MlsMessageIn` struct. Deserialization ensures that the message is a syntactically correct MLS message, i.e. either an MLSPlaintext or an MLSCiphertext.
-For the latter case, further syntax checks are applied once the message is decrypted.
+Incoming messages in the shape of a byte string can only be deserialized into a `MlsMessageIn` struct. Deserialization ensures that the message is a syntactically correct MLS message, i.e., either an MLSPlaintext or an MLSCiphertext.
+Further syntax checks are applied for the latter case once the message is decrypted.
 
 ### Semantic validation
 
-Every function in the processing chain performs a number of semantic validation steps. For a list of these steps, see [below](message_validation.md#detailed-list-of-validation-steps). In the following, we will give a brief overview over which function performs which category of checks.
+Every function in the processing chain performs several semantic validation steps. For a list of these steps, see [below](message_validation.md#detailed-list-of-validation-steps). In the following, we will give a brief overview of which function performs which category of checks.
 
 #### Wire format policy and basic message consistency validation
 
-`MlsMessageIn` struct instances can be passed into the `.parse_message()` function of the `MlsGroup` API, which validates that the message conforms to the group's [wire format policy](user_manual/group_config.md) (`ValSem001`). The function also performs a number of basic semantic validation steps, such as consistency of Group id, Epoch and Sender data between message and group (`ValSem002`-`ValSem007` and `ValSem109`). It also checks if the sender type (e.g. `Member`, `NewMember`, etc.) matches the type of the message (`ValSem112`), as well as the presence of a path in case of an External Commit (`ValSem246`).
+`MlsMessageIn` struct instances can be passed into the `.parse_message()` function of the `MlsGroup` API, which validates that the message conforms to the group's [wire format policy](user_manual/group_config.md) (`ValSem001`). The function also performs several basic semantic validation steps, such as consistency of Group id, Epoch, and Sender data between message and group (`ValSem002`-`ValSem007` and `ValSem109`). It also checks if the sender type (e.g., `Member`, `NewMember`, etc.) matches the type of the message (`ValSem112`), as well as the presence of a path in case of an External Commit (`ValSem246`).
 
 `.parse_message()` then returns an `UnverifiedMessage` struct instance, which can in turn be used as input for `.process_unverified_message()`.
 
 #### Message-specific semantic validation
 
-`.process_unverified_message()` performs all other semantic validation steps. In particular, it ensures that
+`.process_unverified_message()` performs all other semantic validation steps. In particular, it ensures that ...
 
-* the message is properly authenticated by signature (`ValSem010`), membership tag (`ValSem008`) and confirmation tag (`ValSem205`),
-* proposals are valid relative to one-another and the current group state, e.g. no redundant adds or removes targeting non-members (`ValSem100`-`ValSem112`),
+* the message is correctly authenticated by a signature (`ValSem010`), membership tag (`ValSem008`), and confirmation tag (`ValSem205`),
+* proposals are valid relative to one another and the current group state, e.g., no redundant adds or removes targeting non-members (`ValSem100`-`ValSem112`),
 * commits are valid relative to the group state and the proposals it covers (`ValSem200`-`ValSem205`) and
 * external commits are valid according to the spec (`ValSem240`-`ValSem245`, `ValSem247` is checked as part of `ValSem010`).
 
-After performing these steps, messages are returned as `ProcessedMessage`s that the application can either use immediately (application messages) or inspect and decide if they find them valid according to the application's own policy (proposals and commits). Proposals can then be stored in the proposal queue via `.store_pending_proposal()`, while commits can be merged into the group state via `.merge_staged_commit()`.
+After performing these steps, messages are returned as `ProcessedMessage`s that the application can either use immediately (application messages) or inspect and decide if they find them valid according to the application's policy (proposals and commits). Proposals can then be stored in the proposal queue via `.store_pending_proposal()`, while commits can be merged into the group state via `.merge_staged_commit()`.
 
 ## Detailed list of validation steps
 

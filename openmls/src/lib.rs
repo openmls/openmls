@@ -7,7 +7,7 @@
 //! use openmls::prelude::*;
 //! use openmls_rust_crypto::{OpenMlsRustCrypto};
 //!
-//! // Define cipher suite ...
+//! // Define ciphersuite ...
 //! let ciphersuite = Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519;
 //! // ... and the crypto backend to use.
 //! let backend = &OpenMlsRustCrypto::default();

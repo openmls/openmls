@@ -457,7 +457,7 @@ impl GroupSecrets {
         .tls_serialize_detached()
     }
 
-    /// Set the config for the secrets, i.e. cipher suite and MLS version.
+    /// Set the config for the secrets, i.e. ciphersuite and MLS version.
     pub(crate) fn config(
         mut self,
         ciphersuite: Ciphersuite,

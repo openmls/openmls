@@ -1,9 +1,9 @@
 # Traits & External Types
 
-OpenMLS defines a number of traits that have to be implemented in order to use
+OpenMLS defines several traits that have to be implemented to use
 OpenMLS.
 The main goal is to allow OpenMLS to use different implementations for its
-cryptographic primitives, persistence and random number generation.
+cryptographic primitives, persistence, and random number generation.
 This should make it possible to plug in anything from [WebCrypto] to secure
 enclaves.
 
@@ -18,21 +18,20 @@ See the [OpenMlsKeyStore trait](./traits.md#openmlskeystore) description for det
 but note that the key used to store, read, and delete values in the key store has
 to be provided as a byte slice.
 
-In the following examples we have a `ciphersuite` and a `backend` (`OpenMlsCryptoProvider`).
+In the following examples, we have a `ciphersuite` and a `backend` (`OpenMlsCryptoProvider`).
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/key_store.rs:key_store_store}}
 ```
 
-In order to delete a value the `delete` is called with the identifier.
+The `delete` is called with the identifier to delete a value.
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/key_store.rs:key_store_delete}}
 ```
 
 Retrieving a value from the key store is as simple as calling `read`.
-In this example we assume that we got a `credential` where we want to retrieve
-the credential bundle for, i.e. the private key material.
+In this example, we assume we got a `credential` where we want to retrieve the credential bundle, i.e., the private key material.
 
 ```rust,no_run,noplayground
 {{#include ../../../openmls/tests/key_store.rs:key_store_read}}
