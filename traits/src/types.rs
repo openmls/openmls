@@ -304,7 +304,7 @@ impl TryFrom<u16> for Ciphersuite {
             0x0006 => Ok(Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448),
             0x0007 => Ok(Ciphersuite::MLS_256_DHKEMP384_AES256GCM_SHA384_P384),
             _ => Err(Self::Error::DecodingError(format!(
-                "{} is not a valid cipher suite value",
+                "{} is not a valid ciphersuite value",
                 v
             ))),
         }

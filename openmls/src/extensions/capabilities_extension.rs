@@ -101,7 +101,7 @@ impl CapabilitiesExtension {
     pub fn versions(&self) -> &[ProtocolVersion] {
         self.versions.as_slice()
     }
-    /// Get a reference to the list of cipher suites in this extension.
+    /// Get a reference to the list of ciphersuites in this extension.
     pub fn ciphersuites(&self) -> &[Ciphersuite] {
         self.ciphersuites.as_slice()
     }
