@@ -16,7 +16,7 @@ Clients keep the private key material corresponding to a key package locally in 
 
 Clients need to choose a few parameters to create a `KeyPackageBundle`:
 
-- `ciphersuites: &[CiphersuiteName]`: A list of cipher suites supported by the client.
+- `ciphersuites: &[CiphersuiteName]`: A list of ciphersuites supported by the client.
 - `extensions: Vec<Extensions>`: A list of supported extensions.
 
 Clients must specify at least one cipher suite and not advertise ciphersuites they do not support.
