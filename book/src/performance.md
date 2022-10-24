@@ -39,7 +39,7 @@ In addition to the three scenarios above extreme and corner cases are interestin
 Only every second leave in the tree is non-blank.
 
 ## Use Case Scenarios
-A collection of everyday use cases/flows.
+A collection of common use cases/flows from everyday scenarios.
 
 ### Long-time offline device
 Suppose a device has been offline for a while. In that case, it has to process a large number of application and protocol messages.
