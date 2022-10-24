@@ -510,8 +510,8 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_inbound_plaintext</span>(
         <span class="ident">inbound_message</span>: <span class="ident">MlsMessageIn</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ValidationError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">MlsMessage::Plaintext</span>(<span class="ident">plaintext</span>) <span class="op">=</span> <span class="ident">inbound_message</span>.<span class="ident">mls_message</span> {
-            <span class="ident"><span class="self">Self</span>::from_plaintext</span>(<span class="kw-2">*</span><span class="ident">plaintext</span>)
+        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">MlsMessageBody::Plaintext</span>(<span class="ident">plaintext</span>) <span class="op">=</span> <span class="ident">inbound_message</span>.<span class="ident">mls_message</span>.<span class="ident">body</span> {
+            <span class="ident"><span class="self">Self</span>::from_plaintext</span>(<span class="ident">plaintext</span>)
         } <span class="kw">else</span> {
             <span class="prelude-val">Err</span>(<span class="ident">ValidationError::WrongWireFormat</span>)
         }
@@ -526,7 +526,7 @@
         <span class="ident">sender_ratchet_configuration</span>: <span class="kw-2">&amp;</span><span class="ident">SenderRatchetConfiguration</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">ValidationError</span><span class="op">&gt;</span> {
         <span class="comment">// This will be refactored with #265.</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">MlsMessage::Ciphertext</span>(<span class="ident">ciphertext</span>) <span class="op">=</span> <span class="ident">inbound_message</span>.<span class="ident">mls_message</span> {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="ident">MlsMessageBody::Ciphertext</span>(<span class="ident">ciphertext</span>) <span class="op">=</span> <span class="ident">inbound_message</span>.<span class="ident">mls_message</span>.<span class="ident">body</span> {
             <span class="kw">let</span> <span class="ident">ciphersuite</span> <span class="op">=</span> <span class="ident">group</span>.<span class="ident">ciphersuite</span>();
             <span class="kw">let</span> (<span class="ident">message_secrets</span>, <span class="ident">old_leaves</span>) <span class="op">=</span> <span class="ident">group</span>
                 .<span class="ident">message_secrets_and_leaves_mut</span>(<span class="ident">ciphertext</span>.<span class="ident">epoch</span>())

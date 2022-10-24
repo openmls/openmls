@@ -627,7 +627,7 @@
             .<span class="ident">tls_serialize_detached</span>()
             .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">path_processing_result</span> <span class="op">=</span>
-        <span class="comment">// If path is needed, compute path values</span>
+            <span class="comment">// If path is needed, compute path values</span>
             <span class="kw">if</span> <span class="ident">apply_proposals_values</span>.<span class="ident">path_required</span>
                 <span class="op">|</span><span class="op">|</span> <span class="ident">contains_own_updates</span>
                 <span class="op">|</span><span class="op">|</span> <span class="ident">params</span>.<span class="ident">force_self_update</span>()
