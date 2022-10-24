@@ -19,8 +19,6 @@ use crate::error::LibraryError;
 /// Unified message type for MLS messages.
 /// /// This is only used internally, externally we use either [`MlsMessageIn`] or
 /// [`MlsMessageOut`], depending on the context.
-/// Since the memory footprint can differ considerably between [`VerifiableMlsPlaintext`]
-/// and [`MlsCiphertext`], we use `Box<T>` for more efficient memory allocation.
 ///
 /// ```c
 /// // draft-ietf-mls-protocol-16
