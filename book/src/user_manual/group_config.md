@@ -1,6 +1,6 @@
 # Group configuration
 
-The group configuration can be specified by building a `MlsGroupConfig` object or choosing the default value. The default velaue contains safe values for all parameters and is suitable for scenarios whithout particular requirements.
+The group configuration can be specified by building a `MlsGroupConfig` object or choosing the default value. The default value contains safe values for all parameters and is suitable for scenarios without particular requirements.
 
 The following parameters can be set:
 

@@ -16,7 +16,7 @@ The go-to default at the moment is an implementation using commonly used, native
 crypto implementations.
 
 **Evercrypt Provider**
-In addition to the Rust Crypto Provider there's the Evercrypt provider that uses
+In addition to the Rust Crypto Provider, there's the Evercrypt provider that uses
 the formally verified HACL\*/Evercrypt library.
 Note that this provider does not work equally well on all platforms yet.
 
@@ -28,11 +28,11 @@ There are 4 different traits defined in the [OpenMLS traits crate].
 
 This trait defines two functions to generate arrays and vectors, and is used by
 OpenMLS to generate randomness for key generation and random identifiers.
-While there is the commonly used [rand crate] not all implementations use it.
-OpenMLS therefore defines its own randomness trait that needs to be implemented
+While there is the commonly used [rand crate], not all implementations use it.
+OpenMLS, therefore, defines its own randomness trait that needs to be implemented
 by an OpenMLS crypto provider.
 It simply needs to implement two functions to generate cryptographically secure
-randomness and store it into an array or vector.
+randomness and store it in an array or vector.
 
 ```rust,no_run,noplayground
 {{#include ../../../traits/src/random.rs:8:16}}
@@ -40,7 +40,7 @@ randomness and store it into an array or vector.
 
 ### OpenMlsCrypto
 
-This trait defines all cryptographic functions required by OpenMLS, in particular
+This trait defines all cryptographic functions required by OpenMLS. In particular:
 
 - HKDF
 - Hashing
@@ -57,22 +57,22 @@ This trait defines all cryptographic functions required by OpenMLS, in particula
 This trait defines a CRUD API for a key store that is used to store long-term
 key material from OpenMLS.
 
-The key store provides functions to `store`, `read` and `delete` values.
-Note that it does not allow to update values.
-Instead entries must be deleted and newly stored.
+The key store provides functions to `store`, `read`, and `delete` values.
+Note that it does not allow updating values.
+Instead, entries must be deleted and newly stored.
 
 ```rust,no_run,noplayground
 {{#include ../../../traits/src/key_store.rs:15:40}}
 ```
 
-**NOTE:** Right now key material needs to be extractable from the key store.
+**NOTE:** Right now, key material must be extracted from the key store.
 This will most likely change in the future.
 
 ### OpenMlsCryptoProvider
 
 Additionally, there's a wrapper trait defined that is expected to be passed into
 the public OpenMLS API.
-Some OpenMLS APIs require only one of the sub-traits though.
+Some OpenMLS APIs require only one of the sub-traits, though.
 
 ```rust,no_run,noplayground
 {{#include ../../../traits/src/traits.rs:15:28}}
@@ -81,7 +81,7 @@ Some OpenMLS APIs require only one of the sub-traits though.
 ## Implementation Notes
 
 It is not necessary to implement all sub-traits if one functionality is missing.
-If you want to use a persisting key store for example, it is sufficient to do a new implementation of the key store trait and combine it with one of the provided crypto and randomness trait implementations.
+Suppose you want to use a persisting key store. In that case, it is sufficient to do a new implementation of the key store trait and combine it with one of the provided crypto and randomness trait implementations.
 
 [rust crypto]: https://crates.io/crates/openmls_rust_crypto
 [evercrypt]: https://crates.io/crates/openmls_evercrypt_backend

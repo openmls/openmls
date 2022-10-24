@@ -374,7 +374,7 @@ impl JoinerSecret {
         Ok(JoinerSecret { secret })
     }
 
-    /// Set the config for the secret, i.e. cipher suite and MLS version.
+    /// Set the config for the secret, i.e. ciphersuite and MLS version.
     pub(crate) fn config(&mut self, ciphersuite: Ciphersuite, mls_version: ProtocolVersion) {
         self.secret.config(ciphersuite, mls_version);
     }

@@ -1,7 +1,7 @@
 
 # External Types
 
-For interoperability this crate also defines a number of types and algorithm
+For interoperability, this crate also defines several types and algorithm
 identifiers.
 
 **AEADs**
@@ -27,7 +27,7 @@ The following hash algorithms are defined.
 {{#include ../../../traits/src/types.rs:54:58}}
 ```
 
-An hash algorithm provides the following functions to get the according values for each
+A hash algorithm provides the following functions to get the according values for each
 algorithm.
 
 - `size`
@@ -43,7 +43,7 @@ The following signature schemes are defined.
 # HPKE Types
 
 The HPKE implementation is part of the crypto provider as well.
-The crate therefore defines the necessary types too.
+The crate, therefore, defines the necessary types too.
 
 The HPKE algorithms are defined as follows.
 
@@ -59,7 +59,7 @@ The HPKE algorithms are defined as follows.
 {{#include ../../../traits/src/types.rs:197:209}}
 ```
 
-In addition helper structs for `HpkeCiphertext` and `HpkeKeyPair` are defined.
+In addition, helper structs for `HpkeCiphertext` and `HpkeKeyPair` are defined.
 
 ```rust,no_run,noplayground
 {{#include ../../../traits/src/types.rs:222:225}}

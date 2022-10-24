@@ -8,7 +8,7 @@ Members can be added to the group atomically with the `.add_members()` function.
 {{#include ../../../openmls/tests/book_code.rs:alice_adds_bob}}
 ```
 
-The function returns the tuple `(MlsMessageOut, Welcome)`. The `MlsMessageOut` contains a Commit message that needs to be fanned out to existing members of the group. The `Welcome` message needs to be sent to the newly added members.
+The function returns the tuple `(MlsMessageOut, Welcome)`. The `MlsMessageOut` contains a Commit message that needs to be fanned out to existing group members. The `Welcome` message must be sent to the newly added members.
 
 ## Proposal
 
@@ -18,4 +18,4 @@ Members can also be added as a proposal (without the corresponding Commit messag
 {{#include ../../../openmls/tests/book_code.rs:propose_add}}
 ```
 
-In this case the the function returns an `MlsMessageOut` that needs to be fanned out to existing group members.
+In this case, the function returns an `MlsMessageOut` that needs to be fanned out to existing group members.

@@ -14,10 +14,10 @@
 //! Key packages are intended to be used only once and SHOULD NOT be reused
 //! except in case of last resort, i.e. if there's no other key package available.
 //! Clients MAY generate and publish multiple KeyPackages to support multiple
-//! cipher suites.
+//! ciphersuites.
 //!
 //! The value for HPKE init key MUST be a public key for the asymmetric
-//! encryption scheme defined by cipher suite, and it MUST be unique among the
+//! encryption scheme defined by ciphersuite, and it MUST be unique among the
 //! set of key packages created by this client.
 //! The whole structure is signed using the client's signature key.
 //! A key package object with an invalid signature field is considered malformed.
@@ -595,7 +595,7 @@ impl KeyPackageBundle {
     /// Create a new [`KeyPackageBundle`] with
     /// * a fresh key pair
     /// * the provided MLS version
-    /// * the first cipher suite in the `ciphersuites` slice
+    /// * the first ciphersuite in the `ciphersuites` slice
     /// * the provided `extensions`
     ///
     /// Note that the capabilities extension gets added automatically, based on

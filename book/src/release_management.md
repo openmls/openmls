@@ -8,26 +8,25 @@ The versioning follows the Rust and semantic [versioning guidelines].
 
 ## Release Notes
 
-Release notes are published on Github with a full changelog and a discussion in
+Release notes are published on GitHub with a full changelog and a discussion in
 the "Release" section.
-In addition the release notes are prepended to the CHANGELOG file in each crate's
+In addition, the release notes are prepended to the CHANGELOG file in each crate's
 root folder.
 The entries in the CHANGELOG file should follow the [keep a changelog guide].
 
 ## Pre-release strategy
 
-Before releasing a minor or major version of the OpenMLS crate a pre-release version
+Before releasing a minor or major version of the OpenMLS crate, a pre-release version
 must be published to crates.io.
-Pre-release versions are defined by appending a hyphen and a series of dot
-separated identifiers, i.e. `-pre.x` where `x` gets counted up starting at 1.
-Pre-releases must get tagged but don't require release notes or any other documentation.
-It is also sufficient to tag only for the most high-level crate being published.
+Pre-release versions are defined by appending a hyphen, and a series of dot-separated identifiers, i.e., `-pre.x` where `x` gets counted up starting at 1.
+Pre-releases must be tagged but don't require release notes or other documentation.
+It is also sufficient to tag only the most high-level crate being published.
 
 ---
 
 ## Crates in this Repository
 
-It is important that the crates are publish in the order below.
+The crates must be published in the order below.
 
 - [Traits](https://github.com/openmls/openmls/blob/main/traits/Cargo.toml)
 - [Memory Keystore](https://github.com/openmls/openmls/blob/main/memory_keystore/Cargo.toml)
