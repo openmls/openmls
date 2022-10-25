@@ -5,8 +5,8 @@ use tls_codec::{TlsByteVecU16, VLBytes};
 
 use super::*;
 
-// This is implemented manually because we throw a `DecodingError`
-// in all cases but `Credential::Basic`.
+// TODO(#1053): This is implemented manually because we throw a `DecodingError`
+//              in all cases but `Credential::Basic`.
 impl tls_codec::Deserialize for Credential {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
         let val = u16::tls_deserialize(bytes)?;
@@ -26,12 +26,8 @@ impl tls_codec::Deserialize for Credential {
     }
 }
 
-// This is implemented manually because we call `SignaturePublicKey::new(...)`
-// and return a `DecodingError` in case when `SignaturePublicKey::new(...)` fails.
-
-// TODOs:
-// * `SignaturePublicKey::new(...)` doesn't check anything yet.
-// * Implement a custom `tls_codec::Deserialize` for `SignaturePublicKey` instead?
+// TODO(#1053): This is implemented manually because we call `SignaturePublicKey::new(...)`
+//              and return a `DecodingError` in case when `SignaturePublicKey::new(...)` fails.
 impl tls_codec::Deserialize for BasicCredential {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
         let identity = TlsByteVecU16::tls_deserialize(bytes)?;
