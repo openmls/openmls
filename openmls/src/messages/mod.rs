@@ -237,7 +237,7 @@ impl Signable for GroupInfoTBS {
 ///     Extension extensions<V>;
 ///     MAC confirmation_tag;
 ///     uint32 signer;
-///     // SignWithLabel(., "GroupInfoTBS", GroupInfoTBS)
+///     /* SignWithLabel(., "GroupInfoTBS", GroupInfoTBS) */
 ///     opaque signature<V>;
 /// } GroupInfo;
 /// ```
