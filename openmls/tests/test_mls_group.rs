@@ -181,10 +181,10 @@ fn mls_group_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         // Make sure that both groups have the same members
         assert_eq!(alice_group.members(), bob_group.members());
 
-        // Make sure that both groups have the same authentication code
+        // Make sure that both groups have the same epoch authenticator
         assert_eq!(
-            alice_group.authentication_code().as_slice(),
-            bob_group.authentication_code().as_slice()
+            alice_group.epoch_authenticator().as_slice(),
+            bob_group.epoch_authenticator().as_slice()
         );
 
         // === Alice sends a message to Bob ===
