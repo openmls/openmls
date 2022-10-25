@@ -32,6 +32,7 @@ fn test_welcome_message_with_version(
     // We use this dummy group info in all test cases.
     let group_info_tbs = {
         let group_context = GroupContext::new(
+            ciphersuite,
             GroupId::random(backend),
             123,
             vec![1, 2, 3, 4, 5, 6, 7, 8, 9],

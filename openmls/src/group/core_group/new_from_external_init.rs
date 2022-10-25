@@ -90,6 +90,7 @@ impl CoreGroup {
             .map_err(|_| ExternalCommitError::UnsupportedCiphersuite)?;
 
         let group_context = GroupContext::new(
+            ciphersuite,
             pgs.group_id,
             pgs.epoch,
             pgs.tree_hash.as_slice().to_vec(),

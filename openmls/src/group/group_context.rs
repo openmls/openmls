@@ -4,12 +4,16 @@
 
 use openmls_traits::types::Ciphersuite;
 
+use crate::versions::ProtocolVersion;
+
 use super::*;
 
 #[derive(
     Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 pub struct GroupContext {
+    protocol_version: ProtocolVersion,
+    ciphersuite: Ciphersuite,
     group_id: GroupId,
     epoch: GroupEpoch,
     tree_hash: TlsByteVecU8,
@@ -27,6 +31,7 @@ impl GroupContext {
 impl GroupContext {
     /// Create a new group context
     pub(crate) fn new(
+        ciphersuite: Ciphersuite,
         group_id: GroupId,
         epoch: impl Into<GroupEpoch>,
         tree_hash: Vec<u8>,
@@ -34,6 +39,8 @@ impl GroupContext {
         extensions: &[Extension],
     ) -> Self {
         GroupContext {
+            ciphersuite,
+            protocol_version: ProtocolVersion::Mls10,
             group_id,
             epoch: epoch.into(),
             tree_hash: tree_hash.into(),
@@ -50,6 +57,7 @@ impl GroupContext {
         extensions: &[Extension],
     ) -> Self {
         Self::new(
+            ciphersuite,
             group_id,
             0,
             tree_hash,

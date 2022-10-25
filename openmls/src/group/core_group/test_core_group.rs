@@ -95,6 +95,7 @@ fn test_failed_groupinfo_decryption(
 
     let group_info_tbs = {
         let group_context = GroupContext::new(
+            ciphersuite,
             group_id,
             epoch,
             tree_hash,

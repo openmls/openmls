@@ -83,6 +83,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
     // We can't easily get a "natural" GroupInfo, so we just create one here.
     let group_info_tbs = {
         let group_context = GroupContext::new(
+            ciphersuite,
             group.group_id().clone(),
             0,
             crypto

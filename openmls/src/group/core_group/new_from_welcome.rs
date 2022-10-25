@@ -154,6 +154,7 @@ impl CoreGroup {
 
         // Compute state
         let group_context = GroupContext::new(
+            ciphersuite,
             group_info.group_context().group_id().clone(),
             group_info.group_context().epoch(),
             tree.tree_hash().to_vec(),
