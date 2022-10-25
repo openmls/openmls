@@ -1,5 +1,9 @@
 on: push
 
+concurrency: 
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 name: Cargo doc check
 jobs:
   checks:
