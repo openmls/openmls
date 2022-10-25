@@ -1,6 +1,10 @@
+name: Clippy
+
 on: push
 
-name: Clippy
+concurrency: 
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 defaults:
   run:
