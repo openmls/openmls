@@ -177,8 +177,8 @@ fn ratchet_tree_extension(ciphersuite: Ciphersuite, backend: &impl OpenMlsCrypto
 
     // Make sure the group state is the same
     assert_eq!(
-        alice_group.authentication_code(),
-        bob_group.authentication_code()
+        alice_group.epoch_authenticator(),
+        bob_group.epoch_authenticator()
     );
 
     // Make sure both groups have set the flag correctly

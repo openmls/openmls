@@ -488,9 +488,9 @@ impl CoreGroup {
             .map_err(LibraryError::unexpected_crypto_error)?)
     }
 
-    /// Returns the authentication code
-    pub(crate) fn authentication_code(&self) -> &AuthenticationCode {
-        self.group_epoch_secrets().authentication_code()
+    /// Returns the epoch authenticator
+    pub(crate) fn epoch_authenticator(&self) -> &EpochAuthenticator {
+        self.group_epoch_secrets().epoch_authenticator()
     }
 
     /// Returns the resumption psk
