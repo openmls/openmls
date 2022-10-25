@@ -60,6 +60,7 @@ pub(crate) struct MlsMessage {
 ///     }
 /// } MLSMessage;
 /// ```
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, PartialEq, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
 #[repr(u8)]
 pub(crate) enum MlsMessageBody {
