@@ -243,7 +243,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
     let sender_secret_tree = message_secrets.replace_secret_tree(receiver_secret_tree);
 
     let sender_data = ciphertext
-        .sender_data(&mut message_secrets, backend, ciphersuite)
+        .sender_data(&message_secrets, backend, ciphersuite)
         .expect("Could not decrypt sender data.");
     let verifiable_plaintext = ciphertext
         .to_plaintext(
@@ -267,7 +267,7 @@ fn wire_format_checks(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProv
 
     assert_eq!(
         ciphertext
-            .sender_data(&mut message_secrets, backend, ciphersuite)
+            .sender_data(&message_secrets, backend, ciphersuite)
             .expect_err("Could decrypt despite wrong wire format."),
         MessageDecryptionError::WrongWireFormat
     );
