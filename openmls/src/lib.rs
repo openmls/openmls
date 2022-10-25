@@ -62,7 +62,7 @@
 //!             .expect("Could not hash KeyPackage.");
 //!     backend
 //!         .key_store()
-//!         .store(key_package_id.value(), &key_package_bundle)
+//!         .store(key_package_id.as_slice(), &key_package_bundle)
 //!         .expect("An unexpected error occurred.");
 //!     Ok(key_package_bundle.into_parts().0)
 //! }

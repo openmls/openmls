@@ -29,28 +29,13 @@
 use openmls_traits::{crypto::OpenMlsCrypto, types::CryptoError};
 use serde::{Deserialize, Serialize};
 use tls_codec::{
-    Serialize as TlsSerialize, TlsDeserialize, TlsSerialize, TlsSize, TlsSliceU8, VLBytes,
+    Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, TlsSliceU8, VLBytes,
 };
 
 use super::Ciphersuite;
 
 const KEY_PACKAGE_REF_LABEL: &[u8; 22] = b"MLS 1.0 KeyPackage ref";
 const PROPOSAL_REF_LABEL: &[u8; 20] = b"MLS 1.0 Proposal ref";
-
-#[derive(
-    Clone,
-    Hash,
-    PartialEq,
-    Eq,
-    Serialize,
-    Deserialize,
-    TlsDeserialize,
-    TlsSerialize,
-    TlsSize,
-    Ord,
-    PartialOrd,
-)]
-struct Value(VLBytes);
 
 /// A reference to an MLS object computed as a hash of the value.
 #[derive(
@@ -67,7 +52,7 @@ struct Value(VLBytes);
     TlsSize,
 )]
 pub struct HashReference {
-    value: Value,
+    value: VLBytes,
 }
 
 /// A reference to a key package.
@@ -119,24 +104,19 @@ impl HashReference {
             .map_err(|_| CryptoError::TlsSerializationError)?;
         let value = backend.hash(ciphersuite.hash_algorithm(), &payload)?;
         Ok(Self {
-            value: Value(VLBytes::new(value)),
+            value: VLBytes::new(value),
         })
-    }
-
-    /// Get a reference to the hash reference's value.
-    pub fn value(&self) -> &[u8] {
-        self.as_slice()
     }
 
     /// Get a reference to the hash reference's value as slice.
     pub fn as_slice(&self) -> &[u8] {
-        self.value.0.as_slice()
+        self.value.as_slice()
     }
 
     #[cfg(any(feature = "test-utils", test))]
     pub fn from_slice(slice: &[u8]) -> Self {
         Self {
-            value: Value(VLBytes::from(slice)),
+            value: VLBytes::from(slice),
         }
     }
 }
@@ -144,7 +124,7 @@ impl HashReference {
 impl core::fmt::Display for HashReference {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "HashReference: ")?;
-        for b in self.value.0.as_slice() {
+        for b in self.value.as_slice() {
             write!(f, "{:02X}", b)?;
         }
         Ok(())

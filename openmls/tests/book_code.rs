@@ -97,7 +97,7 @@ fn generate_key_package_bundle(
             key_package
                 .hash_ref(backend.crypto())
                 .expect("Could not hash KeyPackage.")
-                .value(),
+                .as_slice(),
             &key_package_bundle,
         )
         .expect("An unexpected error occurred.");

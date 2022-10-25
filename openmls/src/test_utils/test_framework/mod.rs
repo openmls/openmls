@@ -188,7 +188,7 @@ impl MlsGroupTestSetup {
             .insert(
                 key_package
                     .hash_ref(client.crypto.crypto())?
-                    .value()
+                    .as_slice()
                     .to_vec(),
                 client.identity.clone(),
             );

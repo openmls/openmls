@@ -58,7 +58,7 @@ fn generate_credential_bundle_and_key_package_bundle(
             key_package
                 .hash_ref(backend.crypto())
                 .expect("Could not hash KeyPackage")
-                .value(),
+                .as_slice(),
         )
         .expect("An unexpected error occurred.");
 
@@ -837,7 +837,7 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 alice_key_package
                     .hash_ref(backend.crypto())
                     .expect("Could not hash KeyPackage.")
-                    .value(),
+                    .as_slice(),
                 &alice_key_package_bundle,
             )
             .expect("An unexpected error occurred.");
@@ -1007,7 +1007,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 alice_key_package
                     .hash_ref(backend.crypto())
                     .expect("Could not hash KeyPackage.")
-                    .value(),
+                    .as_slice(),
                 &alice_key_package_bundle,
             )
             .expect("An unexpected error occurred.");

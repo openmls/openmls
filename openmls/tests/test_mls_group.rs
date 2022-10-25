@@ -53,7 +53,7 @@ fn generate_key_package_bundle(
         .store(
             kp.hash_ref(backend.crypto())
                 .expect("Could not hash KeyPackage.")
-                .value(),
+                .as_slice(),
             &kpb,
         )
         .expect("An unexpected error occurred.");
