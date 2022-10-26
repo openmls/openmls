@@ -1258,7 +1258,7 @@
 </pre><pre class="rust"><code><span class="doccomment">//! # Key schedule</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module contains the types and implementations for key schedule operations.</span>
-<span class="doccomment">//! It exposes the [`AuthenticationCode`] &amp; [`ResumptionPsk`].</span>
+<span class="doccomment">//! It exposes the [`EpochAuthenticator`] &amp; [`ResumptionPsk`].</span>
 
 <span class="comment">// Internal documentation</span>
 <span class="comment">//</span>
@@ -1371,7 +1371,7 @@
 <span class="comment">// | `sender_data_secret`    | &quot;sender data&quot;   |</span>
 <span class="comment">// | `encryption_secret`     | &quot;encryption&quot;    |</span>
 <span class="comment">// | `exporter_secret`       | &quot;exporter&quot;      |</span>
-<span class="comment">// | `authentication_code`   | &quot;authentication&quot;|</span>
+<span class="comment">// | `epoch_authenticator`   | &quot;authentication&quot;|</span>
 <span class="comment">// | `external_secret`       | &quot;external&quot;      |</span>
 <span class="comment">// | `confirmation_key`      | &quot;confirm&quot;       |</span>
 <span class="comment">// | `membership_key`        | &quot;membership&quot;    |</span>
@@ -1439,12 +1439,12 @@
 <span class="doccomment">/// group state.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">cfg_attr</span>(<span class="ident">test</span>, <span class="ident">derive</span>(<span class="ident">PartialEq</span>))]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AuthenticationCode</span> {
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">EpochAuthenticator</span> {
     <span class="ident">secret</span>: <span class="ident">Secret</span>,
 }
 
-<span class="kw">impl</span> <span class="ident">AuthenticationCode</span> {
-    <span class="doccomment">/// Derive an `AuthenticationCode` from an `EpochSecret`.</span>
+<span class="kw">impl</span> <span class="ident">EpochAuthenticator</span> {
+    <span class="doccomment">/// Derive an `EpochAuthenticator` from an `EpochSecret`.</span>
     <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCryptoProvider</span>,
         <span class="ident">epoch_secret</span>: <span class="kw-2">&amp;</span><span class="ident">EpochSecret</span>,
@@ -2263,7 +2263,7 @@
 <span class="doccomment">/// | `sender_data_secret`    | &quot;sender data&quot;   |</span>
 <span class="doccomment">/// | `encryption_secret`     | &quot;encryption&quot;    |</span>
 <span class="doccomment">/// | `exporter_secret`       | &quot;exporter&quot;      |</span>
-<span class="doccomment">/// | `authentication_code`   | &quot;authentication&quot;|</span>
+<span class="doccomment">/// | `epoch_authenticator`   | &quot;authentication&quot;|</span>
 <span class="doccomment">/// | `external_secret`       | &quot;external&quot;      |</span>
 <span class="doccomment">/// | `confirmation_key`      | &quot;confirm&quot;       |</span>
 <span class="doccomment">/// | `membership_key`        | &quot;membership&quot;    |</span>
@@ -2273,7 +2273,7 @@
     <span class="ident">sender_data_secret</span>: <span class="ident">SenderDataSecret</span>,
     <span class="ident">encryption_secret</span>: <span class="ident">EncryptionSecret</span>,
     <span class="ident">exporter_secret</span>: <span class="ident">ExporterSecret</span>,
-    <span class="ident">authentication_code</span>: <span class="ident">AuthenticationCode</span>,
+    <span class="ident">epoch_authenticator</span>: <span class="ident">EpochAuthenticator</span>,
     <span class="ident">external_secret</span>: <span class="ident">ExternalSecret</span>,
     <span class="ident">confirmation_key</span>: <span class="ident">ConfirmationKey</span>,
     <span class="ident">membership_key</span>: <span class="ident">MembershipKey</span>,
@@ -2299,7 +2299,7 @@
     <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">sender_data_secret</span> <span class="op">==</span> <span class="ident">other</span>.<span class="ident">sender_data_secret</span>
             <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">exporter_secret</span> <span class="op">==</span> <span class="ident">other</span>.<span class="ident">exporter_secret</span>
-            <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">authentication_code</span> <span class="op">==</span> <span class="ident">other</span>.<span class="ident">authentication_code</span>
+            <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">epoch_authenticator</span> <span class="op">==</span> <span class="ident">other</span>.<span class="ident">epoch_authenticator</span>
             <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">external_secret</span> <span class="op">==</span> <span class="ident">other</span>.<span class="ident">external_secret</span>
             <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">confirmation_key</span> <span class="op">==</span> <span class="ident">other</span>.<span class="ident">confirmation_key</span>
             <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">membership_key</span> <span class="op">==</span> <span class="ident">other</span>.<span class="ident">membership_key</span>
@@ -2319,10 +2319,10 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">confirmation_key</span>
     }
 
-    <span class="doccomment">/// Authentication code</span>
+    <span class="doccomment">/// Epoch authenticator</span>
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">authentication_code</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">AuthenticationCode</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">authentication_code</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">epoch_authenticator</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">EpochAuthenticator</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">epoch_authenticator</span>
     }
 
     <span class="doccomment">/// Exporter secret</span>
@@ -2380,7 +2380,7 @@
         <span class="kw">let</span> <span class="ident">sender_data_secret</span> <span class="op">=</span> <span class="ident">SenderDataSecret::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">encryption_secret</span> <span class="op">=</span> <span class="ident">EncryptionSecret::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">exporter_secret</span> <span class="op">=</span> <span class="ident">ExporterSecret::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">authentication_code</span> <span class="op">=</span> <span class="ident">AuthenticationCode::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">epoch_authenticator</span> <span class="op">=</span> <span class="ident">EpochAuthenticator::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">external_secret</span> <span class="op">=</span> <span class="ident">ExternalSecret::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">confirmation_key</span> <span class="op">=</span> <span class="ident">ConfirmationKey::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">membership_key</span> <span class="op">=</span> <span class="ident">MembershipKey::new</span>(<span class="ident">backend</span>, <span class="kw-2">&amp;</span><span class="ident">epoch_secret</span>)<span class="question-mark">?</span>;
@@ -2394,7 +2394,7 @@
             <span class="ident">sender_data_secret</span>,
             <span class="ident">encryption_secret</span>,
             <span class="ident">exporter_secret</span>,
-            <span class="ident">authentication_code</span>,
+            <span class="ident">epoch_authenticator</span>,
             <span class="ident">external_secret</span>,
             <span class="ident">confirmation_key</span>,
             <span class="ident">membership_key</span>,
@@ -2438,7 +2438,7 @@
             <span class="ident">GroupEpochSecrets</span> {
                 <span class="ident">init_secret</span>: <span class="self">self</span>.<span class="ident">init_secret</span>,
                 <span class="ident">exporter_secret</span>: <span class="self">self</span>.<span class="ident">exporter_secret</span>,
-                <span class="ident">authentication_code</span>: <span class="self">self</span>.<span class="ident">authentication_code</span>,
+                <span class="ident">epoch_authenticator</span>: <span class="self">self</span>.<span class="ident">epoch_authenticator</span>,
                 <span class="ident">external_secret</span>: <span class="self">self</span>.<span class="ident">external_secret</span>,
                 <span class="ident">resumption_psk</span>: <span class="self">self</span>.<span class="ident">resumption_psk</span>,
             },
@@ -2457,7 +2457,7 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">GroupEpochSecrets</span> {
     <span class="ident">init_secret</span>: <span class="ident">InitSecret</span>,
     <span class="ident">exporter_secret</span>: <span class="ident">ExporterSecret</span>,
-    <span class="ident">authentication_code</span>: <span class="ident">AuthenticationCode</span>,
+    <span class="ident">epoch_authenticator</span>: <span class="ident">EpochAuthenticator</span>,
     <span class="ident">external_secret</span>: <span class="ident">ExternalSecret</span>,
     <span class="ident">resumption_psk</span>: <span class="ident">ResumptionPsk</span>,
 }
@@ -2480,7 +2480,7 @@
 <span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">GroupEpochSecrets</span> {
     <span class="kw">fn</span> <span class="ident">eq</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">exporter_secret</span> <span class="op">==</span> <span class="ident">other</span>.<span class="ident">exporter_secret</span>
-            <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">authentication_code</span> <span class="op">==</span> <span class="ident">other</span>.<span class="ident">authentication_code</span>
+            <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">epoch_authenticator</span> <span class="op">==</span> <span class="ident">other</span>.<span class="ident">epoch_authenticator</span>
             <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">external_secret</span> <span class="op">==</span> <span class="ident">other</span>.<span class="ident">external_secret</span>
             <span class="op">&amp;&amp;</span> <span class="self">self</span>.<span class="ident">resumption_psk</span> <span class="op">==</span> <span class="ident">other</span>.<span class="ident">resumption_psk</span>
     }
@@ -2492,9 +2492,9 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">init_secret</span>
     }
 
-    <span class="doccomment">/// Authentication code</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">authentication_code</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">AuthenticationCode</span> {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">authentication_code</span>
+    <span class="doccomment">/// Epoch authenticator</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">epoch_authenticator</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">EpochAuthenticator</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">epoch_authenticator</span>
     }
 
     <span class="doccomment">/// Exporter secret</span>

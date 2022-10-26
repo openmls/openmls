@@ -83,7 +83,7 @@
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">group::errors::ExporterError</span>, <span class="ident">messages::public_group_state::PublicGroupState</span>,
-    <span class="ident">schedule::AuthenticationCode</span>,
+    <span class="ident">schedule::EpochAuthenticator</span>,
 };
 
 <span class="kw">use</span> <span class="kw">super</span>::<span class="kw-2">*</span>;
@@ -118,9 +118,9 @@
         }
     }
 
-    <span class="doccomment">/// Returns the authentication code of the current epoch.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">authentication_code</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">AuthenticationCode</span> {
-        <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">authentication_code</span>()
+    <span class="doccomment">/// Returns the epoch authenticator of the current epoch.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">epoch_authenticator</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">EpochAuthenticator</span> {
+        <span class="self">self</span>.<span class="ident">group</span>.<span class="ident">epoch_authenticator</span>()
     }
 
     <span class="doccomment">/// Returns the resumption psk of the current epoch.</span>
