@@ -44,7 +44,7 @@ struct Epoch {
     sender_data_secret: String,
     encryption_secret: String,
     exporter_secret: String,
-    authentication_code: String,
+    epoch_authenticator: String,
     external_secret: String,
     confirmation_key: String,
     membership_key: String,
@@ -235,7 +235,7 @@ pub fn generate_test_vector(n_epochs: u64, ciphersuite: Ciphersuite) -> KeySched
             sender_data_secret: bytes_to_hex(epoch_secrets.sender_data_secret().as_slice()),
             encryption_secret: bytes_to_hex(epoch_secrets.encryption_secret().as_slice()),
             exporter_secret: bytes_to_hex(epoch_secrets.exporter_secret().as_slice()),
-            authentication_code: bytes_to_hex(epoch_secrets.authentication_code().as_slice()),
+            epoch_authenticator: bytes_to_hex(epoch_secrets.epoch_authenticator().as_slice()),
             external_secret: bytes_to_hex(epoch_secrets.external_secret().as_slice()),
             confirmation_key: bytes_to_hex(epoch_secrets.confirmation_key().as_slice()),
             membership_key: bytes_to_hex(epoch_secrets.membership_key().as_slice()),
@@ -447,13 +447,13 @@ pub fn run_test_vector(
             }
             return Err(KsTestVectorError::ExporterSecretMismatch);
         }
-        if hex_to_bytes(&epoch.authentication_code)
-            != epoch_secrets.authentication_code().as_slice()
+        if hex_to_bytes(&epoch.epoch_authenticator)
+            != epoch_secrets.epoch_authenticator().as_slice()
         {
             if cfg!(test) {
-                panic!("Authentication code mismatch");
+                panic!("Epoch authenticator mismatch");
             }
-            return Err(KsTestVectorError::AuthenticationCodeMismatch);
+            return Err(KsTestVectorError::EpochAuthenticatorMismatch);
         }
         if hex_to_bytes(&epoch.external_secret) != epoch_secrets.external_secret().as_slice() {
             if cfg!(test) {

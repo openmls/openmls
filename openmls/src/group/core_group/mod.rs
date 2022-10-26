@@ -310,7 +310,9 @@ impl CoreGroup {
         removed: &KeyPackageRef,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsPlaintext, LibraryError> {
-        let remove_proposal = RemoveProposal { removed: *removed };
+        let remove_proposal = RemoveProposal {
+            removed: removed.clone(),
+        };
         let proposal = Proposal::Remove(remove_proposal);
         MlsPlaintext::member_proposal(
             framing_parameters,
@@ -488,9 +490,9 @@ impl CoreGroup {
             .map_err(LibraryError::unexpected_crypto_error)?)
     }
 
-    /// Returns the authentication code
-    pub(crate) fn authentication_code(&self) -> &AuthenticationCode {
-        self.group_epoch_secrets().authentication_code()
+    /// Returns the epoch authenticator
+    pub(crate) fn epoch_authenticator(&self) -> &EpochAuthenticator {
+        self.group_epoch_secrets().epoch_authenticator()
     }
 
     /// Returns the resumption psk

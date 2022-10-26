@@ -73,7 +73,11 @@
 //! See [`KeyPackage`] for more details on how to use key packages.
 
 use crate::{
-    ciphersuite::{hash_ref::KeyPackageRef, signable::*, *},
+    ciphersuite::{
+        hash_ref::{make_key_package_ref, KeyPackageRef},
+        signable::*,
+        *,
+    },
     credentials::*,
     error::LibraryError,
     extensions::{
@@ -362,7 +366,7 @@ impl KeyPackage {
     /// The [`KeyPackageRef`] is used to identify a member in a group (leaf in
     /// the tree) within MLS.
     pub fn hash_ref(&self, backend: &impl OpenMlsCrypto) -> Result<KeyPackageRef, LibraryError> {
-        KeyPackageRef::new(
+        make_key_package_ref(
             &self
                 .tls_serialize_detached()
                 .map_err(LibraryError::missing_bound_check)?,

@@ -1,7 +1,7 @@
 //! # Key schedule
 //!
 //! This module contains the types and implementations for key schedule operations.
-//! It exposes the [`AuthenticationCode`] & [`ResumptionPsk`].
+//! It exposes the [`EpochAuthenticator`] & [`ResumptionPsk`].
 
 // Internal documentation
 //
@@ -114,7 +114,7 @@
 // | `sender_data_secret`    | "sender data"   |
 // | `encryption_secret`     | "encryption"    |
 // | `exporter_secret`       | "exporter"      |
-// | `authentication_code`   | "authentication"|
+// | `epoch_authenticator`   | "authentication"|
 // | `external_secret`       | "external"      |
 // | `confirmation_key`      | "confirm"       |
 // | `membership_key`        | "membership"    |
@@ -182,12 +182,12 @@ impl ResumptionPsk {
 /// group state.
 #[derive(Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(PartialEq))]
-pub struct AuthenticationCode {
+pub struct EpochAuthenticator {
     secret: Secret,
 }
 
-impl AuthenticationCode {
-    /// Derive an `AuthenticationCode` from an `EpochSecret`.
+impl EpochAuthenticator {
+    /// Derive an `EpochAuthenticator` from an `EpochSecret`.
     fn new(
         backend: &impl OpenMlsCryptoProvider,
         epoch_secret: &EpochSecret,
@@ -1006,7 +1006,7 @@ impl SenderDataSecret {
 /// | `sender_data_secret`    | "sender data"   |
 /// | `encryption_secret`     | "encryption"    |
 /// | `exporter_secret`       | "exporter"      |
-/// | `authentication_code`   | "authentication"|
+/// | `epoch_authenticator`   | "authentication"|
 /// | `external_secret`       | "external"      |
 /// | `confirmation_key`      | "confirm"       |
 /// | `membership_key`        | "membership"    |
@@ -1016,7 +1016,7 @@ pub(crate) struct EpochSecrets {
     sender_data_secret: SenderDataSecret,
     encryption_secret: EncryptionSecret,
     exporter_secret: ExporterSecret,
-    authentication_code: AuthenticationCode,
+    epoch_authenticator: EpochAuthenticator,
     external_secret: ExternalSecret,
     confirmation_key: ConfirmationKey,
     membership_key: MembershipKey,
@@ -1042,7 +1042,7 @@ impl PartialEq for EpochSecrets {
     fn eq(&self, other: &Self) -> bool {
         self.sender_data_secret == other.sender_data_secret
             && self.exporter_secret == other.exporter_secret
-            && self.authentication_code == other.authentication_code
+            && self.epoch_authenticator == other.epoch_authenticator
             && self.external_secret == other.external_secret
             && self.confirmation_key == other.confirmation_key
             && self.membership_key == other.membership_key
@@ -1062,10 +1062,10 @@ impl EpochSecrets {
         &self.confirmation_key
     }
 
-    /// Authentication code
+    /// Epoch authenticator
     #[cfg(any(feature = "test-utils", test))]
-    pub(crate) fn authentication_code(&self) -> &AuthenticationCode {
-        &self.authentication_code
+    pub(crate) fn epoch_authenticator(&self) -> &EpochAuthenticator {
+        &self.epoch_authenticator
     }
 
     /// Exporter secret
@@ -1123,7 +1123,7 @@ impl EpochSecrets {
         let sender_data_secret = SenderDataSecret::new(backend, &epoch_secret)?;
         let encryption_secret = EncryptionSecret::new(backend, &epoch_secret)?;
         let exporter_secret = ExporterSecret::new(backend, &epoch_secret)?;
-        let authentication_code = AuthenticationCode::new(backend, &epoch_secret)?;
+        let epoch_authenticator = EpochAuthenticator::new(backend, &epoch_secret)?;
         let external_secret = ExternalSecret::new(backend, &epoch_secret)?;
         let confirmation_key = ConfirmationKey::new(backend, &epoch_secret)?;
         let membership_key = MembershipKey::new(backend, &epoch_secret)?;
@@ -1137,7 +1137,7 @@ impl EpochSecrets {
             sender_data_secret,
             encryption_secret,
             exporter_secret,
-            authentication_code,
+            epoch_authenticator,
             external_secret,
             confirmation_key,
             membership_key,
@@ -1181,7 +1181,7 @@ impl EpochSecrets {
             GroupEpochSecrets {
                 init_secret: self.init_secret,
                 exporter_secret: self.exporter_secret,
-                authentication_code: self.authentication_code,
+                epoch_authenticator: self.epoch_authenticator,
                 external_secret: self.external_secret,
                 resumption_psk: self.resumption_psk,
             },
@@ -1200,7 +1200,7 @@ impl EpochSecrets {
 pub(crate) struct GroupEpochSecrets {
     init_secret: InitSecret,
     exporter_secret: ExporterSecret,
-    authentication_code: AuthenticationCode,
+    epoch_authenticator: EpochAuthenticator,
     external_secret: ExternalSecret,
     resumption_psk: ResumptionPsk,
 }
@@ -1223,7 +1223,7 @@ impl PartialEq for GroupEpochSecrets {
 impl PartialEq for GroupEpochSecrets {
     fn eq(&self, other: &Self) -> bool {
         self.exporter_secret == other.exporter_secret
-            && self.authentication_code == other.authentication_code
+            && self.epoch_authenticator == other.epoch_authenticator
             && self.external_secret == other.external_secret
             && self.resumption_psk == other.resumption_psk
     }
@@ -1235,9 +1235,9 @@ impl GroupEpochSecrets {
         &self.init_secret
     }
 
-    /// Authentication code
-    pub(crate) fn authentication_code(&self) -> &AuthenticationCode {
-        &self.authentication_code
+    /// Epoch authenticator
+    pub(crate) fn epoch_authenticator(&self) -> &EpochAuthenticator {
+        &self.epoch_authenticator
     }
 
     /// Exporter secret

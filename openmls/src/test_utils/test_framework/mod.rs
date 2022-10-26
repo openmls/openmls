@@ -188,7 +188,7 @@ impl MlsGroupTestSetup {
             .insert(
                 key_package
                     .hash_ref(client.crypto.crypto())?
-                    .value()
+                    .as_slice()
                     .to_vec(),
                 client.identity.clone(),
             );
@@ -659,8 +659,9 @@ impl MlsGroupTestSetup {
                             .get(&group.group_id)
                             .expect("An unexpected error occurred.");
                         target_member_ids.push(
-                            *client_group
+                            client_group
                                 .key_package_ref()
+                                .cloned()
                                 .expect("An unexpected error occurred."),
                         );
                         target_member_identities.push(identity);

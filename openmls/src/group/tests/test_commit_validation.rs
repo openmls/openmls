@@ -109,8 +109,9 @@ fn test_valsem200(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         mut bob_group,
     } = validation_test_setup(PURE_PLAINTEXT_WIRE_FORMAT_POLICY, ciphersuite, backend);
 
-    let alice_hash_ref = *alice_group
+    let alice_hash_ref = alice_group
         .key_package_ref()
+        .cloned()
         .expect("Couldn't find key package ref.");
 
     // Since Alice won't commit to her own removal directly, we have to create
@@ -340,8 +341,9 @@ fn test_valsem201(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     let serialized_remove = alice_group
         .remove_members(
             backend,
-            &[*bob_group
+            &[bob_group
                 .key_package_ref()
+                .cloned()
                 .expect("error retrieving kp ref")],
         )
         .expect("Error creating remove")

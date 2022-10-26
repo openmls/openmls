@@ -411,7 +411,7 @@ impl MlsClient for MlsClientImpl {
             .unwrap();
         self.crypto_provider
             .key_store()
-            .store(kp_hash.value(), &key_package_bundle)
+            .store(kp_hash.as_slice(), &key_package_bundle)
             .unwrap();
         let wire_format_policy = wire_format_policy(create_group_request.encrypt_handshake);
         let mls_group_config = MlsGroupConfig::builder()
@@ -469,7 +469,7 @@ impl MlsClient for MlsClientImpl {
             key_package
                 .hash_ref(self.crypto_provider.crypto())
                 .unwrap()
-                .value()
+                .as_slice()
                 .to_vec(),
         );
 
@@ -564,7 +564,7 @@ impl MlsClient for MlsClientImpl {
             .get(state_auth_request.state_id as usize)
             .ok_or_else(|| tonic::Status::new(tonic::Code::InvalidArgument, "unknown state_id"))?;
 
-        let state_auth_secret = interop_group.group.authentication_code();
+        let state_auth_secret = interop_group.group.epoch_authenticator();
 
         Ok(Response::new(StateAuthResponse {
             state_auth_secret: state_auth_secret.as_slice().to_vec(),

@@ -91,7 +91,7 @@ fn test_welcome_ciphersuite_mismatch(
             alice_kp
                 .hash_ref(backend.crypto())
                 .expect("Could not hash KeyPackage.")
-                .value(),
+                .as_slice(),
             &alice_kpb,
         )
         .expect("An unexpected error occurred.");
@@ -106,7 +106,7 @@ fn test_welcome_ciphersuite_mismatch(
             bob_kp
                 .hash_ref(backend.crypto())
                 .expect("Could not hash KeyPackage.")
-                .value(),
+                .as_slice(),
             &bob_kpb,
         )
         .expect("An unexpected error occurred.");
@@ -270,7 +270,7 @@ fn test_welcome_message_with_version(
     let hpke_input = b"these should be the group secrets";
     let new_member = KeyPackageRef::from_slice(&[0u8; 16]);
     let secrets = vec![EncryptedGroupSecrets {
-        new_member,
+        new_member: new_member.clone(),
         encrypted_group_secrets: backend.crypto().hpke_seal(
             ciphersuite.hpke_config(),
             receiver_key_pair.public.as_slice(),

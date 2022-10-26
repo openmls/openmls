@@ -58,7 +58,7 @@ fn generate_credential_bundle_and_key_package_bundle(
             key_package
                 .hash_ref(backend.crypto())
                 .expect("Could not hash KeyPackage")
-                .value(),
+                .as_slice(),
         )
         .expect("An unexpected error occurred.");
 
@@ -837,7 +837,7 @@ fn test_valsem104(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 alice_key_package
                     .hash_ref(backend.crypto())
                     .expect("Could not hash KeyPackage.")
-                    .value(),
+                    .as_slice(),
                 &alice_key_package_bundle,
             )
             .expect("An unexpected error occurred.");
@@ -1007,7 +1007,7 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
                 alice_key_package
                     .hash_ref(backend.crypto())
                     .expect("Could not hash KeyPackage.")
-                    .value(),
+                    .as_slice(),
                 &alice_key_package_bundle,
             )
             .expect("An unexpected error occurred.");
@@ -1419,7 +1419,7 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     alice_group.clear_pending_commit();
 
     let (combined_commit, _welcome) = alice_group
-        .remove_members(backend, &[*bob_kp_ref, *bob_kp_ref])
+        .remove_members(backend, &[bob_kp_ref.clone(), bob_kp_ref.clone()])
         .expect("error while trying to remove the same member twice");
 
     // Now let's verify that both commits only contain one proposal.
@@ -1444,7 +1444,7 @@ fn test_valsem107(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         // Depending on the commit, the proposal is either inline or it's a
         // reference.
         let expected_inline_proposal = Proposal::Remove(RemoveProposal {
-            removed: *bob_kp_ref,
+            removed: bob_kp_ref.clone(),
         });
         let expected_reference_proposal =
             ProposalRef::from_proposal(ciphersuite, backend, &expected_inline_proposal)
@@ -1514,7 +1514,7 @@ fn test_valsem108(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     alice_group.clear_pending_proposals();
 
     let err = alice_group
-        .remove_members(backend, &[fake_kp_ref])
+        .remove_members(backend, &[fake_kp_ref.clone()])
         .expect_err("no error while trying to remove non-group-member");
 
     assert_eq!(

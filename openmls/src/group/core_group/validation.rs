@@ -254,12 +254,16 @@ impl CoreGroup {
         for remove_proposal in remove_proposals {
             let removed = remove_proposal.remove_proposal().removed();
             // ValSem107
-            if !removes_set.insert(*removed) {
+            if !removes_set.insert(removed.clone()) {
                 return Err(ProposalValidationError::DuplicateMemberRemoval);
             }
 
             // TODO: ValSem108
-            if !self.treesync().leaves().contains_key(&Some(*removed)) {
+            if !self
+                .treesync()
+                .leaves()
+                .contains_key(&Some(removed.clone()))
+            {
                 return Err(ProposalValidationError::UnknownMemberRemoval);
             }
         }
