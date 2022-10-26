@@ -310,25 +310,7 @@ impl MlsCiphertext {
         self.content_type.is_handshake_message()
     }
 
-    /// Encodes the `MLSCiphertextContent` struct with padding
-    /// ```text
-    /// struct {
-    ///     select (MLSCiphertext.content_type) {
-    ///         case application:
-    ///             opaque application_data<0..2^32-1>;
-    ///
-    ///         case proposal:
-    ///             Proposal proposal;
-    ///
-    ///         case commit:
-    ///             Commit commit;
-    ///     }
-    ///
-    ///     opaque signature<0..2^16-1>;
-    ///     optional<MAC> confirmation_tag;
-    ///     opaque padding<0..2^16-1>;
-    /// } MLSCiphertextContent;
-    /// ```
+    /// Encodes the `MLSCiphertextContent` struct with padding.
     fn encode_padded_ciphertext_content_detached(
         mls_plaintext: &MlsPlaintext,
         padding_size: usize,
@@ -433,7 +415,27 @@ impl MlsSenderDataAad {
     }
 }
 
-#[derive(Debug, Clone, TlsSerialize, TlsDeserialize, TlsSize)]
+/// MLSCiphertextContent
+///
+/// ```c
+/// // draft-ietf-mls-protocol-16
+/// struct {
+///     select (MLSCiphertext.content_type) {
+///         case application:
+///           opaque application_data<V>;
+///
+///         case proposal:
+///           Proposal proposal;
+///
+///         case commit:
+///           Commit commit;
+///     }
+///
+///     MLSContentAuthData auth;
+///     opaque padding[length_of_padding];
+/// } MLSCiphertextContent;
+/// ```
+#[derive(Debug, Clone)]
 pub(crate) struct MlsCiphertextContent {
     pub(crate) content: MlsContentBody,
     pub(crate) signature: Signature,
