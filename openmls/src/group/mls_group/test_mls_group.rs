@@ -9,6 +9,7 @@ use crate::{
     group::{errors::*, *},
     key_packages::{errors::*, *},
     messages::proposals::*,
+    prelude_test::hash_ref::make_key_package_ref,
     test_utils::test_framework::{
         errors::ClientError, ActionType::Commit, CodecUse, MlsGroupTestSetup,
     },
@@ -467,7 +468,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         generate_key_package_bundle(backend, &[ciphersuite], &bob_credential, vec![])
             .expect("An unexpected error occurred.");
 
-    let bob_kpr = KeyPackageRef::new(
+    let bob_kpr = make_key_package_ref(
         &bob_key_package
             .tls_serialize_detached()
             .expect("An unexpected error occurred."),
@@ -544,7 +545,7 @@ fn test_pending_commit_logic(ciphersuite: Ciphersuite, backend: &impl OpenMlsCry
         ProposeAddMemberError::GroupStateError(MlsGroupStateError::PendingCommit)
     );
     let error = alice_group
-        .remove_members(backend, &[bob_kpr])
+        .remove_members(backend, &[bob_kpr.clone()])
         .expect_err("no error committing while a commit is pending");
     assert_eq!(
         error,

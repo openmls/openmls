@@ -72,7 +72,7 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
                 alice_key_package
                     .hash_ref(backend.crypto())
                     .expect("Could not hash KeyPackage.")
-                    .value(),
+                    .as_slice(),
                 &alice_key_package_bundle,
             )
             .expect("An unexpected error occurred.");
@@ -87,7 +87,7 @@ fn test_past_secrets_in_group(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
                 bob_key_package
                     .hash_ref(backend.crypto())
                     .expect("Could not hash KeyPackage.")
-                    .value(),
+                    .as_slice(),
                 &bob_key_package_bundle,
             )
             .expect("An unexpected error occurred.");

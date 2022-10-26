@@ -6,7 +6,7 @@
 //! [`ProposalType::is_supported()`] can be used.
 
 use crate::{
-    ciphersuite::hash_ref::{KeyPackageRef, ProposalRef},
+    ciphersuite::hash_ref::{make_proposal_ref, KeyPackageRef, ProposalRef},
     error::LibraryError,
     extensions::Extension,
     group::GroupId,
@@ -345,7 +345,8 @@ impl ProposalRef {
         let encoded = proposal
             .tls_serialize_detached()
             .map_err(LibraryError::missing_bound_check)?;
-        Self::new(&encoded, ciphersuite, backend.crypto())
+
+        make_proposal_ref(&encoded, ciphersuite, backend.crypto())
             .map_err(LibraryError::unexpected_crypto_error)
     }
 }

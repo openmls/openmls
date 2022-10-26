@@ -310,7 +310,9 @@ impl CoreGroup {
         removed: &KeyPackageRef,
         backend: &impl OpenMlsCryptoProvider,
     ) -> Result<MlsPlaintext, LibraryError> {
-        let remove_proposal = RemoveProposal { removed: *removed };
+        let remove_proposal = RemoveProposal {
+            removed: removed.clone(),
+        };
         let proposal = Proposal::Remove(remove_proposal);
         MlsPlaintext::member_proposal(
             framing_parameters,
