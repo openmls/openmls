@@ -241,7 +241,7 @@
 <span class="doccomment">//!             .expect(&quot;Could not hash KeyPackage.&quot;);</span>
 <span class="doccomment">//!     backend</span>
 <span class="doccomment">//!         .key_store()</span>
-<span class="doccomment">//!         .store(key_package_id.value(), &amp;key_package_bundle)</span>
+<span class="doccomment">//!         .store(key_package_id.as_slice(), &amp;key_package_bundle)</span>
 <span class="doccomment">//!         .expect(&quot;An unexpected error occurred.&quot;);</span>
 <span class="doccomment">//!     Ok(key_package_bundle.into_parts().0)</span>
 <span class="doccomment">//! }</span>

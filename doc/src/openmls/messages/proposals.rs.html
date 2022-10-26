@@ -366,6 +366,7 @@
 <span id="366">366</span>
 <span id="367">367</span>
 <span id="368">368</span>
+<span id="369">369</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Proposals</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module defines all the different types of Proposals.</span>
@@ -374,7 +375,7 @@
 <span class="doccomment">//! [`ProposalType::is_supported()`] can be used.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">ciphersuite::hash_ref</span>::{<span class="ident">KeyPackageRef</span>, <span class="ident">ProposalRef</span>},
+    <span class="ident">ciphersuite::hash_ref</span>::{<span class="ident">make_proposal_ref</span>, <span class="ident">KeyPackageRef</span>, <span class="ident">ProposalRef</span>},
     <span class="ident">error::LibraryError</span>,
     <span class="ident">extensions::Extension</span>,
     <span class="ident">group::GroupId</span>,
@@ -713,7 +714,8 @@
         <span class="kw">let</span> <span class="ident">encoded</span> <span class="op">=</span> <span class="ident">proposal</span>
             .<span class="ident">tls_serialize_detached</span>()
             .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>;
-        <span class="ident"><span class="self">Self</span>::new</span>(<span class="kw-2">&amp;</span><span class="ident">encoded</span>, <span class="ident">ciphersuite</span>, <span class="ident">backend</span>.<span class="ident">crypto</span>())
+
+        <span class="ident">make_proposal_ref</span>(<span class="kw-2">&amp;</span><span class="ident">encoded</span>, <span class="ident">ciphersuite</span>, <span class="ident">backend</span>.<span class="ident">crypto</span>())
             .<span class="ident">map_err</span>(<span class="ident">LibraryError::unexpected_crypto_error</span>)
     }
 }

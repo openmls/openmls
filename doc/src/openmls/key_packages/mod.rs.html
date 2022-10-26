@@ -821,6 +821,10 @@
 <span id="821">821</span>
 <span id="822">822</span>
 <span id="823">823</span>
+<span id="824">824</span>
+<span id="825">825</span>
+<span id="826">826</span>
+<span id="827">827</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key Packages</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! Key packages are pre-published public keys that provide some information</span>
@@ -896,7 +900,11 @@
 <span class="doccomment">//! See [`KeyPackage`] for more details on how to use key packages.</span>
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">ciphersuite</span>::{<span class="ident">hash_ref::KeyPackageRef</span>, <span class="ident">signable</span>::<span class="kw-2">*</span>, <span class="kw-2">*</span>},
+    <span class="ident">ciphersuite</span>::{
+        <span class="ident">hash_ref</span>::{<span class="ident">make_key_package_ref</span>, <span class="ident">KeyPackageRef</span>},
+        <span class="ident">signable</span>::<span class="kw-2">*</span>,
+        <span class="kw-2">*</span>,
+    },
     <span class="ident">credentials</span>::<span class="kw-2">*</span>,
     <span class="ident">error::LibraryError</span>,
     <span class="ident">extensions</span>::{
@@ -1185,7 +1193,7 @@
     <span class="doccomment">/// The [`KeyPackageRef`] is used to identify a member in a group (leaf in</span>
     <span class="doccomment">/// the tree) within MLS.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">hash_ref</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCrypto</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">KeyPackageRef</span>, <span class="ident">LibraryError</span><span class="op">&gt;</span> {
-        <span class="ident">KeyPackageRef::new</span>(
+        <span class="ident">make_key_package_ref</span>(
             <span class="kw-2">&amp;</span><span class="self">self</span>
                 .<span class="ident">tls_serialize_detached</span>()
                 .<span class="ident">map_err</span>(<span class="ident">LibraryError::missing_bound_check</span>)<span class="question-mark">?</span>,

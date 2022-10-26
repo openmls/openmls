@@ -859,7 +859,7 @@
         <span class="ident">reuse_guard</span>: <span class="ident">ReuseGuard</span>,
     ) -&gt; <span class="self">Self</span> {
         <span class="ident">MlsSenderData</span> {
-            <span class="ident">sender</span>: <span class="kw-2">*</span><span class="ident">hash_ref</span>,
+            <span class="ident">sender</span>: <span class="ident">hash_ref</span>.<span class="ident">clone</span>(),
             <span class="ident">generation</span>,
             <span class="ident">reuse_guard</span>,
         }

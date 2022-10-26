@@ -281,7 +281,7 @@ Currently, there are two implementations available through the <a href="https://
             key_package
                 .hash_ref(backend.crypto())
                 .expect(&quot;Could not hash KeyPackage.&quot;)
-                .value(),
+                .as_slice(),
             &amp;key_package_bundle,
         )
         .expect(&quot;An unexpected error occurred.&quot;);

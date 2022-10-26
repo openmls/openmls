@@ -108,6 +108,34 @@
 <span id="108">108</span>
 <span id="109">109</span>
 <span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Hash References</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//!</span>
@@ -116,48 +144,53 @@
 <span class="doccomment">//! to Proposals they cover.  These identifiers are computed as follows:</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! ```text</span>
-<span class="doccomment">//! opaque HashReference[16];</span>
+<span class="doccomment">//! opaque HashReference&lt;V&gt;;</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! MakeHashRef(value) = KDF.expand(KDF.extract(&quot;&quot;, value), &quot;MLS 1.0 ref&quot;, 16)</span>
+<span class="doccomment">//! MakeKeyPackageRef(value) = RefHash(&quot;MLS 1.0 KeyPackage Reference&quot;, value)</span>
+<span class="doccomment">//! MakeProposalRef(value)   = RefHash(&quot;MLS 1.0 Proposal Reference&quot;, value)</span>
 <span class="doccomment">//!</span>
-<span class="doccomment">//! HashReference KeyPackageRef;</span>
-<span class="doccomment">//! HashReference ProposalRef;</span>
+<span class="doccomment">//! RefHash(label, value) = Hash(RefHashInput)</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! Where RefHashInput is defined as:</span>
+<span class="doccomment">//!</span>
+<span class="doccomment">//! struct {</span>
+<span class="doccomment">//!  opaque label&lt;V&gt; = label;</span>
+<span class="doccomment">//!  opaque value&lt;V&gt; = value;</span>
+<span class="doccomment">//! } RefHashInput;</span>
 <span class="doccomment">//! ```</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! For a KeyPackageRef, the `value` input is the encoded KeyPackage, and the</span>
-<span class="doccomment">//! ciphersuite specified in the KeyPackage determines the KDF used.  For a</span>
+<span class="doccomment">//! ciphersuite specified in the KeyPackage determines the hash function used.  For a</span>
 <span class="doccomment">//! ProposalRef, the `value` input is the MLSPlaintext carrying the proposal, and</span>
-<span class="doccomment">//! the KDF is determined by the group&#39;s ciphersuite.</span>
-
-<span class="kw">use</span> <span class="ident">std::convert::TryInto</span>;
+<span class="doccomment">//! the hash function is determined by the group&#39;s ciphersuite.</span>
 
 <span class="kw">use</span> <span class="ident">openmls_traits</span>::{<span class="ident">crypto::OpenMlsCrypto</span>, <span class="ident">types::CryptoError</span>};
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">tls_codec</span>::{<span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>};
+<span class="kw">use</span> <span class="ident">tls_codec</span>::{
+    <span class="ident">Serialize</span> <span class="kw">as</span> <span class="ident">TlsSerializeTrait</span>, <span class="ident">TlsDeserialize</span>, <span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>, <span class="ident">TlsSliceU8</span>, <span class="ident">VLBytes</span>,
+};
 
 <span class="kw">use</span> <span class="ident"><span class="kw">super</span>::Ciphersuite</span>;
 
-<span class="kw">const</span> <span class="ident">LABEL</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>; <span class="number">11</span>] <span class="op">=</span> <span class="string">b&quot;MLS 1.0 ref&quot;</span>;
-<span class="kw">const</span> <span class="ident">VALUE_LEN</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">16</span>;
-<span class="kw">type</span> <span class="ident">Value</span> <span class="op">=</span> [<span class="ident">u8</span>; <span class="ident">VALUE_LEN</span>];
+<span class="kw">const</span> <span class="ident">KEY_PACKAGE_REF_LABEL</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>; <span class="number">22</span>] <span class="op">=</span> <span class="string">b&quot;MLS 1.0 KeyPackage ref&quot;</span>;
+<span class="kw">const</span> <span class="ident">PROPOSAL_REF_LABEL</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>; <span class="number">20</span>] <span class="op">=</span> <span class="string">b&quot;MLS 1.0 Proposal ref&quot;</span>;
 
-<span class="doccomment">/// A reference to an MLS object computed as an HKDF of the value.</span>
+<span class="doccomment">/// A reference to an MLS object computed as a hash of the value.</span>
 <span class="attribute">#[<span class="ident">derive</span>(
     <span class="ident">Clone</span>,
-    <span class="ident">Copy</span>,
     <span class="ident">Hash</span>,
     <span class="ident">PartialEq</span>,
     <span class="ident">Eq</span>,
     <span class="ident">Serialize</span>,
+    <span class="ident">Ord</span>,
+    <span class="ident">PartialOrd</span>,
     <span class="ident">Deserialize</span>,
     <span class="ident">TlsDeserialize</span>,
     <span class="ident">TlsSerialize</span>,
     <span class="ident">TlsSize</span>,
-    <span class="ident">PartialOrd</span>,
-    <span class="ident">Ord</span>,
 )]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">HashReference</span> {
-    <span class="ident">value</span>: <span class="ident">Value</span>,
+    <span class="ident">value</span>: <span class="ident">VLBytes</span>,
 }
 
 <span class="doccomment">/// A reference to a key package.</span>
@@ -168,45 +201,68 @@
 <span class="doccomment">/// This value uniquely identifies a proposal.</span>
 <span class="kw">pub</span> <span class="kw">type</span> <span class="ident">ProposalRef</span> <span class="op">=</span> <span class="ident">HashReference</span>;
 
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">TlsSerialize</span>, <span class="ident">TlsSize</span>)]</span>
+<span class="kw">struct</span> <span class="ident">HashReferenceInput</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="ident">label</span>: <span class="ident">TlsSliceU8</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">u8</span><span class="op">&gt;</span>,
+    <span class="ident">value</span>: <span class="ident">VLBytes</span>,
+}
+
+<span class="doccomment">/// Compute a new [`ProposalRef`] value for a `value`.</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">make_proposal_ref</span>(
+    <span class="ident">value</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
+    <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
+    <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCrypto</span>,
+) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ProposalRef</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+    <span class="ident">HashReference::new</span>(<span class="ident">value</span>, <span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">PROPOSAL_REF_LABEL</span>)
+}
+
+<span class="doccomment">/// Compute a new [`KeyPackageRef`] value for a `value`.</span>
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">make_key_package_ref</span>(
+    <span class="ident">value</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
+    <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
+    <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCrypto</span>,
+) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">KeyPackageRef</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
+    <span class="ident">HashReference::new</span>(<span class="ident">value</span>, <span class="ident">ciphersuite</span>, <span class="ident">backend</span>, <span class="ident">KEY_PACKAGE_REF_LABEL</span>)
+}
+
 <span class="kw">impl</span> <span class="ident">HashReference</span> {
     <span class="doccomment">/// Compute a new [`HashReference`] value for a `value`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">value</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
         <span class="ident">ciphersuite</span>: <span class="ident">Ciphersuite</span>,
         <span class="ident">backend</span>: <span class="kw-2">&amp;</span><span class="kw">impl</span> <span class="ident">OpenMlsCrypto</span>,
+        <span class="ident">label</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>],
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">CryptoError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">okm</span> <span class="op">=</span> <span class="ident">backend</span>.<span class="ident">hkdf_expand</span>(
-            <span class="ident">ciphersuite</span>.<span class="ident">hash_algorithm</span>(),
-            <span class="kw-2">&amp;</span><span class="ident">backend</span>.<span class="ident">hkdf_extract</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_algorithm</span>(), <span class="kw-2">&amp;</span>[], <span class="ident">value</span>)<span class="question-mark">?</span>,
-            <span class="ident">LABEL</span>,
-            <span class="ident">VALUE_LEN</span>,
-        )<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">value</span>: <span class="ident">Value</span> <span class="op">=</span> <span class="ident">okm</span>.<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">CryptoError::InvalidLength</span>)<span class="question-mark">?</span>;
-        <span class="prelude-val">Ok</span>(<span class="self">Self</span> { <span class="ident">value</span> })
-    }
-
-    <span class="doccomment">/// Get a reference to the hash reference&#39;s value.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">value</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>; <span class="number">16</span>] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">value</span>
+        <span class="kw">let</span> <span class="ident">input</span> <span class="op">=</span> <span class="ident">HashReferenceInput</span> {
+            <span class="ident">label</span>: <span class="ident">TlsSliceU8</span>(<span class="ident">label</span>),
+            <span class="ident">value</span>: <span class="ident">VLBytes::new</span>(<span class="ident">value</span>.<span class="ident">to_vec</span>()),
+        };
+        <span class="kw">let</span> <span class="ident">payload</span> <span class="op">=</span> <span class="ident">input</span>
+            .<span class="ident">tls_serialize_detached</span>()
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">CryptoError::TlsSerializationError</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">value</span> <span class="op">=</span> <span class="ident">backend</span>.<span class="ident">hash</span>(<span class="ident">ciphersuite</span>.<span class="ident">hash_algorithm</span>(), <span class="kw-2">&amp;</span><span class="ident">payload</span>)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(<span class="self">Self</span> {
+            <span class="ident">value</span>: <span class="ident">VLBytes::new</span>(<span class="ident">value</span>),
+        })
     }
 
     <span class="doccomment">/// Get a reference to the hash reference&#39;s value as slice.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_slice</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>[<span class="ident">u8</span>] {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">value</span>
+        <span class="self">self</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>()
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">any</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;test-utils&quot;</span>, <span class="ident">test</span>))]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_slice</span>(<span class="ident">slice</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">value</span> <span class="op">=</span> [<span class="number">0u8</span>; <span class="ident">VALUE_LEN</span>];
-        <span class="ident">value</span>.<span class="ident">clone_from_slice</span>(<span class="ident">slice</span>);
-        <span class="self">Self</span> { <span class="ident">value</span> }
+        <span class="self">Self</span> {
+            <span class="ident">value</span>: <span class="ident">VLBytes::from</span>(<span class="ident">slice</span>),
+        }
     }
 }
 
 <span class="kw">impl</span> <span class="ident">core::fmt::Display</span> <span class="kw">for</span> <span class="ident">HashReference</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
         <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;HashReference: &quot;</span>)<span class="question-mark">?</span>;
-        <span class="kw">for</span> <span class="ident">b</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">value</span> {
+        <span class="kw">for</span> <span class="ident">b</span> <span class="kw">in</span> <span class="self">self</span>.<span class="ident">value</span>.<span class="ident">as_slice</span>() {
             <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{:02X}&quot;</span>, <span class="ident">b</span>)<span class="question-mark">?</span>;
         }
         <span class="prelude-val">Ok</span>(())

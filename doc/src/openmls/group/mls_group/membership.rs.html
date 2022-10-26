@@ -397,6 +397,10 @@
 <span id="397">397</span>
 <span id="398">398</span>
 <span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
 </pre><pre class="rust"><code><span class="doccomment">//! MLS group membership</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module contains membership-related operations and exposes [`RemoveOperation`].</span>
@@ -514,7 +518,11 @@
         <span class="comment">// Create inline remove proposals</span>
         <span class="kw">let</span> <span class="ident">inline_proposals</span> <span class="op">=</span> <span class="ident">members</span>
             .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">member</span><span class="op">|</span> <span class="ident">Proposal::Remove</span>(<span class="ident">RemoveProposal</span> { <span class="ident">removed</span>: <span class="kw-2">*</span><span class="ident">member</span> }))
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">member</span><span class="op">|</span> {
+                <span class="ident">Proposal::Remove</span>(<span class="ident">RemoveProposal</span> {
+                    <span class="ident">removed</span>: <span class="ident">member</span>.<span class="ident">clone</span>(),
+                })
+            })
             .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Proposal</span><span class="op">&gt;</span><span class="op">&gt;</span>();
 
         <span class="kw">let</span> <span class="ident">credential</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">credential</span>()<span class="question-mark">?</span>;
@@ -774,13 +782,13 @@
                     <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::WeLeft</span>);
                 } <span class="kw">else</span> {
                     <span class="comment">// We removed another member</span>
-                    <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::WeRemovedThem</span>(<span class="kw-2">*</span><span class="ident">removed</span>));
+                    <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::WeRemovedThem</span>(<span class="ident">removed</span>.<span class="ident">clone</span>()));
                 }
             }
 
             <span class="comment">// Another member left</span>
             <span class="kw">if</span> <span class="ident">removed</span> <span class="op">==</span> <span class="ident">hash_ref</span> {
-                <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::TheyLeft</span>(<span class="kw-2">*</span><span class="ident">removed</span>));
+                <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::TheyLeft</span>(<span class="ident">removed</span>.<span class="ident">clone</span>()));
             }
         }
 
@@ -792,7 +800,7 @@
             <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::WeWereRemovedBy</span>(<span class="ident">sender</span>.<span class="ident">clone</span>()))
         } <span class="kw">else</span> {
             <span class="comment">// Another member was removed</span>
-            <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::TheyWereRemovedBy</span>((<span class="kw-2">*</span><span class="ident">removed</span>, <span class="ident">sender</span>.<span class="ident">clone</span>())))
+            <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::TheyWereRemovedBy</span>((<span class="ident">removed</span>.<span class="ident">clone</span>(), <span class="ident">sender</span>.<span class="ident">clone</span>())))
         }
     }
 }
