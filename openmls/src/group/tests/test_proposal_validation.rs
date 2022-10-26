@@ -22,6 +22,7 @@ use crate::{
         Welcome,
     },
     treesync::errors::ApplyUpdatePathError,
+    versions::ProtocolVersion,
 };
 
 use super::utils::{generate_credential_bundle, generate_key_package_bundle};
@@ -1122,7 +1123,9 @@ fn test_valsem105(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
 
 #[derive(Debug)]
 enum KeyPackageTestVersion {
+    WrongVersion,
     WrongCiphersuite,
+    UnsupportedVersion,
     UnsupportedCiphersuite,
     ValidTestCase,
 }
@@ -1167,6 +1170,8 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     // We begin with the creation of KeyPackages
     for key_package_version in [
         KeyPackageTestVersion::WrongCiphersuite,
+        KeyPackageTestVersion::WrongVersion,
+        KeyPackageTestVersion::UnsupportedVersion,
         KeyPackageTestVersion::UnsupportedCiphersuite,
         KeyPackageTestVersion::ValidTestCase,
     ] {
@@ -1186,9 +1191,20 @@ fn test_valsem106(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
             _ => Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
         };
         // A version that's not considered valid
+        let wrong_version = ProtocolVersion::Reserved;
         match key_package_version {
+            KeyPackageTestVersion::WrongVersion => test_kpb_payload.set_version(wrong_version),
             KeyPackageTestVersion::WrongCiphersuite => {
                 test_kpb_payload.set_ciphersuite(wrong_ciphersuite)
+            }
+            KeyPackageTestVersion::UnsupportedVersion => {
+                test_kpb_payload.add_extension(Extension::Capabilities(CapabilitiesExtension::new(
+                    Some(&[wrong_version]),
+                    // None gives you the default ciphersuites/extensions/proposals.
+                    None,
+                    None,
+                    None,
+                )))
             }
             KeyPackageTestVersion::UnsupportedCiphersuite => {
                 test_kpb_payload.add_extension(Extension::Capabilities(CapabilitiesExtension::new(

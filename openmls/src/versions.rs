@@ -37,7 +37,9 @@ use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 #[repr(u8)]
 #[allow(missing_docs)]
 pub enum ProtocolVersion {
+    Reserved = 0,
     Mls10 = 1,
+    Mls10Draft11 = 200, // pre RFC version
 }
 
 /// There's only one version right now, which is the default.
@@ -56,6 +58,7 @@ impl TryFrom<u8> for ProtocolVersion {
     fn try_from(v: u8) -> Result<Self, Self::Error> {
         match v {
             1 => Ok(ProtocolVersion::Mls10),
+            200 => Ok(ProtocolVersion::Mls10Draft11),
             _ => Err(VersionError::UnsupportedMlsVersion),
         }
     }
@@ -64,7 +67,9 @@ impl TryFrom<u8> for ProtocolVersion {
 impl fmt::Display for ProtocolVersion {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self {
+            ProtocolVersion::Reserved => Err(fmt::Error),
             ProtocolVersion::Mls10 => write!(f, "MLS 1.0"),
+            ProtocolVersion::Mls10Draft11 => write!(f, "MLS 1.0 (Draft 11)"),
         }
     }
 }
