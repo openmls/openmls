@@ -28,6 +28,14 @@ impl GroupContext {
     }
 }
 
+#[cfg(test)]
+impl GroupContext {
+    /// Set the ciphersuite
+    pub(crate) fn set_ciphersuite(&mut self, ciphersuite: Ciphersuite) {
+        self.ciphersuite = ciphersuite;
+    }
+}
+
 impl GroupContext {
     /// Create a new group context
     pub(crate) fn new(
@@ -64,6 +72,11 @@ impl GroupContext {
             zero(ciphersuite.hash_length()),
             extensions,
         )
+    }
+
+    /// Return the ciphersuite.
+    pub(crate) fn ciphersuite(&self) -> Ciphersuite {
+        self.ciphersuite
     }
 
     /// Return the group ID.

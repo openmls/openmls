@@ -813,6 +813,14 @@ impl KeyPackageBundle {
     }
 }
 
+// Test-only functions
+#[cfg(any(test, feature = "test-utils"))]
+impl KeyPackageBundle {
+    pub fn set_ciphersuite(&mut self, ciphersuite: Ciphersuite) {
+        self.key_package.payload.set_ciphersuite(ciphersuite);
+    }
+}
+
 /// This function derives the leaf_node_secret from the leaf_secret as
 /// described in 5.4 Ratchet Tree Evolution
 pub(crate) fn derive_leaf_node_secret(
