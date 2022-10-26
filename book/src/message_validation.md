@@ -50,6 +50,7 @@ The following is a list of the individual semantic validation steps performed by
 | `ValSem008`    | Membership tag verification                                 | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
 | `ValSem009`    | Confirmation tag presence                                   | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
 | `ValSem010`    | Signature verification                                      | ✅          | ✅     | `openmls/src/group/tests/test_framing_validation.rs` |
+| `ValSem011`    | MLSCiphertextContent padding must be all-zero               | ✅          | ✅     | `openmls/src/group/tests/test_framing.rs`            |
 
 ### Semantic validation of proposals covered by a Commit
 
