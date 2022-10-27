@@ -49,7 +49,7 @@ fn generate_key_package(
         .store(
             kp.hash_ref(crypto_backend.crypto())
                 .expect("Could not hash KeyPackage.")
-                .value(),
+                .as_slice(),
             &kpb,
         )
         .expect("An unexpected error occurred.");
@@ -238,7 +238,7 @@ async fn test_group() {
             .remove(0)
             .hash_ref(crypto.crypto())
             .expect("Could not hash KeyPackage.")
-            .value(),
+            .as_slice(),
     )
     .expect("An unexpected error occurred.");
 

@@ -575,8 +575,9 @@ fn test_valsem244(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
     content.proposals.remove(proposal_position);
 
     let remove_proposal = ProposalOrRef::Proposal(Proposal::Remove(RemoveProposal {
-        removed: *alice_group
+        removed: alice_group
             .key_package_ref()
+            .cloned()
             .expect("An unexpected error occurred."),
     }));
 
@@ -678,8 +679,9 @@ fn test_valsem245(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider
         backend,
         second_ext_init_prop,
         &Sender::Member(
-            *alice_group
+            alice_group
                 .key_package_ref()
+                .cloned()
                 .expect("An unexpected error occurred."),
         ),
     )

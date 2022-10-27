@@ -218,8 +218,9 @@ impl PublicGroupStateTbs {
             other_extensions,
             external_pub: external_pub.into(),
             ciphersuite,
-            signer: *core_group
+            signer: core_group
                 .key_package_ref()
+                .cloned()
                 .ok_or_else(|| LibraryError::custom("missing key package ref"))?,
         })
     }

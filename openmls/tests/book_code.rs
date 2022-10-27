@@ -97,7 +97,7 @@ fn generate_key_package_bundle(
             key_package
                 .hash_ref(backend.crypto())
                 .expect("Could not hash KeyPackage.")
-                .value(),
+                .as_slice(),
             &key_package_bundle,
         )
         .expect("An unexpected error occurred.");
@@ -638,8 +638,9 @@ fn book_operations(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvide
     let bob_processed_message = bob_group
         .process_unverified_message(unverified_message, None, backend)
         .expect("Could not process unverified message.");
-    let charlies_old_kpr = *charlie_group
+    let charlies_old_kpr = charlie_group
         .key_package_ref()
+        .cloned()
         .expect("An unexpected error occurred.");
     charlie_group
         .merge_pending_commit()

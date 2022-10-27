@@ -4,7 +4,7 @@ use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 
 use crate::{
     ciphersuite::{
-        hash_ref::{KeyPackageRef, ProposalRef},
+        hash_ref::{make_key_package_ref, ProposalRef},
         Secret,
     },
     credentials::{CredentialBundle, CredentialType},
@@ -56,7 +56,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     let (_bob_credential_bundle, bob_key_package_bundle) =
         setup_client("Bob", ciphersuite, backend);
 
-    let alice_kpr = KeyPackageRef::new(
+    let alice_kpr = make_key_package_ref(
         &alice_key_package_bundle
             .key_package()
             .tls_serialize_detached()
@@ -65,7 +65,7 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
         backend.crypto(),
     )
     .expect("An unexpected error occurred.");
-    let bob_kpr = KeyPackageRef::new(
+    let bob_kpr = make_key_package_ref(
         &bob_key_package_bundle
             .key_package()
             .tls_serialize_detached()
@@ -178,8 +178,10 @@ fn proposal_queue_functions(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryp
     assert!(!own_update);
 
     // Test if proposals are all covered
-    let valid_proposal_reference_list =
-        &[proposal_reference_add_alice1, proposal_reference_add_alice2];
+    let valid_proposal_reference_list = &[
+        proposal_reference_add_alice1.clone(),
+        proposal_reference_add_alice2.clone(),
+    ];
     assert!(proposal_queue.contains(valid_proposal_reference_list));
 
     let invalid_proposal_reference_list = &[
@@ -206,7 +208,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
     let (_bob_credential_bundle, bob_key_package_bundle) =
         setup_client("Bob", ciphersuite, backend);
 
-    let alice_kpr = KeyPackageRef::new(
+    let alice_kpr = make_key_package_ref(
         &alice_key_package_bundle
             .key_package()
             .tls_serialize_detached()
@@ -215,7 +217,7 @@ fn proposal_queue_order(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoPr
         backend.crypto(),
     )
     .expect("An unexpected error occurred.");
-    let bob_kpr = KeyPackageRef::new(
+    let bob_kpr = make_key_package_ref(
         &bob_key_package_bundle
             .key_package()
             .tls_serialize_detached()

@@ -66,7 +66,7 @@ impl Client {
         let kp = kpb.key_package().clone();
         self.crypto
             .key_store()
-            .store(kp.hash_ref(self.crypto.crypto())?.value(), &kpb)
+            .store(kp.hash_ref(self.crypto.crypto())?.as_slice(), &kpb)
             .expect("An unexpected error occurred.");
         Ok(kp)
     }
@@ -106,13 +106,13 @@ impl Client {
         let key_package = kpb.key_package().clone();
         self.crypto
             .key_store()
-            .store(key_package.hash_ref(self.crypto.crypto())?.value(), &kpb)
+            .store(key_package.hash_ref(self.crypto.crypto())?.as_slice(), &kpb)
             .expect("An unexpected error occurred.");
         let group_state = MlsGroup::new(
             &self.crypto,
             &mls_group_config,
             group_id.clone(),
-            key_package.hash_ref(self.crypto.crypto())?.value(),
+            key_package.hash_ref(self.crypto.crypto())?.as_slice(),
         )?;
         self.groups
             .write()
