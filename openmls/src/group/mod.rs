@@ -46,7 +46,7 @@ pub use proposals::*;
     Hash, Eq, Debug, PartialEq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 pub struct GroupId {
-    value: TlsByteVecU8,
+    value: VLBytes,
 }
 
 impl GroupId {
