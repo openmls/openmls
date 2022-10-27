@@ -9,7 +9,7 @@ use super::*;
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct Signature {
-    value: TlsByteVecU16,
+    value: VLBytes,
 }
 
 /// Labeled signature content.

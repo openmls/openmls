@@ -14,7 +14,7 @@ use openmls_traits::{
 use signable::SignedStruct;
 
 use std::hash::Hash;
-use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU16, TlsByteVecU32, TlsByteVecU8};
+use tls_codec::{Serialize as TlsSerializeTrait, TlsByteVecU32, TlsByteVecU8};
 
 mod aead;
 mod codec;
