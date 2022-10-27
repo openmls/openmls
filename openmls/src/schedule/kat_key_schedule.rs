@@ -273,6 +273,9 @@ fn write_test_vectors() {
 
 #[apply(backends)]
 fn read_test_vectors_key_schedule(backend: &impl OpenMlsCryptoProvider) {
+    // FIXME: Silence warning. Remove this during #1051.
+    let _ = backend;
+
     let _tests: Vec<KeyScheduleTestVector> = read("test_vectors/kat_key_schedule_openmls.json");
 
     // FIXME: Disabled for now. Tracking re-enabling them in #1051
