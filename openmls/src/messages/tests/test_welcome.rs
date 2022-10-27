@@ -6,7 +6,7 @@ use crate::{
     messages::{
         ConfirmationTag, EncryptedGroupSecrets, GroupInfo, GroupInfoTBS, GroupSecrets, Welcome,
     },
-    schedule::{errors::PskError, psk::PskSecret, KeySchedule},
+    schedule::{psk::PskSecret, KeySchedule},
     versions::ProtocolVersion,
 };
 
@@ -55,10 +55,15 @@ fn test_welcome_ciphersuite_mismatch(
     ciphersuite: Ciphersuite,
     backend: &impl OpenMlsCryptoProvider,
 ) {
-    // We use this ciphersuite to create the mismatch
-    if ciphersuite == Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448 {
-        return;
-    }
+    // We need a ciphersuite that is different from the current one to create
+    // the mismatch
+    let mismatched_ciphersuite = match ciphersuite {
+        Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 => {
+            Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
+        }
+        _ => Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+    };
+
     let group_id = GroupId::random(backend);
     let mls_group_config = MlsGroupConfig::default();
 
@@ -124,14 +129,16 @@ fn test_welcome_ciphersuite_mismatch(
     .expect("An unexpected error occurred.");
 
     let (_queued_message, mut welcome) = alice_group
-        .add_members(backend, &[bob_kp])
+        .add_members(backend, &[bob_kp.clone()])
         .expect("Could not add member to group.");
 
     alice_group
         .merge_pending_commit()
         .expect("error merging pending commit");
 
-    // === Deconstruct the Welcome and manipulate the ciphersuite in GroupInfo ===
+    let original_welcome = welcome.clone();
+
+    // === Deconstruct the Welcome message and change the ciphersuite ===
 
     let egs = welcome.secrets[0].clone();
 
@@ -152,11 +159,6 @@ fn test_welcome_ciphersuite_mismatch(
 
     // Prepare the PskSecret
     let psk_secret = PskSecret::new(ciphersuite, backend, group_secrets.psks.psks())
-        .map_err(|e| match e {
-            PskError::LibraryError(e) => e.into(),
-            PskError::TooManyKeys => WelcomeError::PskTooManyKeys,
-            PskError::KeyNotFound => WelcomeError::PskNotFound,
-        })
         .expect("Could not create PskSecret.");
 
     // Create key schedule
@@ -180,7 +182,7 @@ fn test_welcome_ciphersuite_mismatch(
     group_info
         .payload
         .group_context
-        .set_ciphersuite(Ciphersuite::MLS_256_DHKEMX448_CHACHA20POLY1305_SHA512_Ed448);
+        .set_ciphersuite(mismatched_ciphersuite);
 
     // === Reconstruct the Welcome message and try to process it ===
 
@@ -201,9 +203,32 @@ fn test_welcome_ciphersuite_mismatch(
         welcome,
         Some(alice_group.export_ratchet_tree()),
     )
-    .expect_err("Error creating group from Welcome");
+    .expect_err("Created a group from an invalid Welcome.");
 
     assert_eq!(err, WelcomeError::GroupInfoCiphersuiteMismatch);
+
+    // === Process the original Welcome ===
+
+    // We need to store the KeyPackageBundle again because it has been consumed
+    // already
+    backend
+        .key_store()
+        .store(
+            bob_kp
+                .hash_ref(backend.crypto())
+                .expect("Could not hash KeyPackage.")
+                .as_slice(),
+            &bob_kpb,
+        )
+        .expect("An unexpected error occurred.");
+
+    let _group = MlsGroup::new_from_welcome(
+        backend,
+        &mls_group_config,
+        original_welcome,
+        Some(alice_group.export_ratchet_tree()),
+    )
+    .expect("Error creating group from a valid Welcome.");
 }
 
 #[apply(ciphersuites_and_backends)]
