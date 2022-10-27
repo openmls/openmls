@@ -1,3 +1,5 @@
+use tls_codec::Serialize;
+
 use super::*;
 
 /// `KdfLabel` is later serialized and used in the `label` field of
@@ -14,8 +16,8 @@ use super::*;
 #[derive(TlsSerialize, TlsSize)]
 pub(in crate::ciphersuite) struct KdfLabel {
     length: u16,
-    label: TlsByteVecU8,
-    context: TlsByteVecU32,
+    label: VLBytes,
+    context: VLBytes,
 }
 
 impl KdfLabel {
