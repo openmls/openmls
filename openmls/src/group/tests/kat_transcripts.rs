@@ -324,6 +324,9 @@ pub fn run_test_vector(
 
 #[apply(backends)]
 fn read_test_vectors_transcript(backend: &impl OpenMlsCryptoProvider) {
+    // FIXME: Silence warning. Remove this during #1051.
+    let _ = backend;
+
     let _tests: Vec<TranscriptTestVector> = read("test_vectors/kat_transcripts.json");
 
     // FIXME: Disabled for now. Tracking re-enabling them in #1051
