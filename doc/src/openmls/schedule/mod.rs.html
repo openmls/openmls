@@ -1254,7 +1254,6 @@
 <span id="1254">1254</span>
 <span id="1255">1255</span>
 <span id="1256">1256</span>
-<span id="1257">1257</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # Key schedule</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module contains the types and implementations for key schedule operations.</span>
@@ -1519,7 +1518,6 @@
 <span class="doccomment">/// proposal. TODO: #628.</span>
 <span class="kw">fn</span> <span class="ident">hpke_info_from_version</span>(<span class="ident">version</span>: <span class="ident">ProtocolVersion</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
     <span class="kw">match</span> <span class="ident">version</span> {
-        <span class="ident">ProtocolVersion::Reserved</span> =&gt; <span class="string">&quot;Reserved external init&quot;</span>,
         <span class="ident">ProtocolVersion::Mls10</span> =&gt; <span class="string">&quot;MLS 1.0 external init&quot;</span>,
         <span class="ident">ProtocolVersion::Mls10Draft11</span> =&gt; <span class="string">&quot;MLS 1.0 Draft 11 external init&quot;</span>,
     }
