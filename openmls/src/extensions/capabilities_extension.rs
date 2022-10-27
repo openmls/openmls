@@ -1,12 +1,7 @@
-use std::io::Read;
-
 use openmls_traits::types::Ciphersuite;
-use tls_codec::{TlsSerialize, TlsSize, TlsVecU8};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
-use super::{
-    CapabilitiesExtensionError, Deserialize, ExtensionType, RequiredCapabilitiesExtension,
-    Serialize,
-};
+use super::{Deserialize, ExtensionType, RequiredCapabilitiesExtension, Serialize};
 use crate::{messages::proposals::ProposalType, versions::ProtocolVersion};
 
 /// # Capabilities Extension
@@ -18,12 +13,14 @@ use crate::{messages::proposals::ProposalType, versions::ProtocolVersion};
 /// be listed.
 ///
 /// This extension is always present in a KeyPackage.
-#[derive(PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSize, TlsSerialize)]
+#[derive(
+    PartialEq, Eq, Clone, Debug, Serialize, Deserialize, TlsSize, TlsSerialize, TlsDeserialize,
+)]
 pub struct CapabilitiesExtension {
-    versions: TlsVecU8<ProtocolVersion>,
-    ciphersuites: TlsVecU8<Ciphersuite>,
-    extensions: TlsVecU8<ExtensionType>,
-    proposals: TlsVecU8<ProposalType>,
+    versions: Vec<ProtocolVersion>,
+    ciphersuites: Vec<Ciphersuite>,
+    extensions: Vec<ExtensionType>,
+    proposals: Vec<ProposalType>,
 }
 
 fn default_extensions() -> Vec<ExtensionType> {
@@ -137,32 +134,5 @@ impl CapabilitiesExtension {
             return false;
         }
         true
-    }
-}
-
-// We deserialize manually in order to perform some checks on the values.
-impl tls_codec::Deserialize for CapabilitiesExtension {
-    fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, tls_codec::Error> {
-        let versions = TlsVecU8::<ProtocolVersion>::tls_deserialize(bytes)?;
-        // There must be at least one version we support.
-        if versions.is_empty() {
-            let e = tls_codec::Error::DecodingError(format!(
-                "{:?}",
-                CapabilitiesExtensionError::EmptyVersionsField
-            ));
-            log::error!("Error reading capabilities extension form bytes: {:?}", e);
-            return Err(e);
-        }
-
-        let ciphersuites = TlsVecU8::<Ciphersuite>::tls_deserialize(bytes)?;
-        let extensions = TlsVecU8::tls_deserialize(bytes)?;
-        let proposals = TlsVecU8::tls_deserialize(bytes)?;
-
-        Ok(Self {
-            versions,
-            ciphersuites,
-            extensions,
-            proposals,
-        })
     }
 }
