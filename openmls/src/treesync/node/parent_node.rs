@@ -7,7 +7,7 @@ use openmls_traits::{
 };
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use tls_codec::{TlsByteVecU8, TlsVecU32};
+use tls_codec::VLBytes;
 
 use crate::{
     binary_tree::LeafIndex,
@@ -24,8 +24,8 @@ use crate::{
 #[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
 pub struct ParentNode {
     pub(super) public_key: HpkePublicKey,
-    pub(super) parent_hash: TlsByteVecU8,
-    pub(super) unmerged_leaves: TlsVecU32<LeafIndex>,
+    pub(super) parent_hash: VLBytes,
+    pub(super) unmerged_leaves: Vec<LeafIndex>,
     private_key_option: Option<HpkePrivateKey>,
 }
 
@@ -94,8 +94,8 @@ impl ParentNode {
     /// Create a new [`ParentNode`].
     pub(super) fn new(
         public_key: HpkePublicKey,
-        parent_hash: TlsByteVecU8,
-        unmerged_leaves: TlsVecU32<u32>,
+        parent_hash: VLBytes,
+        unmerged_leaves: Vec<u32>,
     ) -> Self {
         Self {
             public_key,

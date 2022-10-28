@@ -1,4 +1,4 @@
-use tls_codec::{TlsByteVecU8, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
 use crate::{ciphersuite::HpkePublicKey, key_packages::KeyPackage};
 
@@ -111,8 +111,8 @@ impl tls_codec::Deserialize for ParentNode {
         Self: Sized,
     {
         let public_key = HpkePublicKey::tls_deserialize(bytes)?;
-        let parent_hash = TlsByteVecU8::tls_deserialize(bytes)?;
-        let unmerged_leaves = TlsVecU32::tls_deserialize(bytes)?;
+        let parent_hash = VLBytes::tls_deserialize(bytes)?;
+        let unmerged_leaves = Vec::tls_deserialize(bytes)?;
         Ok(Self::new(public_key, parent_hash, unmerged_leaves))
     }
 }
