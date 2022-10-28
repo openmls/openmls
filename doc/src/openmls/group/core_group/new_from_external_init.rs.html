@@ -162,6 +162,7 @@
 <span id="162">162</span>
 <span id="163">163</span>
 <span id="164">164</span>
+<span id="165">165</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{
     <span class="ident">ciphersuite::signable::Verifiable</span>,
     <span class="ident">group::errors::ExternalCommitError</span>,
@@ -254,6 +255,7 @@
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ExternalCommitError::UnsupportedCiphersuite</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">group_context</span> <span class="op">=</span> <span class="ident">GroupContext::new</span>(
+            <span class="ident">ciphersuite</span>,
             <span class="ident">pgs</span>.<span class="ident">group_id</span>,
             <span class="ident">pgs</span>.<span class="ident">epoch</span>,
             <span class="ident">pgs</span>.<span class="ident">tree_hash</span>.<span class="ident">as_slice</span>().<span class="ident">to_vec</span>(),

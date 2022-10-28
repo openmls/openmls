@@ -483,6 +483,7 @@
 <span id="483">483</span>
 <span id="484">484</span>
 <span id="485">485</span>
+<span id="486">486</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync::errors::TreeSyncAddLeaf</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::treesync</span>::{<span class="ident">diff::StagedTreeSyncDiff</span>, <span class="ident">treekem::DecryptPathParams</span>};
 
@@ -764,6 +765,7 @@
         )<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">provisional_group_context</span> <span class="op">=</span> <span class="ident">GroupContext::new</span>(
+            <span class="ident">ciphersuite</span>,
             <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
             <span class="ident">provisional_epoch</span>,
             <span class="ident">diff</span>.<span class="ident">compute_tree_hashes</span>(<span class="ident">backend</span>, <span class="ident">ciphersuite</span>)<span class="question-mark">?</span>,

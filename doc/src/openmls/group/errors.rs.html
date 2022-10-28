@@ -449,6 +449,9 @@
 <span id="449">449</span>
 <span id="450">450</span>
 <span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
 </pre><pre class="rust"><code><span class="doccomment">//! # MLS group errors</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This module contains errors that originate at lower levels and are partially re-exported in errors thrown by functions of the `MlsGroup` API.</span>
@@ -476,6 +479,9 @@
     <span class="doccomment">/// Ciphersuites in Welcome and key package bundle don&#39;t match.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Ciphersuites in Welcome and key package bundle don&#39;t match.&quot;</span>)]</span>
     <span class="ident">CiphersuiteMismatch</span>,
+    <span class="doccomment">/// Ciphersuites in Welcome/GroupInfo and key package bundle don&#39;t match.</span>
+    <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;Ciphersuites in Welcome/GroupInfo and key package bundle don&#39;t match.&quot;</span>)]</span>
+    <span class="ident">GroupInfoCiphersuiteMismatch</span>,
     <span class="doccomment">/// No joiner secret found in the Welcome message.</span>
     <span class="attribute">#[<span class="ident">error</span>(<span class="string">&quot;No joiner secret found in the Welcome message.&quot;</span>)]</span>
     <span class="ident">JoinerSecretNotFound</span>,

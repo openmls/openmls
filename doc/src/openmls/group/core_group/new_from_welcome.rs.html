@@ -229,6 +229,11 @@
 <span id="229">229</span>
 <span id="230">230</span>
 <span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">log::debug</span>;
 <span class="kw">use</span> <span class="ident">openmls_traits::crypto::OpenMlsCrypto</span>;
 <span class="kw">use</span> <span class="ident">tls_codec::Deserialize</span>;
@@ -314,6 +319,10 @@
         <span class="kw">let</span> <span class="ident">group_info</span> <span class="op">=</span> <span class="ident">GroupInfo::tls_deserialize</span>(<span class="kw-2">&amp;mut</span> <span class="ident">group_info_bytes</span>.<span class="ident">as_slice</span>())
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">WelcomeError::MalformedWelcomeMessage</span>)<span class="question-mark">?</span>;
 
+        <span class="kw">if</span> <span class="ident">ciphersuite</span> <span class="op">!</span><span class="op">=</span> <span class="ident">group_info</span>.<span class="ident">group_context</span>().<span class="ident">ciphersuite</span>() {
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">WelcomeError::GroupInfoCiphersuiteMismatch</span>);
+        }
+
         <span class="comment">// Make sure that we can support the required capabilities in the group info.</span>
         <span class="kw">let</span> <span class="ident">group_context_extensions</span> <span class="op">=</span> <span class="ident">group_info</span>.<span class="ident">group_context</span>().<span class="ident">extensions</span>();
         <span class="kw">let</span> <span class="ident">required_capabilities</span> <span class="op">=</span> <span class="ident">group_context_extensions</span>
@@ -385,6 +394,7 @@
 
         <span class="comment">// Compute state</span>
         <span class="kw">let</span> <span class="ident">group_context</span> <span class="op">=</span> <span class="ident">GroupContext::new</span>(
+            <span class="ident">ciphersuite</span>,
             <span class="ident">group_info</span>.<span class="ident">group_context</span>().<span class="ident">group_id</span>().<span class="ident">clone</span>(),
             <span class="ident">group_info</span>.<span class="ident">group_context</span>().<span class="ident">epoch</span>(),
             <span class="ident">tree</span>.<span class="ident">tree_hash</span>().<span class="ident">to_vec</span>(),

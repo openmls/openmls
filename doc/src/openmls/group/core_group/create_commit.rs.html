@@ -475,6 +475,8 @@
 <span id="475">475</span>
 <span id="476">476</span>
 <span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">openmls_traits::OpenMlsCryptoProvider</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -710,6 +712,7 @@
 
         <span class="comment">// Calculate group context</span>
         <span class="kw">let</span> <span class="ident">provisional_group_context</span> <span class="op">=</span> <span class="ident">GroupContext::new</span>(
+            <span class="ident">ciphersuite</span>,
             <span class="self">self</span>.<span class="ident">group_context</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
             <span class="ident">provisional_epoch</span>,
             <span class="ident">tree_hash</span>.<span class="ident">clone</span>(),
@@ -790,6 +793,7 @@
             <span class="comment">// Create to-be-signed group info.</span>
             <span class="kw">let</span> <span class="ident">group_info_tbs</span> <span class="op">=</span> {
                 <span class="kw">let</span> <span class="ident">group_context</span> <span class="op">=</span> <span class="ident">GroupContext::new</span>(
+                    <span class="ident">ciphersuite</span>,
                     <span class="ident">provisional_group_context</span>.<span class="ident">group_id</span>().<span class="ident">clone</span>(),
                     <span class="ident">provisional_group_context</span>.<span class="ident">epoch</span>(),
                     <span class="ident">tree_hash</span>,
