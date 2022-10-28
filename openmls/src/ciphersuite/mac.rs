@@ -1,10 +1,8 @@
 use super::*;
 
-/// 9.2 Message framing
+/// 7.1 Content Authentication
 ///
-/// struct {
-///     opaque mac_value<0..255>;
-/// } MAC;
+/// opaque MAC<V>;
 #[derive(Debug, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize)]
 pub(crate) struct Mac {
     pub(crate) mac_value: VLBytes,

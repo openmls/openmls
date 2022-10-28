@@ -93,7 +93,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> TranscriptTestVector {
         framing_parameters,
         sender,
         Commit {
-            proposals: vec![].into(),
+            proposals: vec![],
             path: None,
         },
         &credential_bundle,

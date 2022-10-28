@@ -49,8 +49,8 @@ use crate::schedule::psk::{ExternalPsk, PreSharedKeyId, Psk};
 pub struct Welcome {
     version: ProtocolVersion,
     cipher_suite: Ciphersuite,
-    secrets: TlsVecU32<EncryptedGroupSecrets>,
-    encrypted_group_info: TlsByteVecU32,
+    secrets: Vec<EncryptedGroupSecrets>,
+    encrypted_group_info: VLBytes,
 }
 
 impl Welcome {
@@ -65,7 +65,7 @@ impl Welcome {
         Self {
             version,
             cipher_suite,
-            secrets: secrets.into(),
+            secrets,
             encrypted_group_info: encrypted_group_info.into(),
         }
     }
@@ -150,7 +150,7 @@ impl EncryptedGroupSecrets {
     Debug, PartialEq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub(crate) struct Commit {
-    pub(crate) proposals: TlsVecU32<ProposalOrRef>,
+    pub(crate) proposals: Vec<ProposalOrRef>,
     pub(crate) path: Option<UpdatePath>,
 }
 
@@ -189,7 +189,7 @@ pub struct ConfirmationTag(pub(crate) Mac);
 #[derive(TlsDeserialize, TlsSerialize, TlsSize)]
 pub(crate) struct GroupInfoTBS {
     group_context: GroupContext,
-    extensions: TlsVecU32<Extension>,
+    extensions: Vec<Extension>,
     confirmation_tag: ConfirmationTag,
     signer: KeyPackageRef,
 }
