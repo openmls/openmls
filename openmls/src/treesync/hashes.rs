@@ -1,7 +1,7 @@
 //! This module contains helper structs and functions related to parent hashing
 //! and tree hashing.
 use openmls_traits::{crypto::OpenMlsCrypto, types::Ciphersuite, OpenMlsCryptoProvider};
-use tls_codec::{Serialize, TlsSerialize, TlsSize, TlsSliceU32, TlsSliceU8};
+use tls_codec::{Serialize, TlsSerialize, TlsSize, TlsSliceU32, TlsSliceU8, VLByteSlice};
 
 use crate::{binary_tree::LeafIndex, ciphersuite::HpkePublicKey, error::LibraryError};
 
@@ -93,8 +93,8 @@ impl<'a> LeafNodeHashInput<'a> {
 pub(super) struct ParentNodeHashInput<'a> {
     node_index: LeafIndex,
     parent_node: Option<&'a ParentNode>,
-    left_hash: TlsSliceU8<'a, u8>,
-    right_hash: TlsSliceU8<'a, u8>,
+    left_hash: VLByteSlice<'a>,
+    right_hash: VLByteSlice<'a>,
 }
 
 impl<'a> ParentNodeHashInput<'a> {
@@ -102,8 +102,8 @@ impl<'a> ParentNodeHashInput<'a> {
     pub(super) fn new(
         node_index: LeafIndex,
         parent_node: Option<&'a ParentNode>,
-        left_hash: TlsSliceU8<'a, u8>,
-        right_hash: TlsSliceU8<'a, u8>,
+        left_hash: VLByteSlice<'a>,
+        right_hash: VLByteSlice<'a>,
     ) -> Self {
         Self {
             node_index,
