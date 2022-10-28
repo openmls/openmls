@@ -3,7 +3,6 @@
 
 use crate::ciphersuite::*;
 use std::io::{Read, Write};
-use tls_codec::{TlsSliceU8, TlsVecU8};
 
 impl tls_codec::Serialize for SignaturePublicKey {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, tls_codec::Error> {
@@ -19,19 +18,19 @@ impl tls_codec::Size for SignaturePublicKey {
 
 impl tls_codec::Size for Secret {
     fn tls_serialized_len(&self) -> usize {
-        TlsSliceU8(&self.value).tls_serialized_len()
+        self.value.tls_serialized_len()
     }
 }
 
 impl tls_codec::Serialize for Secret {
     fn tls_serialize<W: Write>(&self, writer: &mut W) -> Result<usize, ::tls_codec::Error> {
-        TlsSliceU8(&self.value).tls_serialize(writer)
+        self.value.tls_serialize(writer)
     }
 }
 
 impl tls_codec::Deserialize for Secret {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, ::tls_codec::Error> {
-        let value = TlsVecU8::tls_deserialize(bytes)?.into();
+        let value = Vec::tls_deserialize(bytes)?.into();
         Ok(Secret {
             value,
             mls_version: ProtocolVersion::default(),
