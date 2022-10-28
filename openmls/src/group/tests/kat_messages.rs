@@ -186,8 +186,7 @@ pub fn generate_test_vector(ciphersuite: Ciphersuite) -> MessagesTestVector {
         ciphersuite: ciphersuite_name,
         extensions: vec![Extension::RatchetTree(RatchetTreeExtension::new(
             ratchet_tree.clone(),
-        ))]
-        .into(),
+        ))],
     };
     // We don't support external init proposals yet.
     let external_init_proposal = tls_codec::TlsByteVecU16::new(Vec::new());

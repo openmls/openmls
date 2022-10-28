@@ -19,7 +19,7 @@ use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 use tls_codec::{
-    Serialize as TlsSerializeTrait, TlsByteVecU16, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32,
+    Serialize as TlsSerializeTrait, TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32, VLBytes,
 };
 
 // Public types
@@ -228,7 +228,7 @@ pub struct ReInitProposal {
     pub(crate) group_id: GroupId,
     pub(crate) version: ProtocolVersion,
     pub(crate) ciphersuite: Ciphersuite,
-    pub(crate) extensions: TlsVecU32<Extension>,
+    pub(crate) extensions: Vec<Extension>,
 }
 
 /// ExternalInit Proposal.
@@ -238,7 +238,7 @@ pub struct ReInitProposal {
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct ExternalInitProposal {
-    kem_output: TlsByteVecU16,
+    kem_output: VLBytes,
 }
 
 impl ExternalInitProposal {
@@ -274,13 +274,13 @@ pub struct AppAckProposal {
 /// in the GroupContext for the group.
 ///
 /// ```text
-/// struct { Extension extensions<0..2^32-1>; } GroupContextExtensions;
+/// struct { Extension extensions<V>; } GroupContextExtensions;
 /// ```
 #[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsDeserialize, TlsSerialize, TlsSize,
 )]
 pub struct GroupContextExtensionProposal {
-    extensions: TlsVecU32<Extension>,
+    extensions: Vec<Extension>,
 }
 
 impl GroupContextExtensionProposal {

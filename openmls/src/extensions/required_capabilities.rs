@@ -1,4 +1,4 @@
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, TlsVecU8};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use crate::messages::proposals::ProposalType;
 
@@ -31,8 +31,8 @@ use super::{Deserialize, ExtensionError, ExtensionType, Serialize};
     TlsSize,
 )]
 pub struct RequiredCapabilitiesExtension {
-    extensions: TlsVecU8<ExtensionType>,
-    proposals: TlsVecU8<ProposalType>,
+    extensions: Vec<ExtensionType>,
+    proposals: Vec<ProposalType>,
 }
 
 impl RequiredCapabilitiesExtension {

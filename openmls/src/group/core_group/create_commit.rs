@@ -199,7 +199,7 @@ impl CoreGroup {
 
         // Create commit message
         let commit = Commit {
-            proposals: proposal_reference_list.into(),
+            proposals: proposal_reference_list,
             path: path_processing_result.encrypted_path,
         };
 
