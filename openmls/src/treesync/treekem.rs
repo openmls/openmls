@@ -6,7 +6,7 @@
 //! updates for a [`TreeSyncDiff`] instance.
 use rayon::prelude::*;
 use std::collections::HashSet;
-use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, TlsVecU32};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize};
 
 use openmls_traits::{
     crypto::OpenMlsCrypto,
@@ -178,7 +178,7 @@ pub(crate) struct DecryptPathParams<'a> {
 /// ```text
 /// struct {
 ///     HPKEPublicKey public_key;
-///     HPKECiphertext encrypted_path_secret<0..2^32-1>;
+///     HPKECiphertext encrypted_path_secret<V>;
 /// } UpdatePathNode;
 /// ```
 #[derive(
@@ -186,7 +186,7 @@ pub(crate) struct DecryptPathParams<'a> {
 )]
 pub struct UpdatePathNode {
     pub(super) public_key: HpkePublicKey,
-    pub(super) encrypted_path_secrets: TlsVecU32<HpkeCiphertext>,
+    pub(super) encrypted_path_secrets: Vec<HpkeCiphertext>,
 }
 
 impl UpdatePathNode {
@@ -323,7 +323,7 @@ impl PlaintextSecret {
 /// ```text
 /// struct {
 ///     KeyPackage leaf_key_package;
-///     UpdatePathNode nodes<0..2^32-1>;
+///     UpdatePathNode nodes<V>;
 /// } UpdatePath;
 /// ```
 #[derive(
@@ -331,7 +331,7 @@ impl PlaintextSecret {
 )]
 pub struct UpdatePath {
     leaf_key_package: KeyPackage,
-    nodes: TlsVecU32<UpdatePathNode>,
+    nodes: Vec<UpdatePathNode>,
 }
 
 impl UpdatePath {

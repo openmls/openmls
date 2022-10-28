@@ -4,7 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
-use tls_codec::{TlsByteVecU16, TlsDeserialize, TlsSerialize, TlsSize};
+use tls_codec::{TlsByteVecU16, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 #[repr(u16)]
@@ -214,16 +214,16 @@ pub enum HpkeAeadType {
 ///
 /// ```text
 /// struct {
-///     opaque kem_output<0..2^16-1>;
-///     opaque ciphertext<0..2^16-1>;
+///     opaque kem_output<V>;
+///     opaque ciphertext<V>;
 /// } HPKECiphertext;
 /// ```
 #[derive(
     Debug, PartialEq, Eq, Clone, Serialize, Deserialize, TlsSerialize, TlsDeserialize, TlsSize,
 )]
 pub struct HpkeCiphertext {
-    pub kem_output: TlsByteVecU16,
-    pub ciphertext: TlsByteVecU16,
+    pub kem_output: VLBytes,
+    pub ciphertext: VLBytes,
 }
 
 /// Helper holding a (private, public) key pair as byte vectors.
