@@ -138,6 +138,7 @@ fn generate(
         .expect("An unexpected error occurred.");
 
     let group_context = GroupContext::new(
+        ciphersuite,
         GroupId::from_slice(group_id),
         epoch,
         tree_hash.to_vec(),
@@ -389,6 +390,7 @@ pub fn run_test_vector(
         let confirmed_transcript_hash = hex_to_bytes(&epoch.confirmed_transcript_hash);
 
         let group_context = GroupContext::new(
+            ciphersuite,
             GroupId::from_slice(&group_id),
             i as u64,
             tree_hash.to_vec(),

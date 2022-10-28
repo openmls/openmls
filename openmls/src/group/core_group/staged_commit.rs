@@ -279,6 +279,7 @@ impl CoreGroup {
         )?;
 
         let provisional_group_context = GroupContext::new(
+            ciphersuite,
             self.group_context.group_id().clone(),
             provisional_epoch,
             diff.compute_tree_hashes(backend, ciphersuite)?,

@@ -83,6 +83,10 @@ impl CoreGroup {
         let group_info = GroupInfo::tls_deserialize(&mut group_info_bytes.as_slice())
             .map_err(|_| WelcomeError::MalformedWelcomeMessage)?;
 
+        if ciphersuite != group_info.group_context().ciphersuite() {
+            return Err(WelcomeError::GroupInfoCiphersuiteMismatch);
+        }
+
         // Make sure that we can support the required capabilities in the group info.
         let group_context_extensions = group_info.group_context().extensions();
         let required_capabilities = group_context_extensions
@@ -154,6 +158,7 @@ impl CoreGroup {
 
         // Compute state
         let group_context = GroupContext::new(
+            ciphersuite,
             group_info.group_context().group_id().clone(),
             group_info.group_context().epoch(),
             tree.tree_hash().to_vec(),

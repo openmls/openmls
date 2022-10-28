@@ -233,6 +233,7 @@ impl CoreGroup {
 
         // Calculate group context
         let provisional_group_context = GroupContext::new(
+            ciphersuite,
             self.group_context.group_id().clone(),
             provisional_epoch,
             tree_hash.clone(),
@@ -313,6 +314,7 @@ impl CoreGroup {
             // Create to-be-signed group info.
             let group_info_tbs = {
                 let group_context = GroupContext::new(
+                    ciphersuite,
                     provisional_group_context.group_id().clone(),
                     provisional_group_context.epoch(),
                     tree_hash,

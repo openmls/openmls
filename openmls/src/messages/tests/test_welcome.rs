@@ -1,11 +1,12 @@
-#![allow(non_snake_case)]
-
 use crate::{
-    ciphersuite::hash_ref::KeyPackageRef,
-    ciphersuite::{signable::Signable, AeadKey, AeadNonce, Mac, Secret},
-    credentials::{CredentialBundle, CredentialType},
-    group::GroupId,
-    messages::{ConfirmationTag, EncryptedGroupSecrets, GroupInfoTBS, Welcome},
+    ciphersuite::{hash_ref::KeyPackageRef, signable::Signable, AeadKey, AeadNonce, Mac, Secret},
+    credentials::{errors::CredentialError, CredentialBundle, CredentialType},
+    group::{errors::WelcomeError, GroupId, MlsGroup, MlsGroupConfig},
+    key_packages::KeyPackageBundle,
+    messages::{
+        ConfirmationTag, EncryptedGroupSecrets, GroupInfo, GroupInfoTBS, GroupSecrets, Welcome,
+    },
+    schedule::{psk::PskSecret, KeySchedule},
     versions::ProtocolVersion,
 };
 
@@ -15,9 +16,220 @@ use rstest_reuse::{self, *};
 use crate::group::GroupContext;
 use openmls_rust_crypto::OpenMlsRustCrypto;
 use openmls_traits::{
-    crypto::OpenMlsCrypto, random::OpenMlsRand, types::Ciphersuite, OpenMlsCryptoProvider,
+    crypto::OpenMlsCrypto,
+    key_store::OpenMlsKeyStore,
+    random::OpenMlsRand,
+    types::{Ciphersuite, SignatureScheme},
+    OpenMlsCryptoProvider,
 };
 use tls_codec::{Deserialize, Serialize};
+
+/// Helper function
+fn generate_credential_bundle(
+    identity: Vec<u8>,
+    credential_type: CredentialType,
+    signature_algorithm: SignatureScheme,
+    backend: &impl OpenMlsCryptoProvider,
+) -> Result<CredentialBundle, CredentialError> {
+    let cb = CredentialBundle::new(identity, credential_type, signature_algorithm, backend)?;
+    let credential = cb.credential().clone();
+    backend
+        .key_store()
+        .store(
+            &credential
+                .signature_key()
+                .tls_serialize_detached()
+                .expect("Error serializing signature key."),
+            &cb,
+        )
+        .expect("An unexpected error occurred.");
+    Ok(cb)
+}
+
+/// This test detects discrepancies between ciphersuites in the GroupInfo of a
+/// Welcome message and the KeyPackage of a new member. We expect that to fail
+/// as the ciphersuite should be identical in the Welcome message, the GroupInfo
+/// and the KeyPackage.
+#[apply(ciphersuites_and_backends)]
+fn test_welcome_ciphersuite_mismatch(
+    ciphersuite: Ciphersuite,
+    backend: &impl OpenMlsCryptoProvider,
+) {
+    // We need a ciphersuite that is different from the current one to create
+    // the mismatch
+    let mismatched_ciphersuite = match ciphersuite {
+        Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519 => {
+            Ciphersuite::MLS_128_DHKEMX25519_CHACHA20POLY1305_SHA256_Ed25519
+        }
+        _ => Ciphersuite::MLS_128_DHKEMX25519_AES128GCM_SHA256_Ed25519,
+    };
+
+    let group_id = GroupId::random(backend);
+    let mls_group_config = MlsGroupConfig::default();
+
+    // Create credential bundles
+    let alice_credential_bundle = generate_credential_bundle(
+        b"Alice".to_vec(),
+        CredentialType::Basic,
+        ciphersuite.signature_algorithm(),
+        backend,
+    )
+    .expect("Could not create credential bundle.");
+
+    let bob_credential_bundle = generate_credential_bundle(
+        b"Bob".to_vec(),
+        CredentialType::Basic,
+        ciphersuite.signature_algorithm(),
+        backend,
+    )
+    .expect("Could not create credential bundle.");
+
+    // Create key package bundles and store them in the key store
+    let alice_kpb =
+        KeyPackageBundle::new(&[ciphersuite], &alice_credential_bundle, backend, vec![])
+            .expect("Could not create KeyPackageBundle for Alice.");
+    let alice_kp = alice_kpb.key_package().clone();
+
+    backend
+        .key_store()
+        .store(
+            alice_kp
+                .hash_ref(backend.crypto())
+                .expect("Could not hash KeyPackage.")
+                .as_slice(),
+            &alice_kpb,
+        )
+        .expect("An unexpected error occurred.");
+
+    let bob_kpb = KeyPackageBundle::new(&[ciphersuite], &bob_credential_bundle, backend, vec![])
+        .expect("Could not create KeyPackageBundle for Bob.");
+    let bob_kp = bob_kpb.key_package().clone();
+
+    backend
+        .key_store()
+        .store(
+            bob_kp
+                .hash_ref(backend.crypto())
+                .expect("Could not hash KeyPackage.")
+                .as_slice(),
+            &bob_kpb,
+        )
+        .expect("An unexpected error occurred.");
+
+    // === Alice creates a group  and adds Bob ===
+    let mut alice_group = MlsGroup::new(
+        backend,
+        &mls_group_config,
+        group_id,
+        alice_kp
+            .hash_ref(backend.crypto())
+            .expect("Could not hash KeyPackage.")
+            .as_slice(),
+    )
+    .expect("An unexpected error occurred.");
+
+    let (_queued_message, mut welcome) = alice_group
+        .add_members(backend, &[bob_kp.clone()])
+        .expect("Could not add member to group.");
+
+    alice_group
+        .merge_pending_commit()
+        .expect("error merging pending commit");
+
+    let original_welcome = welcome.clone();
+
+    // === Deconstruct the Welcome message and change the ciphersuite ===
+
+    let egs = welcome.secrets[0].clone();
+
+    let group_secrets_bytes = backend
+        .crypto()
+        .hpke_open(
+            ciphersuite.hpke_config(),
+            egs.encrypted_group_secrets(),
+            bob_kpb.private_key().as_slice(),
+            &[],
+            &[],
+        )
+        .expect("Could not decrypt group secrets.");
+    let group_secrets = GroupSecrets::tls_deserialize(&mut group_secrets_bytes.as_slice())
+        .expect("Could not deserialize group secrets.")
+        .config(ciphersuite, ProtocolVersion::Mls10);
+    let joiner_secret = group_secrets.joiner_secret;
+
+    // Prepare the PskSecret
+    let psk_secret = PskSecret::new(ciphersuite, backend, group_secrets.psks.psks())
+        .expect("Could not create PskSecret.");
+
+    // Create key schedule
+    let key_schedule = KeySchedule::init(ciphersuite, backend, joiner_secret, psk_secret)
+        .expect("Could not create KeySchedule.");
+
+    // Derive welcome key & nonce from the key schedule
+    let (welcome_key, welcome_nonce) = key_schedule
+        .welcome(backend)
+        .expect("Using the key schedule in the wrong state")
+        .derive_welcome_key_nonce(backend)
+        .expect("Could not derive welcome key and nonce.");
+
+    let group_info_bytes = welcome_key
+        .aead_open(backend, welcome.encrypted_group_info(), &[], &welcome_nonce)
+        .expect("Could not decrypt GroupInfo.");
+    let mut group_info = GroupInfo::tls_deserialize(&mut group_info_bytes.as_slice())
+        .expect("Could not deserialize GroupInfo.");
+
+    // Manipulate the ciphersuite in the GroupInfo
+    group_info
+        .payload
+        .group_context
+        .set_ciphersuite(mismatched_ciphersuite);
+
+    // === Reconstruct the Welcome message and try to process it ===
+
+    let group_info_bytes = group_info
+        .tls_serialize_detached()
+        .expect("Could not serialize GroupInfo.");
+
+    let encrypted_group_info = welcome_key
+        .aead_seal(backend, &group_info_bytes, &[], &welcome_nonce)
+        .expect("Could not encrypt GroupInfo.");
+
+    welcome.encrypted_group_info = encrypted_group_info.into();
+
+    // Bob tries to join the group
+    let err = MlsGroup::new_from_welcome(
+        backend,
+        &mls_group_config,
+        welcome,
+        Some(alice_group.export_ratchet_tree()),
+    )
+    .expect_err("Created a group from an invalid Welcome.");
+
+    assert_eq!(err, WelcomeError::GroupInfoCiphersuiteMismatch);
+
+    // === Process the original Welcome ===
+
+    // We need to store the KeyPackageBundle again because it has been consumed
+    // already
+    backend
+        .key_store()
+        .store(
+            bob_kp
+                .hash_ref(backend.crypto())
+                .expect("Could not hash KeyPackage.")
+                .as_slice(),
+            &bob_kpb,
+        )
+        .expect("An unexpected error occurred.");
+
+    let _group = MlsGroup::new_from_welcome(
+        backend,
+        &mls_group_config,
+        original_welcome,
+        Some(alice_group.export_ratchet_tree()),
+    )
+    .expect("Error creating group from a valid Welcome.");
+}
 
 #[apply(ciphersuites_and_backends)]
 fn test_welcome_msg(ciphersuite: Ciphersuite, backend: &impl OpenMlsCryptoProvider) {
@@ -32,6 +244,7 @@ fn test_welcome_message_with_version(
     // We use this dummy group info in all test cases.
     let group_info_tbs = {
         let group_context = GroupContext::new(
+            ciphersuite,
             GroupId::random(backend),
             123,
             vec![1, 2, 3, 4, 5, 6, 7, 8, 9],
