@@ -57,10 +57,10 @@ fn default_ciphersuites() -> Vec<Ciphersuite> {
 impl Default for CapabilitiesExtension {
     fn default() -> Self {
         CapabilitiesExtension {
-            versions: default_versions().into(),
-            ciphersuites: default_ciphersuites().into(),
-            extensions: default_extensions().into(),
-            proposals: default_proposals().into(),
+            versions: default_versions(),
+            ciphersuites: default_ciphersuites(),
+            extensions: default_extensions(),
+            proposals: default_proposals(),
         }
     }
 }
@@ -78,19 +78,19 @@ impl CapabilitiesExtension {
         Self {
             versions: match versions {
                 Some(v) => v.into(),
-                None => default_versions().into(),
+                None => default_versions(),
             },
             ciphersuites: match ciphersuites {
                 Some(c) => c.into(),
-                None => default_ciphersuites().into(),
+                None => default_ciphersuites(),
             },
             extensions: match extensions {
                 Some(e) => e.into(),
-                None => default_extensions().into(),
+                None => default_extensions(),
             },
             proposals: match proposals {
                 Some(p) => p.into(),
-                None => default_proposals().into(),
+                None => default_proposals(),
             },
         }
     }

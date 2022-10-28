@@ -42,7 +42,7 @@ impl From<HpkePublicKey> for ParentNode {
         Self {
             public_key,
             parent_hash: vec![].into(),
-            unmerged_leaves: vec![].into(),
+            unmerged_leaves: vec![],
             private_key_option: None,
         }
     }
@@ -74,7 +74,7 @@ impl PlainUpdatePathNode {
 
         UpdatePathNode {
             public_key: self.public_key.clone(),
-            encrypted_path_secrets: encrypted_path_secrets.into(),
+            encrypted_path_secrets,
         }
     }
 
@@ -204,8 +204,8 @@ impl ParentNode {
     pub(in crate::treesync) fn clone_without_private_key(&self) -> Self {
         Self {
             public_key: self.public_key().clone(),
-            parent_hash: self.parent_hash().to_vec().into(),
-            unmerged_leaves: self.unmerged_leaves().to_vec().into(),
+            parent_hash: self.parent_hash.clone(),
+            unmerged_leaves: self.unmerged_leaves.clone(),
             private_key_option: None,
         }
     }

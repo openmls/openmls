@@ -30,7 +30,7 @@ impl tls_codec::Serialize for Secret {
 
 impl tls_codec::Deserialize for Secret {
     fn tls_deserialize<R: Read>(bytes: &mut R) -> Result<Self, ::tls_codec::Error> {
-        let value = Vec::tls_deserialize(bytes)?.into();
+        let value = Vec::tls_deserialize(bytes)?;
         Ok(Secret {
             value,
             mls_version: ProtocolVersion::default(),
