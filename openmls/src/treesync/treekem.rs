@@ -48,7 +48,7 @@ impl<'a> TreeSyncDiff<'a> {
         path: &[PlainUpdatePathNode],
         group_context: &[u8],
         exclusion_list: &HashSet<&LeafIndex>,
-        key_package: KeyPackage,
+        leaf_key_package: KeyPackage,
     ) -> Result<UpdatePath, LibraryError> {
         let copath_resolutions = self.copath_resolutions(self.own_leaf_index(), exclusion_list)?;
 
@@ -56,15 +56,15 @@ impl<'a> TreeSyncDiff<'a> {
         debug_assert_eq!(copath_resolutions.len(), path.len());
 
         // Encrypt the secrets
-        let update_path_nodes = path
+        let nodes = path
             .par_iter()
             .zip(copath_resolutions.par_iter())
             .map(|(node, resolution)| node.encrypt(backend, ciphersuite, resolution, group_context))
             .collect::<Vec<UpdatePathNode>>();
 
         Ok(UpdatePath {
-            leaf_key_package: key_package,
-            nodes: update_path_nodes.into(),
+            leaf_key_package,
+            nodes,
         })
     }
 
@@ -343,7 +343,7 @@ impl UpdatePath {
     /// Consume the [`UpdatePath`] and return its individual parts: A
     /// [`KeyPackage`] and a vector of [`UpdatePathNode`] instances.
     pub(crate) fn into_parts(self) -> (KeyPackage, Vec<UpdatePathNode>) {
-        (self.leaf_key_package, self.nodes.into())
+        (self.leaf_key_package, self.nodes)
     }
 
     #[cfg(test)]
