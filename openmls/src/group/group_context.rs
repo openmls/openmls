@@ -16,9 +16,9 @@ pub struct GroupContext {
     ciphersuite: Ciphersuite,
     group_id: GroupId,
     epoch: GroupEpoch,
-    tree_hash: TlsByteVecU8,
-    confirmed_transcript_hash: TlsByteVecU8,
-    extensions: TlsVecU32<Extension>,
+    tree_hash: VLBytes,
+    confirmed_transcript_hash: VLBytes,
+    extensions: Vec<Extension>,
 }
 
 #[cfg(any(feature = "test-utils", test))]
