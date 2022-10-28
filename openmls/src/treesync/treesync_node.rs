@@ -3,7 +3,7 @@
 use openmls_traits::{types::Ciphersuite, OpenMlsCryptoProvider};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use tls_codec::TlsSliceU8;
+use tls_codec::VLByteSlice;
 
 use crate::{
     binary_tree::{LeafIndex, MlsBinaryTreeDiffError},
@@ -135,8 +135,8 @@ impl TreeSyncNode {
             let hash_input = ParentNodeHashInput::new(
                 node_index,
                 parent_node_option,
-                TlsSliceU8(&left_hash),
-                TlsSliceU8(&right_hash),
+                VLByteSlice(&left_hash),
+                VLByteSlice(&right_hash),
             );
             hash_input.hash(ciphersuite, backend)?
         };

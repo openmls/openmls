@@ -4,7 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
-use tls_codec::{TlsByteVecU16, TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
+use tls_codec::{TlsDeserialize, TlsSerialize, TlsSize, VLBytes};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 #[repr(u16)]
