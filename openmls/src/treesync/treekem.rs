@@ -214,7 +214,7 @@ impl UpdatePathNode {
             new_eps.ciphertext.push(last_bits);
             new_eps_vec.push(new_eps);
         }
-        self.encrypted_path_secrets = new_eps_vec.into();
+        self.encrypted_path_secrets = new_eps_vec;
     }
 
     /// Flip the last byte of the public key in this node.
@@ -355,7 +355,7 @@ impl UpdatePath {
             new_node.flip_last_byte();
             new_nodes.push(new_node);
         }
-        self.nodes = new_nodes.into();
+        self.nodes = new_nodes;
     }
 
     #[cfg(test)]

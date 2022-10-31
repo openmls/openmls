@@ -68,7 +68,7 @@ fn test_reinit_proposal_codec(ciphersuite: Ciphersuite, backend: &impl OpenMlsCr
         group_id: GroupId::random(backend),
         version: ProtocolVersion::default(),
         ciphersuite,
-        extensions: vec![].into(),
+        extensions: vec![],
     };
     let encoded = orig
         .tls_serialize_detached()
